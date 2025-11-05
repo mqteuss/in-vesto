@@ -42,10 +42,9 @@
         .accent-text { color: #8B5CF6; }
         .hover-accent-text:hover { color: #A78BFA; }
 
-        /* Estilo de Título com Gradiente */
-        .title-gradient {
-            @apply text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600;
-        }
+        /* ================== MUDANÇA (REMOÇÃO) ================== */
+        /* A CLASSE .title-gradient foi removida daqui pois não funcionava com @apply */
+        /* ================== FIM MUDANÇA ================== */
 
         /* --- Animações --- */
         .tab-content { display: none; }
@@ -219,11 +218,10 @@
     <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
 
         <div id="tab-dashboard" class="tab-content active p-4">
-            <h1 class="text-4xl font-extrabold tracking-tight mb-6 title-gradient">Dashboard</h1>
-
+            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Dashboard</h1>
             <div id="resumo-carteira-card" class="card-bg p-5 rounded-2xl mb-6 text-center hidden">
                 <span class="text-sm text-gray-500">Valor Total da Carteira</span>
-                <h2 id="total-carteira-valor" class="text-4xl font-bold mt-1 title-gradient">R$ 0,00</h2>
+                <h2 id="total-carteira-valor" class="text-4xl font-bold mt-1 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">R$ 0,00</h2>
                 <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-800">
                     <div>
                         <span class="text-xs text-gray-500">Custo Total</span>
@@ -262,7 +260,7 @@
         <div id="tab-carteira" class="tab-content p-4">
             
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-tight title-gradient">Meus Ativos</h1>
+                <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Meus Ativos</h1>
                 <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar dados">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
                         <path d="M21 2v6h-6"></path>
@@ -318,19 +316,18 @@
         </div>
 
         <div id="tab-proventos" class="tab-content p-4">
-            <h1 class="text-4xl font-extrabold tracking-tight text-center mb-8 title-gradient">Próximos Dividendos</h1>
-
+            <h1 class="text-4xl font-extrabold tracking-tight text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Próximos Dividendos</h1>
             <div class="card-bg p-6 rounded-2xl mb-6 text-center">
                 <span class="text-sm text-gray-500">Total Estimado (Próx. Pagamentos)</span>
-                <h2 id="total-proventos" class="text-4xl font-bold mt-1 title-gradient">R$ 0,00</h2>
+                <h2 id="total-proventos" class="text-4xl font-bold mt-1 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">R$ 0,00</h2>
                 </div>
             
             </div>
 
         <div id="tab-detalhes" class="tab-content p-4">
             <div id="detalhes-titulo" class="text-center mb-8">
-                 <h1 class="text-4xl font-extrabold tracking-tight title-gradient">Detalhes do Ativo</h1>
-            </div>
+                 <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Detalhes do Ativo</h1>
+                 </div>
             
             <div id="detalhes-conteudo" class="card-bg p-5 md:p-6 rounded-2xl space-y-5">
                  <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
@@ -967,7 +964,7 @@
                         }
                     }
                     
-                    // ================== MUDANÇA 3 ==================
+                    // ================== MUDANÇA 3 (HTML NO JS) ==================
                     // Nova Estrutura do Card (Accordion com NOMES CURTOS + LOGO + BOTÕES)
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
@@ -1511,7 +1508,9 @@
             function limparDetalhes() {
                 detalhesMensagem.classList.remove('hidden');
                 detalhesLoading.classList.add('hidden');
-                detalhesTitulo.innerHTML = '<h1 class="text-4xl font-extrabold tracking-tight title-gradient">Detalhes do Ativo</h1>'; 
+                // ================== MUDANÇA 1.7 (JS) ==================
+                detalhesTitulo.innerHTML = '<h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Detalhes do Ativo</h1>'; 
+                // ================== FIM MUDANÇA 1.7 ==================
                 detalhesPreco.innerHTML = '';
                 detalhesHistoricoContainer.classList.add('hidden');
                 detalhesHistorico.innerHTML = ''; // Limpo
@@ -1529,7 +1528,9 @@
                 detalhesAiProvento.innerHTML = ''; 
                 detalhesHistoricoContainer.classList.add('hidden');
                 detalhesHistorico.innerHTML = ''; // Limpa o container
-                detalhesTitulo.innerHTML = `<h1 class="text-4xl font-extrabold tracking-tight title-gradient">${symbol}</h1>`;
+                // ================== MUDANÇA 1.8 (JS) ==================
+                detalhesTitulo.innerHTML = `<h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">${symbol}</h1>`;
+                // ================== FIM MUDANÇA 1.8 ==================
                 
                 const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
                 const cacheKeyPreco = `detalhe_preco_${symbol}`;
@@ -1564,11 +1565,13 @@
                 detalhesLoading.classList.add('hidden');
 
                 if (precoData) {
+                    // ================== MUDANÇA 1.9 (JS) ==================
                     detalhesTitulo.innerHTML = `
                         <img id="detalhes-logo" src="${precoData.logourl}" alt="Logo" class="w-12 h-12 rounded-full mx-auto mb-2 ${!precoData.logourl ? 'hidden' : ''}" onerror="this.classList.add('hidden')">
-                        <h1 class="text-4xl font-extrabold tracking-tight title-gradient">${symbol}</h1>
+                        <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">${symbol}</h1>
                         <p id="detalhes-nome-longo" class="text-base font-normal text-gray-500 mt-1">${precoData.longName || 'Nome não disponível'}</p>
                     `;
+                    // ================== FIM MUDANÇA 1.9 ==================
                     
                     const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
 
@@ -1650,7 +1653,7 @@
                             <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
                             <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${aiResult}</p>
                         `;
-                    // ================== MUDANÇA 4 ==================
+                    // ================== MUDANÇA 4 (JS) ==================
                     } catch (e) {
                         detalhesAiProvento.innerHTML = `
                             <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>

@@ -389,6 +389,14 @@
 
     </div>
 
+    <div id="update-notification" class="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
+        <div class="card-bg rounded-xl p-4 shadow-2xl flex items-center justify-between gap-3">
+            <span class="text-sm font-medium text-gray-100">Uma nova versão está disponível!</span>
+            <button id="update-button" class="py-2 px-4 accent-bg text-white rounded-lg transition-colors text-sm font-semibold">
+                Atualizar
+            </button>
+        </div>
+    </div>
     <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bottom-nav flex justify-around p-3">
         <button class="tab-button active flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-dashboard" title="Dashboard">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -530,6 +538,75 @@
             let proventosAtuais = [];
             
             const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            // ==========================================================
+            // INÍCIO: LÓGICA DE ATUALIZAÇÃO DO PWA (NOVO)
+            // ==========================================================
+            
+            // Elementos da UI de Atualização
+            const updateNotification = document.getElementById('update-notification');
+            const updateButton = document.getElementById('update-button');
+            
+            let newWorker; // Variável para guardar o novo SW
+
+            function showUpdateBar() {
+                console.log('Mostrando aviso de atualização.');
+                updateNotification.classList.remove('hidden');
+                setTimeout(() => {
+                    updateNotification.style.opacity = '1';
+                    updateNotification.style.transform = 'translateY(0) translateX(-50%)'; 
+                }, 10);
+            }
+
+            if ('serviceWorker' in navigator) {
+                console.log('Registrando Service Worker...');
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('SW registrado com sucesso:', registration.scope);
+
+                    // 1. Detecta quando um novo SW foi encontrado e está instalando
+                    registration.addEventListener('updatefound', () => {
+                        console.log('[PWA] Nova versão do SW encontrada, instalando...');
+                        newWorker = registration.installing;
+
+                        // 2. Detecta quando o novo SW terminou de instalar
+                        newWorker.addEventListener('statechange', () => {
+                            // Se o estado é 'installed' e já existe um SW controlando a página,
+                            // significa que o novo SW está "esperando" (waiting).
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('[PWA] Novo SW está "esperando" para ativar.');
+                                // Hora de mostrar o aviso para o usuário!
+                                showUpdateBar();
+                            }
+                        });
+                    });
+                });
+
+                // 3. Adiciona o clique no botão de atualização
+                updateButton.addEventListener('click', () => {
+                    console.log('[PWA] Usuário clicou em Atualizar. Enviando SKIP_WAITING...');
+                    updateButton.textContent = 'A atualizar...';
+                    updateButton.disabled = true;
+                    // Envia a mensagem para o SW que está "esperando"
+                    if (newWorker) {
+                        newWorker.postMessage({ action: 'SKIP_WAITING' });
+                    }
+                });
+
+                // 4. (Opcional, mas recomendado) Detecta quando o SW mudou
+                // Isso acontece *depois* que o skipWaiting() é chamado
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    console.log('[PWA] Novo SW ativado! Recarregando a página...');
+                    // Recarrega a página para que o novo SW assuma e carregue os novos assets
+                    window.location.reload();
+                });
+                
+            } else {
+                console.log('Service Worker não é suportado neste navegador.');
+            }
+            
+            // ==========================================================
+            // FIM: LÓGICA DE ATUALIZAÇÃO DO PWA
+            // ==========================================================
 
             // ===== Funções de CACHE =====
             

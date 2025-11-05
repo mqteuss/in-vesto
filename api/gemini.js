@@ -1,240 +1,247 @@
 // api/gemini.js
-
 // Esta é uma Vercel Serverless Function.
-
 // Ela atua como um proxy seguro para a API Google Gemini.
 
-
-
-// Função de retry (backoff) para o servidor
-
-async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
-
+// Função de retry otimizada com backoff exponencial
+async function fetchWithBackoff(url, options, retries = 2, delay = 800) {
     for (let i = 0; i < retries; i++) {
-
         try {
-
             const response = await fetch(url, options);
-
             if (response.status === 429 || response.status >= 500) {
-
                 throw new Error(`API Error: ${response.status} ${response.statusText}`);
-
             }
-
             if (!response.ok) {
-
-                 const errorBody = await response.json();
-
-                 throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
-
+                const errorBody = await response.json();
+                throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
             }
-
             return response.json();
-
         } catch (error) {
-
             if (i === retries - 1) throw error;
-
-            console.warn(`Tentativa ${i+1} falhou, aguardando ${delay * (i + 1)}ms...`);
-
-            await new Promise(res => setTimeout(res, delay * (i + 1)));
-
+            const waitTime = delay * Math.pow(2, i);
+            console.warn(`Tentativa ${i+1} falhou, aguardando ${waitTime}ms...`);
+            await new Promise(res => setTimeout(res, waitTime));
         }
-
     }
-
 }
-
-
 
 // Constrói o payload para a API Gemini
-
 function getGeminiPayload(mode, payload) {
-
     const { ticker, todayString, fiiList } = payload;
-
     let systemPrompt = '';
-
     let userQuery = '';
 
-
-
     switch (mode) {
-
         case 'proximo_provento':
+            systemPrompt = `Você é um assistente financeiro especializado em FIIs brasileiros. Data atual: ${todayString}.
 
-            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua única tarefa é encontrar o valor e a data do *próximo* pagamento de provento (dividendo) para o FII solicitado. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).\n\nResponda de forma concisa e direta em português, sem asteriscos.\n\nSe encontrar, responda:\n"O próximo provento do ${ticker} será de R$ [VALOR] por cota, com pagamento em [DATA]."\n\nSe nenhum provento futuro for anunciado, apenas diga:\n"Nenhum provento futuro foi anunciado para ${ticker}."`;
+TAREFA: Encontre o valor e data do PRÓXIMO pagamento de provento do ${ticker}.
 
-            userQuery = `Qual é o valor e a data do próximo pagamento de proventos para o FII ${ticker}?`;
+INSTRUÇÕES:
+1. Busque apenas informações de fontes confiáveis (sites oficiais, InfoMoney, Funds Explorer)
+2. O provento deve ter data de pagamento FUTURA
+3. Verifique a data de aprovação/anúncio para validar
 
+FORMATO DE RESPOSTA:
+Se encontrado: "O próximo provento do ${ticker} será de R$ [VALOR] por cota, com pagamento em [DATA]."
+Se não encontrado: "Nenhum provento futuro foi anunciado para ${ticker}."
+
+Resposta concisa, sem asteriscos ou formatação markdown.`;
+            userQuery = `Próximo provento ${ticker}`;
             break;
-
-
 
         case 'historico_12m':
+            systemPrompt = `Você é um assistente financeiro especializado em FIIs brasileiros. Data atual: ${todayString}.
 
-            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua única tarefa é encontrar o histórico de proventos (dividendos) dos *últimos 12 meses* para o FII solicitado. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).\n\nResponda em português.\n\nFormate a resposta EXATAMENTE assim, com um item por linha (do mais recente para o mais antigo) e sem nenhum outro texto, introdução ou asteriscos:\n[MM/AA]: R$ [VALOR]\n[MM/AA]: R$ [VALOR]\n... (até 12 linhas)\n\nExemplo:\n10/25: R$ 0,10\n09/25: R$ 0,10\n\nSe não encontrar dados, apenas diga:\n"Não foi possível encontrar o histórico de proventos dos últimos 12 meses para ${ticker}."`;
+TAREFA: Liste os proventos dos ÚLTIMOS 12 MESES do ${ticker}.
 
-            userQuery = `Qual é o histórico de proventos (últimos 12 meses) para o FII ${ticker}?`;
+INSTRUÇÕES:
+1. Busque fontes confiáveis (Funds Explorer, InfoMoney, site do administrador)
+2. Liste do mais recente ao mais antigo
+3. Valores por cota, não totais
 
+FORMATO OBRIGATÓRIO (uma linha por mês):
+MM/AA: R$ VALOR
+MM/AA: R$ VALOR
+
+Exemplo:
+10/25: R$ 0,10
+09/25: R$ 0,10
+
+Se não encontrar: "Não foi possível encontrar o histórico de proventos dos últimos 12 meses para ${ticker}."
+
+Sem texto adicional, asteriscos ou markdown.`;
+            userQuery = `Histórico 12 meses proventos ${ticker}`;
             break;
-
-
 
         case 'proventos_carteira':
+            systemPrompt = `Você é um assistente financeiro especializado em FIIs brasileiros. Data atual: ${todayString}.
 
-            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do *próximo* pagamento de provento (dividendo) para uma lista de FIIs. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).\n\nPara FIIs sem provento futuro anunciado, retorne 'value' como 0 e 'paymentDate' como null.\n\nIMPORTANTE: A data 'paymentDate' DEVE estar no formato AAAA-MM-DD (ex: 2025-11-14).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução, markdown (\`\`\`) ou formatação.\n\nExemplo de resposta:\n[\n  {"symbol": "MXRF11", "value": 0.10, "paymentDate": "2025-11-14"},\n  {"symbol": "HGLG11", "value": 1.10, "paymentDate": "2025-11-14"},\n  {"symbol": "GARE11", "value": 0, "paymentDate": null}\n]`;
+TAREFA: Para cada FII listado, encontre o PRÓXIMO provento (valor e data de pagamento).
 
-            userQuery = `Encontre o próximo provento para os seguintes FIIs: ${fiiList.join(', ')}.`;
+INSTRUÇÕES CRÍTICAS:
+1. Busque apenas proventos com data FUTURA
+2. Verifique múltiplas fontes para precisão
+3. Data OBRIGATORIAMENTE no formato: AAAA-MM-DD
+4. Se não houver provento futuro: value=0, paymentDate=null
+5. Valores são POR COTA
 
+FORMATO DE RESPOSTA (JSON puro, sem markdown):
+[
+  {"symbol": "MXRF11", "value": 0.10, "paymentDate": "2025-11-14"},
+  {"symbol": "HGLG11", "value": 1.10, "paymentDate": "2025-11-14"},
+  {"symbol": "GARE11", "value": 0, "paymentDate": null}
+]
+
+IMPORTANTE: Responda APENAS o array JSON, sem texto adicional, sem \`\`\`, sem explicações.`;
+            userQuery = `Próximos proventos: ${fiiList.join(', ')}`;
             break;
-
-
 
         case 'historico_portfolio':
+            systemPrompt = `Você é um assistente financeiro. Data atual: ${todayString}.
 
-            systemPrompt = `Você é um assistente financeiro. Sua tarefa é encontrar o histórico de proventos (dividendos) *por cota* dos últimos 6 meses *completos*.\n\nNÃO inclua o mês atual (data de hoje: ${todayString}).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução ou markdown.\nOrdene a resposta do mês mais antigo para o mais recente.\n\n- O mês deve estar no formato "MM/AA" (ex: "10/25").\n- Se um FII não pagou em um mês, retorne 0 para ele.\n\nExemplo de Resposta (se hoje for Nov/2025):\n[\n  {"mes": "05/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "06/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "07/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "08/25", "MXRF11": 0.10, "GARE11": 0},\n  {"mes": "09/25", "MXRF11": 0.11, "GARE11": 0.09},\n  {"mes": "10/25", "MXRF11": 0.11, "GARE11": 0.09}\n]`;
+TAREFA: Histórico de proventos POR COTA dos últimos 6 MESES COMPLETOS.
 
-            userQuery = `Gere o histórico de proventos por cota dos últimos 6 meses completos (não inclua o mês atual) para: ${fiiList.join(', ')}.`;
+REGRAS OBRIGATÓRIAS:
+1. NÃO incluir o mês atual (${todayString.slice(3)})
+2. Valores POR COTA (não totais)
+3. Se não pagou: value = 0
+4. Ordenar do MÊS MAIS ANTIGO para o MAIS RECENTE
+5. Formato do mês: MM/AA
 
+FORMATO DE RESPOSTA (JSON puro):
+[
+  {"mes": "05/25", "MXRF11": 0.10, "GARE11": 0.08},
+  {"mes": "06/25", "MXRF11": 0.10, "GARE11": 0.08},
+  {"mes": "07/25", "MXRF11": 0.10, "GARE11": 0.08},
+  {"mes": "08/25", "MXRF11": 0.10, "GARE11": 0},
+  {"mes": "09/25", "MXRF11": 0.11, "GARE11": 0.09},
+  {"mes": "10/25", "MXRF11": 0.11, "GARE11": 0.09}
+]
+
+Responda APENAS o array JSON, sem \`\`\`, sem texto adicional.`;
+            userQuery = `Histórico 6 meses: ${fiiList.join(', ')}`;
             break;
-
             
-
         default:
-
             throw new Error("Modo de API Gemini inválido.");
-
     }
-
-
 
     return {
-
         contents: [{ parts: [{ text: userQuery }] }],
-
-        tools: [{ "google_search": {} }], 
-
+        tools: [{ google_search: {} }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
-
+        generationConfig: {
+            temperature: 0.1,  // Menor temperatura = respostas mais precisas e consistentes
+            topP: 0.8,
+            topK: 20,
+            maxOutputTokens: mode.includes('portfolio') || mode === 'proventos_carteira' ? 2048 : 512,
+        }
     };
-
 }
 
-
+// Parser otimizado de JSON
+function parseJsonResponse(text) {
+    try {
+        // Remove markdown e espaços
+        let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        // Extrai apenas o array JSON
+        const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        
+        // Tenta parse direto como fallback
+        return JSON.parse(cleaned);
+    } catch (error) {
+        throw new Error(`Falha ao parsear JSON: ${error.message}`);
+    }
+}
 
 // Handler principal da Vercel Serverless Function
-
 export default async function handler(request, response) {
+    // CORS headers para produção
+    response.setHeader('Access-Control-Allow-Credentials', 'true');
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (request.method === 'OPTIONS') {
+        return response.status(200).end();
+    }
 
     if (request.method !== 'POST') {
-
         return response.status(405).json({ error: "Método não permitido, use POST." });
-
     }
-
-
 
     const { GEMINI_API_KEY } = process.env;
-
     if (!GEMINI_API_KEY) {
-
         return response.status(500).json({ error: "Chave da API Gemini não configurada no servidor." });
-
     }
-
     
-
+    // Usando modelo mais recente e eficiente
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
 
-
-
     try {
-
         const { mode, payload } = request.body;
+        
+        // Validação de entrada
+        if (!mode || !payload) {
+            return response.status(400).json({ error: "Parâmetros inválidos: mode e payload são obrigatórios." });
+        }
 
         const geminiPayload = getGeminiPayload(mode, payload);
 
-
-
+        // Faz a requisição com timeout implícito do Vercel (10s para hobby, 60s para pro)
         const result = await fetchWithBackoff(GEMINI_API_URL, {
-
             method: 'POST',
-
             headers: { 'Content-Type': 'application/json' },
-
             body: JSON.stringify(geminiPayload)
-
         });
 
-
-
         const candidate = result?.candidates?.[0];
-
         const text = candidate?.content?.parts?.[0]?.text;
 
-
-
-        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKSENS") {
-
-             if (candidate?.finishReason) {
-
-                 throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
-
-             }
-
+        // Validação mais robusta da resposta
+        if (!candidate || (candidate.finishReason !== "STOP" && candidate.finishReason !== "MAX_TOKENS")) {
+            const reason = candidate?.finishReason || 'UNKNOWN';
+            throw new Error(`Resposta bloqueada ou incompleta. Razão: ${reason}`);
         }
 
-        if (!text) {
-
+        if (!text || text.trim().length === 0) {
             throw new Error("A API retornou uma resposta vazia.");
-
         }
-
         
+        // Caching otimizado por tipo de consulta
+        const cacheTime = mode.includes('historico') ? 1800 : 600; // 30min para histórico, 10min para próximos
+        response.setHeader('Cache-Control', `s-maxage=${cacheTime}, stale-while-revalidate=300`);
 
-        // Adiciona Caching
-
-        response.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate');
-
-
-
-        // Retorna JSON ou texto limpo baseado no modo
-
+        // Processa resposta baseado no modo
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
-
-            // Estes modos esperam JSON, então limpamos e parseamos
-
-            let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-            const jsonMatch = jsonText.match(/\[.*\]/s);
-
-            if (jsonMatch && jsonMatch[0]) {
-
-                jsonText = jsonMatch[0];
-
+            const jsonData = parseJsonResponse(text);
+            
+            // Validação básica do JSON
+            if (!Array.isArray(jsonData) || jsonData.length === 0) {
+                throw new Error("Formato de resposta JSON inválido.");
             }
-
-            return response.status(200).json({ json: JSON.parse(jsonText) });
-
+            
+            return response.status(200).json({ json: jsonData });
         } else {
-
-            // Estes modos esperam texto
-
-            return response.status(200).json({ text: text.replace(/\*/g, '') });
-
+            // Remove formatação markdown e asteriscos
+            const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+            return response.status(200).json({ text: cleanText });
         }
-
-
 
     } catch (error) {
-
-        console.error("Erro interno no proxy Gemini:", error);
-
-        return response.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
-
+        console.error("Erro no proxy Gemini:", error.message);
+        
+        // Respostas de erro mais específicas
+        const statusCode = error.message.includes('API Error: 429') ? 429 :
+                          error.message.includes('bloqueada') ? 422 : 500;
+        
+        return response.status(statusCode).json({ 
+            error: error.message,
+            mode: request.body?.mode || 'unknown'
+        });
     }
-
 }
-

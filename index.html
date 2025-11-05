@@ -386,7 +386,7 @@
                 </div>
             </div>
         </div>
-
+        
         <div id="tab-detalhes" class="tab-content p-4">
             <div id="detalhes-titulo" class="text-center mb-8">
                  <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Detalhes do Ativo</h1>
@@ -531,7 +531,6 @@
             const carteiraLoading = document.getElementById('carteira-loading');
             
             // --- Elementos DOM (Proventos) ---
-            // Este ID agora aponta para o <p> dentro do card do Dashboard
             const totalProventosEl = document.getElementById('total-proventos');
             
             // --- Elementos DOM (Detalhes) ---
@@ -1003,7 +1002,8 @@
                                 y: {
                                     beginAtZero: true,
                                     grid: { color: '#2A2A2A' }, 
-                                    ticks: { callback: (value) => formatBRL(value) }
+                                    // === MODIFICADO: Oculta os valores do Eixo Y ===
+                                    ticks: { display: false }
                                 },
                                 x: { grid: { display: false } }
                             }

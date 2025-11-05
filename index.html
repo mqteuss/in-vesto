@@ -244,7 +244,7 @@
             </div>
             
             <div id="historico-grafico-container" class="card-bg p-4 rounded-2xl mb-6 hidden">
-                <h3 class="text-lg font-semibold text-center text-white mb-3">Proventos Recebidos (6 Meses)</h3>
+                <h3 class="text-lg font-semibold text-center text-white mb-3">Proventos Recebidos</h3>
                 <div class="relative h-64">
                     <canvas id="historico-proventos-chart"></canvas>
                 </div>
@@ -318,47 +318,14 @@
         </div>
 
         <div id="tab-proventos" class="tab-content p-4">
-            <h1 class="text-4xl font-extrabold tracking-tight text-center mb-8 title-gradient">Próximos Proventos</h1>
+            <h1 class="text-4xl font-extrabold tracking-tight text-center mb-8 title-gradient">Próximos Dividendos</h1>
 
             <div class="card-bg p-6 rounded-2xl mb-6 text-center">
                 <span class="text-sm text-gray-500">Total Estimado (Próx. Pagamentos)</span>
                 <h2 id="total-proventos" class="text-4xl font-bold accent-text mt-1">R$ 0,00</h2>
             </div>
             
-            <div class="card-bg p-5 rounded-2xl mb-6">
-                <h3 class="text-lg font-semibold text-center text-white mb-4">Verificar Próximo Provento</h3>
-                <div class="flex gap-2">
-                    
-                    <button 
-                        id="ai-ticker-select-button" 
-                        class="flex-1 min-w-0 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors text-left text-gray-500"
-                    >
-                        Selecione um FII da carteira
-                    </button>
-                    
-                    <button 
-                        id="ai-search-button" 
-                        class="p-3 w-14 h-14 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-all active:scale-95 hover:scale-105"
-                    >
-                        <svg id="ai-button-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <div id="ai-button-loader" class="loader-sm hidden"></div>
-                    </button>
-                </div>
             </div>
-
-            <div id="ai-result-card" class="card-bg p-5 rounded-2xl mb-8 text-center hidden">
-                <div id="ai-loading" class="hidden animate-pulse p-4">
-                    <div class="space-y-3">
-                        <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                        <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>
-                    </div>
-                </div>
-                <p id="ai-result-message" class="text-gray-100 text-left whitespace-pre-wrap"></p>
-            </div>
-        </div>
 
         <div id="tab-detalhes" class="tab-content p-4">
             <div id="detalhes-titulo" class="text-center mb-8">
@@ -415,12 +382,12 @@
             <span class="text-xs mt-1 font-medium">Carteira</span>
         </button>
         
-        <button class="tab-button flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-proventos" title="Proventos">
+        <button class="tab-button flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-proventos" title="Dividendos">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                 <line x1="12" y1="1" x2="12" y2="23"></line>
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
             </svg>
-            <span class="text-xs mt-1 font-medium">Proventos</span>
+            <span class="text-xs mt-1 font-medium">Dividendos</span>
         </button>
         
         <button class="tab-button flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-detalhes" title="Detalhes">
@@ -483,14 +450,10 @@
             // Aba Proventos
             const totalProventosEl = document.getElementById('total-proventos');
             
-            // Elementos da IA
-            const aiTickerSelectButton = document.getElementById('ai-ticker-select-button'); 
-            const aiSearchButton = document.getElementById('ai-search-button');
-            const aiButtonIcon = document.getElementById('ai-button-icon');
-            const aiButtonLoader = document.getElementById('ai-button-loader');
-            const aiResultCard = document.getElementById('ai-result-card');
-            const aiLoading = document.getElementById('ai-loading');
-            const aiResultMessage = document.getElementById('ai-result-message');
+            // Elementos da IA (REMOVIDOS)
+            // const aiTickerSelectButton = ...
+            // const aiSearchButton = ...
+            // const aiResultCard = ...
 
             // Aba Detalhes
             const detalhesTitulo = document.getElementById('detalhes-titulo');
@@ -530,9 +493,9 @@
             let carteira = []; 
             let alocacaoChartInstance = null;
             let historicoChartInstance = null;
-            let isAISearching = false;
+            // let isAISearching = false; // Removido
             let onConfirmCallback = null; 
-            let selectedAIFii = null; 
+            // let selectedAIFii = null; // Removido
             
             let precosAtuais = [];
             let proventosAtuais = [];
@@ -721,61 +684,12 @@
                 }, 200); 
             }
             
-            // --- Funções do Modal de Seleção de FII ---
-            function showFiiModal() {
-                const fiiNaCarteira = carteira.filter(ativo => isFII(ativo.symbol)).sort((a,b) => a.symbol.localeCompare(b.symbol));
-                fiiModalList.innerHTML = ''; 
-                if (fiiNaCarteira.length === 0) {
-                    fiiModalList.innerHTML = '<p class="text-sm text-gray-500 text-center">Nenhum FII na carteira.</p>';
-                } else {
-                    fiiNaCarteira.forEach(ativo => {
-                        const fiiButton = document.createElement('button');
-                        fiiButton.className = 'w-full text-left p-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors';
-                        fiiButton.textContent = ativo.symbol;
-                        fiiButton.dataset.symbol = ativo.symbol;
-                        fiiButton.onclick = () => {
-                            selectFii(ativo.symbol);
-                        };
-                        fiiModalList.appendChild(fiiButton);
-                    });
-                }
-                fiiSelectModal.classList.add('visible');
-                fiiSelectModalContent.classList.remove('modal-out');
-            }
-
-            function hideFiiModal() {
-                fiiSelectModalContent.classList.add('modal-out');
-                setTimeout(() => {
-                    fiiSelectModal.classList.remove('visible');
-                    fiiSelectModalContent.classList.remove('modal-out');
-                }, 200);
-            }
-
-            function selectFii(symbol) {
-                selectedAIFii = symbol;
-                aiTickerSelectButton.textContent = symbol;
-                aiTickerSelectButton.classList.remove('text-gray-500'); 
-                aiTickerSelectButton.classList.add('text-white');
-                hideFiiModal();
-            }
+            // --- Funções do Modal de Seleção de FII (REMOVIDAS) ---
+            // function showFiiModal() { ... }
+            // function hideFiiModal() { ... }
+            // function selectFii(symbol) { ... }
+            // function updateAIButtonState() { ... }
             
-            function updateAIButtonState() {
-                const fiiNaCarteira = carteira.some(ativo => isFII(ativo.symbol));
-                if (!fiiNaCarteira) {
-                    aiTickerSelectButton.textContent = 'Nenhum FII na carteira';
-                    aiTickerSelectButton.disabled = true;
-                    aiSearchButton.disabled = true;
-                } else {
-                    if (!selectedAIFii) {
-                         aiTickerSelectButton.textContent = 'Selecione um FII da carteira';
-                         aiTickerSelectButton.classList.add('text-gray-500');
-                         aiTickerSelectButton.classList.remove('text-white');
-                    }
-                    aiTickerSelectButton.disabled = false;
-                    aiSearchButton.disabled = false;
-                }
-            }
-
             // --- Funções de Dados (localStorage) ---
             function salvarCarteira() {
                 localStorage.setItem(DB_KEY, JSON.stringify(carteira));
@@ -804,7 +718,7 @@
                     carteira = [];
                 }
                 salvarCarteira(); 
-                updateAIButtonState(); 
+                // updateAIButtonState(); // Removido
             }
 
             // --- Funções de Renderização ---
@@ -1358,7 +1272,7 @@
                      dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
                      resumoCarteiraCard.classList.add('hidden');
                      graficoContainer.classList.add('hidden');
-                     updateAIButtonState();
+                     // updateAIButtonState(); // Removido
                      return; 
                 }
 
@@ -1417,7 +1331,7 @@
                          dashboardStatus.classList.add('hidden');
                          dashboardLoading.classList.add('hidden');
                     }
-                    updateAIButtonState();
+                    // updateAIButtonState(); // Removido
                 }
             }
             
@@ -1499,9 +1413,9 @@
                     () => { 
                         carteira = carteira.filter(a => a.symbol !== symbol);
                         
-                        if (selectedAIFii === symbol) {
-                            selectedAIFii = null;
-                        }
+                        // if (selectedAIFii === symbol) { // Removido
+                        //     selectedAIFii = null;
+                        // }
                         
                         clearBrapiCache(); 
                         salvarCarteira();
@@ -1712,61 +1626,16 @@
                 }
             });
             
-            aiTickerSelectButton.addEventListener('click', showFiiModal);
-            fiiModalCancel.addEventListener('click', hideFiiModal);
-            fiiSelectModal.addEventListener('click', (e) => {
-                if (e.target === fiiSelectModal) { 
-                    hideModal();
-                }
-            });
-            
-            aiSearchButton.addEventListener('click', async () => {
-                const ticker = selectedAIFii; 
-                if (!ticker || isAISearching) return;
-
-                isAISearching = true;
-                aiResultCard.classList.remove('hidden');
-                aiLoading.classList.remove('hidden');
-                aiResultMessage.classList.add('hidden');
-                aiButtonIcon.classList.add('hidden');
-                aiButtonLoader.classList.remove('hidden');
-                aiSearchButton.disabled = true;
-                aiTickerSelectButton.disabled = true; 
-
-                try {
-                    const resposta = await callGeminiAPI(ticker, todayString);
-                    aiResultMessage.textContent = resposta; 
-                } catch (error) {
-                    console.error("Erro na API Gemini:", error);
-                    aiResultMessage.textContent = error.message || "Erro ao buscar dados. Verifique sua conexão e tente novamente.";
-                } finally {
-                    isAISearching = false;
-                    aiLoading.classList.add('hidden');
-                    aiResultMessage.classList.remove('hidden');
-                    aiButtonIcon.classList.remove('hidden');
-                    aiButtonLoader.classList.add('hidden');
-                    aiSearchButton.disabled = false;
-                    aiTickerSelectButton.disabled = false; 
-                }
-            });
+            // Event Listeners da busca de IA (REMOVIDOS)
+            // aiTickerSelectButton.addEventListener('click', showFiiModal);
+            // fiiModalCancel.addEventListener('click', hideFiiModal);
+            // fiiSelectModal.addEventListener('click', (e) => { ... });
+            // aiSearchButton.addEventListener('click', async () => { ... });
 
 
             // --- Funções da API Gemini (BFF) ---
             
-            async function callGeminiAPI(ticker, todayString) {
-                const body = {
-                    mode: 'proximo_provento',
-                    payload: { ticker, todayString }
-                };
-                
-                const response = await fetchBFF('/api/gemini', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                
-                return response.text; 
-            }
+            // function callGeminiAPI(ticker, todayString) { ... } // Removida
 
             async function callGeminiHistoricoAPI(ticker, todayString) {
                 const body = {

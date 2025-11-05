@@ -502,21 +502,41 @@
             const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
 
             // ===== Funções de CACHE =====
-            function setCache(key, data) {
-                const cacheItem = { timestamp: Date.now(), data: data };
+            
+            // *** CORREÇÃO 1 (Cache) - Início ***
+            // Adicionado "duration" para permitir cache infinito
+            function setCache(key, data, duration = CACHE_DURATION) { // Parâmetro de duração adicionado
+                const cacheItem = { 
+                    timestamp: Date.now(), 
+                    data: data,
+                    duration: duration // Armazena a duração desejada
+                };
                 try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(cacheItem)); } 
                 catch (e) { console.error("Erro ao salvar no cache:", e); clearBrapiCache(); }
             }
+            
+            // "getCache" agora lê a duração salva e respeita o valor -1 (infinito)
             function getCache(key) {
                 const cacheItem = localStorage.getItem(CACHE_PREFIX + key);
                 if (!cacheItem) return null;
                 try {
                     const parsed = JSON.parse(cacheItem);
-                    const isExpired = (Date.now() - parsed.timestamp) > CACHE_DURATION;
+                    
+                    // Usa a duração salva, ou o padrão (30min) se não existir
+                    const duration = parsed.duration ?? CACHE_DURATION; 
+                    
+                    // Se a duração for -1, o cache é permanente (nunca expira)
+                    if (duration === -1) {
+                        return parsed.data; 
+                    }
+                    
+                    const isExpired = (Date.now() - parsed.timestamp) > duration;
                     if (isExpired) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
                     return parsed.data;
                 } catch (e) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
             }
+            // *** CORREÇÃO 1 (Cache) - Fim ***
+            
             function clearBrapiCache() {
                 console.warn("A limpar cache da Brapi...");
                 Object.keys(localStorage)
@@ -979,9 +999,13 @@
                 
                 const cacheKey = 'precos_' + carteira.map(a => a.symbol).join('-');
                 
+                // *** Alteração de lógica (force=true) ***
+                // Se 'force' for true (como no início), ele ignora a verificação da B3
                 if (!isB3Open() && !force) {
                     console.log("B3 fechada (ou fora do horário) e atualização não forçada. A usar preços do cache.");
                     const precosCache = getCache(cacheKey);
+                    // Se o cache estiver vazio, retorna array vazio
+                    // A renderização lidará com "A carregar..." se os dados não vierem
                     return precosCache || []; 
                 }
 
@@ -1013,7 +1037,7 @@
 
                 if (precos.length > 0) {
                     console.log("Preços buscados (BFF), a salvar no cache.");
-                    setCache(cacheKey, precos);
+                    setCache(cacheKey, precos); // Usa o CACHE_DURATION padrão
                 }
                 
                 return precos;
@@ -1046,6 +1070,7 @@
                     .filter(p => p !== null);
             }
 
+            // *** CORREÇÃO 2 (Lógica de Proventos) - Início ***
             async function buscarProventosFuturos() {
                 const fiiNaCarteira = carteira
                     .filter(a => isFII(a.symbol))
@@ -1055,36 +1080,64 @@
                 
                 const cacheKey = 'proventos_ia_' + fiiNaCarteira.join('-');
                 
-                const proventosCacheIA = getCache(cacheKey);
+                // 1. Tenta buscar do cache (que agora respeita a duração infinita)
+                const proventosCacheIA_bruto = getCache(cacheKey); 
                 
-                if (proventosCacheIA) {
+                if (proventosCacheIA_bruto) {
                     console.log("A verificar cache de proventos (Gemini)...");
-                    const proventosFuturosCache = processarProventosIA(proventosCacheIA);
+                    // 2. Processa o cache para ver se os proventos ainda são futuros
+                    const proventosFuturosCache = processarProventosIA(proventosCacheIA_bruto);
                     if (proventosFuturosCache.length > 0) {
-                        console.log("Cache de proventos ainda é válido. A pular API da Gemini.");
+                        console.log("Cache de proventos ainda é válido (possui pagamentos futuros). A pular API da Gemini.");
                         return proventosFuturosCache;
                     }
                     console.log("Cache de proventos está obsoleto (sem proventos futuros). A buscar na IA.");
                 }
 
-                let proventosDaIA = [];
+                let proventosDaIA_bruto_api; // Dados brutos da API
 
                 try {
+                    // 3. Busca na API Gemini (BFF)
                     console.log("A buscar proventos na API (Gemini via BFF)...");
-                    // ALTERADO: Chamada para o BFF
-                    proventosDaIA = await callGeminiProventosCarteiraAPI(fiiNaCarteira, todayString);
+                    proventosDaIA_bruto_api = await callGeminiProventosCarteiraAPI(fiiNaCarteira, todayString);
                     
-                    if (proventosDaIA && proventosDaIA.length > 0) {
-                        console.log("Proventos buscados (Gemini), a salvar no cache.");
-                        setCache(cacheKey, proventosDaIA); 
-                    }
                 } catch (error) {
                     console.error("Erro ao buscar proventos com IA:", error);
-                    proventosDaIA = proventosCacheIA || []; 
+                    // Em caso de erro, usa o cache bruto (mesmo que obsoleto) ou um array vazio
+                    proventosDaIA_bruto_api = proventosCacheIA_bruto || []; 
+                    // Processa e retorna o que tiver (para não quebrar o app)
+                    return processarProventosIA(proventosDaIA_bruto_api);
+                }
+                
+                // 4. Processa os dados novos da API
+                const proventosFuturosProcessados = processarProventosIA(proventosDaIA_bruto_api);
+                
+                // 5. Calcula o total (conforme sua regra)
+                let totalCalculado = 0;
+                proventosFuturosProcessados.forEach(provento => {
+                    // Garante que o cálculo é o mesmo da renderização
+                    if (typeof provento.quantity === 'number' && 
+                        typeof provento.value === 'number' &&
+                        provento.value > 0) { 
+                        totalCalculado += (provento.quantity * provento.value);
+                    }
+                });
+
+                // 6. Aplica a lógica de salvar ou não
+                if (totalCalculado > 0.01) {
+                    console.log(`Proventos (Total: ${formatBRL(totalCalculado)}) buscados. A salvar no cache (sem expiração).`);
+                    // Salva os dados *brutos* da IA, mas com duração infinita (-1)
+                    setCache(cacheKey, proventosDaIA_bruto_api, -1); 
+                } else {
+                    console.log("Proventos (Total: R$ 0,00) buscados. Não salvará no cache.");
+                    // Limpa o cache se o total for 0
+                    localStorage.removeItem(CACHE_PREFIX + cacheKey);
                 }
 
-                return processarProventosIA(proventosDaIA); 
+                // 7. Retorna os dados processados para a renderização
+                return proventosFuturosProcessados; 
             }
+            // *** CORREÇÃO 2 (Lógica de Proventos) - Fim ***
 
             async function buscarHistoricoProventosAgregado() {
                 const fiiNaCarteira = carteira.filter(a => isFII(a.symbol));
@@ -1185,12 +1238,15 @@
                 let precosRenderizados = false;
                 let proventosRenderizados = false;
 
-                const cacheKeyPrecos = 'precos_' + carteira.map(a => a.symbol).join('-');
-                const precosCache = getCache(cacheKeyPrecos);
-                if (precosCache) {
-                    console.log("A renderizar preços do cache imediatamente.");
-                    renderizarCarteira(precosCache);
-                    precosRenderizados = true;
+                // Não renderiza preços do cache se 'force' for true, pois buscará novos
+                if (!force) {
+                    const cacheKeyPrecos = 'precos_' + carteira.map(a => a.symbol).join('-');
+                    const precosCache = getCache(cacheKeyPrecos);
+                    if (precosCache) {
+                        console.log("A renderizar preços do cache imediatamente.");
+                        renderizarCarteira(precosCache);
+                        precosRenderizados = true;
+                    }
                 }
 
                 const fiiNaCarteiraCache = carteira.filter(a => isFII(a.symbol)).map(a => a.symbol);
@@ -1221,7 +1277,8 @@
                 }
 
                 // --- Etapa 2: Busca em Paralelo (Brapi e Gemini) ---
-                const promessaPrecos = buscarPrecosCarteira(force);
+                // 'force' é passado para buscarPrecosCarteira
+                const promessaPrecos = buscarPrecosCarteira(force); 
                 const promessaProventos = buscarProventosFuturos();
                 const promessaHistorico = buscarHistoricoProventosAgregado();
 
@@ -1229,12 +1286,21 @@
 
                 promessaPrecos.then(precos => {
                     console.log("Busca de preços (BFF) concluída.");
-                    renderizarCarteira(precos);
+                    // Só renderiza se os preços não estiverem vazios (o que acontece se a API falhar E 'force' for true)
+                    if (precos.length > 0) {
+                        renderizarCarteira(precos);
+                    } else if (precosRenderizados) {
+                        // Se já renderizou o cache, não faz nada
+                    } else {
+                        // Se não renderizou cache E a API falhou, mostra "A carregar..." (fallback)
+                        console.warn("API de preços falhou e não havia cache. A mostrar 'A carregar...'.");
+                        renderizarCarteira([]); // Renderiza com "A carregar..."
+                    }
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
                     if (!precosRenderizados) { 
-                        carteiraMensagem.textContent = "Erro ao buscar preços.";
-                        carteiraMensagem.classList.remove('hidden');
+                        // Mostra "A carregar..." se o cache não foi renderizado
+                        renderizarCarteira([]);
                     }
                 });
 
@@ -1665,7 +1731,9 @@
 
             // --- Inicialização ---
             carregarCarteira();
-            atualizarTodosDados(false); 
+            // *** CORREÇÃO 3 (Inicialização) ***
+            // Força a atualização de preços ao iniciar
+            atualizarTodosDados(true); 
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
         });
     </script>

@@ -60,7 +60,7 @@
         .card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
 
         /* ============================================== */
-        /* INÍCIO: MUDANÇA NA BARRA DE NAVEGAÇÃO          */
+        /* INÍCIO: ESTILOS DA BARRA DE NAVEGAÇÃO          */
         /* ============================================== */
         
         /* Keyframe para a flutuação do ícone */
@@ -104,7 +104,7 @@
              animation: gentleFloat 1.5s ease-in-out infinite;
         }
         /* ============================================== */
-        /* FIM: MUDANÇA NA BARRA DE NAVEGAÇÃO             */
+        /* FIM: ESTILOS DA BARRA DE NAVEGAÇÃO             */
         /* ============================================== */
         
         
@@ -385,9 +385,10 @@
         </div>
     </div>
     
-    <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-3 rounded-full">
-        <button class="tab-button active flex flex-col items-center justify-center p-2" data-tab="tab-dashboard" title="Dashboard">
-            <div class="tab-button-icon-wrapper"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+    <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">
+        <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                     <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
                     <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                 </svg>
@@ -395,8 +396,9 @@
             <span class="text-xs mt-1 font-medium">Dashboard</span>
         </button>
         
-        <button class="tab-button flex flex-col items-center justify-center p-2" data-tab="tab-carteira" title="Carteira">
-            <div class="tab-button-icon-wrapper"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-carteira" title="Carteira">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                     <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
                     <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
                     <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
@@ -405,8 +407,9 @@
             <span class="text-xs mt-1 font-medium">Carteira</span>
         </button>
         
-        <button class="tab-button flex flex-col items-center justify-center p-2" data-tab="tab-proventos" title="Dividendos">
-            <div class="tab-button-icon-wrapper"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-proventos" title="Dividendos">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                 </svg>
@@ -414,8 +417,9 @@
             <span class="text-xs mt-1 font-medium">Dividendos</span>
         </button>
         
-        <button class="tab-button flex flex-col items-center justify-center p-2" data-tab="tab-detalhes" title="Detalhes">
-            <div class="tab-button-icon-wrapper"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-detalhes" title="Detalhes">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                     <line x1="18" y1="20" x2="18" y2="10"></line>
                     <line x1="12" y1="20" x2="12" y2="4"></line>
                     <line x1="6" y1="20" x2="6" y2="14"></line>
@@ -506,24 +510,13 @@
             
             const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
             
-            // ==========================================================
-            // INÍCIO: NOVAS VARIÁVEIS DE ESTADO (GRÁFICOS)
-            // ==========================================================
-            let lastAlocacaoData = null; // Snapshot p/ gráfico de alocação
-            let lastHistoricoData = null; // Snapshot p/ gráfico de histórico
-            // ==========================================================
-            // FIM: NOVAS VARIÁVEIS DE ESTADO
-            // ==========================================================
+            let lastAlocacaoData = null; 
+            let lastHistoricoData = null; 
 
-            // ==========================================================
-            // INÍCIO: LÓGICA DE ATUALIZAÇÃO DO PWA (NOVO)
-            // ==========================================================
-            
-            // Elementos da UI de Atualização
+            // --- Lógica do PWA ---
             const updateNotification = document.getElementById('update-notification');
             const updateButton = document.getElementById('update-button');
-            
-            let newWorker; // Variável para guardar o novo SW
+            let newWorker; 
 
             function showUpdateBar() {
                 console.log('Mostrando aviso de atualização.');
@@ -539,40 +532,30 @@
                 navigator.serviceWorker.register('/sw.js').then(registration => {
                     console.log('SW registrado com sucesso:', registration.scope);
 
-                    // 1. Detecta quando um novo SW foi encontrado e está instalando
                     registration.addEventListener('updatefound', () => {
                         console.log('[PWA] Nova versão do SW encontrada, instalando...');
                         newWorker = registration.installing;
 
-                        // 2. Detecta quando o novo SW terminou de instalar
                         newWorker.addEventListener('statechange', () => {
-                            // Se o estado é 'installed' e já existe um SW controlando a página,
-                            // significa que o novo SW está "esperando" (waiting).
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                 console.log('[PWA] Novo SW está "esperando" para ativar.');
-                                // Hora de mostrar o aviso para o usuário!
                                 showUpdateBar();
                             }
                         });
                     });
                 });
 
-                // 3. Adiciona o clique no botão de atualização
                 updateButton.addEventListener('click', () => {
                     console.log('[PWA] Usuário clicou em Atualizar. Enviando SKIP_WAITING...');
                     updateButton.textContent = 'A atualizar...';
                     updateButton.disabled = true;
-                    // Envia a mensagem para o SW que está "esperando"
                     if (newWorker) {
                         newWorker.postMessage({ action: 'SKIP_WAITING' });
                     }
                 });
 
-                // 4. (Opcional, mas recomendado) Detecta quando o SW mudou
-                // Isso acontece *depois* que o skipWaiting() é chamado
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
                     console.log('[PWA] Novo SW ativado! Recarregando a página...');
-                    // Recarrega a página para que o novo SW assume e carregue os novos assets
                     window.location.reload();
                 });
                 
@@ -580,12 +563,7 @@
                 console.log('Service Worker não é suportado neste navegador.');
             }
             
-            // ==========================================================
-            // FIM: LÓGICA DE ATUALIZAÇÃO DO PWA
-            // ==========================================================
-
-            // ===== Funções de CACHE =====
-            
+            // --- Funções de CACHE ---
             function setCache(key, data, duration = CACHE_DURATION) { 
                 const cacheItem = { 
                     timestamp: Date.now(), 
@@ -679,7 +657,7 @@
                 return cores;
             }
             
-            // --- Funções do Modal de Confirmação ---
+            // --- Funções do Modal ---
             function showModal(title, message, onConfirm) {
                 customModalTitle.textContent = title;
                 customModalMessage.textContent = message;
@@ -873,9 +851,6 @@
                 }
             }
             
-            // ========================================================
-            // INÍCIO DA ALTERAÇÃO: renderizarCarteira (MUDANÇA 1)
-            // ========================================================
             function renderizarCarteira() {
                 listaCarteira.innerHTML = ''; 
                 
@@ -961,8 +936,6 @@
                         }
                     }
                     
-                    // ================== MUDANÇA 1 (REMOVER LOGO) ==================
-                    // Trocado <img> por <svg>
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-3">
@@ -1018,7 +991,6 @@
                             </div>
                         </div>
                     `;
-                    // ================== FIM MUDANÇA 1 ==================
                     listaCarteira.appendChild(card);
                 });
                 
@@ -1037,9 +1009,6 @@
                 
                 renderizarGraficoAlocacao(dadosGrafico);
             }
-            // ========================================================
-            // FIM DA ALTERAÇÃO
-            // ========================================================
 
             function renderizarProventos() {
                 let totalEstimado = 0;
@@ -1533,8 +1502,8 @@
                 detalhesLoading.classList.add('hidden');
 
                 if (precoData) {
+                    // REMOVIDO: O logo da Brapi não é mais exibido aqui
                     detalhesTitulo.innerHTML = `
-                        <img id="detalhes-logo" src="${precoData.logourl}" alt="Logo" class="w-12 h-12 rounded-full mx-auto mb-2 ${!precoData.logourl ? 'hidden' : ''}" onerror="this.classList.add('hidden')">
                         <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">${symbol}</h1>
                         <p id="detalhes-nome-longo" class="text-base font-normal text-gray-500 mt-1">${precoData.longName || 'Nome não disponível'}</p>
                     `;

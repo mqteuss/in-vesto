@@ -182,6 +182,36 @@
             -moz-appearance: none;
             appearance: none;
         }
+
+        /* ============================================== */
+        /* INÍCIO: NOVOS ESTILOS (GAVETA DO CARD)         */
+        /* ============================================== */
+        .card-drawer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out;
+        }
+        .card-drawer.open {
+            max-height: 250px; /* Altura suficiente para o conteúdo */
+        }
+        .card-drawer .drawer-content {
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s; /* Delay p/ opacidade */
+        }
+        .card-drawer.open .drawer-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .card-arrow-icon {
+            transition: transform 0.4s ease-in-out;
+        }
+        .card-arrow-icon.open {
+            transform: rotate(180deg);
+        }
+        /* ============================================== */
+        /* FIM: NOVOS ESTILOS (GAVETA DO CARD)            */
+        /* ============================================== */
     </style>
 </head>
 <body class="antialiased">
@@ -496,21 +526,13 @@
             let onConfirmCallback = null; 
             let selectedAIFii = null; 
             
-            // ========================================================
-            // INÍCIO DA ALTERAÇÃO 1: Estado global de dados
-            // ========================================================
             let precosAtuais = [];
             let proventosAtuais = [];
-            // ========================================================
-            // FIM DA ALTERAÇÃO 1
-            // ========================================================
             
-            // Pega a data atual do navegador para usar nas chamadas de IA
             const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
 
             // ===== Funções de CACHE =====
             
-            // *** CORREÇÃO 1 (Cache) - Início ***
             function setCache(key, data, duration = CACHE_DURATION) { 
                 const cacheItem = { 
                     timestamp: Date.now(), 
@@ -535,7 +557,6 @@
                     return parsed.data;
                 } catch (e) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
             }
-            // *** CORREÇÃO 1 (Cache) - Fim ***
             
             function clearBrapiCache() {
                 console.warn("A limpar cache da Brapi...");
@@ -572,9 +593,6 @@
                 }
             }
             
-            // ==========================================
-            // INÍCIO: Otimização Horário B3
-            // ==========================================
             function getSaoPauloDateTime() {
                 try {
                     const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
@@ -595,9 +613,6 @@
                 if (hour >= 10 && hour < 18) { return true; }
                 return false;
             }
-            // ==========================================
-            // FIM: Otimização Horário B3
-            // ==========================================
 
             const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -823,12 +838,11 @@
             }
             
             // ========================================================
-            // INÍCIO DA ALTERAÇÃO 2: Modificação de renderizarCarteira
+            // INÍCIO DA ALTERAÇÃO: renderizarCarteira (Accordion)
             // ========================================================
             function renderizarCarteira() {
                 listaCarteira.innerHTML = ''; 
                 
-                // Usa o estado global
                 const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
                 const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p]));
                 
@@ -856,7 +870,7 @@
 
                 carteiraOrdenada.forEach(ativo => {
                     const dadoPreco = precosMap.get(ativo.symbol);
-                    const dadoProvento = proventosMap.get(ativo.symbol); // Pega o provento
+                    const dadoProvento = proventosMap.get(ativo.symbol);
                     
                     const card = document.createElement('div');
                     card.className = 'card-bg p-4 rounded-2xl shadow-lg card-animate-in';
@@ -886,11 +900,10 @@
                     totalCustoCarteira += custoTotal;
                     if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
                     
-                    // Lógica para exibir o provento
+                    // Lógica para exibir o provento (COM FALLBACK)
                     let proventoHtml = '';
-                    if (isFII(ativo.symbol)) { // Só exibe para FIIs
+                    if (isFII(ativo.symbol)) { 
                         if (dadoProvento && dadoProvento.value > 0) {
-                            // Se temos um provento futuro, exibe
                             proventoHtml = `
                             <div class="flex justify-between items-center mt-3">
                                 <span class="text-sm text-gray-500">Próx. Provento</span>
@@ -901,41 +914,57 @@
                                 <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
                             </div>`;
                         } else {
-                            // Se não há provento, não exibe nada (Html vazio)
-                            proventoHtml = ''; 
+                            // Mensagem de fallback
+                            proventoHtml = `
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="text-sm text-gray-500">Próx. Provento</span>
+                                <span class="text-sm font-medium text-gray-400">Nenhum provento futuro.</span>
+                            </div>`;
                         }
                     }
-
+                    
+                    // Nova Estrutura do Card (Accordion)
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div>
                                 <h2 class="text-xl font-bold text-white">${ativo.symbol}</h2>
                                 <p class="text-sm text-gray-500">${ativo.quantity} cota(s)</p>
-                                </div>
+                            </div>
                             <div class="text-right flex-shrink-0 ml-2">
                                 <span class="${corVariacao} font-semibold text-lg">${dadoPreco ? variacaoFormatada : '...'}</span>
                                 <p class="text-gray-100 text-lg">${precoFormatado}</p>
                             </div>
                         </div>
-                        <div class="mt-4 pt-4 border-t border-gray-800 space-y-3">
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-500">Posição Atual</span>
-                                <span class="text-base font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-500">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
-                                <span class="text-base font-semibold text-gray-300">${formatBRL(custoTotal)}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-500">Lucro/Prejuízo</span>
-                                <span class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
-                            </div>
-                            
-                            ${proventoHtml} 
-                            
-                            <div class="flex justify-end gap-3 pt-2">
-                                <button class="text-xs accent-text hover-accent-text transition-colors" data-symbol="${ativo.symbol}" data-action="details">Detalhes</button>
-                                <button class="text-xs text-red-500 hover:text-red-400 transition-colors" data-symbol="${ativo.symbol}" data-action="remove">Remover</button>
+
+                        <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
+                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-symbol="${ativo.symbol}" data-action="toggle" title="Mostrar mais">
+                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div id="drawer-${ativo.symbol}" class="card-drawer">
+                            <div class="drawer-content space-y-3 pt-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-500">Posição Atual</span>
+                                    <span class="text-base font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-500">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
+                                    <span class="text-base font-semibold text-gray-300">${formatBRL(custoTotal)}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-500">Lucro/Prejuízo</span>
+                                    <span class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
+                                </div>
+                                
+                                ${proventoHtml} 
+                                
+                                <div class="flex justify-end gap-3 pt-2">
+                                    <button class="text-xs accent-text hover-accent-text transition-colors" data-symbol="${ativo.symbol}" data-action="details">Detalhes</button>
+                                    <button class="text-xs text-red-500 hover:text-red-400 transition-colors" data-symbol="${ativo.symbol}" data-action="remove">Remover</button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -958,16 +987,12 @@
                 renderizarGraficoAlocacao(dadosGrafico);
             }
             // ========================================================
-            // FIM DA ALTERAÇÃO 2
+            // FIM DA ALTERAÇÃO
             // ========================================================
 
-            // ========================================================
-            // INÍCIO DA ALTERAÇÃO 3: Modificação de renderizarProventos
-            // ========================================================
             function renderizarProventos() {
                 let totalEstimado = 0;
                 
-                // Usa o estado global
                 proventosAtuais.forEach(provento => {
                     if (typeof provento.quantity === 'number' && 
                         typeof provento.value === 'number' &&
@@ -978,15 +1003,9 @@
                 
                 totalProventosEl.textContent = formatBRL(totalEstimado);
             }
-            // ========================================================
-            // FIM DA ALTERAÇÃO 3
-            // ========================================================
             
             // --- Funções de Fetch (API) ---
 
-            // =================================================================
-            // INÍCIO DA ALTERAÇÃO: Funções de fetch para o BFF
-            // =================================================================
             async function fetchBFF(url, options = {}) {
                 try {
                     const controller = new AbortController();
@@ -1080,7 +1099,6 @@
                     .filter(p => p !== null);
             }
 
-            // *** CORREÇÃO 2 (Lógica de Proventos) - Início ***
             async function buscarProventosFuturos() {
                 const fiiNaCarteira = carteira
                     .filter(a => isFII(a.symbol))
@@ -1135,7 +1153,6 @@
 
                 return proventosFuturosProcessados; 
             }
-            // *** CORREÇÃO 2 (Lógica de Proventos) - Fim ***
 
             async function buscarHistoricoProventosAgregado() {
                 const fiiNaCarteira = carteira.filter(a => isFII(a.symbol));
@@ -1219,9 +1236,6 @@
             
             // --- Funções Principais (Handlers) ---
             
-             // ========================================================
-             // INÍCIO DA ALTERAÇÃO 4: Modificação de atualizarTodosDados
-             // ========================================================
              async function atualizarTodosDados(force = false) { 
                 carteiraLoading.classList.remove('hidden');
                 carteiraMensagem.classList.add('hidden');
@@ -1233,36 +1247,32 @@
 
                 // --- Etapa 1: Renderização Imediata do Cache (se houver) ---
                 
-                // Pega preços do cache
                 let precosCache = null;
                 if (!force) {
                     const cacheKeyPrecos = 'precos_' + carteira.map(a => a.symbol).join('-');
                     precosCache = getCache(cacheKeyPrecos);
                 }
                 
-                // Pega proventos do cache
                 let proventosFuturosCache = null;
                 const fiiNaCarteiraCache = carteira.filter(a => isFII(a.symbol)).map(a => a.symbol);
                 if (fiiNaCarteiraCache.length > 0) {
                     const cacheKeyProventos = 'proventos_ia_' + fiiNaCarteiraCache.join('-');
-                    const proventosCacheIA = getCache(cacheKeyProventos); // Dados brutos da IA
+                    const proventosCacheIA = getCache(cacheKeyProventos); 
                     if (proventosCacheIA) {
                         console.log("A processar proventos do cache imediatamente.");
                         proventosFuturosCache = processarProventosIA(proventosCacheIA);
                     }
                 }
                 
-                // Seta o estado global com dados do cache
                 precosAtuais = precosCache || [];
                 proventosAtuais = proventosFuturosCache || [];
 
-                // Renderiza tudo com o que tiver do cache
                 renderizarCarteira();
                 renderizarProventos();
                 
                 if (carteira.length === 0) {
-                     renderizarCarteira(); // Chama sem args
-                     renderizarProventos(); // Chama sem args
+                     renderizarCarteira(); 
+                     renderizarProventos(); 
                      renderizarGraficoHistorico({ labels: [], data: [] }); 
                      refreshIcon.classList.remove('spin-animation');
                      carteiraLoading.classList.add('hidden');
@@ -1285,24 +1295,24 @@
                 promessaPrecos.then(precos => {
                     console.log("Busca de preços (BFF) concluída.");
                     if (precos.length > 0) {
-                        precosAtuais = precos; // Atualiza estado global
-                        renderizarCarteira();  // Re-renderiza a carteira
+                        precosAtuais = precos; 
+                        renderizarCarteira();  
                     } else if (precosAtuais.length === 0) {
                         console.warn("API de preços falhou e não havia cache. A mostrar 'A carregar...'.");
-                        renderizarCarteira(); // Renderiza com "A carregar..."
+                        renderizarCarteira(); 
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
                     if (precosAtuais.length === 0) { 
-                        renderizarCarteira(); // Mostra "A carregar..."
+                        renderizarCarteira(); 
                     }
                 });
 
                 promessaProventos.then(proventosFuturos => {
                     console.log("Busca de proventos (BFF) concluída.");
-                    proventosAtuais = proventosFuturos; // Atualiza estado global
-                    renderizarProventos(); // Atualiza total na aba Proventos
-                    renderizarCarteira();  // Re-renderiza a carteira com os proventos
+                    proventosAtuais = proventosFuturos; 
+                    renderizarProventos(); 
+                    renderizarCarteira();  
                 }).catch(err => {
                     console.error("Erro ao buscar proventos (BFF):", err);
                     if (proventosAtuais.length === 0) { 
@@ -1333,9 +1343,6 @@
                     updateAIButtonState();
                 }
             }
-             // ========================================================
-             // FIM DA ALTERAÇÃO 4
-             // ========================================================
             
             async function handleAdicionarAtivo() {
                 let ticker = tickerInput.value.trim().toUpperCase();
@@ -1585,14 +1592,36 @@
             quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             precoMedioInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); 
 
+            // ========================================================
+            // INÍCIO DA ALTERAÇÃO: Event Listener da Lista (Accordion)
+            // ========================================================
             listaCarteira.addEventListener('click', (e) => {
                 const target = e.target.closest('button');
                 if (!target) return;
+                
                 const action = target.dataset.action;
                 const symbol = target.dataset.symbol;
-                if (action === 'remove') handleRemoverAtivo(symbol);
-                else if (action === 'details') handleMostrarDetalhes(symbol);
+
+                if (action === 'remove') {
+                    handleRemoverAtivo(symbol);
+                } else if (action === 'details') {
+                    handleMostrarDetalhes(symbol);
+                } else if (action === 'toggle') {
+                    // Nova Ação para abrir/fechar
+                    const drawer = document.getElementById(`drawer-${symbol}`);
+                    const icon = target.querySelector('.card-arrow-icon');
+                    
+                    if (drawer) {
+                        drawer.classList.toggle('open');
+                    }
+                    if (icon) {
+                        icon.classList.toggle('open');
+                    }
+                }
             });
+            // ========================================================
+            // FIM DA ALTERAÇÃO
+            // ========================================================
 
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => {
@@ -1652,7 +1681,7 @@
             });
 
 
-            // --- Funções da API Gemini (ALTERADAS PARA O BFF) ---
+            // --- Funções da API Gemini (BFF) ---
             
             async function callGeminiAPI(ticker, todayString) {
                 const body = {
@@ -1713,14 +1742,9 @@
                 
                 return response.json; 
             }
-            // =================================================================
-            // FIM DAS ALTERAÇÕES NO FRONTEND
-            // =================================================================
-
 
             // --- Inicialização ---
             carregarCarteira();
-            // *** CORREÇÃO 3 (Inicialização) ***
             atualizarTodosDados(true); 
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
         });

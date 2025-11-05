@@ -424,8 +424,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             
             // --- Constantes ---
-            // Chaves de API e URLs base removidas - agora estão no BFF
-            
             const REFRESH_INTERVAL = 1860000; 
             const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
             
@@ -498,38 +496,40 @@
             let onConfirmCallback = null; 
             let selectedAIFii = null; 
             
+            // ========================================================
+            // INÍCIO DA ALTERAÇÃO 1: Estado global de dados
+            // ========================================================
+            let precosAtuais = [];
+            let proventosAtuais = [];
+            // ========================================================
+            // FIM DA ALTERAÇÃO 1
+            // ========================================================
+            
             // Pega a data atual do navegador para usar nas chamadas de IA
             const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
 
             // ===== Funções de CACHE =====
             
             // *** CORREÇÃO 1 (Cache) - Início ***
-            // Adicionado "duration" para permitir cache infinito
-            function setCache(key, data, duration = CACHE_DURATION) { // Parâmetro de duração adicionado
+            function setCache(key, data, duration = CACHE_DURATION) { 
                 const cacheItem = { 
                     timestamp: Date.now(), 
                     data: data,
-                    duration: duration // Armazena a duração desejada
+                    duration: duration 
                 };
                 try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(cacheItem)); } 
                 catch (e) { console.error("Erro ao salvar no cache:", e); clearBrapiCache(); }
             }
             
-            // "getCache" agora lê a duração salva e respeita o valor -1 (infinito)
             function getCache(key) {
                 const cacheItem = localStorage.getItem(CACHE_PREFIX + key);
                 if (!cacheItem) return null;
                 try {
                     const parsed = JSON.parse(cacheItem);
-                    
-                    // Usa a duração salva, ou o padrão (30min) se não existir
                     const duration = parsed.duration ?? CACHE_DURATION; 
-                    
-                    // Se a duração for -1, o cache é permanente (nunca expira)
                     if (duration === -1) {
                         return parsed.data; 
                     }
-                    
                     const isExpired = (Date.now() - parsed.timestamp) > duration;
                     if (isExpired) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
                     return parsed.data;
@@ -557,13 +557,13 @@
             };
             const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
             
-            function parseMesAno(mesAnoStr) { // ex: "10/25"
+            function parseMesAno(mesAnoStr) { 
                 try {
                     const [mesStr, anoStr] = mesAnoStr.split('/');
-                    const mes = parseInt(mesStr, 10) - 1; // Mês é 0-indexado (0-11)
-                    const ano = parseInt("20" + anoStr, 10); // Converte "25" para 2025
+                    const mes = parseInt(mesStr, 10) - 1; 
+                    const ano = parseInt("20" + anoStr, 10); 
                     if (!isNaN(mes) && !isNaN(ano) && mes >= 0 && mes <= 11) {
-                        return new Date(ano, mes, 1); // Retorna o primeiro dia daquele mês
+                        return new Date(ano, mes, 1); 
                     }
                     return null;
                 } catch (e) {
@@ -577,42 +577,28 @@
             // ==========================================
             function getSaoPauloDateTime() {
                 try {
-                    // Usa 'en-US' para um formato de data consistente para o 'new Date()'
                     const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
                     const spDate = new Date(spTimeStr);
-                    const dayOfWeek = spDate.getDay(); // 0 = Domingo, 6 = Sábado
+                    const dayOfWeek = spDate.getDay(); 
                     const hour = spDate.getHours();
                     return { dayOfWeek, hour };
                 } catch (e) {
                     console.error("Erro ao obter fuso horário de São Paulo, usando fuso local.", e);
-                    // Fallback para o fuso local (menos preciso, mas evita quebrar)
                     const localDate = new Date();
                     return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
                 }
             }
             
             function isB3Open() {
-                // NOTA: Esta é uma verificação simplificada. Não inclui feriados.
                 const { dayOfWeek, hour } = getSaoPauloDateTime();
-                
-                // 1. Verifica fim de semana (0 = Domingo, 6 = Sábado)
-                if (dayOfWeek === 0 || dayOfWeek === 6) {
-                    return false;
-                }
-                
-                // 2. Verifica horário de negociação (10:00 às 18:00, Horário de SP)
-                // 10:00 (inclusive) até 18:00 (exclusivo)
-                if (hour >= 10 && hour < 18) {
-                    return true;
-                }
-                
+                if (dayOfWeek === 0 || dayOfWeek === 6) { return false; }
+                if (hour >= 10 && hour < 18) { return true; }
                 return false;
             }
             // ==========================================
             // FIM: Otimização Horário B3
             // ==========================================
 
-            // Função de delay para chamadas sequenciais
             const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
             function gerarCores(num) {
@@ -630,7 +616,6 @@
                 customModalTitle.textContent = title;
                 customModalMessage.textContent = message;
                 onConfirmCallback = onConfirm; 
-                
                 customModal.classList.add('visible');
                 customModalContent.classList.remove('modal-out');
             }
@@ -648,7 +633,6 @@
             function showFiiModal() {
                 const fiiNaCarteira = carteira.filter(ativo => isFII(ativo.symbol)).sort((a,b) => a.symbol.localeCompare(b.symbol));
                 fiiModalList.innerHTML = ''; 
-
                 if (fiiNaCarteira.length === 0) {
                     fiiModalList.innerHTML = '<p class="text-sm text-gray-500 text-center">Nenhum FII na carteira.</p>';
                 } else {
@@ -699,7 +683,6 @@
                     aiSearchButton.disabled = false;
                 }
             }
-
 
             // --- Funções de Dados (localStorage) ---
             function salvarCarteira() {
@@ -783,14 +766,13 @@
                 
                 historicoGraficoContainer.classList.remove('hidden');
 
-                // Melhoria Gráfica (Gradiente)
-                const gradient = ctx.createLinearGradient(0, 0, 0, 256); // 256 é a altura do canvas (h-64)
-                gradient.addColorStop(0, 'rgba(167, 139, 250, 0.9)'); // Roxo mais claro (A78BFA)
-                gradient.addColorStop(1, 'rgba(109, 40, 217, 0.9)'); // Roxo mais escuro (6D28D9)
+                const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
+                gradient.addColorStop(0, 'rgba(167, 139, 250, 0.9)'); 
+                gradient.addColorStop(1, 'rgba(109, 40, 217, 0.9)'); 
                 
                 const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
-                hoverGradient.addColorStop(0, 'rgba(196, 181, 253, 1)'); // Mais claro ainda
-                hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)'); // Roxo principal
+                hoverGradient.addColorStop(0, 'rgba(196, 181, 253, 1)'); 
+                hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)'); 
 
                 historicoChartInstance = new Chart(ctx, {
                     type: 'bar',
@@ -801,9 +783,9 @@
                             data: data,
                             backgroundColor: gradient,
                             hoverBackgroundColor: hoverGradient,
-                            borderColor: 'rgba(167, 139, 250, 0.3)', // Borda sutil
+                            borderColor: 'rgba(167, 139, 250, 0.3)', 
                             borderWidth: 1,
-                            borderRadius: 5 // Bordas arredondadas
+                            borderRadius: 5 
                         }]
                     },
                     options: {
@@ -811,16 +793,15 @@
                         plugins: {
                             legend: { display: false },
                             tooltip: {
-                                // Melhoria Visual (Tooltip)
                                 backgroundColor: '#1A1A1A',
                                 titleColor: '#f3f4f6',
                                 bodyColor: '#f3f4f6',
                                 borderColor: '#2A2A2A',
                                 borderWidth: 1,
                                 padding: 10,
-                                displayColors: false, // Esconde a caixinha de cor
+                                displayColors: false, 
                                 callbacks: {
-                                    title: (context) => `Mês: ${context[0].label}`, // Adiciona título
+                                    title: (context) => `Mês: ${context[0].label}`, 
                                     label: (context) => `Total: ${formatBRL(context.parsed.y)}`
                                 }
                             }
@@ -828,22 +809,29 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                grid: { color: '#2A2A2A' }, // Linhas de grid escuras
+                                grid: { color: '#2A2A2A' }, 
                                 ticks: {
                                     callback: (value) => formatBRL(value)
                                 }
                             },
                             x: {
-                                grid: { display: false } // Sem linhas de grid vertical
+                                grid: { display: false } 
                             }
                         }
                     }
                 });
             }
             
-            function renderizarCarteira(precos = []) {
+            // ========================================================
+            // INÍCIO DA ALTERAÇÃO 2: Modificação de renderizarCarteira
+            // ========================================================
+            function renderizarCarteira() {
                 listaCarteira.innerHTML = ''; 
-                const precosMap = new Map(precos.map(p => [p.symbol, p]));
+                
+                // Usa o estado global
+                const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
+                const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p]));
+                
                 const carteiraOrdenada = [...carteira].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
                 let totalValorCarteira = 0;
@@ -859,7 +847,7 @@
                     resumoCarteiraCard.classList.add('hidden');
                     graficoContainer.classList.add('hidden');
                     renderizarGraficoAlocacao([]); 
-                    renderizarGraficoHistorico({ labels: [], data: [] }); // Esconde o gráfico de histórico
+                    renderizarGraficoHistorico({ labels: [], data: [] }); 
                 } else {
                     carteiraMensagem.classList.add('hidden');
                     dashboardStatus.classList.add('hidden');
@@ -868,6 +856,8 @@
 
                 carteiraOrdenada.forEach(ativo => {
                     const dadoPreco = precosMap.get(ativo.symbol);
+                    const dadoProvento = proventosMap.get(ativo.symbol); // Pega o provento
+                    
                     const card = document.createElement('div');
                     card.className = 'card-bg p-4 rounded-2xl shadow-lg card-animate-in';
                     
@@ -880,7 +870,6 @@
                         variacaoFormatada = formatPercent(variacao);
                         corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
                     } else {
-                        // Ativo sem preço (pode ter falhado a busca sequencial ou ainda não carregou)
                         precoFormatado = 'A carregar...';
                         corVariacao = 'text-yellow-500';
                     }
@@ -896,6 +885,26 @@
                     totalValorCarteira += totalPosicao;
                     totalCustoCarteira += custoTotal;
                     if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
+                    
+                    // Lógica para exibir o provento
+                    let proventoHtml = '';
+                    if (isFII(ativo.symbol)) { // Só exibe para FIIs
+                        if (dadoProvento && dadoProvento.value > 0) {
+                            // Se temos um provento futuro, exibe
+                            proventoHtml = `
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="text-sm text-gray-500">Próx. Provento</span>
+                                <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
+                            </div>
+                            <div class="flex justify-between items-center -mt-2">
+                                <span class="text-sm text-gray-500">Pagamento em</span>
+                                <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
+                            </div>`;
+                        } else {
+                            // Se não há provento, não exibe nada (Html vazio)
+                            proventoHtml = ''; 
+                        }
+                    }
 
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
@@ -921,6 +930,9 @@
                                 <span class="text-sm text-gray-500">Lucro/Prejuízo</span>
                                 <span class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
                             </div>
+                            
+                            ${proventoHtml} 
+                            
                             <div class="flex justify-end gap-3 pt-2">
                                 <button class="text-xs accent-text hover-accent-text transition-colors" data-symbol="${ativo.symbol}" data-action="details">Detalhes</button>
                                 <button class="text-xs text-red-500 hover:text-red-400 transition-colors" data-symbol="${ativo.symbol}" data-action="remove">Remover</button>
@@ -945,12 +957,18 @@
                 
                 renderizarGraficoAlocacao(dadosGrafico);
             }
+            // ========================================================
+            // FIM DA ALTERAÇÃO 2
+            // ========================================================
 
-            function renderizarProventos(proventosFuturos = []) {
+            // ========================================================
+            // INÍCIO DA ALTERAÇÃO 3: Modificação de renderizarProventos
+            // ========================================================
+            function renderizarProventos() {
                 let totalEstimado = 0;
                 
-                proventosFuturos.forEach(provento => {
-                    // CORREÇÃO (SNAG11): Garante que o valor é numérico E maior que zero
+                // Usa o estado global
+                proventosAtuais.forEach(provento => {
                     if (typeof provento.quantity === 'number' && 
                         typeof provento.value === 'number' &&
                         provento.value > 0) { 
@@ -960,6 +978,9 @@
                 
                 totalProventosEl.textContent = formatBRL(totalEstimado);
             }
+            // ========================================================
+            // FIM DA ALTERAÇÃO 3
+            // ========================================================
             
             // --- Funções de Fetch (API) ---
 
@@ -968,7 +989,6 @@
             // =================================================================
             async function fetchBFF(url, options = {}) {
                 try {
-                    // Adiciona um timeout de 30 segundos ao fetch
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 30000); 
                     
@@ -977,7 +997,7 @@
                         signal: controller.signal 
                     });
 
-                    clearTimeout(timeoutId); // Limpa o timeout se a resposta chegar
+                    clearTimeout(timeoutId); 
 
                     if (!response.ok) {
                         const errorBody = await response.json();
@@ -999,13 +1019,9 @@
                 
                 const cacheKey = 'precos_' + carteira.map(a => a.symbol).join('-');
                 
-                // *** Alteração de lógica (force=true) ***
-                // Se 'force' for true (como no início), ele ignora a verificação da B3
                 if (!isB3Open() && !force) {
                     console.log("B3 fechada (ou fora do horário) e atualização não forçada. A usar preços do cache.");
                     const precosCache = getCache(cacheKey);
-                    // Se o cache estiver vazio, retorna array vazio
-                    // A renderização lidará com "A carregar..." se os dados não vierem
                     return precosCache || []; 
                 }
 
@@ -1015,10 +1031,7 @@
                 for (const ativo of carteira) {
                     try {
                         const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
-                        
-                        // ALTERADO: Chamada para o BFF
                         const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                        
                         const result = data.results?.[0];
 
                         if (result && !result.error) {
@@ -1027,17 +1040,15 @@
                         } else {
                             console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
                         }
-
                     } catch (err) {
                         console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
                     }
-                    
                     await delay(250); 
                 }
 
                 if (precos.length > 0) {
                     console.log("Preços buscados (BFF), a salvar no cache.");
-                    setCache(cacheKey, precos); // Usa o CACHE_DURATION padrão
+                    setCache(cacheKey, precos); 
                 }
                 
                 return precos;
@@ -1053,10 +1064,9 @@
                         const ativoCarteira = carteira.find(a => a.symbol === proventoIA.symbol);
                         if (!ativoCarteira) return null;
                         
-                        // Garante que o valor é número, positivo, e a data é válida
                         if (proventoIA.paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(proventoIA.paymentDate)) {
                             const parts = proventoIA.paymentDate.split('-');
-                            const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); // Mês é 0-indexado
+                            const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                             
                             if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
                                 return {
@@ -1080,12 +1090,10 @@
                 
                 const cacheKey = 'proventos_ia_' + fiiNaCarteira.join('-');
                 
-                // 1. Tenta buscar do cache (que agora respeita a duração infinita)
                 const proventosCacheIA_bruto = getCache(cacheKey); 
                 
                 if (proventosCacheIA_bruto) {
                     console.log("A verificar cache de proventos (Gemini)...");
-                    // 2. Processa o cache para ver se os proventos ainda são futuros
                     const proventosFuturosCache = processarProventosIA(proventosCacheIA_bruto);
                     if (proventosFuturosCache.length > 0) {
                         console.log("Cache de proventos ainda é válido (possui pagamentos futuros). A pular API da Gemini.");
@@ -1094,28 +1102,22 @@
                     console.log("Cache de proventos está obsoleto (sem proventos futuros). A buscar na IA.");
                 }
 
-                let proventosDaIA_bruto_api; // Dados brutos da API
+                let proventosDaIA_bruto_api; 
 
                 try {
-                    // 3. Busca na API Gemini (BFF)
                     console.log("A buscar proventos na API (Gemini via BFF)...");
                     proventosDaIA_bruto_api = await callGeminiProventosCarteiraAPI(fiiNaCarteira, todayString);
                     
                 } catch (error) {
                     console.error("Erro ao buscar proventos com IA:", error);
-                    // Em caso de erro, usa o cache bruto (mesmo que obsoleto) ou um array vazio
                     proventosDaIA_bruto_api = proventosCacheIA_bruto || []; 
-                    // Processa e retorna o que tiver (para não quebrar o app)
                     return processarProventosIA(proventosDaIA_bruto_api);
                 }
                 
-                // 4. Processa os dados novos da API
                 const proventosFuturosProcessados = processarProventosIA(proventosDaIA_bruto_api);
                 
-                // 5. Calcula o total (conforme sua regra)
                 let totalCalculado = 0;
                 proventosFuturosProcessados.forEach(provento => {
-                    // Garante que o cálculo é o mesmo da renderização
                     if (typeof provento.quantity === 'number' && 
                         typeof provento.value === 'number' &&
                         provento.value > 0) { 
@@ -1123,18 +1125,14 @@
                     }
                 });
 
-                // 6. Aplica a lógica de salvar ou não
                 if (totalCalculado > 0.01) {
                     console.log(`Proventos (Total: ${formatBRL(totalCalculado)}) buscados. A salvar no cache (sem expiração).`);
-                    // Salva os dados *brutos* da IA, mas com duração infinita (-1)
                     setCache(cacheKey, proventosDaIA_bruto_api, -1); 
                 } else {
                     console.log("Proventos (Total: R$ 0,00) buscados. Não salvará no cache.");
-                    // Limpa o cache se o total for 0
                     localStorage.removeItem(CACHE_PREFIX + cacheKey);
                 }
 
-                // 7. Retorna os dados processados para a renderização
                 return proventosFuturosProcessados; 
             }
             // *** CORREÇÃO 2 (Lógica de Proventos) - Fim ***
@@ -1155,7 +1153,6 @@
                 } else {
                     console.log("A buscar histórico agregado na API (Gemini via BFF)...");
                     try {
-                        // ALTERADO: Chamada para o BFF
                         aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
                         
                         if (aiData && aiData.length > 0) {
@@ -1169,7 +1166,6 @@
 
                 if (!aiData || aiData.length === 0) return { labels: [], data: [] };
 
-                // Processar dados com dataCompra
                 const carteiraMap = new Map(fiiNaCarteira.map(a => [a.symbol, { 
                     quantity: a.quantity, 
                     inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
@@ -1207,8 +1203,6 @@
                 if (cache) return cache;
                 try {
                     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
-                    
-                    // ALTERADO: Chamada para o BFF
                     const url = `/api/brapi?path=/v2/dividends?ticker=${tickerParaApi}`;
                     const data = await fetchBFF(url);
                     
@@ -1225,6 +1219,9 @@
             
             // --- Funções Principais (Handlers) ---
             
+             // ========================================================
+             // INÍCIO DA ALTERAÇÃO 4: Modificação de atualizarTodosDados
+             // ========================================================
              async function atualizarTodosDados(force = false) { 
                 carteiraLoading.classList.remove('hidden');
                 carteiraMensagem.classList.add('hidden');
@@ -1235,39 +1232,41 @@
                 refreshIcon.classList.add('spin-animation');
 
                 // --- Etapa 1: Renderização Imediata do Cache (se houver) ---
-                let precosRenderizados = false;
-                let proventosRenderizados = false;
-
-                // Não renderiza preços do cache se 'force' for true, pois buscará novos
+                
+                // Pega preços do cache
+                let precosCache = null;
                 if (!force) {
                     const cacheKeyPrecos = 'precos_' + carteira.map(a => a.symbol).join('-');
-                    const precosCache = getCache(cacheKeyPrecos);
-                    if (precosCache) {
-                        console.log("A renderizar preços do cache imediatamente.");
-                        renderizarCarteira(precosCache);
-                        precosRenderizados = true;
-                    }
+                    precosCache = getCache(cacheKeyPrecos);
                 }
-
+                
+                // Pega proventos do cache
+                let proventosFuturosCache = null;
                 const fiiNaCarteiraCache = carteira.filter(a => isFII(a.symbol)).map(a => a.symbol);
                 if (fiiNaCarteiraCache.length > 0) {
                     const cacheKeyProventos = 'proventos_ia_' + fiiNaCarteiraCache.join('-');
                     const proventosCacheIA = getCache(cacheKeyProventos); // Dados brutos da IA
                     if (proventosCacheIA) {
-                        console.log("A renderizar proventos do cache imediatamente.");
-                        const proventosFuturosCache = processarProventosIA(proventosCacheIA);
-                        renderizarProventos(proventosFuturosCache);
-                        proventosRenderizados = true;
+                        console.log("A processar proventos do cache imediatamente.");
+                        proventosFuturosCache = processarProventosIA(proventosCacheIA);
                     }
                 }
                 
+                // Seta o estado global com dados do cache
+                precosAtuais = precosCache || [];
+                proventosAtuais = proventosFuturosCache || [];
+
+                // Renderiza tudo com o que tiver do cache
+                renderizarCarteira();
+                renderizarProventos();
+                
                 if (carteira.length === 0) {
-                     renderizarCarteira([]); 
-                     renderizarProventos([]);
-                     renderizarGraficoHistorico({ labels: [], data: [] }); // Limpa o gráfico de histórico
+                     renderizarCarteira(); // Chama sem args
+                     renderizarProventos(); // Chama sem args
+                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                      refreshIcon.classList.remove('spin-animation');
                      carteiraLoading.classList.add('hidden');
-                     dashboardStatus.classList.remove('hidden'); // Mostra "A sua carteira está vazia"
+                     dashboardStatus.classList.remove('hidden'); 
                      dashboardLoading.classList.add('hidden');
                      dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
                      resumoCarteiraCard.classList.add('hidden');
@@ -1277,7 +1276,6 @@
                 }
 
                 // --- Etapa 2: Busca em Paralelo (Brapi e Gemini) ---
-                // 'force' é passado para buscarPrecosCarteira
                 const promessaPrecos = buscarPrecosCarteira(force); 
                 const promessaProventos = buscarProventosFuturos();
                 const promessaHistorico = buscarHistoricoProventosAgregado();
@@ -1286,30 +1284,28 @@
 
                 promessaPrecos.then(precos => {
                     console.log("Busca de preços (BFF) concluída.");
-                    // Só renderiza se os preços não estiverem vazios (o que acontece se a API falhar E 'force' for true)
                     if (precos.length > 0) {
-                        renderizarCarteira(precos);
-                    } else if (precosRenderizados) {
-                        // Se já renderizou o cache, não faz nada
-                    } else {
-                        // Se não renderizou cache E a API falhou, mostra "A carregar..." (fallback)
+                        precosAtuais = precos; // Atualiza estado global
+                        renderizarCarteira();  // Re-renderiza a carteira
+                    } else if (precosAtuais.length === 0) {
                         console.warn("API de preços falhou e não havia cache. A mostrar 'A carregar...'.");
-                        renderizarCarteira([]); // Renderiza com "A carregar..."
+                        renderizarCarteira(); // Renderiza com "A carregar..."
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
-                    if (!precosRenderizados) { 
-                        // Mostra "A carregar..." se o cache não foi renderizado
-                        renderizarCarteira([]);
+                    if (precosAtuais.length === 0) { 
+                        renderizarCarteira(); // Mostra "A carregar..."
                     }
                 });
 
                 promessaProventos.then(proventosFuturos => {
                     console.log("Busca de proventos (BFF) concluída.");
-                    renderizarProventos(proventosFuturos);
+                    proventosAtuais = proventosFuturos; // Atualiza estado global
+                    renderizarProventos(); // Atualiza total na aba Proventos
+                    renderizarCarteira();  // Re-renderiza a carteira com os proventos
                 }).catch(err => {
                     console.error("Erro ao buscar proventos (BFF):", err);
-                    if (!proventosRenderizados) { 
+                    if (proventosAtuais.length === 0) { 
                         totalProventosEl.textContent = "Erro";
                     }
                 });
@@ -1337,6 +1333,9 @@
                     updateAIButtonState();
                 }
             }
+             // ========================================================
+             // FIM DA ALTERAÇÃO 4
+             // ========================================================
             
             async function handleAdicionarAtivo() {
                 let ticker = tickerInput.value.trim().toUpperCase();
@@ -1363,7 +1362,6 @@
                     carteiraLoading.classList.remove('hidden');
                     const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
                     try {
-                         // ALTERADO: Chamada para o BFF
                          const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                          
                          if (!quoteData.results || quoteData.results[0].error) {
@@ -1457,7 +1455,6 @@
                 
                 if (!precoData) {
                     try {
-                        // ALTERADO: Chamada para o BFF
                         const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                         precoData = data.results?.[0];
                         if (precoData && !precoData.error) setCache(cacheKeyPreco, precoData); 
@@ -1470,7 +1467,6 @@
                 
                 if (isFII(symbol)) {
                     detalhesHistoricoContainer.classList.remove('hidden'); 
-                    // Skeleton loader para 12 meses
                     detalhesAiProvento.innerHTML = `
                         <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
                         <div id="historico-12m-loading" class="space-y-3 animate-pulse pt-2">
@@ -1481,7 +1477,6 @@
                         </div>
                     `;
                     
-                    // ALTERADO: Chamada para o BFF
                     promessaAi = callGeminiHistoricoAPI(symbol, todayString); 
                 }
                 
@@ -1553,7 +1548,6 @@
 
                 if (promessaAi) {
                     try {
-                        // ALTERADO: A resposta do BFF já é o texto limpo
                         const aiResult = await promessaAi;
                         detalhesAiProvento.innerHTML = `
                             <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
@@ -1641,9 +1635,8 @@
                 aiTickerSelectButton.disabled = true; 
 
                 try {
-                    // ALTERADO: Chamada para o BFF
                     const resposta = await callGeminiAPI(ticker, todayString);
-                    aiResultMessage.textContent = resposta; // Resposta já vem limpa
+                    aiResultMessage.textContent = resposta; 
                 } catch (error) {
                     console.error("Erro na API Gemini:", error);
                     aiResultMessage.textContent = error.message || "Erro ao buscar dados. Verifique sua conexão e tente novamente.";
@@ -1662,7 +1655,6 @@
             // --- Funções da API Gemini (ALTERADAS PARA O BFF) ---
             
             async function callGeminiAPI(ticker, todayString) {
-                // ALTERADO: Envia apenas os dados necessários para o BFF
                 const body = {
                     mode: 'proximo_provento',
                     payload: { ticker, todayString }
@@ -1674,11 +1666,10 @@
                     body: JSON.stringify(body)
                 });
                 
-                return response.text; // O BFF retorna o texto da IA
+                return response.text; 
             }
 
             async function callGeminiHistoricoAPI(ticker, todayString) {
-                // ALTERADO: Envia apenas os dados necessários para o BFF
                 const body = {
                     mode: 'historico_12m',
                     payload: { ticker, todayString }
@@ -1690,11 +1681,10 @@
                     body: JSON.stringify(body)
                 });
                 
-                return response.text; // O BFF retorna o texto da IA
+                return response.text; 
             }
             
             async function callGeminiProventosCarteiraAPI(fiiList, todayString) {
-                // ALTERADO: Envia apenas os dados necessários para o BFF
                 const body = {
                     mode: 'proventos_carteira',
                     payload: { fiiList, todayString }
@@ -1706,11 +1696,10 @@
                     body: JSON.stringify(body)
                 });
                 
-                return response.json; // O BFF retorna o JSON
+                return response.json; 
             }
             
             async function callGeminiHistoricoPortfolioAPI(fiiList, todayString) {
-                // ALTERADO: Envia apenas os dados necessários para o BFF
                  const body = {
                     mode: 'historico_portfolio',
                     payload: { fiiList, todayString }
@@ -1722,7 +1711,7 @@
                     body: JSON.stringify(body)
                 });
                 
-                return response.json; // O BFF retorna o JSON
+                return response.json; 
             }
             // =================================================================
             // FIM DAS ALTERAÇÕES NO FRONTEND
@@ -1732,7 +1721,6 @@
             // --- Inicialização ---
             carregarCarteira();
             // *** CORREÇÃO 3 (Inicialização) ***
-            // Força a atualização de preços ao iniciar
             atualizarTodosDados(true); 
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
         });

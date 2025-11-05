@@ -408,15 +408,6 @@
         </div>
     </div>
     
-    <div id="fii-select-modal" class="custom-modal fixed inset-0 z-50 items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" role="dialog" aria-modal="true">
-        <div id="fii-select-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
-            <h3 class="text-lg font-semibold text-white text-center mb-4">Selecione um FII</h3>
-            <div id="fii-modal-list" class="space-y-2 scrollable-content pr-2">
-                </div>
-            <button id="fii-modal-cancel" class="mt-6 w-full py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
-        </div>
-    </div>
-
 
     <script>
         // Configurações padrão do Chart.js para modo escuro
@@ -429,7 +420,6 @@
             const REFRESH_INTERVAL = 1860000; 
             const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos (Padrão)
             
-            const CACHE_12_HORAS = 1000 * 60 * 60 * 12; // 12 horas
             const CACHE_24_HORAS = 1000 * 60 * 60 * 24; // 24 horas
             
             const CACHE_PREFIX = 'vestoBrapiCache_v1_'; 
@@ -477,12 +467,6 @@
             const customModalMessage = document.getElementById('custom-modal-message');
             const customModalOk = document.getElementById('custom-modal-ok');
             const customModalCancel = document.getElementById('custom-modal-cancel');
-            
-            // --- Elementos do Modal de Seleção de FII ---
-            const fiiSelectModal = document.getElementById('fii-select-modal');
-            const fiiSelectModalContent = document.getElementById('fii-select-modal-content');
-            const fiiModalList = document.getElementById('fii-modal-list');
-            const fiiModalCancel = document.getElementById('fii-modal-cancel');
             
             // --- Estado ---
             let carteira = []; 
@@ -1287,11 +1271,6 @@
                 return { labels, data };
             }
 
-            // ==========================================================
-            // FUNÇÃO REMOVIDA
-            // async function buscarHistoricoDividendos(symbol) { ... }
-            // ==========================================================
-            
             // --- Funções Principais (Handlers) ---
             
             // ==========================================================

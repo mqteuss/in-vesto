@@ -743,7 +743,7 @@
                         alocacaoChartInstance.destroy();
                         alocacaoChartInstance = null; // Garante que será recriado
                     }
-                    graficoContainer.classList.add('hidden');
+                    graficoContainer.classList.add('hidden'); // MODIFICAÇÃO: Esconde se vazio
                     lastAlocacaoData = null; // Reseta o snapshot
                     return;
                 }
@@ -761,7 +761,7 @@
                 console.log("[Gráfico Alocação] Dados novos, a atualizar/redesenhar...");
                 // --- FIM DA LÓGICA ---
                 
-                graficoContainer.classList.remove('hidden');
+                // MODIFICAÇÃO: Não mexe mais no '.remove('hidden')' aqui
                 const colors = gerarCores(labels.length);
 
                 // --- LÓGICA DE UPDATE ---
@@ -826,11 +826,11 @@
                         historicoChartInstance.destroy();
                         historicoChartInstance = null; // Garante que será recriado
                     }
-                    historicoGraficoContainer.classList.add('hidden');
+                    historicoGraficoContainer.classList.add('hidden'); // MODIFICAÇÃO: Esconde se vazio
                     return;
                 }
                 
-                historicoGraficoContainer.classList.remove('hidden');
+                // MODIFICAÇÃO: Não mexe mais no '.remove('hidden')' aqui
 
                 // --- LÓGICA DE UPDATE ---
                 // (Precisamos recriar os gradientes pois o contexto (ctx) é local da função)
@@ -907,7 +907,7 @@
             // ==========================================================
             
             // ========================================================
-            // INÍCIO DA ALTERAÇÃO: renderizarCarteira (Nomes Simplificados)
+            // INÍCIO DA ALTERAÇÃO: renderizarCarteira (MODIFICADO)
             // ========================================================
             function renderizarCarteira() {
                 listaCarteira.innerHTML = ''; 
@@ -929,12 +929,17 @@
                     dashboardStatus.classList.remove('hidden');
                     resumoCarteiraCard.classList.add('hidden');
                     graficoContainer.classList.add('hidden');
+                    historicoGraficoContainer.classList.add('hidden'); // MODIFICAÇÃO: Garante que está escondido
                     renderizarGraficoAlocacao([]); 
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                 } else {
                     carteiraMensagem.classList.add('hidden');
                     dashboardStatus.classList.add('hidden');
+                    
+                    // MODIFICAÇÃO: Mostra todos os cards do dashboard de uma vez
                     resumoCarteiraCard.classList.remove('hidden');
+                    graficoContainer.classList.remove('hidden');
+                    historicoGraficoContainer.classList.remove('hidden');
                 }
 
                 carteiraOrdenada.forEach(ativo => {

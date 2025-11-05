@@ -42,9 +42,6 @@
         .accent-text { color: #8B5CF6; }
         .hover-accent-text:hover { color: #A78BFA; }
 
-        /* ================== MUDANÇA (REMOÇÃO) ================== */
-        /* A CLASSE .title-gradient foi removida daqui pois não funcionava com @apply */
-        /* ================== FIM MUDANÇA ================== */
 
         /* --- Animações --- */
         .tab-content { display: none; }
@@ -62,22 +59,54 @@
         }
         .card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
 
-        /* --- Barra de Navegação --- */
-        .bottom-nav {
-            background-color: rgba(16, 16, 16, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-top: 1px solid #2A2A2A;
+        /* ============================================== */
+        /* INÍCIO: MUDANÇA NA BARRA DE NAVEGAÇÃO          */
+        /* ============================================== */
+        
+        /* Keyframe para a flutuação do ícone */
+        @keyframes gentleFloat {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-3px); /* Flutuação leve */
+            }
         }
+
+        /* Nova barra de navegação flutuante e translúcida */
+        .bottom-nav {
+            background-color: rgba(26, 26, 26, 0.6); /* Mais translúcido */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid #2A2A2A; /* Borda ao redor */
+        }
+        
+        /* Botões da barra */
         .tab-button {
             color: #6b7280; /* text-gray-500 (Inativo) */
-            transition: color 0.2s ease-in-out, transform 0.2s ease-in-out;
+            transition: all 0.3s ease-in-out;
             flex: 1; 
         }
+        
+        /* Animação de clique (pop) */
+        .tab-button:active {
+            transform: scale(0.90);
+        }
+
+        /* Estilo do botão ativo */
         .tab-button.active {
             color: #8B5CF6; /* Roxo (Ativo) */
-            transform: translateY(-4px);
+            transform: translateY(-4px); /* Pop-up do botão todo */
         }
+        
+        /* Animação de flutuação no ÍCONE ATIVO */
+        .tab-button.active .tab-button-icon-wrapper {
+             animation: gentleFloat 1.5s ease-in-out infinite;
+        }
+        /* ============================================== */
+        /* FIM: MUDANÇA NA BARRA DE NAVEGAÇÃO             */
+        /* ============================================== */
+        
         
         /* --- Animação de Giro (Spinner) --- */
         .spin-animation { animation: spin 1s linear infinite; }
@@ -182,9 +211,7 @@
             appearance: none;
         }
 
-        /* ============================================== */
-        /* INÍCIO: NOVOS ESTILOS (GAVETA DO CARD)         */
-        /* ============================================== */
+        /* --- Estilos da Gaveta do Card --- */
         .card-drawer {
             max-height: 0;
             overflow: hidden;
@@ -208,9 +235,6 @@
         .card-arrow-icon.open {
             transform: rotate(180deg);
         }
-        /* ============================================== */
-        /* FIM: NOVOS ESTILOS (GAVETA DO CARD)            */
-        /* ============================================== */
     </style>
 </head>
 <body class="antialiased">
@@ -219,6 +243,7 @@
 
         <div id="tab-dashboard" class="tab-content active p-4">
             <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Dashboard</h1>
+
             <div id="resumo-carteira-card" class="card-bg p-5 rounded-2xl mb-6 text-center hidden">
                 <span class="text-sm text-gray-500">Valor Total da Carteira</span>
                 <h2 id="total-carteira-valor" class="text-4xl font-bold mt-1 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">R$ 0,00</h2>
@@ -317,17 +342,18 @@
 
         <div id="tab-proventos" class="tab-content p-4">
             <h1 class="text-4xl font-extrabold tracking-tight text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Próximos Dividendos</h1>
+
             <div class="card-bg p-6 rounded-2xl mb-6 text-center">
                 <span class="text-sm text-gray-500">Total Estimado (Próx. Pagamentos)</span>
                 <h2 id="total-proventos" class="text-4xl font-bold mt-1 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">R$ 0,00</h2>
-                </div>
+            </div>
             
             </div>
 
         <div id="tab-detalhes" class="tab-content p-4">
             <div id="detalhes-titulo" class="text-center mb-8">
                  <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Detalhes do Ativo</h1>
-                 </div>
+            </div>
             
             <div id="detalhes-conteudo" class="card-bg p-5 md:p-6 rounded-2xl space-y-5">
                  <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
@@ -358,42 +384,46 @@
             </button>
         </div>
     </div>
-    <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bottom-nav flex justify-around p-3">
-        <button class="tab-button active flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-dashboard" title="Dashboard">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
-                <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
-            </svg>
+    
+    <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-3 rounded-full">
+        <button class="tab-button active flex flex-col items-center justify-center p-2" data-tab="tab-dashboard" title="Dashboard">
+            <div class="tab-button-icon-wrapper"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                </svg>
+            </div>
             <span class="text-xs mt-1 font-medium">Dashboard</span>
         </button>
         
-        <button class="tab-button flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-carteira" title="Carteira">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
-                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
-                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
-            </svg>
+        <button class="tab-button flex flex-col items-center justify-center p-2" data-tab="tab-carteira" title="Carteira">
+            <div class="tab-button-icon-wrapper"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
+                    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
+                    <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
+                </svg>
+            </div>
             <span class="text-xs mt-1 font-medium">Carteira</span>
         </button>
         
-        <button class="tab-button flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-proventos" title="Dividendos">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                <line x1="12" y1="1" x2="12" y2="23"></line>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>
+        <button class="tab-button flex flex-col items-center justify-center p-2" data-tab="tab-proventos" title="Dividendos">
+            <div class="tab-button-icon-wrapper"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+            </div>
             <span class="text-xs mt-1 font-medium">Dividendos</span>
         </button>
         
-        <button class="tab-button flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-detalhes" title="Detalhes">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                <line x1="18" y1="20" x2="18" y2="10"></line>
-                <line x1="12" y1="20" x2="12" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="14"></line>
-            </svg>
+        <button class="tab-button flex flex-col items-center justify-center p-2" data-tab="tab-detalhes" title="Detalhes">
+            <div class="tab-button-icon-wrapper"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+            </div>
             <span class="text-xs mt-1 font-medium">Detalhes</span>
         </button>
     </nav>
-
     <div id="custom-modal" class="custom-modal fixed inset-0 z-50 items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div id="custom-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
             <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar Ação</h3>
@@ -699,48 +729,38 @@
 
             // --- Funções de Renderização ---
             
-            // ==========================================================
-            // INÍCIO: GRÁFICO DE ALOCAÇÃO OTIMIZADO (MODIFICADO)
-            // ==========================================================
             function renderizarGraficoAlocacao(dadosGrafico) {
                 const ctx = document.getElementById('alocacao-chart').getContext('2d');
                 
                 if (dadosGrafico.length === 0) {
                     if (alocacaoChartInstance) {
                         alocacaoChartInstance.destroy();
-                        alocacaoChartInstance = null; // Garante que será recriado
+                        alocacaoChartInstance = null; 
                     }
-                    graficoContainer.classList.add('hidden'); // MODIFICAÇÃO: Esconde se vazio
-                    lastAlocacaoData = null; // Reseta o snapshot
+                    graficoContainer.classList.add('hidden');
+                    lastAlocacaoData = null; 
                     return;
                 }
                 
                 const labels = dadosGrafico.map(d => d.symbol);
                 const data = dadosGrafico.map(d => d.totalPosicao);
 
-                // --- LÓGICA INTELIGENTE DE COMPARAÇÃO ---
                 const newDataString = JSON.stringify({ labels, data });
                 if (newDataString === lastAlocacaoData) {
-                    // console.log("[Gráfico Alocação] Dados idênticos, a pular redesenho.");
-                    return; // Os dados não mudaram, não faz nada.
+                    return; 
                 }
-                lastAlocacaoData = newDataString; // Atualiza o snapshot
+                lastAlocacaoData = newDataString; 
                 console.log("[Gráfico Alocação] Dados novos, a atualizar/redesenhar...");
-                // --- FIM DA LÓGICA ---
                 
-                // MODIFICAÇÃO: Não mexe mais no '.remove('hidden')' aqui
                 const colors = gerarCores(labels.length);
 
-                // --- LÓGICA DE UPDATE ---
                 if (alocacaoChartInstance) {
-                    // Se o gráfico já existe, apenas atualize os dados
                     alocacaoChartInstance.data.labels = labels;
                     alocacaoChartInstance.data.datasets[0].data = data;
                     alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
                     alocacaoChartInstance.update();
                     console.log("[Gráfico Alocação] Instância atualizada.");
                 } else {
-                    // Se for a primeira vez, crie o gráfico
                     alocacaoChartInstance = new Chart(ctx, {
                         type: 'doughnut',
                         data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, }] },
@@ -764,43 +784,29 @@
                     });
                     console.log("[Gráfico Alocação] Nova instância criada.");
                 }
-                // --- FIM DA LÓGICA DE UPDATE ---
             }
-            // ==========================================================
-            // FIM: GRÁFICO DE ALOCAÇÃO OTIMIZADO
-            // ==========================================================
             
-            // ==========================================================
-            // INÍCIO: GRÁFICO DE HISTÓRICO OTIMIZADO (MODIFICADO)
-            // ==========================================================
             function renderizarGraficoHistorico({ labels, data }) {
                 const canvas = document.getElementById('historico-proventos-chart');
                 if (!canvas) return;
                 const ctx = canvas.getContext('2d');
 
-                // --- LÓGICA INTELIGENTE DE COMPARAÇÃO ---
                 const newDataString = JSON.stringify({ labels, data });
                 if (newDataString === lastHistoricoData) {
-                    // console.log("[Gráfico Histórico] Dados idênticos, a pular redesenho.");
-                    return; // Os dados não mudaram, não faz nada.
+                    return; 
                 }
-                lastHistoricoData = newDataString; // Atualiza o snapshot
+                lastHistoricoData = newDataString; 
                 console.log("[Gráfico Histórico] Dados novos, a atualizar/redesenhar...");
-                // --- FIM DA LÓGICA ---
                 
                 if (!labels || !data || labels.length === 0) {
                     if (historicoChartInstance) {
                         historicoChartInstance.destroy();
-                        historicoChartInstance = null; // Garante que será recriado
+                        historicoChartInstance = null; 
                     }
-                    historicoGraficoContainer.classList.add('hidden'); // MODIFICAÇÃO: Esconde se vazio
+                    historicoGraficoContainer.classList.add('hidden'); 
                     return;
                 }
                 
-                // MODIFICAÇÃO: Não mexe mais no '.remove('hidden')' aqui
-
-                // --- LÓGICA DE UPDATE ---
-                // (Precisamos recriar os gradientes pois o contexto (ctx) é local da função)
                 const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
                 gradient.addColorStop(0, 'rgba(167, 139, 250, 0.9)'); 
                 gradient.addColorStop(1, 'rgba(109, 40, 217, 0.9)'); 
@@ -810,7 +816,6 @@
                 hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');
                 
                 if (historicoChartInstance) {
-                    // Se o gráfico já existe, apenas atualize os dados
                     historicoChartInstance.data.labels = labels;
                     historicoChartInstance.data.datasets[0].data = data;
                     historicoChartInstance.data.datasets[0].backgroundColor = gradient;
@@ -818,7 +823,6 @@
                     historicoChartInstance.update();
                     console.log("[Gráfico Histórico] Instância atualizada.");
                 } else {
-                    // Se for a primeira vez, crie o gráfico
                     historicoChartInstance = new Chart(ctx, {
                         type: 'bar',
                         data: {
@@ -867,14 +871,10 @@
                     });
                     console.log("[Gráfico Histórico] Nova instância criada.");
                 }
-                // --- FIM DA LÓGICA DE UPDATE ---
             }
-            // ==========================================================
-            // FIM: GRÁFICO DE HISTÓRICO OTIMIZADO
-            // ==========================================================
             
             // ========================================================
-            // INÍCIO DA ALTERAÇÃO: renderizarCarteira (MODIFICADO)
+            // INÍCIO DA ALTERAÇÃO: renderizarCarteira (MUDANÇA 1)
             // ========================================================
             function renderizarCarteira() {
                 listaCarteira.innerHTML = ''; 
@@ -896,14 +896,13 @@
                     dashboardStatus.classList.remove('hidden');
                     resumoCarteiraCard.classList.add('hidden');
                     graficoContainer.classList.add('hidden');
-                    historicoGraficoContainer.classList.add('hidden'); // MODIFICAÇÃO: Garante que está escondido
+                    historicoGraficoContainer.classList.add('hidden'); 
                     renderizarGraficoAlocacao([]); 
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                 } else {
                     carteiraMensagem.classList.add('hidden');
                     dashboardStatus.classList.add('hidden');
                     
-                    // MODIFICAÇÃO: Mostra todos os cards do dashboard de uma vez
                     resumoCarteiraCard.classList.remove('hidden');
                     graficoContainer.classList.remove('hidden');
                     historicoGraficoContainer.classList.remove('hidden');
@@ -941,7 +940,6 @@
                     totalCustoCarteira += custoTotal;
                     if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
                     
-                    // Lógica para exibir o provento (COM FALLBACK E NOMES CURTOS)
                     let proventoHtml = '';
                     if (isFII(ativo.symbol)) { 
                         if (dadoProvento && dadoProvento.value > 0) {
@@ -955,7 +953,6 @@
                                 <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
                             </div>`;
                         } else {
-                            // Mensagem de fallback
                             proventoHtml = `
                             <div class="flex justify-between items-center mt-3">
                                 <span class="text-sm text-gray-500">Provento</span>
@@ -964,14 +961,16 @@
                         }
                     }
                     
-                    // ================== MUDANÇA 3 (HTML NO JS) ==================
-                    // Nova Estrutura do Card (Accordion com NOMES CURTOS + LOGO + BOTÕES)
+                    // ================== MUDANÇA 1 (REMOVER LOGO) ==================
+                    // Trocado <img> por <svg>
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-3">
-                                <img src="${dadoPreco?.logourl || ''}" alt="Logo" class="w-9 h-9 rounded-full bg-gray-700 object-cover" 
-                                     onerror="this.src='icons/icon-192x192.png'; this.classList.add('p-1');" 
-                                     onload="if (!this.src.includes('icon-192x192.png')) this.classList.remove('p-1');">
+                                <div class="w-9 h-9 rounded-full bg-gray-700 p-1.5 flex items-center justify-center flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-purple-400">
+                                        <path d="M1.5 13.5a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H4.5a3 3 0 0 1-3-3v-6Zm16.5 0a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3v-6Zm-8.25-9a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3V4.5Z" />
+                                    </svg>
+                                </div>
                                 <div>
                                     <h2 class="text-xl font-bold text-white">${ativo.symbol}</h2>
                                     <p class="text-sm text-gray-500">${ativo.quantity} cota(s)</p>
@@ -1019,7 +1018,7 @@
                             </div>
                         </div>
                     `;
-                    // ================== FIM MUDANÇA 3 ==================
+                    // ================== FIM MUDANÇA 1 ==================
                     listaCarteira.appendChild(card);
                 });
                 
@@ -1096,7 +1095,6 @@
                     return precosCache || []; 
                 }
                 
-                // Se forçado, não usamos o cache de jeito nenhum
                 if (force) {
                     console.log("Forçando busca na API (sem cache)...");
                 } else {
@@ -1237,7 +1235,6 @@
                         aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
                         
                         if (aiData && aiData.length > 0) {
-                            // Otimização: Cache de 24h para dados históricos da IA
                             setCache(cacheKey, aiData, CACHE_24_HORAS);
                         }
                     } catch (e) {
@@ -1281,14 +1278,10 @@
 
             // --- Funções Principais (Handlers) ---
             
-            // ==========================================================
-            // INÍCIO: ATUALIZAR TODOS DADOS (MODIFICADO)
-            // ==========================================================
              async function atualizarTodosDados(force = false) { 
                 carteiraLoading.classList.remove('hidden');
                 carteiraMensagem.classList.add('hidden');
                 
-                // Só mostra o spinner do Dashboard se a carteira não estiver vazia
                 if (carteira.length > 0) {
                     dashboardStatus.classList.remove('hidden');
                     dashboardLoading.classList.remove('hidden');
@@ -1297,8 +1290,6 @@
                 const refreshIcon = refreshButton.querySelector('svg'); 
                 refreshIcon.classList.add('spin-animation');
 
-                // --- Etapa 1: Renderização Imediata do Cache (se houver) ---
-                
                 let precosCache = null;
                 if (!force) {
                     const cacheKeyPrecos = 'precos_' + carteira.map(a => a.symbol).join('-');
@@ -1316,9 +1307,6 @@
                     }
                 }
                 
-                // MODIFICAÇÃO: Só renderiza imediatamente se o cache de preços existir.
-                // Se o cache estiver expirado (precosCache = null),
-                // precosAtuais ficará vazio []. Isso evita o "flash" de -100%.
                 if (precosCache) {
                     precosAtuais = precosCache;
                     proventosAtuais = proventosFuturosCache || [];
@@ -1328,15 +1316,13 @@
                     renderizarProventos();
                 } else {
                     console.log("Cache de preços expirado ou inexistente. A aguardar API.");
-                    // Garante que os arrays estão vazios para a primeira renderização (pela API)
                     precosAtuais = [];
                     proventosAtuais = [];
-                    // Não renderiza, espera a API.
                 }
                 
                 if (carteira.length === 0) {
-                     precosAtuais = []; // Zera para garantir
-                     proventosAtuais = []; // Zera para garantir
+                     precosAtuais = []; 
+                     proventosAtuais = []; 
                      renderizarCarteira(); 
                      renderizarProventos(); 
                      renderizarGraficoHistorico({ labels: [], data: [] }); 
@@ -1350,27 +1336,22 @@
                      return; 
                 }
 
-                // --- Etapa 2: Busca em Paralelo (Brapi e Gemini) ---
                 const promessaPrecos = buscarPrecosCarteira(force); 
                 const promessaProventos = buscarProventosFuturos();
                 const promessaHistorico = buscarHistoricoProventosAgregado();
-
-                // --- Etapa 3: Lidar com cada promessa assim que ela terminar ---
 
                 promessaPrecos.then(precos => {
                     console.log("Busca de preços (BFF) concluída.");
                     if (precos.length > 0) {
                         precosAtuais = precos; 
                         renderizarCarteira();  
-                    } else if (precosAtuais.length === 0) { // Se a API falhou *E* não tínhamos cache
+                    } else if (precosAtuais.length === 0) { 
                         console.warn("API de preços falhou e não havia cache. A mostrar 'A carregar...'.");
                         renderizarCarteira(); 
                     }
-                    // Se a API falhou mas tínhamos cache (do 'if (precosCache)'),
-                    // o usuário continua vendo o cache, o que é bom.
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
-                    if (precosAtuais.length === 0) { // Se falhou E não tinha cache
+                    if (precosAtuais.length === 0) { 
                         renderizarCarteira(); 
                     }
                 });
@@ -1379,8 +1360,6 @@
                     console.log("Busca de proventos (BFF) concluída.");
                     proventosAtuais = proventosFuturos; 
                     renderizarProventos(); 
-                    // Se os preços já chegaram, renderiza a carteira de novo
-                    // para mostrar os proventos futuros no card do ativo.
                     if (precosAtuais.length > 0) {
                         renderizarCarteira();  
                     }
@@ -1399,7 +1378,6 @@
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                 });
 
-                // --- Etapa 4: Esconder Spinners (Quando TUDO terminar) ---
                 try {
                     await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]);
                 } finally {
@@ -1413,9 +1391,6 @@
                     }
                 }
             }
-            // ==========================================================
-            // FIM: ATUALIZAR TODOS DADOS (MODIFICADO)
-            // ==========================================================
             
             async function handleAdicionarAtivo() {
                 let ticker = tickerInput.value.trim().toUpperCase();
@@ -1508,18 +1483,13 @@
             function limparDetalhes() {
                 detalhesMensagem.classList.remove('hidden');
                 detalhesLoading.classList.add('hidden');
-                // ================== MUDANÇA 1.7 (JS) ==================
                 detalhesTitulo.innerHTML = '<h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Detalhes do Ativo</h1>'; 
-                // ================== FIM MUDANÇA 1.7 ==================
                 detalhesPreco.innerHTML = '';
                 detalhesHistoricoContainer.classList.add('hidden');
-                detalhesHistorico.innerHTML = ''; // Limpo
+                detalhesHistorico.innerHTML = ''; 
                 detalhesAiProvento.innerHTML = ''; 
             }
             
-            // ==========================================================
-            // INÍCIO: handleMostrarDetalhes (MODIFICADO - MUDANÇA 2)
-            // ==========================================================
             async function handleMostrarDetalhes(symbol) {
                 mudarAba('tab-detalhes');
                 detalhesMensagem.classList.add('hidden');
@@ -1527,10 +1497,8 @@
                 detalhesPreco.innerHTML = '';
                 detalhesAiProvento.innerHTML = ''; 
                 detalhesHistoricoContainer.classList.add('hidden');
-                detalhesHistorico.innerHTML = ''; // Limpa o container
-                // ================== MUDANÇA 1.8 (JS) ==================
+                detalhesHistorico.innerHTML = ''; 
                 detalhesTitulo.innerHTML = `<h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">${symbol}</h1>`;
-                // ================== FIM MUDANÇA 1.8 ==================
                 
                 const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
                 const cacheKeyPreco = `detalhe_preco_${symbol}`;
@@ -1565,13 +1533,11 @@
                 detalhesLoading.classList.add('hidden');
 
                 if (precoData) {
-                    // ================== MUDANÇA 1.9 (JS) ==================
                     detalhesTitulo.innerHTML = `
                         <img id="detalhes-logo" src="${precoData.logourl}" alt="Logo" class="w-12 h-12 rounded-full mx-auto mb-2 ${!precoData.logourl ? 'hidden' : ''}" onerror="this.classList.add('hidden')">
                         <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">${symbol}</h1>
                         <p id="detalhes-nome-longo" class="text-base font-normal text-gray-500 mt-1">${precoData.longName || 'Nome não disponível'}</p>
                     `;
-                    // ================== FIM MUDANÇA 1.9 ==================
                     
                     const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
 
@@ -1598,7 +1564,6 @@
                         `;
                     }
 
-                    // A nova estrutura HTML
                     detalhesPreco.innerHTML = `
                         <div class="col-span-2 bg-gray-800 p-4 rounded-xl text-center mb-1">
                             <span class="text-sm text-gray-500">Preço Atual</span>
@@ -1653,7 +1618,6 @@
                             <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
                             <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${aiResult}</p>
                         `;
-                    // ================== MUDANÇA 4 (JS) ==================
                     } catch (e) {
                         detalhesAiProvento.innerHTML = `
                             <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
@@ -1668,12 +1632,8 @@
                             </div>
                         `;
                     }
-                    // ================== FIM MUDANÇA 4 ==================
                 }
             }
-            // ==========================================================
-            // FIM: handleMostrarDetalhes (MODIFICADO)
-            // ==========================================================
             
             function mudarAba(tabId) {
                 tabContents.forEach(content => {

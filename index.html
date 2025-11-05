@@ -341,14 +341,11 @@
                  <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
                  
                  <div id="detalhes-historico-container" class="hidden">
-                    <h3 class="text-xl font-bold pt-5 border-t border-gray-800 text-white">Histórico de Proventos</h3>
-                    
                     <div id="detalhes-ai-provento" class="my-4">
                         </div>
                     
                     <div id="detalhes-historico" class="space-y-2 scrollable-content pr-2">
-                        <p id="detalhes-historico-mensagem" class="text-sm text-gray-500">A carregar histórico...</p>
-                    </div>
+                        </div>
                  </div>
                  
             </div>
@@ -430,7 +427,10 @@
             
             // --- Constantes ---
             const REFRESH_INTERVAL = 1860000; 
-            const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
+            const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos (Padrão)
+            
+            const CACHE_12_HORAS = 1000 * 60 * 60 * 12; // 12 horas
+            const CACHE_24_HORAS = 1000 * 60 * 60 * 24; // 24 horas
             
             const CACHE_PREFIX = 'vestoBrapiCache_v1_'; 
             const DB_KEY = 'vesto_carteira_v1';
@@ -450,11 +450,6 @@
             // Aba Proventos
             const totalProventosEl = document.getElementById('total-proventos');
             
-            // Elementos da IA (REMOVIDOS)
-            // const aiTickerSelectButton = ...
-            // const aiSearchButton = ...
-            // const aiResultCard = ...
-
             // Aba Detalhes
             const detalhesTitulo = document.getElementById('detalhes-titulo');
             const detalhesMensagem = document.getElementById('detalhes-mensagem');
@@ -493,9 +488,7 @@
             let carteira = []; 
             let alocacaoChartInstance = null;
             let historicoChartInstance = null;
-            // let isAISearching = false; // Removido
             let onConfirmCallback = null; 
-            // let selectedAIFii = null; // Removido
             
             let precosAtuais = [];
             let proventosAtuais = [];
@@ -693,12 +686,6 @@
                 }, 200); 
             }
             
-            // --- Funções do Modal de Seleção de FII (REMOVIDAS) ---
-            // function showFiiModal() { ... }
-            // function hideFiiModal() { ... }
-            // function selectFii(symbol) { ... }
-            // function updateAIButtonState() { ... }
-            
             // --- Funções de Dados (localStorage) ---
             function salvarCarteira() {
                 localStorage.setItem(DB_KEY, JSON.stringify(carteira));
@@ -727,7 +714,6 @@
                     carteira = [];
                 }
                 salvarCarteira(); 
-                // updateAIButtonState(); // Removido
             }
 
             // --- Funções de Renderização ---
@@ -1259,7 +1245,8 @@
                         aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
                         
                         if (aiData && aiData.length > 0) {
-                            setCache(cacheKey, aiData);
+                            // Otimização: Cache de 24h para dados históricos da IA
+                            setCache(cacheKey, aiData, CACHE_24_HORAS);
                         }
                     } catch (e) {
                         console.error("Erro ao buscar histórico agregado:", e);
@@ -1300,25 +1287,10 @@
                 return { labels, data };
             }
 
-            async function buscarHistoricoDividendos(symbol) {
-                const cacheKey = `hist_div_${symbol}`;
-                const cache = getCache(cacheKey);
-                if (cache) return cache;
-                try {
-                    const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
-                    const url = `/api/brapi?path=/v2/dividends?ticker=${tickerParaApi}`;
-                    const data = await fetchBFF(url);
-                    
-                    const historico = (data.dividendsHistory ?? []).map(d => ({
-                        valor: d.value, dataPag: d.paymentDate, dataCom: d.recordDate
-                    })).reverse(); 
-                    setCache(cacheKey, historico);
-                    return historico;
-                } catch (error) { 
-                    console.error("Erro ao buscar histórico:", error); 
-                    return null; 
-                }
-            }
+            // ==========================================================
+            // FUNÇÃO REMOVIDA
+            // async function buscarHistoricoDividendos(symbol) { ... }
+            // ==========================================================
             
             // --- Funções Principais (Handlers) ---
             
@@ -1388,7 +1360,6 @@
                      dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
                      resumoCarteiraCard.classList.add('hidden');
                      graficoContainer.classList.add('hidden');
-                     // updateAIButtonState(); // Removido
                      return; 
                 }
 
@@ -1453,7 +1424,6 @@
                          dashboardStatus.classList.add('hidden');
                          dashboardLoading.classList.add('hidden');
                     }
-                    // updateAIButtonState(); // Removido
                 }
             }
             // ==========================================================
@@ -1538,10 +1508,6 @@
                     () => { 
                         carteira = carteira.filter(a => a.symbol !== symbol);
                         
-                        // if (selectedAIFii === symbol) { // Removido
-                        //     selectedAIFii = null;
-                        // }
-                        
                         clearBrapiCache(); 
                         salvarCarteira();
                         atualizarTodosDados(true); 
@@ -1558,10 +1524,13 @@
                 detalhesTitulo.innerHTML = '<h1 class="text-4xl font-extrabold tracking-tight title-gradient">Detalhes do Ativo</h1>'; 
                 detalhesPreco.innerHTML = '';
                 detalhesHistoricoContainer.classList.add('hidden');
-                detalhesHistorico.innerHTML = '<p class="text-sm text-gray-500">A carregar histórico...</p>';
+                detalhesHistorico.innerHTML = ''; // Limpo
                 detalhesAiProvento.innerHTML = ''; 
             }
             
+            // ==========================================================
+            // INÍCIO: handleMostrarDetalhes (MODIFICADO)
+            // ==========================================================
             async function handleMostrarDetalhes(symbol) {
                 mudarAba('tab-detalhes');
                 detalhesMensagem.classList.add('hidden');
@@ -1569,7 +1538,7 @@
                 detalhesPreco.innerHTML = '';
                 detalhesAiProvento.innerHTML = ''; 
                 detalhesHistoricoContainer.classList.add('hidden');
-                detalhesHistorico.innerHTML = '<p class="text-sm text-gray-500">A carregar histórico...</p>';
+                detalhesHistorico.innerHTML = ''; // Limpa o container
                 detalhesTitulo.innerHTML = `<h1 class="text-4xl font-extrabold tracking-tight title-gradient">${symbol}</h1>`;
                 
                 const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
@@ -1585,7 +1554,7 @@
                     } catch (e) { precoData = null; }
                 }
 
-                const promessaHistorico = buscarHistoricoDividendos(symbol); 
+                // A 'promessaHistorico' (Brapi) foi removida
                 let promessaAi = null;
                 
                 if (isFII(symbol)) {
@@ -1603,7 +1572,7 @@
                     promessaAi = callGeminiHistoricoAPI(symbol, todayString); 
                 }
                 
-                const historico = await promessaHistorico;
+                // O 'await promessaHistorico' foi removido
                 detalhesLoading.classList.add('hidden');
 
                 if (precoData) {
@@ -1655,19 +1624,8 @@
                 }
 
                 detalhesHistoricoContainer.classList.remove('hidden'); 
-                if (historico && historico.length > 0) {
-                    detalhesHistorico.innerHTML = historico.map(div => `
-                        <div class="flex justify-between text-sm p-3 bg-gray-800 rounded-lg">
-                            <div>
-                                <span class="text-gray-500">Pag.:</span>
-                                <span class="font-medium text-gray-100">${formatDate(div.dataPag)}</span>
-                            </div>
-                            <div class="font-semibold accent-text">${formatBRL(div.valor)}</div>
-                        </div>
-                    `).join('');
-                } else {
-                    detalhesHistorico.innerHTML = ''; 
-                }
+                
+                // O bloco 'if (historico ...)' foi removido
 
                 if (promessaAi) {
                     try {
@@ -1684,6 +1642,9 @@
                     }
                 }
             }
+            // ==========================================================
+            // FIM: handleMostrarDetalhes (MODIFICADO)
+            // ==========================================================
             
             function mudarAba(tabId) {
                 tabContents.forEach(content => {
@@ -1750,17 +1711,8 @@
                     hideModal();
                 }
             });
-            
-            // Event Listeners da busca de IA (REMOVIDOS)
-            // aiTickerSelectButton.addEventListener('click', showFiiModal);
-            // fiiModalCancel.addEventListener('click', hideFiiModal);
-            // fiiSelectModal.addEventListener('click', (e) => { ... });
-            // aiSearchButton.addEventListener('click', async () => { ... });
-
 
             // --- Funções da API Gemini (BFF) ---
-            
-            // function callGeminiAPI(ticker, todayString) { ... } // Removida
 
             async function callGeminiHistoricoAPI(ticker, todayString) {
                 const body = {

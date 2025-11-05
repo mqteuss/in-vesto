@@ -501,6 +501,15 @@
             let proventosAtuais = [];
             
             const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
+            
+            // ==========================================================
+            // INÍCIO: NOVAS VARIÁVEIS DE ESTADO (GRÁFICOS)
+            // ==========================================================
+            let lastAlocacaoData = null; // Snapshot p/ gráfico de alocação
+            let lastHistoricoData = null; // Snapshot p/ gráfico de histórico
+            // ==========================================================
+            // FIM: NOVAS VARIÁVEIS DE ESTADO
+            // ==========================================================
 
             // ==========================================================
             // INÍCIO: LÓGICA DE ATUALIZAÇÃO DO PWA (NOVO)
@@ -723,17 +732,35 @@
 
             // --- Funções de Renderização ---
             
+            // ==========================================================
+            // INÍCIO: GRÁFICO DE ALOCAÇÃO OTIMIZADO (MODIFICADO)
+            // ==========================================================
             function renderizarGraficoAlocacao(dadosGrafico) {
                 const ctx = document.getElementById('alocacao-chart').getContext('2d');
-                if (alocacaoChartInstance) { alocacaoChartInstance.destroy(); }
+                
                 if (dadosGrafico.length === 0) {
+                    if (alocacaoChartInstance) { alocacaoChartInstance.destroy(); }
                     graficoContainer.classList.add('hidden');
+                    lastAlocacaoData = null; // Reseta o snapshot
                     return;
                 }
                 
-                graficoContainer.classList.remove('hidden');
                 const labels = dadosGrafico.map(d => d.symbol);
                 const data = dadosGrafico.map(d => d.totalPosicao);
+
+                // --- LÓGICA INTELIGENTE DE COMPARAÇÃO ---
+                const newDataString = JSON.stringify({ labels, data });
+                if (newDataString === lastAlocacaoData) {
+                    console.log("[Gráfico Alocação] Dados idênticos, a pular redesenho.");
+                    return; // Os dados não mudaram, não faz nada.
+                }
+                lastAlocacaoData = newDataString; // Atualiza o snapshot
+                console.log("[Gráfico Alocação] Dados novos, a redesenhar...");
+                // --- FIM DA LÓGICA ---
+
+                if (alocacaoChartInstance) { alocacaoChartInstance.destroy(); }
+                
+                graficoContainer.classList.remove('hidden');
                 const colors = gerarCores(labels.length);
 
                 alocacaoChartInstance = new Chart(ctx, {
@@ -758,11 +785,28 @@
                     }
                 });
             }
+            // ==========================================================
+            // FIM: GRÁFICO DE ALOCAÇÃO OTIMIZADO
+            // ==========================================================
             
+            // ==========================================================
+            // INÍCIO: GRÁFICO DE HISTÓRICO OTIMIZADO (MODIFICADO)
+            // ==========================================================
             function renderizarGraficoHistorico({ labels, data }) {
                 const canvas = document.getElementById('historico-proventos-chart');
                 if (!canvas) return;
                 const ctx = canvas.getContext('2d');
+
+                // --- LÓGICA INTELIGENTE DE COMPARAÇÃO ---
+                const newDataString = JSON.stringify({ labels, data });
+                if (newDataString === lastHistoricoData) {
+                    console.log("[Gráfico Histórico] Dados idênticos, a pular redesenho.");
+                    return; // Os dados não mudaram, não faz nada.
+                }
+                lastHistoricoData = newDataString; // Atualiza o snapshot
+                console.log("[Gráfico Histórico] Dados novos, a redesenhar...");
+                // --- FIM DA LÓGICA ---
+
                 if (historicoChartInstance) { historicoChartInstance.destroy(); }
                 
                 if (!labels || !data || labels.length === 0) {
@@ -827,6 +871,9 @@
                     }
                 });
             }
+            // ==========================================================
+            // FIM: GRÁFICO DE HISTÓRICO OTIMIZADO
+            // ==========================================================
             
             // ========================================================
             // INÍCIO DA ALTERAÇÃO: renderizarCarteira (Nomes Simplificados)

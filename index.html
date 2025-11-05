@@ -838,7 +838,7 @@
             }
             
             // ========================================================
-            // INÍCIO DA ALTERAÇÃO: renderizarCarteira (Accordion)
+            // INÍCIO DA ALTERAÇÃO: renderizarCarteira (Nomes Simplificados)
             // ========================================================
             function renderizarCarteira() {
                 listaCarteira.innerHTML = ''; 
@@ -900,30 +900,30 @@
                     totalCustoCarteira += custoTotal;
                     if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
                     
-                    // Lógica para exibir o provento (COM FALLBACK)
+                    // Lógica para exibir o provento (COM FALLBACK E NOMES CURTOS)
                     let proventoHtml = '';
                     if (isFII(ativo.symbol)) { 
                         if (dadoProvento && dadoProvento.value > 0) {
                             proventoHtml = `
                             <div class="flex justify-between items-center mt-3">
-                                <span class="text-sm text-gray-500">Próx. Provento</span>
+                                <span class="text-sm text-gray-500">Provento</span>
                                 <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
                             </div>
                             <div class="flex justify-between items-center -mt-2">
-                                <span class="text-sm text-gray-500">Pagamento em</span>
+                                <span class="text-sm text-gray-500">Pagamento</span>
                                 <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
                             </div>`;
                         } else {
                             // Mensagem de fallback
                             proventoHtml = `
                             <div class="flex justify-between items-center mt-3">
-                                <span class="text-sm text-gray-500">Próx. Provento</span>
-                                <span class="text-sm font-medium text-gray-400">Nenhum provento futuro.</span>
+                                <span class="text-sm text-gray-500">Provento</span>
+                                <span class="text-sm font-medium text-gray-400">Sem provento futuro.</span>
                             </div>`;
                         }
                     }
                     
-                    // Nova Estrutura do Card (Accordion)
+                    // Nova Estrutura do Card (Accordion com NOMES CURTOS)
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div>
@@ -947,7 +947,7 @@
                         <div id="drawer-${ativo.symbol}" class="card-drawer">
                             <div class="drawer-content space-y-3 pt-2">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-500">Posição Atual</span>
+                                    <span class="text-sm text-gray-500">Posição</span>
                                     <span class="text-base font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
@@ -955,7 +955,7 @@
                                     <span class="text-base font-semibold text-gray-300">${formatBRL(custoTotal)}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-500">Lucro/Prejuízo</span>
+                                    <span class="text-sm text-gray-500">L/P</span>
                                     <span class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
                                 </div>
                                 
@@ -1518,7 +1518,7 @@
                         
                         plHtml = `
                             ${createDetailItem('Sua Posição', formatBRL(totalPosicao))}
-                            ${createDetailItem('Seu P/L', `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)`, corPL)}
+                            ${createDetailItem('Seu L/P', `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)`, corPL)}
                         `;
                     }
 
@@ -1592,9 +1592,6 @@
             quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             precoMedioInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); 
 
-            // ========================================================
-            // INÍCIO DA ALTERAÇÃO: Event Listener da Lista (Accordion)
-            // ========================================================
             listaCarteira.addEventListener('click', (e) => {
                 const target = e.target.closest('button');
                 if (!target) return;
@@ -1607,7 +1604,6 @@
                 } else if (action === 'details') {
                     handleMostrarDetalhes(symbol);
                 } else if (action === 'toggle') {
-                    // Nova Ação para abrir/fechar
                     const drawer = document.getElementById(`drawer-${symbol}`);
                     const icon = target.querySelector('.card-arrow-icon');
                     
@@ -1619,9 +1615,6 @@
                     }
                 }
             });
-            // ========================================================
-            // FIM DA ALTERAÇÃO
-            // ========================================================
 
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => {

@@ -22,7 +22,8 @@ self.addEventListener('install', event => {
         console.log('[SW] Armazenando App Shell no cache');
         return cache.addAll(APP_SHELL_FILES);
       })
-      .then(() => self.skipWaiting())
+      // REMOVEMOS O self.skipWaiting() DAQUI!
+      // Agora ele vai "esperar" (waiting) após instalar.
   );
 });
 
@@ -44,32 +45,33 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // ===================================================================
-  // ALTERAÇÃO CRÍTICA
-  // 1. Ignorar chamadas de API para o nosso BFF (deixar ir direto para a rede)
-  // Nós checamos se o *caminho* da URL começa com /api/
+  // 1. Ignorar chamadas de API para o nosso BFF
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(event.request));
     return;
   }
-  // ===================================================================
 
   // 2. Estratégia Stale-While-Revalidate para o App Shell
-  // (Responde rápido com o cache, mas busca atualização em segundo plano)
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {
-        
-        // Busca a versão mais nova da rede em segundo plano
         const fetchPromise = fetch(event.request).then(networkResponse => {
-          // Se a busca for bem-sucedida, atualiza o cache
           cache.put(event.request, networkResponse.clone());
           return networkResponse;
         });
-
-        // Retorna o cache primeiro (se existir) ou espera a rede
         return cachedResponse || fetchPromise;
       });
     })
   );
+});
+
+// ==========================================================
+// ADIÇÃO CRÍTICA: Ouvinte de Mensagem
+// ==========================================================
+// Ouve a mensagem do 'index.html' para pular a espera
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'SKIP_WAITING') {
+    console.log('[SW] Recebeu ordem para SKIP_WAITING');
+    self.skipWaiting();
+  }
 });

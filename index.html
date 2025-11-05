@@ -964,7 +964,7 @@
                 
                 if (carteiraOrdenada.length > 0) {
                     const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
-                    const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
+                    const totalLucroPrejuizoPercent = (totalCustoCarteira === 0 || totalValorCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
                     let corPLTotal = 'text-gray-500';
                     if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
                     else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
@@ -1033,6 +1033,18 @@
                     console.log("B3 fechada (ou fora do horário) e atualização não forçada. A usar preços do cache.");
                     const precosCache = getCache(cacheKey);
                     return precosCache || []; 
+                }
+                
+                // Se forçado, não usamos o cache de jeito nenhum
+                if (force) {
+                    console.log("Forçando busca na API (sem cache)...");
+                } else {
+                    const precosCache = getCache(cacheKey);
+                    if (precosCache) {
+                        console.log("A usar cache de 30min para preços.");
+                        return precosCache;
+                    }
+                    console.log("Cache de 30min expirado. A buscar na API...");
                 }
 
                 console.log("A buscar preços na API (sequencialmente para evitar rate limit)...");
@@ -1227,11 +1239,18 @@
             
             // --- Funções Principais (Handlers) ---
             
+            // ==========================================================
+            // INÍCIO: ATUALIZAR TODOS DADOS (MODIFICADO)
+            // ==========================================================
              async function atualizarTodosDados(force = false) { 
                 carteiraLoading.classList.remove('hidden');
                 carteiraMensagem.classList.add('hidden');
-                dashboardStatus.classList.remove('hidden');
-                dashboardLoading.classList.remove('hidden');
+                
+                // Só mostra o spinner do Dashboard se a carteira não estiver vazia
+                if (carteira.length > 0) {
+                    dashboardStatus.classList.remove('hidden');
+                    dashboardLoading.classList.remove('hidden');
+                }
                 
                 const refreshIcon = refreshButton.querySelector('svg'); 
                 refreshIcon.classList.add('spin-animation');
@@ -1255,13 +1274,27 @@
                     }
                 }
                 
-                precosAtuais = precosCache || [];
-                proventosAtuais = proventosFuturosCache || [];
+                // MODIFICAÇÃO: Só renderiza imediatamente se o cache de preços existir.
+                // Se o cache estiver expirado (precosCache = null),
+                // precosAtuais ficará vazio []. Isso evita o "flash" de -100%.
+                if (precosCache) {
+                    precosAtuais = precosCache;
+                    proventosAtuais = proventosFuturosCache || [];
 
-                renderizarCarteira();
-                renderizarProventos();
+                    console.log("A renderizar dados do cache instantaneamente.");
+                    renderizarCarteira();
+                    renderizarProventos();
+                } else {
+                    console.log("Cache de preços expirado ou inexistente. A aguardar API.");
+                    // Garante que os arrays estão vazios para a primeira renderização (pela API)
+                    precosAtuais = [];
+                    proventosAtuais = [];
+                    // Não renderiza, espera a API.
+                }
                 
                 if (carteira.length === 0) {
+                     precosAtuais = []; // Zera para garantir
+                     proventosAtuais = []; // Zera para garantir
                      renderizarCarteira(); 
                      renderizarProventos(); 
                      renderizarGraficoHistorico({ labels: [], data: [] }); 
@@ -1288,13 +1321,15 @@
                     if (precos.length > 0) {
                         precosAtuais = precos; 
                         renderizarCarteira();  
-                    } else if (precosAtuais.length === 0) {
+                    } else if (precosAtuais.length === 0) { // Se a API falhou *E* não tínhamos cache
                         console.warn("API de preços falhou e não havia cache. A mostrar 'A carregar...'.");
                         renderizarCarteira(); 
                     }
+                    // Se a API falhou mas tínhamos cache (do 'if (precosCache)'),
+                    // o usuário continua vendo o cache, o que é bom.
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
-                    if (precosAtuais.length === 0) { 
+                    if (precosAtuais.length === 0) { // Se falhou E não tinha cache
                         renderizarCarteira(); 
                     }
                 });
@@ -1303,7 +1338,11 @@
                     console.log("Busca de proventos (BFF) concluída.");
                     proventosAtuais = proventosFuturos; 
                     renderizarProventos(); 
-                    renderizarCarteira();  
+                    // Se os preços já chegaram, renderiza a carteira de novo
+                    // para mostrar os proventos futuros no card do ativo.
+                    if (precosAtuais.length > 0) {
+                        renderizarCarteira();  
+                    }
                 }).catch(err => {
                     console.error("Erro ao buscar proventos (BFF):", err);
                     if (proventosAtuais.length === 0) { 
@@ -1334,6 +1373,9 @@
                     // updateAIButtonState(); // Removido
                 }
             }
+            // ==========================================================
+            // FIM: ATUALIZAR TODOS DADOS (MODIFICADO)
+            // ==========================================================
             
             async function handleAdicionarAtivo() {
                 let ticker = tickerInput.value.trim().toUpperCase();

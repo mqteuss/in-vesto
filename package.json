@@ -1,0 +1,12 @@
+{
+  "name": "vesto-bff",
+  "version": "1.0.0",
+  "description": "BFF para o app Vesto",
+  "private": true,
+  "dependencies": {
+    "@google/generative-ai": "^0.15.0"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

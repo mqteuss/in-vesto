@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vesto</title>
+    
+    <link rel="manifest" href="manifest.json">
+
+    <meta name="theme-color" content="#8B5CF6">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #101010; 
+            color: #f3f4f6;
+        }
+        
+        .card-bg {
+            background-color: #1A1A1A;
+            border: 1px solid #2A2A2A;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .accent-bg {
+            background-color: #8B5CF6; /* Roxo (violet-500) */
+            color: #FFF;
+        }
+        .accent-bg:hover {
+            background-color: #7C3AED; /* Roxo mais escuro (violet-600) */
+        }
+        
+        .accent-text { color: #8B5CF6; }
+        .hover-accent-text:hover { color: #A78BFA; }
+
+        /* Estilo de Título com Gradiente */
+        .title-gradient {
+            @apply text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600;
+        }
+
+        /* --- Animações --- */
+        .tab-content { display: none; }
+        .tab-content.active {
+            display: block;
+            animation: slideUpIn 0.3s ease-out forwards;
+        }
+        @keyframes slideUpIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes newCardIn {
+             from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
+
+        /* --- Barra de Navegação --- */
+        .bottom-nav {
+            background-color: rgba(16, 16, 16, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid #2A2A2A;
+        }
+        .tab-button {
+            color: #6b7280; /* text-gray-500 (Inativo) */
+            transition: color 0.2s ease-in-out, transform 0.2s ease-in-out;
+            flex: 1; 
+        }
+        .tab-button.active {
+            color: #8B5CF6; /* Roxo (Ativo) */
+            transform: translateY(-4px);
+        }
+        
+        /* --- Animação de Giro (Spinner) --- */
+        .spin-animation { animation: spin 1s linear infinite; }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Oculta as setas do input de número */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        input[type=number] { -moz-appearance: textfield; }
+        
+        /* --- Spinner (Roxo) --- */
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #4b5563; /* gray-600 */
+            border-bottom-color: #8B5CF6; /* Roxo */
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        /* Loader menor para o botão de IA */
+        .loader-sm {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #4b5563;
+            border-bottom-color: #8B5CF6;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { /* Keyframe para os loaders */
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* --- Animação (Pulse) --- */
+        .pulse-animation { animation: pulse-foda 2s infinite cubic-bezier(0.4, 0, 0.6, 1); }
+        @keyframes pulse-foda {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        
+        /* --- Scrollbar Estilizada --- */
+        .scrollable-content {
+             max-height: 40vh; /* 40% da altura da viewport */
+             overflow-y: auto;
+             scrollbar-width: thin;
+             scrollbar-color: #2A2A2A #1A1A1A;
+        }
+        .scrollable-content::-webkit-scrollbar { width: 6px; }
+        .scrollable-content::-webkit-scrollbar-track {
+            background: #1A1A1A;
+            border-radius: 10px;
+        }
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background-color: #4b5563;
+            border-radius: 10px;
+            border: 2px solid #1A1A1A;
+        }
+        /* Scroll menor para o histórico de detalhes */
+        #detalhes-historico.scrollable-content {
+             max-height: 320px;
+        }
+        
+        /* --- Estilos do Modal (Genérico) --- */
+        .custom-modal {
+            display: none; 
+        }
+        .custom-modal.visible {
+            display: flex; 
+        }
+        
+        /* Animação de entrada do modal */
+        .custom-modal.visible .modal-content {
+            animation: modalIn 0.2s ease-out forwards;
+        }
+
+        /* Animação de saída (a ser aplicada via JS) */
+        .modal-content.modal-out {
+            animation: modalOut 0.2s ease-in forwards;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes modalOut {
+            from { opacity: 1; transform: scale(1) translateY(0); }
+            to { opacity: 0; transform: scale(0.95) translateY(10px); }
+        }
+        
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
+
+        <div id="tab-dashboard" class="tab-content active p-4">
+            <h1 class="text-4xl font-extrabold tracking-tight mb-6 title-gradient">Dashboard</h1>
+
+            <div id="resumo-carteira-card" class="card-bg p-5 rounded-2xl mb-6 text-center hidden">
+                <span class="text-sm text-gray-500">Valor Total da Carteira</span>
+                <h2 id="total-carteira-valor" class="text-4xl font-bold text-white mt-1">R$ 0,00</h2>
+                <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-800">
+                    <div>
+                        <span class="text-xs text-gray-500">Custo Total</span>
+                        <p id="total-carteira-custo" class="text-lg font-semibold text-gray-300">R$ 0,00</p>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500">Lucro/Prejuízo</span>
+                        <p id="total-carteira-pl" class="text-lg font-semibold text-gray-500">R$ 0,00 (0.00%)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="grafico-container" class="card-bg p-4 rounded-2xl mb-6 hidden">
+                <h3 class="text-lg font-semibold text-center text-white mb-3">Alocação</h3>
+                <div class="relative h-64">
+                    <canvas id="alocacao-chart"></canvas>
+                </div>
+            </div>
+            
+            <div id="historico-grafico-container" class="card-bg p-4 rounded-2xl mb-6 hidden">
+                <h3 class="text-lg font-semibold text-center text-white mb-3">Proventos Recebidos (6 Meses)</h3>
+                <div class="relative h-64">
+                    <canvas id="historico-proventos-chart"></canvas>
+                </div>
+            </div>
+            
+            <div id="dashboard-status" class="text-center text-gray-500 mt-12">
+                 <p id="dashboard-mensagem">A carregar dados...</p>
+                 <div id="dashboard-loading" class="flex justify-center items-center py-4">
+                    <span class="loader"></span>
+                 </div>
+            </div>
+        </div>
+
+
+        <div id="tab-carteira" class="tab-content p-4">
+            
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-4xl font-extrabold tracking-tight title-gradient">Meus Ativos</h1>
+                <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar dados">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M21 2v6h-6"></path>
+                        <path d="M3 22v-6h6"></path>
+                        <path d="M21 13a9 9 0 0 1-9 9H3"></path>
+                        <path d="M3 11a9 9 0 0 1 9-9h9"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <h2 class="text-xl font-semibold text-white mb-3">Adicionar Compra</h2>
+            <div class="flex gap-2 mb-8">
+                <input 
+                    type="text" 
+                    id="ticker-input" 
+                    placeholder="Ativo" 
+                    class="flex-1 min-w-0 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors"
+                >
+                <input
+                    type="number"
+                    id="quantity-input"
+                    placeholder="Qtd."
+                    class="w-16 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
+                >
+                <input
+                    type="number"
+                    id="preco-medio-input"
+                    placeholder="Preço"
+                    step="0.01"
+                    class="w-20 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
+                >
+                <button 
+                    id="add-button" 
+                    class="p-3 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 pulse-animation hover:scale-105"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <h2 class="text-xl font-semibold text-white mb-3">Minha Posição</h2>
+            <div id="lista-carteira" class="space-y-4">
+                </div>
+            
+            <div id="carteira-status" class="text-center text-gray-500 mt-12">
+                <p id="carteira-mensagem">A sua carteira está vazia.</p>
+                <div id="carteira-loading" class="hidden flex justify-center items-center py-4">
+                    <span class="loader"></span>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-proventos" class="tab-content p-4">
+            <h1 class="text-4xl font-extrabold tracking-tight text-center mb-8 title-gradient">Próximos Proventos</h1>
+
+            <div class="card-bg p-6 rounded-2xl mb-6 text-center">
+                <span class="text-sm text-gray-500">Total Estimado (Próx. Pagamentos)</span>
+                <h2 id="total-proventos" class="text-4xl font-bold accent-text mt-1">R$ 0,00</h2>
+            </div>
+            
+            <div class="card-bg p-5 rounded-2xl mb-6">
+                <h3 class="text-lg font-semibold text-center text-white mb-4">Verificar Próximo Provento</h3>
+                <div class="flex gap-2">
+                    
+                    <button 
+                        id="ai-ticker-select-button" 
+                        class="flex-1 min-w-0 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors text-left text-gray-500"
+                    >
+                        Selecione um FII da carteira
+                    </button>
+                    
+                    <button 
+                        id="ai-search-button" 
+                        class="p-3 w-14 h-14 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-all active:scale-95 hover:scale-105"
+                    >
+                        <svg id="ai-button-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <div id="ai-button-loader" class="loader-sm hidden"></div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="ai-result-card" class="card-bg p-5 rounded-2xl mb-8 text-center hidden">
+                <!-- Skeleton loader para a aba proventos -->
+                <div id="ai-loading" class="hidden animate-pulse p-4">
+                    <div class="space-y-3">
+                        <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                        <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>
+                    </div>
+                </div>
+                <p id="ai-result-message" class="text-gray-100 text-left whitespace-pre-wrap"></p>
+            </div>
+        </div>
+
+        <div id="tab-detalhes" class="tab-content p-4">
+            <div id="detalhes-titulo" class="text-center mb-8">
+                 <h1 class="text-4xl font-extrabold tracking-tight title-gradient">Detalhes do Ativo</h1>
+            </div>
+            
+            <div id="detalhes-conteudo" class="card-bg p-5 md:p-6 rounded-2xl space-y-5">
+                 <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
+                    <span class="loader"></span>
+                 </div>
+                 <p id="detalhes-mensagem" class="text-center text-gray-500 py-8">Clique em "Detalhes" num ativo da sua carteira para ver as informações aqui.</p>
+                 
+                 <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
+                 
+                 <div id="detalhes-historico-container" class="hidden">
+                    <h3 class="text-xl font-bold pt-5 border-t border-gray-800 text-white">Histórico de Proventos</h3>
+                    
+                    <div id="detalhes-ai-provento" class="my-4">
+                        <!-- Skeleton loader para detalhes (12 meses) -->
+                    </div>
+                    
+                    <div id="detalhes-historico" class="space-y-2 scrollable-content pr-2">
+                        <p id="detalhes-historico-mensagem" class="text-sm text-gray-500">A carregar histórico...</p>
+                    </div>
+                 </div>
+                 
+            </div>
+        </div>
+
+    </div>
+
+    <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bottom-nav flex justify-around p-3">
+        <button class="tab-button active flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-dashboard" title="Dashboard">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+            </svg>
+            <span class="text-xs mt-1 font-medium">Dashboard</span>
+        </button>
+        
+        <button class="tab-button flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-carteira" title="Carteira">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
+                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
+                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
+            </svg>
+            <span class="text-xs mt-1 font-medium">Carteira</span>
+        </button>
+        
+        <button class="tab-button flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-proventos" title="Proventos">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            <span class="text-xs mt-1 font-medium">Proventos</span>
+        </button>
+        
+        <button class="tab-button flex flex-col items-center justify-center p-2 rounded-xl" data-tab="tab-detalhes" title="Detalhes">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span class="text-xs mt-1 font-medium">Detalhes</span>
+        </button>
+    </nav>
+
+    <div id="custom-modal" class="custom-modal fixed inset-0 z-50 items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div id="custom-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
+            <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar Ação</h3>
+            <p id="custom-modal-message" class="text-sm text-gray-300 text-center mb-6">Tem certeza?</p>
+            <div class="flex justify-end gap-3">
+                <button id="custom-modal-cancel" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
+                <button id="custom-modal-ok" class="py-2 px-4 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors">Confirmar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="fii-select-modal" class="custom-modal fixed inset-0 z-50 items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" role="dialog" aria-modal="true">
+        <div id="fii-select-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
+            <h3 class="text-lg font-semibold text-white text-center mb-4">Selecione um FII</h3>
+            <div id="fii-modal-list" class="space-y-2 scrollable-content pr-2">
+                </div>
+            <button id="fii-modal-cancel" class="mt-6 w-full py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
+        </div>
+    </div>
+
+
+    <script>
+        // Configurações padrão do Chart.js para modo escuro
+        Chart.defaults.color = '#9ca3af'; // text-gray-400
+        Chart.defaults.borderColor = '#374151'; // text-gray-700
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- Constantes ---
+            // Chaves de API e URLs base removidas - agora estão no BFF
+            
+            const REFRESH_INTERVAL = 1860000; 
+            const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
+            
+            const CACHE_PREFIX = 'vestoBrapiCache_v1_'; 
+            const DB_KEY = 'vesto_carteira_v1';
+
+            // --- Elementos DOM ---
+            const tickerInput = document.getElementById('ticker-input');
+            const quantityInput = document.getElementById('quantity-input');
+            const precoMedioInput = document.getElementById('preco-medio-input'); 
+            const addButton = document.getElementById('add-button');
+            const listaCarteira = document.getElementById('lista-carteira');
+            const carteiraMensagem = document.getElementById('carteira-mensagem');
+            const carteiraLoading = document.getElementById('carteira-loading');
+            const refreshButton = document.getElementById('refresh-button');
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            // Aba Proventos
+            const totalProventosEl = document.getElementById('total-proventos');
+            
+            // Elementos da IA
+            const aiTickerSelectButton = document.getElementById('ai-ticker-select-button'); 
+            const aiSearchButton = document.getElementById('ai-search-button');
+            const aiButtonIcon = document.getElementById('ai-button-icon');
+            const aiButtonLoader = document.getElementById('ai-button-loader');
+            const aiResultCard = document.getElementById('ai-result-card');
+            const aiLoading = document.getElementById('ai-loading');
+            const aiResultMessage = document.getElementById('ai-result-message');
+
+            // Aba Detalhes
+            const detalhesTitulo = document.getElementById('detalhes-titulo');
+            const detalhesMensagem = document.getElementById('detalhes-mensagem');
+            const detalhesLoading = document.getElementById('detalhes-loading');
+            const detalhesPreco = document.getElementById('detalhes-preco');
+            const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
+            const detalhesHistorico = document.getElementById('detalhes-historico');
+            const detalhesAiProvento = document.getElementById('detalhes-ai-provento'); 
+            
+            // Aba Dashboard
+            const dashboardStatus = document.getElementById('dashboard-status');
+            const dashboardLoading = document.getElementById('dashboard-loading');
+            const dashboardMensagem = document.getElementById('dashboard-mensagem');
+            const resumoCarteiraCard = document.getElementById('resumo-carteira-card');
+            const totalCarteiraValor = document.getElementById('total-carteira-valor');
+            const totalCarteiraCusto = document.getElementById('total-carteira-custo');
+            const totalCarteiraPL = document.getElementById('total-carteira-pl');
+            const graficoContainer = document.getElementById('grafico-container');
+            const historicoGraficoContainer = document.getElementById('historico-grafico-container');
+
+            // --- Elementos do Modal de Confirmação ---
+            const customModal = document.getElementById('custom-modal');
+            const customModalContent = document.getElementById('custom-modal-content');
+            const customModalTitle = document.getElementById('custom-modal-title');
+            const customModalMessage = document.getElementById('custom-modal-message');
+            const customModalOk = document.getElementById('custom-modal-ok');
+            const customModalCancel = document.getElementById('custom-modal-cancel');
+            
+            // --- Elementos do Modal de Seleção de FII ---
+            const fiiSelectModal = document.getElementById('fii-select-modal');
+            const fiiSelectModalContent = document.getElementById('fii-select-modal-content');
+            const fiiModalList = document.getElementById('fii-modal-list');
+            const fiiModalCancel = document.getElementById('fii-modal-cancel');
+            
+            // --- Estado ---
+            let carteira = []; 
+            let alocacaoChartInstance = null;
+            let historicoChartInstance = null;
+            let isAISearching = false;
+            let onConfirmCallback = null; 
+            let selectedAIFii = null; 
+            
+            // Pega a data atual do navegador para usar nas chamadas de IA
+            const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            // ===== Funções de CACHE =====
+            function setCache(key, data) {
+                const cacheItem = { timestamp: Date.now(), data: data };
+                try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(cacheItem)); } 
+                catch (e) { console.error("Erro ao salvar no cache:", e); clearBrapiCache(); }
+            }
+            function getCache(key) {
+                const cacheItem = localStorage.getItem(CACHE_PREFIX + key);
+                if (!cacheItem) return null;
+                try {
+                    const parsed = JSON.parse(cacheItem);
+                    const isExpired = (Date.now() - parsed.timestamp) > CACHE_DURATION;
+                    if (isExpired) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
+                    return parsed.data;
+                } catch (e) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
+            }
+            function clearBrapiCache() {
+                console.warn("A limpar cache da Brapi...");
+                Object.keys(localStorage)
+                    .filter(key => key.startsWith(CACHE_PREFIX))
+                    .forEach(key => localStorage.removeItem(key));
+            }
+
+            // --- Funções Auxiliares ---
+            const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
+            const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
+            const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
+            const formatDate = (dateString) => {
+                if (!dateString) return 'N/A';
+                try {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+                } catch (e) { return dateString; }
+            };
+            const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
+            
+            function parseMesAno(mesAnoStr) { // ex: "10/25"
+                try {
+                    const [mesStr, anoStr] = mesAnoStr.split('/');
+                    const mes = parseInt(mesStr, 10) - 1; // Mês é 0-indexado (0-11)
+                    const ano = parseInt("20" + anoStr, 10); // Converte "25" para 2025
+                    if (!isNaN(mes) && !isNaN(ano) && mes >= 0 && mes <= 11) {
+                        return new Date(ano, mes, 1); // Retorna o primeiro dia daquele mês
+                    }
+                    return null;
+                } catch (e) {
+                    console.error("Erro ao analisar data 'MM/AA':", mesAnoStr, e);
+                    return null;
+                }
+            }
+            
+            // ==========================================
+            // INÍCIO: Otimização Horário B3
+            // ==========================================
+            function getSaoPauloDateTime() {
+                try {
+                    // Usa 'en-US' para um formato de data consistente para o 'new Date()'
+                    const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+                    const spDate = new Date(spTimeStr);
+                    const dayOfWeek = spDate.getDay(); // 0 = Domingo, 6 = Sábado
+                    const hour = spDate.getHours();
+                    return { dayOfWeek, hour };
+                } catch (e) {
+                    console.error("Erro ao obter fuso horário de São Paulo, usando fuso local.", e);
+                    // Fallback para o fuso local (menos preciso, mas evita quebrar)
+                    const localDate = new Date();
+                    return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
+                }
+            }
+            
+            function isB3Open() {
+                // NOTA: Esta é uma verificação simplificada. Não inclui feriados.
+                const { dayOfWeek, hour } = getSaoPauloDateTime();
+                
+                // 1. Verifica fim de semana (0 = Domingo, 6 = Sábado)
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    return false;
+                }
+                
+                // 2. Verifica horário de negociação (10:00 às 18:00, Horário de SP)
+                // 10:00 (inclusive) até 18:00 (exclusivo)
+                if (hour >= 10 && hour < 18) {
+                    return true;
+                }
+                
+                return false;
+            }
+            // ==========================================
+            // FIM: Otimização Horário B3
+            // ==========================================
+
+            // Função de delay para chamadas sequenciais
+            const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+            function gerarCores(num) {
+                const PALETA_CORES = [
+                    '#8B5CF6', '#6D28D9', '#A78BFA', '#4C1D95', '#3b82f6', 
+                    '#22c55e', '#f97316', '#ef4444', '#14b8a6', '#eab308'
+                ];
+                let cores = [];
+                for (let i = 0; i < num; i++) { cores.push(PALETA_CORES[i % PALETA_CORES.length]); }
+                return cores;
+            }
+            
+            // --- Funções do Modal de Confirmação ---
+            function showModal(title, message, onConfirm) {
+                customModalTitle.textContent = title;
+                customModalMessage.textContent = message;
+                onConfirmCallback = onConfirm; 
+                
+                customModal.classList.add('visible');
+                customModalContent.classList.remove('modal-out');
+            }
+
+            function hideModal() {
+                onConfirmCallback = null; 
+                customModalContent.classList.add('modal-out');
+                setTimeout(() => {
+                    customModal.classList.remove('visible');
+                    customModalContent.classList.remove('modal-out');
+                }, 200); 
+            }
+            
+            // --- Funções do Modal de Seleção de FII ---
+            function showFiiModal() {
+                const fiiNaCarteira = carteira.filter(ativo => isFII(ativo.symbol)).sort((a,b) => a.symbol.localeCompare(b.symbol));
+                fiiModalList.innerHTML = ''; 
+
+                if (fiiNaCarteira.length === 0) {
+                    fiiModalList.innerHTML = '<p class="text-sm text-gray-500 text-center">Nenhum FII na carteira.</p>';
+                } else {
+                    fiiNaCarteira.forEach(ativo => {
+                        const fiiButton = document.createElement('button');
+                        fiiButton.className = 'w-full text-left p-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white transition-colors';
+                        fiiButton.textContent = ativo.symbol;
+                        fiiButton.dataset.symbol = ativo.symbol;
+                        fiiButton.onclick = () => {
+                            selectFii(ativo.symbol);
+                        };
+                        fiiModalList.appendChild(fiiButton);
+                    });
+                }
+                fiiSelectModal.classList.add('visible');
+                fiiSelectModalContent.classList.remove('modal-out');
+            }
+
+            function hideFiiModal() {
+                fiiSelectModalContent.classList.add('modal-out');
+                setTimeout(() => {
+                    fiiSelectModal.classList.remove('visible');
+                    fiiSelectModalContent.classList.remove('modal-out');
+                }, 200);
+            }
+
+            function selectFii(symbol) {
+                selectedAIFii = symbol;
+                aiTickerSelectButton.textContent = symbol;
+                aiTickerSelectButton.classList.remove('text-gray-500'); 
+                aiTickerSelectButton.classList.add('text-white');
+                hideFiiModal();
+            }
+            
+            function updateAIButtonState() {
+                const fiiNaCarteira = carteira.some(ativo => isFII(ativo.symbol));
+                if (!fiiNaCarteira) {
+                    aiTickerSelectButton.textContent = 'Nenhum FII na carteira';
+                    aiTickerSelectButton.disabled = true;
+                    aiSearchButton.disabled = true;
+                } else {
+                    if (!selectedAIFii) {
+                         aiTickerSelectButton.textContent = 'Selecione um FII da carteira';
+                         aiTickerSelectButton.classList.add('text-gray-500');
+                         aiTickerSelectButton.classList.remove('text-white');
+                    }
+                    aiTickerSelectButton.disabled = false;
+                    aiSearchButton.disabled = false;
+                }
+            }
+
+
+            // --- Funções de Dados (localStorage) ---
+            function salvarCarteira() {
+                localStorage.setItem(DB_KEY, JSON.stringify(carteira));
+            }
+            
+            function carregarCarteira() {
+                const carteiraSalva = localStorage.getItem(DB_KEY);
+                if (carteiraSalva) {
+                    try {
+                        const dados = JSON.parse(carteiraSalva);
+                        if (Array.isArray(dados)) {
+                            carteira = dados
+                                .filter(d => d && d.symbol && 
+                                              typeof d.quantity === 'number' && 
+                                              typeof d.precoMedio === 'number')
+                                .map(ativo => ({
+                                    ...ativo,
+                                    dataCompra: ativo.dataCompra || new Date().toISOString() 
+                                }));
+                        } else { carteira = []; }
+                    } catch (e) {
+                        console.error("Erro ao carregar carteira, a repor:", e);
+                        carteira = []; 
+                    }
+                } else {
+                    carteira = [];
+                }
+                salvarCarteira(); 
+                updateAIButtonState(); 
+            }
+
+            // --- Funções de Renderização ---
+            
+            function renderizarGraficoAlocacao(dadosGrafico) {
+                const ctx = document.getElementById('alocacao-chart').getContext('2d');
+                if (alocacaoChartInstance) { alocacaoChartInstance.destroy(); }
+                if (dadosGrafico.length === 0) {
+                    graficoContainer.classList.add('hidden');
+                    return;
+                }
+                
+                graficoContainer.classList.remove('hidden');
+                const labels = dadosGrafico.map(d => d.symbol);
+                const data = dadosGrafico.map(d => d.totalPosicao);
+                const colors = gerarCores(labels.length);
+
+                alocacaoChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'bottom', labels: { color: '#f3f4f6', boxWidth: 12, padding: 15, } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const percent = ((value / total) * 100).toFixed(2);
+                                        return `${label}: ${formatBRL(value)} (${percent}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function renderizarGraficoHistorico({ labels, data }) {
+                const canvas = document.getElementById('historico-proventos-chart');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                if (historicoChartInstance) { historicoChartInstance.destroy(); }
+                
+                if (!labels || !data || labels.length === 0) {
+                    historicoGraficoContainer.classList.add('hidden');
+                    return;
+                }
+                
+                historicoGraficoContainer.classList.remove('hidden');
+
+                // Melhoria Gráfica (Gradiente)
+                const gradient = ctx.createLinearGradient(0, 0, 0, 256); // 256 é a altura do canvas (h-64)
+                gradient.addColorStop(0, 'rgba(167, 139, 250, 0.9)'); // Roxo mais claro (A78BFA)
+                gradient.addColorStop(1, 'rgba(109, 40, 217, 0.9)'); // Roxo mais escuro (6D28D9)
+                
+                const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
+                hoverGradient.addColorStop(0, 'rgba(196, 181, 253, 1)'); // Mais claro ainda
+                hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)'); // Roxo principal
+
+                historicoChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Total Recebido',
+                            data: data,
+                            backgroundColor: gradient,
+                            hoverBackgroundColor: hoverGradient,
+                            borderColor: 'rgba(167, 139, 250, 0.3)', // Borda sutil
+                            borderWidth: 1,
+                            borderRadius: 5 // Bordas arredondadas
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                // Melhoria Visual (Tooltip)
+                                backgroundColor: '#1A1A1A',
+                                titleColor: '#f3f4f6',
+                                bodyColor: '#f3f4f6',
+                                borderColor: '#2A2A2A',
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false, // Esconde a caixinha de cor
+                                callbacks: {
+                                    title: (context) => `Mês: ${context[0].label}`, // Adiciona título
+                                    label: (context) => `Total: ${formatBRL(context.parsed.y)}`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#2A2A2A' }, // Linhas de grid escuras
+                                ticks: {
+                                    callback: (value) => formatBRL(value)
+                                }
+                            },
+                            x: {
+                                grid: { display: false } // Sem linhas de grid vertical
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function renderizarCarteira(precos = []) {
+                listaCarteira.innerHTML = ''; 
+                const precosMap = new Map(precos.map(p => [p.symbol, p]));
+                const carteiraOrdenada = [...carteira].sort((a, b) => a.symbol.localeCompare(b.symbol));
+
+                let totalValorCarteira = 0;
+                let totalCustoCarteira = 0;
+                let dadosGrafico = [];
+
+                if (carteiraOrdenada.length === 0) {
+                    carteiraMensagem.textContent = 'A sua carteira está vazia.';
+                    carteiraMensagem.classList.remove('hidden');
+                    dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
+                    dashboardLoading.classList.add('hidden');
+                    dashboardStatus.classList.remove('hidden');
+                    resumoCarteiraCard.classList.add('hidden');
+                    graficoContainer.classList.add('hidden');
+                    renderizarGraficoAlocacao([]); 
+                    renderizarGraficoHistorico({ labels: [], data: [] }); // Esconde o gráfico de histórico
+                } else {
+                    carteiraMensagem.classList.add('hidden');
+                    dashboardStatus.classList.add('hidden');
+                    resumoCarteiraCard.classList.remove('hidden');
+                }
+
+                carteiraOrdenada.forEach(ativo => {
+                    const dadoPreco = precosMap.get(ativo.symbol);
+                    const card = document.createElement('div');
+                    card.className = 'card-bg p-4 rounded-2xl shadow-lg card-animate-in';
+                    
+                    let precoAtual = 0, variacao = 0, precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
+
+                    if (dadoPreco) {
+                        precoAtual = dadoPreco.regularMarketPrice ?? 0;
+                        variacao = dadoPreco.regularMarketChangePercent ?? 0;
+                        precoFormatado = formatBRL(precoAtual);
+                        variacaoFormatada = formatPercent(variacao);
+                        corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
+                    } else {
+                        // Ativo sem preço (pode ter falhado a busca sequencial ou ainda não carregou)
+                        precoFormatado = 'A carregar...';
+                        corVariacao = 'text-yellow-500';
+                    }
+                    
+                    const totalPosicao = precoAtual * ativo.quantity;
+                    const custoTotal = ativo.precoMedio * ativo.quantity;
+                    const lucroPrejuizo = totalPosicao - custoTotal;
+                    const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
+                    let corPL = 'text-gray-500';
+                    if (lucroPrejuizo > 0.01) corPL = 'text-green-500';
+                    else if (lucroPrejuizo < -0.01) corPL = 'text-red-500';
+
+                    totalValorCarteira += totalPosicao;
+                    totalCustoCarteira += custoTotal;
+                    if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h2 class="text-xl font-bold text-white">${ativo.symbol}</h2>
+                                <p class="text-sm text-gray-500">${ativo.quantity} cota(s)</p>
+                                </div>
+                            <div class="text-right flex-shrink-0 ml-2">
+                                <span class="${corVariacao} font-semibold text-lg">${dadoPreco ? variacaoFormatada : '...'}</span>
+                                <p class="text-gray-100 text-lg">${precoFormatado}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-gray-800 space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-500">Posição Atual</span>
+                                <span class="text-base font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-500">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
+                                <span class="text-base font-semibold text-gray-300">${formatBRL(custoTotal)}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-500">Lucro/Prejuízo</span>
+                                <span class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
+                            </div>
+                            <div class="flex justify-end gap-3 pt-2">
+                                <button class="text-xs accent-text hover-accent-text transition-colors" data-symbol="${ativo.symbol}" data-action="details">Detalhes</button>
+                                <button class="text-xs text-red-500 hover:text-red-400 transition-colors" data-symbol="${ativo.symbol}" data-action="remove">Remover</button>
+                            </div>
+                        </div>
+                    `;
+                    listaCarteira.appendChild(card);
+                });
+                
+                if (carteiraOrdenada.length > 0) {
+                    const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
+                    const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
+                    let corPLTotal = 'text-gray-500';
+                    if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
+                    else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
+                    
+                    totalCarteiraValor.textContent = formatBRL(totalValorCarteira);
+                    totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
+                    totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
+                    totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
+                }
+                
+                renderizarGraficoAlocacao(dadosGrafico);
+            }
+
+            function renderizarProventos(proventosFuturos = []) {
+                let totalEstimado = 0;
+                
+                proventosFuturos.forEach(provento => {
+                    // CORREÇÃO (SNAG11): Garante que o valor é numérico E maior que zero
+                    if (typeof provento.quantity === 'number' && 
+                        typeof provento.value === 'number' &&
+                        provento.value > 0) { 
+                        totalEstimado += (provento.quantity * provento.value);
+                    }
+                });
+                
+                totalProventosEl.textContent = formatBRL(totalEstimado);
+            }
+            
+            // --- Funções de Fetch (API) ---
+
+            // =================================================================
+            // INÍCIO DA ALTERAÇÃO: Funções de fetch para o BFF
+            // =================================================================
+            async function fetchBFF(url, options = {}) {
+                try {
+                    // Adiciona um timeout de 30 segundos ao fetch
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000); 
+                    
+                    const response = await fetch(url, {
+                        ...options,
+                        signal: controller.signal 
+                    });
+
+                    clearTimeout(timeoutId); // Limpa o timeout se a resposta chegar
+
+                    if (!response.ok) {
+                        const errorBody = await response.json();
+                        throw new Error(errorBody.error || `Erro do servidor: ${response.statusText}`);
+                    }
+                    return response.json();
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.error(`Erro ao chamar o BFF ${url}:`, "Timeout de 30s excedido");
+                        throw new Error("O servidor demorou muito para responder. Tente novamente.");
+                    }
+                    console.error(`Erro ao chamar o BFF ${url}:`, error);
+                    throw error;
+                }
+            }
+            
+            async function buscarPrecosCarteira(force = false) { 
+                if (carteira.length === 0) return [];
+                
+                const cacheKey = 'precos_' + carteira.map(a => a.symbol).join('-');
+                
+                if (!isB3Open() && !force) {
+                    console.log("B3 fechada (ou fora do horário) e atualização não forçada. A usar preços do cache.");
+                    const precosCache = getCache(cacheKey);
+                    return precosCache || []; 
+                }
+
+                console.log("A buscar preços na API (sequencialmente para evitar rate limit)...");
+                const precos = [];
+
+                for (const ativo of carteira) {
+                    try {
+                        const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
+                        
+                        // ALTERADO: Chamada para o BFF
+                        const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+                        
+                        const result = data.results?.[0];
+
+                        if (result && !result.error) {
+                            if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
+                            precos.push(result);
+                        } else {
+                            console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
+                        }
+
+                    } catch (err) {
+                        console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
+                    }
+                    
+                    await delay(250); 
+                }
+
+                if (precos.length > 0) {
+                    console.log("Preços buscados (BFF), a salvar no cache.");
+                    setCache(cacheKey, precos);
+                }
+                
+                return precos;
+            }
+
+            function processarProventosIA(proventosDaIA = []) {
+                const hoje = new Date(); 
+                hoje.setHours(0, 0, 0, 0);
+                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+                return proventosDaIA
+                    .map(proventoIA => {
+                        const ativoCarteira = carteira.find(a => a.symbol === proventoIA.symbol);
+                        if (!ativoCarteira) return null;
+                        
+                        // Garante que o valor é número, positivo, e a data é válida
+                        if (proventoIA.paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(proventoIA.paymentDate)) {
+                            const parts = proventoIA.paymentDate.split('-');
+                            const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); // Mês é 0-indexado
+                            
+                            if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
+                                return {
+                                    ...proventoIA,
+                                    quantity: ativoCarteira.quantity 
+                                };
+                            }
+                        }
+                        return null; 
+                    })
+                    .filter(p => p !== null);
+            }
+
+            async function buscarProventosFuturos() {
+                const fiiNaCarteira = carteira
+                    .filter(a => isFII(a.symbol))
+                    .map(a => a.symbol);
+                    
+                if (fiiNaCarteira.length === 0) return [];
+                
+                const cacheKey = 'proventos_ia_' + fiiNaCarteira.join('-');
+                
+                const proventosCacheIA = getCache(cacheKey);
+                
+                if (proventosCacheIA) {
+                    console.log("A verificar cache de proventos (Gemini)...");
+                    const proventosFuturosCache = processarProventosIA(proventosCacheIA);
+                    if (proventosFuturosCache.length > 0) {
+                        console.log("Cache de proventos ainda é válido. A pular API da Gemini.");
+                        return proventosFuturosCache;
+                    }
+                    console.log("Cache de proventos está obsoleto (sem proventos futuros). A buscar na IA.");
+                }
+
+                let proventosDaIA = [];
+
+                try {
+                    console.log("A buscar proventos na API (Gemini via BFF)...");
+                    // ALTERADO: Chamada para o BFF
+                    proventosDaIA = await callGeminiProventosCarteiraAPI(fiiNaCarteira, todayString);
+                    
+                    if (proventosDaIA && proventosDaIA.length > 0) {
+                        console.log("Proventos buscados (Gemini), a salvar no cache.");
+                        setCache(cacheKey, proventosDaIA); 
+                    }
+                } catch (error) {
+                    console.error("Erro ao buscar proventos com IA:", error);
+                    proventosDaIA = proventosCacheIA || []; 
+                }
+
+                return processarProventosIA(proventosDaIA); 
+            }
+
+            async function buscarHistoricoProventosAgregado() {
+                const fiiNaCarteira = carteira.filter(a => isFII(a.symbol));
+                if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
+
+                const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
+                const cacheKey = 'hist_agregado_v4_' + fiiSymbols.join('-'); 
+                
+                const cache = getCache(cacheKey);
+                let aiData;
+
+                if (cache) {
+                    console.log("A usar cache para histórico agregado.");
+                    aiData = cache;
+                } else {
+                    console.log("A buscar histórico agregado na API (Gemini via BFF)...");
+                    try {
+                        // ALTERADO: Chamada para o BFF
+                        aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
+                        
+                        if (aiData && aiData.length > 0) {
+                            setCache(cacheKey, aiData);
+                        }
+                    } catch (e) {
+                        console.error("Erro ao buscar histórico agregado:", e);
+                        return { labels: [], data: [] }; 
+                    }
+                }
+
+                if (!aiData || aiData.length === 0) return { labels: [], data: [] };
+
+                // Processar dados com dataCompra
+                const carteiraMap = new Map(fiiNaCarteira.map(a => [a.symbol, { 
+                    quantity: a.quantity, 
+                    inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
+                }]));
+                
+                const labels = aiData.map(d => d.mes);
+                const data = aiData.map(mesData => {
+                    let totalMes = 0;
+                    const dataDoMes = parseMesAno(mesData.mes); 
+                    
+                    if (!dataDoMes) return 0;
+                    const timeDoMes = dataDoMes.getTime();
+
+                    fiiSymbols.forEach(symbol => {
+                        const ativo = carteiraMap.get(symbol);
+                        if (!ativo) return; 
+
+                        const quantity = ativo.quantity;
+                        const inicioMesCompraTime = ativo.inicioMesCompra;
+                        const valorPorCota = mesData[symbol] || 0;
+                        
+                        if (timeDoMes >= inicioMesCompraTime) {
+                             totalMes += (valorPorCota * quantity);
+                        }
+                    });
+                    return totalMes;
+                });
+
+                return { labels, data };
+            }
+
+            async function buscarHistoricoDividendos(symbol) {
+                const cacheKey = `hist_div_${symbol}`;
+                const cache = getCache(cacheKey);
+                if (cache) return cache;
+                try {
+                    const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
+                    
+                    // ALTERADO: Chamada para o BFF
+                    const url = `/api/brapi?path=/v2/dividends?ticker=${tickerParaApi}`;
+                    const data = await fetchBFF(url);
+                    
+                    const historico = (data.dividendsHistory ?? []).map(d => ({
+                        valor: d.value, dataPag: d.paymentDate, dataCom: d.recordDate
+                    })).reverse(); 
+                    setCache(cacheKey, historico);
+                    return historico;
+                } catch (error) { 
+                    console.error("Erro ao buscar histórico:", error); 
+                    return null; 
+                }
+            }
+            
+            // --- Funções Principais (Handlers) ---
+            
+             async function atualizarTodosDados(force = false) { 
+                carteiraLoading.classList.remove('hidden');
+                carteiraMensagem.classList.add('hidden');
+                dashboardStatus.classList.remove('hidden');
+                dashboardLoading.classList.remove('hidden');
+                
+                const refreshIcon = refreshButton.querySelector('svg'); 
+                refreshIcon.classList.add('spin-animation');
+
+                // --- Etapa 1: Renderização Imediata do Cache (se houver) ---
+                let precosRenderizados = false;
+                let proventosRenderizados = false;
+
+                const cacheKeyPrecos = 'precos_' + carteira.map(a => a.symbol).join('-');
+                const precosCache = getCache(cacheKeyPrecos);
+                if (precosCache) {
+                    console.log("A renderizar preços do cache imediatamente.");
+                    renderizarCarteira(precosCache);
+                    precosRenderizados = true;
+                }
+
+                const fiiNaCarteiraCache = carteira.filter(a => isFII(a.symbol)).map(a => a.symbol);
+                if (fiiNaCarteiraCache.length > 0) {
+                    const cacheKeyProventos = 'proventos_ia_' + fiiNaCarteiraCache.join('-');
+                    const proventosCacheIA = getCache(cacheKeyProventos); // Dados brutos da IA
+                    if (proventosCacheIA) {
+                        console.log("A renderizar proventos do cache imediatamente.");
+                        const proventosFuturosCache = processarProventosIA(proventosCacheIA);
+                        renderizarProventos(proventosFuturosCache);
+                        proventosRenderizados = true;
+                    }
+                }
+                
+                if (carteira.length === 0) {
+                     renderizarCarteira([]); 
+                     renderizarProventos([]);
+                     renderizarGraficoHistorico({ labels: [], data: [] }); // Limpa o gráfico de histórico
+                     refreshIcon.classList.remove('spin-animation');
+                     carteiraLoading.classList.add('hidden');
+                     dashboardStatus.classList.remove('hidden'); // Mostra "A sua carteira está vazia"
+                     dashboardLoading.classList.add('hidden');
+                     dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
+                     resumoCarteiraCard.classList.add('hidden');
+                     graficoContainer.classList.add('hidden');
+                     updateAIButtonState();
+                     return; 
+                }
+
+                // --- Etapa 2: Busca em Paralelo (Brapi e Gemini) ---
+                const promessaPrecos = buscarPrecosCarteira(force);
+                const promessaProventos = buscarProventosFuturos();
+                const promessaHistorico = buscarHistoricoProventosAgregado();
+
+                // --- Etapa 3: Lidar com cada promessa assim que ela terminar ---
+
+                promessaPrecos.then(precos => {
+                    console.log("Busca de preços (BFF) concluída.");
+                    renderizarCarteira(precos);
+                }).catch(err => {
+                    console.error("Erro ao buscar preços (BFF):", err);
+                    if (!precosRenderizados) { 
+                        carteiraMensagem.textContent = "Erro ao buscar preços.";
+                        carteiraMensagem.classList.remove('hidden');
+                    }
+                });
+
+                promessaProventos.then(proventosFuturos => {
+                    console.log("Busca de proventos (BFF) concluída.");
+                    renderizarProventos(proventosFuturos);
+                }).catch(err => {
+                    console.error("Erro ao buscar proventos (BFF):", err);
+                    if (!proventosRenderizados) { 
+                        totalProventosEl.textContent = "Erro";
+                    }
+                });
+                
+                promessaHistorico.then(({ labels, data }) => {
+                    console.log("Busca de histórico agregado (BFF) concluída.");
+                    renderizarGraficoHistorico({ labels, data });
+                }).catch(err => {
+                    console.error("Erro ao buscar histórico agregado (BFF):", err);
+                    renderizarGraficoHistorico({ labels: [], data: [] }); 
+                });
+
+                // --- Etapa 4: Esconder Spinners (Quando TUDO terminar) ---
+                try {
+                    await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]);
+                } finally {
+                    console.log("Todas as sincronizações (BFF) terminaram.");
+                    refreshIcon.classList.remove('spin-animation');
+                    carteiraLoading.classList.add('hidden');
+                    
+                    if (carteira.length > 0) {
+                         dashboardStatus.classList.add('hidden');
+                         dashboardLoading.classList.add('hidden');
+                    }
+                    updateAIButtonState();
+                }
+            }
+            
+            async function handleAdicionarAtivo() {
+                let ticker = tickerInput.value.trim().toUpperCase();
+                let novaQuantidade = parseInt(quantityInput.value, 10);
+                let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
+
+                if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
+
+                if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco <= 0) {
+                    tickerInput.classList.add('border-red-500');
+                    quantityInput.classList.add('border-red-500');
+                    precoMedioInput.classList.add('border-red-500'); 
+                    setTimeout(() => {
+                        tickerInput.classList.remove('border-red-500');
+                        quantityInput.classList.remove('border-red-500');
+                        precoMedioInput.classList.remove('border-red-500'); 
+                    }, 2000);
+                    return;
+                }
+                
+                const ativoExistente = carteira.find(a => a.symbol === ticker);
+
+                if (!ativoExistente) {
+                    carteiraLoading.classList.remove('hidden');
+                    const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
+                    try {
+                         // ALTERADO: Chamada para o BFF
+                         const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+                         
+                         if (!quoteData.results || quoteData.results[0].error) {
+                             throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
+                         }
+                        
+                        carteira.push({ 
+                            symbol: ticker, 
+                            quantity: novaQuantidade, 
+                            precoMedio: novoPreco,
+                            dataCompra: new Date().toISOString() 
+                        });
+                        
+                    } catch (error) {
+                         console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
+                         carteiraLoading.classList.add('hidden');
+                         tickerInput.value = '';
+                         tickerInput.placeholder = "Ativo não encontrado";
+                         tickerInput.classList.add('border-red-500');
+                         setTimeout(() => { 
+                            tickerInput.placeholder = "Ativo"; 
+                            tickerInput.classList.remove('border-red-500');
+                         }, 2000);
+                         return;
+                    }
+                } else {
+                    const custoTotalAntigo = ativoExistente.quantity * ativoExistente.precoMedio;
+                    const custoNovaCompra = novaQuantidade * novoPreco;
+                    const quantidadeTotal = ativoExistente.quantity + novaQuantidade;
+                    const custoTotalNovo = custoTotalAntigo + custoNovaCompra;
+                    const novoPrecoMedio = custoTotalNovo / quantidadeTotal;
+                    
+                    ativoExistente.quantity = quantidadeTotal;
+                    ativoExistente.precoMedio = parseFloat(novoPrecoMedio.toFixed(2));
+                }
+
+                clearBrapiCache();
+                salvarCarteira();
+                atualizarTodosDados(true); 
+                
+                tickerInput.value = '';
+                quantityInput.value = '';
+                precoMedioInput.value = '';
+                tickerInput.focus(); 
+            }
+
+            function handleRemoverAtivo(symbol) {
+                showModal(
+                    'Remover Ativo', 
+                    `Tem certeza que deseja remover ${symbol} da sua carteira?`, 
+                    () => { 
+                        carteira = carteira.filter(a => a.symbol !== symbol);
+                        
+                        if (selectedAIFii === symbol) {
+                            selectedAIFii = null;
+                        }
+                        
+                        clearBrapiCache(); 
+                        salvarCarteira();
+                        atualizarTodosDados(true); 
+                        if (detalhesTitulo.textContent.includes(symbol)) {
+                            limparDetalhes();
+                        }
+                    }
+                );
+            }
+            
+            function limparDetalhes() {
+                detalhesMensagem.classList.remove('hidden');
+                detalhesLoading.classList.add('hidden');
+                detalhesTitulo.innerHTML = '<h1 class="text-4xl font-extrabold tracking-tight title-gradient">Detalhes do Ativo</h1>'; 
+                detalhesPreco.innerHTML = '';
+                detalhesHistoricoContainer.classList.add('hidden');
+                detalhesHistorico.innerHTML = '<p class="text-sm text-gray-500">A carregar histórico...</p>';
+                detalhesAiProvento.innerHTML = ''; 
+            }
+            
+            async function handleMostrarDetalhes(symbol) {
+                mudarAba('tab-detalhes');
+                detalhesMensagem.classList.add('hidden');
+                detalhesLoading.classList.remove('hidden');
+                detalhesPreco.innerHTML = '';
+                detalhesAiProvento.innerHTML = ''; 
+                detalhesHistoricoContainer.classList.add('hidden');
+                detalhesHistorico.innerHTML = '<p class="text-sm text-gray-500">A carregar histórico...</p>';
+                detalhesTitulo.innerHTML = `<h1 class="text-4xl font-extrabold tracking-tight title-gradient">${symbol}</h1>`;
+                
+                const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
+                const cacheKeyPreco = `detalhe_preco_${symbol}`;
+                let precoData = getCache(cacheKeyPreco);
+                
+                if (!precoData) {
+                    try {
+                        // ALTERADO: Chamada para o BFF
+                        const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+                        precoData = data.results?.[0];
+                        if (precoData && !precoData.error) setCache(cacheKeyPreco, precoData); 
+                        else throw new Error(precoData?.error || 'Ativo não encontrado');
+                    } catch (e) { precoData = null; }
+                }
+
+                const promessaHistorico = buscarHistoricoDividendos(symbol); 
+                let promessaAi = null;
+                
+                if (isFII(symbol)) {
+                    detalhesHistoricoContainer.classList.remove('hidden'); 
+                    // Skeleton loader para 12 meses
+                    detalhesAiProvento.innerHTML = `
+                        <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
+                        <div id="historico-12m-loading" class="space-y-3 animate-pulse pt-2">
+                            <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                            <div class="h-4 bg-gray-700 rounded-md w-1/2"></div>
+                            <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                            <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>
+                        </div>
+                    `;
+                    
+                    // ALTERADO: Chamada para o BFF
+                    promessaAi = callGeminiHistoricoAPI(symbol, todayString); 
+                }
+                
+                const historico = await promessaHistorico;
+                detalhesLoading.classList.add('hidden');
+
+                if (precoData) {
+                    detalhesTitulo.innerHTML = `
+                        <img id="detalhes-logo" src="${precoData.logourl}" alt="Logo" class="w-12 h-12 rounded-full mx-auto mb-2 ${!precoData.logourl ? 'hidden' : ''}" onerror="this.classList.add('hidden')">
+                        <h1 class="text-4xl font-extrabold tracking-tight title-gradient">${symbol}</h1>
+                        <p id="detalhes-nome-longo" class="text-base font-normal text-gray-500 mt-1">${precoData.longName || 'Nome não disponível'}</p>
+                    `;
+                    
+                    const createDetailItem = (label, value, color = 'text-gray-100') => `
+                        <div class="bg-gray-800 p-4 rounded-xl">
+                            <span class="text-xs text-gray-500">${label}</span>
+                            <p class="text-lg font-semibold ${color}">${value}</p>
+                        </div>`;
+                    
+                    const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
+
+                    const ativoCarteira = carteira.find(a => a.symbol === symbol);
+                    let plHtml = '';
+                    if (ativoCarteira) {
+                        const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
+                        const custoTotal = ativoCarteira.precoMedio * ativoCarteira.quantity;
+                        const lucroPrejuizo = totalPosicao - custoTotal;
+                        const lucroPrejuizoPercent = (custoTotal === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
+                        let corPL = 'text-gray-500';
+                        if (lucroPrejuizo > 0) corPL = 'text-green-500';
+                        else if (lucroPrejuizo < 0) corPL = 'text-red-500';
+                        
+                        plHtml = `
+                            ${createDetailItem('Sua Posição', formatBRL(totalPosicao))}
+                            ${createDetailItem('Seu P/L', `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)`, corPL)}
+                        `;
+                    }
+
+                    detalhesPreco.innerHTML = `
+                        ${createDetailItem('Preço Atual', formatBRL(precoData.regularMarketPrice))}
+                        ${createDetailItem('Variação (Dia)', formatPercent(precoData.regularMarketChangePercent), variacaoCor)}
+                        ${plHtml} 
+                        ${createDetailItem('Abertura', formatBRL(precoData.regularMarketOpen))}
+                        ${createDetailItem('Valor de Mercado', formatNumber(precoData.marketCap))}
+                        ${createDetailItem('Máx. Dia', formatBRL(precoData.regularMarketDayHigh), 'text-green-500')}
+                        ${createDetailItem('Mín. Dia', formatBRL(precoData.regularMarketDayLow), 'text-red-500')}
+                        ${createDetailItem('Máx. 52 Semanas', formatBRL(precoData.fiftyTwoWeekHigh))}
+                        ${createDetailItem('Mín. 52 Semanas', formatBRL(precoData.fiftyTwoWeekLow))} 
+                    `;
+                    
+                } else {
+                    detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
+                }
+
+                detalhesHistoricoContainer.classList.remove('hidden'); 
+                if (historico && historico.length > 0) {
+                    detalhesHistorico.innerHTML = historico.map(div => `
+                        <div class="flex justify-between text-sm p-3 bg-gray-800 rounded-lg">
+                            <div>
+                                <span class="text-gray-500">Pag.:</span>
+                                <span class="font-medium text-gray-100">${formatDate(div.dataPag)}</span>
+                            </div>
+                            <div class="font-semibold accent-text">${formatBRL(div.valor)}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    detalhesHistorico.innerHTML = ''; 
+                }
+
+                if (promessaAi) {
+                    try {
+                        // ALTERADO: A resposta do BFF já é o texto limpo
+                        const aiResult = await promessaAi;
+                        detalhesAiProvento.innerHTML = `
+                            <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
+                            <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${aiResult}</p>
+                        `;
+                    } catch (e) {
+                        detalhesAiProvento.innerHTML = `
+                            <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
+                            <p class="text-sm text-red-500 bg-gray-800 p-3 rounded-lg">Erro ao consultar o histórico via IA: ${e.message}</p>
+                        `;
+                    }
+                }
+            }
+            
+            function mudarAba(tabId) {
+                tabContents.forEach(content => {
+                    content.classList.toggle('active', content.id === tabId);
+                });
+                tabButtons.forEach(button => {
+                    button.classList.toggle('active', button.dataset.tab === tabId);
+                });
+                if (tabId !== 'tab-detalhes') {
+                    if (detalhesMensagem.classList.contains('hidden')) {
+                         limparDetalhes();
+                    }
+                }
+            }
+
+            refreshButton.addEventListener('click', () => {
+                clearBrapiCache();
+                atualizarTodosDados(true); 
+            });
+            addButton.addEventListener('click', handleAdicionarAtivo);
+            tickerInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
+            quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
+            precoMedioInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); 
+
+            listaCarteira.addEventListener('click', (e) => {
+                const target = e.target.closest('button');
+                if (!target) return;
+                const action = target.dataset.action;
+                const symbol = target.dataset.symbol;
+                if (action === 'remove') handleRemoverAtivo(symbol);
+                else if (action === 'details') handleMostrarDetalhes(symbol);
+            });
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    mudarAba(button.dataset.tab);
+                });
+            });
+            
+            customModalCancel.addEventListener('click', hideModal);
+            customModalOk.addEventListener('click', () => {
+                if (typeof onConfirmCallback === 'function') {
+                    onConfirmCallback(); 
+                }
+                hideModal(); 
+            });
+            customModal.addEventListener('click', (e) => {
+                if (e.target === customModal) { 
+                    hideModal();
+                }
+            });
+            
+            aiTickerSelectButton.addEventListener('click', showFiiModal);
+            fiiModalCancel.addEventListener('click', hideFiiModal);
+            fiiSelectModal.addEventListener('click', (e) => {
+                if (e.target === fiiSelectModal) { 
+                    hideModal();
+                }
+            });
+            
+            aiSearchButton.addEventListener('click', async () => {
+                const ticker = selectedAIFii; 
+                if (!ticker || isAISearching) return;
+
+                isAISearching = true;
+                aiResultCard.classList.remove('hidden');
+                aiLoading.classList.remove('hidden');
+                aiResultMessage.classList.add('hidden');
+                aiButtonIcon.classList.add('hidden');
+                aiButtonLoader.classList.remove('hidden');
+                aiSearchButton.disabled = true;
+                aiTickerSelectButton.disabled = true; 
+
+                try {
+                    // ALTERADO: Chamada para o BFF
+                    const resposta = await callGeminiAPI(ticker, todayString);
+                    aiResultMessage.textContent = resposta; // Resposta já vem limpa
+                } catch (error) {
+                    console.error("Erro na API Gemini:", error);
+                    aiResultMessage.textContent = error.message || "Erro ao buscar dados. Verifique sua conexão e tente novamente.";
+                } finally {
+                    isAISearching = false;
+                    aiLoading.classList.add('hidden');
+                    aiResultMessage.classList.remove('hidden');
+                    aiButtonIcon.classList.remove('hidden');
+                    aiButtonLoader.classList.add('hidden');
+                    aiSearchButton.disabled = false;
+                    aiTickerSelectButton.disabled = false; 
+                }
+            });
+
+
+            // --- Funções da API Gemini (ALTERADAS PARA O BFF) ---
+            
+            async function callGeminiAPI(ticker, todayString) {
+                // ALTERADO: Envia apenas os dados necessários para o BFF
+                const body = {
+                    mode: 'proximo_provento',
+                    payload: { ticker, todayString }
+                };
+                
+                const response = await fetchBFF('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                return response.text; // O BFF retorna o texto da IA
+            }
+
+            async function callGeminiHistoricoAPI(ticker, todayString) {
+                // ALTERADO: Envia apenas os dados necessários para o BFF
+                const body = {
+                    mode: 'historico_12m',
+                    payload: { ticker, todayString }
+                };
+                
+                const response = await fetchBFF('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                return response.text; // O BFF retorna o texto da IA
+            }
+            
+            async function callGeminiProventosCarteiraAPI(fiiList, todayString) {
+                // ALTERADO: Envia apenas os dados necessários para o BFF
+                const body = {
+                    mode: 'proventos_carteira',
+                    payload: { fiiList, todayString }
+                };
+                
+                const response = await fetchBFF('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                return response.json; // O BFF retorna o JSON
+            }
+            
+            async function callGeminiHistoricoPortfolioAPI(fiiList, todayString) {
+                // ALTERADO: Envia apenas os dados necessários para o BFF
+                 const body = {
+                    mode: 'historico_portfolio',
+                    payload: { fiiList, todayString }
+                };
+                
+                const response = await fetchBFF('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                return response.json; // O BFF retorna o JSON
+            }
+            // =================================================================
+            // FIM DAS ALTERAÇÕES NO FRONTEND
+            // =================================================================
+
+
+            // --- Inicialização ---
+            carregarCarteira();
+            atualizarTodosDados(false); 
+            setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
+        });
+    </script>
+</body>
+</html>

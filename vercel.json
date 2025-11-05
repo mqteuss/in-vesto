@@ -1,0 +1,30 @@
+{
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    },
+    {
+      "source": "/api/quote",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "s-maxage=1800, stale-while-revalidate=3600"
+        }
+      ]
+    },
+    {
+      "source": "/api/dividends",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "s-maxage=3600, stale-while-revalidate=86400"
+        }
+      ]
+    }
+  ]
+}

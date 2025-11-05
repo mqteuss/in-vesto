@@ -739,7 +739,10 @@
                 const ctx = document.getElementById('alocacao-chart').getContext('2d');
                 
                 if (dadosGrafico.length === 0) {
-                    if (alocacaoChartInstance) { alocacaoChartInstance.destroy(); }
+                    if (alocacaoChartInstance) {
+                        alocacaoChartInstance.destroy();
+                        alocacaoChartInstance = null; // Garante que será recriado
+                    }
                     graficoContainer.classList.add('hidden');
                     lastAlocacaoData = null; // Reseta o snapshot
                     return;
@@ -751,39 +754,50 @@
                 // --- LÓGICA INTELIGENTE DE COMPARAÇÃO ---
                 const newDataString = JSON.stringify({ labels, data });
                 if (newDataString === lastAlocacaoData) {
-                    console.log("[Gráfico Alocação] Dados idênticos, a pular redesenho.");
+                    // console.log("[Gráfico Alocação] Dados idênticos, a pular redesenho.");
                     return; // Os dados não mudaram, não faz nada.
                 }
                 lastAlocacaoData = newDataString; // Atualiza o snapshot
-                console.log("[Gráfico Alocação] Dados novos, a redesenhar...");
+                console.log("[Gráfico Alocação] Dados novos, a atualizar/redesenhar...");
                 // --- FIM DA LÓGICA ---
-
-                if (alocacaoChartInstance) { alocacaoChartInstance.destroy(); }
                 
                 graficoContainer.classList.remove('hidden');
                 const colors = gerarCores(labels.length);
 
-                alocacaoChartInstance = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, }] },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: true, position: 'bottom', labels: { color: '#f3f4f6', boxWidth: 12, padding: 15, } },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const label = context.label || '';
-                                        const value = context.parsed || 0;
-                                        const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                        const percent = ((value / total) * 100).toFixed(2);
-                                        return `${label}: ${formatBRL(value)} (${percent}%)`;
+                // --- LÓGICA DE UPDATE ---
+                if (alocacaoChartInstance) {
+                    // Se o gráfico já existe, apenas atualize os dados
+                    alocacaoChartInstance.data.labels = labels;
+                    alocacaoChartInstance.data.datasets[0].data = data;
+                    alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
+                    alocacaoChartInstance.update();
+                    console.log("[Gráfico Alocação] Instância atualizada.");
+                } else {
+                    // Se for a primeira vez, crie o gráfico
+                    alocacaoChartInstance = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, }] },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: true, position: 'bottom', labels: { color: '#f3f4f6', boxWidth: 12, padding: 15, } },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.parsed || 0;
+                                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                            const percent = ((value / total) * 100).toFixed(2);
+                                            return `${label}: ${formatBRL(value)} (${percent}%)`;
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                });
+                    });
+                    console.log("[Gráfico Alocação] Nova instância criada.");
+                }
+                // --- FIM DA LÓGICA DE UPDATE ---
             }
             // ==========================================================
             // FIM: GRÁFICO DE ALOCAÇÃO OTIMIZADO
@@ -800,76 +814,93 @@
                 // --- LÓGICA INTELIGENTE DE COMPARAÇÃO ---
                 const newDataString = JSON.stringify({ labels, data });
                 if (newDataString === lastHistoricoData) {
-                    console.log("[Gráfico Histórico] Dados idênticos, a pular redesenho.");
+                    // console.log("[Gráfico Histórico] Dados idênticos, a pular redesenho.");
                     return; // Os dados não mudaram, não faz nada.
                 }
                 lastHistoricoData = newDataString; // Atualiza o snapshot
-                console.log("[Gráfico Histórico] Dados novos, a redesenhar...");
+                console.log("[Gráfico Histórico] Dados novos, a atualizar/redesenhar...");
                 // --- FIM DA LÓGICA ---
-
-                if (historicoChartInstance) { historicoChartInstance.destroy(); }
                 
                 if (!labels || !data || labels.length === 0) {
+                    if (historicoChartInstance) {
+                        historicoChartInstance.destroy();
+                        historicoChartInstance = null; // Garante que será recriado
+                    }
                     historicoGraficoContainer.classList.add('hidden');
                     return;
                 }
                 
                 historicoGraficoContainer.classList.remove('hidden');
 
+                // --- LÓGICA DE UPDATE ---
+                // (Precisamos recriar os gradientes pois o contexto (ctx) é local da função)
                 const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
                 gradient.addColorStop(0, 'rgba(167, 139, 250, 0.9)'); 
                 gradient.addColorStop(1, 'rgba(109, 40, 217, 0.9)'); 
                 
                 const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
                 hoverGradient.addColorStop(0, 'rgba(196, 181, 253, 1)'); 
-                hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)'); 
-
-                historicoChartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Total Recebido',
-                            data: data,
-                            backgroundColor: gradient,
-                            hoverBackgroundColor: hoverGradient,
-                            borderColor: 'rgba(167, 139, 250, 0.3)', 
-                            borderWidth: 1,
-                            borderRadius: 5 
-                        }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                backgroundColor: '#1A1A1A',
-                                titleColor: '#f3f4f6',
-                                bodyColor: '#f3f4f6',
-                                borderColor: '#2A2A2A',
+                hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');
+                
+                if (historicoChartInstance) {
+                    // Se o gráfico já existe, apenas atualize os dados
+                    historicoChartInstance.data.labels = labels;
+                    historicoChartInstance.data.datasets[0].data = data;
+                    historicoChartInstance.data.datasets[0].backgroundColor = gradient;
+                    historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
+                    historicoChartInstance.update();
+                    console.log("[Gráfico Histórico] Instância atualizada.");
+                } else {
+                    // Se for a primeira vez, crie o gráfico
+                    historicoChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Total Recebido',
+                                data: data,
+                                backgroundColor: gradient,
+                                hoverBackgroundColor: hoverGradient,
+                                borderColor: 'rgba(167, 139, 250, 0.3)', 
                                 borderWidth: 1,
-                                padding: 10,
-                                displayColors: false, 
-                                callbacks: {
-                                    title: (context) => `Mês: ${context[0].label}`, 
-                                    label: (context) => `Total: ${formatBRL(context.parsed.y)}`
-                                }
-                            }
+                                borderRadius: 5 
+                            }]
                         },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: '#2A2A2A' }, 
-                                ticks: {
-                                    callback: (value) => formatBRL(value)
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#1A1A1A',
+                                    titleColor: '#f3f4f6',
+                                    bodyColor: '#f3f4f6',
+                                    borderColor: '#2A2A2A',
+                                    borderWidth: 1,
+                                    padding: 10,
+                                    displayColors: false, 
+                                    callbacks: {
+                                        title: (context) => `Mês: ${context[0].label}`, 
+                                        label: (context) => `Total: ${formatBRL(context.parsed.y)}`
+                                    }
                                 }
                             },
-                            x: {
-                                grid: { display: false } 
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: '#2A2A2A' }, 
+                                    ticks: {
+                                        callback: (value) => formatBRL(value)
+                                    }
+                                },
+                                x: {
+                                    grid: { display: false } 
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                    console.log("[Gráfico Histórico] Nova instância criada.");
+                }
+                // --- FIM DA LÓGICA DE UPDATE ---
             }
             // ==========================================================
             // FIM: GRÁFICO DE HISTÓRICO OTIMIZADO

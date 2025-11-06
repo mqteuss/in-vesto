@@ -1574,25 +1574,23 @@
                 }
             }
             
-            async function buscarPrecosCarteira(force = false) { 
+async function buscarPrecosCarteira(force = false) { 
                 if (carteiraCalculada.length === 0) return [];
                 
-                const cacheKey = 'precos_' + carteiraCalculada.map(a => a.symbol).join('-');
+                console.log("A buscar preços na API (cache por ativo)...");
                 
-                if (!isB3Open() && !force) {
-                    const precosCache = getCache(cacheKey);
-                    return precosCache || []; 
-                }
-                
-                if (!force) {
-                    const precosCache = getCache(cacheKey);
-                    if (precosCache) { return precosCache; }
-                }
+                const promessas = carteiraCalculada.map(async (ativo) => {
+                    const cacheKey = `preco_${ativo.symbol}`; // Chave de cache por ativo
+                    
+                    if (!force) {
+                        const precoCache = getCache(cacheKey);
+                        // Se a B3 estiver fechada, o cache (mesmo antigo) é aceitável
+                        if (precoCache && !isB3Open()) return precoCache;
+                        // Se a B3 estiver aberta, usa o cache se não estiver expirado
+                        if (precoCache) return precoCache;
+                    }
 
-                console.log("A buscar preços na API (sequencialmente)...");
-                const precos = [];
-
-                for (const ativo of carteiraCalculada) {
+                    // Se não houver cache, ou 'force' for true, busca na rede
                     try {
                         const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
                         const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -1600,21 +1598,20 @@
 
                         if (result && !result.error) {
                             if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                            precos.push(result);
+                            setCache(cacheKey, result); // Salva o resultado individual no cache
+                            return result;
                         } else {
                             console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
+                            return null;
                         }
                     } catch (err) {
                         console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
+                        return null;
                     }
-                    await delay(250); 
-                }
+                });
 
-                if (precos.length > 0) {
-                    setCache(cacheKey, precos); 
-                }
-                
-                return precos;
+                const resultados = await Promise.all(promessas);
+                return resultados.filter(p => p !== null); // Retorna apenas os que tiveram sucesso
             }
 
             function processarProventosIA(proventosDaIA = []) {
@@ -1640,42 +1637,55 @@
                     .filter(p => p !== null);
             }
 
-            async function buscarProventosFuturos() {
+async function buscarProventosFuturos() {
                 const fiiNaCarteira = carteiraCalculada
                     .filter(a => isFII(a.symbol))
                     .map(a => a.symbol);
                     
                 if (fiiNaCarteira.length === 0) return [];
-                
-                const cacheKey = 'proventos_ia_' + fiiNaCarteira.join('-');
-                const proventosCacheIA_bruto = getCache(cacheKey); 
-                
-                if (proventosCacheIA_bruto) {
-                    const proventosFuturosCache = processarProventosIA(proventosCacheIA_bruto);
-                    if (proventosFuturosCache.length > 0) {
-                        return proventosFuturosCache;
+
+                let proventosFinais = [];
+                let fiisParaBuscar = [];
+
+                // 1. Separa os FIIs que já estão no cache dos que precisam de busca
+                for (const symbol of fiiNaCarteira) {
+                    const cacheKey = `provento_ia_${symbol}`;
+                    const proventoCache = getCache(cacheKey);
+
+                    if (proventoCache) {
+                        proventosFinais.push(proventoCache);
+                    } else {
+                        fiisParaBuscar.push(symbol);
                     }
                 }
+                
+                console.log("Proventos em cache:", proventosFinais.map(p => p.symbol));
+                console.log("Proventos para buscar:", fiisParaBuscar);
 
-                let proventosDaIA_bruto_api; 
-
-                try {
-                    proventosDaIA_bruto_api = await callGeminiProventosCarteiraAPI(fiiNaCarteira, todayString);
-                } catch (error) {
-                    console.error("Erro ao buscar proventos com IA:", error);
-                    proventosDaIA_bruto_api = proventosCacheIA_bruto || []; 
-                    return processarProventosIA(proventosDaIA_bruto_api);
+                // 2. Busca na API apenas os FIIs que faltam
+                if (fiisParaBuscar.length > 0) {
+                    try {
+                        const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
+                        
+                        // 3. Salva os novos resultados individualmente no cache
+                        if (novosProventos && Array.isArray(novosProventos)) {
+                            for (const provento of novosProventos) {
+                                if (provento && provento.symbol) {
+                                    const cacheKey = `provento_ia_${provento.symbol}`;
+                                    // Usamos CACHE_24_HORAS em vez de -1 (infinito) para garantir que o dado seja atualizado
+                                    setCache(cacheKey, provento, CACHE_24_HORAS); 
+                                    proventosFinais.push(provento);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Erro ao buscar novos proventos com IA:", error);
+                        // Não lança erro, continua com os dados do cache
+                    }
                 }
                 
-                const proventosFuturosProcessados = processarProventosIA(proventosDaIA_bruto_api);
-                
-                if (proventosFuturosProcessados.length > 0) {
-                    setCache(cacheKey, proventosDaIA_bruto_api, -1); 
-                } else {
-                    localStorage.removeItem(CACHE_PREFIX + cacheKey);
-                }
-
-                return proventosFuturosProcessados; 
+                // 4. Processa o array combinado (dados do cache + dados da API)
+                return processarProventosIA(proventosFinais); 
             }
 
             async function buscarHistoricoProventosAgregado() {
@@ -1839,7 +1849,7 @@
                 }
             }
             
-            async function handleAdicionarAtivo() {
+async function handleAdicionarAtivo() {
                 let ticker = tickerInput.value.trim().toUpperCase();
                 let novaQuantidade = parseInt(quantityInput.value, 10);
                 let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
@@ -1847,7 +1857,7 @@
                 if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
                 if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0) { 
-                    showToast("Preencha todos os campos."); // CORRIGIDO: Mensagem resumida
+                    showToast("Preencha todos os campos."); 
                     tickerInput.classList.add('border-red-500');
                     quantityInput.classList.add('border-red-500');
                     precoMedioInput.classList.add('border-red-500'); 
@@ -1871,9 +1881,11 @@
                          if (!quoteData.results || quoteData.results[0].error) {
                              throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                          }
+                         // Se for um ativo novo e válido, limpa o cache de histórico agregado
+                         localStorage.removeItem(CACHE_PREFIX + 'hist_agregado_v4_' + carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol).join('-'));
                     } catch (error) {
                          console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
-                         showToast("Ativo não encontrado."); // CORRIGIDO: Mensagem resumida
+                         showToast("Ativo não encontrado.");
                          tickerInput.value = '';
                          tickerInput.placeholder = "Ativo não encontrado";
                          tickerInput.classList.add('border-red-500');
@@ -1896,14 +1908,15 @@
                     price: novoPreco
                 });
 
-                clearBrapiCache();
+                // REMOVIDO: clearBrapiCache();
                 salvarTransacoes();
                 
                 addButton.innerHTML = `Adicionar`;
                 addButton.disabled = false;
                 hideAddModal();
                 
-                atualizarTodosDados(true); 
+                // MUDADO: de true para false, para respeitar o cache
+                atualizarTodosDados(false); 
             }
 
             function handleRemoverAtivo(symbol) {

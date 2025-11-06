@@ -11,7 +11,8 @@
     
     <link rel="manifest" href="manifest.json">
 
-    <meta name="theme-color" content="#1A1A1A"> <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#1A1A1A">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     
     <style>
@@ -40,8 +41,7 @@
         .accent-text { color: #8B5CF6; }
         .hover-accent-text:hover { color: #A78BFA; }
 
-
-        /* --- Animações --- */
+        /* Animações */
         .tab-content { display: none; }
         .tab-content.active {
             display: block;
@@ -57,10 +57,7 @@
         }
         .card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
 
-        /* ============================================== */
-        /* INÍCIO: ESTILOS DA BARRA DE NAVEGAÇÃO          */
-        /* ============================================== */
-        
+        /* Barra de Navegação */
         @keyframes gentleFloat {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-3px); }
@@ -89,11 +86,8 @@
         .tab-button.active .tab-button-icon-wrapper {
              animation: gentleFloat 1.5s ease-in-out infinite;
         }
-        /* ============================================== */
-        /* FIM: ESTILOS DA BARRA DE NAVEGAÇÃO             */
-        /* ============================================== */
         
-        
+        /* Loaders e Spinners */
         .spin-animation { animation: spin 1s linear infinite; }
         @keyframes spin {
             from { transform: rotate(0deg); }
@@ -131,6 +125,7 @@
             100% { transform: rotate(360deg); }
         }
         
+        /* Scrollbars */
         .scrollable-content {
              max-height: 40vh; 
              overflow-y: auto;
@@ -151,9 +146,7 @@
              max-height: 320px;
         }
         
-        /* ============================================== */
-        /* INÍCIO: ESTILOS DE MODAL (GENÉRICO)            */
-        /* ============================================== */
+        /* Modal Genérico */
         .custom-modal { display: none; }
         .custom-modal.visible { display: flex; }
         
@@ -172,13 +165,8 @@
             from { opacity: 1; transform: scale(1) translateY(0); }
             to { opacity: 0; transform: scale(0.95) translateY(10px); }
         }
-        /* ============================================== */
-        /* FIM: ESTILOS DE MODAL (GENÉRICO)               */
-        /* ============================================== */
 
-        /* ============================================== */
-        /* INÍCIO: ESTILOS DA PÁGINA DE DETALHES (NOVO)   */
-        /* ============================================== */
+        /* Página Modal (Detalhes) */
         .page-modal { 
             opacity: 0;
             pointer-events: none;
@@ -208,9 +196,6 @@
         .page-content.closing { 
             transform: translateY(100%);
         }
-        /* ============================================== */
-        /* FIM: ESTILOS DA PÁGINA DE DETALHES             */
-        /* ============================================== */
         
         select {
             -webkit-appearance: none;
@@ -218,7 +203,7 @@
             appearance: none;
         }
 
-        /* --- Estilos da Gaveta do Card --- */
+        /* Gaveta (Drawer) do Card */
         .card-drawer {
             max-height: 0;
             overflow: hidden;
@@ -243,9 +228,7 @@
             transform: rotate(180deg);
         }
         
-        /* ============================================== */
-        /* INÍCIO: NOVOS ESTILOS (SINO DE NOTIFICAÇÃO)    */
-        /* ============================================== */
+        /* Sino de Notificação */
         #request-notify-btn.notify-on {
             color: #8B5CF6; 
             animation: ringBell 1.5s ease-in-out infinite;
@@ -258,28 +241,37 @@
         #request-notify-btn.notify-off {
             color: #4b5563; 
         }
-        /* ============================================== */
-        /* FIM: NOVOS ESTILOS (SINO DE NOTIFICAÇÃO)       */
-        /* ============================================== */
 
-        /* ============================================== */
-        /* INÍCIO: NOVOS ESTILOS (TOAST NOTIFICATION)     */
-        /* ============================================== */
+        /* Notificação Toast */
+        #toast-notification {
+            /* Posição inicial: fora da tela, invisível */
+            opacity: 0;
+            transform: translateY(-100%);
+            
+            /* Transição suave - note o 'cubic-bezier' para um leve "salto" */
+            transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            
+            /* Garante que é sempre um retângulo arredondado */
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+        
+        #toast-notification.toast-visible {
+            /* Posição final: na tela, visível */
+            opacity: 1;
+            transform: translateY(1rem); /* 1rem = p-4 do container pai */
+        }
         
         .toast-shake {
             animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
         }
 
-        /* CORRIGIDO: Animação de "shake" agora usa translateX relativo */
+        /* Animação de "shake" agora usa APENAS translateX e translateY */
         @keyframes shake {
-          10%, 90% { transform: translateX(-1%) translateY(1rem) scale(1); }
-          20%, 80% { transform: translateX(1%) translateY(1rem) scale(1); }
-          30%, 50%, 70% { transform: translateX(-2%) translateY(1rem) scale(1); }
-          40%, 60% { transform: translateX(2%) translateY(1rem) scale(1); }
+          10%, 90% { transform: translateX(-1%) translateY(1rem); }
+          20%, 80% { transform: translateX(1%) translateY(1rem); }
+          30%, 50%, 70% { transform: translateX(-2%) translateY(1rem); }
+          40%, 60% { transform: translateX(2%) translateY(1rem); }
         }
-        /* ============================================== */
-        /* FIM: NOVOS ESTILOS (TOAST NOTIFICATION)        */
-        /* ============================================== */
     </style>
 </head>
 <body class="antialiased">
@@ -321,8 +313,8 @@
                     </div>
                 </div>
             </div>
-            <div id="dashboard-drawers" class="space-y-4">
             
+            <div id="dashboard-drawers" class="space-y-4">
                 <div class="card-bg p-4 rounded-2xl shadow-lg">
                     <div class="flex justify-between items-center">
                         <h3 class="text-lg font-semibold text-white ml-2">Evolução do Patrimônio</h3>
@@ -370,15 +362,16 @@
                         </div>
                     </div>
                 </div>
-
             </div> 
             
-            <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden"> <p id="dashboard-mensagem">A carregar dados...</p>
+            <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden">
+                <p id="dashboard-mensagem">A carregar dados...</p>
                  <div id="dashboard-loading" class="flex justify-center items-center py-4">
                     <span class="loader"></span>
                  </div>
             </div>
         </div>
+        
         <div id="tab-carteira" class="tab-content p-4">
             
             <div class="flex justify-between items-center mb-6">
@@ -395,8 +388,7 @@
             
             <h2 class="text-xl font-semibold text-white mb-3">Minha Posição</h2>
             
-            <div id="lista-carteira" class="space-y-4">
-                </div>
+            <div id="lista-carteira" class="space-y-4"></div>
             
             <div id="skeleton-lista-carteira" class="space-y-4">
                 <div class="card-bg p-4 rounded-2xl shadow-lg animate-pulse">
@@ -436,6 +428,7 @@
                     </div>
                 </div>
             </div>
+            
             <div id="carteira-status" class="text-center text-gray-500 mt-12 hidden">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
@@ -446,17 +439,19 @@
                 </button>
             </div>
         </div>
+        
         <div id="tab-historico" class="tab-content p-4">
             <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
         
-            <div id="lista-historico" class="space-y-3">
-                </div>
+            <div id="lista-historico" class="space-y-3"></div>
             
             <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
                 <p id="historico-mensagem">Nenhuma transação encontrada.</p>
             </div>
         </div>
-        </div> <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
+    </div>
+    
+    <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
         <div class="card-bg rounded-xl p-4 shadow-2xl flex items-center justify-between gap-3">
             <span class="text-sm font-medium text-gray-100">Uma nova versão está disponível!</span>
             <button id="update-button" class="py-2 px-4 accent-bg text-white rounded-lg transition-colors text-sm font-semibold">
@@ -519,7 +514,8 @@
         </div>
     </div>
     
-    <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-16 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">        <div id="add-ativo-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
+    <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-16 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">
+        <div id="add-ativo-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
             <h3 id="add-modal-title" class="text-xl font-semibold text-white mb-5 text-center">Adicionar Compra</h3>
             <div class="space-y-4">
                 <input 
@@ -555,19 +551,19 @@
             </div>
         </div>
     </div>
+    
     <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
-        
         <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
             
             <div class="flex justify-between items-center p-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
-                
-                <div id="detalhes-titulo" class="flex-1 min-w-0"> <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
+                <div id="detalhes-titulo" class="flex-1 min-w-0">
+                    <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
                      <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
                 </div>
-                
                 <button id="detalhes-voltar-btn" class="p-2 ml-3 text-gray-400 hover:text-white rounded-full transition-colors flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
             </div>
             
@@ -581,21 +577,17 @@
                      <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
                      
                      <div id="detalhes-historico-container" class="hidden">
-                        <div id="detalhes-ai-provento" class="my-4">
-                            </div>
-                        
-                        <div id="detalhes-historico" class="space-y-2 scrollable-content pr-2">
-                            </div>
+                        <div id="detalhes-ai-provento" class="my-4"></div>
+                        <div id="detalhes-historico" class="space-y-2 scrollable-content pr-2"></div>
                      </div>
-                     
                 </div>
             </div>
-            </div>
+        </div>
     </div>
+    
     <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
         <div id="toast-notification" 
-             class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl bg-red-800 border border-red-600 text-white font-medium opacity-0" 
-             style="transform: translateY(-150%) scale(0.2); border-radius: 50%; transition: all 0.4s ease-in-out;">
+             class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl bg-red-800 border border-red-600 text-white font-medium">
             
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -603,15 +595,16 @@
             <span id="toast-message" class="flex-1">Erro ao processar.</span>
         </div>
     </div>
+    
     <script>
-        // Configurações padrão do Chart.js para modo escuro
+        // Configurações padrão do Chart.js
         Chart.defaults.color = '#9ca3af'; 
         Chart.defaults.borderColor = '#374151'; 
         
         document.addEventListener('DOMContentLoaded', () => {
             
-            // --- Constantes ---
-            const REFRESH_INTERVAL = 1860000; 
+            // Constantes
+            const REFRESH_INTERVAL = 1860000; // 31 minutos
             const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
             const CACHE_24_HORAS = 1000 * 60 * 60 * 24; // 24 horas
             const CACHE_PREFIX = 'vestoBrapiCache_v1_'; 
@@ -619,16 +612,16 @@
             const DB_KEY_TRANSACOES = 'vesto_transacoes_v1';
             const DB_KEY_PATRIMONIO = 'vesto_patrimonio_v1';
 
-            // --- Elementos DOM (Gerais) ---
+            // Elementos DOM
             const refreshButton = document.getElementById('refresh-button');
             const tabButtons = document.querySelectorAll('.tab-button');
             const tabContents = document.querySelectorAll('.tab-content');
             
-            // --- Elementos DOM (Toast Notification - NOVO) ---
+            // Toast
             const toastElement = document.getElementById('toast-notification');
             const toastMessageElement = document.getElementById('toast-message');
             
-            // --- Elementos DOM (Dashboard) ---
+            // Dashboard
             const dashboardStatus = document.getElementById('dashboard-status');
             const dashboardLoading = document.getElementById('dashboard-loading');
             const dashboardMensagem = document.getElementById('dashboard-mensagem');
@@ -636,7 +629,7 @@
             const dashboardDrawers = document.getElementById('dashboard-drawers');
             const notifyButton = document.getElementById('request-notify-btn');
             
-            // --- Elementos DOM (Dashboard - Skeletons & Data) ---
+            // Skeletons e dados do Dashboard
             const skeletonTotalValor = document.getElementById('skeleton-total-valor');
             const skeletonTotalCusto = document.getElementById('skeleton-total-custo');
             const skeletonTotalPL = document.getElementById('skeleton-total-pl');
@@ -645,19 +638,19 @@
             const totalCarteiraCusto = document.getElementById('total-carteira-custo');
             const totalCarteiraPL = document.getElementById('total-carteira-pl');
             
-            // --- Elementos DOM (Carteira) ---
+            // Carteira
             const listaCarteira = document.getElementById('lista-carteira');
             const carteiraStatus = document.getElementById('carteira-status');
             const carteiraMensagem = document.getElementById('carteira-mensagem');
             const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
             const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
             
-            // --- Elementos DOM (Proventos) ---
+            // Proventos
             const totalProventosEl = document.getElementById('total-proventos');
             
-            // --- Elementos DOM (Detalhes - Agora uma Página Modal) ---
+            // Página Modal Detalhes
             const detalhesPageModal = document.getElementById('detalhes-page-modal');
-            const detalhesPageContent = document.getElementById('tab-detalhes'); // O ID antigo agora é o conteúdo da página
+            const detalhesPageContent = document.getElementById('tab-detalhes');
             const detalhesVoltarBtn = document.getElementById('detalhes-voltar-btn');
             const detalhesTitulo = document.getElementById('detalhes-titulo');
             const detalhesTituloTexto = document.getElementById('detalhes-titulo-texto');
@@ -671,12 +664,12 @@
             const detalhesHistorico = document.getElementById('detalhes-historico');
             const detalhesAiProvento = document.getElementById('detalhes-ai-provento'); 
             
-            // --- Elementos DOM (Histórico) ---
+            // Histórico
             const listaHistorico = document.getElementById('lista-historico');
             const historicoStatus = document.getElementById('historico-status');
             const historicoMensagem = document.getElementById('historico-mensagem');
 
-            // --- Elementos DOM (Modal de Confirmação) ---
+            // Modal de Confirmação
             const customModal = document.getElementById('custom-modal');
             const customModalContent = document.getElementById('custom-modal-content');
             const customModalTitle = document.getElementById('custom-modal-title');
@@ -684,7 +677,7 @@
             const customModalOk = document.getElementById('custom-modal-ok');
             const customModalCancel = document.getElementById('custom-modal-cancel');
             
-            // --- Elementos DOM (Modal Adicionar Ativo - NOVO) ---
+            // Modal Adicionar Ativo
             const showAddModalBtn = document.getElementById('show-add-modal-btn');
             const addAtivoModal = document.getElementById('add-ativo-modal');
             const addAtivoModalContent = document.getElementById('add-ativo-modal-content');
@@ -694,7 +687,7 @@
             const precoMedioInput = document.getElementById('preco-medio-input'); 
             const addButton = document.getElementById('add-button');
             
-            // --- Estado da Aplicação ---
+            // Estado da App
             let transacoes = [];        
             let carteiraCalculada = []; 
             let patrimonio = [];        
@@ -717,71 +710,46 @@
             let toastTimer = null;
             let isToastShowing = false;
 
-            // --- Estado para Swipe (NOVO) ---
+            // Estado do swipe
             let touchStartY = 0;
             let touchMoveY = 0;
             let isDraggingDetalhes = false;
 
             // ==========================================================
-            // LÓGICA DE NOTIFICAÇÃO TOAST (CORRIGIDO)
+            // Notificações Toast (Refatorado)
             // ==========================================================
             
             function showToast(message) {
+                // Limpa qualquer timer de "esconder" pendente
                 clearTimeout(toastTimer);
-                
+
                 toastMessageElement.textContent = message;
 
-                if (isToastShowing) {
+                // Se o toast JÁ ESTÁ visível, apenas "treme"
+                if (isToastShowing && toastElement.classList.contains('toast-visible')) {
                     toastElement.classList.add('toast-shake');
                     setTimeout(() => {
                         toastElement.classList.remove('toast-shake');
                     }, 500);
 
                 } else {
+                    // Se não estiver visível, força a re-exibição
                     isToastShowing = true;
+                    toastElement.classList.remove('toast-shake');
                     
-                    // 1. Reseta (CORRIGIDO: sem translateX)
-                    toastElement.style.transition = 'none';
-                    toastElement.style.transform = 'translateY(-150%) scale(0.2)';
-                    toastElement.style.borderRadius = '50%';
-                    toastElement.style.opacity = '0';
-                    
-                    void toastElement.offsetWidth; 
-
-                    // 2. Anima a "bola" caindo (CORRIGIDO: sem translateX)
-                    toastElement.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, border-radius 0.4s ease 0.3s';
-                    toastElement.style.transform = 'translateY(1rem) scale(0.2)'; // 1rem = p-4 do container
-                    toastElement.style.opacity = '1';
-                    
-                    // 3. Expande (CORRIGIDO: sem translateX)
-                    setTimeout(() => {
-                        toastElement.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 0.4s ease';
-                        toastElement.style.transform = 'translateY(1rem) scale(1)';
-                        toastElement.style.borderRadius = '0.75rem'; // 12px (rounded-xl)
-                    }, 400); 
+                    // Adiciona a classe que o CSS usa para "mostrar"
+                    toastElement.classList.add('toast-visible');
                 }
 
-                // Define o timer para a animação de "saída"
-                // CORRIGIDO: Tempo diminuído para 3 segundos
+                // Define um NOVO timer para "esconder" o toast
                 toastTimer = setTimeout(() => {
-                    // 1. Encolhe (CORRIGIDO: sem translateX)
-                    toastElement.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 0.4s ease 0.1s';
-                    toastElement.style.transform = 'translateY(1rem) scale(0.2)';
-                    toastElement.style.borderRadius = '50%';
-                    
-                    // 2. Sobe (CORRIGIDO: sem translateX)
-                    setTimeout(() => {
-                        toastElement.style.transition = 'transform 0.4s cubic-bezier(0.6, -0.28, 0.74, 0.05), opacity 0.3s ease, border-radius 0.4s ease';
-                        toastElement.style.transform = 'translateY(-150%) scale(0.2)';
-                        toastElement.style.opacity = '0';
-                        isToastShowing = false;
-                    }, 500); 
-
-                }, 2500); // CORRIGIDO: Toast fica visível por 3 segundos
+                    toastElement.classList.remove('toast-visible');
+                    isToastShowing = false;
+                }, 3000); // 3 segundos
             }
 
             // ==========================================================
-            // LÓGICA DE ATUALIZAÇÃO DO PWA (SW)
+            // Service Worker (PWA)
             // ==========================================================
             const updateNotification = document.getElementById('update-notification');
             const updateButton = document.getElementById('update-button');
@@ -833,7 +801,7 @@
             }
             
             // ==========================================================
-            // LÓGICA DE NOTIFICAÇÃO PUSH
+            // Notificações Push
             // ==========================================================
             function checkNotificationPermission() {
                 if (!('Notification' in window)) {
@@ -894,22 +862,23 @@
                 });
             }
             
-            // --- Funções de CACHE ---
+            // ==========================================================
+            // Funções de Cache
+            // ==========================================================
             function setCache(key, data, duration = CACHE_DURATION) { 
                 const cacheItem = { timestamp: Date.now(), data: data, duration: duration };
                 try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(cacheItem)); } 
                 catch (e) { console.error("Erro ao salvar no cache:", e); clearBrapiCache(); }
             }
+            
 			function removerCacheAtivo(symbol) {
                 console.log(`A limpar cache específico para: ${symbol}`);
                 localStorage.removeItem(CACHE_PREFIX + `preco_${symbol}`);
                 localStorage.removeItem(CACHE_PREFIX + `provento_ia_${symbol}`);
                 localStorage.removeItem(CACHE_PREFIX + `detalhe_preco_${symbol}`);
                 
-                // Também é uma boa ideia invalidar o cache de histórico agregado
-                // para que ele seja recalculado sem este FII (se for um FII)
+                // Invalida o cache de histórico agregado se for um FII
                 if (isFII(symbol)) {
-                    // Esta é uma forma simples de invalidar qualquer cache agregado
                     Object.keys(localStorage)
                         .filter(key => key.startsWith(CACHE_PREFIX + 'hist_agregado_v4_'))
                         .forEach(key => localStorage.removeItem(key));
@@ -936,7 +905,9 @@
                     .forEach(key => localStorage.removeItem(key));
             }
 
-            // --- Funções Auxiliares ---
+            // ==========================================================
+            // Funções Auxiliares
+            // ==========================================================
             const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
             const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
             const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -987,8 +958,8 @@
             
             function isB3Open() {
                 const { dayOfWeek, hour } = getSaoPauloDateTime();
-                if (dayOfWeek === 0 || dayOfWeek === 6) { return false; }
-                if (hour >= 10 && hour < 18) { return true; }
+                if (dayOfWeek === 0 || dayOfWeek === 6) { return false; } // Domingo ou Sábado
+                if (hour >= 10 && hour < 18) { return true; } // Horário de pregão (aprox.)
                 return false;
             }
 
@@ -1004,7 +975,9 @@
                 return cores;
             }
             
-            // --- Funções dos Modais ---
+            // ==========================================================
+            // Funções dos Modais
+            // ==========================================================
             function showModal(title, message, onConfirm) {
                 customModalTitle.textContent = title;
                 customModalMessage.textContent = message;
@@ -1062,7 +1035,9 @@
                 }, 400); 
             }
             
-            // --- Funções de Dados (localStorage) ---
+            // ==========================================================
+            // Funções de Dados (localStorage)
+            // ==========================================================
             
             function salvarTransacoes() {
                 localStorage.setItem(DB_KEY_TRANSACOES, JSON.stringify(transacoes));
@@ -1086,11 +1061,14 @@
                 const index = patrimonio.findIndex(p => p.date === today);
                 
                 if (index > -1) {
+                    // Atualiza o valor do dia
                     patrimonio[index].value = totalValor;
                 } else {
+                    // Adiciona novo registro do dia
                     patrimonio.push({ date: today, value: totalValor });
                 }
                 
+                // Mantém apenas os últimos 365 dias
                 if (patrimonio.length > 365) {
                     patrimonio = patrimonio.slice(patrimonio.length - 365);
                 }
@@ -1101,6 +1079,7 @@
             function calcularCarteira() {
                 const ativosMap = new Map();
 
+                // Ordena transações por data para calcular o PM corretamente
                 const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 for (const t of transacoesOrdenadas) {
@@ -1111,7 +1090,7 @@
                         symbol: symbol, 
                         quantity: 0, 
                         totalCost: 0, 
-                        dataCompra: t.date 
+                        dataCompra: t.date // Guarda a primeira data de compra
                     };
 
                     ativo.quantity += t.quantity;
@@ -1121,7 +1100,7 @@
                 }
                 
                 carteiraCalculada = Array.from(ativosMap.values())
-                    .filter(a => a.quantity > 0) 
+                    .filter(a => a.quantity > 0) // Remove ativos que foram totalmente vendidos (lógica de venda não implementada)
                     .map(a => ({
                         symbol: a.symbol,
                         quantity: a.quantity,
@@ -1130,7 +1109,9 @@
                     }));
             }
 
-            // --- Funções de Renderização ---
+            // ==========================================================
+            // Funções de Renderização
+            // ==========================================================
             
             function renderizarGraficoAlocacao(dadosGrafico) {
                 const canvas = document.getElementById('alocacao-chart');
@@ -1149,6 +1130,7 @@
                 const labels = dadosGrafico.map(d => d.symbol);
                 const data = dadosGrafico.map(d => d.totalPosicao);
 
+                // Evita re-renderizar o gráfico se os dados não mudaram
                 const newDataString = JSON.stringify({ labels, data });
                 if (newDataString === lastAlocacaoData) { return; }
                 lastAlocacaoData = newDataString; 
@@ -1156,11 +1138,13 @@
                 const colors = gerarCores(labels.length);
 
                 if (alocacaoChartInstance) {
+                    // Atualiza gráfico existente
                     alocacaoChartInstance.data.labels = labels;
                     alocacaoChartInstance.data.datasets[0].data = data;
                     alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
                     alocacaoChartInstance.update();
                 } else {
+                    // Cria novo gráfico
                     alocacaoChartInstance = new Chart(ctx, {
                         type: 'doughnut',
                         data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, }] },
@@ -1360,6 +1344,7 @@
                 let totalCustoCarteira = 0;
                 let dadosGrafico = [];
 
+                // Se carteira vazia
                 if (carteiraOrdenada.length === 0) {
                     carteiraStatus.classList.remove('hidden');
                     
@@ -1381,6 +1366,7 @@
                     dashboardStatus.classList.add('hidden');
                 }
 
+                // Renderiza cada ativo na carteira
                 listaCarteira.innerHTML = ''; 
                 carteiraOrdenada.forEach(ativo => {
                     const dadoPreco = precosMap.get(ativo.symbol);
@@ -1414,6 +1400,7 @@
                     totalCustoCarteira += custoTotal;
                     if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
                     
+                    // HTML para proventos (apenas FIIs)
                     let proventoHtml = '';
                     if (isFII(ativo.symbol)) { 
                         if (dadoProvento && dadoProvento.value > 0) {
@@ -1435,6 +1422,7 @@
                         }
                     }
                     
+                    // Cria o card do ativo
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-3">
@@ -1493,6 +1481,7 @@
                     listaCarteira.appendChild(card);
                 });
                 
+                // Atualiza o card de resumo do Dashboard
                 if (carteiraOrdenada.length > 0) {
                     const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
                     const totalLucroPrejuizoPercent = (totalCustoCarteira === 0 || totalValorCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
@@ -1506,6 +1495,7 @@
                     totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
                     totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
                     
+                    // Salva um snapshot do valor total para o gráfico de patrimônio
                     salvarSnapshotPatrimonio(totalValorCarteira);
                 }
                 
@@ -1539,6 +1529,7 @@
                 
                 historicoStatus.classList.add('hidden');
                 
+                // Renderiza em ordem de mais recente para mais antigo
                 [...transacoes].reverse().forEach(t => {
                     const card = document.createElement('div');
                     card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
@@ -1564,12 +1555,15 @@
                 });
             }
 
-            // --- Funções de Fetch (API) ---
+            // ==========================================================
+            // Funções de Fetch (API)
+            // ==========================================================
 
+            /** Wrapper de Fetch para o BFF com timeout */
             async function fetchBFF(url, options = {}) {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 30000); 
+                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
                     
                     const response = await fetch(url, { ...options, signal: controller.signal });
                     clearTimeout(timeoutId); 
@@ -1589,17 +1583,18 @@
                 }
             }
             
-async function buscarPrecosCarteira(force = false) { 
+            /** Busca preços, usando cache individual por ativo */
+            async function buscarPrecosCarteira(force = false) { 
                 if (carteiraCalculada.length === 0) return [];
                 
                 console.log("A buscar preços na API (cache por ativo)...");
                 
                 const promessas = carteiraCalculada.map(async (ativo) => {
-                    const cacheKey = `preco_${ativo.symbol}`; // Chave de cache por ativo
+                    const cacheKey = `preco_${ativo.symbol}`;
                     
                     if (!force) {
                         const precoCache = getCache(cacheKey);
-                        // Se a B3 estiver fechada, o cache (mesmo antigo) é aceitável
+                        // Se a B3 estiver fechada, usa o cache mesmo se antigo
                         if (precoCache && !isB3Open()) return precoCache;
                         // Se a B3 estiver aberta, usa o cache se não estiver expirado
                         if (precoCache) return precoCache;
@@ -1626,9 +1621,10 @@ async function buscarPrecosCarteira(force = false) {
                 });
 
                 const resultados = await Promise.all(promessas);
-                return resultados.filter(p => p !== null); // Retorna apenas os que tiveram sucesso
+                return resultados.filter(p => p !== null);
             }
 
+            /** Filtra proventos da IA para datas futuras */
             function processarProventosIA(proventosDaIA = []) {
                 const hoje = new Date(); 
                 hoje.setHours(0, 0, 0, 0);
@@ -1639,6 +1635,7 @@ async function buscarPrecosCarteira(force = false) {
                         const ativoCarteira = carteiraCalculada.find(a => a.symbol === proventoIA.symbol);
                         if (!ativoCarteira) return null;
                         
+                        // Valida se o provento tem data de pagamento válida e futura
                         if (proventoIA.paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(proventoIA.paymentDate)) {
                             const parts = proventoIA.paymentDate.split('-');
                             const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
@@ -1652,7 +1649,8 @@ async function buscarPrecosCarteira(force = false) {
                     .filter(p => p !== null);
             }
 
-async function buscarProventosFuturos() {
+            /** Busca proventos futuros, usando cache individual por FII */
+            async function buscarProventosFuturos() {
                 const fiiNaCarteira = carteiraCalculada
                     .filter(a => isFII(a.symbol))
                     .map(a => a.symbol);
@@ -1662,7 +1660,7 @@ async function buscarProventosFuturos() {
                 let proventosFinais = [];
                 let fiisParaBuscar = [];
 
-                // 1. Separa os FIIs que já estão no cache dos que precisam de busca
+                // 1. Separa os FIIs que já estão no cache
                 for (const symbol of fiiNaCarteira) {
                     const cacheKey = `provento_ia_${symbol}`;
                     const proventoCache = getCache(cacheKey);
@@ -1687,7 +1685,6 @@ async function buscarProventosFuturos() {
                             for (const provento of novosProventos) {
                                 if (provento && provento.symbol) {
                                     const cacheKey = `provento_ia_${provento.symbol}`;
-                                    // Usamos CACHE_24_HORAS em vez de -1 (infinito) para garantir que o dado seja atualizado
                                     setCache(cacheKey, provento, CACHE_24_HORAS); 
                                     proventosFinais.push(provento);
                                 }
@@ -1695,19 +1692,20 @@ async function buscarProventosFuturos() {
                         }
                     } catch (error) {
                         console.error("Erro ao buscar novos proventos com IA:", error);
-                        // Não lança erro, continua com os dados do cache
                     }
                 }
                 
-                // 4. Processa o array combinado (dados do cache + dados da API)
+                // 4. Processa o array combinado (cache + novos)
                 return processarProventosIA(proventosFinais); 
             }
 
+            /** Busca o histórico de proventos agregados para o gráfico */
             async function buscarHistoricoProventosAgregado() {
                 const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
                 if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
                 const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
+                // A chave de cache depende dos FIIs na carteira
                 const cacheKey = 'hist_agregado_v4_' + fiiSymbols.join('-'); 
                 
                 const cache = getCache(cacheKey);
@@ -1729,6 +1727,7 @@ async function buscarProventosFuturos() {
 
                 if (!aiData || aiData.length === 0) return { labels: [], data: [] };
 
+                // Mapeia a quantidade e data de compra de cada FII
                 const carteiraMap = new Map(fiiNaCarteira.map(a => [a.symbol, { 
                     quantity: a.quantity, 
                     inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
@@ -1742,6 +1741,7 @@ async function buscarProventosFuturos() {
                     if (!dataDoMes) return 0;
                     const timeDoMes = dataDoMes.getTime();
 
+                    // Calcula o total do mês baseado na quantidade de cotas que o usuário possuía
                     fiiSymbols.forEach(symbol => {
                         const ativo = carteiraMap.get(symbol);
                         if (!ativo) return; 
@@ -1750,6 +1750,7 @@ async function buscarProventosFuturos() {
                         const inicioMesCompraTime = ativo.inicioMesCompra;
                         const valorPorCota = mesData[symbol] || 0;
                         
+                        // Só contabiliza proventos de meses APÓS a primeira compra
                         if (timeDoMes >= inicioMesCompraTime) {
                              totalMes += (valorPorCota * quantity);
                         }
@@ -1760,15 +1761,18 @@ async function buscarProventosFuturos() {
                 return { labels, data };
             }
 
-            // --- Funções Principais (Handlers) ---
+            // ==========================================================
+            // Funções Principais (Handlers)
+            // ==========================================================
             
+             /** Função principal de atualização de dados */
              async function atualizarTodosDados(force = false) { 
                 renderizarDashboardSkeletons(true);
                 renderizarCarteiraSkeletons(true);
                 
                 calcularCarteira();
                 renderizarHistorico();
-                renderizarGraficoPatrimonio();
+                renderizarGraficoPatrimonio(); // Renderiza o histórico de patrimônio salvo
                 
                 if (carteiraCalculada.length > 0) {
                     dashboardStatus.classList.remove('hidden');
@@ -1778,8 +1782,11 @@ async function buscarProventosFuturos() {
                 const refreshIcon = refreshButton.querySelector('svg'); 
                 refreshIcon.classList.add('spin-animation');
 
+                // Tenta carregar dados de preço e proventos do cache antes de buscar na rede
                 let precosCache = null;
                 if (!force) {
+                    // Esta chave de cache agregada não é usada para buscar,
+                    // mas poderia ser usada para carregar um "snapshot"
                     const cacheKeyPrecos = 'precos_' + carteiraCalculada.map(a => a.symbol).join('-');
                     precosCache = getCache(cacheKeyPrecos);
                 }
@@ -1787,6 +1794,7 @@ async function buscarProventosFuturos() {
                 let proventosFuturosCache = null;
                 const fiiNaCarteiraCache = carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol);
                 if (fiiNaCarteiraCache.length > 0) {
+                    // Lógica similar para proventos
                     const cacheKeyProventos = 'proventos_ia_' + fiiNaCarteiraCache.join('-');
                     const proventosCacheIA = getCache(cacheKeyProventos); 
                     if (proventosCacheIA) {
@@ -1794,6 +1802,7 @@ async function buscarProventosFuturos() {
                     }
                 }
                 
+                // Se houver cache de preços, renderiza imediatamente
                 if (precosCache) {
                     precosAtuais = precosCache;
                     proventosAtuais = proventosFuturosCache || [];
@@ -1804,6 +1813,7 @@ async function buscarProventosFuturos() {
                     proventosAtuais = [];
                 }
                 
+                // Se a carteira estiver vazia, para aqui
                 if (carteiraCalculada.length === 0) {
                      precosAtuais = []; 
                      proventosAtuais = []; 
@@ -1814,43 +1824,48 @@ async function buscarProventosFuturos() {
                      return; 
                 }
 
+                // Dispara as buscas de rede em paralelo
                 const promessaPrecos = buscarPrecosCarteira(force); 
                 const promessaProventos = buscarProventosFuturos();
                 const promessaHistorico = buscarHistoricoProventosAgregado();
 
+                // Handler para quando os preços chegarem
                 promessaPrecos.then(precos => {
                     if (precos.length > 0) {
                         precosAtuais = precos; 
-                        renderizarCarteira();  
+                        renderizarCarteira(); // Re-renderiza carteira com preços
                     } else if (precosAtuais.length === 0) { 
-                        renderizarCarteira(); 
+                        renderizarCarteira(); // Renderiza mesmo sem preços (mostra 'A carregar...')
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
-                    showToast("Erro ao buscar preços."); // CORRIGIDO: Mensagem resumida
+                    showToast("Erro ao buscar preços.");
                     if (precosAtuais.length === 0) { renderizarCarteira(); }
                 });
 
+                // Handler para proventos
                 promessaProventos.then(proventosFuturos => {
                     proventosAtuais = proventosFuturos; 
                     renderizarProventos(); 
                     if (precosAtuais.length > 0) {
-                        renderizarCarteira();  
+                        renderizarCarteira(); // Re-renderiza para mostrar proventos no card
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar proventos (BFF):", err);
-                    showToast("Erro ao buscar proventos."); // CORRIGIDO: Mensagem resumida
+                    showToast("Erro ao buscar proventos.");
                     if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
                 });
                 
+                // Handler para histórico de proventos (gráfico)
                 promessaHistorico.then(({ labels, data }) => {
                     renderizarGraficoHistorico({ labels, data });
                 }).catch(err => {
                     console.error("Erro ao buscar histórico agregado (BFF):", err);
-                    showToast("Erro ao buscar histórico."); // CORRIGIDO: Mensagem resumida
+                    showToast("Erro ao buscar histórico.");
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                 });
 
+                // Espera todas as promessas terminarem (com sucesso ou falha)
                 try {
                     await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]);
                 } finally {
@@ -1864,13 +1879,15 @@ async function buscarProventosFuturos() {
                 }
             }
             
-async function handleAdicionarAtivo() {
+            /** Adiciona uma nova transação de compra */
+            async function handleAdicionarAtivo() {
                 let ticker = tickerInput.value.trim().toUpperCase();
                 let novaQuantidade = parseInt(quantityInput.value, 10);
                 let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
 
                 if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
+                // Validação
                 if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0) { 
                     showToast("Preencha todos os campos."); 
                     tickerInput.classList.add('border-red-500');
@@ -1886,6 +1903,7 @@ async function handleAdicionarAtivo() {
                 
                 const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
                 
+                // Se for um ativo NOVO, valida o ticker na API primeiro
                 if (!ativoExistente) {
                     addButton.innerHTML = `<span class="loader-sm"></span>`;
                     addButton.disabled = true;
@@ -1896,7 +1914,7 @@ async function handleAdicionarAtivo() {
                          if (!quoteData.results || quoteData.results[0].error) {
                              throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                          }
-                         // Se for um ativo novo e válido, limpa o cache de histórico agregado
+                         // Se for um FII novo e válido, limpa o cache de histórico agregado
                          localStorage.removeItem(CACHE_PREFIX + 'hist_agregado_v4_' + carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol).join('-'));
                     } catch (error) {
                          console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
@@ -1914,6 +1932,7 @@ async function handleAdicionarAtivo() {
                     }
                 } 
                 
+                // Adiciona a transação
                 transacoes.push({
                     id: 'tx_' + Date.now(),
                     date: new Date().toISOString(),
@@ -1923,17 +1942,17 @@ async function handleAdicionarAtivo() {
                     price: novoPreco
                 });
 
-                // REMOVIDO: clearBrapiCache();
                 salvarTransacoes();
                 
                 addButton.innerHTML = `Adicionar`;
                 addButton.disabled = false;
                 hideAddModal();
                 
-                // MUDADO: de true para false, para respeitar o cache
+                // Atualiza os dados, mas respeitando o cache (false)
                 atualizarTodosDados(false); 
             }
 
+            /** Remove um ativo (e todas as suas transações) */
             function handleRemoverAtivo(symbol) {
                 showModal(
                     'Remover Ativo', 
@@ -1941,19 +1960,18 @@ async function handleAdicionarAtivo() {
                     () => { 
                         transacoes = transacoes.filter(t => t.symbol !== symbol);
                         
-                        // ANTES (Ruim): clearBrapiCache();
-                        // DEPOIS (Bom):
+                        // Limpa o cache APENAS deste ativo
                         removerCacheAtivo(symbol); 
                         
                         salvarTransacoes();
                         
-                        // ANTES (Ruim): atualizarTodosDados(true);
-                        // DEPOIS (Bom):
-                        atualizarTodosDados(false); // Respeita o cache dos outros ativos
+                        // Atualiza os dados, respeitando o cache dos outros ativos
+                        atualizarTodosDados(false); 
                     }
                 );
             }
             
+            /** Limpa a página de detalhes */
             function limparDetalhes() {
                 detalhesMensagem.classList.remove('hidden');
                 detalhesLoading.classList.add('hidden');
@@ -1965,6 +1983,7 @@ async function handleAdicionarAtivo() {
                 detalhesAiProvento.innerHTML = ''; 
             }
             
+            /** Busca e exibe os dados da página de detalhes */
             async function handleMostrarDetalhes(symbol) {
                 detalhesMensagem.classList.add('hidden');
                 detalhesLoading.classList.remove('hidden');
@@ -1979,6 +1998,7 @@ async function handleAdicionarAtivo() {
                 const cacheKeyPreco = `detalhe_preco_${symbol}`;
                 let precoData = getCache(cacheKeyPreco);
                 
+                // Busca dados de preço (com cache)
                 if (!precoData) {
                     try {
                         const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -1987,12 +2007,13 @@ async function handleAdicionarAtivo() {
                         else throw new Error(precoData?.error || 'Ativo não encontrado');
                     } catch (e) { 
                         precoData = null; 
-                        showToast("Erro ao buscar preço."); // CORRIGIDO: Mensagem resumida
+                        showToast("Erro ao buscar preço.");
                     }
                 }
 
                 let promessaAi = null;
                 
+                // Se for FII, busca o histórico de proventos
                 if (isFII(symbol)) {
                     detalhesHistoricoContainer.classList.remove('hidden'); 
                     detalhesAiProvento.innerHTML = `
@@ -2007,6 +2028,7 @@ async function handleAdicionarAtivo() {
                 
                 detalhesLoading.classList.add('hidden');
 
+                // Renderiza dados de preço
                 if (precoData) {
                     detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
                     
@@ -2075,6 +2097,7 @@ async function handleAdicionarAtivo() {
                     detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
                 }
 
+                // Renderiza dados da IA (se houver)
                 detalhesHistoricoContainer.classList.remove('hidden'); 
                 
                 if (promessaAi) {
@@ -2085,7 +2108,7 @@ async function handleAdicionarAtivo() {
                             <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${aiResult}</p>
                         `;
                     } catch (e) {
-                        showToast("Erro na consulta IA."); // CORRIGIDO: Mensagem resumida
+                        showToast("Erro na consulta IA.");
                         detalhesAiProvento.innerHTML = `
                             <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
                             <div class="border border-red-700 bg-red-900/50 p-4 rounded-lg flex items-center gap-3">
@@ -2102,6 +2125,7 @@ async function handleAdicionarAtivo() {
                 }
             }
             
+            /** Muda a aba visível */
             function mudarAba(tabId) {
                 tabContents.forEach(content => {
                     content.classList.toggle('active', content.id === tabId);
@@ -2110,6 +2134,7 @@ async function handleAdicionarAtivo() {
                     button.classList.toggle('active', button.dataset.tab === tabId);
                 });
                 
+                // Mostra/esconde o botão FAB
                 if (tabId === 'tab-carteira') {
                     showAddModalBtn.classList.remove('hidden');
                 } else {
@@ -2117,27 +2142,34 @@ async function handleAdicionarAtivo() {
                 }
             }
             
-            // --- Event Listeners ---
+            // ==========================================================
+            // Event Listeners
+            // ==========================================================
 
+            // Botão de atualizar (limpa todo o cache)
             refreshButton.addEventListener('click', () => {
                 clearBrapiCache();
                 atualizarTodosDados(true); 
             });
             
+            // Modais de adicionar ativo
             showAddModalBtn.addEventListener('click', showAddModal);
             emptyStateAddBtn.addEventListener('click', showAddModal);
             addAtivoCancelBtn.addEventListener('click', hideAddModal);
             addAtivoModal.addEventListener('click', (e) => {
-                if (e.target === addAtivoModal) { hideAddModal(); }
+                if (e.target === addAtivoModal) { hideAddModal(); } // Fechar ao clicar fora
             });
             
+            // Ações do formulário de adicionar
             addButton.addEventListener('click', handleAdicionarAtivo);
             tickerInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             precoMedioInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); 
             
+            // Botão de notificação
             notifyButton.addEventListener('click', requestNotificationPermission);
 
+            // Eventos de clique na lista da carteira (usando delegação)
             listaCarteira.addEventListener('click', (e) => {
                 const target = e.target.closest('button');
                 if (!target) return;
@@ -2157,6 +2189,7 @@ async function handleAdicionarAtivo() {
                 }
             });
             
+            // Eventos de clique nos drawers do dashboard
             dashboardDrawers.addEventListener('click', (e) => {
                 const target = e.target.closest('button');
                 if (!target || !target.dataset.targetDrawer) return;
@@ -2169,12 +2202,14 @@ async function handleAdicionarAtivo() {
                 icon?.classList.toggle('open');
             });
 
+            // Navegação por abas
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     mudarAba(button.dataset.tab);
                 });
             });
             
+            // Modal de confirmação
             customModalCancel.addEventListener('click', hideModal);
             customModalOk.addEventListener('click', () => {
                 if (typeof onConfirmCallback === 'function') {
@@ -2183,15 +2218,16 @@ async function handleAdicionarAtivo() {
                 hideModal(); 
             });
             customModal.addEventListener('click', (e) => {
-                if (e.target === customModal) { hideModal(); }
+                if (e.target === customModal) { hideModal(); } // Fechar ao clicar fora
             });
             
+            // Página de detalhes
             detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
             detalhesPageModal.addEventListener('click', (e) => {
-                if (e.target === detalhesPageModal) { hideDetalhesModal(); }
+                if (e.target === detalhesPageModal) { hideDetalhesModal(); } // Fechar ao clicar fora
             });
 
-            // --- Listeners de Swipe (NOVO) ---
+            // Listeners de Swipe para fechar a página de detalhes
             detalhesPageContent.addEventListener('touchstart', (e) => {
                 if (detalhesConteudoScroll.scrollTop === 0) {
                     touchStartY = e.touches[0].clientY;
@@ -2207,7 +2243,7 @@ async function handleAdicionarAtivo() {
                 touchMoveY = e.touches[0].clientY;
                 const diff = touchMoveY - touchStartY;
                 
-                if (diff > 0) {
+                if (diff > 0) { // Só permite arrastar para baixo
                     detalhesPageContent.style.transform = `translateY(${diff}px)`;
                 }
             }, { passive: false }); 
@@ -2220,19 +2256,19 @@ async function handleAdicionarAtivo() {
                 
                 detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
                 
-                if (diff > 100) { 
+                if (diff > 100) { // Se arrastou mais de 100px
                     hideDetalhesModal(); 
                 } else {
-                    detalhesPageContent.style.transform = ''; 
+                    detalhesPageContent.style.transform = ''; // Volta ao normal
                 }
                 
                 touchStartY = 0;
                 touchMoveY = 0;
             });
-            // --- Fim Listeners de Swipe ---
 
-
-            // --- Funções da API Gemini (BFF) ---
+            // ==========================================================
+            // Funções da API Gemini (BFF)
+            // ==========================================================
 
             async function callGeminiHistoricoAPI(ticker, todayString) {
                 const body = { mode: 'historico_12m', payload: { ticker, todayString } };
@@ -2241,7 +2277,7 @@ async function handleAdicionarAtivo() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-                return response.text; 
+                return response.text; // Retorna o texto formatado
             }
             
             async function callGeminiProventosCarteiraAPI(fiiList, todayString) {
@@ -2251,7 +2287,7 @@ async function handleAdicionarAtivo() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-                return response.json; 
+                return response.json; // Retorna um array JSON
             }
             
             async function callGeminiHistoricoPortfolioAPI(fiiList, todayString) {
@@ -2261,16 +2297,18 @@ async function handleAdicionarAtivo() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-                return response.json; 
+                return response.json; // Retorna um array JSON
             }
 
-            // --- Inicialização ---
+            // ==========================================================
+            // Inicialização
+            // ==========================================================
             checkNotificationPermission(); 
             carregarTransacoes();
             carregarPatrimonio();
             mudarAba('tab-dashboard'); 
-            atualizarTodosDados(true); 
-            setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
+            atualizarTodosDados(true); // Carga inicial (forçada)
+            setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); // Atualização em background
         });
     </script>
 </body>

@@ -2169,18 +2169,30 @@
                 const target = e.target.closest('button');
                 if (!target) return;
                 
+                // O data-symbol está no botão, podemos pegá-lo diretamente
                 const action = target.dataset.action;
-                const symbol = target.dataset.symbol;
+                const symbol = target.dataset.symbol; 
 
                 if (action === 'remove') {
                     handleRemoverAtivo(symbol);
                 } else if (action === 'details') {
-                    // MUDOU: Agora chama o modal de página
                     showDetalhesModal(symbol);
                 } else if (action === 'toggle') {
-                    const card = target.closest('[data-symbol]');
+                    
+                    // =========================================================
+                    // CORREÇÃO DA ANIMAÇÃO DA GAVETA
+                    // =========================================================
+                    // O 'card' é o ancestral DIV que tem o data-symbol, 
+                    // não o próprio botão (target).
+                    // Usamos 'div[data-symbol]' para garantir que pegamos o container.
+                    const card = target.closest('div[data-symbol]'); 
+                    // =========================================================
+
+                    if (!card) return; // Segurança, caso não ache o card
+
                     const drawer = card.querySelector('.card-drawer');
                     const icon = target.querySelector('.card-arrow-icon');
+                    
                     drawer?.classList.toggle('open');
                     icon?.classList.toggle('open');
                 }

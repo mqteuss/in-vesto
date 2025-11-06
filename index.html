@@ -11,7 +11,7 @@
     
     <link rel="manifest" href="manifest.json">
 
-    <meta name="theme-color" content="#1A1A1A"> <!-- Alterado para o fundo do app -->
+    <meta name="theme-color" content="#8B5CF6">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -133,7 +133,11 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* ANIMAÇÃO PULSE REMOVIDA */
+        .pulse-animation { animation: pulse-foda 2s infinite cubic-bezier(0.4, 0, 0.6, 1); }
+        @keyframes pulse-foda {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
         
         .scrollable-content {
              max-height: 40vh; 
@@ -178,46 +182,6 @@
         }
         /* ============================================== */
         /* FIM: ESTILOS DE MODAL (GENÉRICO)               */
-        /* ============================================== */
-
-        /* ============================================== */
-        /* INÍCIO: ESTILOS DA PÁGINA DE DETALHES (NOVO)   */
-        /* ============================================== */
-        .page-modal { 
-            /* display: none; */ /* REMOVIDO: Conflitava com a transição */
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.4s ease-in-out;
-            /* Garante que o fundo fique por cima do app, mas abaixo do conteúdo da página */
-            z-index: 70; 
-        }
-        .page-modal.visible { 
-            /* display: block; */ /* REMOVIDO */
-            opacity: 1;
-            pointer-events: auto;
-        }
-        
-        .page-content {
-            transition: transform 0.4s ease-in-out;
-            transform: translateY(100%);
-            background-color: #101010; /* Fundo principal do app */
-            /* Garante que o conteúdo fique por cima do fundo .page-modal */
-            position: fixed; /* Mudei para fixed para desacoplar do .page-modal */
-            bottom: 0;
-            left: 0;
-            right: 0;
-            margin: 0 auto; /* Centraliza */
-            max-width: 32rem; /* 512px (max-w-lg) */
-            z-index: 80;
-        }
-        .page-modal.visible .page-content {
-            transform: translateY(0);
-        }
-        .page-content.closing { /* Esta classe é usada pelo JS para animar o fechamento */
-            transform: translateY(100%);
-        }
-        /* ============================================== */
-        /* FIM: ESTILOS DA PÁGINA DE DETALHES             */
         /* ============================================== */
         
         select {
@@ -274,12 +238,8 @@
 </head>
 <body class="antialiased">
 
-    <!-- O contêiner principal do aplicativo -->
     <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
 
-        <!-- ============================================== -->
-        <!-- ABA: DASHBOARD                                 -->
-        <!-- ============================================== -->
         <div id="tab-dashboard" class="tab-content active p-4">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Dashboard</h1>
@@ -291,54 +251,38 @@
                 </button>
             </div>
 
-            <!-- Card de Resumo (AGORA VISÍVEL POR PADRÃO com Skeletons) -->
-            <div id="resumo-carteira-card" class="card-bg p-5 rounded-2xl mb-6 text-center">
+            <div id="resumo-carteira-card" class="card-bg p-5 rounded-2xl mb-6 text-center hidden">
                 <span class="text-sm text-gray-500">Valor Total da Carteira</span>
-                
-                <!-- Skeleton Loader -->
-                <div id="skeleton-total-valor" class="h-10 w-3/4 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
-                <!-- Conteúdo Real (Escondido por padrão) -->
-                <h2 id="total-carteira-valor" class="text-4xl font-bold mt-1 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</h2>
+                <h2 id="total-carteira-valor" class="text-4xl font-bold mt-1 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">R$ 0,00</h2>
                 
                 <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-800">
                     <div>
                         <span class="text-xs text-gray-500">Custo Total</span>
-                        <!-- Skeleton Loader -->
-                        <div id="skeleton-total-custo" class="h-6 w-2/3 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
-                        <!-- Conteúdo Real (Escondido por padrão) -->
-                        <p id="total-carteira-custo" class="text-lg font-semibold text-gray-300 hidden">R$ 0,00</p>
+                        <p id="total-carteira-custo" class="text-lg font-semibold text-gray-300">R$ 0,00</p>
                     </div>
                     <div>
                         <span class="text-xs text-gray-500">Lucro/Prejuízo</span>
-                        <!-- Skeleton Loader -->
-                        <div id="skeleton-total-pl" class="h-6 w-full bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
-                        <!-- Conteúdo Real (Escondido por padrão) -->
-                        <p id="total-carteira-pl" class="text-lg font-semibold text-gray-500 hidden">R$ 0,00 (0.00%)</p>
+                        <p id="total-carteira-pl" class="text-lg font-semibold text-gray-500">R$ 0,00 (0.00%)</p>
                     </div>
                     <div>
                         <span class="text-xs text-gray-500">Próx. Proventos</span>
-                        <!-- Skeleton Loader -->
-                        <div id="skeleton-total-proventos" class="h-6 w-2/3 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
-                        <!-- Conteúdo Real (Escondido por padrão) -->
-                        <p id="total-proventos" class="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</p>
+                        <p id="total-proventos" class="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">R$ 0,00</p>
                     </div>
                 </div>
             </div>
-            <!-- Fim do Card de Resumo -->
 
             <div id="dashboard-drawers" class="space-y-4">
             
-                <!-- Drawer Patrimônio (AGORA ABERTO POR PADRÃO) -->
                 <div class="card-bg p-4 rounded-2xl shadow-lg">
                     <div class="flex justify-between items-center">
                         <h3 class="text-lg font-semibold text-white ml-2">Evolução do Patrimônio</h3>
-                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="patrimonio-chart-drawer" title="Mostrar menos">
-                            <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="patrimonio-chart-drawer" title="Mostrar mais">
+                            <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                             </svg>
                         </button>
                     </div>
-                    <div id="patrimonio-chart-drawer" class="card-drawer open">
+                    <div id="patrimonio-chart-drawer" class="card-drawer">
                         <div id="patrimonio-container" class="drawer-content relative h-64 pt-4">
                             <canvas id="patrimonio-chart"></canvas>
                         </div>
@@ -377,23 +321,14 @@
                     </div>
                 </div>
 
-            </div> 
-            
-            <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden"> <!-- Escondido por padrão, já que os skeletons estão no card -->
+            </div> <div id="dashboard-status" class="text-center text-gray-500 mt-12">
                  <p id="dashboard-mensagem">A carregar dados...</p>
                  <div id="dashboard-loading" class="flex justify-center items-center py-4">
                     <span class="loader"></span>
                  </div>
             </div>
         </div>
-        <!-- ============================================== -->
-        <!-- FIM: DASHBOARD                                 -->
-        <!-- ============================================== -->
 
-
-        <!-- ============================================== -->
-        <!-- ABA: CARTEIRA                                  -->
-        <!-- ============================================== -->
         <div id="tab-carteira" class="tab-content p-4">
             
             <div class="flex justify-between items-center mb-6">
@@ -408,100 +343,86 @@
                 </button>
             </div>
             
-            <!-- FORMULÁRIO DE ADIÇÃO REMOVIDO DAQUI -->
-            <!-- ... e movido para o modal #add-ativo-modal -->
-
-            <h2 class="text-xl font-semibold text-white mb-3">Minha Posição</h2>
-            
-            <!-- LISTA DE CARTEIRA (real) -->
-            <div id="lista-carteira" class="space-y-4">
-                <!-- Cards reais serão injetados aqui pelo JS -->
-            </div>
-            
-            <!-- SKELETON LOADERS PARA CARTEIRA (NOVO) -->
-            <div id="skeleton-lista-carteira" class="space-y-4">
-                <div class="card-bg p-4 rounded-2xl shadow-lg animate-pulse">
-                    <div class="flex justify-between items-start">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-gray-700 flex-shrink-0"></div>
-                            <div class="space-y-2">
-                                <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
-                                <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
-                            </div>
-                        </div>
-                        <div class="text-right flex-shrink-0 ml-2 space-y-2">
-                            <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
-                            <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
-                        </div>
-                    </div>
-                    <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
-                        <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
-                    </div>
-                </div>
-                <div class="card-bg p-4 rounded-2xl shadow-lg animate-pulse">
-                    <div class="flex justify-between items-start">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-gray-700 flex-shrink-0"></div>
-                            <div class="space-y-2">
-                                <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
-                                <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
-                            </div>
-                        </div>
-                        <div class="text-right flex-shrink-0 ml-2 space-y-2">
-                            <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
-                            <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
-                        </div>
-                    </div>
-                    <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
-                        <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
-                    </div>
-                </div>
-            </div>
-            <!-- FIM SKELETON LOADERS -->
-            
-            <!-- ESTADO VAZIO (MELHORADO) -->
-            <div id="carteira-status" class="text-center text-gray-500 mt-12 hidden">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
-                </svg>
-                <p id="carteira-mensagem" class="text-lg mt-4">A sua carteira está vazia.</p>
-                <button id="empty-state-add-btn" class="mt-6 py-2 px-5 accent-bg text-white font-semibold rounded-lg shadow-md transition-transform active:scale-95 hover:bg-violet-600">
-                    Adicionar primeiro ativo
+            <h2 class="text-xl font-semibold text-white mb-3">Adicionar Compra</h2>
+            <div class="flex gap-2 mb-8">
+                <input 
+                    type="text" 
+                    id="ticker-input" 
+                    placeholder="Ativo" 
+                    class="flex-1 min-w-0 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors"
+                >
+                <input
+                    type="number"
+                    id="quantity-input"
+                    placeholder="Qtd."
+                    class="w-16 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
+                >
+                <input
+                    type="number"
+                    id="preco-medio-input"
+                    placeholder="Preço"
+                    step="0.01"
+                    class="w-20 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
+                >
+                <button 
+                    id="add-button" 
+                    class="p-3 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 pulse-animation hover:scale-105"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
                 </button>
             </div>
-        </div>
-        <!-- ============================================== -->
-        <!-- FIM: CARTEIRA                                  -->
-        <!-- ============================================== -->
-        
 
-        <!-- ============================================== -->
-        <!-- ABA: HISTÓRICO                                 -->
-        <!-- ============================================== -->
+            <h2 class="text-xl font-semibold text-white mb-3">Minha Posição</h2>
+            <div id="lista-carteira" class="space-y-4">
+                </div>
+            
+            <div id="carteira-status" class="text-center text-gray-500 mt-12">
+                <p id="carteira-mensagem">A sua carteira está vazia.</p>
+                <div id="carteira-loading" class="hidden flex justify-center items-center py-4">
+                    <span class="loader"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="tab-detalhes" class="tab-content p-4">
+            <div id="detalhes-titulo" class="text-center mb-8">
+                 <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Detalhes do Ativo</h1>
+            </div>
+            
+            <div id="detalhes-conteudo" class="card-bg p-5 md:p-6 rounded-2xl space-y-5">
+                 <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
+                    <span class="loader"></span>
+                 </div>
+                 <p id="detalhes-mensagem" class="text-center text-gray-500 py-8">Clique em "Detalhes" num ativo da sua carteira para ver as informações aqui.</p>
+                 
+                 <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
+                 
+                 <div id="detalhes-historico-container" class="hidden">
+                    <div id="detalhes-ai-provento" class="my-4">
+                        </div>
+                    
+                    <div id="detalhes-historico" class="space-y-2 scrollable-content pr-2">
+                        </div>
+                 </div>
+                 
+            </div>
+        </div>
+        
         <div id="tab-historico" class="tab-content p-4">
             <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
         
             <div id="lista-historico" class="space-y-3">
-                <!-- Histórico injetado pelo JS -->
-            </div>
+                </div>
             
             <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
                 <p id="historico-mensagem">Nenhuma transação encontrada.</p>
             </div>
         </div>
-        <!-- ============================================== -->
-        <!-- FIM: HISTÓRICO                                 -->
-        <!-- ============================================== -->
-        
-    </div> <!-- FIM: #app-container -->
 
-
-    <!-- =================================================================== -->
-    <!-- INÍCIO: ELEMENTOS GLOBAIS (Modais, Nav, FABs)                       -->
-    <!-- =================================================================== -->
-
-    <!-- Notificação de Atualização PWA -->
-    <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
+    </div> <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
         <div class="card-bg rounded-xl p-4 shadow-2xl flex items-center justify-between gap-3">
             <span class="text-sm font-medium text-gray-100">Uma nova versão está disponível!</span>
             <button id="update-button" class="py-2 px-4 accent-bg text-white rounded-lg transition-colors text-sm font-semibold">
@@ -510,19 +431,7 @@
         </div>
     </div>
     
-    <!-- Botão Flutuante (FAB) para Adicionar Ativo (NOVO) -->
-    <button id="show-add-modal-btn" class="fixed bottom-24 right-5 z-40 accent-bg text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 hover:bg-violet-600 hidden" title="Adicionar Ativo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-    </button>
-    
-    <!-- 
-      Barra de Navegação Principal (AGORA COM 3 ABAS) 
-      MELHORIA 2: Alterado de left-4 right-4 para left-8 right-8 para diminuir a largura
-    -->
-    <nav class="fixed bottom-4 left-8 right-8 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">
+    <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">
         
         <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
             <div class="tab-button-icon-wrapper"> 
@@ -557,12 +466,19 @@
             <span class="text-xs mt-1 font-medium">Histórico</span>
         </button>
         
-        <!-- Botão da Aba "Detalhes" REMOVIDO -->
-        
+        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-detalhes" title="Detalhes">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+            </div>
+            <span class="text-xs mt-1 font-medium">Detalhes</span>
+        </button>
     </nav>
     
-    <!-- Modal de Confirmação (Genérico) -->
-    <div id="custom-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div id="custom-modal" class="custom-modal fixed inset-0 z-50 items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div id="custom-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
             <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar Ação</h3>
             <p id="custom-modal-message" class="text-sm text-gray-300 text-center mb-6">Tem certeza?</p>
@@ -572,110 +488,6 @@
             </div>
         </div>
     </div>
-    
-    <!-- 
-      Modal para Adicionar Ativo (NOVO) 
-      MELHORIA 1: Alterado de "items-center" para "items-start pt-20" para evitar que o teclado cubra o modal
-    -->
-    <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-20 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">
-        <div id="add-ativo-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
-            <h3 id="add-modal-title" class="text-xl font-semibold text-white mb-5 text-center">Adicionar Compra</h3>
-            <div class="space-y-4">
-                <input 
-                    type="text" 
-                    id="ticker-input" 
-                    placeholder="Ativo (ex: MXRF11)" 
-                    class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors"
-                >
-                <div class="flex gap-3">
-                    <input
-                        type="number"
-                        id="quantity-input"
-                        placeholder="Qtd."
-                        class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
-                    >
-                    <input
-                        type="number"
-                        id="preco-medio-input"
-                        placeholder="Preço (R$)"
-                        step="0.01"
-                        class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
-                    >
-                </div>
-            </div>
-            <div class="flex justify-end gap-3 mt-6">
-                <button id="add-ativo-cancel-btn" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
-                <button 
-                    id="add-button" 
-                    class="py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
-                >
-                    Adicionar
-                </button>
-            </div>
-        </div>
-    </div>
-    <!-- Fim Modal Adicionar Ativo -->
-    
-
-    <!-- ============================================== -->
-    <!-- PÁGINA DE DETALHES (NOVO MODAL TELA CHEIA)       -->
-    <!-- ============================================== -->
-    <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
-        
-        <!-- O conteúdo que desliza de baixo para cima -->
-        <!-- O h-[90vh] e rounded-t-2xl etc estão agora no page-content -->
-        <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
-            
-            <!-- Cabeçalho da Página de Detalhes (BOTÃO MOVIDO PARA A DIREITA) -->
-            <div class="flex justify-between items-center p-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
-                
-                <!-- Título agora à esquerda -->
-                <div id="detalhes-titulo" class="flex-1 min-w-0"> <!-- min-w-0 para truncar funcionar -->
-                     <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
-                     <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
-                </div>
-                
-                <!-- Botão de Fechar à direita (Ícone "X") -->
-                <button id="detalhes-voltar-btn" class="p-2 ml-3 text-gray-400 hover:text-white rounded-full transition-colors flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> <!-- Ícone de X -->
-                    </svg>
-                </button>
-            </div>
-            
-            <!-- Conteúdo de Detalhes com Scroll -->
-            <div id="detalhes-conteudo-scroll" class="overflow-y-auto h-[calc(90vh-65px)] p-4">
-                <div id="detalhes-conteudo" class="space-y-5">
-                     <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
-                        <span class="loader"></span>
-                     </div>
-                     <p id="detalhes-mensagem" class="text-center text-gray-500 py-8">Clique em "Detalhes" num ativo da sua carteira para ver as informações aqui.</p>
-                     
-                     <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
-                     
-                     <div id="detalhes-historico-container" class="hidden">
-                        <div id="detalhes-ai-provento" class="my-4">
-                            </div>
-                        
-                        <div id="detalhes-historico" class="space-y-2 scrollable-content pr-2">
-                            </div>
-                     </div>
-                     
-                </div>
-            </div>
-            <!-- Fim Conteúdo de Detalhes -->
-            
-        </div>
-    </div>
-    <!-- ============================================== -->
-    <!-- FIM: PÁGINA DE DETALHES                          -->
-    <!-- ============================================== -->
-
-
-    <!-- =================================================================== -->
-    <!-- FIM: ELEMENTOS GLOBAIS                                              -->
-    <!-- =================================================================== -->
-
     
     <script>
         // Configurações padrão do Chart.js para modo escuro
@@ -694,6 +506,10 @@
             const DB_KEY_PATRIMONIO = 'vesto_patrimonio_v1';
 
             // --- Elementos DOM (Gerais) ---
+            const tickerInput = document.getElementById('ticker-input');
+            const quantityInput = document.getElementById('quantity-input');
+            const precoMedioInput = document.getElementById('preco-medio-input'); 
+            const addButton = document.getElementById('add-button');
             const refreshButton = document.getElementById('refresh-button');
             const tabButtons = document.querySelectorAll('.tab-button');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -703,37 +519,22 @@
             const dashboardLoading = document.getElementById('dashboard-loading');
             const dashboardMensagem = document.getElementById('dashboard-mensagem');
             const resumoCarteiraCard = document.getElementById('resumo-carteira-card');
-            const dashboardDrawers = document.getElementById('dashboard-drawers');
-            const notifyButton = document.getElementById('request-notify-btn');
-            
-            // --- Elementos DOM (Dashboard - Skeletons & Data) ---
-            const skeletonTotalValor = document.getElementById('skeleton-total-valor');
-            const skeletonTotalCusto = document.getElementById('skeleton-total-custo');
-            const skeletonTotalPL = document.getElementById('skeleton-total-pl');
-            const skeletonTotalProventos = document.getElementById('skeleton-total-proventos');
             const totalCarteiraValor = document.getElementById('total-carteira-valor');
             const totalCarteiraCusto = document.getElementById('total-carteira-custo');
             const totalCarteiraPL = document.getElementById('total-carteira-pl');
+            const dashboardDrawers = document.getElementById('dashboard-drawers');
+            const notifyButton = document.getElementById('request-notify-btn');
             
             // --- Elementos DOM (Carteira) ---
             const listaCarteira = document.getElementById('lista-carteira');
-            const carteiraStatus = document.getElementById('carteira-status');
             const carteiraMensagem = document.getElementById('carteira-mensagem');
-            const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
-            const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
+            const carteiraLoading = document.getElementById('carteira-loading');
             
             // --- Elementos DOM (Proventos) ---
             const totalProventosEl = document.getElementById('total-proventos');
             
-            // --- Elementos DOM (Detalhes - Agora uma Página Modal) ---
-            const detalhesPageModal = document.getElementById('detalhes-page-modal');
-            const detalhesPageContent = document.getElementById('tab-detalhes'); // O ID antigo agora é o conteúdo da página
-            const detalhesVoltarBtn = document.getElementById('detalhes-voltar-btn');
+            // --- Elementos DOM (Detalhes) ---
             const detalhesTitulo = document.getElementById('detalhes-titulo');
-            const detalhesTituloTexto = document.getElementById('detalhes-titulo-texto');
-            const detalhesNomeLongo = document.getElementById('detalhes-nome-longo');
-            const detalhesConteudoScroll = document.getElementById('detalhes-conteudo-scroll');
-            const detalhesConteudo = document.getElementById('detalhes-conteudo');
             const detalhesMensagem = document.getElementById('detalhes-mensagem');
             const detalhesLoading = document.getElementById('detalhes-loading');
             const detalhesPreco = document.getElementById('detalhes-preco');
@@ -754,15 +555,7 @@
             const customModalOk = document.getElementById('custom-modal-ok');
             const customModalCancel = document.getElementById('custom-modal-cancel');
             
-            // --- Elementos DOM (Modal Adicionar Ativo - NOVO) ---
-            const showAddModalBtn = document.getElementById('show-add-modal-btn');
-            const addAtivoModal = document.getElementById('add-ativo-modal');
-            const addAtivoModalContent = document.getElementById('add-ativo-modal-content');
-            const addAtivoCancelBtn = document.getElementById('add-ativo-cancel-btn');
-            const tickerInput = document.getElementById('ticker-input');
-            const quantityInput = document.getElementById('quantity-input');
-            const precoMedioInput = document.getElementById('preco-medio-input'); 
-            const addButton = document.getElementById('add-button');
+            // --- Elementos DOM (Modal de Venda REMOVIDO) ---
             
             // --- Estado da Aplicação ---
             let transacoes = [];        
@@ -774,6 +567,7 @@
             let patrimonioChartInstance = null; 
             
             let onConfirmCallback = null; 
+            // onVendaConfirmCallback REMOVIDO
             
             let precosAtuais = [];
             let proventosAtuais = [];
@@ -783,11 +577,6 @@
             let lastAlocacaoData = null; 
             let lastHistoricoData = null;
             let lastPatrimonioData = null; 
-
-            // --- Estado para Swipe (NOVO) ---
-            let touchStartY = 0;
-            let touchMoveY = 0;
-            let isDraggingDetalhes = false;
 
             // ==========================================================
             // LÓGICA DE ATUALIZAÇÃO DO PWA (SW)
@@ -1017,49 +806,7 @@
                 }, 200); 
             }
             
-            // Funções do Modal de Adicionar Ativo (NOVO)
-            function showAddModal() {
-                addAtivoModal.classList.add('visible');
-                addAtivoModalContent.classList.remove('modal-out');
-                tickerInput.focus();
-            }
-            
-            function hideAddModal() {
-                addAtivoModalContent.classList.add('modal-out');
-                setTimeout(() => {
-                    addAtivoModal.classList.remove('visible');
-                    addAtivoModalContent.classList.remove('modal-out');
-                    // Limpa o formulário ao fechar
-                    tickerInput.value = '';
-                    quantityInput.value = '';
-                    precoMedioInput.value = '';
-                    tickerInput.classList.remove('border-red-500');
-                    quantityInput.classList.remove('border-red-500');
-                    precoMedioInput.classList.remove('border-red-500');
-                }, 200);
-            }
-            
-            // Funções da Página de Detalhes (NOVO)
-            function showDetalhesModal(symbol) {
-                detalhesPageContent.style.transform = ''; // Limpa o transform inline (do swipe)
-                detalhesPageContent.classList.remove('closing'); 
-                detalhesPageModal.classList.add('visible'); // Mostra o fundo (opacity 1) e o conteúdo (translateY(0))
-                document.body.style.overflow = 'hidden'; // Impede scroll do body
-                detalhesConteudoScroll.scrollTop = 0; // Reseta o scroll
-                handleMostrarDetalhes(symbol); // Função existente que busca os dados
-            }
-            
-            function hideDetalhesModal() {
-                detalhesPageContent.style.transform = ''; // Limpa o transform inline (do swipe)
-                detalhesPageContent.classList.add('closing'); // Anima para translateY(100%)
-                detalhesPageModal.classList.remove('visible'); // Anima o fundo (opacity 0)
-                document.body.style.overflow = ''; // Libera scroll do body
-                
-                setTimeout(() => {
-                    limparDetalhes(); // Função existente que limpa o conteúdo
-                    // Não precisa remover .closing, showDetalhesModal já faz isso
-                }, 400); // Duração da animação CSS
-            }
+            // Funções do Modal de Venda REMOVIDAS
             
             // --- Funções de Dados (localStorage) ---
             
@@ -1328,32 +1075,8 @@
                 }
             }
             
-            function renderizarDashboardSkeletons(show) {
-                const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos];
-                const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl];
-                
-                if (show) {
-                    skeletons.forEach(el => el.classList.remove('hidden'));
-                    dataElements.forEach(el => el.classList.add('hidden'));
-                } else {
-                    skeletons.forEach(el => el.classList.add('hidden'));
-                    dataElements.forEach(el => el.classList.remove('hidden'));
-                }
-            }
-            
-            function renderizarCarteiraSkeletons(show) {
-                if (show) {
-                    skeletonListaCarteira.classList.remove('hidden');
-                    carteiraStatus.classList.add('hidden');
-                    listaCarteira.innerHTML = ''; // Limpa a lista antiga
-                } else {
-                    skeletonListaCarteira.classList.add('hidden');
-                }
-            }
-            
             function renderizarCarteira() {
-                // Já que os dados chegaram (ou falharam), escondemos os skeletons da carteira
-                renderizarCarteiraSkeletons(false);
+                listaCarteira.innerHTML = ''; 
                 
                 const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
                 const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p]));
@@ -1365,33 +1088,21 @@
                 let dadosGrafico = [];
 
                 if (carteiraOrdenada.length === 0) {
-                    // Mostra o estado vazio
-                    carteiraStatus.classList.remove('hidden');
-                    
-                    // Esconde skeletons do dashboard e mostra R$ 0,00
-                    renderizarDashboardSkeletons(false);
-                    totalCarteiraValor.textContent = formatBRL(0);
-                    totalCarteiraCusto.textContent = formatBRL(0);
-                    totalCarteiraPL.textContent = `${formatBRL(0)} (0.00%)`;
-                    totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
-                    
-                    // Mostra dashboard status (mensagem de carteira vazia)
+                    carteiraMensagem.textContent = 'A sua carteira está vazia.';
+                    carteiraMensagem.classList.remove('hidden');
                     dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
                     dashboardLoading.classList.add('hidden');
                     dashboardStatus.classList.remove('hidden');
-                    
-                    // Limpa gráficos
+                    resumoCarteiraCard.classList.add('hidden');
                     renderizarGraficoAlocacao([]); 
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                     renderizarGraficoPatrimonio(); 
                 } else {
-                    // Esconde o estado vazio
-                    carteiraStatus.classList.add('hidden');
-                    // Esconde a mensagem do dashboard
+                    carteiraMensagem.classList.add('hidden');
                     dashboardStatus.classList.add('hidden');
+                    resumoCarteiraCard.classList.remove('hidden');
                 }
 
-                listaCarteira.innerHTML = ''; // Limpa a lista para redesenhar
                 carteiraOrdenada.forEach(ativo => {
                     const dadoPreco = precosMap.get(ativo.symbol);
                     const dadoProvento = proventosMap.get(ativo.symbol);
@@ -1511,8 +1222,6 @@
                     if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
                     else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
                     
-                    // Esconde skeletons do dashboard e mostra os valores reais
-                    renderizarDashboardSkeletons(false);
                     totalCarteiraValor.textContent = formatBRL(totalValorCarteira);
                     totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
                     totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
@@ -1538,7 +1247,6 @@
                 });
                 
                 totalProventosEl.textContent = formatBRL(totalEstimado);
-                // O skeleton já é tratado pela renderizarCarteira
             }
             
             function renderizarHistorico() {
@@ -1618,40 +1326,26 @@
                     if (precosCache) { return precosCache; }
                 }
 
-                console.log("A buscar preços na API (em paralelo)..."); // MODIFICADO
+                console.log("A buscar preços na API (sequencialmente)...");
+                const precos = [];
 
-                // Cria um array de promessas, uma para cada ativo
-                const promessasPrecos = carteiraCalculada.map(ativo => {
-                    return (async () => { // Cria uma função assíncrona auto-executável
-                        try {
-                            const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
-                            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                            const result = data.results?.[0];
+                for (const ativo of carteiraCalculada) {
+                    try {
+                        const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
+                        const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+                        const result = data.results?.[0];
 
-                            if (result && !result.error) {
-                                if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                                return result; // Retorna o resultado de sucesso
-                            } else {
-                                console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
-                                return null; // Retorna nulo em caso de erro da API
-                            }
-                        } catch (err) {
-                            console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
-                            return null; // Retorna nulo em caso de falha no fetch
+                        if (result && !result.error) {
+                            if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
+                            precos.push(result);
+                        } else {
+                            console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
                         }
-                        // O delay(250) foi REMOVIDO daqui
-                    })(); // Invoca a função imediatamente
-                });
-
-                // Espera todas as buscas em paralelo terminarem
-                const resultados = await Promise.allSettled(promessasPrecos);
-                
-                // Filtra apenas os resultados bem-sucedidos e não nulos
-                const precos = resultados
-                    .filter(res => res.status === 'fulfilled' && res.value !== null)
-                    .map(res => res.value);
-
-                // O delay foi removido, as buscas agora são paralelas.
+                    } catch (err) {
+                        console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
+                    }
+                    await delay(250); 
+                }
 
                 if (precos.length > 0) {
                     setCache(cacheKey, precos); 
@@ -1780,18 +1474,9 @@
 
             // --- Funções Principais (Handlers) ---
             
-            /*
-            MELHORIA 3: A função 'atualizarTodosDados' foi refatorada.
-            - Removemos os blocos .then() e .catch() individuais das promessas.
-            - Agora usamos 'await Promise.allSettled()' para esperar que TODAS as buscas terminem.
-            - Depois que todas terminam (com sucesso ou falha), atualizamos as variáveis 'precosAtuais' e 'proventosAtuais'.
-            - SÓ ENTÃO chamamos 'renderizarCarteira()' e 'renderizarProventos()' UMA ÚNICA VEZ.
-            - Isso evita o redesenho múltiplo da lista de ativos.
-            */
-            async function atualizarTodosDados(force = false) { 
-                // Mostra Skeletons do Dashboard e Carteira
-                renderizarDashboardSkeletons(true);
-                renderizarCarteiraSkeletons(true);
+             async function atualizarTodosDados(force = false) { 
+                carteiraLoading.classList.remove('hidden');
+                carteiraMensagem.classList.add('hidden');
                 
                 calcularCarteira();
                 renderizarHistorico();
@@ -1805,7 +1490,6 @@
                 const refreshIcon = refreshButton.querySelector('svg'); 
                 refreshIcon.classList.add('spin-animation');
 
-                // Busca dados do cache se não for forçado
                 let precosCache = null;
                 if (!force) {
                     const cacheKeyPrecos = 'precos_' + carteiraCalculada.map(a => a.symbol).join('-');
@@ -1822,7 +1506,6 @@
                     }
                 }
                 
-                // Renderização inicial com cache (se houver)
                 if (precosCache) {
                     precosAtuais = precosCache;
                     proventosAtuais = proventosFuturosCache || [];
@@ -1840,57 +1523,54 @@
                      renderizarProventos(); 
                      renderizarGraficoHistorico({ labels: [], data: [] }); 
                      refreshIcon.classList.remove('spin-animation');
-                     
-                     // Skeletons já são tratados por renderizarCarteira()
+                     carteiraLoading.classList.add('hidden');
+                     dashboardStatus.classList.remove('hidden'); 
+                     dashboardLoading.classList.add('hidden');
+                     dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
+                     resumoCarteiraCard.classList.add('hidden');
                      return; 
                 }
 
-                // Inicia as buscas de dados em paralelo
                 const promessaPrecos = buscarPrecosCarteira(force); 
                 const promessaProventos = buscarProventosFuturos();
                 const promessaHistorico = buscarHistoricoProventosAgregado();
 
-                // --- Blocos .then() individuais REMOVIDOS ---
+                promessaPrecos.then(precos => {
+                    if (precos.length > 0) {
+                        precosAtuais = precos; 
+                        renderizarCarteira();  
+                    } else if (precosAtuais.length === 0) { 
+                        renderizarCarteira(); 
+                    }
+                }).catch(err => {
+                    console.error("Erro ao buscar preços (BFF):", err);
+                    if (precosAtuais.length === 0) { renderizarCarteira(); }
+                });
+
+                promessaProventos.then(proventosFuturos => {
+                    proventosAtuais = proventosFuturos; 
+                    renderizarProventos(); 
+                    if (precosAtuais.length > 0) {
+                        renderizarCarteira();  
+                    }
+                }).catch(err => {
+                    console.error("Erro ao buscar proventos (BFF):", err);
+                    if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
+                });
+                
+                promessaHistorico.then(({ labels, data }) => {
+                    renderizarGraficoHistorico({ labels, data });
+                }).catch(err => {
+                    console.error("Erro ao buscar histórico agregado (BFF):", err);
+                    renderizarGraficoHistorico({ labels: [], data: [] }); 
+                });
 
                 try {
-                    // Espera TODAS as promessas terminarem
-                    const [precosResult, proventosResult, historicoResult] = await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]);
-
-                    // Processa resultado de Preços
-                    if (precosResult.status === 'fulfilled' && precosResult.value.length > 0) {
-                        precosAtuais = precosResult.value;
-                    } else if (precosResult.status === 'rejected') {
-                        console.error("Erro ao buscar preços (BFF):", precosResult.reason);
-                    }
-                    
-                    // Processa resultado de Proventos
-                    if (proventosResult.status === 'fulfilled') {
-                        proventosAtuais = proventosResult.value;
-                    } else if (proventosResult.status === 'rejected') {
-                        console.error("Erro ao buscar proventos (BFF):", proventosResult.reason);
-                        if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
-                    }
-                    
-                    // Processa resultado de Histórico
-                    if (historicoResult.status === 'fulfilled') {
-                        renderizarGraficoHistorico(historicoResult.value);
-                    } else if (historicoResult.status === 'rejected') {
-                        console.error("Erro ao buscar histórico agregado (BFF):", historicoResult.reason);
-                        renderizarGraficoHistorico({ labels: [], data: [] }); 
-                    }
-
-                    // Agora renderiza tudo UMA VEZ com os dados novos (ou cacheados)
-                    renderizarCarteira();
-                    renderizarProventos();
-
-                } catch (err) {
-                    console.error("Erro inesperado no Promise.allSettled:", err);
-                    // Renderiza com o que tiver (provavelmente cache/vazio)
-                    renderizarCarteira();
-                    renderizarProventos();
+                    await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]);
                 } finally {
                     console.log("Todas as sincronizações (BFF) terminaram.");
                     refreshIcon.classList.remove('spin-animation');
+                    carteiraLoading.classList.add('hidden');
                     
                     if (carteiraCalculada.length > 0) {
                          dashboardStatus.classList.add('hidden');
@@ -1921,10 +1601,7 @@
                 const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
                 
                 if (!ativoExistente) {
-                    // Adiciona um spinner ao botão de adicionar
-                    addButton.innerHTML = `<span class="loader-sm"></span>`;
-                    addButton.disabled = true;
-                    
+                    carteiraLoading.classList.remove('hidden');
                     const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
                     try {
                          const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -1933,15 +1610,14 @@
                          }
                     } catch (error) {
                          console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
+                         carteiraLoading.classList.add('hidden');
                          tickerInput.value = '';
                          tickerInput.placeholder = "Ativo não encontrado";
                          tickerInput.classList.add('border-red-500');
                          setTimeout(() => { 
-                            tickerInput.placeholder = "Ativo (ex: MXRF11)"; 
+                            tickerInput.placeholder = "Ativo"; 
                             tickerInput.classList.remove('border-red-500');
                          }, 2000);
-                         addButton.innerHTML = `Adicionar`;
-                         addButton.disabled = false;
                          return;
                     }
                 } 
@@ -1957,15 +1633,15 @@
 
                 clearBrapiCache();
                 salvarTransacoes();
-                
-                // Reseta o botão e fecha o modal
-                addButton.innerHTML = `Adicionar`;
-                addButton.disabled = false;
-                hideAddModal();
-                
-                // Atualiza os dados
                 atualizarTodosDados(true); 
+                
+                tickerInput.value = '';
+                quantityInput.value = '';
+                precoMedioInput.value = '';
+                tickerInput.focus(); 
             }
+
+            // handleVender REMOVIDO
 
             function handleRemoverAtivo(symbol) {
                 showModal(
@@ -1977,7 +1653,9 @@
                         clearBrapiCache(); 
                         salvarTransacoes();
                         atualizarTodosDados(true); 
-                        // Não precisamos mais checar o título, pois o modal de detalhes não é persistente
+                        if (detalhesTitulo.textContent.includes(symbol)) {
+                            limparDetalhes();
+                        }
                     }
                 );
             }
@@ -1985,8 +1663,7 @@
             function limparDetalhes() {
                 detalhesMensagem.classList.remove('hidden');
                 detalhesLoading.classList.add('hidden');
-                detalhesTituloTexto.textContent = 'Detalhes'; 
-                detalhesNomeLongo.textContent = ''; 
+                detalhesTitulo.innerHTML = '<h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Detalhes do Ativo</h1>'; 
                 detalhesPreco.innerHTML = '';
                 detalhesHistoricoContainer.classList.add('hidden');
                 detalhesHistorico.innerHTML = ''; 
@@ -1994,15 +1671,14 @@
             }
             
             async function handleMostrarDetalhes(symbol) {
-                // Não muda mais de aba
+                mudarAba('tab-detalhes');
                 detalhesMensagem.classList.add('hidden');
                 detalhesLoading.classList.remove('hidden');
                 detalhesPreco.innerHTML = '';
                 detalhesAiProvento.innerHTML = ''; 
                 detalhesHistoricoContainer.classList.add('hidden');
                 detalhesHistorico.innerHTML = ''; 
-                detalhesTituloTexto.textContent = symbol;
-                detalhesNomeLongo.textContent = 'A carregar...';
+                detalhesTitulo.innerHTML = `<h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">${symbol}</h1>`;
                 
                 const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
                 const cacheKeyPreco = `detalhe_preco_${symbol}`;
@@ -2034,7 +1710,10 @@
                 detalhesLoading.classList.add('hidden');
 
                 if (precoData) {
-                    detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
+                    detalhesTitulo.innerHTML = `
+                        <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">${symbol}</h1>
+                        <p id="detalhes-nome-longo" class="text-base font-normal text-gray-500 mt-1">${precoData.longName || 'Nome não disponível'}</p>
+                    `;
                     
                     const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
 
@@ -2134,12 +1813,10 @@
                 tabButtons.forEach(button => {
                     button.classList.toggle('active', button.dataset.tab === tabId);
                 });
-                
-                // Mostra ou esconde o FAB
-                if (tabId === 'tab-carteira') {
-                    showAddModalBtn.classList.remove('hidden');
-                } else {
-                    showAddModalBtn.classList.add('hidden');
+                if (tabId !== 'tab-detalhes') {
+                    if (detalhesMensagem.classList.contains('hidden')) {
+                         limparDetalhes();
+                    }
                 }
             }
             
@@ -2149,16 +1826,6 @@
                 clearBrapiCache();
                 atualizarTodosDados(true); 
             });
-            
-            // Listeners do Modal de Adicionar
-            showAddModalBtn.addEventListener('click', showAddModal);
-            emptyStateAddBtn.addEventListener('click', showAddModal);
-            addAtivoCancelBtn.addEventListener('click', hideAddModal);
-            addAtivoModal.addEventListener('click', (e) => {
-                if (e.target === addAtivoModal) { hideAddModal(); }
-            });
-            
-            // Listeners do Formulário de Adicionar
             addButton.addEventListener('click', handleAdicionarAtivo);
             tickerInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
@@ -2176,8 +1843,9 @@
                 if (action === 'remove') {
                     handleRemoverAtivo(symbol);
                 } else if (action === 'details') {
-                    // MUDOU: Agora chama o modal de página
-                    showDetalhesModal(symbol);
+                    handleMostrarDetalhes(symbol);
+                } else if (action === 'sell') {
+                    // Lógica de Venda REMOVIDA
                 } else if (action === 'toggle') {
                     const drawer = document.getElementById(`drawer-${symbol}`);
                     const icon = target.querySelector('.card-arrow-icon');
@@ -2216,62 +1884,7 @@
                 if (e.target === customModal) { hideModal(); }
             });
             
-            // Listeners da Página de Detalhes
-            detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
-            detalhesPageModal.addEventListener('click', (e) => {
-                // Fecha se clicar no fundo (fora do .page-content)
-                if (e.target === detalhesPageModal) { hideDetalhesModal(); }
-            });
-
-            // --- Listeners de Swipe (NOVO) ---
-            detalhesPageContent.addEventListener('touchstart', (e) => {
-                // Só iniciar o swipe se o scroll do conteúdo estiver no topo
-                if (detalhesConteudoScroll.scrollTop === 0) {
-                    touchStartY = e.touches[0].clientY;
-                    touchMoveY = touchStartY; // Inicializa
-                    isDraggingDetalhes = true;
-                    // Remover transição para o movimento ser 1:1 com o dedo
-                    detalhesPageContent.style.transition = 'none'; 
-                }
-            }, { passive: true }); // passive: true aqui está OK
-            
-            detalhesPageContent.addEventListener('touchmove', (e) => {
-                if (!isDraggingDetalhes) return;
-                
-                touchMoveY = e.touches[0].clientY;
-                const diff = touchMoveY - touchStartY;
-                
-                // Só mover se o swipe for para baixo
-                if (diff > 0) {
-                    // Prevenir o scroll da página (pull-to-refresh)
-                    // passive: false seria necessário se usássemos preventDefault
-                    detalhesPageContent.style.transform = `translateY(${diff}px)`;
-                }
-            }, { passive: false }); // passive: false é NECESSÁRIO para poder mover
-            
-            detalhesPageContent.addEventListener('touchend', (e) => {
-                if (!isDraggingDetalhes) return;
-                
-                isDraggingDetalhes = false;
-                const diff = touchMoveY - touchStartY;
-                
-                // Restaura a transição
-                detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
-                
-                // Threshold para fechar
-                if (diff > 100) { 
-                    hideDetalhesModal(); // hideDetalhesModal vai limpar o style.transform e aplicar .closing
-                } else {
-                    // Snap back para cima (removendo o style.transform, a regra .visible assume)
-                    detalhesPageContent.style.transform = ''; 
-                }
-                
-                // Limpar variáveis
-                touchStartY = 0;
-                touchMoveY = 0;
-            });
-            // --- Fim Listeners de Swipe ---
-
+            // Listeners do Modal de Venda REMOVIDOS
 
             // --- Funções da API Gemini (BFF) ---
 
@@ -2309,7 +1922,6 @@
             checkNotificationPermission(); 
             carregarTransacoes();
             carregarPatrimonio();
-            mudarAba('tab-dashboard'); // Garante que a aba correta e o FAB estejam no estado inicial
             atualizarTodosDados(true); 
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
         });

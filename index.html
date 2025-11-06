@@ -900,6 +900,21 @@
                 try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(cacheItem)); } 
                 catch (e) { console.error("Erro ao salvar no cache:", e); clearBrapiCache(); }
             }
+			function removerCacheAtivo(symbol) {
+                console.log(`A limpar cache específico para: ${symbol}`);
+                localStorage.removeItem(CACHE_PREFIX + `preco_${symbol}`);
+                localStorage.removeItem(CACHE_PREFIX + `provento_ia_${symbol}`);
+                localStorage.removeItem(CACHE_PREFIX + `detalhe_preco_${symbol}`);
+                
+                // Também é uma boa ideia invalidar o cache de histórico agregado
+                // para que ele seja recalculado sem este FII (se for um FII)
+                if (isFII(symbol)) {
+                    // Esta é uma forma simples de invalidar qualquer cache agregado
+                    Object.keys(localStorage)
+                        .filter(key => key.startsWith(CACHE_PREFIX + 'hist_agregado_v4_'))
+                        .forEach(key => localStorage.removeItem(key));
+                }
+            }
             
             function getCache(key) {
                 const cacheItem = localStorage.getItem(CACHE_PREFIX + key);
@@ -1926,9 +1941,15 @@ async function handleAdicionarAtivo() {
                     () => { 
                         transacoes = transacoes.filter(t => t.symbol !== symbol);
                         
-                        clearBrapiCache(); 
+                        // ANTES (Ruim): clearBrapiCache();
+                        // DEPOIS (Bom):
+                        removerCacheAtivo(symbol); 
+                        
                         salvarTransacoes();
-                        atualizarTodosDados(true); 
+                        
+                        // ANTES (Ruim): atualizarTodosDados(true);
+                        // DEPOIS (Bom):
+                        atualizarTodosDados(false); // Respeita o cache dos outros ativos
                     }
                 );
             }

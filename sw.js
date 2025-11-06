@@ -3,24 +3,50 @@
 const CACHE_NAME = 'vesto-cache-v1';
 
 // Todos os arquivos que compõem o "esqueleto" do seu app
-const APP_SHELL_FILES = [
+// SEPARAMOS OS ARQUIVOS LOCAIS DOS CDNS
+const APP_SHELL_FILES_LOCAL = [
   '/',
   'index.html', 
   'manifest.json', 
-  'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
   'icons/icon-192x192.png', 
   'icons/icon-512x512.png'  
 ];
 
+const APP_SHELL_FILES_CDN = [
+  'https://cdn.tailwindcss.com',
+  'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js'
+];
+
+
 // Evento de Instalação: Armazena o App Shell no cache
 self.addEventListener('install', event => {
   console.log('[SW] Instalando...');
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('[SW] Armazenando App Shell no cache');
-        return cache.addAll(APP_SHELL_FILES);
+
+        // 1. Armazena os arquivos de CDN com 'no-cors'
+        const cdnCachePromise = Promise.all(
+          APP_SHELL_FILES_CDN.map(url => {
+            // Cria uma Request com 'no-cors'
+            const request = new Request(url, { mode: 'no-cors' });
+            
+            // Busca e armazena a resposta opaca
+            return fetch(request)
+              .then(response => cache.put(request, response))
+              .catch(err => {
+                console.warn(`[SW] Falha ao armazenar CDN: ${url}`, err);
+              });
+          })
+        );
+
+        // 2. Armazena os arquivos locais
+        const localCachePromise = cache.addAll(APP_SHELL_FILES_LOCAL);
+
+        // 3. Espera ambas as promessas terminarem
+        return Promise.all([cdnCachePromise, localCachePromise]);
       })
       // REMOVEMOS O self.skipWaiting() DAQUI!
       // Agora ele vai "esperar" (waiting) após instalar.

@@ -1,4 +1,4 @@
-/ NOVO: Versão do cache atualizada para forçar a atualização
+// NOVO: Versão do cache atualizada para forçar a atualização
 const CACHE_NAME = 'vesto-cache-v2';
 
 // Todos os arquivos que compõem o "esqueleto" do seu app
@@ -15,7 +15,9 @@ const APP_SHELL_FILES = [
         console.log('[SW] Armazenando App Shell no cache');
         return cache.addAll(APP_SHELL_FILES);
       })
-	  );
+      // REMOVEMOS O self.skipWaiting() DAQUI!
+      // Agora ele vai "esperar" (waiting) após instalar.
+  );
 });
 
 @@ -47,6 +47,7 @@ self.addEventListener('fetch', event => {
@@ -42,6 +44,11 @@ const APP_SHELL_FILES = [
     })
   );
 });
+
+// ==========================================================
+// ADIÇÃO CRÍTICA: Ouvinte de Mensagem
+// ==========================================================
+// Ouve a mensagem do 'index.html' para pular a espera
 // Ouvinte de Mensagem para o SKIP_WAITING
 self.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'SKIP_WAITING') {

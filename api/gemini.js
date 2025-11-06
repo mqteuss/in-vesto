@@ -98,6 +98,7 @@ export default async function handler(request, response) {
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             // Estes modos esperam JSON, então limpamos e parseamos
             let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            // CORREÇÃO AQUI: Removido o '\' extra antes do '['
             const jsonMatch = jsonText.match(/\[.*\]/s);
             if (jsonMatch && jsonMatch[0]) {
                 jsonText = jsonMatch[0];

@@ -1,5 +1,5 @@
 // NOVO: Versão do cache atualizada para forçar a atualização
-const CACHE_NAME = 'vesto-cache-v2';
+const CACHE_NAME = 'vesto-cache-v3';
 
 // Todos os arquivos que compõem o "esqueleto" do seu app
 const APP_SHELL_FILES = [

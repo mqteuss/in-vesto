@@ -1618,26 +1618,40 @@
                     if (precosCache) { return precosCache; }
                 }
 
-                console.log("A buscar preços na API (sequencialmente)...");
-                const precos = [];
+                console.log("A buscar preços na API (em paralelo)..."); // MODIFICADO
 
-                for (const ativo of carteiraCalculada) {
-                    try {
-                        const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
-                        const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                        const result = data.results?.[0];
+                // Cria um array de promessas, uma para cada ativo
+                const promessasPrecos = carteiraCalculada.map(ativo => {
+                    return (async () => { // Cria uma função assíncrona auto-executável
+                        try {
+                            const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
+                            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+                            const result = data.results?.[0];
 
-                        if (result && !result.error) {
-                            if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                            precos.push(result);
-                        } else {
-                            console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
+                            if (result && !result.error) {
+                                if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
+                                return result; // Retorna o resultado de sucesso
+                            } else {
+                                console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
+                                return null; // Retorna nulo em caso de erro da API
+                            }
+                        } catch (err) {
+                            console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
+                            return null; // Retorna nulo em caso de falha no fetch
                         }
-                    } catch (err) {
-                        console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
-                    }
-                    await delay(250); 
-                }
+                        // O delay(250) foi REMOVIDO daqui
+                    })(); // Invoca a função imediatamente
+                });
+
+                // Espera todas as buscas em paralelo terminarem
+                const resultados = await Promise.allSettled(promessasPrecos);
+                
+                // Filtra apenas os resultados bem-sucedidos e não nulos
+                const precos = resultados
+                    .filter(res => res.status === 'fulfilled' && res.value !== null)
+                    .map(res => res.value);
+
+                // O delay foi removido, as buscas agora são paralelas.
 
                 if (precos.length > 0) {
                     setCache(cacheKey, precos); 

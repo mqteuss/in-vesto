@@ -1,5 +1,6 @@
 // NOVO: Versão do cache atualizada para forçar a atualização
-const CACHE_NAME = 'vesto-cache-v5';
+const CACHE_NAME = 'vesto-cache-v6';
+
 
 // Todos os arquivos que compõem o "esqueleto" do seu app
 const APP_SHELL_FILES = [
@@ -86,7 +87,26 @@ self.addEventListener('fetch', event => {
       return;
   }
 
-  // 4. Estratégia Stale-While-Revalidate para o App Shell local
+  // --- NOVA SEÇÃO ADICIONADA ---
+  // 4. Tratar pedidos de CDN (Tailwind) - Network first, fallback to cache
+  if (url.origin === 'https://cdn.tailwindcss.com') {
+      event.respondWith(
+          fetch(event.request).then(networkResponse => {
+              // Se a rede funcionar, atualiza o cache
+              caches.open(CACHE_NAME).then(cache => {
+                  cache.put(event.request, networkResponse.clone());
+              });
+              return networkResponse;
+          }).catch(() => {
+              // Se a rede falhar, tenta pegar do cache
+              return caches.match(event.request);
+          })
+      );
+      return;
+  }
+  // --- FIM DA NOVA SEÇÃO ---
+
+  // 5. Estratégia Stale-While-Revalidate para o App Shell local (agora item 5)
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {

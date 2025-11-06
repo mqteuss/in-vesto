@@ -2,6 +2,7 @@
 
 const CACHE_NAME = 'vesto-cache-v1';
 
+// Todos os arquivos que compõem o "esqueleto" do seu app
 // SEPARAMOS OS ARQUIVOS LOCAIS DOS CDNS
 const APP_SHELL_FILES_LOCAL = [
   '/',
@@ -47,6 +48,8 @@ self.addEventListener('install', event => {
         // 3. Espera ambas as promessas terminarem
         return Promise.all([cdnCachePromise, localCachePromise]);
       })
+      // REMOVEMOS O self.skipWaiting() DAQUI!
+      // Agora ele vai "esperar" (waiting) após instalar.
   );
 });
 
@@ -64,55 +67,34 @@ self.addEventListener('activate', event => {
   );
 });
 
-// ==========================================================
-// INÍCIO: OUVINTE DE FETCH (CORRIGIDO)
-// ==========================================================
+// Evento de Fetch: Intercepta as requisições
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. Ignorar chamadas de API (que nunca devem ser cacheadas pelo SW)
-  // Elas sempre devem ir direto para a rede.
+  // 1. Ignorar chamadas de API para o nosso BFF
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // 2. Ignorar todas as requisições que NÃO SEJAM 'GET'
-  // Isso previne o erro de 'POST' no cache.put()
-  if (event.request.method !== 'GET') {
-    // Apenas busca na rede e não tenta armazenar em cache
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // 3. Se for GET e não for /api/, usa Stale-While-Revalidate
-  // (Busca no cache; se não achar, busca na rede e atualiza o cache)
+  // 2. Estratégia Stale-While-Revalidate para o App Shell
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {
-        
         const fetchPromise = fetch(event.request).then(networkResponse => {
-          // Garante que só armazene respostas válidas
-          if (networkResponse && networkResponse.status === 200) {
-            cache.put(event.request, networkResponse.clone());
-          }
+          cache.put(event.request, networkResponse.clone());
           return networkResponse;
         });
-
-        // Retorna o cache se existir, senão, espera a rede
         return cachedResponse || fetchPromise;
       });
     })
   );
 });
-// ==========================================================
-// FIM: OUVINTE DE FETCH (CORRIGIDO)
-// ==========================================================
-
 
 // ==========================================================
-// OUVINTE DE MENSAGEM (para o botão "Atualizar")
+// ADIÇÃO CRÍTICA: Ouvinte de Mensagem
 // ==========================================================
+// Ouve a mensagem do 'index.html' para pular a espera
 self.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'SKIP_WAITING') {
     console.log('[SW] Recebeu ordem para SKIP_WAITING');

@@ -1,5 +1,5 @@
 // NOVO: Versão do cache atualizada para forçar a atualização
-const CACHE_NAME = 'vesto-cache-v4';
+const CACHE_NAME = 'vesto-cache-v5';
 
 // Todos os arquivos que compõem o "esqueleto" do seu app
 const APP_SHELL_FILES = [
@@ -54,14 +54,22 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. Ignorar chamadas de API para o nosso BFF
+  // --- CORREÇÃO ADICIONADA AQUI ---
+  // 1. Ignorar esquemas não-HTTP(S) (ex: chrome-extension://)
+  if (!url.protocol.startsWith('http')) {
+    // Deixa o pedido passar sem intercetar
+    return; 
+  }
+  // --- FIM DA CORREÇÃO ---
+
+  // 2. Ignorar chamadas de API para o nosso BFF
   if (url.pathname.startsWith('/api/')) {
     // Apenas busca na rede (não faz cache de API)
     event.respondWith(fetch(event.request));
     return;
   }
   
-  // 2. Tratar pedidos de CDN (como Chart.js) - Network first, fallback to cache
+  // 3. Tratar pedidos de CDN (como Chart.js) - Network first, fallback to cache
   if (url.origin === 'https://cdn.jsdelivr.net') {
       event.respondWith(
           fetch(event.request).then(networkResponse => {
@@ -78,7 +86,7 @@ self.addEventListener('fetch', event => {
       return;
   }
 
-  // 3. Estratégia Stale-While-Revalidate para o App Shell local
+  // 4. Estratégia Stale-While-Revalidate para o App Shell local
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {

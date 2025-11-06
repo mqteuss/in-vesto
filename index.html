@@ -63,31 +63,43 @@
         /* INÍCIO: ESTILOS DA BARRA DE NAVEGAÇÃO          */
         /* ============================================== */
         
+        /* Keyframe para a flutuação do ícone */
         @keyframes gentleFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-3px); }
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-3px); /* Flutuação leve */
+            }
         }
 
+        /* Nova barra de navegação flutuante e translúcida */
         .bottom-nav {
-            background-color: rgba(26, 26, 26, 0.6); 
+            background-color: rgba(26, 26, 26, 0.6); /* Mais translúcido */
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid #2A2A2A; 
+            border: 1px solid #2A2A2A; /* Borda ao redor */
         }
         
+        /* Botões da barra */
         .tab-button {
-            color: #6b7280; 
+            color: #6b7280; /* text-gray-500 (Inativo) */
             transition: all 0.3s ease-in-out;
             flex: 1; 
         }
         
-        .tab-button:active { transform: scale(0.90); }
+        /* Animação de clique (pop) */
+        .tab-button:active {
+            transform: scale(0.90);
+        }
 
+        /* Estilo do botão ativo */
         .tab-button.active {
-            color: #8B5CF6; 
-            transform: translateY(-4px); 
+            color: #8B5CF6; /* Roxo (Ativo) */
+            transform: translateY(-4px); /* Pop-up do botão todo */
         }
         
+        /* Animação de flutuação no ÍCONE ATIVO */
         .tab-button.active .tab-button-icon-wrapper {
              animation: gentleFloat 1.5s ease-in-out infinite;
         }
@@ -96,28 +108,32 @@
         /* ============================================== */
         
         
+        /* --- Animação de Giro (Spinner) --- */
         .spin-animation { animation: spin 1s linear infinite; }
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
 
+        /* Oculta as setas do input de número */
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button {
             -webkit-appearance: none; margin: 0;
         }
         input[type=number] { -moz-appearance: textfield; }
         
+        /* --- Spinner (Roxo) --- */
         .loader {
             width: 48px;
             height: 48px;
-            border: 5px solid #4b5563; 
-            border-bottom-color: #8B5CF6; 
+            border: 5px solid #4b5563; /* gray-600 */
+            border-bottom-color: #8B5CF6; /* Roxo */
             border-radius: 50%;
             display: inline-block;
             box-sizing: border-box;
             animation: rotation 1s linear infinite;
         }
+        /* Loader menor para o botão de IA */
         .loader-sm {
             width: 20px;
             height: 20px;
@@ -128,19 +144,21 @@
             box-sizing: border-box;
             animation: rotation 1s linear infinite;
         }
-        @keyframes rotation { 
+        @keyframes rotation { /* Keyframe para os loaders */
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
         
+        /* --- Animação (Pulse) --- */
         .pulse-animation { animation: pulse-foda 2s infinite cubic-bezier(0.4, 0, 0.6, 1); }
         @keyframes pulse-foda {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.8; transform: scale(1.05); }
         }
         
+        /* --- Scrollbar Estilizada --- */
         .scrollable-content {
-             max-height: 40vh; 
+             max-height: 40vh; /* 40% da altura da viewport */
              overflow-y: auto;
              scrollbar-width: thin;
              scrollbar-color: #2A2A2A #1A1A1A;
@@ -155,19 +173,25 @@
             border-radius: 10px;
             border: 2px solid #1A1A1A;
         }
+        /* Scroll menor para o histórico de detalhes */
         #detalhes-historico.scrollable-content {
              max-height: 320px;
         }
         
-        /* ============================================== */
-        /* INÍCIO: ESTILOS DE MODAL (GENÉRICO)            */
-        /* ============================================== */
-        .custom-modal { display: none; }
-        .custom-modal.visible { display: flex; }
+        /* --- Estilos do Modal (Genérico) --- */
+        .custom-modal {
+            display: none; 
+        }
+        .custom-modal.visible {
+            display: flex; 
+        }
         
+        /* Animação de entrada do modal */
         .custom-modal.visible .modal-content {
             animation: modalIn 0.2s ease-out forwards;
         }
+
+        /* Animação de saída (a ser aplicada via JS) */
         .modal-content.modal-out {
             animation: modalOut 0.2s ease-in forwards;
         }
@@ -180,9 +204,6 @@
             from { opacity: 1; transform: scale(1) translateY(0); }
             to { opacity: 0; transform: scale(0.95) translateY(10px); }
         }
-        /* ============================================== */
-        /* FIM: ESTILOS DE MODAL (GENÉRICO)               */
-        /* ============================================== */
         
         select {
             -webkit-appearance: none;
@@ -197,13 +218,12 @@
             transition: max-height 0.4s ease-in-out;
         }
         .card-drawer.open {
-            /* Aumentado para caber os gráficos */
-            max-height: 350px; 
+            max-height: 250px; /* Altura suficiente para o conteúdo */
         }
         .card-drawer .drawer-content {
             opacity: 0;
             transform: translateY(-5px);
-            transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s;
+            transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s; /* Delay p/ opacidade */
         }
         .card-drawer.open .drawer-content {
             opacity: 1;
@@ -215,25 +235,6 @@
         .card-arrow-icon.open {
             transform: rotate(180deg);
         }
-        
-        /* ============================================== */
-        /* INÍCIO: NOVOS ESTILOS (SINO DE NOTIFICAÇÃO)    */
-        /* ============================================== */
-        #request-notify-btn.notify-on {
-            color: #8B5CF6; /* Roxo */
-            animation: ringBell 1.5s ease-in-out infinite;
-        }
-        @keyframes ringBell {
-            0%, 100% { transform: rotate(0); }
-            10%, 30%, 50%, 70% { transform: rotate(15deg); }
-            20%, 40%, 60%, 80% { transform: rotate(-15deg); }
-        }
-        #request-notify-btn.notify-off {
-            color: #4b5563; /* Cinza */
-        }
-        /* ============================================== */
-        /* FIM: NOVOS ESTILOS (SINO DE NOTIFICAÇÃO)       */
-        /* ============================================== */
     </style>
 </head>
 <body class="antialiased">
@@ -241,15 +242,7 @@
     <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
 
         <div id="tab-dashboard" class="tab-content active p-4">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Dashboard</h1>
-                
-                <button id="request-notify-btn" class="p-2 text-gray-600 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Ativar Notificações">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                </button>
-            </div>
+            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Dashboard</h1>
 
             <div id="resumo-carteira-card" class="card-bg p-5 rounded-2xl mb-6 text-center hidden">
                 <span class="text-sm text-gray-500">Valor Total da Carteira</span>
@@ -266,63 +259,28 @@
                 </div>
             </div>
 
-            <div id="dashboard-drawers" class="space-y-4">
+            <div id="grafico-container" class="card-bg p-4 rounded-2xl mb-6 hidden">
+                <h3 class="text-lg font-semibold text-center text-white mb-3">Alocação</h3>
+                <div class="relative h-64">
+                    <canvas id="alocacao-chart"></canvas>
+                </div>
+            </div>
             
-                <div class="card-bg p-4 rounded-2xl shadow-lg">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-white ml-2">Evolução do Patrimônio</h3>
-                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="patrimonio-chart-drawer" title="Mostrar mais">
-                            <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div id="patrimonio-chart-drawer" class="card-drawer">
-                        <div id="patrimonio-container" class="drawer-content relative h-64 pt-4">
-                            <canvas id="patrimonio-chart"></canvas>
-                        </div>
-                    </div>
+            <div id="historico-grafico-container" class="card-bg p-4 rounded-2xl mb-6 hidden">
+                <h3 class="text-lg font-semibold text-center text-white mb-3">Proventos Recebidos</h3>
+                <div class="relative h-64">
+                    <canvas id="historico-proventos-chart"></canvas>
                 </div>
-                
-                <div class="card-bg p-4 rounded-2xl shadow-lg">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-white ml-2">Alocação</h3>
-                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="alocacao-chart-drawer" title="Mostrar mais">
-                            <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div id="alocacao-chart-drawer" class="card-drawer">
-                        <div id="grafico-container" class="drawer-content relative h-64 pt-4">
-                            <canvas id="alocacao-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card-bg p-4 rounded-2xl shadow-lg">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-white ml-2">Proventos Recebidos</h3>
-                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="proventos-chart-drawer" title="Mostrar mais">
-                            <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div id="proventos-chart-drawer" class="card-drawer">
-                        <div id="historico-grafico-container" class="drawer-content relative h-64 pt-4">
-                            <canvas id="historico-proventos-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-            </div> <div id="dashboard-status" class="text-center text-gray-500 mt-12">
+            </div>
+            
+            <div id="dashboard-status" class="text-center text-gray-500 mt-12">
                  <p id="dashboard-mensagem">A carregar dados...</p>
                  <div id="dashboard-loading" class="flex justify-center items-center py-4">
                     <span class="loader"></span>
                  </div>
             </div>
         </div>
+
 
         <div id="tab-carteira" class="tab-content p-4">
             
@@ -415,19 +373,10 @@
                  
             </div>
         </div>
-        
-        <div id="tab-historico" class="tab-content p-4">
-            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
-        
-            <div id="lista-historico" class="space-y-3">
-                </div>
-            
-            <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
-                <p id="historico-mensagem">Nenhuma transação encontrada.</p>
-            </div>
-        </div>
 
-    </div> <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
+    </div>
+
+    <div id="update-notification" class="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
         <div class="card-bg rounded-xl p-4 shadow-2xl flex items-center justify-between gap-3">
             <span class="text-sm font-medium text-gray-100">Uma nova versão está disponível!</span>
             <button id="update-button" class="py-2 px-4 accent-bg text-white rounded-lg transition-colors text-sm font-semibold">
@@ -437,7 +386,6 @@
     </div>
     
     <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">
-        
         <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
             <div class="tab-button-icon-wrapper"> 
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -469,18 +417,6 @@
             <span class="text-xs mt-1 font-medium">Dividendos</span>
         </button>
         
-        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-historico" title="Histórico">
-            <div class="tab-button-icon-wrapper"> 
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M16 2h-6a4 4 0 0 0-4 4v12a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4V6a4 4 0 0 0-4-4z"></path>
-                  <line x1="12" y1="6" x2="12" y2="18"></line>
-                  <line x1="10" y1="10" x2="14" y2="10"></line>
-                  <line x1="10" y1="14" x2="14" y2="14"></line>
-                </svg>
-            </div>
-            <span class="text-xs mt-1 font-medium">Histórico</span>
-        </button>
-        
         <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-detalhes" title="Detalhes">
             <div class="tab-button-icon-wrapper"> 
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -492,7 +428,6 @@
             <span class="text-xs mt-1 font-medium">Detalhes</span>
         </button>
     </nav>
-    
     <div id="custom-modal" class="custom-modal fixed inset-0 z-50 items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div id="custom-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
             <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar Ação</h3>
@@ -504,51 +439,39 @@
         </div>
     </div>
     
+
     <script>
         // Configurações padrão do Chart.js para modo escuro
-        Chart.defaults.color = '#9ca3af'; 
-        Chart.defaults.borderColor = '#374151'; 
+        Chart.defaults.color = '#9ca3af'; // text-gray-400
+        Chart.defaults.borderColor = '#374151'; // text-gray-700
         
         document.addEventListener('DOMContentLoaded', () => {
             
             // --- Constantes ---
             const REFRESH_INTERVAL = 1860000; 
-            const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
-            const CACHE_24_HORAS = 1000 * 60 * 60 * 24; // 24 horas
-            const CACHE_PREFIX = 'vestoBrapiCache_v1_'; 
+            const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos (Padrão)
             
-            const DB_KEY_TRANSACOES = 'vesto_transacoes_v1';
-            const DB_KEY_PATRIMONIO = 'vesto_patrimonio_v1';
+            const CACHE_24_HORAS = 1000 * 60 * 60 * 24; // 24 horas
+            
+            const CACHE_PREFIX = 'vestoBrapiCache_v1_'; 
+            const DB_KEY = 'vesto_carteira_v1';
 
-            // --- Elementos DOM (Gerais) ---
+            // --- Elementos DOM ---
             const tickerInput = document.getElementById('ticker-input');
             const quantityInput = document.getElementById('quantity-input');
             const precoMedioInput = document.getElementById('preco-medio-input'); 
             const addButton = document.getElementById('add-button');
+            const listaCarteira = document.getElementById('lista-carteira');
+            const carteiraMensagem = document.getElementById('carteira-mensagem');
+            const carteiraLoading = document.getElementById('carteira-loading');
             const refreshButton = document.getElementById('refresh-button');
             const tabButtons = document.querySelectorAll('.tab-button');
             const tabContents = document.querySelectorAll('.tab-content');
             
-            // --- Elementos DOM (Dashboard) ---
-            const dashboardStatus = document.getElementById('dashboard-status');
-            const dashboardLoading = document.getElementById('dashboard-loading');
-            const dashboardMensagem = document.getElementById('dashboard-mensagem');
-            const resumoCarteiraCard = document.getElementById('resumo-carteira-card');
-            const totalCarteiraValor = document.getElementById('total-carteira-valor');
-            const totalCarteiraCusto = document.getElementById('total-carteira-custo');
-            const totalCarteiraPL = document.getElementById('total-carteira-pl');
-            const dashboardDrawers = document.getElementById('dashboard-drawers');
-            const notifyButton = document.getElementById('request-notify-btn');
-            
-            // --- Elementos DOM (Carteira) ---
-            const listaCarteira = document.getElementById('lista-carteira');
-            const carteiraMensagem = document.getElementById('carteira-mensagem');
-            const carteiraLoading = document.getElementById('carteira-loading');
-            
-            // --- Elementos DOM (Proventos) ---
+            // Aba Proventos
             const totalProventosEl = document.getElementById('total-proventos');
             
-            // --- Elementos DOM (Detalhes) ---
+            // Aba Detalhes
             const detalhesTitulo = document.getElementById('detalhes-titulo');
             const detalhesMensagem = document.getElementById('detalhes-mensagem');
             const detalhesLoading = document.getElementById('detalhes-loading');
@@ -557,12 +480,18 @@
             const detalhesHistorico = document.getElementById('detalhes-historico');
             const detalhesAiProvento = document.getElementById('detalhes-ai-provento'); 
             
-            // --- Elementos DOM (Histórico) ---
-            const listaHistorico = document.getElementById('lista-historico');
-            const historicoStatus = document.getElementById('historico-status');
-            const historicoMensagem = document.getElementById('historico-mensagem');
+            // Aba Dashboard
+            const dashboardStatus = document.getElementById('dashboard-status');
+            const dashboardLoading = document.getElementById('dashboard-loading');
+            const dashboardMensagem = document.getElementById('dashboard-mensagem');
+            const resumoCarteiraCard = document.getElementById('resumo-carteira-card');
+            const totalCarteiraValor = document.getElementById('total-carteira-valor');
+            const totalCarteiraCusto = document.getElementById('total-carteira-custo');
+            const totalCarteiraPL = document.getElementById('total-carteira-pl');
+            const graficoContainer = document.getElementById('grafico-container');
+            const historicoGraficoContainer = document.getElementById('historico-grafico-container');
 
-            // --- Elementos DOM (Modal de Confirmação) ---
+            // --- Elementos do Modal de Confirmação ---
             const customModal = document.getElementById('custom-modal');
             const customModalContent = document.getElementById('custom-modal-content');
             const customModalTitle = document.getElementById('custom-modal-title');
@@ -570,19 +499,11 @@
             const customModalOk = document.getElementById('custom-modal-ok');
             const customModalCancel = document.getElementById('custom-modal-cancel');
             
-            // --- Elementos DOM (Modal de Venda REMOVIDO) ---
-            
-            // --- Estado da Aplicação ---
-            let transacoes = [];        
-            let carteiraCalculada = []; 
-            let patrimonio = [];        
-            
+            // --- Estado ---
+            let carteira = []; 
             let alocacaoChartInstance = null;
             let historicoChartInstance = null;
-            let patrimonioChartInstance = null; 
-            
             let onConfirmCallback = null; 
-            // onVendaConfirmCallback REMOVIDO
             
             let precosAtuais = [];
             let proventosAtuais = [];
@@ -590,12 +511,9 @@
             const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
             
             let lastAlocacaoData = null; 
-            let lastHistoricoData = null;
-            let lastPatrimonioData = null; 
+            let lastHistoricoData = null; 
 
-            // ==========================================================
-            // LÓGICA DE ATUALIZAÇÃO DO PWA (SW)
-            // ==========================================================
+            // --- Lógica do PWA ---
             const updateNotification = document.getElementById('update-notification');
             const updateButton = document.getElementById('update-button');
             let newWorker; 
@@ -645,71 +563,13 @@
                 console.log('Service Worker não é suportado neste navegador.');
             }
             
-            // ==========================================================
-            // LÓGICA DE NOTIFICAÇÃO PUSH
-            // ==========================================================
-            function checkNotificationPermission() {
-                if (!('Notification' in window)) {
-                    console.warn('Este navegador não suporta notificações.');
-                    notifyButton.classList.add('hidden'); 
-                    return;
-                }
-                
-                if (Notification.permission === 'granted') {
-                    notifyButton.classList.add('notify-on'); 
-                    notifyButton.title = "Notificações ativadas! Clique para testar.";
-                } else if (Notification.permission === 'denied') {
-                    notifyButton.classList.add('notify-off'); 
-                    notifyButton.title = "Notificações bloqueadas.";
-                    notifyButton.disabled = true;
-                } else {
-                    notifyButton.classList.remove('notify-on'); 
-                    notifyButton.title = "Clique para ativar as notificações.";
-                }
-            }
-
-            function requestNotificationPermission() {
-                 if (Notification.permission === 'granted') {
-                    console.log('Permissão já concedida. Testando notificação...');
-                    testNotification();
-                    return;
-                 }
-                 
-                 if (Notification.permission === 'denied') {
-                    console.error('Notificações bloqueadas pelo usuário.');
-                    return;
-                 }
-                 
-                 Notification.requestPermission().then(permission => {
-                    console.log('Resultado da permissão:', permission);
-                    checkNotificationPermission(); 
-                    if (permission === 'granted') {
-                        testNotification(); 
-                    }
-                 });
-            }
-            
-            function testNotification() {
-                if (!('Notification' in window) || Notification.permission !== 'granted') {
-                    console.warn('Não é possível testar notificações. Permissão não concedida.');
-                    return;
-                }
-                
-                const options = {
-                    body: 'Tudo pronto! Você será notificado sobre suas finanças.',
-                    icon: 'icons/icon-192x192.png',
-                    badge: 'icons/icon-192x192.png', 
-                    vibrate: [100, 50, 100],
-                };
-                
-                navigator.serviceWorker.ready.then(registration => {
-                    registration.showNotification('Vesto está Ativado!', options);
-                });
-            }
-            
             // --- Funções de CACHE ---
             function setCache(key, data, duration = CACHE_DURATION) { 
-                const cacheItem = { timestamp: Date.now(), data: data, duration: duration };
+                const cacheItem = { 
+                    timestamp: Date.now(), 
+                    data: data,
+                    duration: duration 
+                };
                 try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(cacheItem)); } 
                 catch (e) { console.error("Erro ao salvar no cache:", e); clearBrapiCache(); }
             }
@@ -720,7 +580,9 @@
                 try {
                     const parsed = JSON.parse(cacheItem);
                     const duration = parsed.duration ?? CACHE_DURATION; 
-                    if (duration === -1) { return parsed.data; }
+                    if (duration === -1) {
+                        return parsed.data; 
+                    }
                     const isExpired = (Date.now() - parsed.timestamp) > duration;
                     if (isExpired) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
                     return parsed.data;
@@ -738,19 +600,11 @@
             const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
             const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
             const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
-            const formatDate = (dateString, includeTime = false) => {
+            const formatDate = (dateString) => {
                 if (!dateString) return 'N/A';
                 try {
                     const date = new Date(dateString);
-                    const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
-                    if (includeTime) {
-                        options.hour = '2-digit';
-                        options.minute = '2-digit';
-                        // Removido timeZone UTC para usar a hora local da transação
-                    } else {
-                         options.timeZone = 'UTC'; // Mantém UTC para datas (ex: proventos)
-                    }
-                    return date.toLocaleDateString('pt-BR', options);
+                    return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
                 } catch (e) { return dateString; }
             };
             const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
@@ -803,7 +657,7 @@
                 return cores;
             }
             
-            // --- Funções dos Modais ---
+            // --- Funções do Modal ---
             function showModal(title, message, onConfirm) {
                 customModalTitle.textContent = title;
                 customModalMessage.textContent = message;
@@ -821,91 +675,47 @@
                 }, 200); 
             }
             
-            // Funções do Modal de Venda REMOVIDAS
-            
             // --- Funções de Dados (localStorage) ---
-            
-            function salvarTransacoes() {
-                localStorage.setItem(DB_KEY_TRANSACOES, JSON.stringify(transacoes));
+            function salvarCarteira() {
+                localStorage.setItem(DB_KEY, JSON.stringify(carteira));
             }
             
-            function carregarTransacoes() {
-                const transacoesSalvas = localStorage.getItem(DB_KEY_TRANSACOES);
-                transacoes = transacoesSalvas ? JSON.parse(transacoesSalvas) : [];
-            }
-            
-            function carregarPatrimonio() {
-                 const patrimonioSalvo = localStorage.getItem(DB_KEY_PATRIMONIO);
-                 patrimonio = patrimonioSalvo ? JSON.parse(patrimonioSalvo) : [];
-            }
-            
-            function salvarSnapshotPatrimonio(totalValor) {
-                if (totalValor <= 0) return; 
-                
-                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-                
-                const index = patrimonio.findIndex(p => p.date === today);
-                
-                if (index > -1) {
-                    patrimonio[index].value = totalValor;
+            function carregarCarteira() {
+                const carteiraSalva = localStorage.getItem(DB_KEY);
+                if (carteiraSalva) {
+                    try {
+                        const dados = JSON.parse(carteiraSalva);
+                        if (Array.isArray(dados)) {
+                            carteira = dados
+                                .filter(d => d && d.symbol && 
+                                              typeof d.quantity === 'number' && 
+                                              typeof d.precoMedio === 'number')
+                                .map(ativo => ({
+                                    ...ativo,
+                                    dataCompra: ativo.dataCompra || new Date().toISOString() 
+                                }));
+                        } else { carteira = []; }
+                    } catch (e) {
+                        console.error("Erro ao carregar carteira, a repor:", e);
+                        carteira = []; 
+                    }
                 } else {
-                    patrimonio.push({ date: today, value: totalValor });
+                    carteira = [];
                 }
-                
-                if (patrimonio.length > 365) {
-                    patrimonio = patrimonio.slice(patrimonio.length - 365);
-                }
-                
-                localStorage.setItem(DB_KEY_PATRIMONIO, JSON.stringify(patrimonio));
-            }
-            
-            // FUNÇÃO ATUALIZADA (SEM LÓGICA DE VENDA)
-            function calcularCarteira() {
-                const ativosMap = new Map();
-
-                // Ordena transações por data para garantir a ordem correta
-                const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                for (const t of transacoesOrdenadas) {
-                    // Ignora qualquer transação que não seja 'buy'
-                    if (t.type !== 'buy') continue;
-                        
-                    const symbol = t.symbol;
-                    let ativo = ativosMap.get(symbol) || { 
-                        symbol: symbol, 
-                        quantity: 0, 
-                        totalCost: 0, 
-                        dataCompra: t.date 
-                    };
-
-                    ativo.quantity += t.quantity;
-                    ativo.totalCost += t.quantity * t.price;
-                    
-                    ativosMap.set(symbol, ativo);
-                }
-                
-                carteiraCalculada = Array.from(ativosMap.values())
-                    .filter(a => a.quantity > 0) 
-                    .map(a => ({
-                        symbol: a.symbol,
-                        quantity: a.quantity,
-                        precoMedio: a.quantity > 0 ? parseFloat((a.totalCost / a.quantity).toFixed(2)) : 0,
-                        dataCompra: a.dataCompra
-                    }));
+                salvarCarteira(); 
             }
 
             // --- Funções de Renderização ---
             
             function renderizarGraficoAlocacao(dadosGrafico) {
-                const canvas = document.getElementById('alocacao-chart');
-                if (!canvas) return;
-                const ctx = canvas.getContext('2d');
+                const ctx = document.getElementById('alocacao-chart').getContext('2d');
                 
                 if (dadosGrafico.length === 0) {
                     if (alocacaoChartInstance) {
                         alocacaoChartInstance.destroy();
                         alocacaoChartInstance = null; 
                     }
+                    graficoContainer.classList.add('hidden');
                     lastAlocacaoData = null; 
                     return;
                 }
@@ -914,8 +724,11 @@
                 const data = dadosGrafico.map(d => d.totalPosicao);
 
                 const newDataString = JSON.stringify({ labels, data });
-                if (newDataString === lastAlocacaoData) { return; }
+                if (newDataString === lastAlocacaoData) {
+                    return; 
+                }
                 lastAlocacaoData = newDataString; 
+                console.log("[Gráfico Alocação] Dados novos, a atualizar/redesenhar...");
                 
                 const colors = gerarCores(labels.length);
 
@@ -924,6 +737,7 @@
                     alocacaoChartInstance.data.datasets[0].data = data;
                     alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
                     alocacaoChartInstance.update();
+                    console.log("[Gráfico Alocação] Instância atualizada.");
                 } else {
                     alocacaoChartInstance = new Chart(ctx, {
                         type: 'doughnut',
@@ -946,6 +760,7 @@
                             }
                         }
                     });
+                    console.log("[Gráfico Alocação] Nova instância criada.");
                 }
             }
             
@@ -955,14 +770,18 @@
                 const ctx = canvas.getContext('2d');
 
                 const newDataString = JSON.stringify({ labels, data });
-                if (newDataString === lastHistoricoData) { return; }
+                if (newDataString === lastHistoricoData) {
+                    return; 
+                }
                 lastHistoricoData = newDataString; 
+                console.log("[Gráfico Histórico] Dados novos, a atualizar/redesenhar...");
                 
                 if (!labels || !data || labels.length === 0) {
                     if (historicoChartInstance) {
                         historicoChartInstance.destroy();
                         historicoChartInstance = null; 
                     }
+                    historicoGraficoContainer.classList.add('hidden'); 
                     return;
                 }
                 
@@ -980,6 +799,7 @@
                     historicoChartInstance.data.datasets[0].backgroundColor = gradient;
                     historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
                     historicoChartInstance.update();
+                    console.log("[Gráfico Histórico] Instância atualizada.");
                 } else {
                     historicoChartInstance = new Chart(ctx, {
                         type: 'bar',
@@ -1017,75 +837,17 @@
                                 y: {
                                     beginAtZero: true,
                                     grid: { color: '#2A2A2A' }, 
-                                    ticks: { callback: (value) => formatBRL(value) }
-                                },
-                                x: { grid: { display: false } }
-                            }
-                        }
-                    });
-                }
-            }
-            
-            function renderizarGraficoPatrimonio() {
-                const canvas = document.getElementById('patrimonio-chart');
-                if (!canvas) return;
-                const ctx = canvas.getContext('2d');
-                
-                const labels = patrimonio.map(p => formatDate(p.date));
-                const data = patrimonio.map(p => p.value);
-                
-                const newDataString = JSON.stringify({ labels, data });
-                if (newDataString === lastPatrimonioData) { return; }
-                lastPatrimonioData = newDataString;
-                
-                if (labels.length === 0) {
-                    if (patrimonioChartInstance) {
-                        patrimonioChartInstance.destroy();
-                        patrimonioChartInstance = null;
-                    }
-                    return;
-                }
-
-                const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-                gradient.addColorStop(0, 'rgba(139, 92, 246, 0.6)'); 
-                gradient.addColorStop(1, 'rgba(139, 92, 246, 0.0)'); 
-
-                if (patrimonioChartInstance) {
-                    patrimonioChartInstance.data.labels = labels;
-                    patrimonioChartInstance.data.datasets[0].data = data;
-                    patrimonioChartInstance.update();
-                } else {
-                    patrimonioChartInstance = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Patrimônio',
-                                data: data,
-                                fill: true,
-                                backgroundColor: gradient,
-                                borderColor: '#8B5CF6', 
-                                tension: 0.1,
-                                pointRadius: 2,
-                                pointBackgroundColor: '#A78BFA'
-                            }]
-                        },
-                        options: {
-                            responsive: true, maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    callbacks: {
-                                        label: (context) => `Patrimônio: ${formatBRL(context.parsed.y)}`
+                                    ticks: {
+                                        callback: (value) => formatBRL(value)
                                     }
+                                },
+                                x: {
+                                    grid: { display: false } 
                                 }
-                            },
-                            scales: {
-                                y: { beginAtZero: false, ticks: { display: false }, grid: { color: '#2A2A2A' } },
-                                x: { ticks: { display: false }, grid: { display: false } }
                             }
                         }
                     });
+                    console.log("[Gráfico Histórico] Nova instância criada.");
                 }
             }
             
@@ -1095,7 +857,7 @@
                 const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
                 const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p]));
                 
-                const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
+                const carteiraOrdenada = [...carteira].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
                 let totalValorCarteira = 0;
                 let totalCustoCarteira = 0;
@@ -1108,13 +870,17 @@
                     dashboardLoading.classList.add('hidden');
                     dashboardStatus.classList.remove('hidden');
                     resumoCarteiraCard.classList.add('hidden');
+                    graficoContainer.classList.add('hidden');
+                    historicoGraficoContainer.classList.add('hidden'); 
                     renderizarGraficoAlocacao([]); 
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
-                    renderizarGraficoPatrimonio(); 
                 } else {
                     carteiraMensagem.classList.add('hidden');
                     dashboardStatus.classList.add('hidden');
+                    
                     resumoCarteiraCard.classList.remove('hidden');
+                    graficoContainer.classList.remove('hidden');
+                    historicoGraficoContainer.classList.remove('hidden');
                 }
 
                 carteiraOrdenada.forEach(ativo => {
@@ -1170,7 +936,6 @@
                         }
                     }
                     
-                    // CARD HTML (Sem botão Vender)
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-3">
@@ -1240,66 +1005,25 @@
                     totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
                     totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
                     totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
-                    
-                    salvarSnapshotPatrimonio(totalValorCarteira);
                 }
                 
                 renderizarGraficoAlocacao(dadosGrafico);
-                renderizarGraficoPatrimonio(); 
             }
 
             function renderizarProventos() {
                 let totalEstimado = 0;
                 
-                const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
-                
                 proventosAtuais.forEach(provento => {
-                    const quantity = carteiraMap.get(provento.symbol) || 0;
-                    if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) { 
-                        totalEstimado += (quantity * provento.value);
+                    if (typeof provento.quantity === 'number' && 
+                        typeof provento.value === 'number' &&
+                        provento.value > 0) { 
+                        totalEstimado += (provento.quantity * provento.value);
                     }
                 });
                 
                 totalProventosEl.textContent = formatBRL(totalEstimado);
             }
             
-            function renderizarHistorico() {
-                listaHistorico.innerHTML = '';
-                
-                if (transacoes.length === 0) {
-                    historicoMensagem.textContent = 'Nenhuma transação encontrada.';
-                    historicoStatus.classList.remove('hidden');
-                    return;
-                }
-                
-                historicoStatus.classList.add('hidden');
-                
-                [...transacoes].reverse().forEach(t => {
-                    const card = document.createElement('div');
-                    card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
-                    
-                    // Lógica de Venda REMOVIDA - Agora é sempre Compra
-                    const cor = 'text-green-500';
-                    const sinal = '+';
-                    const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-
-                    card.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            ${icone}
-                            <div>
-                                <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
-                                <p class="text-sm text-gray-400">${formatDate(t.date, true)}</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                            <p class="text-sm text-gray-400">${formatBRL(t.price)}</p>
-                        </div>
-                    `;
-                    listaHistorico.appendChild(card);
-                });
-            }
-
             // --- Funções de Fetch (API) ---
 
             async function fetchBFF(url, options = {}) {
@@ -1307,7 +1031,11 @@
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 30000); 
                     
-                    const response = await fetch(url, { ...options, signal: controller.signal });
+                    const response = await fetch(url, {
+                        ...options,
+                        signal: controller.signal 
+                    });
+
                     clearTimeout(timeoutId); 
 
                     if (!response.ok) {
@@ -1326,24 +1054,31 @@
             }
             
             async function buscarPrecosCarteira(force = false) { 
-                if (carteiraCalculada.length === 0) return [];
+                if (carteira.length === 0) return [];
                 
-                const cacheKey = 'precos_' + carteiraCalculada.map(a => a.symbol).join('-');
+                const cacheKey = 'precos_' + carteira.map(a => a.symbol).join('-');
                 
                 if (!isB3Open() && !force) {
+                    console.log("B3 fechada (ou fora do horário) e atualização não forçada. A usar preços do cache.");
                     const precosCache = getCache(cacheKey);
                     return precosCache || []; 
                 }
                 
-                if (!force) {
+                if (force) {
+                    console.log("Forçando busca na API (sem cache)...");
+                } else {
                     const precosCache = getCache(cacheKey);
-                    if (precosCache) { return precosCache; }
+                    if (precosCache) {
+                        console.log("A usar cache de 30min para preços.");
+                        return precosCache;
+                    }
+                    console.log("Cache de 30min expirado. A buscar na API...");
                 }
 
-                console.log("A buscar preços na API (sequencialmente)...");
+                console.log("A buscar preços na API (sequencialmente para evitar rate limit)...");
                 const precos = [];
 
-                for (const ativo of carteiraCalculada) {
+                for (const ativo of carteira) {
                     try {
                         const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
                         const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -1362,6 +1097,7 @@
                 }
 
                 if (precos.length > 0) {
+                    console.log("Preços buscados (BFF), a salvar no cache.");
                     setCache(cacheKey, precos); 
                 }
                 
@@ -1375,7 +1111,7 @@
 
                 return proventosDaIA
                     .map(proventoIA => {
-                        const ativoCarteira = carteiraCalculada.find(a => a.symbol === proventoIA.symbol);
+                        const ativoCarteira = carteira.find(a => a.symbol === proventoIA.symbol);
                         if (!ativoCarteira) return null;
                         
                         if (proventoIA.paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(proventoIA.paymentDate)) {
@@ -1383,7 +1119,10 @@
                             const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                             
                             if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
-                                return proventoIA;
+                                return {
+                                    ...proventoIA,
+                                    quantity: ativoCarteira.quantity 
+                                };
                             }
                         }
                         return null; 
@@ -1392,26 +1131,32 @@
             }
 
             async function buscarProventosFuturos() {
-                const fiiNaCarteira = carteiraCalculada
+                const fiiNaCarteira = carteira
                     .filter(a => isFII(a.symbol))
                     .map(a => a.symbol);
                     
                 if (fiiNaCarteira.length === 0) return [];
                 
                 const cacheKey = 'proventos_ia_' + fiiNaCarteira.join('-');
+                
                 const proventosCacheIA_bruto = getCache(cacheKey); 
                 
                 if (proventosCacheIA_bruto) {
+                    console.log("A verificar cache de proventos (Gemini)...");
                     const proventosFuturosCache = processarProventosIA(proventosCacheIA_bruto);
                     if (proventosFuturosCache.length > 0) {
+                        console.log("Cache de proventos ainda é válido (possui pagamentos futuros). A pular API da Gemini.");
                         return proventosFuturosCache;
                     }
+                    console.log("Cache de proventos está obsoleto (sem proventos futuros). A buscar na IA.");
                 }
 
                 let proventosDaIA_bruto_api; 
 
                 try {
+                    console.log("A buscar proventos na API (Gemini via BFF)...");
                     proventosDaIA_bruto_api = await callGeminiProventosCarteiraAPI(fiiNaCarteira, todayString);
+                    
                 } catch (error) {
                     console.error("Erro ao buscar proventos com IA:", error);
                     proventosDaIA_bruto_api = proventosCacheIA_bruto || []; 
@@ -1420,9 +1165,20 @@
                 
                 const proventosFuturosProcessados = processarProventosIA(proventosDaIA_bruto_api);
                 
-                if (proventosFuturosProcessados.length > 0) {
+                let totalCalculado = 0;
+                proventosFuturosProcessados.forEach(provento => {
+                    if (typeof provento.quantity === 'number' && 
+                        typeof provento.value === 'number' &&
+                        provento.value > 0) { 
+                        totalCalculado += (provento.quantity * provento.value);
+                    }
+                });
+
+                if (totalCalculado > 0.01) {
+                    console.log(`Proventos (Total: ${formatBRL(totalCalculado)}) buscados. A salvar no cache (sem expiração).`);
                     setCache(cacheKey, proventosDaIA_bruto_api, -1); 
                 } else {
+                    console.log("Proventos (Total: R$ 0,00) buscados. Não salvará no cache.");
                     localStorage.removeItem(CACHE_PREFIX + cacheKey);
                 }
 
@@ -1430,7 +1186,7 @@
             }
 
             async function buscarHistoricoProventosAgregado() {
-                const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
+                const fiiNaCarteira = carteira.filter(a => isFII(a.symbol));
                 if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
                 const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
@@ -1440,10 +1196,13 @@
                 let aiData;
 
                 if (cache) {
+                    console.log("A usar cache para histórico agregado.");
                     aiData = cache;
                 } else {
+                    console.log("A buscar histórico agregado na API (Gemini via BFF)...");
                     try {
                         aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
+                        
                         if (aiData && aiData.length > 0) {
                             setCache(cacheKey, aiData, CACHE_24_HORAS);
                         }
@@ -1492,11 +1251,7 @@
                 carteiraLoading.classList.remove('hidden');
                 carteiraMensagem.classList.add('hidden');
                 
-                calcularCarteira();
-                renderizarHistorico();
-                renderizarGraficoPatrimonio();
-                
-                if (carteiraCalculada.length > 0) {
+                if (carteira.length > 0) {
                     dashboardStatus.classList.remove('hidden');
                     dashboardLoading.classList.remove('hidden');
                 }
@@ -1506,16 +1261,17 @@
 
                 let precosCache = null;
                 if (!force) {
-                    const cacheKeyPrecos = 'precos_' + carteiraCalculada.map(a => a.symbol).join('-');
+                    const cacheKeyPrecos = 'precos_' + carteira.map(a => a.symbol).join('-');
                     precosCache = getCache(cacheKeyPrecos);
                 }
                 
                 let proventosFuturosCache = null;
-                const fiiNaCarteiraCache = carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol);
+                const fiiNaCarteiraCache = carteira.filter(a => isFII(a.symbol)).map(a => a.symbol);
                 if (fiiNaCarteiraCache.length > 0) {
                     const cacheKeyProventos = 'proventos_ia_' + fiiNaCarteiraCache.join('-');
                     const proventosCacheIA = getCache(cacheKeyProventos); 
                     if (proventosCacheIA) {
+                        console.log("A processar proventos do cache imediatamente.");
                         proventosFuturosCache = processarProventosIA(proventosCacheIA);
                     }
                 }
@@ -1523,14 +1279,17 @@
                 if (precosCache) {
                     precosAtuais = precosCache;
                     proventosAtuais = proventosFuturosCache || [];
+
+                    console.log("A renderizar dados do cache instantaneamente.");
                     renderizarCarteira();
                     renderizarProventos();
                 } else {
+                    console.log("Cache de preços expirado ou inexistente. A aguardar API.");
                     precosAtuais = [];
                     proventosAtuais = [];
                 }
                 
-                if (carteiraCalculada.length === 0) {
+                if (carteira.length === 0) {
                      precosAtuais = []; 
                      proventosAtuais = []; 
                      renderizarCarteira(); 
@@ -1542,6 +1301,7 @@
                      dashboardLoading.classList.add('hidden');
                      dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
                      resumoCarteiraCard.classList.add('hidden');
+                     graficoContainer.classList.add('hidden');
                      return; 
                 }
 
@@ -1550,18 +1310,23 @@
                 const promessaHistorico = buscarHistoricoProventosAgregado();
 
                 promessaPrecos.then(precos => {
+                    console.log("Busca de preços (BFF) concluída.");
                     if (precos.length > 0) {
                         precosAtuais = precos; 
                         renderizarCarteira();  
                     } else if (precosAtuais.length === 0) { 
+                        console.warn("API de preços falhou e não havia cache. A mostrar 'A carregar...'.");
                         renderizarCarteira(); 
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
-                    if (precosAtuais.length === 0) { renderizarCarteira(); }
+                    if (precosAtuais.length === 0) { 
+                        renderizarCarteira(); 
+                    }
                 });
 
                 promessaProventos.then(proventosFuturos => {
+                    console.log("Busca de proventos (BFF) concluída.");
                     proventosAtuais = proventosFuturos; 
                     renderizarProventos(); 
                     if (precosAtuais.length > 0) {
@@ -1569,10 +1334,13 @@
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar proventos (BFF):", err);
-                    if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
+                    if (proventosAtuais.length === 0) { 
+                        totalProventosEl.textContent = "Erro";
+                    }
                 });
                 
                 promessaHistorico.then(({ labels, data }) => {
+                    console.log("Busca de histórico agregado (BFF) concluída.");
                     renderizarGraficoHistorico({ labels, data });
                 }).catch(err => {
                     console.error("Erro ao buscar histórico agregado (BFF):", err);
@@ -1586,7 +1354,7 @@
                     refreshIcon.classList.remove('spin-animation');
                     carteiraLoading.classList.add('hidden');
                     
-                    if (carteiraCalculada.length > 0) {
+                    if (carteira.length > 0) {
                          dashboardStatus.classList.add('hidden');
                          dashboardLoading.classList.add('hidden');
                     }
@@ -1600,7 +1368,7 @@
 
                 if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
-                if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0) { 
+                if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco <= 0) {
                     tickerInput.classList.add('border-red-500');
                     quantityInput.classList.add('border-red-500');
                     precoMedioInput.classList.add('border-red-500'); 
@@ -1612,16 +1380,25 @@
                     return;
                 }
                 
-                const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
-                
+                const ativoExistente = carteira.find(a => a.symbol === ticker);
+
                 if (!ativoExistente) {
                     carteiraLoading.classList.remove('hidden');
                     const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
                     try {
                          const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+                         
                          if (!quoteData.results || quoteData.results[0].error) {
                              throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                          }
+                        
+                        carteira.push({ 
+                            symbol: ticker, 
+                            quantity: novaQuantidade, 
+                            precoMedio: novoPreco,
+                            dataCompra: new Date().toISOString() 
+                        });
+                        
                     } catch (error) {
                          console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
                          carteiraLoading.classList.add('hidden');
@@ -1634,19 +1411,19 @@
                          }, 2000);
                          return;
                     }
-                } 
-                
-                transacoes.push({
-                    id: 'tx_' + Date.now(),
-                    date: new Date().toISOString(),
-                    symbol: ticker,
-                    type: 'buy',
-                    quantity: novaQuantidade,
-                    price: novoPreco
-                });
+                } else {
+                    const custoTotalAntigo = ativoExistente.quantity * ativoExistente.precoMedio;
+                    const custoNovaCompra = novaQuantidade * novoPreco;
+                    const quantidadeTotal = ativoExistente.quantity + novaQuantidade;
+                    const custoTotalNovo = custoTotalAntigo + custoNovaCompra;
+                    const novoPrecoMedio = custoTotalNovo / quantidadeTotal;
+                    
+                    ativoExistente.quantity = quantidadeTotal;
+                    ativoExistente.precoMedio = parseFloat(novoPrecoMedio.toFixed(2));
+                }
 
                 clearBrapiCache();
-                salvarTransacoes();
+                salvarCarteira();
                 atualizarTodosDados(true); 
                 
                 tickerInput.value = '';
@@ -1655,17 +1432,15 @@
                 tickerInput.focus(); 
             }
 
-            // handleVender REMOVIDO
-
             function handleRemoverAtivo(symbol) {
                 showModal(
                     'Remover Ativo', 
-                    `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
+                    `Tem certeza que deseja remover ${symbol} da sua carteira?`, 
                     () => { 
-                        transacoes = transacoes.filter(t => t.symbol !== symbol);
+                        carteira = carteira.filter(a => a.symbol !== symbol);
                         
                         clearBrapiCache(); 
-                        salvarTransacoes();
+                        salvarCarteira();
                         atualizarTodosDados(true); 
                         if (detalhesTitulo.textContent.includes(symbol)) {
                             limparDetalhes();
@@ -1716,14 +1491,18 @@
                         <div id="historico-12m-loading" class="space-y-3 animate-pulse pt-2">
                             <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
                             <div class="h-4 bg-gray-700 rounded-md w-1/2"></div>
+                            <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                            <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>
                         </div>
                     `;
+                    
                     promessaAi = callGeminiHistoricoAPI(symbol, todayString); 
                 }
                 
                 detalhesLoading.classList.add('hidden');
 
                 if (precoData) {
+                    // REMOVIDO: O logo da Brapi não é mais exibido aqui
                     detalhesTitulo.innerHTML = `
                         <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">${symbol}</h1>
                         <p id="detalhes-nome-longo" class="text-base font-normal text-gray-500 mt-1">${precoData.longName || 'Nome não disponível'}</p>
@@ -1731,7 +1510,7 @@
                     
                     const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
 
-                    const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
+                    const ativoCarteira = carteira.find(a => a.symbol === symbol);
                     let plHtml = '';
                     if (ativoCarteira) {
                         const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
@@ -1762,7 +1541,9 @@
                                 <span class="text-xl font-semibold ${variacaoCor}">${formatPercent(precoData.regularMarketChangePercent)}</span>
                             </div>
                         </div>
+
                         ${plHtml}
+
                         <div class="col-span-2 grid grid-cols-3 gap-3">
                             <div class="bg-gray-800 p-3 rounded-xl text-center">
                                 <span class="text-xs text-gray-500">Abertura</span>
@@ -1777,6 +1558,7 @@
                                 <p class="text-base font-semibold text-red-500">${formatBRL(precoData.regularMarketDayLow)}</p>
                             </div>
                         </div>
+                        
                         <div class="bg-gray-800 p-4 rounded-xl">
                             <span class="text-xs text-gray-500">Máx. 52 Semanas</span>
                             <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekHigh)}</p>
@@ -1785,11 +1567,13 @@
                             <span class="text-xs text-gray-500">Mín. 52 Semanas</span>
                             <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekLow)}</p>
                         </div>
+                        
                         <div class="col-span-2 bg-gray-800 p-4 rounded-xl">
                             <span class="text-xs text-gray-500">Valor de Mercado</span>
                             <p class="text-lg font-semibold text-white">${formatNumber(precoData.marketCap)}</p>
                         </div>
                     `;
+                    
                 } else {
                     detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
                 }
@@ -1833,8 +1617,6 @@
                     }
                 }
             }
-            
-            // --- Event Listeners ---
 
             refreshButton.addEventListener('click', () => {
                 clearBrapiCache();
@@ -1844,8 +1626,6 @@
             tickerInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             precoMedioInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); 
-            
-            notifyButton.addEventListener('click', requestNotificationPermission);
 
             listaCarteira.addEventListener('click', (e) => {
                 const target = e.target.closest('button');
@@ -1858,26 +1638,17 @@
                     handleRemoverAtivo(symbol);
                 } else if (action === 'details') {
                     handleMostrarDetalhes(symbol);
-                } else if (action === 'sell') {
-                    // Lógica de Venda REMOVIDA
                 } else if (action === 'toggle') {
                     const drawer = document.getElementById(`drawer-${symbol}`);
                     const icon = target.querySelector('.card-arrow-icon');
-                    drawer?.classList.toggle('open');
-                    icon?.classList.toggle('open');
+                    
+                    if (drawer) {
+                        drawer.classList.toggle('open');
+                    }
+                    if (icon) {
+                        icon.classList.toggle('open');
+                    }
                 }
-            });
-            
-            dashboardDrawers.addEventListener('click', (e) => {
-                const target = e.target.closest('button');
-                if (!target || !target.dataset.targetDrawer) return;
-                
-                const drawerId = target.dataset.targetDrawer;
-                const drawer = document.getElementById(drawerId);
-                const icon = target.querySelector('.card-arrow-icon');
-                
-                drawer?.classList.toggle('open');
-                icon?.classList.toggle('open');
             });
 
             tabButtons.forEach(button => {
@@ -1886,7 +1657,6 @@
                 });
             });
             
-            // Listeners do Modal de Confirmação
             customModalCancel.addEventListener('click', hideModal);
             customModalOk.addEventListener('click', () => {
                 if (typeof onConfirmCallback === 'function') {
@@ -1895,47 +1665,60 @@
                 hideModal(); 
             });
             customModal.addEventListener('click', (e) => {
-                if (e.target === customModal) { hideModal(); }
+                if (e.target === customModal) { 
+                    hideModal();
+                }
             });
-            
-            // Listeners do Modal de Venda REMOVIDOS
 
             // --- Funções da API Gemini (BFF) ---
 
             async function callGeminiHistoricoAPI(ticker, todayString) {
-                const body = { mode: 'historico_12m', payload: { ticker, todayString } };
+                const body = {
+                    mode: 'historico_12m',
+                    payload: { ticker, todayString }
+                };
+                
                 const response = await fetchBFF('/api/gemini', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
+                
                 return response.text; 
             }
             
             async function callGeminiProventosCarteiraAPI(fiiList, todayString) {
-                const body = { mode: 'proventos_carteira', payload: { fiiList, todayString } };
+                const body = {
+                    mode: 'proventos_carteira',
+                    payload: { fiiList, todayString }
+                };
+                
                 const response = await fetchBFF('/api/gemini', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
+                
                 return response.json; 
             }
             
             async function callGeminiHistoricoPortfolioAPI(fiiList, todayString) {
-                 const body = { mode: 'historico_portfolio', payload: { fiiList, todayString } };
-                 const response = await fetchBFF('/api/gemini', {
+                 const body = {
+                    mode: 'historico_portfolio',
+                    payload: { fiiList, todayString }
+                };
+                
+                const response = await fetchBFF('/api/gemini', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
+                
                 return response.json; 
             }
 
             // --- Inicialização ---
-            checkNotificationPermission(); 
-            carregarTransacoes();
-            carregarPatrimonio();
+            carregarCarteira();
             atualizarTodosDados(true); 
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
         });

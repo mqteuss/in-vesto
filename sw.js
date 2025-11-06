@@ -1,13 +1,13 @@
 // NOVO: Versão do cache atualizada para forçar a atualização
-const CACHE_NAME = 'vesto-cache-v3';
+const CACHE_NAME = 'vesto-cache-v4';
 
 // Todos os arquivos que compõem o "esqueleto" do seu app
 const APP_SHELL_FILES = [
   '/',
   'index.html',
   'manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+  // REMOVIDO: 'https://cdn.tailwindcss.com',
+  // REMOVIDO: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
   'icons/icon-192x192.png', 
   'icons/icon-512x512.png'  
@@ -20,6 +20,9 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
         console.log('[SW] Armazenando App Shell no cache');
+        // Usamos addAll com 'no-cache' para recursos de CDN que podem não suportar CORS no SW
+        // Mas para Chart.js, que é mais estável, podemos tentar.
+        // Se Chart.js também falhar, teremos que tratá-lo de forma diferente.
         return cache.addAll(APP_SHELL_FILES);
       })
       // REMOVEMOS O self.skipWaiting() DAQUI!
@@ -57,8 +60,25 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(event.request));
     return;
   }
+  
+  // 2. Tratar pedidos de CDN (como Chart.js) - Network first, fallback to cache
+  if (url.origin === 'https://cdn.jsdelivr.net') {
+      event.respondWith(
+          fetch(event.request).then(networkResponse => {
+              // Se a rede funcionar, atualiza o cache
+              caches.open(CACHE_NAME).then(cache => {
+                  cache.put(event.request, networkResponse.clone());
+              });
+              return networkResponse;
+          }).catch(() => {
+              // Se a rede falhar, tenta pegar do cache
+              return caches.match(event.request);
+          })
+      );
+      return;
+  }
 
-  // 2. Estratégia Stale-While-Revalidate para o App Shell
+  // 3. Estratégia Stale-While-Revalidate para o App Shell local
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {

@@ -11,9 +11,7 @@
     
     <link rel="manifest" href="manifest.json">
 
-    <meta name="theme-color" content="#1A1A1A"> <!-- Alterado para o fundo do app -->
-    
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#1A1A1A"> <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     
     <style>
@@ -270,16 +268,32 @@
         /* ============================================== */
         /* FIM: NOVOS ESTILOS (SINO DE NOTIFICAÇÃO)       */
         /* ============================================== */
+
+        /* ============================================== */
+        /* INÍCIO: NOVOS ESTILOS (TOAST NOTIFICATION)     */
+        /* ============================================== */
+        
+        /* Classe para a animação de "shake" quando um novo toast 
+           chega enquanto um antigo ainda está visível */
+        .toast-shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+          10%, 90% { transform: translateX(-51%) translateY(1rem) scale(1); }
+          20%, 80% { transform: translateX(-49%) translateY(1rem) scale(1); }
+          30%, 50%, 70% { transform: translateX(-52%) translateY(1rem) scale(1); }
+          40%, 60% { transform: translateX(-48%) translateY(1rem) scale(1); }
+        }
+        /* ============================================== */
+        /* FIM: NOVOS ESTILOS (TOAST NOTIFICATION)        */
+        /* ============================================== */
     </style>
 </head>
 <body class="antialiased">
 
-    <!-- O contêiner principal do aplicativo -->
     <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
 
-        <!-- ============================================== -->
-        <!-- ABA: DASHBOARD                                 -->
-        <!-- ============================================== -->
         <div id="tab-dashboard" class="tab-content active p-4">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Dashboard</h1>
@@ -291,44 +305,32 @@
                 </button>
             </div>
 
-            <!-- Card de Resumo (AGORA VISÍVEL POR PADRÃO com Skeletons) -->
             <div id="resumo-carteira-card" class="card-bg p-5 rounded-2xl mb-6 text-center">
                 <span class="text-sm text-gray-500">Valor Total da Carteira</span>
                 
-                <!-- Skeleton Loader -->
                 <div id="skeleton-total-valor" class="h-10 w-3/4 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
-                <!-- Conteúdo Real (Escondido por padrão) -->
                 <h2 id="total-carteira-valor" class="text-4xl font-bold mt-1 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</h2>
                 
                 <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-800">
                     <div>
                         <span class="text-xs text-gray-500">Custo Total</span>
-                        <!-- Skeleton Loader -->
                         <div id="skeleton-total-custo" class="h-6 w-2/3 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
-                        <!-- Conteúdo Real (Escondido por padrão) -->
                         <p id="total-carteira-custo" class="text-lg font-semibold text-gray-300 hidden">R$ 0,00</p>
                     </div>
                     <div>
                         <span class="text-xs text-gray-500">Lucro/Prejuízo</span>
-                        <!-- Skeleton Loader -->
                         <div id="skeleton-total-pl" class="h-6 w-full bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
-                        <!-- Conteúdo Real (Escondido por padrão) -->
                         <p id="total-carteira-pl" class="text-lg font-semibold text-gray-500 hidden">R$ 0,00 (0.00%)</p>
                     </div>
                     <div>
                         <span class="text-xs text-gray-500">Próx. Proventos</span>
-                        <!-- Skeleton Loader -->
                         <div id="skeleton-total-proventos" class="h-6 w-2/3 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
-                        <!-- Conteúdo Real (Escondido por padrão) -->
                         <p id="total-proventos" class="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</p>
                     </div>
                 </div>
             </div>
-            <!-- Fim do Card de Resumo -->
-
             <div id="dashboard-drawers" class="space-y-4">
             
-                <!-- Drawer Patrimônio (AGORA ABERTO POR PADRÃO) -->
                 <div class="card-bg p-4 rounded-2xl shadow-lg">
                     <div class="flex justify-between items-center">
                         <h3 class="text-lg font-semibold text-white ml-2">Evolução do Patrimônio</h3>
@@ -379,21 +381,12 @@
 
             </div> 
             
-            <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden"> <!-- Escondido por padrão, já que os skeletons estão no card -->
-                 <p id="dashboard-mensagem">A carregar dados...</p>
+            <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden"> <p id="dashboard-mensagem">A carregar dados...</p>
                  <div id="dashboard-loading" class="flex justify-center items-center py-4">
                     <span class="loader"></span>
                  </div>
             </div>
         </div>
-        <!-- ============================================== -->
-        <!-- FIM: DASHBOARD                                 -->
-        <!-- ============================================== -->
-
-
-        <!-- ============================================== -->
-        <!-- ABA: CARTEIRA                                  -->
-        <!-- ============================================== -->
         <div id="tab-carteira" class="tab-content p-4">
             
             <div class="flex justify-between items-center mb-6">
@@ -408,17 +401,11 @@
                 </button>
             </div>
             
-            <!-- FORMULÁRIO DE ADIÇÃO REMOVIDO DAQUI -->
-            <!-- ... e movido para o modal #add-ativo-modal -->
-
             <h2 class="text-xl font-semibold text-white mb-3">Minha Posição</h2>
             
-            <!-- LISTA DE CARTEIRA (real) -->
             <div id="lista-carteira" class="space-y-4">
-                <!-- Cards reais serão injetados aqui pelo JS -->
-            </div>
+                </div>
             
-            <!-- SKELETON LOADERS PARA CARTEIRA (NOVO) -->
             <div id="skeleton-lista-carteira" class="space-y-4">
                 <div class="card-bg p-4 rounded-2xl shadow-lg animate-pulse">
                     <div class="flex justify-between items-start">
@@ -457,9 +444,6 @@
                     </div>
                 </div>
             </div>
-            <!-- FIM SKELETON LOADERS -->
-            
-            <!-- ESTADO VAZIO (MELHORADO) -->
             <div id="carteira-status" class="text-center text-gray-500 mt-12 hidden">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
@@ -470,38 +454,17 @@
                 </button>
             </div>
         </div>
-        <!-- ============================================== -->
-        <!-- FIM: CARTEIRA                                  -->
-        <!-- ============================================== -->
-        
-
-        <!-- ============================================== -->
-        <!-- ABA: HISTÓRICO                                 -->
-        <!-- ============================================== -->
         <div id="tab-historico" class="tab-content p-4">
             <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
         
             <div id="lista-historico" class="space-y-3">
-                <!-- Histórico injetado pelo JS -->
-            </div>
+                </div>
             
             <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
                 <p id="historico-mensagem">Nenhuma transação encontrada.</p>
             </div>
         </div>
-        <!-- ============================================== -->
-        <!-- FIM: HISTÓRICO                                 -->
-        <!-- ============================================== -->
-        
-    </div> <!-- FIM: #app-container -->
-
-
-    <!-- =================================================================== -->
-    <!-- INÍCIO: ELEMENTOS GLOBAIS (Modais, Nav, FABs)                       -->
-    <!-- =================================================================== -->
-
-    <!-- Notificação de Atualização PWA -->
-    <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
+        </div> <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
         <div class="card-bg rounded-xl p-4 shadow-2xl flex items-center justify-between gap-3">
             <span class="text-sm font-medium text-gray-100">Uma nova versão está disponível!</span>
             <button id="update-button" class="py-2 px-4 accent-bg text-white rounded-lg transition-colors text-sm font-semibold">
@@ -510,7 +473,6 @@
         </div>
     </div>
     
-    <!-- Botão Flutuante (FAB) para Adicionar Ativo (NOVO) -->
     <button id="show-add-modal-btn" class="fixed bottom-24 right-5 z-40 accent-bg text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 hover:bg-violet-600 hidden" title="Adicionar Ativo">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -518,8 +480,7 @@
         </svg>
     </button>
     
-    <!-- Barra de Navegação Principal (AGORA COM 3 ABAS) -->
-<nav class="fixed bottom-4 left-10 right-10 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
+    <nav class="fixed bottom-4 left-10 right-10 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
         <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
             <div class="tab-button-icon-wrapper"> 
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -553,11 +514,8 @@
             <span class="text-xs mt-1 font-medium">Histórico</span>
         </button>
         
-        <!-- Botão da Aba "Detalhes" REMOVIDO -->
-        
-    </nav>
+        </nav>
     
-    <!-- Modal de Confirmação (Genérico) -->
     <div id="custom-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div id="custom-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
             <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar Ação</h3>
@@ -569,8 +527,7 @@
         </div>
     </div>
     
-    <!-- Modal para Adicionar Ativo (NOVO) -->
-<div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-16 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">        <div id="add-ativo-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
+    <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-16 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">        <div id="add-ativo-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
             <h3 id="add-modal-title" class="text-xl font-semibold text-white mb-5 text-center">Adicionar Compra</h3>
             <div class="space-y-4">
                 <input 
@@ -606,36 +563,22 @@
             </div>
         </div>
     </div>
-    <!-- Fim Modal Adicionar Ativo -->
-    
-
-    <!-- ============================================== -->
-    <!-- PÁGINA DE DETALHES (NOVO MODAL TELA CHEIA)       -->
-    <!-- ============================================== -->
     <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
         
-        <!-- O conteúdo que desliza de baixo para cima -->
-        <!-- O h-[90vh] e rounded-t-2xl etc estão agora no page-content -->
         <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
             
-            <!-- Cabeçalho da Página de Detalhes (BOTÃO MOVIDO PARA A DIREITA) -->
             <div class="flex justify-between items-center p-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
                 
-                <!-- Título agora à esquerda -->
-                <div id="detalhes-titulo" class="flex-1 min-w-0"> <!-- min-w-0 para truncar funcionar -->
-                     <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
+                <div id="detalhes-titulo" class="flex-1 min-w-0"> <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
                      <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
                 </div>
                 
-                <!-- Botão de Fechar à direita (Ícone "X") -->
                 <button id="detalhes-voltar-btn" class="p-2 ml-3 text-gray-400 hover:text-white rounded-full transition-colors flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> <!-- Ícone de X -->
-                    </svg>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /> </svg>
                 </button>
             </div>
             
-            <!-- Conteúdo de Detalhes com Scroll -->
             <div id="detalhes-conteudo-scroll" class="overflow-y-auto h-[calc(90vh-65px)] p-4">
                 <div id="detalhes-conteudo" class="space-y-5">
                      <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
@@ -655,20 +598,19 @@
                      
                 </div>
             </div>
-            <!-- Fim Conteúdo de Detalhes -->
+            </div>
+    </div>
+    <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
+        <div id="toast-notification" 
+             class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl bg-red-800 border border-red-600 text-white font-medium opacity-0" 
+             style="transform: translateX(-50%) translateY(-150%) scale(0.2); border-radius: 50%; transition: all 0.4s ease-in-out;">
             
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span id="toast-message" class="flex-1">Erro ao processar.</span>
         </div>
     </div>
-    <!-- ============================================== -->
-    <!-- FIM: PÁGINA DE DETALHES                          -->
-    <!-- ============================================== -->
-
-
-    <!-- =================================================================== -->
-    <!-- FIM: ELEMENTOS GLOBAIS                                              -->
-    <!-- =================================================================== -->
-
-    
     <script>
         // Configurações padrão do Chart.js para modo escuro
         Chart.defaults.color = '#9ca3af'; 
@@ -689,6 +631,10 @@
             const refreshButton = document.getElementById('refresh-button');
             const tabButtons = document.querySelectorAll('.tab-button');
             const tabContents = document.querySelectorAll('.tab-content');
+            
+            // --- Elementos DOM (Toast Notification - NOVO) ---
+            const toastElement = document.getElementById('toast-notification');
+            const toastMessageElement = document.getElementById('toast-message');
             
             // --- Elementos DOM (Dashboard) ---
             const dashboardStatus = document.getElementById('dashboard-status');
@@ -776,10 +722,81 @@
             let lastHistoricoData = null;
             let lastPatrimonioData = null; 
 
+            let toastTimer = null;
+            let isToastShowing = false;
+
             // --- Estado para Swipe (NOVO) ---
             let touchStartY = 0;
             let touchMoveY = 0;
             let isDraggingDetalhes = false;
+
+            // ==========================================================
+            // LÓGICA DE NOTIFICAÇÃO TOAST (NOVO)
+            // ==========================================================
+            
+            /**
+             * Mostra uma notificação toast com a animação solicitada.
+             * @param {string} message A mensagem de erro a ser exibida.
+             */
+            function showToast(message) {
+                // Cancela qualquer animação de "saída" pendente
+                clearTimeout(toastTimer);
+                
+                toastMessageElement.textContent = message;
+
+                if (isToastShowing) {
+                    // SE JÁ ESTIVER VISÍVEL:
+                    // Apenas "vibra" o toast para indicar uma nova mensagem
+                    // e reinicia o timer de saída.
+                    toastElement.classList.add('toast-shake');
+                    setTimeout(() => {
+                        toastElement.classList.remove('toast-shake');
+                    }, 500);
+
+                } else {
+                    // SE ESTIVER ESCONDIDO:
+                    // Executa a animação completa de "entrada".
+                    isToastShowing = true;
+                    
+                    // 1. Reseta para a "bola" (caso esteja em estado quebrado)
+                    toastElement.style.transition = 'none'; // Sem animação para o reset
+                    toastElement.style.transform = 'translateX(-50%) translateY(-150%) scale(0.2)';
+                    toastElement.style.borderRadius = '50%';
+                    toastElement.style.opacity = '0';
+                    
+                    // Força o navegador a "ver" o reset antes de animar
+                    void toastElement.offsetWidth; 
+
+                    // 2. Anima a "bola" caindo para a safe area
+                    toastElement.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, border-radius 0.4s ease 0.3s';
+                    toastElement.style.transform = 'translateX(-50%) translateY(1rem) scale(0.2)'; // 1rem = p-4 do container
+                    toastElement.style.opacity = '1';
+                    
+                    // 3. Expande a "bola" para o formato de toast (após ela cair)
+                    setTimeout(() => {
+                        toastElement.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 0.4s ease';
+                        toastElement.style.transform = 'translateX(-50%) translateY(1rem) scale(1)';
+                        toastElement.style.borderRadius = '0.75rem'; // 12px (rounded-xl)
+                    }, 400); // Deve corresponder à duração da animação de "cair"
+                }
+
+                // Define o timer para a animação de "saída"
+                toastTimer = setTimeout(() => {
+                    // 1. Encolhe o toast de volta para "bola"
+                    toastElement.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 0.4s ease 0.1s';
+                    toastElement.style.transform = 'translateX(-50%) translateY(1rem) scale(0.2)';
+                    toastElement.style.borderRadius = '50%';
+                    
+                    // 2. Sobe a "bola" para escondê-la (após encolher)
+                    setTimeout(() => {
+                        toastElement.style.transition = 'transform 0.4s cubic-bezier(0.6, -0.28, 0.74, 0.05), opacity 0.3s ease, border-radius 0.4s ease';
+                        toastElement.style.transform = 'translateX(-50%) translateY(-150%) scale(0.2)';
+                        toastElement.style.opacity = '0';
+                        isToastShowing = false;
+                    }, 500); // Deve ser maior que a animação de "encolher"
+
+                }, 4000); // Toast fica visível por 4 segundos
+            }
 
             // ==========================================================
             // LÓGICA DE ATUALIZAÇÃO DO PWA (SW)
@@ -1588,7 +1605,7 @@
                 } catch (error) {
                     if (error.name === 'AbortError') {
                         console.error(`Erro ao chamar o BFF ${url}:`, "Timeout de 30s excedido");
-                        throw new Error("O servidor demorou muito para responder. Tente novamente.");
+                        throw new Error("O servidor demorou muito para responder.");
                     }
                     console.error(`Erro ao chamar o BFF ${url}:`, error);
                     throw error;
@@ -1826,6 +1843,7 @@
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
+                    showToast(`Falha ao buscar preços: ${err.message}`);
                     if (precosAtuais.length === 0) { renderizarCarteira(); }
                 });
 
@@ -1837,6 +1855,7 @@
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar proventos (BFF):", err);
+                    showToast(`Falha ao buscar proventos: ${err.message}`);
                     if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
                 });
                 
@@ -1844,6 +1863,7 @@
                     renderizarGraficoHistorico({ labels, data });
                 }).catch(err => {
                     console.error("Erro ao buscar histórico agregado (BFF):", err);
+                    showToast(`Falha ao buscar histórico: ${err.message}`);
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                 });
 
@@ -1868,6 +1888,7 @@
                 if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
                 if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0) { 
+                    showToast("Por favor, preencha todos os campos corretamente.");
                     tickerInput.classList.add('border-red-500');
                     quantityInput.classList.add('border-red-500');
                     precoMedioInput.classList.add('border-red-500'); 
@@ -1894,6 +1915,7 @@
                          }
                     } catch (error) {
                          console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
+                         showToast("Ativo não encontrado. Verifique o ticker.");
                          tickerInput.value = '';
                          tickerInput.placeholder = "Ativo não encontrado";
                          tickerInput.classList.add('border-red-500');
@@ -1975,7 +1997,10 @@
                         precoData = data.results?.[0];
                         if (precoData && !precoData.error) setCache(cacheKeyPreco, precoData); 
                         else throw new Error(precoData?.error || 'Ativo não encontrado');
-                    } catch (e) { precoData = null; }
+                    } catch (e) { 
+                        precoData = null; 
+                        showToast(`Erro ao buscar preço: ${e.message}`);
+                    }
                 }
 
                 let promessaAi = null;
@@ -2072,6 +2097,7 @@
                             <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${aiResult}</p>
                         `;
                     } catch (e) {
+                        showToast(`Erro na consulta IA: ${e.message}`);
                         detalhesAiProvento.innerHTML = `
                             <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
                             <div class="border border-red-700 bg-red-900/50 p-4 rounded-lg flex items-center gap-3">

@@ -3,7 +3,11 @@ const CACHE_NAME = 'vesto-cache-v3';
 
 // Todos os arquivos que compõem o "esqueleto" do seu app
 const APP_SHELL_FILES = [
-@@ -11,6 +12,7 @@ const APP_SHELL_FILES = [
+  '/',
+  'index.html',
+  'manifest.json',
+  'https://cdn.tailwindcss.com',
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
   'icons/icon-192x192.png', 
   'icons/icon-512x512.png'  
@@ -11,7 +15,10 @@ const APP_SHELL_FILES = [
 ];
 
 // Evento de Instalação: Armazena o App Shell no cache
-@@ -22,8 +24,6 @@ self.addEventListener('install', event => {
+self.addEventListener('install', event => {
+  console.log('[SW] Evento de Instalação');
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
         console.log('[SW] Armazenando App Shell no cache');
         return cache.addAll(APP_SHELL_FILES);
       })
@@ -20,7 +27,29 @@ const APP_SHELL_FILES = [
   );
 });
 
-@@ -47,6 +47,7 @@ self.addEventListener('fetch', event => {
+// Evento de Ativação: Limpa caches antigos
+self.addEventListener('activate', event => {
+  console.log('[SW] Evento de Ativação');
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[SW] Limpando cache antigo:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => {
+        console.log('[SW] Clientes controlados.');
+        return self.clients.claim(); // Torna-se o SW ativo imediatamente
+    })
+  );
+});
+
+// Evento de Fetch: Responde com cache ou rede (estratégia Stale-While-Revalidate para o App Shell)
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
 
   // 1. Ignorar chamadas de API para o nosso BFF
   if (url.pathname.startsWith('/api/')) {
@@ -28,7 +57,8 @@ const APP_SHELL_FILES = [
     event.respondWith(fetch(event.request));
     return;
   }
-@@ -55,23 +56,81 @@ self.addEventListener('fetch', event => {
+
+  // 2. Estratégia Stale-While-Revalidate para o App Shell
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {

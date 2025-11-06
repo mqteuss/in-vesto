@@ -244,19 +244,13 @@
 
         /* Notificação Toast */
         #toast-notification {
-            /* Posição inicial: fora da tela, invisível */
             opacity: 0;
             transform: translateY(-100%);
-            
-            /* Transição suave - note o 'cubic-bezier' para um leve "salto" */
             transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            
-            /* Garante que é sempre um retângulo arredondado */
             border-radius: 0.75rem; /* rounded-xl */
         }
         
         #toast-notification.toast-visible {
-            /* Posição final: na tela, visível */
             opacity: 1;
             transform: translateY(1rem); /* 1rem = p-4 do container pai */
         }
@@ -265,12 +259,20 @@
             animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
         }
 
-        /* Animação de "shake" agora usa APENAS translateX e translateY */
         @keyframes shake {
           10%, 90% { transform: translateX(-1%) translateY(1rem); }
           20%, 80% { transform: translateX(1%) translateY(1rem); }
           30%, 50%, 70% { transform: translateX(-2%) translateY(1rem); }
           40%, 60% { transform: translateX(2%) translateY(1rem); }
+        }
+        
+        /* Estilo para truncar notícias (clamp) */
+        .clamp-2 {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     </style>
 </head>
@@ -440,6 +442,43 @@
             </div>
         </div>
         
+        <div id="tab-noticias" class="tab-content p-4">
+            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Notícias</h1>
+        
+            <div id="fii-news-container" class="space-y-4">
+                <div id="fii-news-skeleton" class="space-y-4 animate-pulse">
+                    <div class="flex gap-3">
+                        <div class="w-16 h-16 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2 pt-1">
+                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                            <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                            <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="w-16 h-16 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2 pt-1">
+                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                            <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                            <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="w-16 h-16 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2 pt-1">
+                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                            <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                            <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="fii-news-list" class="space-y-3"></div>
+                
+                <p id="fii-news-mensagem" class="text-gray-500 text-center hidden p-4"></p>
+            </div>
+        </div>
+        
         <div id="tab-historico" class="tab-content p-4">
             <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
         
@@ -467,7 +506,8 @@
         </svg>
     </button>
     
-    <nav class="fixed bottom-4 left-10 right-10 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
+    <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
+        
         <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
             <div class="tab-button-icon-wrapper"> 
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -489,13 +529,22 @@
             <span class="text-xs mt-1 font-medium">Carteira</span>
         </button>
         
+        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-noticias" title="Notícias">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path>
+                </svg>
+            </div>
+            <span class="text-xs mt-1 font-medium">Notícias</span>
+        </button>
+        
         <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-historico" title="Histórico">
             <div class="tab-button-icon-wrapper"> 
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M16 2h-6a4 4 0 0 0-4 4v12a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4V6a4 4 0 0 0-4-4z"></path>
-                  <line x1="12" y1="6" x2="12" y2="18"></line>
-                  <line x1="10" y1="10" x2="14" y2="10"></line>
-                  <line x1="10" y1="14" x2="14" y2="14"></line>
+                  <path d="M3 3v18h18"></path>
+                  <path d="M7 12h10"></path>
+                  <path d="M7 6h10"></path>
+                  <path d="M7 18h10"></path>
                 </svg>
             </div>
             <span class="text-xs mt-1 font-medium">Histórico</span>
@@ -607,6 +656,7 @@
             const REFRESH_INTERVAL = 1860000; // 31 minutos
             const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
             const CACHE_24_HORAS = 1000 * 60 * 60 * 24; // 24 horas
+            const CACHE_6_HORAS = 1000 * 60 * 60 * 6; // 6 HORAS (NOVO)
             const CACHE_PREFIX = 'vestoBrapiCache_v1_'; 
             
             const DB_KEY_TRANSACOES = 'vesto_transacoes_v1';
@@ -621,6 +671,11 @@
             const toastElement = document.getElementById('toast-notification');
             const toastMessageElement = document.getElementById('toast-message');
             
+            // Dashboard (Notícias - NOVO)
+            const fiiNewsList = document.getElementById('fii-news-list');
+            const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
+            const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
+
             // Dashboard
             const dashboardStatus = document.getElementById('dashboard-status');
             const dashboardLoading = document.getElementById('dashboard-loading');
@@ -720,32 +775,24 @@
             // ==========================================================
             
             function showToast(message) {
-                // Limpa qualquer timer de "esconder" pendente
                 clearTimeout(toastTimer);
-
                 toastMessageElement.textContent = message;
 
-                // Se o toast JÁ ESTÁ visível, apenas "treme"
                 if (isToastShowing && toastElement.classList.contains('toast-visible')) {
                     toastElement.classList.add('toast-shake');
                     setTimeout(() => {
                         toastElement.classList.remove('toast-shake');
                     }, 500);
-
                 } else {
-                    // Se não estiver visível, força a re-exibição
                     isToastShowing = true;
                     toastElement.classList.remove('toast-shake');
-                    
-                    // Adiciona a classe que o CSS usa para "mostrar"
                     toastElement.classList.add('toast-visible');
                 }
 
-                // Define um NOVO timer para "esconder" o toast
                 toastTimer = setTimeout(() => {
                     toastElement.classList.remove('toast-visible');
                     isToastShowing = false;
-                }, 1500); // 1,5				segundos
+                }, 1500); 
             }
 
             // ==========================================================
@@ -877,7 +924,6 @@
                 localStorage.removeItem(CACHE_PREFIX + `provento_ia_${symbol}`);
                 localStorage.removeItem(CACHE_PREFIX + `detalhe_preco_${symbol}`);
                 
-                // Invalida o cache de histórico agregado se for um FII
                 if (isFII(symbol)) {
                     Object.keys(localStorage)
                         .filter(key => key.startsWith(CACHE_PREFIX + 'hist_agregado_v4_'))
@@ -899,10 +945,13 @@
             }
             
             function clearBrapiCache() {
-                console.warn("A limpar cache da Brapi...");
+                console.warn("A limpar cache da Brapi e Notícias...");
                 Object.keys(localStorage)
                     .filter(key => key.startsWith(CACHE_PREFIX))
                     .forEach(key => localStorage.removeItem(key));
+                
+                // Limpa também o cache de notícias
+                localStorage.removeItem(CACHE_PREFIX + 'noticias_fii_v1'); 
             }
 
             // ==========================================================
@@ -958,8 +1007,8 @@
             
             function isB3Open() {
                 const { dayOfWeek, hour } = getSaoPauloDateTime();
-                if (dayOfWeek === 0 || dayOfWeek === 6) { return false; } // Domingo ou Sábado
-                if (hour >= 10 && hour < 18) { return true; } // Horário de pregão (aprox.)
+                if (dayOfWeek === 0 || dayOfWeek === 6) { return false; } 
+                if (hour >= 10 && hour < 18) { return true; } 
                 return false;
             }
 
@@ -1061,14 +1110,11 @@
                 const index = patrimonio.findIndex(p => p.date === today);
                 
                 if (index > -1) {
-                    // Atualiza o valor do dia
                     patrimonio[index].value = totalValor;
                 } else {
-                    // Adiciona novo registro do dia
                     patrimonio.push({ date: today, value: totalValor });
                 }
                 
-                // Mantém apenas os últimos 365 dias
                 if (patrimonio.length > 365) {
                     patrimonio = patrimonio.slice(patrimonio.length - 365);
                 }
@@ -1079,7 +1125,6 @@
             function calcularCarteira() {
                 const ativosMap = new Map();
 
-                // Ordena transações por data para calcular o PM corretamente
                 const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 for (const t of transacoesOrdenadas) {
@@ -1090,7 +1135,7 @@
                         symbol: symbol, 
                         quantity: 0, 
                         totalCost: 0, 
-                        dataCompra: t.date // Guarda a primeira data de compra
+                        dataCompra: t.date 
                     };
 
                     ativo.quantity += t.quantity;
@@ -1100,7 +1145,7 @@
                 }
                 
                 carteiraCalculada = Array.from(ativosMap.values())
-                    .filter(a => a.quantity > 0) // Remove ativos que foram totalmente vendidos (lógica de venda não implementada)
+                    .filter(a => a.quantity > 0) 
                     .map(a => ({
                         symbol: a.symbol,
                         quantity: a.quantity,
@@ -1130,7 +1175,6 @@
                 const labels = dadosGrafico.map(d => d.symbol);
                 const data = dadosGrafico.map(d => d.totalPosicao);
 
-                // Evita re-renderizar o gráfico se os dados não mudaram
                 const newDataString = JSON.stringify({ labels, data });
                 if (newDataString === lastAlocacaoData) { return; }
                 lastAlocacaoData = newDataString; 
@@ -1138,13 +1182,11 @@
                 const colors = gerarCores(labels.length);
 
                 if (alocacaoChartInstance) {
-                    // Atualiza gráfico existente
                     alocacaoChartInstance.data.labels = labels;
                     alocacaoChartInstance.data.datasets[0].data = data;
                     alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
                     alocacaoChartInstance.update();
                 } else {
-                    // Cria novo gráfico
                     alocacaoChartInstance = new Chart(ctx, {
                         type: 'doughnut',
                         data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, }] },
@@ -1344,7 +1386,6 @@
                 let totalCustoCarteira = 0;
                 let dadosGrafico = [];
 
-                // Se carteira vazia
                 if (carteiraOrdenada.length === 0) {
                     carteiraStatus.classList.remove('hidden');
                     
@@ -1366,7 +1407,6 @@
                     dashboardStatus.classList.add('hidden');
                 }
 
-                // Renderiza cada ativo na carteira
                 listaCarteira.innerHTML = ''; 
                 carteiraOrdenada.forEach(ativo => {
                     const dadoPreco = precosMap.get(ativo.symbol);
@@ -1400,7 +1440,6 @@
                     totalCustoCarteira += custoTotal;
                     if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
                     
-                    // HTML para proventos (apenas FIIs)
                     let proventoHtml = '';
                     if (isFII(ativo.symbol)) { 
                         if (dadoProvento && dadoProvento.value > 0) {
@@ -1422,7 +1461,6 @@
                         }
                     }
                     
-                    // Cria o card do ativo
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-3">
@@ -1481,7 +1519,6 @@
                     listaCarteira.appendChild(card);
                 });
                 
-                // Atualiza o card de resumo do Dashboard
                 if (carteiraOrdenada.length > 0) {
                     const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
                     const totalLucroPrejuizoPercent = (totalCustoCarteira === 0 || totalValorCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
@@ -1495,7 +1532,6 @@
                     totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
                     totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
                     
-                    // Salva um snapshot do valor total para o gráfico de patrimônio
                     salvarSnapshotPatrimonio(totalValorCarteira);
                 }
                 
@@ -1529,7 +1565,6 @@
                 
                 historicoStatus.classList.add('hidden');
                 
-                // Renderiza em ordem de mais recente para mais antigo
                 [...transacoes].reverse().forEach(t => {
                     const card = document.createElement('div');
                     card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
@@ -1556,6 +1591,80 @@
             }
 
             // ==========================================================
+            // Funções de Notícias (NOVAS)
+            // ==========================================================
+            
+            /** Renderiza as notícias no card do dashboard */
+            function renderizarNoticias(articles) { // Recebe o array de artigos
+                fiiNewsSkeleton.classList.add('hidden');
+                fiiNewsList.innerHTML = '';
+
+                if (!articles || articles.length === 0) {
+                    fiiNewsMensagem.textContent = 'Nenhuma notícia encontrada.';
+                    fiiNewsMensagem.classList.remove('hidden');
+                    return;
+                }
+
+                articles.forEach(article => {
+                    const sourceName = article.sourceName || 'Fonte Desconhecida';
+                    
+                    const newsCard = document.createElement('a');
+                    newsCard.href = article.url;
+                    newsCard.target = '_blank'; 
+                    newsCard.rel = 'noopener noreferrer';
+                    newsCard.className = 'flex gap-3 p-2 -m-2 rounded-lg hover:bg-gray-800 transition-colors duration-200 ease-in-out';
+
+                    // Ícone genérico de notícias, pois o Gemini não retorna imagens
+                    const imageHtml = `
+                        <div class="w-16 h-16 rounded-lg bg-gray-700 flex-shrink-0 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01" />
+                            </svg>
+                       </div>`;
+
+                    newsCard.innerHTML = `
+                        ${imageHtml}
+                        <div class="flex-1 min-w-0">
+                            <h5 class="text-sm font-semibold text-gray-100 truncate ...">${article.title}</h5>
+                            <p class="text-sm text-gray-400 clamp-2 leading-tight mt-1">${article.description || ''}</p>
+                            <span class="text-xs font-medium text-purple-400 mt-2 block">${sourceName}</span>
+                        </div>
+                    `;
+                    fiiNewsList.appendChild(newsCard);
+                });
+            }
+
+            /** Busca notícias, usando o cache de 6h do localStorage */
+            async function fetchNoticiasBFF() {
+                const cacheKey = CACHE_PREFIX + 'noticias_fii_v1';
+                
+                const cache = getCache(cacheKey);
+                if (cache) {
+                    return cache; // Retorna do cache se for válido (a função getCache valida)
+                }
+                
+                try {
+                    // *** MODIFICADO: Chama /api/news via POST com todayString ***
+                    const response = await fetchBFF('/api/news', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ todayString: todayString }) 
+                    });
+                    
+                    const articles = response.json; // A API retorna { json: [...] }
+                    
+                    if (articles && Array.isArray(articles)) {
+                        // Salva no cache do localStorage por 6 horas
+                        setCache(cacheKey, articles, CACHE_6_HORAS);
+                    }
+                    return articles;
+                } catch (error) {
+                    console.error("Erro ao buscar notícias (BFF):", error);
+                    throw error;
+                }
+            }
+            
+            // ==========================================================
             // Funções de Fetch (API)
             // ==========================================================
 
@@ -1563,7 +1672,7 @@
             async function fetchBFF(url, options = {}) {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+                    const timeoutId = setTimeout(() => controller.abort(), 30000); 
                     
                     const response = await fetch(url, { ...options, signal: controller.signal });
                     clearTimeout(timeoutId); 
@@ -1594,13 +1703,10 @@
                     
                     if (!force) {
                         const precoCache = getCache(cacheKey);
-                        // Se a B3 estiver fechada, usa o cache mesmo se antigo
                         if (precoCache && !isB3Open()) return precoCache;
-                        // Se a B3 estiver aberta, usa o cache se não estiver expirado
                         if (precoCache) return precoCache;
                     }
 
-                    // Se não houver cache, ou 'force' for true, busca na rede
                     try {
                         const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
                         const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -1608,7 +1714,7 @@
 
                         if (result && !result.error) {
                             if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                            setCache(cacheKey, result); // Salva o resultado individual no cache
+                            setCache(cacheKey, result); 
                             return result;
                         } else {
                             console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
@@ -1635,7 +1741,6 @@
                         const ativoCarteira = carteiraCalculada.find(a => a.symbol === proventoIA.symbol);
                         if (!ativoCarteira) return null;
                         
-                        // Valida se o provento tem data de pagamento válida e futura
                         if (proventoIA.paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(proventoIA.paymentDate)) {
                             const parts = proventoIA.paymentDate.split('-');
                             const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
@@ -1660,7 +1765,6 @@
                 let proventosFinais = [];
                 let fiisParaBuscar = [];
 
-                // 1. Separa os FIIs que já estão no cache
                 for (const symbol of fiiNaCarteira) {
                     const cacheKey = `provento_ia_${symbol}`;
                     const proventoCache = getCache(cacheKey);
@@ -1675,12 +1779,10 @@
                 console.log("Proventos em cache:", proventosFinais.map(p => p.symbol));
                 console.log("Proventos para buscar:", fiisParaBuscar);
 
-                // 2. Busca na API apenas os FIIs que faltam
                 if (fiisParaBuscar.length > 0) {
                     try {
                         const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
                         
-                        // 3. Salva os novos resultados individualmente no cache
                         if (novosProventos && Array.isArray(novosProventos)) {
                             for (const provento of novosProventos) {
                                 if (provento && provento.symbol) {
@@ -1695,7 +1797,6 @@
                     }
                 }
                 
-                // 4. Processa o array combinado (cache + novos)
                 return processarProventosIA(proventosFinais); 
             }
 
@@ -1705,7 +1806,6 @@
                 if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
                 const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
-                // A chave de cache depende dos FIIs na carteira
                 const cacheKey = 'hist_agregado_v4_' + fiiSymbols.join('-'); 
                 
                 const cache = getCache(cacheKey);
@@ -1727,7 +1827,6 @@
 
                 if (!aiData || aiData.length === 0) return { labels: [], data: [] };
 
-                // Mapeia a quantidade e data de compra de cada FII
                 const carteiraMap = new Map(fiiNaCarteira.map(a => [a.symbol, { 
                     quantity: a.quantity, 
                     inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
@@ -1741,7 +1840,6 @@
                     if (!dataDoMes) return 0;
                     const timeDoMes = dataDoMes.getTime();
 
-                    // Calcula o total do mês baseado na quantidade de cotas que o usuário possuía
                     fiiSymbols.forEach(symbol => {
                         const ativo = carteiraMap.get(symbol);
                         if (!ativo) return; 
@@ -1750,7 +1848,6 @@
                         const inicioMesCompraTime = ativo.inicioMesCompra;
                         const valorPorCota = mesData[symbol] || 0;
                         
-                        // Só contabiliza proventos de meses APÓS a primeira compra
                         if (timeDoMes >= inicioMesCompraTime) {
                              totalMes += (valorPorCota * quantity);
                         }
@@ -1772,7 +1869,7 @@
                 
                 calcularCarteira();
                 renderizarHistorico();
-                renderizarGraficoPatrimonio(); // Renderiza o histórico de patrimônio salvo
+                renderizarGraficoPatrimonio(); 
                 
                 if (carteiraCalculada.length > 0) {
                     dashboardStatus.classList.remove('hidden');
@@ -1782,11 +1879,8 @@
                 const refreshIcon = refreshButton.querySelector('svg'); 
                 refreshIcon.classList.add('spin-animation');
 
-                // Tenta carregar dados de preço e proventos do cache antes de buscar na rede
                 let precosCache = null;
                 if (!force) {
-                    // Esta chave de cache agregada não é usada para buscar,
-                    // mas poderia ser usada para carregar um "snapshot"
                     const cacheKeyPrecos = 'precos_' + carteiraCalculada.map(a => a.symbol).join('-');
                     precosCache = getCache(cacheKeyPrecos);
                 }
@@ -1794,7 +1888,6 @@
                 let proventosFuturosCache = null;
                 const fiiNaCarteiraCache = carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol);
                 if (fiiNaCarteiraCache.length > 0) {
-                    // Lógica similar para proventos
                     const cacheKeyProventos = 'proventos_ia_' + fiiNaCarteiraCache.join('-');
                     const proventosCacheIA = getCache(cacheKeyProventos); 
                     if (proventosCacheIA) {
@@ -1802,7 +1895,6 @@
                     }
                 }
                 
-                // Se houver cache de preços, renderiza imediatamente
                 if (precosCache) {
                     precosAtuais = precosCache;
                     proventosAtuais = proventosFuturosCache || [];
@@ -1813,7 +1905,6 @@
                     proventosAtuais = [];
                 }
                 
-                // Se a carteira estiver vazia, para aqui
                 if (carteiraCalculada.length === 0) {
                      precosAtuais = []; 
                      proventosAtuais = []; 
@@ -1821,21 +1912,21 @@
                      renderizarProventos(); 
                      renderizarGraficoHistorico({ labels: [], data: [] }); 
                      refreshIcon.classList.remove('spin-animation');
-                     return; 
                 }
 
                 // Dispara as buscas de rede em paralelo
                 const promessaPrecos = buscarPrecosCarteira(force); 
                 const promessaProventos = buscarProventosFuturos();
                 const promessaHistorico = buscarHistoricoProventosAgregado();
+                const promessaNoticias = fetchNoticiasBFF(); // <-- ADICIONADO AQUI
 
                 // Handler para quando os preços chegarem
                 promessaPrecos.then(precos => {
                     if (precos.length > 0) {
                         precosAtuais = precos; 
-                        renderizarCarteira(); // Re-renderiza carteira com preços
+                        renderizarCarteira(); 
                     } else if (precosAtuais.length === 0) { 
-                        renderizarCarteira(); // Renderiza mesmo sem preços (mostra 'A carregar...')
+                        renderizarCarteira(); 
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
@@ -1848,7 +1939,7 @@
                     proventosAtuais = proventosFuturos; 
                     renderizarProventos(); 
                     if (precosAtuais.length > 0) {
-                        renderizarCarteira(); // Re-renderiza para mostrar proventos no card
+                        renderizarCarteira(); 
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar proventos (BFF):", err);
@@ -1864,10 +1955,20 @@
                     showToast("Erro ao buscar histórico.");
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                 });
+                
+                // Handler para notícias (NOVO)
+                promessaNoticias.then(noticias => {
+                    renderizarNoticias(noticias);
+                }).catch(err => {
+                    console.error("Erro ao buscar notícias (BFF):", err);
+                    fiiNewsSkeleton.classList.add('hidden');
+                    fiiNewsMensagem.textContent = 'Erro ao carregar notícias.';
+                    fiiNewsMensagem.classList.remove('hidden');
+                });
 
                 // Espera todas as promessas terminarem (com sucesso ou falha)
                 try {
-                    await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]);
+                    await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico, promessaNoticias]); // <-- ATUALIZADO AQUI
                 } finally {
                     console.log("Todas as sincronizações (BFF) terminaram.");
                     refreshIcon.classList.remove('spin-animation');
@@ -1887,7 +1988,6 @@
 
                 if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
-                // Validação
                 if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0) { 
                     showToast("Preencha todos os campos."); 
                     tickerInput.classList.add('border-red-500');
@@ -1903,7 +2003,6 @@
                 
                 const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
                 
-                // Se for um ativo NOVO, valida o ticker na API primeiro
                 if (!ativoExistente) {
                     addButton.innerHTML = `<span class="loader-sm"></span>`;
                     addButton.disabled = true;
@@ -1914,7 +2013,6 @@
                          if (!quoteData.results || quoteData.results[0].error) {
                              throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                          }
-                         // Se for um FII novo e válido, limpa o cache de histórico agregado
                          localStorage.removeItem(CACHE_PREFIX + 'hist_agregado_v4_' + carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol).join('-'));
                     } catch (error) {
                          console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
@@ -1932,7 +2030,6 @@
                     }
                 } 
                 
-                // Adiciona a transação
                 transacoes.push({
                     id: 'tx_' + Date.now(),
                     date: new Date().toISOString(),
@@ -1948,7 +2045,6 @@
                 addButton.disabled = false;
                 hideAddModal();
                 
-                // Atualiza os dados, mas respeitando o cache (false)
                 atualizarTodosDados(false); 
             }
 
@@ -1959,13 +2055,8 @@
                     `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
                     () => { 
                         transacoes = transacoes.filter(t => t.symbol !== symbol);
-                        
-                        // Limpa o cache APENAS deste ativo
                         removerCacheAtivo(symbol); 
-                        
                         salvarTransacoes();
-                        
-                        // Atualiza os dados, respeitando o cache dos outros ativos
                         atualizarTodosDados(false); 
                     }
                 );
@@ -1998,7 +2089,6 @@
                 const cacheKeyPreco = `detalhe_preco_${symbol}`;
                 let precoData = getCache(cacheKeyPreco);
                 
-                // Busca dados de preço (com cache)
                 if (!precoData) {
                     try {
                         const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -2013,7 +2103,6 @@
 
                 let promessaAi = null;
                 
-                // Se for FII, busca o histórico de proventos
                 if (isFII(symbol)) {
                     detalhesHistoricoContainer.classList.remove('hidden'); 
                     detalhesAiProvento.innerHTML = `
@@ -2028,7 +2117,6 @@
                 
                 detalhesLoading.classList.add('hidden');
 
-                // Renderiza dados de preço
                 if (precoData) {
                     detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
                     
@@ -2097,7 +2185,6 @@
                     detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
                 }
 
-                // Renderiza dados da IA (se houver)
                 detalhesHistoricoContainer.classList.remove('hidden'); 
                 
                 if (promessaAi) {
@@ -2146,30 +2233,25 @@
             // Event Listeners
             // ==========================================================
 
-            // Botão de atualizar (limpa todo o cache)
             refreshButton.addEventListener('click', () => {
                 clearBrapiCache();
                 atualizarTodosDados(true); 
             });
             
-            // Modais de adicionar ativo
             showAddModalBtn.addEventListener('click', showAddModal);
             emptyStateAddBtn.addEventListener('click', showAddModal);
             addAtivoCancelBtn.addEventListener('click', hideAddModal);
             addAtivoModal.addEventListener('click', (e) => {
-                if (e.target === addAtivoModal) { hideAddModal(); } // Fechar ao clicar fora
+                if (e.target === addAtivoModal) { hideAddModal(); } 
             });
             
-            // Ações do formulário de adicionar
             addButton.addEventListener('click', handleAdicionarAtivo);
             tickerInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             precoMedioInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); 
             
-            // Botão de notificação
             notifyButton.addEventListener('click', requestNotificationPermission);
 
-            // Eventos de clique na lista da carteira (usando delegação)
             listaCarteira.addEventListener('click', (e) => {
                 const target = e.target.closest('button');
                 if (!target) return;
@@ -2189,7 +2271,6 @@
                 }
             });
             
-            // Eventos de clique nos drawers do dashboard
             dashboardDrawers.addEventListener('click', (e) => {
                 const target = e.target.closest('button');
                 if (!target || !target.dataset.targetDrawer) return;
@@ -2202,14 +2283,12 @@
                 icon?.classList.toggle('open');
             });
 
-            // Navegação por abas
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     mudarAba(button.dataset.tab);
                 });
             });
             
-            // Modal de confirmação
             customModalCancel.addEventListener('click', hideModal);
             customModalOk.addEventListener('click', () => {
                 if (typeof onConfirmCallback === 'function') {
@@ -2218,16 +2297,14 @@
                 hideModal(); 
             });
             customModal.addEventListener('click', (e) => {
-                if (e.target === customModal) { hideModal(); } // Fechar ao clicar fora
+                if (e.target === customModal) { hideModal(); } 
             });
             
-            // Página de detalhes
             detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
             detalhesPageModal.addEventListener('click', (e) => {
-                if (e.target === detalhesPageModal) { hideDetalhesModal(); } // Fechar ao clicar fora
+                if (e.target === detalhesPageModal) { hideDetalhesModal(); } 
             });
 
-            // Listeners de Swipe para fechar a página de detalhes
             detalhesPageContent.addEventListener('touchstart', (e) => {
                 if (detalhesConteudoScroll.scrollTop === 0) {
                     touchStartY = e.touches[0].clientY;
@@ -2243,7 +2320,7 @@
                 touchMoveY = e.touches[0].clientY;
                 const diff = touchMoveY - touchStartY;
                 
-                if (diff > 0) { // Só permite arrastar para baixo
+                if (diff > 0) { 
                     detalhesPageContent.style.transform = `translateY(${diff}px)`;
                 }
             }, { passive: false }); 
@@ -2256,10 +2333,10 @@
                 
                 detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
                 
-                if (diff > 100) { // Se arrastou mais de 100px
+                if (diff > 100) { 
                     hideDetalhesModal(); 
                 } else {
-                    detalhesPageContent.style.transform = ''; // Volta ao normal
+                    detalhesPageContent.style.transform = ''; 
                 }
                 
                 touchStartY = 0;

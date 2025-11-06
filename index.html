@@ -131,8 +131,6 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* ANIMAÇÃO PULSE REMOVIDA */
-        
         .scrollable-content {
              max-height: 40vh; 
              overflow-y: auto;
@@ -182,15 +180,12 @@
         /* INÍCIO: ESTILOS DA PÁGINA DE DETALHES (NOVO)   */
         /* ============================================== */
         .page-modal { 
-            /* display: none; */ /* REMOVIDO: Conflitava com a transição */
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.4s ease-in-out;
-            /* Garante que o fundo fique por cima do app, mas abaixo do conteúdo da página */
             z-index: 70; 
         }
         .page-modal.visible { 
-            /* display: block; */ /* REMOVIDO */
             opacity: 1;
             pointer-events: auto;
         }
@@ -198,20 +193,19 @@
         .page-content {
             transition: transform 0.4s ease-in-out;
             transform: translateY(100%);
-            background-color: #101010; /* Fundo principal do app */
-            /* Garante que o conteúdo fique por cima do fundo .page-modal */
-            position: fixed; /* Mudei para fixed para desacoplar do .page-modal */
+            background-color: #101010; 
+            position: fixed; 
             bottom: 0;
             left: 0;
             right: 0;
-            margin: 0 auto; /* Centraliza */
-            max-width: 32rem; /* 512px (max-w-lg) */
+            margin: 0 auto; 
+            max-width: 32rem; 
             z-index: 80;
         }
         .page-modal.visible .page-content {
             transform: translateY(0);
         }
-        .page-content.closing { /* Esta classe é usada pelo JS para animar o fechamento */
+        .page-content.closing { 
             transform: translateY(100%);
         }
         /* ============================================== */
@@ -231,7 +225,6 @@
             transition: max-height 0.4s ease-in-out;
         }
         .card-drawer.open {
-            /* Aumentado para caber os gráficos */
             max-height: 350px; 
         }
         .card-drawer .drawer-content {
@@ -254,7 +247,7 @@
         /* INÍCIO: NOVOS ESTILOS (SINO DE NOTIFICAÇÃO)    */
         /* ============================================== */
         #request-notify-btn.notify-on {
-            color: #8B5CF6; /* Roxo */
+            color: #8B5CF6; 
             animation: ringBell 1.5s ease-in-out infinite;
         }
         @keyframes ringBell {
@@ -263,7 +256,7 @@
             20%, 40%, 60%, 80% { transform: rotate(-15deg); }
         }
         #request-notify-btn.notify-off {
-            color: #4b5563; /* Cinza */
+            color: #4b5563; 
         }
         /* ============================================== */
         /* FIM: NOVOS ESTILOS (SINO DE NOTIFICAÇÃO)       */
@@ -273,17 +266,16 @@
         /* INÍCIO: NOVOS ESTILOS (TOAST NOTIFICATION)     */
         /* ============================================== */
         
-        /* Classe para a animação de "shake" quando um novo toast 
-           chega enquanto um antigo ainda está visível */
         .toast-shake {
             animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
         }
 
+        /* CORRIGIDO: Animação de "shake" agora usa translateX relativo */
         @keyframes shake {
-          10%, 90% { transform: translateX(-51%) translateY(1rem) scale(1); }
-          20%, 80% { transform: translateX(-49%) translateY(1rem) scale(1); }
-          30%, 50%, 70% { transform: translateX(-52%) translateY(1rem) scale(1); }
-          40%, 60% { transform: translateX(-48%) translateY(1rem) scale(1); }
+          10%, 90% { transform: translateX(-1%) translateY(1rem) scale(1); }
+          20%, 80% { transform: translateX(1%) translateY(1rem) scale(1); }
+          30%, 50%, 70% { transform: translateX(-2%) translateY(1rem) scale(1); }
+          40%, 60% { transform: translateX(2%) translateY(1rem) scale(1); }
         }
         /* ============================================== */
         /* FIM: NOVOS ESTILOS (TOAST NOTIFICATION)        */
@@ -514,7 +506,7 @@
             <span class="text-xs mt-1 font-medium">Histórico</span>
         </button>
         
-        </nav>
+    </nav>
     
     <div id="custom-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div id="custom-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
@@ -603,7 +595,7 @@
     <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
         <div id="toast-notification" 
              class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl bg-red-800 border border-red-600 text-white font-medium opacity-0" 
-             style="transform: translateX(-50%) translateY(-150%) scale(0.2); border-radius: 50%; transition: all 0.4s ease-in-out;">
+             style="transform: translateY(-150%) scale(0.2); border-radius: 50%; transition: all 0.4s ease-in-out;">
             
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -731,71 +723,61 @@
             let isDraggingDetalhes = false;
 
             // ==========================================================
-            // LÓGICA DE NOTIFICAÇÃO TOAST (NOVO)
+            // LÓGICA DE NOTIFICAÇÃO TOAST (CORRIGIDO)
             // ==========================================================
             
-            /**
-             * Mostra uma notificação toast com a animação solicitada.
-             * @param {string} message A mensagem de erro a ser exibida.
-             */
             function showToast(message) {
-                // Cancela qualquer animação de "saída" pendente
                 clearTimeout(toastTimer);
                 
                 toastMessageElement.textContent = message;
 
                 if (isToastShowing) {
-                    // SE JÁ ESTIVER VISÍVEL:
-                    // Apenas "vibra" o toast para indicar uma nova mensagem
-                    // e reinicia o timer de saída.
                     toastElement.classList.add('toast-shake');
                     setTimeout(() => {
                         toastElement.classList.remove('toast-shake');
                     }, 500);
 
                 } else {
-                    // SE ESTIVER ESCONDIDO:
-                    // Executa a animação completa de "entrada".
                     isToastShowing = true;
                     
-                    // 1. Reseta para a "bola" (caso esteja em estado quebrado)
-                    toastElement.style.transition = 'none'; // Sem animação para o reset
-                    toastElement.style.transform = 'translateX(-50%) translateY(-150%) scale(0.2)';
+                    // 1. Reseta (CORRIGIDO: sem translateX)
+                    toastElement.style.transition = 'none';
+                    toastElement.style.transform = 'translateY(-150%) scale(0.2)';
                     toastElement.style.borderRadius = '50%';
                     toastElement.style.opacity = '0';
                     
-                    // Força o navegador a "ver" o reset antes de animar
                     void toastElement.offsetWidth; 
 
-                    // 2. Anima a "bola" caindo para a safe area
+                    // 2. Anima a "bola" caindo (CORRIGIDO: sem translateX)
                     toastElement.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, border-radius 0.4s ease 0.3s';
-                    toastElement.style.transform = 'translateX(-50%) translateY(1rem) scale(0.2)'; // 1rem = p-4 do container
+                    toastElement.style.transform = 'translateY(1rem) scale(0.2)'; // 1rem = p-4 do container
                     toastElement.style.opacity = '1';
                     
-                    // 3. Expande a "bola" para o formato de toast (após ela cair)
+                    // 3. Expande (CORRIGIDO: sem translateX)
                     setTimeout(() => {
                         toastElement.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 0.4s ease';
-                        toastElement.style.transform = 'translateX(-50%) translateY(1rem) scale(1)';
+                        toastElement.style.transform = 'translateY(1rem) scale(1)';
                         toastElement.style.borderRadius = '0.75rem'; // 12px (rounded-xl)
-                    }, 400); // Deve corresponder à duração da animação de "cair"
+                    }, 400); 
                 }
 
                 // Define o timer para a animação de "saída"
+                // CORRIGIDO: Tempo diminuído para 3 segundos
                 toastTimer = setTimeout(() => {
-                    // 1. Encolhe o toast de volta para "bola"
+                    // 1. Encolhe (CORRIGIDO: sem translateX)
                     toastElement.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 0.4s ease 0.1s';
-                    toastElement.style.transform = 'translateX(-50%) translateY(1rem) scale(0.2)';
+                    toastElement.style.transform = 'translateY(1rem) scale(0.2)';
                     toastElement.style.borderRadius = '50%';
                     
-                    // 2. Sobe a "bola" para escondê-la (após encolher)
+                    // 2. Sobe (CORRIGIDO: sem translateX)
                     setTimeout(() => {
                         toastElement.style.transition = 'transform 0.4s cubic-bezier(0.6, -0.28, 0.74, 0.05), opacity 0.3s ease, border-radius 0.4s ease';
-                        toastElement.style.transform = 'translateX(-50%) translateY(-150%) scale(0.2)';
+                        toastElement.style.transform = 'translateY(-150%) scale(0.2)';
                         toastElement.style.opacity = '0';
                         isToastShowing = false;
-                    }, 500); // Deve ser maior que a animação de "encolher"
+                    }, 500); 
 
-                }, 4000); // Toast fica visível por 4 segundos
+                }, 3000); // CORRIGIDO: Toast fica visível por 3 segundos
             }
 
             // ==========================================================
@@ -951,9 +933,8 @@
                     if (includeTime) {
                         options.hour = '2-digit';
                         options.minute = '2-digit';
-                        // Removido timeZone UTC para usar a hora local da transação
                     } else {
-                         options.timeZone = 'UTC'; // Mantém UTC para datas (ex: proventos)
+                         options.timeZone = 'UTC'; 
                     }
                     return date.toLocaleDateString('pt-BR', options);
                 } catch (e) { return dateString; }
@@ -1026,7 +1007,6 @@
                 }, 200); 
             }
             
-            // Funções do Modal de Adicionar Ativo (NOVO)
             function showAddModal() {
                 addAtivoModal.classList.add('visible');
                 addAtivoModalContent.classList.remove('modal-out');
@@ -1038,7 +1018,6 @@
                 setTimeout(() => {
                     addAtivoModal.classList.remove('visible');
                     addAtivoModalContent.classList.remove('modal-out');
-                    // Limpa o formulário ao fechar
                     tickerInput.value = '';
                     quantityInput.value = '';
                     precoMedioInput.value = '';
@@ -1048,26 +1027,24 @@
                 }, 200);
             }
             
-            // Funções da Página de Detalhes (NOVO)
             function showDetalhesModal(symbol) {
-                detalhesPageContent.style.transform = ''; // Limpa o transform inline (do swipe)
+                detalhesPageContent.style.transform = ''; 
                 detalhesPageContent.classList.remove('closing'); 
-                detalhesPageModal.classList.add('visible'); // Mostra o fundo (opacity 1) e o conteúdo (translateY(0))
-                document.body.style.overflow = 'hidden'; // Impede scroll do body
-                detalhesConteudoScroll.scrollTop = 0; // Reseta o scroll
-                handleMostrarDetalhes(symbol); // Função existente que busca os dados
+                detalhesPageModal.classList.add('visible'); 
+                document.body.style.overflow = 'hidden'; 
+                detalhesConteudoScroll.scrollTop = 0; 
+                handleMostrarDetalhes(symbol); 
             }
             
             function hideDetalhesModal() {
-                detalhesPageContent.style.transform = ''; // Limpa o transform inline (do swipe)
-                detalhesPageContent.classList.add('closing'); // Anima para translateY(100%)
-                detalhesPageModal.classList.remove('visible'); // Anima o fundo (opacity 0)
-                document.body.style.overflow = ''; // Libera scroll do body
+                detalhesPageContent.style.transform = ''; 
+                detalhesPageContent.classList.add('closing'); 
+                detalhesPageModal.classList.remove('visible'); 
+                document.body.style.overflow = ''; 
                 
                 setTimeout(() => {
-                    limparDetalhes(); // Função existente que limpa o conteúdo
-                    // Não precisa remover .closing, showDetalhesModal já faz isso
-                }, 400); // Duração da animação CSS
+                    limparDetalhes(); 
+                }, 400); 
             }
             
             // --- Funções de Dados (localStorage) ---
@@ -1106,15 +1083,12 @@
                 localStorage.setItem(DB_KEY_PATRIMONIO, JSON.stringify(patrimonio));
             }
             
-            // FUNÇÃO ATUALIZADA (SEM LÓGICA DE VENDA)
             function calcularCarteira() {
                 const ativosMap = new Map();
 
-                // Ordena transações por data para garantir a ordem correta
                 const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 for (const t of transacoesOrdenadas) {
-                    // Ignora qualquer transação que não seja 'buy'
                     if (t.type !== 'buy') continue;
                         
                     const symbol = t.symbol;
@@ -1264,7 +1238,6 @@
                                 y: {
                                     beginAtZero: true,
                                     grid: { color: '#2A2A2A' }, 
-                                    // === MODIFICADO: Oculta os valores do Eixo Y ===
                                     ticks: { display: false }
                                 },
                                 x: { grid: { display: false } }
@@ -1354,14 +1327,13 @@
                 if (show) {
                     skeletonListaCarteira.classList.remove('hidden');
                     carteiraStatus.classList.add('hidden');
-                    listaCarteira.innerHTML = ''; // Limpa a lista antiga
+                    listaCarteira.innerHTML = ''; 
                 } else {
                     skeletonListaCarteira.classList.add('hidden');
                 }
             }
             
             function renderizarCarteira() {
-                // Já que os dados chegaram (ou falharam), escondemos os skeletons da carteira
                 renderizarCarteiraSkeletons(false);
                 
                 const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -1374,33 +1346,27 @@
                 let dadosGrafico = [];
 
                 if (carteiraOrdenada.length === 0) {
-                    // Mostra o estado vazio
                     carteiraStatus.classList.remove('hidden');
                     
-                    // Esconde skeletons do dashboard e mostra R$ 0,00
                     renderizarDashboardSkeletons(false);
                     totalCarteiraValor.textContent = formatBRL(0);
                     totalCarteiraCusto.textContent = formatBRL(0);
                     totalCarteiraPL.textContent = `${formatBRL(0)} (0.00%)`;
                     totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
                     
-                    // Mostra dashboard status (mensagem de carteira vazia)
                     dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
                     dashboardLoading.classList.add('hidden');
                     dashboardStatus.classList.remove('hidden');
                     
-                    // Limpa gráficos
                     renderizarGraficoAlocacao([]); 
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                     renderizarGraficoPatrimonio(); 
                 } else {
-                    // Esconde o estado vazio
                     carteiraStatus.classList.add('hidden');
-                    // Esconde a mensagem do dashboard
                     dashboardStatus.classList.add('hidden');
                 }
 
-                listaCarteira.innerHTML = ''; // Limpa a lista para redesenhar
+                listaCarteira.innerHTML = ''; 
                 carteiraOrdenada.forEach(ativo => {
                     const dadoPreco = precosMap.get(ativo.symbol);
                     const dadoProvento = proventosMap.get(ativo.symbol);
@@ -1454,7 +1420,6 @@
                         }
                     }
                     
-                    // CARD HTML (Sem botão Vender)
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-3">
@@ -1520,7 +1485,6 @@
                     if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
                     else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
                     
-                    // Esconde skeletons do dashboard e mostra os valores reais
                     renderizarDashboardSkeletons(false);
                     totalCarteiraValor.textContent = formatBRL(totalValorCarteira);
                     totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
@@ -1547,7 +1511,6 @@
                 });
                 
                 totalProventosEl.textContent = formatBRL(totalEstimado);
-                // O skeleton já é tratado pela renderizarCarteira
             }
             
             function renderizarHistorico() {
@@ -1565,7 +1528,6 @@
                     const card = document.createElement('div');
                     card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
                     
-                    // Lógica de Venda REMOVIDA - Agora é sempre Compra
                     const cor = 'text-green-500';
                     const sinal = '+';
                     const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
@@ -1776,7 +1738,6 @@
             // --- Funções Principais (Handlers) ---
             
              async function atualizarTodosDados(force = false) { 
-                // Mostra Skeletons do Dashboard e Carteira
                 renderizarDashboardSkeletons(true);
                 renderizarCarteiraSkeletons(true);
                 
@@ -1825,8 +1786,6 @@
                      renderizarProventos(); 
                      renderizarGraficoHistorico({ labels: [], data: [] }); 
                      refreshIcon.classList.remove('spin-animation');
-                     
-                     // Skeletons já são tratados por renderizarCarteira()
                      return; 
                 }
 
@@ -1843,7 +1802,7 @@
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar preços (BFF):", err);
-                    showToast(`Falha ao buscar preços: ${err.message}`);
+                    showToast("Erro ao buscar preços."); // CORRIGIDO: Mensagem resumida
                     if (precosAtuais.length === 0) { renderizarCarteira(); }
                 });
 
@@ -1855,7 +1814,7 @@
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar proventos (BFF):", err);
-                    showToast(`Falha ao buscar proventos: ${err.message}`);
+                    showToast("Erro ao buscar proventos."); // CORRIGIDO: Mensagem resumida
                     if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
                 });
                 
@@ -1863,7 +1822,7 @@
                     renderizarGraficoHistorico({ labels, data });
                 }).catch(err => {
                     console.error("Erro ao buscar histórico agregado (BFF):", err);
-                    showToast(`Falha ao buscar histórico: ${err.message}`);
+                    showToast("Erro ao buscar histórico."); // CORRIGIDO: Mensagem resumida
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                 });
 
@@ -1888,7 +1847,7 @@
                 if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
                 if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0) { 
-                    showToast("Por favor, preencha todos os campos corretamente.");
+                    showToast("Preencha todos os campos."); // CORRIGIDO: Mensagem resumida
                     tickerInput.classList.add('border-red-500');
                     quantityInput.classList.add('border-red-500');
                     precoMedioInput.classList.add('border-red-500'); 
@@ -1903,7 +1862,6 @@
                 const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
                 
                 if (!ativoExistente) {
-                    // Adiciona um spinner ao botão de adicionar
                     addButton.innerHTML = `<span class="loader-sm"></span>`;
                     addButton.disabled = true;
                     
@@ -1915,7 +1873,7 @@
                          }
                     } catch (error) {
                          console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
-                         showToast("Ativo não encontrado. Verifique o ticker.");
+                         showToast("Ativo não encontrado."); // CORRIGIDO: Mensagem resumida
                          tickerInput.value = '';
                          tickerInput.placeholder = "Ativo não encontrado";
                          tickerInput.classList.add('border-red-500');
@@ -1941,12 +1899,10 @@
                 clearBrapiCache();
                 salvarTransacoes();
                 
-                // Reseta o botão e fecha o modal
                 addButton.innerHTML = `Adicionar`;
                 addButton.disabled = false;
                 hideAddModal();
                 
-                // Atualiza os dados
                 atualizarTodosDados(true); 
             }
 
@@ -1960,7 +1916,6 @@
                         clearBrapiCache(); 
                         salvarTransacoes();
                         atualizarTodosDados(true); 
-                        // Não precisamos mais checar o título, pois o modal de detalhes não é persistente
                     }
                 );
             }
@@ -1977,7 +1932,6 @@
             }
             
             async function handleMostrarDetalhes(symbol) {
-                // Não muda mais de aba
                 detalhesMensagem.classList.add('hidden');
                 detalhesLoading.classList.remove('hidden');
                 detalhesPreco.innerHTML = '';
@@ -1999,7 +1953,7 @@
                         else throw new Error(precoData?.error || 'Ativo não encontrado');
                     } catch (e) { 
                         precoData = null; 
-                        showToast(`Erro ao buscar preço: ${e.message}`);
+                        showToast("Erro ao buscar preço."); // CORRIGIDO: Mensagem resumida
                     }
                 }
 
@@ -2097,7 +2051,7 @@
                             <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${aiResult}</p>
                         `;
                     } catch (e) {
-                        showToast(`Erro na consulta IA: ${e.message}`);
+                        showToast("Erro na consulta IA."); // CORRIGIDO: Mensagem resumida
                         detalhesAiProvento.innerHTML = `
                             <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
                             <div class="border border-red-700 bg-red-900/50 p-4 rounded-lg flex items-center gap-3">
@@ -2122,7 +2076,6 @@
                     button.classList.toggle('active', button.dataset.tab === tabId);
                 });
                 
-                // Mostra ou esconde o FAB
                 if (tabId === 'tab-carteira') {
                     showAddModalBtn.classList.remove('hidden');
                 } else {
@@ -2137,7 +2090,6 @@
                 atualizarTodosDados(true); 
             });
             
-            // Listeners do Modal de Adicionar
             showAddModalBtn.addEventListener('click', showAddModal);
             emptyStateAddBtn.addEventListener('click', showAddModal);
             addAtivoCancelBtn.addEventListener('click', hideAddModal);
@@ -2145,7 +2097,6 @@
                 if (e.target === addAtivoModal) { hideAddModal(); }
             });
             
-            // Listeners do Formulário de Adicionar
             addButton.addEventListener('click', handleAdicionarAtivo);
             tickerInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
             quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
@@ -2163,7 +2114,6 @@
                 if (action === 'remove') {
                     handleRemoverAtivo(symbol);
                 } else if (action === 'details') {
-                    // MUDOU: Agora chama o modal de página
                     showDetalhesModal(symbol);
                 } else if (action === 'toggle') {
                     const drawer = document.getElementById(`drawer-${symbol}`);
@@ -2191,7 +2141,6 @@
                 });
             });
             
-            // Listeners do Modal de Confirmação
             customModalCancel.addEventListener('click', hideModal);
             customModalOk.addEventListener('click', () => {
                 if (typeof onConfirmCallback === 'function') {
@@ -2203,24 +2152,20 @@
                 if (e.target === customModal) { hideModal(); }
             });
             
-            // Listeners da Página de Detalhes
             detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
             detalhesPageModal.addEventListener('click', (e) => {
-                // Fecha se clicar no fundo (fora do .page-content)
                 if (e.target === detalhesPageModal) { hideDetalhesModal(); }
             });
 
             // --- Listeners de Swipe (NOVO) ---
             detalhesPageContent.addEventListener('touchstart', (e) => {
-                // Só iniciar o swipe se o scroll do conteúdo estiver no topo
                 if (detalhesConteudoScroll.scrollTop === 0) {
                     touchStartY = e.touches[0].clientY;
-                    touchMoveY = touchStartY; // Inicializa
+                    touchMoveY = touchStartY; 
                     isDraggingDetalhes = true;
-                    // Remover transição para o movimento ser 1:1 com o dedo
                     detalhesPageContent.style.transition = 'none'; 
                 }
-            }, { passive: true }); // passive: true aqui está OK
+            }, { passive: true }); 
             
             detalhesPageContent.addEventListener('touchmove', (e) => {
                 if (!isDraggingDetalhes) return;
@@ -2228,13 +2173,10 @@
                 touchMoveY = e.touches[0].clientY;
                 const diff = touchMoveY - touchStartY;
                 
-                // Só mover se o swipe for para baixo
                 if (diff > 0) {
-                    // Prevenir o scroll da página (pull-to-refresh)
-                    // passive: false seria necessário se usássemos preventDefault
                     detalhesPageContent.style.transform = `translateY(${diff}px)`;
                 }
-            }, { passive: false }); // passive: false é NECESSÁRIO para poder mover
+            }, { passive: false }); 
             
             detalhesPageContent.addEventListener('touchend', (e) => {
                 if (!isDraggingDetalhes) return;
@@ -2242,18 +2184,14 @@
                 isDraggingDetalhes = false;
                 const diff = touchMoveY - touchStartY;
                 
-                // Restaura a transição
                 detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
                 
-                // Threshold para fechar
                 if (diff > 100) { 
-                    hideDetalhesModal(); // hideDetalhesModal vai limpar o style.transform e aplicar .closing
+                    hideDetalhesModal(); 
                 } else {
-                    // Snap back para cima (removendo o style.transform, a regra .visible assume)
                     detalhesPageContent.style.transform = ''; 
                 }
                 
-                // Limpar variáveis
                 touchStartY = 0;
                 touchMoveY = 0;
             });
@@ -2296,7 +2234,7 @@
             checkNotificationPermission(); 
             carregarTransacoes();
             carregarPatrimonio();
-            mudarAba('tab-dashboard'); // Garante que a aba correta e o FAB estejam no estado inicial
+            mudarAba('tab-dashboard'); 
             atualizarTodosDados(true); 
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
         });

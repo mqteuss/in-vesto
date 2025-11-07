@@ -1,7 +1,7 @@
 // api/news.js
 // Esta é uma Vercel Serverless Function.
 // Ela usa a API Gemini com a chave NEWS_GEMINI_API_KEY e Web Search
-// para buscar um RESUMO das notícias de FIIs.
+// para buscar um JSON de resumos de notícias.
 
 // Função de retry (backoff) para o servidor
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
@@ -24,25 +24,28 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     }
 }
 
-// Constrói o payload para a API Gemini (Modo Resumo de Notícias)
+// Constrói o payload para a API Gemini (Modo JSON de Resumos)
 function getGeminiPayload(todayString) {
     
-    // *** PROMPT TOTALMENTE NOVO: PEDE UM RESUMO, NÃO LINKS ***
-    const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 3 a 5 principais notícias sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **neste mês** (data de hoje: ${todayString}).
+    // *** PROMPT ATUALIZADO: Pede um JSON de Resumos ***
+    const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 5 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **neste mês** (data de hoje: ${todayString}).
 
 REGRAS:
-1.  Escreva um resumo conciso para cada notícia.
-2.  Formate a resposta como uma lista (bullet points).
-3.  Comece cada ponto com um emoji (ex: 📈, 💰, 🏢).
-4.  No final de cada ponto, cite a fonte entre parênteses (ex: InfoMoney).
-5.  Responda APENAS com o texto do resumo. NÃO inclua títulos, saudações, markdown (\`\`\`) ou qualquer outro texto.
+1.  Encontre artigos de portais de notícias conhecidos (ex: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times).
+2.  Responda APENAS com um array JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
+3.  Cada objeto no array deve conter:
+    - "emoji": Um emoji relevante (ex: "📈", "💰", "🏢").
+    - "summary": Um resumo conciso da notícia em uma frase.
+    - "sourceName": O nome do portal (ex: "InfoMoney").
 
-EXEMPLO DE RESPOSTA:
-📈 O fundo MXRF11 anunciou sua 14ª emissão de cotas, com o objetivo de captar R$ 500 milhões para novos investimentos. (InfoMoney)
-💰 BTG Pactual (BTLG11) foi o FII mais recomendado por analistas para o mês, refletindo a confiança no setor de logística. (Seu Dinheiro)
-🏢 O IFIX, principal índice de FIIs, registrou uma leve alta de 0,2% na primeira semana do mês, impulsionado por fundos de tijolo. (Fiis.com.br)`;
+EXEMPLO DE RESPOSTA JSON:
+[
+  {"emoji": "📈", "summary": "IFIX atinge nova máxima histórica em outubro, mas mercado entra em consolidação.", "sourceName": "InfoMoney"},
+  {"emoji": "🏢", "HGLG11 investiu R$ 63 milhões na aquisição de galpões logísticos em Itupeva (SP) e Simões Filho (BA).", "sourceName": "Money Times"},
+  {"emoji": "💰", "CPTS11 divulgou uma nova oferta pública de cotas para captação de R$ 500 milhões.", "sourceName": "Fiis.com.br"}
+]`;
 
-    const userQuery = `Gere um resumo em bullet points das 3-5 principais notícias sobre FIIs deste mês (${todayString}), citando a fonte no final de cada ponto.`;
+    const userQuery = `Gere um array JSON com os 5 resumos de notícias mais recentes (deste mês, ${todayString}) sobre FIIs de portais financeiros brasileiros. Inclua "emoji", "summary" e "sourceName".`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
@@ -92,12 +95,27 @@ export default async function handler(request, response) {
         
         // CACHE DE 6 HORAS (21600 segundos)
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
+
+        // *** VALIDAÇÃO DE SEGURANÇA ***
+        let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const jsonMatch = jsonText.match(/\[.*\]/s); 
         
-        // *** RESPOSTA MODIFICADA ***
-        // Limpa o texto (remove asteriscos extras) e o retorna dentro de um objeto JSON.
-        const cleanedText = text.replace(/\*/g, '').trim();
+        let parsedJson;
         
-        return response.status(200).json({ summary: cleanedText });
+        if (jsonMatch && jsonMatch[0]) {
+            jsonText = jsonMatch[0];
+            parsedJson = JSON.parse(jsonText);
+        } else {
+            parsedJson = JSON.parse(jsonText);
+        }
+
+        if (Array.isArray(parsedJson)) {
+            return response.status(200).json({ json: parsedJson });
+        } else {
+            console.warn("Gemini retornou um JSON válido, mas não era um array:", parsedJson);
+            throw new Error("A API retornou um formato de dados inesperado.");
+        }
+        // *** FIM DA VALIDAÇÃO ***
 
     } catch (error) {
         console.error("Erro interno no proxy Gemini (Notícias):", error);

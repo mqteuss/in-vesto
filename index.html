@@ -1808,7 +1808,9 @@
                         if (novosProventos && Array.isArray(novosProventos)) {
                             for (const provento of novosProventos) {
                                 if (provento && provento.symbol) {
-                                    const cacheKey = `provento_ia_${symbol}`;
+                                    // *** INÍCIO DA CORREÇÃO ***
+                                    const cacheKey = `provento_ia_${provento.symbol}`;
+                                    // *** FIM DA CORREÇÃO ***
                                     setCache(cacheKey, provento, CACHE_24_HORAS); 
                                     proventosFinais.push(provento);
                                 }

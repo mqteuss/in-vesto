@@ -26,10 +26,10 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 // Constrói o payload para a API Gemini (Modo Notícias)
 function getGeminiPayload(todayString) {
-    // *** PROMPT ATUALIZADO PARA SER MAIS RIGOROSO ***
+    // *** PROMPT ATUALIZADO PARA "DESTE MÊS" ***
     const systemPrompt = `Você é um assistente de notícias financeiras. Sua única tarefa é encontrar as 5 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, usando a busca na web (data de hoje: ${todayString}).
 
-IMPORTANTE: As notícias devem ser das **últimas 24 horas**. Use a busca na web para verificar a data da publicação.
+IMPORTANTE: As notícias devem ser as mais recentes e relevantes **deste mês**. Use a busca na web para verificar a data da publicação.
 
 TAREFA CRÍTICA: Antes de incluir uma notícia, verifique (usando a busca na web) se a URL ('url') está ativa e NÃO retorna um erro 404, 410 ou qualquer tipo de "Página não encontrada". Inclua apenas links válidos.
 
@@ -38,17 +38,17 @@ Responda APENAS com um array JSON válido, sem nenhum outro texto, introdução 
 - As notícias devem ser em português.
 - 'url' deve ser o link direto para a notícia (VERIFICADO E ATIVO).
 - 'sourceName' deve ser o nome do portal de notícias (ex: "InfoMoney", "Fiis.com.br").
-- 'publishedAt' deve estar no formato AAAA-MM-DD (das últimas 24 horas).
+- 'publishedAt' deve estar no formato AAAA-MM-DD (publicadas neste mês).
 - 'description' deve ser um resumo curto da notícia.
 
 Exemplo de resposta:
 [
   {"title": "FII MXRF11 anuncia novos investimentos", "url": "https://exemplo.com/mxrf11", "sourceName": "InfoMoney", "description": "O fundo MXRF11 detalhou onde...", "publishedAt": "2025-11-06"},
-  {"title": "HGLG11: Vacância cai para 5%", "url": "https://exemplo.com/hglg11", "sourceName": "Fiis.com.br", "description": "A vacância do HGLG11 atingiu...", "publishedAt": "2025-11-06"}
+  {"title": "HGLG11: Vacância cai para 5%", "url": "https://exemplo.com/hglg11", "sourceName": "Fiis.com.br", "description": "A vacância do HGLG11 atingiu...", "publishedAt": "2025-11-05"}
 ]`;
 
     // *** QUERY ATUALIZADA ***
-    const userQuery = `Encontre as 5 notícias mais recentes (últimas 24 horas) sobre FIIs e Fundos Imobiliários no Brasil. Verifique se os links estão ativos e não estão quebrados (erro 404). Data de hoje: ${todayString}.`;
+    const userQuery = `Encontre as 5 notícias mais recentes e relevantes **deste mês** sobre FIIs e Fundos Imobiliários no Brasil. Verifique se os links estão ativos e não estão quebrados (erro 404). Data de hoje: ${todayString}.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],

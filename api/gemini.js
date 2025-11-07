@@ -35,10 +35,27 @@ function getGeminiPayload(mode, payload) {
             userQuery = `Qual é o histórico de proventos (últimos 12 meses) para o FII ${ticker}?`;
             break;
 
+        // *** PROMPT ATUALIZADO AQUI ***
         case 'proventos_carteira':
-            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do *próximo* pagamento de provento (dividendo) para uma lista de FIIs. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).\n\nPara FIIs sem provento futuro anunciado, retorne 'value' como 0 e 'paymentDate' como null.\n\nIMPORTANTE: A data 'paymentDate' DEVE estar no formato AAAA-MM-DD (ex: 2025-11-14).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução, markdown (\`\`\`) ou formatação.\n\nExemplo de resposta:\n[\n  {"symbol": "MXRF11", "value": 0.10, "paymentDate": "2025-11-14"},\n  {"symbol": "HGLG11", "value": 1.10, "paymentDate": "2025-11-14"},\n  {"symbol": "GARE11", "value": 0, "paymentDate": null}\n]`;
-            userQuery = `Encontre o próximo provento para os seguintes FIIs: ${fiiList.join(', ')}.`;
+            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do *próximo* pagamento de provento (dividendo) para uma lista de FIIs. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).
+
+TAREFA CRÍTICA: Ao buscar a data de pagamento, verifique ativamente por "fatos relevantes" ou "comunicados ao mercado" recentes (de hoje, ${todayString}) que possam ter *alterado* ou *corrigido* a data de pagamento anunciada. A data corrigida é a data correta.
+
+Para FIIs sem provento futuro anunciado, retorne 'value' como 0 e 'paymentDate' como null.
+
+IMPORTANTE: A data 'paymentDate' DEVE estar no formato AAAA-MM-DD (ex: 2025-11-15).
+
+Responda APENAS com um array JSON válido, sem nenhum outro texto, introdução, markdown (\`\`\`) ou formatação.
+
+Exemplo de resposta (note que MXRF11 foi corrigido para dia 15):
+[
+  {"symbol": "MXRF11", "value": 0.10, "paymentDate": "2025-11-15"},
+  {"symbol": "HGLG11", "value": 1.10, "paymentDate": "2025-11-14"},
+  {"symbol": "GARE11", "value": 0, "paymentDate": null}
+]`;
+            userQuery = `Encontre o próximo provento para os seguintes FIIs: ${fiiList.join(', ')}. Verifique ativamente por fatos relevantes ou comunicados recentes que possam ter *corrigido* a data de pagamento.`;
             break;
+        // *** FIM DA ATUALIZAÇÃO ***
 
         case 'historico_portfolio':
             systemPrompt = `Você é um assistente financeiro. Sua tarefa é encontrar o histórico de proventos (dividendos) *por cota* dos últimos 6 meses *completos*.\n\nNÃO inclua o mês atual (data de hoje: ${todayString}).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução ou markdown.\nOrdene a resposta do mês mais antigo para o mais recente.\n\n- O mês deve estar no formato "MM/AA" (ex: "10/25").\n- Se um FII não pagou em um mês, retorne 0 para ele.\n\nExemplo de Resposta (se hoje for Nov/2025):\n[\n  {"mes": "05/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "06/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "07/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "08/25", "MXRF11": 0.10, "GARE11": 0},\n  {"mes": "09/25", "MXRF11": 0.11, "GARE11": 0.09},\n  {"mes": "10/25", "MXRF11": 0.11, "GARE11": 0.09}\n]`;
@@ -98,7 +115,6 @@ export default async function handler(request, response) {
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             // Estes modos esperam JSON, então limpamos e parseamos
             let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            // CORREÇÃO AQUI: Removido o '\' extra antes do '['
             const jsonMatch = jsonText.match(/\[.*\]/s);
             if (jsonMatch && jsonMatch[0]) {
                 jsonText = jsonMatch[0];

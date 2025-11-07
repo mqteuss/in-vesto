@@ -280,12 +280,23 @@
             line-height: 1.6;
             color: #d1d5db; /* text-gray-300 */
         }
-        .news-card-source {
-            color: #a78bfa; /* text-violet-400 */
-            font-size: 0.875rem; /* text-sm */
+        /* Estilo das Tags de Ticker (NOVO) */
+        .news-ticker-tag {
+            display: inline-block;
+            background-color: #374151; /* gray-700 */
+            color: #d1d5db; /* gray-300 */
+            font-size: 0.75rem; /* text-xs */
             font-weight: 500; /* medium */
-            margin-top: 0.5rem; /* mt-2 */
-            display: block;
+            padding: 2px 10px; /* py-0.5 px-2.5 */
+            border-radius: 9999px; /* rounded-full */
+            margin-right: 6px; /* mr-1.5 */
+            margin-bottom: 6px; /* mb-1.5 */
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .news-ticker-tag:hover {
+            background-color: #6D28D9; /* purple-700 */
+            color: #FFF;
         }
     </style>
 </head>
@@ -1657,7 +1668,7 @@
             }
 
             // ==========================================================
-            // Funções de Notícias (ATUALIZADA para Cards de Resumo com Gaveta)
+            // Funções de Notícias (ATUALIZADA com Tickers Clicáveis)
             // ==========================================================
             
             function renderizarNoticias(articles) { 
@@ -1680,6 +1691,30 @@
                     const drawerId = `news-drawer-${index}`;
                     const faviconUrl = `https://www.google.com/s2/favicons?domain=${sourceHostname}&sz=32`;
                     
+                    // *** INÍCIO DA ATUALIZAÇÃO (Tags de Tickers) ***
+                    let tagsHtml = '';
+                    if (article.relatedTickers && article.relatedTickers.length > 0) {
+                        const tags = article.relatedTickers.map(ticker => `
+                            <button 
+                                class="news-ticker-tag"
+                                data-action="view-ticker"
+                                data-symbol="${ticker}"
+                            >
+                                ${ticker}
+                            </button>
+                        `).join('');
+                        
+                        tagsHtml = `<div class="mt-3 flex flex-wrap items-center">${tags}</div>`;
+                    }
+                    
+                    const drawerContentHtml = `
+                        <p class="news-card-summary">
+                            ${article.summary || 'Resumo da notícia não disponível.'}
+                        </p>
+                        ${tagsHtml}
+                    `;
+                    // *** FIM DA ATUALIZAÇÃO ***
+
                     const newsCard = document.createElement('div');
                     newsCard.className = 'card-bg rounded-2xl p-4 space-y-3'; 
                     newsCard.innerHTML = `
@@ -1702,10 +1737,7 @@
                         
                         <div id="${drawerId}" class="card-drawer">
                             <div class="drawer-content pt-3 border-t border-gray-800">
-                                <p class="news-card-summary">
-                                    ${article.summary || 'Resumo da notícia não disponível.'}
-                                </p>
-                            </div>
+                                ${drawerContentHtml} </div>
                         </div>
                     `;
                     fiiNewsList.appendChild(newsCard);
@@ -1714,7 +1746,8 @@
 
             /** Busca o JSON de resumos de notícias */
             async function fetchNoticiasBFF() {
-                const cacheKey = CACHE_PREFIX + 'noticias_json_v3'; // Nova chave de cache
+                // *** ATUALIZAÇÃO: Nova chave de cache para a versão com tickers ***
+                const cacheKey = CACHE_PREFIX + 'noticias_json_v4'; 
                 const cache = getCache(cacheKey);
                 if (cache) {
                     return cache; 
@@ -2421,17 +2454,28 @@
                 touchMoveY = 0;
             });
 
+            // *** LISTENER ATUALIZADO (Trata toggle E tags de ticker) ***
             fiiNewsList.addEventListener('click', (e) => {
-                const target = e.target.closest('button[data-action="toggle-news"]');
-                if (!target) return;
-                
-                const targetId = target.dataset.target;
-                const drawer = document.getElementById(targetId);
-                const icon = target.querySelector('.card-arrow-icon');
-                
-                drawer?.classList.toggle('open');
-                icon?.classList.toggle('open');
+                const button = e.target.closest('button');
+                if (!button) return;
+
+                const action = button.dataset.action;
+
+                if (action === 'toggle-news') {
+                    const targetId = button.dataset.target;
+                    const drawer = document.getElementById(targetId);
+                    const icon = button.querySelector('.card-arrow-icon');
+                    
+                    drawer?.classList.toggle('open');
+                    icon?.classList.toggle('open');
+                } else if (action === 'view-ticker') {
+                    const symbol = button.dataset.symbol;
+                    if (symbol) {
+                        showDetalhesModal(symbol);
+                    }
+                }
             });
+            // *** FIM DA ATUALIZAÇÃO ***
 
             // ==========================================================
             // Funções da API Gemini (BFF)

@@ -35,25 +35,25 @@ function getGeminiPayload(mode, payload) {
             userQuery = `Qual é o histórico de proventos (últimos 12 meses) para o FII ${ticker}?`;
             break;
 
-        // *** PROMPT ATUALIZADO AQUI ***
+        // *** PROMPT ATUALIZADO (Inclui pagamentos de HOJE) ***
         case 'proventos_carteira':
-            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do *próximo* pagamento de provento (dividendo) para uma lista de FIIs. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).
+            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do provento (dividendo) mais recente anunciado para uma lista de FIIs. **Inclua proventos cujo pagamento está agendado para hoje (${todayString})** ou para uma data futura. Use a busca na web para garantir que a informação seja a mais recente.
 
 TAREFA CRÍTICA: Ao buscar a data de pagamento, verifique ativamente por "fatos relevantes" ou "comunicados ao mercado" recentes (de hoje, ${todayString}) que possam ter *alterado* ou *corrigido* a data de pagamento anunciada. A data corrigida é a data correta.
 
-Para FIIs sem provento futuro anunciado, retorne 'value' como 0 e 'paymentDate' como null.
+Para FIIs sem provento futuro (ou para hoje) anunciado, retorne 'value' como 0 e 'paymentDate' como null.
 
-IMPORTANTE: A data 'paymentDate' DEVE estar no formato AAAA-MM-DD (ex: 2025-11-15).
+IMPORTANTE: A data 'paymentDate' DEVE estar no formato AAAA-MM-DD (ex: 2025-11-07).
 
 Responda APENAS com um array JSON válido, sem nenhum outro texto, introdução, markdown (\`\`\`) ou formatação.
 
-Exemplo de resposta (note que MXRF11 foi corrigido para dia 15):
+Exemplo de resposta (se hoje for 07/11 e GARE11 paga hoje):
 [
   {"symbol": "MXRF11", "value": 0.10, "paymentDate": "2025-11-15"},
   {"symbol": "HGLG11", "value": 1.10, "paymentDate": "2025-11-14"},
-  {"symbol": "GARE11", "value": 0, "paymentDate": null}
+  {"symbol": "GARE11", "value": 0.08, "paymentDate": "2025-11-07"} 
 ]`;
-            userQuery = `Encontre o próximo provento para os seguintes FIIs: ${fiiList.join(', ')}. Verifique ativamente por fatos relevantes ou comunicados recentes que possam ter *corrigido* a data de pagamento.`;
+            userQuery = `Encontre o provento mais recente anunciado (incluindo pagamentos de hoje, ${todayString}, e futuros) para os seguintes FIIs: ${fiiList.join(', ')}. Verifique ativamente por fatos relevantes ou comunicados recentes que possam ter *corrigido* a data de pagamento.`;
             break;
         // *** FIM DA ATUALIZAÇÃO ***
 
@@ -61,7 +61,7 @@ Exemplo de resposta (note que MXRF11 foi corrigido para dia 15):
             systemPrompt = `Você é um assistente financeiro. Sua tarefa é encontrar o histórico de proventos (dividendos) *por cota* dos últimos 6 meses *completos*.\n\nNÃO inclua o mês atual (data de hoje: ${todayString}).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução ou markdown.\nOrdene a resposta do mês mais antigo para o mais recente.\n\n- O mês deve estar no formato "MM/AA" (ex: "10/25").\n- Se um FII não pagou em um mês, retorne 0 para ele.\n\nExemplo de Resposta (se hoje for Nov/2025):\n[\n  {"mes": "05/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "06/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "07/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "08/25", "MXRF11": 0.10, "GARE11": 0},\n  {"mes": "09/25", "MXRF11": 0.11, "GARE11": 0.09},\n  {"mes": "10/25", "MXRF11": 0.11, "GARE11": 0.09}\n]`;
             userQuery = `Gere o histórico de proventos por cota dos últimos 6 meses completos (não inclua o mês atual) para: ${fiiList.join(', ')}.`;
             break;
-            
+
         default:
             throw new Error("Modo de API Gemini inválido.");
     }
@@ -83,7 +83,7 @@ export default async function handler(request, response) {
     if (!GEMINI_API_KEY) {
         return response.status(500).json({ error: "Chave da API Gemini não configurada no servidor." });
     }
-    
+
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
 
     try {
@@ -107,9 +107,9 @@ export default async function handler(request, response) {
         if (!text) {
             throw new Error("A API retornou uma resposta vazia.");
         }
-        
+
         // Adiciona Caching
-        response.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate');
+        response.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate'); // Cache de 10 minutos
 
         // Retorna JSON ou texto limpo baseado no modo
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {

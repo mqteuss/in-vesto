@@ -287,7 +287,6 @@
             margin-top: 0.5rem; /* mt-2 */
             display: block;
         }
-
     </style>
 </head>
 <body class="antialiased">
@@ -297,7 +296,6 @@
         <div id="tab-dashboard" class="tab-content active p-4">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Dashboard</h1>
-                
                 <button id="request-notify-btn" class="p-2 text-gray-600 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Ativar Notificações">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -447,7 +445,7 @@
             
             <div id="carteira-status" class="text-center text-gray-500 mt-12 hidden">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
                 </svg>
                 <p id="carteira-mensagem" class="text-lg mt-4">A sua carteira está vazia.</p>
                 <button id="empty-state-add-btn" class="mt-6 py-2 px-5 accent-bg text-white font-semibold rounded-lg shadow-md transition-transform active:scale-95 hover:bg-violet-600">
@@ -491,17 +489,14 @@
                     </div>
                 </div>
             </div>
-            <div id="fii-news-list" class="space-y-4">
-                </div>
             
+            <div id="fii-news-list" class="space-y-4"></div>
             <p id="fii-news-mensagem" class="text-gray-500 text-center hidden p-4"></p>
         </div>
         
         <div id="tab-historico" class="tab-content p-4">
             <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
-        
             <div id="lista-historico" class="space-y-3"></div>
-            
             <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
                 <p id="historico-mensagem">Nenhuma transação encontrada.</p>
             </div>
@@ -525,7 +520,6 @@
     </button>
     
     <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
-        
         <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
             <div class="tab-button-icon-wrapper"> 
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
@@ -567,7 +561,6 @@
             </div>
             <span class="text-xs mt-1 font-medium">Histórico</span>
         </button>
-        
     </nav>
     
     <div id="custom-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -655,7 +648,6 @@
     <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
         <div id="toast-notification" 
              class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl bg-red-800 border border-red-600 text-white font-medium">
-            
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -679,6 +671,8 @@
             
             const DB_KEY_TRANSACOES = 'vesto_transacoes_v1';
             const DB_KEY_PATRIMONIO = 'vesto_patrimonio_v1';
+            const DB_KEY_CAIXA = 'vesto_caixa_v1';
+            const DB_KEY_PROVENTOS_CONHECIDOS = 'vesto_proventos_conhecidos_v1';
 
             // Elementos DOM
             const refreshButton = document.getElementById('refresh-button');
@@ -689,7 +683,7 @@
             const toastElement = document.getElementById('toast-notification');
             const toastMessageElement = document.getElementById('toast-message');
             
-            // Notícias (ELEMENTOS ATUALIZADOS)
+            // Notícias
             const fiiNewsList = document.getElementById('fii-news-list');
             const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
             const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
@@ -763,7 +757,9 @@
             // Estado da App
             let transacoes = [];        
             let carteiraCalculada = []; 
-            let patrimonio = [];        
+            let patrimonio = [];
+            let saldoCaixa = 0;
+            let proventosConhecidos = [];
             
             let alocacaoChartInstance = null;
             let historicoChartInstance = null;
@@ -772,7 +768,7 @@
             let onConfirmCallback = null; 
             
             let precosAtuais = [];
-            let proventosAtuais = [];
+            let proventosAtuais = []; // Apenas proventos futuros
             
             const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
             
@@ -816,6 +812,7 @@
             // ==========================================================
             // Service Worker (PWA)
             // ==========================================================
+            
             const updateNotification = document.getElementById('update-notification');
             const updateButton = document.getElementById('update-button');
             let newWorker; 
@@ -860,7 +857,6 @@
                     console.log('[PWA] Novo SW ativado! Recarregando a página...');
                     window.location.reload();
                 });
-                
             } else {
                 console.log('Service Worker não é suportado neste navegador.');
             }
@@ -868,6 +864,7 @@
             // ==========================================================
             // Notificações Push
             // ==========================================================
+            
             function checkNotificationPermission() {
                 if (!('Notification' in window)) {
                     console.warn('Este navegador não suporta notificações.');
@@ -930,6 +927,7 @@
             // ==========================================================
             // Funções de Cache
             // ==========================================================
+            
             function setCache(key, data, duration = CACHE_DURATION) { 
                 const cacheItem = { timestamp: Date.now(), data: data, duration: duration };
                 try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(cacheItem)); } 
@@ -972,6 +970,7 @@
             // ==========================================================
             // Funções Auxiliares
             // ==========================================================
+            
             const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
             const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
             const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -1042,6 +1041,7 @@
             // ==========================================================
             // Funções dos Modais
             // ==========================================================
+            
             function showModal(title, message, onConfirm) {
                 customModalTitle.textContent = title;
                 customModalMessage.textContent = message;
@@ -1093,7 +1093,6 @@
                 detalhesPageContent.classList.add('closing'); 
                 detalhesPageModal.classList.remove('visible'); 
                 document.body.style.overflow = ''; 
-                
                 setTimeout(() => {
                     limparDetalhes(); 
                 }, 400); 
@@ -1118,10 +1117,8 @@
             }
             
             function salvarSnapshotPatrimonio(totalValor) {
-                if (totalValor <= 0) return; 
-                
+                if (totalValor <= 0 && patrimonio.length === 0) return; 
                 const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-                
                 const index = patrimonio.findIndex(p => p.date === today);
                 
                 if (index > -1) {
@@ -1133,18 +1130,72 @@
                 if (patrimonio.length > 365) {
                     patrimonio = patrimonio.slice(patrimonio.length - 365);
                 }
-                
                 localStorage.setItem(DB_KEY_PATRIMONIO, JSON.stringify(patrimonio));
             }
+
+            // *** NOVAS FUNÇÕES DE CAIXA E PROVENTOS PAGOS ***
+            function carregarCaixa() {
+                const caixaSalvo = localStorage.getItem(DB_KEY_CAIXA);
+                saldoCaixa = caixaSalvo ? parseFloat(caixaSalvo) : 0;
+            }
+
+            function salvarCaixa() {
+                localStorage.setItem(DB_KEY_CAIXA, saldoCaixa.toString());
+            }
+
+            function carregarProventosConhecidos() {
+                const proventosSalvos = localStorage.getItem(DB_KEY_PROVENTOS_CONHECIDOS);
+                proventosConhecidos = proventosSalvos ? JSON.parse(proventosSalvos) : [];
+            }
+
+            function salvarProventosConhecidos() {
+                localStorage.setItem(DB_KEY_PROVENTOS_CONHECIDOS, JSON.stringify(proventosConhecidos));
+            }
             
+            /** Processa dividendos que já foram pagos e os move para o "Caixa" */
+            function processarDividendosPagos() {
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0); // Compara apenas com o início do dia
+                
+                const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
+                let precisaSalvar = false;
+
+                proventosConhecidos.forEach(provento => {
+                    // Verifica se tem data, não foi processado, e a data de pagamento é anterior a hoje
+                    if (provento.paymentDate && !provento.processado) {
+                        const parts = provento.paymentDate.split('-');
+                        const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
+
+                        if (!isNaN(dataPagamento) && dataPagamento < hoje) {
+                            const quantity = carteiraMap.get(provento.symbol) || 0;
+                            if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) {
+                                const valorRecebido = provento.value * quantity;
+                                saldoCaixa += valorRecebido;
+                                provento.processado = true; // Marca como processado
+                                precisaSalvar = true;
+                                console.log(`Processado pagamento de ${provento.symbol}: ${formatBRL(valorRecebido)}`);
+                            } else {
+                                // Tinha o provento na lista mas não tem (ou não tem mais) cotas dele
+                                provento.processado = true; 
+                                precisaSalvar = true;
+                            }
+                        }
+                    }
+                });
+
+                if (precisaSalvar) {
+                    salvarCaixa();
+                    salvarProventosConhecidos();
+                }
+            }
+            // *** FIM DAS NOVAS FUNÇÕES ***
+
             function calcularCarteira() {
                 const ativosMap = new Map();
-
                 const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 for (const t of transacoesOrdenadas) {
                     if (t.type !== 'buy') continue;
-                        
                     const symbol = t.symbol;
                     let ativo = ativosMap.get(symbol) || { 
                         symbol: symbol, 
@@ -1152,10 +1203,8 @@
                         totalCost: 0, 
                         dataCompra: t.date 
                     };
-
                     ativo.quantity += t.quantity;
                     ativo.totalCost += t.quantity * t.price;
-                    
                     ativosMap.set(symbol, ativo);
                 }
                 
@@ -1189,8 +1238,8 @@
                 
                 const labels = dadosGrafico.map(d => d.symbol);
                 const data = dadosGrafico.map(d => d.totalPosicao);
-
                 const newDataString = JSON.stringify({ labels, data });
+
                 if (newDataString === lastAlocacaoData) { return; }
                 lastAlocacaoData = newDataString; 
                 
@@ -1230,8 +1279,8 @@
                 const canvas = document.getElementById('historico-proventos-chart');
                 if (!canvas) return;
                 const ctx = canvas.getContext('2d');
-
                 const newDataString = JSON.stringify({ labels, data });
+
                 if (newDataString === lastHistoricoData) { return; }
                 lastHistoricoData = newDataString; 
                 
@@ -1310,8 +1359,8 @@
                 
                 const labels = patrimonio.map(p => formatDate(p.date));
                 const data = patrimonio.map(p => p.value);
-                
                 const newDataString = JSON.stringify({ labels, data });
+
                 if (newDataString === lastPatrimonioData) { return; }
                 lastPatrimonioData = newDataString;
                 
@@ -1393,22 +1442,24 @@
                 renderizarCarteiraSkeletons(false);
                 
                 const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-                const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p]));
-                
+                const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p])); // Apenas futuros
                 const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-                let totalValorCarteira = 0;
+                let totalValorCarteira = 0; // Apenas ativos
                 let totalCustoCarteira = 0;
                 let dadosGrafico = [];
 
                 if (carteiraOrdenada.length === 0) {
                     carteiraStatus.classList.remove('hidden');
-                    
                     renderizarDashboardSkeletons(false);
-                    totalCarteiraValor.textContent = formatBRL(0);
+                    
+                    // *** LÓGICA DE CAIXA ATUALIZADA ***
+                    const corPLTotal = saldoCaixa > 0 ? 'text-green-500' : 'text-gray-500';
+                    totalCarteiraValor.textContent = formatBRL(saldoCaixa); // Mostra o caixa se não houver ativos
                     totalCarteiraCusto.textContent = formatBRL(0);
-                    totalCarteiraPL.textContent = `${formatBRL(0)} (0.00%)`;
-                    totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
+                    totalCarteiraPL.textContent = `${formatBRL(saldoCaixa)} (---%)`;
+                    totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
+                    // *** FIM DA ATUALIZAÇÃO ***
                     
                     dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
                     dashboardLoading.classList.add('hidden');
@@ -1416,7 +1467,8 @@
                     
                     renderizarGraficoAlocacao([]); 
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
-                    renderizarGraficoPatrimonio(); 
+                    salvarSnapshotPatrimonio(saldoCaixa); // Salva o caixa como patrimônio
+                    renderizarGraficoPatrimonio();
                 } else {
                     carteiraStatus.classList.add('hidden');
                     dashboardStatus.classList.add('hidden');
@@ -1425,7 +1477,7 @@
                 listaCarteira.innerHTML = ''; 
                 carteiraOrdenada.forEach(ativo => {
                     const dadoPreco = precosMap.get(ativo.symbol);
-                    const dadoProvento = proventosMap.get(ativo.symbol);
+                    const dadoProvento = proventosMap.get(ativo.symbol); // Futuro
                     
                     const card = document.createElement('div');
                     card.className = 'card-bg p-4 rounded-2xl shadow-lg card-animate-in';
@@ -1451,7 +1503,7 @@
                     if (lucroPrejuizo > 0.01) corPL = 'text-green-500';
                     else if (lucroPrejuizo < -0.01) corPL = 'text-red-500';
 
-                    totalValorCarteira += totalPosicao;
+                    totalValorCarteira += totalPosicao; // Soma apenas o valor dos ativos
                     totalCustoCarteira += custoTotal;
                     if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
                     
@@ -1494,7 +1546,6 @@
                                 <p class="text-gray-100 text-lg">${precoFormatado}</p>
                             </div>
                         </div>
-
                         <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
                             <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-symbol="${ativo.symbol}" data-action="toggle" title="Mostrar mais">
                                 <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
@@ -1502,7 +1553,6 @@
                                 </svg>
                             </button>
                         </div>
-
                         <div id="drawer-${ativo.symbol}" class="card-drawer">
                             <div class="drawer-content space-y-3 pt-2">
                                 <div class="flex justify-between items-center">
@@ -1517,9 +1567,7 @@
                                     <span class="text-sm text-gray-500">L/P</span>
                                     <span class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
                                 </div>
-                                
                                 ${proventoHtml} 
-                                
                                 <div class="flex justify-end gap-3 pt-2">
                                     <button class="py-1 px-3 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">
                                         Detalhes
@@ -1535,19 +1583,23 @@
                 });
                 
                 if (carteiraOrdenada.length > 0) {
-                    const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
-                    const totalLucroPrejuizoPercent = (totalCustoCarteira === 0 || totalValorCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
+                    // *** LÓGICA DE CAIXA ATUALIZADA ***
+                    const patrimonioTotal = totalValorCarteira + saldoCaixa;
+                    const totalLucroPrejuizo = (totalValorCarteira - totalCustoCarteira) + saldoCaixa;
+                    const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
+                    
                     let corPLTotal = 'text-gray-500';
                     if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
                     else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
                     
                     renderizarDashboardSkeletons(false);
-                    totalCarteiraValor.textContent = formatBRL(totalValorCarteira);
+                    totalCarteiraValor.textContent = formatBRL(patrimonioTotal);
                     totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
                     totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
                     totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
                     
-                    salvarSnapshotPatrimonio(totalValorCarteira);
+                    salvarSnapshotPatrimonio(patrimonioTotal);
+                    // *** FIM DA ATUALIZAÇÃO ***
                 }
                 
                 renderizarGraficoAlocacao(dadosGrafico);
@@ -1555,17 +1607,16 @@
             }
 
             function renderizarProventos() {
+                // Esta função agora renderiza apenas os *próximos* proventos
                 let totalEstimado = 0;
-                
                 const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
                 
-                proventosAtuais.forEach(provento => {
+                proventosAtuais.forEach(provento => { // proventosAtuais contém apenas futuros
                     const quantity = carteiraMap.get(provento.symbol) || 0;
                     if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) { 
                         totalEstimado += (quantity * provento.value);
                     }
                 });
-                
                 totalProventosEl.textContent = formatBRL(totalEstimado);
             }
             
@@ -1609,7 +1660,6 @@
             // Funções de Notícias (ATUALIZADA para Cards de Resumo com Gaveta)
             // ==========================================================
             
-            /** Renderiza os resumos de notícias em formato de card expansível */
             function renderizarNoticias(articles) { 
                 fiiNewsSkeleton.classList.add('hidden');
                 fiiNewsList.innerHTML = ''; 
@@ -1621,22 +1671,17 @@
                     return;
                 }
                 
-                // Ordena por data, da mais nova para a mais antiga
                 articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
 
                 articles.forEach((article, index) => {
                     const sourceName = article.sourceName || 'Fonte';
-                    // Garante que estamos usando o hostname para o favicon
                     const sourceHostname = article.sourceHostname || 'google.com'; 
                     const publicationDate = article.publicationDate ? formatDate(article.publicationDate) : 'Data indisponível';
                     const drawerId = `news-drawer-${index}`;
-                    
                     const faviconUrl = `https://www.google.com/s2/favicons?domain=${sourceHostname}&sz=32`;
                     
                     const newsCard = document.createElement('div');
-                    // O card agora tem 'space-y-3' para separar o cabeçalho da gaveta
                     newsCard.className = 'card-bg rounded-2xl p-4 space-y-3'; 
-                    
                     newsCard.innerHTML = `
                         <div class="flex items-start gap-3">
                             <img src="${faviconUrl}" alt="Logo ${sourceName}" 
@@ -1663,7 +1708,6 @@
                             </div>
                         </div>
                     `;
-                    
                     fiiNewsList.appendChild(newsCard);
                 });
             }
@@ -1671,21 +1715,17 @@
             /** Busca o JSON de resumos de notícias */
             async function fetchNoticiasBFF() {
                 const cacheKey = CACHE_PREFIX + 'noticias_json_v3'; // Nova chave de cache
-                
                 const cache = getCache(cacheKey);
                 if (cache) {
                     return cache; 
                 }
-                
                 try {
                     const response = await fetchBFF('/api/news', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ todayString: todayString }) 
                     });
-                    
                     const articles = response.json; // Espera { json: [...] }
-                    
                     if (articles && Array.isArray(articles)) {
                         setCache(cacheKey, articles, CACHE_6_HORAS);
                     }
@@ -1727,18 +1767,15 @@
             /** Busca preços, usando cache individual por ativo */
             async function buscarPrecosCarteira(force = false) { 
                 if (carteiraCalculada.length === 0) return [];
-                
                 console.log("A buscar preços na API (cache por ativo)...");
                 
                 const promessas = carteiraCalculada.map(async (ativo) => {
                     const cacheKey = `preco_${ativo.symbol}`;
-                    
                     if (!force) {
                         const precoCache = getCache(cacheKey);
                         if (precoCache && !isB3Open()) return precoCache;
                         if (precoCache) return precoCache;
                     }
-
                     try {
                         const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
                         const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -1757,7 +1794,6 @@
                         return null;
                     }
                 });
-
                 const resultados = await Promise.all(promessas);
                 return resultados.filter(p => p !== null);
             }
@@ -1777,6 +1813,7 @@
                             const parts = proventoIA.paymentDate.split('-');
                             const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                             
+                            // Apenas futuros (igual ou depois de hoje)
                             if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
                                 return proventoIA;
                             }
@@ -1794,36 +1831,50 @@
                     
                 if (fiiNaCarteira.length === 0) return [];
 
-                let proventosFinais = [];
+                let proventosFuturosFiltrados = [];
                 let fiisParaBuscar = [];
 
+                // 1. Processa o que já está em cache
                 for (const symbol of fiiNaCarteira) {
                     const cacheKey = `provento_ia_${symbol}`;
                     const proventoCache = getCache(cacheKey);
-
                     if (proventoCache) {
-                        proventosFinais.push(proventoCache);
+                        // Adiciona ao pool de processamento (mesmo que seja antigo, processarProventosIA vai filtrar)
+                        proventosFuturosFiltrados.push(proventoCache);
                     } else {
                         fiisParaBuscar.push(symbol);
                     }
                 }
                 
-                console.log("Proventos em cache:", proventosFinais.map(p => p.symbol));
-                console.log("Proventos para buscar:", fiisParaBuscar);
+                console.log("Proventos em cache (para filtrar):", proventosFuturosFiltrados.map(p => p.symbol));
+                console.log("Proventos para buscar (API):", fiisParaBuscar);
 
+                // 2. Busca novos na API
                 if (fiisParaBuscar.length > 0) {
                     try {
                         const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
                         
                         if (novosProventos && Array.isArray(novosProventos)) {
+                            let proventosConhecidosMudou = false;
                             for (const provento of novosProventos) {
-                                if (provento && provento.symbol) {
-                                    // *** INÍCIO DA CORREÇÃO ***
+                                if (provento && provento.symbol && provento.paymentDate) {
                                     const cacheKey = `provento_ia_${provento.symbol}`;
-                                    // *** FIM DA CORREÇÃO ***
                                     setCache(cacheKey, provento, CACHE_24_HORAS); 
-                                    proventosFinais.push(provento);
+                                    proventosFuturosFiltrados.push(provento); // Adiciona ao pool de processamento
+
+                                    // *** LÓGICA DE CAIXA ***
+                                    // Adiciona à lista de proventos conhecidos se ainda não estiver lá
+                                    const idUnico = provento.symbol + '_' + provento.paymentDate;
+                                    const existe = proventosConhecidos.some(p => (p.symbol + '_' + p.paymentDate) === idUnico);
+                                    if (!existe) {
+                                        proventosConhecidos.push({ ...provento, processado: false });
+                                        proventosConhecidosMudou = true;
+                                    }
+                                    // *** FIM DA LÓGICA DE CAIXA ***
                                 }
+                            }
+                            if (proventosConhecidosMudou) {
+                                salvarProventosConhecidos();
                             }
                         }
                     } catch (error) {
@@ -1831,7 +1882,8 @@
                     }
                 }
                 
-                return processarProventosIA(proventosFinais); 
+                // 3. Retorna apenas os proventos que são REALMENTE futuros
+                return processarProventosIA(proventosFuturosFiltrados); 
             }
 
             /** Busca o histórico de proventos agregados para o gráfico */
@@ -1841,7 +1893,6 @@
 
                 const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
                 const cacheKey = 'hist_agregado_v4_' + fiiSymbols.join('-'); 
-                
                 const cache = getCache(cacheKey);
                 let aiData;
 
@@ -1900,11 +1951,12 @@
              async function atualizarTodosDados(force = false) { 
                 renderizarDashboardSkeletons(true);
                 renderizarCarteiraSkeletons(true);
-                fiiNewsSkeleton.classList.remove('hidden'); // Mostra skeleton de notícias
-                fiiNewsList.innerHTML = ''; // Limpa lista antiga
+                fiiNewsSkeleton.classList.remove('hidden');
+                fiiNewsList.innerHTML = '';
                 fiiNewsMensagem.classList.add('hidden');
                 
                 calcularCarteira();
+                processarDividendosPagos(); // Processa dividendos passados ANTES de renderizar
                 renderizarHistorico();
                 renderizarGraficoPatrimonio(); 
                 
@@ -1922,15 +1974,8 @@
                     precosCache = getCache(cacheKeyPrecos);
                 }
                 
-                let proventosFuturosCache = null;
-                const fiiNaCarteiraCache = carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol);
-                if (fiiNaCarteiraCache.length > 0) {
-                    const cacheKeyProventos = 'proventos_ia_' + fiiNaCarteiraCache.join('-');
-                    const proventosCacheIA = getCache(cacheKeyProventos); 
-                    if (proventosCacheIA) {
-                        proventosFuturosCache = processarProventosIA(proventosCacheIA);
-                    }
-                }
+                // Pega proventos futuros (já filtrados) da lista de conhecidos
+                let proventosFuturosCache = processarProventosIA(proventosConhecidos);
                 
                 if (precosCache) {
                     precosAtuais = precosCache;
@@ -1953,7 +1998,7 @@
 
                 // Dispara as buscas de rede em paralelo
                 const promessaPrecos = buscarPrecosCarteira(force); 
-                const promessaProventos = buscarProventosFuturos();
+                const promessaProventos = buscarProventosFuturos(); // Busca novos e filtra
                 const promessaHistorico = buscarHistoricoProventosAgregado();
                 const promessaNoticias = fetchNoticiasBFF(); 
 
@@ -1973,7 +2018,7 @@
 
                 // Handler para proventos
                 promessaProventos.then(proventosFuturos => {
-                    proventosAtuais = proventosFuturos; 
+                    proventosAtuais = proventosFuturos; // Seta os proventos futuros filtrados
                     renderizarProventos(); 
                     if (precosAtuais.length > 0) {
                         renderizarCarteira(); 
@@ -2353,21 +2398,18 @@
             
             detalhesPageContent.addEventListener('touchmove', (e) => {
                 if (!isDraggingDetalhes) return;
-                
                 touchMoveY = e.touches[0].clientY;
                 const diff = touchMoveY - touchStartY;
-                
                 if (diff > 0) { 
+                    e.preventDefault(); // Evita scroll da página
                     detalhesPageContent.style.transform = `translateY(${diff}px)`;
                 }
             }, { passive: false }); 
             
             detalhesPageContent.addEventListener('touchend', (e) => {
                 if (!isDraggingDetalhes) return;
-                
                 isDraggingDetalhes = false;
                 const diff = touchMoveY - touchStartY;
-                
                 detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
                 
                 if (diff > 100) { 
@@ -2375,12 +2417,10 @@
                 } else {
                     detalhesPageContent.style.transform = ''; 
                 }
-                
                 touchStartY = 0;
                 touchMoveY = 0;
             });
 
-            // *** NOVO LISTENER PARA AS GAVETAS DE NOTÍCIAS ***
             fiiNewsList.addEventListener('click', (e) => {
                 const target = e.target.closest('button[data-action="toggle-news"]');
                 if (!target) return;
@@ -2392,7 +2432,6 @@
                 drawer?.classList.toggle('open');
                 icon?.classList.toggle('open');
             });
-            // *** FIM DO NOVO LISTENER ***
 
             // ==========================================================
             // Funções da API Gemini (BFF)
@@ -2431,9 +2470,12 @@
             // ==========================================================
             // Inicialização
             // ==========================================================
+            
             checkNotificationPermission(); 
             carregarTransacoes();
             carregarPatrimonio();
+            carregarCaixa();
+            carregarProventosConhecidos();
             mudarAba('tab-dashboard'); 
             atualizarTodosDados(true); // Carga inicial (forçada)
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); // Atualização em background

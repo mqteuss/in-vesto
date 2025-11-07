@@ -1,7 +1,7 @@
 // api/news.js
 // Esta é uma Vercel Serverless Function.
 // Ela usa a API Gemini com a chave NEWS_GEMINI_API_KEY e Web Search
-// para buscar notícias de FIIs.
+// para buscar um RESUMO das notícias de FIIs.
 
 // Função de retry (backoff) para o servidor
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
@@ -24,26 +24,25 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     }
 }
 
-// Constrói o payload para a API Gemini (Modo Notícias)
+// Constrói o payload para a API Gemini (Modo Resumo de Notícias)
 function getGeminiPayload(todayString) {
     
-    // *** PROMPT MAIS DIRETO E RESUMIDO ***
-    const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar os 5 artigos de notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicados **neste mês** (data de hoje: ${todayString}).
+    // *** PROMPT TOTALMENTE NOVO: PEDE UM RESUMO, NÃO LINKS ***
+    const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 3 a 5 principais notícias sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **neste mês** (data de hoje: ${todayString}).
 
 REGRAS:
-1.  Encontre artigos de portais de notícias conhecidos (ex: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times).
-2.  Responda APENAS com um array JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
-3.  'url' deve ser o link direto para o artigo.
-4.  'sourceName' deve ser o nome do portal.
-5.  'publishedAt' deve estar no formato AAAA-MM-DD.
+1.  Escreva um resumo conciso para cada notícia.
+2.  Formate a resposta como uma lista (bullet points).
+3.  Comece cada ponto com um emoji (ex: 📈, 💰, 🏢).
+4.  No final de cada ponto, cite a fonte entre parênteses (ex: InfoMoney).
+5.  Responda APENAS com o texto do resumo. NÃO inclua títulos, saudações, markdown (\`\`\`) ou qualquer outro texto.
 
-EXEMPLO:
-[
-  {"title": "MXRF11 anuncia nova emissão de cotas", "url": "https://infomoney.com.br/mxrf11-emissao", "sourceName": "InfoMoney", "description": "O fundo detalhou a 14ª emissão...", "publishedAt": "2025-11-06"},
-  {"title": "HGLG11 reduz vacância", "url": "https://fiis.com.br/hglg11-vacancia", "sourceName": "Fiis.com.br", "description": "A vacância do HGLG11 caiu para 5%...", "publishedAt": "2025-11-05"}
-]`;
+EXEMPLO DE RESPOSTA:
+📈 O fundo MXRF11 anunciou sua 14ª emissão de cotas, com o objetivo de captar R$ 500 milhões para novos investimentos. (InfoMoney)
+💰 BTG Pactual (BTLG11) foi o FII mais recomendado por analistas para o mês, refletindo a confiança no setor de logística. (Seu Dinheiro)
+🏢 O IFIX, principal índice de FIIs, registrou uma leve alta de 0,2% na primeira semana do mês, impulsionado por fundos de tijolo. (Fiis.com.br)`;
 
-    const userQuery = `Liste os 5 artigos de notícias mais recentes (deste mês, ${todayString}) sobre FIIs de portais financeiros brasileiros.`;
+    const userQuery = `Gere um resumo em bullet points das 3-5 principais notícias sobre FIIs deste mês (${todayString}), citando a fonte no final de cada ponto.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
@@ -93,15 +92,12 @@ export default async function handler(request, response) {
         
         // CACHE DE 6 HORAS (21600 segundos)
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
-
-        // Limpa e faz o parse do JSON retornado pelo Gemini
-        let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const jsonMatch = jsonText.match(/\[.*\]/s); // Pega o conteúdo entre [ e ]
-        if (jsonMatch && jsonMatch[0]) {
-            jsonText = jsonMatch[0];
-        }
         
-        return response.status(200).json({ json: JSON.parse(jsonText) });
+        // *** RESPOSTA MODIFICADA ***
+        // Limpa o texto (remove asteriscos extras) e o retorna dentro de um objeto JSON.
+        const cleanedText = text.replace(/\*/g, '').trim();
+        
+        return response.status(200).json({ summary: cleanedText });
 
     } catch (error) {
         console.error("Erro interno no proxy Gemini (Notícias):", error);

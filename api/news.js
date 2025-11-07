@@ -1,7 +1,7 @@
 // api/news.js
 // Esta é uma Vercel Serverless Function.
 // Ela usa a API Gemini com a chave NEWS_GEMINI_API_KEY e Web Search
-// para buscar um JSON de resumos de notícias.
+// para buscar um JSON de resumos de notícias, incluindo o hostname da fonte.
 
 // Função de retry (backoff) para o servidor
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
@@ -24,28 +24,28 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     }
 }
 
-// Constrói o payload para a API Gemini (Modo JSON de Resumos)
+// Constrói o payload para a API Gemini (Modo JSON de Resumos com Hostname)
 function getGeminiPayload(todayString) {
     
-    // *** PROMPT ATUALIZADO: Pede um JSON de Resumos ***
+    // *** PROMPT ATUALIZADO: Remove EMOJI, reforça HOSTNAME ***
     const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 5 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **neste mês** (data de hoje: ${todayString}).
 
 REGRAS:
 1.  Encontre artigos de portais de notícias conhecidos (ex: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times).
 2.  Responda APENAS com um array JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
 3.  Cada objeto no array deve conter:
-    - "emoji": Um emoji relevante (ex: "📈", "💰", "🏢").
     - "summary": Um resumo conciso da notícia em uma frase.
     - "sourceName": O nome do portal (ex: "InfoMoney").
+    - "sourceHostname": O domínio raiz da fonte (ex: "infomoney.com.br"). ESTE CAMPO É OBRIGATÓRIO e deve ser o domínio, não o nome.
 
 EXEMPLO DE RESPOSTA JSON:
 [
-  {"emoji": "📈", "summary": "IFIX atinge nova máxima histórica em outubro, mas mercado entra em consolidação.", "sourceName": "InfoMoney"},
-  {"emoji": "🏢", "HGLG11 investiu R$ 63 milhões na aquisição de galpões logísticos em Itupeva (SP) e Simões Filho (BA).", "sourceName": "Money Times"},
-  {"emoji": "💰", "CPTS11 divulgou uma nova oferta pública de cotas para captação de R$ 500 milhões.", "sourceName": "Fiis.com.br"}
+  {"summary": "IFIX atinge nova máxima histórica em outubro, mas mercado entra em consolidação.", "sourceName": "InfoMoney", "sourceHostname": "infomoney.com.br"},
+  {"summary": "HGLG11 investiu R$ 63 milhões na aquisição de galpões logísticos em Itupeva (SP) e Simões Filho (BA).", "sourceName": "Money Times", "sourceHostname": "moneytimes.com.br"},
+  {"summary": "CPTS11 divulgou uma nova oferta pública de cotas para captação de R$ 500 milhões.", "sourceName": "Fiis.com.br", "sourceHostname": "fiis.com.br"}
 ]`;
 
-    const userQuery = `Gere um array JSON com os 5 resumos de notícias mais recentes (deste mês, ${todayString}) sobre FIIs de portais financeiros brasileiros. Inclua "emoji", "summary" e "sourceName".`;
+    const userQuery = `Gere um array JSON com os 5 resumos de notícias mais recentes (deste mês, ${todayString}) sobre FIIs de portais financeiros brasileiros. Inclua "summary", "sourceName" e "sourceHostname".`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],

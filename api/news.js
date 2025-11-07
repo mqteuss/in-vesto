@@ -27,8 +27,8 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 // Constrói o payload para a API Gemini (Modo JSON de Resumos com Hostname)
 function getGeminiPayload(todayString) {
     
-    // *** PROMPT ATUALIZADO: Remove EMOJI, reforça HOSTNAME ***
-    const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 5 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **neste mês** (data de hoje: ${todayString}).
+    // *** PROMPT ATUALIZADO: Pede 10 NOTÍCIAS ***
+    const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 10 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **neste mês** (data de hoje: ${todayString}).
 
 REGRAS:
 1.  Encontre artigos de portais de notícias conhecidos (ex: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times).
@@ -45,7 +45,7 @@ EXEMPLO DE RESPOSTA JSON:
   {"summary": "CPTS11 divulgou uma nova oferta pública de cotas para captação de R$ 500 milhões.", "sourceName": "Fiis.com.br", "sourceHostname": "fiis.com.br"}
 ]`;
 
-    const userQuery = `Gere um array JSON com os 5 resumos de notícias mais recentes (deste mês, ${todayString}) sobre FIIs de portais financeiros brasileiros. Inclua "summary", "sourceName" e "sourceHostname".`;
+    const userQuery = `Gere um array JSON com os 10 resumos de notícias mais recentes (deste mês, ${todayString}) sobre FIIs de portais financeiros brasileiros. Inclua "summary", "sourceName" e "sourceHostname".`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],

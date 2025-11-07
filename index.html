@@ -266,7 +266,7 @@
           40%, 60% { transform: translateX(2%) translateY(1rem); }
         }
         
-        /* Estilo para truncar notícias (clamp) */
+        /* Estilo para truncar notícias (clamp) - AGORA USADO NO RESUMO */
         .clamp-2 {
             display: -webkit-box;
             -webkit-box-orient: vertical;
@@ -274,28 +274,21 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
-        /* Estilos para o Resumo de Notícias (NOVO) */
-        #fii-news-content {
-            background-color: #1A1A1A;
-            border: 1px solid #2A2A2A;
-            padding: 1.25rem; /* p-5 */
-            border-radius: 1rem; /* rounded-2xl */
-        }
-
-        #fii-news-content p {
-            margin-bottom: 0.75rem; /* mb-3 */
+        
+        /* Estilização do card de resumo de notícia */
+        .news-card-summary {
             line-height: 1.6;
+            color: #d1d5db; /* text-gray-300 */
         }
-        
-        #fii-news-content p:last-child {
-            margin-bottom: 0;
+        .news-card-summary span { /* Emoji */
+            margin-right: 0.5rem; /* mr-2 */
         }
-        
-        #fii-news-content span {
+        .news-card-source {
             color: #a78bfa; /* text-violet-400 */
             font-size: 0.875rem; /* text-sm */
             font-weight: 500; /* medium */
+            margin-top: 0.5rem; /* mt-2 */
+            display: block;
         }
 
     </style>
@@ -469,15 +462,34 @@
         <div id="tab-noticias" class="tab-content p-4">
             <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Notícias do Mês</h1>
         
-            <div id="fii-news-skeleton" class="card-bg p-5 rounded-2xl space-y-4 animate-pulse">
-                <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
-                <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                <div class="h-4 bg-gray-700 rounded-md w-5/6"></div>
-                <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+            <div id="fii-news-skeleton" class="space-y-4 animate-pulse">
+                <div class="card-bg rounded-2xl p-4 flex gap-4">
+                    <div class="w-14 h-14 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                    <div class="flex-1 space-y-2 pt-1">
+                        <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                        <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                        <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
+                    </div>
+                </div>
+                <div class="card-bg rounded-2xl p-4 flex gap-4">
+                    <div class="w-14 h-14 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                    <div class="flex-1 space-y-2 pt-1">
+                        <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                        <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                        <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
+                    </div>
+                </div>
+                <div class="card-bg rounded-2xl p-4 flex gap-4">
+                    <div class="w-14 h-14 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                    <div class="flex-1 space-y-2 pt-1">
+                        <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                        <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                        <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
+                    </div>
+                </div>
             </div>
             
-            <div id="fii-news-content" class="text-gray-300 leading-relaxed hidden">
+            <div id="fii-news-list" class="space-y-4">
                 </div>
             
             <p id="fii-news-mensagem" class="text-gray-500 text-center hidden p-4"></p>
@@ -676,7 +688,7 @@
             const toastMessageElement = document.getElementById('toast-message');
             
             // Notícias (ELEMENTOS ATUALIZADOS)
-            const fiiNewsContent = document.getElementById('fii-news-content');
+            const fiiNewsList = document.getElementById('fii-news-list');
             const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
             const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
 
@@ -1592,39 +1604,57 @@
             }
 
             // ==========================================================
-            // Funções de Notícias (ATUALIZADA para Resumo)
+            // Funções de Notícias (ATUALIZADA para Cards de Resumo)
             // ==========================================================
             
-            /** Renderiza o resumo de notícias na aba */
-            function renderizarNoticias(summary) { 
+            /** Renderiza os resumos de notícias em formato de card */
+            function renderizarNoticias(articles) { 
                 fiiNewsSkeleton.classList.add('hidden');
+                fiiNewsList.innerHTML = ''; // Usa fii-news-list
                 fiiNewsMensagem.classList.add('hidden');
-                fiiNewsContent.classList.remove('hidden');
-                
-                if (!summary || summary.trim() === '') {
+
+                if (!articles || articles.length === 0) {
                     fiiNewsMensagem.textContent = 'Nenhuma notícia encontrada.';
                     fiiNewsMensagem.classList.remove('hidden');
-                    fiiNewsContent.classList.add('hidden');
                     return;
                 }
-                
-                // Converte a string do Gemini (com \n) em HTML
-                // 1. Substitui (InfoMoney) por <span>(InfoMoney)</span>
-                // 2. Substitui \n (nova linha) por <br>
-                // 3. Agrupa tudo em tags <p>
-                const formattedHtml = summary
-                    .replace(/\((.*?)\)/g, '<span>($1)</span>') // Adiciona span para a fonte
-                    .split('\n') // Divide por linha
-                    .filter(line => line.trim() !== '') // Remove linhas vazias
-                    .map(line => `<p>${line}</p>`) // Envolve cada linha em <p>
-                    .join('');
 
-                fiiNewsContent.innerHTML = formattedHtml;
+                articles.forEach(article => {
+                    const sourceName = article.sourceName || 'Fonte';
+                    const hostname = article.sourceHostname || 'google.com';
+                    
+                    // Usa o serviço de favicon do Google
+                    const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+
+                    // Imagem (Favicon)
+                    const imageHtml = `
+                        <img src="${faviconUrl}" alt="Logo ${sourceName}" 
+                             class="w-14 h-14 rounded-lg object-contain p-2 flex-shrink-0 bg-gray-700"
+                             onerror="this.style.display='none'" 
+                        />
+                    `; // Ajustado o padding e tamanho
+
+                    // Cria o card
+                    const newsCard = document.createElement('div');
+                    newsCard.className = 'card-bg rounded-2xl p-4 flex gap-4';
+
+                    newsCard.innerHTML = `
+                        ${imageHtml}
+                        <div class="flex-1 min-w-0">
+                            <p class="news-card-summary">
+                                <span class="text-lg">${article.emoji || '📈'}</span>
+                                ${article.summary || 'Resumo da notícia não disponível.'}
+                            </p>
+                            <span class="news-card-source">${sourceName}</span>
+                        </div>
+                    `;
+                    fiiNewsList.appendChild(newsCard);
+                });
             }
 
-            /** Busca o resumo de notícias */
+            /** Busca o JSON de resumos de notícias */
             async function fetchNoticiasBFF() {
-                const cacheKey = CACHE_PREFIX + 'noticias_resumo_v1'; // Nova chave de cache
+                const cacheKey = CACHE_PREFIX + 'noticias_json_v2'; // Nova chave de cache
                 
                 const cache = getCache(cacheKey);
                 if (cache) {
@@ -1638,12 +1668,12 @@
                         body: JSON.stringify({ todayString: todayString }) 
                     });
                     
-                    const summary = response.summary; // Espera { summary: "..." }
+                    const articles = response.json; // Espera { json: [...] }
                     
-                    if (summary) {
-                        setCache(cacheKey, summary, CACHE_6_HORAS);
+                    if (articles && Array.isArray(articles)) {
+                        setCache(cacheKey, articles, CACHE_6_HORAS);
                     }
-                    return summary;
+                    return articles;
                 } catch (error) {
                     console.error("Erro ao buscar notícias (BFF):", error);
                     throw error;
@@ -1853,7 +1883,8 @@
                 renderizarDashboardSkeletons(true);
                 renderizarCarteiraSkeletons(true);
                 fiiNewsSkeleton.classList.remove('hidden'); // Mostra skeleton de notícias
-                fiiNewsContent.classList.add('hidden'); // Esconde conteúdo antigo
+                fiiNewsList.innerHTML = ''; // Limpa lista antiga
+                fiiNewsMensagem.classList.add('hidden');
                 
                 calcularCarteira();
                 renderizarHistorico();
@@ -1945,8 +1976,8 @@
                 });
                 
                 // Handler para notícias (ATUALIZADO)
-                promessaNoticias.then(summary => {
-                    renderizarNoticias(summary);
+                promessaNoticias.then(articles => {
+                    renderizarNoticias(articles);
                 }).catch(err => {
                     console.error("Erro ao buscar notícias (BFF):", err);
                     fiiNewsSkeleton.classList.add('hidden');
@@ -2153,7 +2184,7 @@
                             </div>
                             <div class="bg-gray-800 p-3 rounded-xl text-center">
                                 <span class="text-xs text-gray-500">Mín. Dia</span>
-                                <p class="text-base font-semibold text-red-500">${formatBSRL(precoData.regularMarketDayLow)}</p>
+                                <p class="text-base font-semibold text-red-500">${formatBRL(precoData.regularMarketDayLow)}</p>
                             </div>
                         </div>
                         <div class="bg-gray-800 p-4 rounded-xl">

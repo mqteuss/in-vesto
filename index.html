@@ -949,9 +949,6 @@
                 Object.keys(localStorage)
                     .filter(key => key.startsWith(CACHE_PREFIX))
                     .forEach(key => localStorage.removeItem(key));
-                
-                // Limpa também o cache de notícias
-                localStorage.removeItem(CACHE_PREFIX + 'noticias_fii_v1'); 
             }
 
             // ==========================================================
@@ -1591,11 +1588,11 @@
             }
 
             // ==========================================================
-            // Funções de Notícias (NOVAS)
+            // Funções de Notícias (ATUALIZADA)
             // ==========================================================
             
-            /** Renderiza as notícias no card do dashboard */
-            function renderizarNoticias(articles) { // Recebe o array de artigos
+            /** Renderiza as notícias na aba de notícias */
+            function renderizarNoticias(articles) { 
                 fiiNewsSkeleton.classList.add('hidden');
                 fiiNewsList.innerHTML = '';
 
@@ -1608,19 +1605,34 @@
                 articles.forEach(article => {
                     const sourceName = article.sourceName || 'Fonte Desconhecida';
                     
+                    // *** INÍCIO DA MODIFICAÇÃO (Logo/Favicon) ***
+                    let hostname = 'noticia.com'; // Fallback
+                    try {
+                        // Extrai o domínio principal da URL (ex: "infomoney.com.br")
+                        hostname = new URL(article.url).hostname;
+                    } catch (e) {
+                        console.warn('URL de notícia inválida:', article.url);
+                    }
+                    
+                    // Usa o serviço de favicon do Google para buscar o logo
+                    // &sz=32 pede um ícone de 32x32 pixels
+                    const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+
+                    const imageHtml = `
+                        <img src="${faviconUrl}" alt="Logo ${sourceName}" 
+                             class="w-16 h-16 rounded-lg object-contain p-2.5 flex-shrink-0 bg-gray-700"
+                             onerror="this.style.display='none'" 
+                        />
+                    `; // Adicionei object-contain e padding (p-2.5) para o logo ficar melhor
+                       // onerror esconde a imagem se o Google não encontrar um ícone
+                       
+                    // *** FIM DA MODIFICAÇÃO ***
+
                     const newsCard = document.createElement('a');
                     newsCard.href = article.url;
                     newsCard.target = '_blank'; 
                     newsCard.rel = 'noopener noreferrer';
                     newsCard.className = 'flex gap-3 p-2 -m-2 rounded-lg hover:bg-gray-800 transition-colors duration-200 ease-in-out';
-
-                    // Ícone genérico de notícias, pois o Gemini não retorna imagens
-                    const imageHtml = `
-                        <div class="w-16 h-16 rounded-lg bg-gray-700 flex-shrink-0 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01" />
-                            </svg>
-                       </div>`;
 
                     newsCard.innerHTML = `
                         ${imageHtml}
@@ -1640,21 +1652,19 @@
                 
                 const cache = getCache(cacheKey);
                 if (cache) {
-                    return cache; // Retorna do cache se for válido (a função getCache valida)
+                    return cache; 
                 }
                 
                 try {
-                    // *** MODIFICADO: Chama /api/news via POST com todayString ***
                     const response = await fetchBFF('/api/news', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ todayString: todayString }) 
                     });
                     
-                    const articles = response.json; // A API retorna { json: [...] }
+                    const articles = response.json; 
                     
                     if (articles && Array.isArray(articles)) {
-                        // Salva no cache do localStorage por 6 horas
                         setCache(cacheKey, articles, CACHE_6_HORAS);
                     }
                     return articles;
@@ -1918,7 +1928,7 @@
                 const promessaPrecos = buscarPrecosCarteira(force); 
                 const promessaProventos = buscarProventosFuturos();
                 const promessaHistorico = buscarHistoricoProventosAgregado();
-                const promessaNoticias = fetchNoticiasBFF(); // <-- ADICIONADO AQUI
+                const promessaNoticias = fetchNoticiasBFF(); 
 
                 // Handler para quando os preços chegarem
                 promessaPrecos.then(precos => {
@@ -1968,7 +1978,7 @@
 
                 // Espera todas as promessas terminarem (com sucesso ou falha)
                 try {
-                    await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico, promessaNoticias]); // <-- ATUALIZADO AQUI
+                    await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico, promessaNoticias]); 
                 } finally {
                     console.log("Todas as sincronizações (BFF) terminaram.");
                     refreshIcon.classList.remove('spin-animation');

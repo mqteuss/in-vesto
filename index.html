@@ -266,26 +266,28 @@
           40%, 60% { transform: translateX(2%) translateY(1rem); }
         }
         
-        /* Estilo para truncar notícias (clamp) - AGORA USADO NO RESUMO */
-        .clamp-2 {
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
         /* Estilização do card de resumo de notícia */
         .news-card-summary {
             line-height: 1.6;
             color: #d1d5db; /* text-gray-300 */
         }
-        .news-card-source {
-            color: #a78bfa; /* text-violet-400 */
-            font-size: 0.875rem; /* text-sm */
+        /* Estilo das Tags de Ticker */
+        .news-ticker-tag {
+            display: inline-block;
+            background-color: #374151; /* gray-700 */
+            color: #d1d5db; /* gray-300 */
+            font-size: 0.75rem; /* text-xs */
             font-weight: 500; /* medium */
-            margin-top: 0.5rem; /* mt-2 */
-            display: block;
+            padding: 2px 10px; /* py-0.5 px-2.5 */
+            border-radius: 9999px; /* rounded-full */
+            margin-right: 6px; /* mr-1.5 */
+            margin-bottom: 6px; /* mb-1.5 */
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .news-ticker-tag:hover {
+            background-color: #6D28D9; /* purple-700 */
+            color: #FFF;
         }
     </style>
 </head>
@@ -305,7 +307,6 @@
 
             <div id="resumo-carteira-card" class="card-bg p-5 rounded-2xl mb-6 text-center">
                 <span class="text-sm text-gray-500">Valor Total da Carteira</span>
-                
                 <div id="skeleton-total-valor" class="h-10 w-3/4 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
                 <h2 id="total-carteira-valor" class="text-4xl font-bold mt-1 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</h2>
                 
@@ -666,7 +667,7 @@
             const REFRESH_INTERVAL = 1860000; // 31 minutos
             const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
             const CACHE_24_HORAS = 1000 * 60 * 60 * 24; // 24 horas
-            const CACHE_6_HORAS = 1000 * 60 * 60 * 6; // 6 HORAS (NOVO)
+            const CACHE_6_HORAS = 1000 * 60 * 60 * 6; // 6 HORAS
             const CACHE_PREFIX = 'vestoBrapiCache_v1_'; 
             
             const DB_KEY_TRANSACOES = 'vesto_transacoes_v1';
@@ -678,25 +679,16 @@
             const refreshButton = document.getElementById('refresh-button');
             const tabButtons = document.querySelectorAll('.tab-button');
             const tabContents = document.querySelectorAll('.tab-content');
-            
-            // Toast
             const toastElement = document.getElementById('toast-notification');
             const toastMessageElement = document.getElementById('toast-message');
-            
-            // Notícias
             const fiiNewsList = document.getElementById('fii-news-list');
             const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
             const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
-
-            // Dashboard
             const dashboardStatus = document.getElementById('dashboard-status');
             const dashboardLoading = document.getElementById('dashboard-loading');
             const dashboardMensagem = document.getElementById('dashboard-mensagem');
-            const resumoCarteiraCard = document.getElementById('resumo-carteira-card');
             const dashboardDrawers = document.getElementById('dashboard-drawers');
             const notifyButton = document.getElementById('request-notify-btn');
-            
-            // Skeletons e dados do Dashboard
             const skeletonTotalValor = document.getElementById('skeleton-total-valor');
             const skeletonTotalCusto = document.getElementById('skeleton-total-custo');
             const skeletonTotalPL = document.getElementById('skeleton-total-pl');
@@ -704,47 +696,30 @@
             const totalCarteiraValor = document.getElementById('total-carteira-valor');
             const totalCarteiraCusto = document.getElementById('total-carteira-custo');
             const totalCarteiraPL = document.getElementById('total-carteira-pl');
-            
-            // Carteira
             const listaCarteira = document.getElementById('lista-carteira');
             const carteiraStatus = document.getElementById('carteira-status');
-            const carteiraMensagem = document.getElementById('carteira-mensagem');
             const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
             const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
-            
-            // Proventos
             const totalProventosEl = document.getElementById('total-proventos');
-            
-            // Página Modal Detalhes
             const detalhesPageModal = document.getElementById('detalhes-page-modal');
             const detalhesPageContent = document.getElementById('tab-detalhes');
             const detalhesVoltarBtn = document.getElementById('detalhes-voltar-btn');
-            const detalhesTitulo = document.getElementById('detalhes-titulo');
             const detalhesTituloTexto = document.getElementById('detalhes-titulo-texto');
             const detalhesNomeLongo = document.getElementById('detalhes-nome-longo');
             const detalhesConteudoScroll = document.getElementById('detalhes-conteudo-scroll');
-            const detalhesConteudo = document.getElementById('detalhes-conteudo');
             const detalhesMensagem = document.getElementById('detalhes-mensagem');
             const detalhesLoading = document.getElementById('detalhes-loading');
             const detalhesPreco = document.getElementById('detalhes-preco');
             const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
-            const detalhesHistorico = document.getElementById('detalhes-historico');
             const detalhesAiProvento = document.getElementById('detalhes-ai-provento'); 
-            
-            // Histórico
             const listaHistorico = document.getElementById('lista-historico');
             const historicoStatus = document.getElementById('historico-status');
-            const historicoMensagem = document.getElementById('historico-mensagem');
-
-            // Modal de Confirmação
             const customModal = document.getElementById('custom-modal');
             const customModalContent = document.getElementById('custom-modal-content');
             const customModalTitle = document.getElementById('custom-modal-title');
             const customModalMessage = document.getElementById('custom-modal-message');
             const customModalOk = document.getElementById('custom-modal-ok');
             const customModalCancel = document.getElementById('custom-modal-cancel');
-            
-            // Modal Adicionar Ativo
             const showAddModalBtn = document.getElementById('show-add-modal-btn');
             const addAtivoModal = document.getElementById('add-ativo-modal');
             const addAtivoModalContent = document.getElementById('add-ativo-modal-content');
@@ -753,6 +728,8 @@
             const quantityInput = document.getElementById('quantity-input');
             const precoMedioInput = document.getElementById('preco-medio-input'); 
             const addButton = document.getElementById('add-button');
+            const updateNotification = document.getElementById('update-notification');
+            const updateButton = document.getElementById('update-button');
             
             // Estado da App
             let transacoes = [];        
@@ -760,32 +737,25 @@
             let patrimonio = [];
             let saldoCaixa = 0;
             let proventosConhecidos = [];
-            
             let alocacaoChartInstance = null;
             let historicoChartInstance = null;
             let patrimonioChartInstance = null; 
-            
             let onConfirmCallback = null; 
-            
             let precosAtuais = [];
             let proventosAtuais = []; // Apenas proventos futuros
-            
             const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
-            
             let lastAlocacaoData = null; 
             let lastHistoricoData = null;
             let lastPatrimonioData = null; 
-
             let toastTimer = null;
             let isToastShowing = false;
-
-            // Estado do swipe
             let touchStartY = 0;
             let touchMoveY = 0;
             let isDraggingDetalhes = false;
+            let newWorker; 
 
             // ==========================================================
-            // Notificações Toast (Refatorado)
+            // Notificações Toast
             // ==========================================================
             
             function showToast(message) {
@@ -794,15 +764,12 @@
 
                 if (isToastShowing && toastElement.classList.contains('toast-visible')) {
                     toastElement.classList.add('toast-shake');
-                    setTimeout(() => {
-                        toastElement.classList.remove('toast-shake');
-                    }, 500);
+                    setTimeout(() => toastElement.classList.remove('toast-shake'), 500);
                 } else {
                     isToastShowing = true;
                     toastElement.classList.remove('toast-shake');
                     toastElement.classList.add('toast-visible');
                 }
-
                 toastTimer = setTimeout(() => {
                     toastElement.classList.remove('toast-visible');
                     isToastShowing = false;
@@ -813,10 +780,6 @@
             // Service Worker (PWA)
             // ==========================================================
             
-            const updateNotification = document.getElementById('update-notification');
-            const updateButton = document.getElementById('update-button');
-            let newWorker; 
-
             function showUpdateBar() {
                 console.log('Mostrando aviso de atualização.');
                 updateNotification.classList.remove('hidden');
@@ -827,14 +790,11 @@
             }
 
             if ('serviceWorker' in navigator) {
-                console.log('Registrando Service Worker...');
                 navigator.serviceWorker.register('/sw.js').then(registration => {
                     console.log('SW registrado com sucesso:', registration.scope);
-
                     registration.addEventListener('updatefound', () => {
                         console.log('[PWA] Nova versão do SW encontrada, instalando...');
                         newWorker = registration.installing;
-
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                 console.log('[PWA] Novo SW está "esperando" para ativar.');
@@ -871,7 +831,6 @@
                     notifyButton.classList.add('hidden'); 
                     return;
                 }
-                
                 if (Notification.permission === 'granted') {
                     notifyButton.classList.add('notify-on'); 
                     notifyButton.title = "Notificações ativadas! Clique para testar.";
@@ -891,12 +850,10 @@
                     testNotification();
                     return;
                  }
-                 
                  if (Notification.permission === 'denied') {
                     console.error('Notificações bloqueadas pelo usuário.');
                     return;
                  }
-                 
                  Notification.requestPermission().then(permission => {
                     console.log('Resultado da permissão:', permission);
                     checkNotificationPermission(); 
@@ -911,14 +868,12 @@
                     console.warn('Não é possível testar notificações. Permissão não concedida.');
                     return;
                 }
-                
                 const options = {
                     body: 'Tudo pronto! Você será notificado sobre suas finanças.',
                     icon: 'icons/icon-192x192.png',
                     badge: 'icons/icon-192x192.png', 
                     vibrate: [100, 50, 100],
                 };
-                
                 navigator.serviceWorker.ready.then(registration => {
                     registration.showNotification('Vesto está Ativado!', options);
                 });
@@ -1133,7 +1088,6 @@
                 localStorage.setItem(DB_KEY_PATRIMONIO, JSON.stringify(patrimonio));
             }
 
-            // *** NOVAS FUNÇÕES DE CAIXA E PROVENTOS PAGOS ***
             function carregarCaixa() {
                 const caixaSalvo = localStorage.getItem(DB_KEY_CAIXA);
                 saldoCaixa = caixaSalvo ? parseFloat(caixaSalvo) : 0;
@@ -1161,7 +1115,6 @@
                 let precisaSalvar = false;
 
                 proventosConhecidos.forEach(provento => {
-                    // Verifica se tem data, não foi processado, e a data de pagamento é anterior a hoje
                     if (provento.paymentDate && !provento.processado) {
                         const parts = provento.paymentDate.split('-');
                         const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -1175,7 +1128,6 @@
                                 precisaSalvar = true;
                                 console.log(`Processado pagamento de ${provento.symbol}: ${formatBRL(valorRecebido)}`);
                             } else {
-                                // Tinha o provento na lista mas não tem (ou não tem mais) cotas dele
                                 provento.processado = true; 
                                 precisaSalvar = true;
                             }
@@ -1188,7 +1140,6 @@
                     salvarProventosConhecidos();
                 }
             }
-            // *** FIM DAS NOVAS FUNÇÕES ***
 
             function calcularCarteira() {
                 const ativosMap = new Map();
@@ -1453,13 +1404,11 @@
                     carteiraStatus.classList.remove('hidden');
                     renderizarDashboardSkeletons(false);
                     
-                    // *** LÓGICA DE CAIXA ATUALIZADA ***
                     const corPLTotal = saldoCaixa > 0 ? 'text-green-500' : 'text-gray-500';
                     totalCarteiraValor.textContent = formatBRL(saldoCaixa); // Mostra o caixa se não houver ativos
                     totalCarteiraCusto.textContent = formatBRL(0);
                     totalCarteiraPL.textContent = `${formatBRL(saldoCaixa)} (---%)`;
                     totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
-                    // *** FIM DA ATUALIZAÇÃO ***
                     
                     dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
                     dashboardLoading.classList.add('hidden');
@@ -1583,7 +1532,6 @@
                 });
                 
                 if (carteiraOrdenada.length > 0) {
-                    // *** LÓGICA DE CAIXA ATUALIZADA ***
                     const patrimonioTotal = totalValorCarteira + saldoCaixa;
                     const totalLucroPrejuizo = (totalValorCarteira - totalCustoCarteira) + saldoCaixa;
                     const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
@@ -1599,7 +1547,6 @@
                     totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
                     
                     salvarSnapshotPatrimonio(patrimonioTotal);
-                    // *** FIM DA ATUALIZAÇÃO ***
                 }
                 
                 renderizarGraficoAlocacao(dadosGrafico);
@@ -1622,23 +1569,18 @@
             
             function renderizarHistorico() {
                 listaHistorico.innerHTML = '';
-                
                 if (transacoes.length === 0) {
-                    historicoMensagem.textContent = 'Nenhuma transação encontrada.';
                     historicoStatus.classList.remove('hidden');
                     return;
                 }
                 
                 historicoStatus.classList.add('hidden');
-                
                 [...transacoes].reverse().forEach(t => {
                     const card = document.createElement('div');
                     card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
-                    
                     const cor = 'text-green-500';
                     const sinal = '+';
                     const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-
                     card.innerHTML = `
                         <div class="flex items-center gap-3">
                             ${icone}
@@ -1657,7 +1599,7 @@
             }
 
             // ==========================================================
-            // Funções de Notícias (ATUALIZADA para Cards de Resumo com Gaveta)
+            // Funções de Notícias (ATUALIZADA com Tickers Clicáveis)
             // ==========================================================
             
             function renderizarNoticias(articles) { 
@@ -1680,6 +1622,27 @@
                     const drawerId = `news-drawer-${index}`;
                     const faviconUrl = `https://www.google.com/s2/favicons?domain=${sourceHostname}&sz=32`;
                     
+                    let tagsHtml = '';
+                    if (article.relatedTickers && article.relatedTickers.length > 0) {
+                        const tags = article.relatedTickers.map(ticker => `
+                            <button 
+                                class="news-ticker-tag"
+                                data-action="view-ticker"
+                                data-symbol="${ticker}"
+                            >
+                                ${ticker}
+                            </button>
+                        `).join('');
+                        tagsHtml = `<div class="mt-3 flex flex-wrap items-center">${tags}</div>`;
+                    }
+                    
+                    const drawerContentHtml = `
+                        <p class="news-card-summary">
+                            ${article.summary || 'Resumo da notícia não disponível.'}
+                        </p>
+                        ${tagsHtml}
+                    `;
+
                     const newsCard = document.createElement('div');
                     newsCard.className = 'card-bg rounded-2xl p-4 space-y-3'; 
                     newsCard.innerHTML = `
@@ -1702,9 +1665,7 @@
                         
                         <div id="${drawerId}" class="card-drawer">
                             <div class="drawer-content pt-3 border-t border-gray-800">
-                                <p class="news-card-summary">
-                                    ${article.summary || 'Resumo da notícia não disponível.'}
-                                </p>
+                                ${drawerContentHtml}
                             </div>
                         </div>
                     `;
@@ -1712,9 +1673,15 @@
                 });
             }
 
-            /** Busca o JSON de resumos de notícias */
-            async function fetchNoticiasBFF() {
-                const cacheKey = CACHE_PREFIX + 'noticias_json_v3'; // Nova chave de cache
+            /** * Busca o JSON de resumos de notícias
+             * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
+             */
+            async function fetchNoticiasBFF(force = false) {
+                const cacheKey = CACHE_PREFIX + 'noticias_json_v4';
+                if (force) {
+                    localStorage.removeItem(cacheKey);
+                }
+                
                 const cache = getCache(cacheKey);
                 if (cache) {
                     return cache; 
@@ -1725,7 +1692,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ todayString: todayString }) 
                     });
-                    const articles = response.json; // Espera { json: [...] }
+                    const articles = response.json;
                     if (articles && Array.isArray(articles)) {
                         setCache(cacheKey, articles, CACHE_6_HORAS);
                     }
@@ -1764,13 +1731,19 @@
                 }
             }
             
-            /** Busca preços, usando cache individual por ativo */
+            /** * Busca preços, usando cache individual por ativo
+             * (Já estava respeitando 'force')
+             */
             async function buscarPrecosCarteira(force = false) { 
                 if (carteiraCalculada.length === 0) return [];
                 console.log("A buscar preços na API (cache por ativo)...");
                 
                 const promessas = carteiraCalculada.map(async (ativo) => {
                     const cacheKey = `preco_${ativo.symbol}`;
+                    if (force) {
+                        localStorage.removeItem(cacheKey);
+                    }
+                    
                     if (!force) {
                         const precoCache = getCache(cacheKey);
                         if (precoCache && !isB3Open()) return precoCache;
@@ -1823,30 +1796,35 @@
                     .filter(p => p !== null);
             }
 
-            /** Busca proventos futuros, usando cache individual por FII */
-            async function buscarProventosFuturos() {
+            /** * Busca proventos futuros, usando cache individual por FII
+             * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
+             */
+            async function buscarProventosFuturos(force = false) {
                 const fiiNaCarteira = carteiraCalculada
                     .filter(a => isFII(a.symbol))
                     .map(a => a.symbol);
                     
                 if (fiiNaCarteira.length === 0) return [];
 
-                let proventosFuturosFiltrados = [];
+                let proventosPool = []; // Pool de proventos para filtrar
                 let fiisParaBuscar = [];
 
                 // 1. Processa o que já está em cache
                 for (const symbol of fiiNaCarteira) {
                     const cacheKey = `provento_ia_${symbol}`;
+                    if (force) {
+                        localStorage.removeItem(cacheKey);
+                    }
+                    
                     const proventoCache = getCache(cacheKey);
                     if (proventoCache) {
-                        // Adiciona ao pool de processamento (mesmo que seja antigo, processarProventosIA vai filtrar)
-                        proventosFuturosFiltrados.push(proventoCache);
+                        proventosPool.push(proventoCache);
                     } else {
                         fiisParaBuscar.push(symbol);
                     }
                 }
                 
-                console.log("Proventos em cache (para filtrar):", proventosFuturosFiltrados.map(p => p.symbol));
+                console.log("Proventos em cache (para filtrar):", proventosPool.map(p => p.symbol));
                 console.log("Proventos para buscar (API):", fiisParaBuscar);
 
                 // 2. Busca novos na API
@@ -1860,9 +1838,8 @@
                                 if (provento && provento.symbol && provento.paymentDate) {
                                     const cacheKey = `provento_ia_${provento.symbol}`;
                                     setCache(cacheKey, provento, CACHE_24_HORAS); 
-                                    proventosFuturosFiltrados.push(provento); // Adiciona ao pool de processamento
+                                    proventosPool.push(provento); // Adiciona ao pool de processamento
 
-                                    // *** LÓGICA DE CAIXA ***
                                     // Adiciona à lista de proventos conhecidos se ainda não estiver lá
                                     const idUnico = provento.symbol + '_' + provento.paymentDate;
                                     const existe = proventosConhecidos.some(p => (p.symbol + '_' + p.paymentDate) === idUnico);
@@ -1870,7 +1847,6 @@
                                         proventosConhecidos.push({ ...provento, processado: false });
                                         proventosConhecidosMudou = true;
                                     }
-                                    // *** FIM DA LÓGICA DE CAIXA ***
                                 }
                             }
                             if (proventosConhecidosMudou) {
@@ -1883,16 +1859,23 @@
                 }
                 
                 // 3. Retorna apenas os proventos que são REALMENTE futuros
-                return processarProventosIA(proventosFuturosFiltrados); 
+                return processarProventosIA(proventosPool); 
             }
 
-            /** Busca o histórico de proventos agregados para o gráfico */
-            async function buscarHistoricoProventosAgregado() {
+            /** * Busca o histórico de proventos agregados para o gráfico
+             * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
+             */
+            async function buscarHistoricoProventosAgregado(force = false) {
                 const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
                 if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
                 const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
-                const cacheKey = 'hist_agregado_v4_' + fiiSymbols.join('-'); 
+                const cacheKey = 'hist_agregado_v4_' + fiiSymbols.join('-');
+                
+                if (force) {
+                    localStorage.removeItem(cacheKey);
+                }
+                
                 const cache = getCache(cacheKey);
                 let aiData;
 
@@ -1947,14 +1930,18 @@
             // Funções Principais (Handlers)
             // ==========================================================
             
-             /** Função principal de atualização de dados */
+             /** * Função principal de atualização de dados
+              * *** CORRIGIDO: 'force' é passado para todas as funções ***
+              */
              async function atualizarTodosDados(force = false) { 
+                // *** CORRIGIDO: Não limpa mais os dados, apenas exibe os skeletons ***
                 renderizarDashboardSkeletons(true);
                 renderizarCarteiraSkeletons(true);
                 fiiNewsSkeleton.classList.remove('hidden');
                 fiiNewsList.innerHTML = '';
                 fiiNewsMensagem.classList.add('hidden');
                 
+                // Carrega dados locais primeiro
                 calcularCarteira();
                 processarDividendosPagos(); // Processa dividendos passados ANTES de renderizar
                 renderizarHistorico();
@@ -1966,27 +1953,21 @@
                 }
                 
                 const refreshIcon = refreshButton.querySelector('svg'); 
-                refreshIcon.classList.add('spin-animation');
+                if (force) {
+                    refreshIcon.classList.add('spin-animation');
+                }
 
-                let precosCache = null;
+                // *** CORRIGIDO: Carrega dados do cache (de proventos) antes de buscar na rede ***
                 if (!force) {
-                    const cacheKeyPrecos = 'precos_' + carteiraCalculada.map(a => a.symbol).join('-');
-                    precosCache = getCache(cacheKeyPrecos);
+                    // Pega proventos futuros (já filtrados) da lista de conhecidos
+                    const proventosFuturosCache = processarProventosIA(proventosConhecidos);
+                    if (proventosFuturosCache.length > 0) {
+                        proventosAtuais = proventosFuturosCache;
+                        renderizarProventos();
+                    }
                 }
                 
-                // Pega proventos futuros (já filtrados) da lista de conhecidos
-                let proventosFuturosCache = processarProventosIA(proventosConhecidos);
-                
-                if (precosCache) {
-                    precosAtuais = precosCache;
-                    proventosAtuais = proventosFuturosCache || [];
-                    renderizarCarteira();
-                    renderizarProventos();
-                } else {
-                    precosAtuais = [];
-                    proventosAtuais = [];
-                }
-                
+                // Se não houver carteira, renderiza o estado vazio e para
                 if (carteiraCalculada.length === 0) {
                      precosAtuais = []; 
                      proventosAtuais = []; 
@@ -1994,13 +1975,24 @@
                      renderizarProventos(); 
                      renderizarGraficoHistorico({ labels: [], data: [] }); 
                      refreshIcon.classList.remove('spin-animation');
+                     // Ainda busca notícias mesmo com carteira vazia
+                     try {
+                         const articles = await fetchNoticiasBFF(force);
+                         renderizarNoticias(articles);
+                     } catch (e) {
+                         console.error("Erro ao buscar notícias (carteira vazia):", e);
+                         fiiNewsSkeleton.classList.add('hidden');
+                         fiiNewsMensagem.textContent = 'Erro ao carregar notícias.';
+                         fiiNewsMensagem.classList.remove('hidden');
+                     }
+                     return;
                 }
 
                 // Dispara as buscas de rede em paralelo
                 const promessaPrecos = buscarPrecosCarteira(force); 
-                const promessaProventos = buscarProventosFuturos(); // Busca novos e filtra
-                const promessaHistorico = buscarHistoricoProventosAgregado();
-                const promessaNoticias = fetchNoticiasBFF(); 
+                const promessaProventos = buscarProventosFuturos(force);
+                const promessaHistorico = buscarHistoricoProventosAgregado(force);
+                const promessaNoticias = fetchNoticiasBFF(force); 
 
                 // Handler para quando os preços chegarem
                 promessaPrecos.then(precos => {
@@ -2020,7 +2012,7 @@
                 promessaProventos.then(proventosFuturos => {
                     proventosAtuais = proventosFuturos; // Seta os proventos futuros filtrados
                     renderizarProventos(); 
-                    if (precosAtuais.length > 0) {
+                    if (precosAtuais.length > 0) { // Re-renderiza carteira se os preços já chegaram
                         renderizarCarteira(); 
                     }
                 }).catch(err => {
@@ -2038,7 +2030,7 @@
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                 });
                 
-                // Handler para notícias (ATUALIZADO)
+                // Handler para notícias
                 promessaNoticias.then(articles => {
                     renderizarNoticias(articles);
                 }).catch(err => {
@@ -2048,17 +2040,13 @@
                     fiiNewsMensagem.classList.remove('hidden');
                 });
 
-                // Espera todas as promessas terminarem (com sucesso ou falha)
                 try {
                     await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico, promessaNoticias]); 
                 } finally {
                     console.log("Todas as sincronizações (BFF) terminaram.");
                     refreshIcon.classList.remove('spin-animation');
-                    
-                    if (carteiraCalculada.length > 0) {
-                         dashboardStatus.classList.add('hidden');
-                         dashboardLoading.classList.add('hidden');
-                    }
+                    dashboardStatus.classList.add('hidden');
+                    dashboardLoading.classList.add('hidden');
                 }
             }
             
@@ -2095,7 +2083,11 @@
                          if (!quoteData.results || quoteData.results[0].error) {
                              throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                          }
-                         localStorage.removeItem(CACHE_PREFIX + 'hist_agregado_v4_' + carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol).join('-'));
+                         // Limpa o cache do gráfico de histórico para forçar recálculo
+                         Object.keys(localStorage)
+                            .filter(key => key.startsWith(CACHE_PREFIX + 'hist_agregado_v4_'))
+                            .forEach(key => localStorage.removeItem(key));
+
                     } catch (error) {
                          console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
                          showToast("Ativo não encontrado.");
@@ -2127,7 +2119,7 @@
                 addButton.disabled = false;
                 hideAddModal();
                 
-                atualizarTodosDados(false); 
+                atualizarTodosDados(true); // Força atualização ao adicionar novo ativo
             }
 
             /** Remove um ativo (e todas as suas transações) */
@@ -2139,7 +2131,11 @@
                         transacoes = transacoes.filter(t => t.symbol !== symbol);
                         removerCacheAtivo(symbol); 
                         salvarTransacoes();
-                        atualizarTodosDados(false); 
+                        // Limpa o cache do gráfico de histórico para forçar recálculo
+                         Object.keys(localStorage)
+                            .filter(key => key.startsWith(CACHE_PREFIX + 'hist_agregado_v4_'))
+                            .forEach(key => localStorage.removeItem(key));
+                        atualizarTodosDados(true); // Força atualização ao remover
                     }
                 );
             }
@@ -2152,7 +2148,6 @@
                 detalhesNomeLongo.textContent = ''; 
                 detalhesPreco.innerHTML = '';
                 detalhesHistoricoContainer.classList.add('hidden');
-                detalhesHistorico.innerHTML = ''; 
                 detalhesAiProvento.innerHTML = ''; 
             }
             
@@ -2163,7 +2158,6 @@
                 detalhesPreco.innerHTML = '';
                 detalhesAiProvento.innerHTML = ''; 
                 detalhesHistoricoContainer.classList.add('hidden');
-                detalhesHistorico.innerHTML = ''; 
                 detalhesTituloTexto.textContent = symbol;
                 detalhesNomeLongo.textContent = 'A carregar...';
                 
@@ -2201,11 +2195,10 @@
 
                 if (precoData) {
                     detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
-                    
                     const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
-
                     const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
                     let plHtml = '';
+                    
                     if (ativoCarteira) {
                         const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
                         const custoTotal = ativoCarteira.precoMedio * ativoCarteira.quantity;
@@ -2304,11 +2297,7 @@
                 });
                 
                 // Mostra/esconde o botão FAB
-                if (tabId === 'tab-carteira') {
-                    showAddModalBtn.classList.remove('hidden');
-                } else {
-                    showAddModalBtn.classList.add('hidden');
-                }
+                showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
             }
             
             // ==========================================================
@@ -2316,7 +2305,8 @@
             // ==========================================================
 
             refreshButton.addEventListener('click', () => {
-                clearBrapiCache();
+                // *** CORRIGIDO: clearBrapiCache() removido daqui para não limpar o cache de proventos de 24h ***
+                // Apenas força a atualização de preços (que é por ativo)
                 atualizarTodosDados(true); 
             });
             
@@ -2422,15 +2412,22 @@
             });
 
             fiiNewsList.addEventListener('click', (e) => {
-                const target = e.target.closest('button[data-action="toggle-news"]');
-                if (!target) return;
-                
-                const targetId = target.dataset.target;
-                const drawer = document.getElementById(targetId);
-                const icon = target.querySelector('.card-arrow-icon');
-                
-                drawer?.classList.toggle('open');
-                icon?.classList.toggle('open');
+                const button = e.target.closest('button');
+                if (!button) return;
+                const action = button.dataset.action;
+
+                if (action === 'toggle-news') {
+                    const targetId = button.dataset.target;
+                    const drawer = document.getElementById(targetId);
+                    const icon = button.querySelector('.card-arrow-icon');
+                    drawer?.classList.toggle('open');
+                    icon?.classList.toggle('open');
+                } else if (action === 'view-ticker') {
+                    const symbol = button.dataset.symbol;
+                    if (symbol) {
+                        showDetalhesModal(symbol);
+                    }
+                }
             });
 
             // ==========================================================
@@ -2471,14 +2468,21 @@
             // Inicialização
             // ==========================================================
             
-            checkNotificationPermission(); 
-            carregarTransacoes();
-            carregarPatrimonio();
-            carregarCaixa();
-            carregarProventosConhecidos();
-            mudarAba('tab-dashboard'); 
-            atualizarTodosDados(true); // Carga inicial (forçada)
-            setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); // Atualização em background
+            function init() {
+                checkNotificationPermission(); 
+                carregarTransacoes();
+                carregarPatrimonio();
+                carregarCaixa();
+                carregarProventosConhecidos();
+                mudarAba('tab-dashboard'); 
+                
+                // *** CORRIGIDO: Carga inicial agora usa o cache ***
+                atualizarTodosDados(false); 
+                
+                setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); // Atualização em background
+            }
+            
+            init();
         });
     </script>
 </body>

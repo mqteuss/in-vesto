@@ -280,9 +280,6 @@
             line-height: 1.6;
             color: #d1d5db; /* text-gray-300 */
         }
-        .news-card-summary span { /* Emoji */
-            margin-right: 0.5rem; /* mr-2 */
-        }
         .news-card-source {
             color: #a78bfa; /* text-violet-400 */
             font-size: 0.875rem; /* text-sm */
@@ -1621,40 +1618,49 @@
 
                 articles.forEach(article => {
                     const sourceName = article.sourceName || 'Fonte';
-                    const hostname = article.sourceHostname || 'google.com';
                     
-                    // Usa o serviço de favicon do Google
-                    const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+                    // *** INÍCIO DA CORREÇÃO (Favicon + Emoji) ***
+                    
+                    // Lógica do Favicon:
+                    // 1. Tenta usar o sourceHostname (ex: "infomoney.com.br")
+                    // 2. Se não vier, usa o sourceName (ex: "Money Times")
+                    // 3. Se não vier, usa um fallback
+                    const domainQuery = article.sourceHostname || article.sourceName || 'google.com';
+                    const faviconUrl = `https://www.google.com/s2/favicons?domain=${domainQuery}&sz=32`;
 
                     // Imagem (Favicon)
                     const imageHtml = `
                         <img src="${faviconUrl}" alt="Logo ${sourceName}" 
                              class="w-14 h-14 rounded-lg object-contain p-2 flex-shrink-0 bg-gray-700"
-                             onerror="this.style.display='none'" 
+                             onerror="this.parentElement.style.display='none'" 
                         />
-                    `; // Ajustado o padding e tamanho
+                    `; // onerror agora esconde o div wrapper se a imagem falhar
 
                     // Cria o card
                     const newsCard = document.createElement('div');
                     newsCard.className = 'card-bg rounded-2xl p-4 flex gap-4';
-
+                    
+                    // Lógica do Emoji: Removido o 'span' que continha o emoji.
                     newsCard.innerHTML = `
-                        ${imageHtml}
+                        <div class="flex-shrink-0">
+                            ${imageHtml}
+                        </div>
                         <div class="flex-1 min-w-0">
                             <p class="news-card-summary">
-                                <span class="text-lg">${article.emoji || '📈'}</span>
                                 ${article.summary || 'Resumo da notícia não disponível.'}
                             </p>
                             <span class="news-card-source">${sourceName}</span>
                         </div>
                     `;
+                    // *** FIM DA CORREÇÃO ***
+                    
                     fiiNewsList.appendChild(newsCard);
                 });
             }
 
             /** Busca o JSON de resumos de notícias */
             async function fetchNoticiasBFF() {
-                const cacheKey = CACHE_PREFIX + 'noticias_json_v2'; // Nova chave de cache
+                const cacheKey = CACHE_PREFIX + 'noticias_json_v3'; // Nova chave de cache
                 
                 const cache = getCache(cacheKey);
                 if (cache) {
@@ -1802,7 +1808,7 @@
                         if (novosProventos && Array.isArray(novosProventos)) {
                             for (const provento of novosProventos) {
                                 if (provento && provento.symbol) {
-                                    const cacheKey = `provento_ia_${provento.symbol}`;
+                                    const cacheKey = `provento_ia_${symbol}`;
                                     setCache(cacheKey, provento, CACHE_24_HORAS); 
                                     proventosFinais.push(provento);
                                 }

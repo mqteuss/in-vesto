@@ -35,8 +35,8 @@ function getGeminiPayload(mode, payload) {
             userQuery = `Qual é o histórico de proventos (últimos 12 meses) para o FII ${ticker}?`;
             break;
 
-        // *** PROMPT ATUALIZADO (Inclui pagamentos de HOJE) ***
         case 'proventos_carteira':
+            // Este prompt foi atualizado para incluir pagamentos de HOJE
             systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do provento (dividendo) mais recente anunciado para uma lista de FIIs. **Inclua proventos cujo pagamento está agendado para hoje (${todayString})** ou para uma data futura. Use a busca na web para garantir que a informação seja a mais recente.
 
 TAREFA CRÍTICA: Ao buscar a data de pagamento, verifique ativamente por "fatos relevantes" ou "comunicados ao mercado" recentes (de hoje, ${todayString}) que possam ter *alterado* ou *corrigido* a data de pagamento anunciada. A data corrigida é a data correta.
@@ -55,7 +55,6 @@ Exemplo de resposta (se hoje for 07/11 e GARE11 paga hoje):
 ]`;
             userQuery = `Encontre o provento mais recente anunciado (incluindo pagamentos de hoje, ${todayString}, e futuros) para os seguintes FIIs: ${fiiList.join(', ')}. Verifique ativamente por fatos relevantes ou comunicados recentes que possam ter *corrigido* a data de pagamento.`;
             break;
-        // *** FIM DA ATUALIZAÇÃO ***
 
         case 'historico_portfolio':
             systemPrompt = `Você é um assistente financeiro. Sua tarefa é encontrar o histórico de proventos (dividendos) *por cota* dos últimos 6 meses *completos*.\n\nNÃO inclua o mês atual (data de hoje: ${todayString}).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução ou markdown.\nOrdene a resposta do mês mais antigo para o mais recente.\n\n- O mês deve estar no formato "MM/AA" (ex: "10/25").\n- Se um FII não pagou em um mês, retorne 0 para ele.\n\nExemplo de Resposta (se hoje for Nov/2025):\n[\n  {"mes": "05/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "06/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "07/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "08/25", "MXRF11": 0.10, "GARE11": 0},\n  {"mes": "09/25", "MXRF11": 0.11, "GARE11": 0.09},\n  {"mes": "10/25", "MXRF11": 0.11, "GARE11": 0.09}\n]`;
@@ -111,19 +110,35 @@ export default async function handler(request, response) {
         // Adiciona Caching
         response.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate'); // Cache de 10 minutos
 
-        // Retorna JSON ou texto limpo baseado no modo
+        // *** INÍCIO DA CORREÇÃO (PARSE ROBUSTO DE JSON) ***
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
-            // Estes modos esperam JSON, então limpamos e parseamos
-            let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            const jsonMatch = jsonText.match(/\[.*\]/s);
-            if (jsonMatch && jsonMatch[0]) {
-                jsonText = jsonMatch[0];
+            try {
+                // Tenta limpar e parsear o JSON
+                let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar um array [ ... ]
+                
+                if (jsonMatch && jsonMatch[0]) {
+                    jsonText = jsonMatch[0];
+                }
+                
+                const parsedJson = JSON.parse(jsonText);
+                
+                if (Array.isArray(parsedJson)) {
+                    return response.status(200).json({ json: parsedJson });
+                } else {
+                    throw new Error("API retornou um JSON válido, mas não um array.");
+                }
+            } catch (e) {
+                // Se o JSON.parse falhar (ex: "Não foi encontrado...")
+                // Loga o erro no servidor, mas retorna um array VAZIO para o front-end
+                console.warn(`[Alerta API Gemini] A API retornou texto inválido ("${text}") em vez de JSON. Retornando array vazio. Erro: ${e.message}`);
+                return response.status(200).json({ json: [] }); // Retorna um array vazio para não quebrar o front-end
             }
-            return response.status(200).json({ json: JSON.parse(jsonText) });
         } else {
-            // Estes modos esperam texto
+            // Este modo espera texto (historico_12m)
             return response.status(200).json({ text: text.replace(/\*/g, '') });
         }
+        // *** FIM DA CORREÇÃO ***
 
     } catch (error) {
         console.error("Erro interno no proxy Gemini:", error);

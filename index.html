@@ -457,35 +457,40 @@
         </div>
         
         <div id="tab-noticias" class="tab-content p-4">
-            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Notícias do Mês</h1>
+            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Notícias da Semana</h1>
         
             <div id="fii-news-skeleton" class="space-y-4 animate-pulse">
-                <div class="card-bg rounded-2xl p-4 flex gap-4">
-                    <div class="w-14 h-14 bg-gray-700 rounded-lg flex-shrink-0"></div>
-                    <div class="flex-1 space-y-2 pt-1">
-                        <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                        <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
-                        <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
+                <div class="card-bg rounded-2xl p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2 pt-1">
+                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                            <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
+                        </div>
+                        <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
                     </div>
                 </div>
-                <div class="card-bg rounded-2xl p-4 flex gap-4">
-                    <div class="w-14 h-14 bg-gray-700 rounded-lg flex-shrink-0"></div>
-                    <div class="flex-1 space-y-2 pt-1">
-                        <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                        <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
-                        <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
+                <div class="card-bg rounded-2xl p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2 pt-1">
+                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                            <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
+                        </div>
+                        <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
                     </div>
                 </div>
-                <div class="card-bg rounded-2xl p-4 flex gap-4">
-                    <div class="w-14 h-14 bg-gray-700 rounded-lg flex-shrink-0"></div>
-                    <div class="flex-1 space-y-2 pt-1">
-                        <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                        <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
-                        <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
+                <div class="card-bg rounded-2xl p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2 pt-1">
+                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                            <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
+                        </div>
+                        <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
                     </div>
                 </div>
             </div>
-            
             <div id="fii-news-list" class="space-y-4">
                 </div>
             
@@ -1601,13 +1606,13 @@
             }
 
             // ==========================================================
-            // Funções de Notícias (ATUALIZADA para Cards de Resumo)
+            // Funções de Notícias (ATUALIZADA para Cards de Resumo com Gaveta)
             // ==========================================================
             
-            /** Renderiza os resumos de notícias em formato de card */
+            /** Renderiza os resumos de notícias em formato de card expansível */
             function renderizarNoticias(articles) { 
                 fiiNewsSkeleton.classList.add('hidden');
-                fiiNewsList.innerHTML = ''; // Usa fii-news-list
+                fiiNewsList.innerHTML = ''; 
                 fiiNewsMensagem.classList.add('hidden');
 
                 if (!articles || articles.length === 0) {
@@ -1615,44 +1620,49 @@
                     fiiNewsMensagem.classList.remove('hidden');
                     return;
                 }
+                
+                // Ordena por data, da mais nova para a mais antiga
+                articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
 
-                articles.forEach(article => {
+                articles.forEach((article, index) => {
                     const sourceName = article.sourceName || 'Fonte';
+                    // Garante que estamos usando o hostname para o favicon
+                    const sourceHostname = article.sourceHostname || 'google.com'; 
+                    const publicationDate = article.publicationDate ? formatDate(article.publicationDate) : 'Data indisponível';
+                    const drawerId = `news-drawer-${index}`;
                     
-                    // *** INÍCIO DA CORREÇÃO (Favicon + Emoji) ***
+                    const faviconUrl = `https://www.google.com/s2/favicons?domain=${sourceHostname}&sz=32`;
                     
-                    // Lógica do Favicon:
-                    // 1. Tenta usar o sourceHostname (ex: "infomoney.com.br")
-                    // 2. Se não vier, usa o sourceName (ex: "Money Times")
-                    // 3. Se não vier, usa um fallback
-                    const domainQuery = article.sourceHostname || article.sourceName || 'google.com';
-                    const faviconUrl = `https://www.google.com/s2/favicons?domain=${domainQuery}&sz=32`;
-
-                    // Imagem (Favicon)
-                    const imageHtml = `
-                        <img src="${faviconUrl}" alt="Logo ${sourceName}" 
-                             class="w-14 h-14 rounded-lg object-contain p-2 flex-shrink-0 bg-gray-700"
-                             onerror="this.parentElement.style.display='none'" 
-                        />
-                    `; // onerror agora esconde o div wrapper se a imagem falhar
-
-                    // Cria o card
                     const newsCard = document.createElement('div');
-                    newsCard.className = 'card-bg rounded-2xl p-4 flex gap-4';
+                    // O card agora tem 'space-y-3' para separar o cabeçalho da gaveta
+                    newsCard.className = 'card-bg rounded-2xl p-4 space-y-3'; 
                     
-                    // Lógica do Emoji: Removido o 'span' que continha o emoji.
                     newsCard.innerHTML = `
-                        <div class="flex-shrink-0">
-                            ${imageHtml}
+                        <div class="flex items-start gap-3">
+                            <img src="${faviconUrl}" alt="Logo ${sourceName}" 
+                                 class="w-10 h-10 rounded-lg object-contain p-1.5 flex-shrink-0 bg-gray-700"
+                                 onerror="this.style.backgroundColor='#4b5563'; this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';" 
+                            />
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-semibold text-white">${article.title || 'Título indisponível'}</h4>
+                                <span class="text-sm text-gray-400">${sourceName} &bull; ${publicationDate}</span>
+                            </div>
+                             <button class"p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700 flex-shrink-0 ml-2" 
+                                     data-action="toggle-news" data-target="${drawerId}" title="Ler mais">
+                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="news-card-summary">
-                                ${article.summary || 'Resumo da notícia não disponível.'}
-                            </p>
-                            <span class="news-card-source">${sourceName}</span>
+                        
+                        <div id="${drawerId}" class="card-drawer">
+                            <div class="drawer-content pt-3 border-t border-gray-800">
+                                <p class="news-card-summary">
+                                    ${article.summary || 'Resumo da notícia não disponível.'}
+                                </p>
+                            </div>
                         </div>
                     `;
-                    // *** FIM DA CORREÇÃO ***
                     
                     fiiNewsList.appendChild(newsCard);
                 });
@@ -2369,6 +2379,20 @@
                 touchStartY = 0;
                 touchMoveY = 0;
             });
+
+            // *** NOVO LISTENER PARA AS GAVETAS DE NOTÍCIAS ***
+            fiiNewsList.addEventListener('click', (e) => {
+                const target = e.target.closest('button[data-action="toggle-news"]');
+                if (!target) return;
+                
+                const targetId = target.dataset.target;
+                const drawer = document.getElementById(targetId);
+                const icon = target.querySelector('.card-arrow-icon');
+                
+                drawer?.classList.toggle('open');
+                icon?.classList.toggle('open');
+            });
+            // *** FIM DO NOVO LISTENER ***
 
             // ==========================================================
             // Funções da API Gemini (BFF)

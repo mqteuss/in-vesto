@@ -274,6 +274,30 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* Estilos para o Resumo de Notícias (NOVO) */
+        #fii-news-content {
+            background-color: #1A1A1A;
+            border: 1px solid #2A2A2A;
+            padding: 1.25rem; /* p-5 */
+            border-radius: 1rem; /* rounded-2xl */
+        }
+
+        #fii-news-content p {
+            margin-bottom: 0.75rem; /* mb-3 */
+            line-height: 1.6;
+        }
+        
+        #fii-news-content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        #fii-news-content span {
+            color: #a78bfa; /* text-violet-400 */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* medium */
+        }
+
     </style>
 </head>
 <body class="antialiased">
@@ -443,40 +467,20 @@
         </div>
         
         <div id="tab-noticias" class="tab-content p-4">
-            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Notícias</h1>
+            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Notícias do Mês</h1>
         
-            <div id="fii-news-container" class="space-y-4">
-                <div id="fii-news-skeleton" class="space-y-4 animate-pulse">
-                    <div class="flex gap-3">
-                        <div class="w-16 h-16 bg-gray-700 rounded-lg flex-shrink-0"></div>
-                        <div class="flex-1 space-y-2 pt-1">
-                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                            <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
-                            <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
-                        </div>
-                    </div>
-                    <div class="flex gap-3">
-                        <div class="w-16 h-16 bg-gray-700 rounded-lg flex-shrink-0"></div>
-                        <div class="flex-1 space-y-2 pt-1">
-                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                            <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
-                            <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
-                        </div>
-                    </div>
-                    <div class="flex gap-3">
-                        <div class="w-16 h-16 bg-gray-700 rounded-lg flex-shrink-0"></div>
-                        <div class="flex-1 space-y-2 pt-1">
-                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                            <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
-                            <div class="h-3 bg-gray-700 rounded-md w-1/4 mt-2"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="fii-news-list" class="space-y-3"></div>
-                
-                <p id="fii-news-mensagem" class="text-gray-500 text-center hidden p-4"></p>
+            <div id="fii-news-skeleton" class="card-bg p-5 rounded-2xl space-y-4 animate-pulse">
+                <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                <div class="h-4 bg-gray-700 rounded-md w-5/6"></div>
+                <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
             </div>
+            
+            <div id="fii-news-content" class="text-gray-300 leading-relaxed hidden">
+                </div>
+            
+            <p id="fii-news-mensagem" class="text-gray-500 text-center hidden p-4"></p>
         </div>
         
         <div id="tab-historico" class="tab-content p-4">
@@ -671,8 +675,8 @@
             const toastElement = document.getElementById('toast-notification');
             const toastMessageElement = document.getElementById('toast-message');
             
-            // Dashboard (Notícias - NOVO)
-            const fiiNewsList = document.getElementById('fii-news-list');
+            // Notícias (ELEMENTOS ATUALIZADOS)
+            const fiiNewsContent = document.getElementById('fii-news-content');
             const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
             const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
 
@@ -1588,67 +1592,39 @@
             }
 
             // ==========================================================
-            // Funções de Notícias (ATUALIZADA)
+            // Funções de Notícias (ATUALIZADA para Resumo)
             // ==========================================================
             
-            /** Renderiza as notícias na aba de notícias */
-            function renderizarNoticias(articles) { 
+            /** Renderiza o resumo de notícias na aba */
+            function renderizarNoticias(summary) { 
                 fiiNewsSkeleton.classList.add('hidden');
-                fiiNewsList.innerHTML = '';
-
-                if (!articles || articles.length === 0) {
+                fiiNewsMensagem.classList.add('hidden');
+                fiiNewsContent.classList.remove('hidden');
+                
+                if (!summary || summary.trim() === '') {
                     fiiNewsMensagem.textContent = 'Nenhuma notícia encontrada.';
                     fiiNewsMensagem.classList.remove('hidden');
+                    fiiNewsContent.classList.add('hidden');
                     return;
                 }
+                
+                // Converte a string do Gemini (com \n) em HTML
+                // 1. Substitui (InfoMoney) por <span>(InfoMoney)</span>
+                // 2. Substitui \n (nova linha) por <br>
+                // 3. Agrupa tudo em tags <p>
+                const formattedHtml = summary
+                    .replace(/\((.*?)\)/g, '<span>($1)</span>') // Adiciona span para a fonte
+                    .split('\n') // Divide por linha
+                    .filter(line => line.trim() !== '') // Remove linhas vazias
+                    .map(line => `<p>${line}</p>`) // Envolve cada linha em <p>
+                    .join('');
 
-                articles.forEach(article => {
-                    const sourceName = article.sourceName || 'Fonte Desconhecida';
-                    
-                    // *** INÍCIO DA MODIFICAÇÃO (Logo/Favicon) ***
-                    let hostname = 'noticia.com'; // Fallback
-                    try {
-                        // Extrai o domínio principal da URL (ex: "infomoney.com.br")
-                        hostname = new URL(article.url).hostname;
-                    } catch (e) {
-                        console.warn('URL de notícia inválida:', article.url);
-                    }
-                    
-                    // Usa o serviço de favicon do Google para buscar o logo
-                    // &sz=32 pede um ícone de 32x32 pixels
-                    const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-
-                    const imageHtml = `
-                        <img src="${faviconUrl}" alt="Logo ${sourceName}" 
-                             class="w-16 h-16 rounded-lg object-contain p-2.5 flex-shrink-0 bg-gray-700"
-                             onerror="this.style.display='none'" 
-                        />
-                    `; // Adicionei object-contain e padding (p-2.5) para o logo ficar melhor
-                       // onerror esconde a imagem se o Google não encontrar um ícone
-                       
-                    // *** FIM DA MODIFICAÇÃO ***
-
-                    const newsCard = document.createElement('a');
-                    newsCard.href = article.url;
-                    newsCard.target = '_blank'; 
-                    newsCard.rel = 'noopener noreferrer';
-                    newsCard.className = 'flex gap-3 p-2 -m-2 rounded-lg hover:bg-gray-800 transition-colors duration-200 ease-in-out';
-
-                    newsCard.innerHTML = `
-                        ${imageHtml}
-                        <div class="flex-1 min-w-0">
-                            <h5 class="text-sm font-semibold text-gray-100 truncate ...">${article.title}</h5>
-                            <p class="text-sm text-gray-400 clamp-2 leading-tight mt-1">${article.description || ''}</p>
-                            <span class="text-xs font-medium text-purple-400 mt-2 block">${sourceName}</span>
-                        </div>
-                    `;
-                    fiiNewsList.appendChild(newsCard);
-                });
+                fiiNewsContent.innerHTML = formattedHtml;
             }
 
-            /** Busca notícias, usando o cache de 6h do localStorage */
+            /** Busca o resumo de notícias */
             async function fetchNoticiasBFF() {
-                const cacheKey = CACHE_PREFIX + 'noticias_fii_v1';
+                const cacheKey = CACHE_PREFIX + 'noticias_resumo_v1'; // Nova chave de cache
                 
                 const cache = getCache(cacheKey);
                 if (cache) {
@@ -1662,12 +1638,12 @@
                         body: JSON.stringify({ todayString: todayString }) 
                     });
                     
-                    const articles = response.json; 
+                    const summary = response.summary; // Espera { summary: "..." }
                     
-                    if (articles && Array.isArray(articles)) {
-                        setCache(cacheKey, articles, CACHE_6_HORAS);
+                    if (summary) {
+                        setCache(cacheKey, summary, CACHE_6_HORAS);
                     }
-                    return articles;
+                    return summary;
                 } catch (error) {
                     console.error("Erro ao buscar notícias (BFF):", error);
                     throw error;
@@ -1876,6 +1852,8 @@
              async function atualizarTodosDados(force = false) { 
                 renderizarDashboardSkeletons(true);
                 renderizarCarteiraSkeletons(true);
+                fiiNewsSkeleton.classList.remove('hidden'); // Mostra skeleton de notícias
+                fiiNewsContent.classList.add('hidden'); // Esconde conteúdo antigo
                 
                 calcularCarteira();
                 renderizarHistorico();
@@ -1966,9 +1944,9 @@
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
                 });
                 
-                // Handler para notícias (NOVO)
-                promessaNoticias.then(noticias => {
-                    renderizarNoticias(noticias);
+                // Handler para notícias (ATUALIZADO)
+                promessaNoticias.then(summary => {
+                    renderizarNoticias(summary);
                 }).catch(err => {
                     console.error("Erro ao buscar notícias (BFF):", err);
                     fiiNewsSkeleton.classList.add('hidden');
@@ -2175,7 +2153,7 @@
                             </div>
                             <div class="bg-gray-800 p-3 rounded-xl text-center">
                                 <span class="text-xs text-gray-500">Mín. Dia</span>
-                                <p class="text-base font-semibold text-red-500">${formatBRL(precoData.regularMarketDayLow)}</p>
+                                <p class="text-base font-semibold text-red-500">${formatBSRL(precoData.regularMarketDayLow)}</p>
                             </div>
                         </div>
                         <div class="bg-gray-800 p-4 rounded-xl">

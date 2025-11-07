@@ -26,14 +26,19 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 // Constrói o payload para a API Gemini (Modo Notícias)
 function getGeminiPayload(todayString) {
+    // *** PROMPT ATUALIZADO PARA SER MAIS RIGOROSO ***
     const systemPrompt = `Você é um assistente de notícias financeiras. Sua única tarefa é encontrar as 5 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, usando a busca na web (data de hoje: ${todayString}).
+
+IMPORTANTE: As notícias devem ser das **últimas 24 horas**. Use a busca na web para verificar a data da publicação.
+
+TAREFA CRÍTICA: Antes de incluir uma notícia, verifique (usando a busca na web) se a URL ('url') está ativa e NÃO retorna um erro 404, 410 ou qualquer tipo de "Página não encontrada". Inclua apenas links válidos.
 
 Responda APENAS com um array JSON válido, sem nenhum outro texto, introdução ou markdown (\`\`\`).
 
 - As notícias devem ser em português.
-- 'url' deve ser o link direto para a notícia.
+- 'url' deve ser o link direto para a notícia (VERIFICADO E ATIVO).
 - 'sourceName' deve ser o nome do portal de notícias (ex: "InfoMoney", "Fiis.com.br").
-- 'publishedAt' deve estar no formato AAAA-MM-DD. Se a data exata não for encontrada, use a data de hoje.
+- 'publishedAt' deve estar no formato AAAA-MM-DD (das últimas 24 horas).
 - 'description' deve ser um resumo curto da notícia.
 
 Exemplo de resposta:
@@ -42,7 +47,8 @@ Exemplo de resposta:
   {"title": "HGLG11: Vacância cai para 5%", "url": "https://exemplo.com/hglg11", "sourceName": "Fiis.com.br", "description": "A vacância do HGLG11 atingiu...", "publishedAt": "2025-11-06"}
 ]`;
 
-    const userQuery = `Encontre as 5 notícias mais recentes e relevantes (de hoje, ${todayString}) sobre FIIs e Fundos Imobiliários no Brasil.`;
+    // *** QUERY ATUALIZADA ***
+    const userQuery = `Encontre as 5 notícias mais recentes (últimas 24 horas) sobre FIIs e Fundos Imobiliários no Brasil. Verifique se os links estão ativos e não estão quebrados (erro 404). Data de hoje: ${todayString}.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],

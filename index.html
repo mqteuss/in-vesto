@@ -496,29 +496,20 @@
         </div>
         
         <div id="tab-historico" class="tab-content p-4">
-            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
-            
-            <div class="card-bg rounded-2xl mb-6 shadow-lg">
-                <div id="toggle-backup-drawer" class="flex justify-between items-center p-4 cursor-pointer">
-                    <h3 class="text-lg font-semibold text-white ml-2">Gerenciamento de Dados</h3>
-                    <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" title="Mostrar opções">
-                        <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
+                
+                <div class="flex items-center gap-3">
+                    <button id="copiar-dados-btn" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Copiar dados (Exportar)">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
                     </button>
-                </div>
-                
-                <div id="backup-drawer" class="card-drawer">
-                    <div class="drawer-content p-4 border-t border-gray-800 space-y-4">
-                        <p class="text-sm text-gray-400">Copie os dados para a área de transferência ou cole um backup abaixo para restaurar.</p>
-                        <button id="copiar-dados-btn" class="w-full py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md transition-transform active:scale-95 hover:bg-violet-600">
-                            Copiar Dados (Clipboard)
-                        </button>
-                        <textarea id="importar-textarea" class="w-full h-24 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors" placeholder="Cole o seu 'código' de backup aqui..."></textarea>
-                        <button id="importar-texto-btn" class="w-full py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-transform active:scale-95">
-                            Restaurar do Texto
-                        </button>
-                    </div>
+                    <button id="abrir-importar-modal-btn" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Colar dados (Importar)">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div id="lista-historico" class="space-y-3"></div>
@@ -637,6 +628,22 @@
         </div>
     </div>
     
+    <div id="import-text-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="import-modal-title" role="dialog" aria-modal="true">
+        <div id="import-text-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
+            <h3 id="import-modal-title" class="text-xl font-semibold text-white mb-4 text-center">Importar Dados</h3>
+            <p class="text-sm text-gray-400 mb-4 text-center">Cole o seu 'código' de backup abaixo para restaurar.</p>
+            <textarea id="import-text-textarea" class="w-full h-24 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors" placeholder="Cole o seu 'código' de backup aqui..."></textarea>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="import-text-cancel-btn" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
+                <button 
+                    id="import-text-confirm-btn" 
+                    class="py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95"
+                >
+                    Restaurar
+                </button>
+            </div>
+        </div>
+    </div>
     <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
         <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
             
@@ -861,10 +868,14 @@
             const updateButton = document.getElementById('update-button');
             
             // CÓDIGO JS (VARIÁVEIS) ATUALIZADO AQUI
-            const toggleBackupDrawerBtn = document.getElementById('toggle-backup-drawer');
             const copiarDadosBtn = document.getElementById('copiar-dados-btn');
-            const importarTextarea = document.getElementById('importar-textarea');
-            const importarTextoBtn = document.getElementById('importar-texto-btn');
+            const abrirImportarModalBtn = document.getElementById('abrir-importar-modal-btn');
+            
+            const importTextModal = document.getElementById('import-text-modal');
+            const importTextModalContent = document.getElementById('import-text-modal-content');
+            const importTextTextarea = document.getElementById('import-text-textarea');
+            const importTextConfirmBtn = document.getElementById('import-text-confirm-btn');
+            const importTextCancelBtn = document.getElementById('import-text-cancel-btn');
             // FIM DO CÓDIGO JS (VARIÁVEIS) ATUALIZADO
 
             // Estado da App
@@ -894,7 +905,7 @@
             // Notificações Toast
             // ==========================================================
             
-            // FUNÇÃO ATUALIZADA (Recebe 'type')
+            // FUNÇÃO ATUALIZADA (Recebe 'type' e muda para VERDE)
             function showToast(message, type = 'error') {
                 clearTimeout(toastTimer);
                 toastMessageElement.textContent = message;
@@ -902,14 +913,14 @@
                 // Reseta classes de cor
                 toastElement.classList.remove(
                     'bg-red-800', 'border-red-600',       // Classes de Erro
-                    'bg-violet-700', 'border-violet-500'  // Classes de Sucesso
+                    'bg-green-700', 'border-green-500'    // Classes de Sucesso (AGORA VERDE)
                 );
                 
                 // Aplica classes de cor com base no 'type'
                 if (type === 'success') {
-                    toastElement.classList.add('bg-violet-700', 'border-violet-500');
+                    toastElement.classList.add('bg-green-700', 'border-green-500'); // SUCESSO (VERDE)
                 } else { // 'error' ou default
-                    toastElement.classList.add('bg-red-800', 'border-red-600');
+                    toastElement.classList.add('bg-red-800', 'border-red-600'); // ERRO (VERMELHO)
                 }
 
                 if (isToastShowing && toastElement.classList.contains('toast-visible')) {
@@ -1198,6 +1209,23 @@
                     precoMedioInput.classList.remove('border-red-500');
                 }, 200);
             }
+            
+            // NOVAS FUNÇÕES DE MODAL DE IMPORTAÇÃO
+            function showImportModal() {
+                importTextModal.classList.add('visible');
+                importTextModalContent.classList.remove('modal-out');
+                importTextTextarea.focus();
+            }
+            
+            function hideImportModal() {
+                importTextModalContent.classList.add('modal-out');
+                setTimeout(() => {
+                    importTextModal.classList.remove('visible');
+                    importTextModalContent.classList.remove('modal-out');
+                    importTextTextarea.value = ''; // Limpa o textarea
+                }, 200);
+            }
+            // FIM DAS NOVAS FUNÇÕES
             
             function showDetalhesModal(symbol) {
                 detalhesPageContent.style.transform = ''; 
@@ -2620,17 +2648,14 @@
             });
 
             // CÓDIGO JS (LISTENERS) ATUALIZADO AQUI
-            toggleBackupDrawerBtn.addEventListener('click', (e) => {
-                // Impede que o clique no botão propague para o 'div' pai
-                e.stopPropagation(); 
-                const drawer = document.getElementById('backup-drawer');
-                const icon = toggleBackupDrawerBtn.querySelector('.card-arrow-icon');
-                drawer?.classList.toggle('open');
-                icon?.classList.toggle('open');
-            });
-            
             copiarDadosBtn.addEventListener('click', handleCopiarDados);
-            importarTextoBtn.addEventListener('click', handleImportarTexto);
+            abrirImportarModalBtn.addEventListener('click', showImportModal);
+            
+            importTextCancelBtn.addEventListener('click', hideImportModal);
+            importTextConfirmBtn.addEventListener('click', handleImportarTexto);
+            importTextModal.addEventListener('click', (e) => {
+                if (e.target === importTextModal) { hideImportModal(); } 
+            });
             // FIM DO CÓDIGO JS (LISTENERS) ATUALIZADO
 
             // ==========================================================
@@ -2673,7 +2698,6 @@
 
             async function handleCopiarDados() {
                 console.log("Iniciando cópia para o clipboard...");
-                copiarDadosBtn.textContent = 'A copiar...';
                 copiarDadosBtn.disabled = true;
 
                 try {
@@ -2696,19 +2720,19 @@
                     // Usamos a API do Clipboard para copiar o texto
                     await navigator.clipboard.writeText(jsonString);
                     
-                    showToast("Dados copiados para a área de transferência!", 'success'); // SUCESSO (roxo)
+                    showToast("Dados copiados para a área de transferência!", 'success'); // SUCESSO (VERDE)
 
                 } catch (err) {
                     console.error("Erro ao copiar dados para o clipboard:", err);
                     showToast("Erro ao copiar dados."); // ERRO (vermelho)
                 } finally {
-                    copiarDadosBtn.textContent = 'Copiar Dados (Clipboard)';
                     copiarDadosBtn.disabled = false;
                 }
             }
 
+            // FUNÇÃO ATUALIZADA (lê do novo modal)
             function handleImportarTexto() {
-                const texto = importarTextarea.value;
+                const texto = importTextTextarea.value;
                 if (!texto || texto.trim() === '') {
                     showToast("Área de texto vazia."); // ERRO (vermelho)
                     return;
@@ -2718,21 +2742,24 @@
                 try {
                     backup = JSON.parse(texto);
                     
-                    // Validação (mesma do 'handleImportarArquivo')
+                    // Validação
                     if (!backup.version || backup.version !== 'vesto-v1' || !backup.data || !Array.isArray(backup.data.transacoes)) {
                         throw new Error("Texto de backup inválido ou corrompido.");
                     }
                     
-                    // Confirmação (mesma do 'handleImportarArquivo')
-                    showModal(
-                        'Importar Backup?',
-                        'Atenção: Isso irá APAGAR todos os seus dados atuais e substituí-los pelo backup. Esta ação não pode ser desfeita.',
-                        () => { 
-                            // Reutilizamos a MESMA função de importação!
-                            importarDados(backup.data); 
-                            importarTextarea.value = ''; // Limpa o textarea
-                        }
-                    );
+                    // Confirmação (usando o modal genérico)
+                    hideImportModal(); // Esconde o modal de texto
+                    
+                    setTimeout(() => { // Pequeno delay para a transição do modal
+                         showModal(
+                            'Importar Backup?',
+                            'Atenção: Isso irá APAGAR todos os seus dados atuais e substituí-los pelo backup. Esta ação não pode ser desfeita.',
+                            () => { 
+                                // Reutilizamos a MESMA função de importação!
+                                importarDados(backup.data); 
+                            }
+                        );
+                    }, 250);
 
                 } catch (err) {
                     console.error("Erro ao ler texto de backup:", err);
@@ -2740,10 +2767,11 @@
                 }
             }
 
+            // FUNÇÃO ATUALIZADA (controla o novo botão)
             async function importarDados(data) {
                 console.log("Iniciando importação...");
-                importarTextoBtn.textContent = 'A importar...';
-                importarTextoBtn.disabled = true;
+                importTextConfirmBtn.textContent = 'A importar...';
+                importTextConfirmBtn.disabled = true;
 
                 try {
                     const stores = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos'];
@@ -2775,14 +2803,14 @@
                     // 4. Forçar atualização total da UI com os novos dados
                     await atualizarTodosDados(true);
                     
-                    showToast("Dados importados com sucesso!", 'success'); // SUCESSO (roxo)
+                    showToast("Dados importados com sucesso!", 'success'); // SUCESSO (VERDE)
 
                 } catch (err) {
                     console.error("Erro grave durante a importação:", err);
                     showToast("Erro grave ao importar dados."); // ERRO (vermelho)
                 } finally {
-                    importarTextoBtn.textContent = 'Restaurar do Texto';
-                    importarTextoBtn.disabled = false;
+                    importTextConfirmBtn.textContent = 'Restaurar';
+                    importTextConfirmBtn.disabled = false;
                 }
             }
 

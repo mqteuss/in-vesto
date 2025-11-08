@@ -1,3 +1,661 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vesto</title>
+    
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <link rel="manifest" href="manifest.json">
+
+    <meta name="theme-color" content="#1A1A1A">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #101010; 
+            color: #f3f4f6;
+        }
+        
+        .card-bg {
+            background-color: #1A1A1A;
+            border: 1px solid #2A2A2A;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .accent-bg {
+            background-color: #8B5CF6; /* Roxo (violet-500) */
+            color: #FFF;
+        }
+        .accent-bg:hover {
+            background-color: #7C3AED; /* Roxo mais escuro (violet-600) */
+        }
+        
+        .accent-text { color: #8B5CF6; }
+        .hover-accent-text:hover { color: #A78BFA; }
+
+        /* Animações */
+        .tab-content { display: none; }
+        .tab-content.active {
+            display: block;
+            animation: slideUpIn 0.3s ease-out forwards;
+        }
+        @keyframes slideUpIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes newCardIn {
+             from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
+
+        /* Barra de Navegação */
+        @keyframes gentleFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        .bottom-nav {
+            background-color: rgba(26, 26, 26, 0.6); 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid #2A2A2A; 
+        }
+        
+        .tab-button {
+            color: #6b7280; 
+            transition: all 0.3s ease-in-out;
+            flex: 1; 
+        }
+        
+        .tab-button:active { transform: scale(0.90); }
+
+        .tab-button.active {
+            color: #8B5CF6; 
+            transform: translateY(-4px); 
+        }
+        
+        .tab-button.active .tab-button-icon-wrapper {
+             animation: gentleFloat 1.5s ease-in-out infinite;
+        }
+        
+        /* Loaders e Spinners */
+        .spin-animation { animation: spin 1s linear infinite; }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        input[type=number] { -moz-appearance: textfield; }
+        
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #4b5563; 
+            border-bottom-color: #8B5CF6; 
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        .loader-sm {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #4b5563;
+            border-bottom-color: #8B5CF6;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Scrollbars */
+        .scrollable-content {
+             max-height: 40vh; 
+             overflow-y: auto;
+             scrollbar-width: thin;
+             scrollbar-color: #2A2A2A #1A1A1A;
+        }
+        .scrollable-content::-webkit-scrollbar { width: 6px; }
+        .scrollable-content::-webkit-scrollbar-track {
+            background: #1A1A1A;
+            border-radius: 10px;
+        }
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background-color: #4b5563;
+            border-radius: 10px;
+            border: 2px solid #1A1A1A;
+        }
+        #detalhes-historico.scrollable-content {
+             max-height: 320px;
+        }
+        
+        /* Modal Genérico */
+        .custom-modal { display: none; }
+        .custom-modal.visible { display: flex; }
+        
+        .custom-modal.visible .modal-content {
+            animation: modalIn 0.2s ease-out forwards;
+        }
+        .modal-content.modal-out {
+            animation: modalOut 0.2s ease-in forwards;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes modalOut {
+            from { opacity: 1; transform: scale(1) translateY(0); }
+            to { opacity: 0; transform: scale(0.95) translateY(10px); }
+        }
+
+        /* Página Modal (Detalhes) */
+        .page-modal { 
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease-in-out;
+            z-index: 70; 
+        }
+        .page-modal.visible { 
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .page-content {
+            transition: transform 0.4s ease-in-out;
+            transform: translateY(100%);
+            background-color: #101010; 
+            position: fixed; 
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: 0 auto; 
+            max-width: 32rem; 
+            z-index: 80;
+        }
+        .page-modal.visible .page-content {
+            transform: translateY(0);
+        }
+        .page-content.closing { 
+            transform: translateY(100%);
+        }
+        
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        /* Gaveta (Drawer) do Card */
+        .card-drawer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out;
+        }
+        .card-drawer.open {
+            max-height: 350px; 
+        }
+        .card-drawer .drawer-content {
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s;
+        }
+        .card-drawer.open .drawer-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .card-arrow-icon {
+            transition: transform 0.4s ease-in-out;
+        }
+        .card-arrow-icon.open {
+            transform: rotate(180deg);
+        }
+        
+        /* Sino de Notificação */
+        #request-notify-btn.notify-on {
+            color: #8B5CF6; 
+            animation: ringBell 1.5s ease-in-out infinite;
+        }
+        @keyframes ringBell {
+            0%, 100% { transform: rotate(0); }
+            10%, 30%, 50%, 70% { transform: rotate(15deg); }
+            20%, 40%, 60%, 80% { transform: rotate(-15deg); }
+        }
+        #request-notify-btn.notify-off {
+            color: #4b5563; 
+        }
+
+        /* Notificação Toast */
+        #toast-notification {
+            opacity: 0;
+            transform: translateY(-100%);
+            transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+        
+        #toast-notification.toast-visible {
+            opacity: 1;
+            transform: translateY(1rem); /* 1rem = p-4 do container pai */
+        }
+        
+        .toast-shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+          10%, 90% { transform: translateX(-1%) translateY(1rem); }
+          20%, 80% { transform: translateX(1%) translateY(1rem); }
+          30%, 50%, 70% { transform: translateX(-2%) translateY(1rem); }
+          40%, 60% { transform: translateX(2%) translateY(1rem); }
+        }
+        
+        /* Estilização do card de resumo de notícia */
+        .news-card-summary {
+            line-height: 1.6;
+            color: #d1d5db; /* text-gray-300 */
+        }
+        /* Estilo das Tags de Ticker */
+        .news-ticker-tag {
+            display: inline-block;
+            background-color: #374151; /* gray-700 */
+            color: #d1d5db; /* gray-300 */
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 500; /* medium */
+            padding: 2px 10px; /* py-0.5 px-2.5 */
+            border-radius: 9999px; /* rounded-full */
+            margin-right: 6px; /* mr-1.5 */
+            margin-bottom: 6px; /* mb-1.5 */
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .news-ticker-tag:hover {
+            background-color: #6D28D9; /* purple-700 */
+            color: #FFF;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
+
+        <div id="tab-dashboard" class="tab-content active p-4">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Dashboard</h1>
+                <button id="request-notify-btn" class="p-2 text-gray-600 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Ativar Notificações">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                </button>
+            </div>
+
+            <div id="resumo-carteira-card" class="card-bg p-5 rounded-2xl mb-6 text-center">
+                <span class="text-sm text-gray-500">Valor Total da Carteira</span>
+                <div id="skeleton-total-valor" class="h-10 w-3/4 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
+                <h2 id="total-carteira-valor" class="text-4xl font-bold mt-1 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</h2>
+                
+                <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-800">
+                    <div>
+                        <span class="text-xs text-gray-500">Custo Total</span>
+                        <div id="skeleton-total-custo" class="h-6 w-2/3 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
+                        <p id="total-carteira-custo" class="text-lg font-semibold text-gray-300 hidden">R$ 0,00</p>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500">Lucro/Prejuízo</span>
+                        <div id="skeleton-total-pl" class="h-6 w-full bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
+                        <p id="total-carteira-pl" class="text-lg font-semibold text-gray-500 hidden">R$ 0,00 (0.00%)</p>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500">Próx. Proventos</span>
+                        <div id="skeleton-total-proventos" class="h-6 w-2/3 bg-gray-700 rounded-md animate-pulse mx-auto mt-1"></div>
+                        <p id="total-proventos" class="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="dashboard-drawers" class="space-y-4">
+                <div class="card-bg p-4 rounded-2xl shadow-lg">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-white ml-2">Evolução do Patrimônio</h3>
+                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="patrimonio-chart-drawer" title="Mostrar menos">
+                            <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="patrimonio-chart-drawer" class="card-drawer open">
+                        <div id="patrimonio-container" class="drawer-content relative h-64 pt-4">
+                            <canvas id="patrimonio-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-bg p-4 rounded-2xl shadow-lg">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-white ml-2">Alocação</h3>
+                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="alocacao-chart-drawer" title="Mostrar mais">
+                            <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="alocacao-chart-drawer" class="card-drawer">
+                        <div id="grafico-container" class="drawer-content relative h-64 pt-4">
+                            <canvas id="alocacao-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-bg p-4 rounded-2xl shadow-lg">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-white ml-2">Proventos Recebidos</h3>
+                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="proventos-chart-drawer" title="Mostrar mais">
+                            <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="proventos-chart-drawer" class="card-drawer">
+                        <div id="historico-grafico-container" class="drawer-content relative h-64 pt-4">
+                            <canvas id="historico-proventos-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div> 
+            
+            <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden">
+                <p id="dashboard-mensagem">A carregar dados...</p>
+                 <div id="dashboard-loading" class="flex justify-center items-center py-4">
+                    <span class="loader"></span>
+                 </div>
+            </div>
+        </div>
+        
+        <div id="tab-carteira" class="tab-content p-4">
+            
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Meus Ativos</h1>
+                <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar dados">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M21 2v6h-6"></path>
+                        <path d="M3 22v-6h6"></path>
+                        <path d="M21 13a9 9 0 0 1-9 9H3"></path>
+                        <path d="M3 11a9 9 0 0 1 9-9h9"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <h2 class="text-xl font-semibold text-white mb-3">Minha Posição</h2>
+            
+            <div id="lista-carteira" class="space-y-4"></div>
+            
+            <div id="skeleton-lista-carteira" class="space-y-4">
+                <div class="card-bg p-4 rounded-2xl shadow-lg animate-pulse">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-gray-700 flex-shrink-0"></div>
+                            <div class="space-y-2">
+                                <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
+                                <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0 ml-2 space-y-2">
+                            <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
+                            <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
+                        <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
+                    </div>
+                </div>
+                <div class="card-bg p-4 rounded-2xl shadow-lg animate-pulse">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-gray-700 flex-shrink-0"></div>
+                            <div class="space-y-2">
+                                <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
+                                <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0 ml-2 space-y-2">
+                            <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
+                            <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
+                        <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="carteira-status" class="text-center text-gray-500 mt-12 hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
+                </svg>
+                <p id="carteira-mensagem" class="text-lg mt-4">A sua carteira está vazia.</p>
+                <button id="empty-state-add-btn" class="mt-6 py-2 px-5 accent-bg text-white font-semibold rounded-lg shadow-md transition-transform active:scale-95 hover:bg-violet-600">
+                    Adicionar primeiro ativo
+                </button>
+            </div>
+        </div>
+        
+        <div id="tab-noticias" class="tab-content p-4">
+            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Notícias da Semana</h1>
+        
+            <div id="fii-news-skeleton" class="space-y-4 animate-pulse">
+                <div class="card-bg rounded-2xl p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2 pt-1">
+                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                            <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
+                        </div>
+                        <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
+                    </div>
+                </div>
+                <div class="card-bg rounded-2xl p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2 pt-1">
+                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                            <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
+                        </div>
+                        <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
+                    </div>
+                </div>
+                <div class="card-bg rounded-2xl p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2 pt-1">
+                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                            <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
+                        </div>
+                        <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="fii-news-list" class="space-y-4"></div>
+            <p id="fii-news-mensagem" class="text-gray-500 text-center hidden p-4"></p>
+        </div>
+        
+        <div id="tab-historico" class="tab-content p-4">
+            <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
+            <div id="lista-historico" class="space-y-3"></div>
+            <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
+                <p id="historico-mensagem">Nenhuma transação encontrada.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
+        <div class="card-bg rounded-xl p-4 shadow-2xl flex items-center justify-between gap-3">
+            <span class="text-sm font-medium text-gray-100">Uma nova versão está disponível!</span>
+            <button id="update-button" class="py-2 px-4 accent-bg text-white rounded-lg transition-colors text-sm font-semibold">
+                Atualizar
+            </button>
+        </div>
+    </div>
+    
+    <button id="show-add-modal-btn" class="fixed bottom-24 right-5 z-40 accent-bg text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 hover:bg-violet-600 hidden" title="Adicionar Ativo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+    </button>
+    
+    <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
+        <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                </svg>
+            </div>
+            <span class="text-xs mt-1 font-medium">Dashboard</span>
+        </button>
+        
+        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-carteira" title="Carteira">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
+                    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
+                    <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
+                </svg>
+            </div>
+            <span class="text-xs mt-1 font-medium">Carteira</span>
+        </button>
+        
+        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-noticias" title="Notícias">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path>
+                </svg>
+            </div>
+            <span class="text-xs mt-1 font-medium">Notícias</span>
+        </button>
+        
+        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-historico" title="Histórico">
+            <div class="tab-button-icon-wrapper"> 
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 3v18h18"></path>
+                  <path d="M7 12h10"></path>
+                  <path d="M7 6h10"></path>
+                  <path d="M7 18h10"></path>
+                </svg>
+            </div>
+            <span class="text-xs mt-1 font-medium">Histórico</span>
+        </button>
+    </nav>
+    
+    <div id="custom-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div id="custom-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
+            <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar Ação</h3>
+            <p id="custom-modal-message" class="text-sm text-gray-300 text-center mb-6">Tem certeza?</p>
+            <div class="flex justify-end gap-3">
+                <button id="custom-modal-cancel" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
+                <button id="custom-modal-ok" class="py-2 px-4 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors">Confirmar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-16 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">
+        <div id="add-ativo-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
+            <h3 id="add-modal-title" class="text-xl font-semibold text-white mb-5 text-center">Adicionar Compra</h3>
+            <div class="space-y-4">
+                <input 
+                    type="text" 
+                    id="ticker-input" 
+                    placeholder="Ativo (ex: MXRF11)" 
+                    class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors"
+                >
+                <div class="flex gap-3">
+                    <input
+                        type="number"
+                        id="quantity-input"
+                        placeholder="Qtd."
+                        class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
+                    >
+                    <input
+                        type="number"
+                        id="preco-medio-input"
+                        placeholder="Preço (R$)"
+                        step="0.01"
+                        class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
+                    >
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="add-ativo-cancel-btn" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
+                <button 
+                    id="add-button" 
+                    class="py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
+                >
+                    Adicionar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
+        <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
+            
+            <div class="flex justify-between items-center p-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
+                <div id="detalhes-titulo" class="flex-1 min-w-0">
+                    <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
+                     <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
+                </div>
+                <button id="detalhes-voltar-btn" class="p-2 ml-3 text-gray-400 hover:text-white rounded-full transition-colors flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div id="detalhes-conteudo-scroll" class="overflow-y-auto h-[calc(90vh-65px)] p-4">
+                <div id="detalhes-conteudo" class="space-y-5">
+                     <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
+                        <span class="loader"></span>
+                     </div>
+                     <p id="detalhes-mensagem" class="text-center text-gray-500 py-8">Clique em "Detalhes" num ativo da sua carteira para ver as informações aqui.</p>
+                     
+                     <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
+                     
+                     <div id="detalhes-historico-container" class="hidden">
+                        <div id="detalhes-ai-provento" class="my-4"></div>
+                        <div id="detalhes-historico" class="space-y-2 scrollable-content pr-2"></div>
+                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
+        <div id="toast-notification" 
+             class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl bg-red-800 border border-red-600 text-white font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span id="toast-message" class="flex-1">Erro ao processar.</span>
+        </div>
+    </div>
+    
     <script>
         // Configurações padrão do Chart.js
         Chart.defaults.color = '#9ca3af'; 
@@ -1980,3 +2638,5 @@
             await init();
         });
     </script>
+</body>
+</html>

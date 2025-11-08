@@ -497,6 +497,20 @@
         
         <div id="tab-historico" class="tab-content p-4">
             <h1 class="text-4xl font-extrabold tracking-tight mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
+            
+            <div class="card-bg p-4 rounded-2xl mb-6 space-y-4">
+                <h3 class="text-lg font-semibold text-white ml-2">Gerenciamento de Dados</h3>
+                <p class="text-sm text-gray-400 ml-2">Faça backup ou restaure seus dados.</p>
+                <div class="flex gap-3">
+                    <button id="exportar-dados-btn" class="flex-1 py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md transition-transform active:scale-95 hover:bg-violet-600">
+                        Exportar Backup
+                    </button>
+                    <button id="importar-dados-btn" class="flex-1 py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-transform active:scale-95">
+                        Importar Backup
+                    </button>
+                    <input type="file" id="importar-dados-input" class="hidden" accept="application/json">
+                </div>
+            </div>
             <div id="lista-historico" class="space-y-3"></div>
             <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
                 <p id="historico-mensagem">Nenhuma transação encontrada.</p>
@@ -836,6 +850,12 @@
             const updateNotification = document.getElementById('update-notification');
             const updateButton = document.getElementById('update-button');
             
+            // CÓDIGO JS (VARIÁVEIS) ADICIONADO AQUI
+            const exportarBtn = document.getElementById('exportar-dados-btn');
+            const importarBtn = document.getElementById('importar-dados-btn');
+            const importarInput = document.getElementById('importar-dados-input');
+            // FIM DO CÓDIGO JS (VARIÁVEIS) ADICIONADO
+
             // Estado da App
             let transacoes = [];        
             let carteiraCalculada = []; 
@@ -1027,7 +1047,7 @@
                 if (!cacheItem) return null;
                 
                 const duration = cacheItem.duration ?? CACHE_DURATION; 
-                if (duration === -1) { return cacheItem.data; } // Cache perpétuo
+                if (duration === -1) { return cacheItem.data; } // Cache perpéuo
                 
                 const isExpired = (Date.now() - cacheItem.timestamp) > duration;
                 if (isExpired) { 
@@ -2574,6 +2594,12 @@
                 }
             });
 
+            // CÓDIGO JS (LISTENERS) ADICIONADO AQUI
+            exportarBtn.addEventListener('click', handleExportarDados);
+            importarBtn.addEventListener('click', () => importarInput.click()); // Aciona o input escondido
+            importarInput.addEventListener('change', handleImportarArquivo);
+            // FIM DO CÓDIGO JS (LISTENERS) ADICIONADO
+
             // ==========================================================
             // Funções da API Gemini (BFF)
             // ==========================================================
@@ -2607,6 +2633,143 @@
                 });
                 return response.json; // Retorna um array JSON
             }
+
+            // CÓDIGO JS (FUNÇÕES) ADICIONADO AQUI
+            // ==========================================================
+            // Funções de Backup (Exportar/Importar)
+            // ==========================================================
+
+            async function handleExportarDados() {
+                console.log("Iniciando exportação...");
+                exportarBtn.textContent = 'A exportar...';
+                exportarBtn.disabled = true;
+
+                try {
+                    // Definimos quais "tabelas" do DB queremos salvar
+                    const storesToExport = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos'];
+                    const exportData = {};
+                    
+                    // Buscamos todos os dados de cada "tabela"
+                    for (const storeName of storesToExport) {
+                        exportData[storeName] = await vestoDB.getAll(storeName);
+                    }
+                    
+                    // Criamos um "pacote" JSON com os dados
+                    const bundle = {
+                        version: 'vesto-v1', // Importante para futuras migrações
+                        exportedAt: new Date().toISOString(),
+                        data: exportData
+                    };
+
+                    const jsonString = JSON.stringify(bundle, null, 2); // O 'null, 2' formata o JSON
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    // Criamos um link falso para acionar o download
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const dateStr = new Date().toISOString().split('T')[0];
+                    a.download = `vesto-backup-${dateStr}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // Limpamos o link da memória
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showToast("Dados exportados com sucesso!");
+
+                } catch (err) {
+                    console.error("Erro ao exportar dados:", err);
+                    showToast("Erro ao exportar dados.");
+                } finally {
+                    exportarBtn.textContent = 'Exportar Backup';
+                    exportarBtn.disabled = false;
+                }
+            }
+
+            function handleImportarArquivo(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    let backup;
+                    try {
+                        backup = JSON.parse(e.target.result);
+                        
+                        // Validação básica para ver se é um arquivo Vesto válido
+                        if (!backup.version || backup.version !== 'vesto-v1' || !backup.data || !Array.isArray(backup.data.transacoes)) {
+                            throw new Error("Arquivo de backup inválido ou corrompido.");
+                        }
+                        
+                        // **MUITO IMPORTANTE**: Pedir confirmação antes de apagar tudo
+                        showModal(
+                            'Importar Backup?',
+                            'Atenção: Isso irá APAGAR todos os seus dados atuais e substituí-los pelo backup. Esta ação não pode ser desfeita.',
+                            () => { 
+                                // Esta é a função 'onConfirmCallback'
+                                importarDados(backup.data); 
+                            }
+                        );
+
+                    } catch (err) {
+                        console.error("Erro ao ler arquivo de backup:", err);
+                        showToast(err.message || "Erro ao ler arquivo.");
+                    } finally {
+                        // Limpa o input para permitir importar o mesmo arquivo de novo
+                        event.target.value = null;
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            async function importarDados(data) {
+                console.log("Iniciando importação...");
+                importarBtn.textContent = 'A importar...';
+                importarBtn.disabled = true;
+
+                try {
+                    const stores = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos'];
+                    
+                    // 1. Limpar todos os dados atuais do DB
+                    const clearPromises = stores.map(store => vestoDB.clear(store));
+                    await Promise.all(clearPromises);
+                    console.log("Stores limpos.");
+
+                    // 2. Popular os stores com os dados do backup
+                    const populatePromises = [];
+                    for (const storeName of stores) {
+                        if (data[storeName] && Array.isArray(data[storeName])) {
+                            for (const item of data[storeName]) {
+                                // O 'put' vai inserir cada item um por um
+                                populatePromises.push(vestoDB.put(storeName, item));
+                            }
+                        }
+                    }
+                    await Promise.all(populatePromises);
+                    console.log("Stores populados.");
+
+                    // 3. Recarregar o estado do app a partir do novo DB
+                    await carregarTransacoes();
+                    await carregarPatrimonio();
+                    await carregarCaixa();
+                    await carregarProventosConhecidos();
+                    
+                    // 4. Forçar atualização total da UI com os novos dados
+                    await atualizarTodosDados(true);
+                    
+                    showToast("Dados importados com sucesso!");
+
+                } catch (err) {
+                    console.error("Erro grave durante a importação:", err);
+                    showToast("Erro grave ao importar dados.");
+                } finally {
+                    importarBtn.textContent = 'Importar Backup';
+                    importarBtn.disabled = false;
+                }
+            }
+            // FIM DO CÓDIGO JS (FUNÇÕES) ADICIONADO
 
             // ==========================================================
             // Inicialização

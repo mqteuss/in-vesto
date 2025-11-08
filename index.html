@@ -15,6 +15,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd.js"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
@@ -753,6 +755,61 @@
             let touchMoveY = 0;
             let isDraggingDetalhes = false;
             let newWorker; 
+            const db = idbKeyval; // Atalho para a biblioteca
+
+            // ==========================================================
+            // FUNÇÃO DE MIGRAÇÃO (NOVA)
+            // ==========================================================
+            async function runDatabaseMigration() {
+                const MIGRATION_FLAG = 'db_migration_v1_done';
+                
+                // 1. Verifica se a migração já foi feita (no localStorage antigo)
+                if (localStorage.getItem(MIGRATION_FLAG)) {
+                    console.log('Migração para IndexedDB já realizada.');
+                    return; 
+                }
+
+                console.log('Iniciando migração de localStorage para IndexedDB...');
+                
+                try {
+                    // 2. Transfere Transações
+                    const transacoesOld = localStorage.getItem(DB_KEY_TRANSACOES);
+                    if (transacoesOld) {
+                        await db.set(DB_KEY_TRANSACOES, JSON.parse(transacoesOld));
+                        localStorage.removeItem(DB_KEY_TRANSACOES); // Limpa o antigo
+                    }
+
+                    // 3. Transfere Patrimônio
+                    const patrimonioOld = localStorage.getItem(DB_KEY_PATRIMONIO);
+                    if (patrimonioOld) {
+                        await db.set(DB_KEY_PATRIMONIO, JSON.parse(patrimonioOld));
+                        localStorage.removeItem(DB_KEY_PATRIMONIO);
+                    }
+                    
+                    // 4. Transfere Caixa
+                    const caixaOld = localStorage.getItem(DB_KEY_CAIXA);
+                    if (caixaOld) {
+                        // Salva como número, não string
+                        await db.set(DB_KEY_CAIXA, parseFloat(caixaOld)); 
+                        localStorage.removeItem(DB_KEY_CAIXA);
+                    }
+
+                    // 5. Transfere Proventos Conhecidos
+                    const proventosOld = localStorage.getItem(DB_KEY_PROVENTOS_CONHECIDOS);
+                    if (proventosOld) {
+                        await db.set(DB_KEY_PROVENTOS_CONHECIDOS, JSON.parse(proventosOld));
+                        localStorage.removeItem(DB_KEY_PROVENTOS_CONHECIDOS);
+                    }
+
+                    // 6. Define a flag de sucesso
+                    localStorage.setItem(MIGRATION_FLAG, 'true');
+                    console.log('Migração de dados para IndexedDB concluída com sucesso!');
+
+                } catch (error) {
+                    console.error('Falha grave na migração do DB:', error);
+                    // Não define a flag se falhar, para tentar de novo no próximo F5
+                }
+            }
 
             // ==========================================================
             // Notificações Toast
@@ -1054,24 +1111,26 @@
             }
             
             // ==========================================================
-            // Funções de Dados (localStorage)
+            // Funções de Dados (IndexedDB) - (BLOCO SUBSTITUÍDO)
             // ==========================================================
             
-            function salvarTransacoes() {
-                localStorage.setItem(DB_KEY_TRANSACOES, JSON.stringify(transacoes));
+            async function salvarTransacoes() {
+                // Não precisa de JSON.stringify, o idb cuida disso
+                await db.set(DB_KEY_TRANSACOES, transacoes);
             }
             
-            function carregarTransacoes() {
-                const transacoesSalvas = localStorage.getItem(DB_KEY_TRANSACOES);
-                transacoes = transacoesSalvas ? JSON.parse(transacoesSalvas) : [];
+            async function carregarTransacoes() {
+                // Não precisa de JSON.parse
+                const transacoesSalvas = await db.get(DB_KEY_TRANSACOES);
+                transacoes = transacoesSalvas ? transacoesSalvas : [];
             }
             
-            function carregarPatrimonio() {
-                 const patrimonioSalvo = localStorage.getItem(DB_KEY_PATRIMONIO);
-                 patrimonio = patrimonioSalvo ? JSON.parse(patrimonioSalvo) : [];
+            async function carregarPatrimonio() {
+                 const patrimonioSalvo = await db.get(DB_KEY_PATRIMONIO);
+                 patrimonio = patrimonioSalvo ? patrimonioSalvo : [];
             }
             
-            function salvarSnapshotPatrimonio(totalValor) {
+            async function salvarSnapshotPatrimonio(totalValor) {
                 if (totalValor <= 0 && patrimonio.length === 0) return; 
                 const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
                 const index = patrimonio.findIndex(p => p.date === today);
@@ -1085,31 +1144,33 @@
                 if (patrimonio.length > 365) {
                     patrimonio = patrimonio.slice(patrimonio.length - 365);
                 }
-                localStorage.setItem(DB_KEY_PATRIMONIO, JSON.stringify(patrimonio));
+                await db.set(DB_KEY_PATRIMONIO, patrimonio);
             }
 
-            function carregarCaixa() {
-                const caixaSalvo = localStorage.getItem(DB_KEY_CAIXA);
-                saldoCaixa = caixaSalvo ? parseFloat(caixaSalvo) : 0;
+            async function carregarCaixa() {
+                // Já pegamos como número
+                const caixaSalvo = await db.get(DB_KEY_CAIXA);
+                saldoCaixa = caixaSalvo ? caixaSalvo : 0;
             }
 
-            function salvarCaixa() {
-                localStorage.setItem(DB_KEY_CAIXA, saldoCaixa.toString());
+            async function salvarCaixa() {
+                await db.set(DB_KEY_CAIXA, saldoCaixa);
             }
 
-            function carregarProventosConhecidos() {
-                const proventosSalvos = localStorage.getItem(DB_KEY_PROVENTOS_CONHECIDOS);
-                proventosConhecidos = proventosSalvos ? JSON.parse(proventosSalvos) : [];
+            async function carregarProventosConhecidos() {
+                const proventosSalvos = await db.get(DB_KEY_PROVENTOS_CONHECIDOS);
+                proventosConhecidos = proventosSalvos ? proventosSalvos : [];
             }
 
-            function salvarProventosConhecidos() {
-                localStorage.setItem(DB_KEY_PROVENTOS_CONHECIDOS, JSON.stringify(proventosConhecidos));
+            async function salvarProventosConhecidos() {
+                await db.set(DB_KEY_PROVENTOS_CONHECIDOS, proventosConhecidos);
             }
             
             /** Processa dividendos que já foram pagos e os move para o "Caixa" */
-            function processarDividendosPagos() {
+            async function processarDividendosPagos() {
+                // IMPORTANTE: Adicionado "async"
                 const hoje = new Date();
-                hoje.setHours(0, 0, 0, 0); // Compara apenas com o início do dia
+                hoje.setHours(0, 0, 0, 0); 
                 
                 const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
                 let precisaSalvar = false;
@@ -1124,7 +1185,7 @@
                             if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) {
                                 const valorRecebido = provento.value * quantity;
                                 saldoCaixa += valorRecebido;
-                                provento.processado = true; // Marca como processado
+                                provento.processado = true;
                                 precisaSalvar = true;
                                 console.log(`Processado pagamento de ${provento.symbol}: ${formatBRL(valorRecebido)}`);
                             } else {
@@ -1136,8 +1197,9 @@
                 });
 
                 if (precisaSalvar) {
-                    salvarCaixa();
-                    salvarProventosConhecidos();
+                    // IMPORTANTE: Adicionado "await"
+                    await salvarCaixa();
+                    await salvarProventosConhecidos();
                 }
             }
 
@@ -1389,7 +1451,7 @@
                 }
             }
             
-            function renderizarCarteira() {
+            async function renderizarCarteira() { // TORNADA ASYNC
                 renderizarCarteiraSkeletons(false);
                 
                 const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -1416,7 +1478,7 @@
                     
                     renderizarGraficoAlocacao([]); 
                     renderizarGraficoHistorico({ labels: [], data: [] }); 
-                    salvarSnapshotPatrimonio(saldoCaixa); // Salva o caixa como patrimônio
+                    await salvarSnapshotPatrimonio(saldoCaixa); // Salva o caixa como patrimônio (AWAIT ADICIONADO)
                     renderizarGraficoPatrimonio();
                 } else {
                     carteiraStatus.classList.add('hidden');
@@ -1546,7 +1608,7 @@
                     totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
                     totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
                     
-                    salvarSnapshotPatrimonio(patrimonioTotal);
+                    await salvarSnapshotPatrimonio(patrimonioTotal); // AWAIT ADICIONADO
                 }
                 
                 renderizarGraficoAlocacao(dadosGrafico);
@@ -1850,7 +1912,7 @@
                                 }
                             }
                             if (proventosConhecidosMudou) {
-                                salvarProventosConhecidos();
+                                await salvarProventosConhecidos(); // AWAIT ADICIONADO
                             }
                         }
                     } catch (error) {
@@ -1943,7 +2005,7 @@
                 
                 // Carrega dados locais primeiro
                 calcularCarteira();
-                processarDividendosPagos(); // Processa dividendos passados ANTES de renderizar
+                await processarDividendosPagos(); // Processa dividendos passados ANTES de renderizar (AWAIT ADICIONADO)
                 renderizarHistorico();
                 renderizarGraficoPatrimonio(); 
                 
@@ -1971,7 +2033,7 @@
                 if (carteiraCalculada.length === 0) {
                      precosAtuais = []; 
                      proventosAtuais = []; 
-                     renderizarCarteira(); 
+                     await renderizarCarteira(); // AWAIT ADICIONADO
                      renderizarProventos(); 
                      renderizarGraficoHistorico({ labels: [], data: [] }); 
                      refreshIcon.classList.remove('spin-animation');
@@ -1995,25 +2057,25 @@
                 const promessaNoticias = fetchNoticiasBFF(force); 
 
                 // Handler para quando os preços chegarem
-                promessaPrecos.then(precos => {
+                promessaPrecos.then(async precos => { // async adicionado
                     if (precos.length > 0) {
                         precosAtuais = precos; 
-                        renderizarCarteira(); 
+                        await renderizarCarteira(); // await adicionado
                     } else if (precosAtuais.length === 0) { 
-                        renderizarCarteira(); 
+                        await renderizarCarteira(); // await adicionado
                     }
-                }).catch(err => {
+                }).catch(async err => { // async adicionado
                     console.error("Erro ao buscar preços (BFF):", err);
                     showToast("Erro ao buscar preços.");
-                    if (precosAtuais.length === 0) { renderizarCarteira(); }
+                    if (precosAtuais.length === 0) { await renderizarCarteira(); } // await adicionado
                 });
 
                 // Handler para proventos
-                promessaProventos.then(proventosFuturos => {
+                promessaProventos.then(async proventosFuturos => { // async adicionado
                     proventosAtuais = proventosFuturos; // Seta os proventos futuros filtrados
                     renderizarProventos(); 
                     if (precosAtuais.length > 0) { // Re-renderiza carteira se os preços já chegaram
-                        renderizarCarteira(); 
+                        await renderizarCarteira(); // await adicionado
                     }
                 }).catch(err => {
                     console.error("Erro ao buscar proventos (BFF):", err);
@@ -2051,7 +2113,7 @@
             }
             
             /** Adiciona uma nova transação de compra */
-            async function handleAdicionarAtivo() {
+            async function handleAdicionarAtivo() { // TORNADA ASYNC
                 let ticker = tickerInput.value.trim().toUpperCase();
                 let novaQuantidade = parseInt(quantityInput.value, 10);
                 let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
@@ -2113,7 +2175,7 @@
                     price: novoPreco
                 });
 
-                salvarTransacoes();
+                await salvarTransacoes(); // AWAIT ADICIONADO
                 
                 addButton.innerHTML = `Adicionar`;
                 addButton.disabled = false;
@@ -2127,10 +2189,10 @@
                 showModal(
                     'Remover Ativo', 
                     `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
-                    () => { 
+                    async () => { // CALLBACK TORNADO ASYNC
                         transacoes = transacoes.filter(t => t.symbol !== symbol);
                         removerCacheAtivo(symbol); 
-                        salvarTransacoes();
+                        await salvarTransacoes(); // AWAIT ADICIONADO
                         // Limpa o cache do gráfico de histórico para forçar recálculo
                          Object.keys(localStorage)
                             .filter(key => key.startsWith(CACHE_PREFIX + 'hist_agregado_v4_'))
@@ -2240,7 +2302,7 @@
                             </div>
                             <div class="bg-gray-800 p-3 rounded-xl text-center">
                                 <span class="text-xs text-gray-500">Mín. Dia</span>
-                                <p class="text-base font-semibold text-red-500">${formatBRL(precoData.regularMarketDayLow)}</p>
+                                <p class="text-base font-semibold text-red-500">${formatBL(precoData.regularMarketDayLow)}</p>
                             </div>
                         </div>
                         <div class="bg-gray-800 p-4 rounded-xl">
@@ -2468,15 +2530,21 @@
             // Inicialização
             // ==========================================================
             
-            function init() {
+            async function init() { // TORNADA ASYNC
                 checkNotificationPermission(); 
-                carregarTransacoes();
-                carregarPatrimonio();
-                carregarCaixa();
-                carregarProventosConhecidos();
+                
+                // 1. Roda a migração PRIMEIRO
+                await runDatabaseMigration();
+                
+                // 2. Carrega os dados do novo DB (com await)
+                await carregarTransacoes();
+                await carregarPatrimonio();
+                await carregarCaixa();
+                await carregarProventosConhecidos();
+                
                 mudarAba('tab-dashboard'); 
                 
-                // *** CORRIGIDO: Carga inicial agora usa o cache ***
+                // 3. Continua a execução normal
                 atualizarTodosDados(false); 
                 
                 setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); // Atualização em background

@@ -134,9 +134,6 @@ input[type=number] {
     border-radius: 10px;
     border: 2px solid #1A1A1A;
 }
-#detalhes-historico.scrollable-content {
-     max-height: 320px;
-}
 
 /* Modal Genérico */
 .custom-modal { display: none; }
@@ -283,7 +280,6 @@ select {
     color: #FFF;
 }
 
-/* *** NOVO ESTILO ADICIONADO AQUI *** */
 /* Seletor de Período (Detalhes) */
 .periodo-selector-btn {
     background-color: #374151; /* gray-700 */
@@ -303,4 +299,3 @@ select {
     color: #ffffff; /* text-white */
     font-weight: 600; /* semibold */
 }
-/* *** FIM DO NOVO ESTILO *** */

@@ -1183,8 +1183,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+    // *** INÍCIO DA MUDANÇA (CORREÇÃO CACHE NOTÍCIAS) ***
     async function handleAtualizarNoticias(force = false) {
+        const cacheKey = 'noticias_json_v4';
+        
+        // 1. Tenta ler o cache primeiro, SE não for forçado
+        if (!force) {
+            const cache = await getCache(cacheKey);
+            if (cache) {
+                console.log("Usando notícias do cache (sem skeleton).");
+                renderizarNoticias(cache);
+                return; // Encontrou no cache, para aqui.
+            }
+        }
+        
+        // 2. Se o cache estiver vazio ou se force=true, mostra o skeleton
         fiiNewsSkeleton.classList.remove('hidden');
         fiiNewsList.innerHTML = '';
         fiiNewsMensagem.classList.add('hidden');
@@ -1195,7 +1208,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const articles = await fetchNoticiasBFF(force);
+            // 3. Busca na rede
+            console.log("Buscando notícias na rede (BFF)...");
+            const articles = await fetchAndCacheNoticiasBFF_NetworkOnly(); // Nova função
             renderizarNoticias(articles);
         } catch (e) {
             console.error("Erro ao buscar notícias (função separada):", e);
@@ -1206,21 +1221,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             refreshIcon.classList.remove('spin-animation');
         }
     }
-    // *** FIM DA MUDANÇA ***
 
-    /** * Busca o JSON de resumos de notícias
-     * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
+    /** * Busca o JSON de resumos de notícias APENAS DA REDE e salva no cache.
+     * A verificação de cache foi movida para handleAtualizarNoticias.
      */
-    async function fetchNoticiasBFF(force = false) {
-        const cacheKey = 'noticias_json_v4'; // A chave de cache não precisa do prefixo
-        if (force) {
-            await vestoDB.delete('apiCache', cacheKey);
-        }
+    async function fetchAndCacheNoticiasBFF_NetworkOnly() {
+        const cacheKey = 'noticias_json_v4';
         
-        const cache = await getCache(cacheKey);
-        if (cache) {
-            return cache; 
-        }
+        // 1. Deleta o cache antigo (necessário se for atualização forçada)
+        await vestoDB.delete('apiCache', cacheKey);
+        
+        // 2. Busca na rede
         try {
             const response = await fetchBFF('/api/news', {
                 method: 'POST',
@@ -1228,6 +1239,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ todayString: todayString }) 
             });
             const articles = response.json;
+            
+            // 3. Salva no cache
             if (articles && Array.isArray(articles)) {
                 await setCache(cacheKey, articles, CACHE_6_HORAS);
             }
@@ -1237,6 +1250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw error;
         }
     }
+    // *** FIM DA MUDANÇA ***
     
     // ==========================================================
     // Funções de Fetch (API)
@@ -1374,7 +1388,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             await setCache(cacheKey, provento, CACHE_24_HORAS); 
                             proventosPool.push(provento); // Adiciona ao pool de processamento
 
-                            // Adiciona à lista de proventos conhecidos se ainda não estiver lá
+                            // Adiciona à lista de proventos conhecidos se ainda नहीं estiver lá
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             

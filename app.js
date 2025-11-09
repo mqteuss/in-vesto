@@ -1468,6 +1468,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         calcularCarteira();
         await processarDividendosPagos(); 
+        
+        // *** INÍCIO DA OTIMIZAÇÃO 1 ***
+        // Renderiza proventos futuros a partir do cache ANTES da chamada de rede.
+        const proventosFuturosCache = processarProventosIA(proventosConhecidos);
+        proventosAtuais = proventosFuturosCache;
+        renderizarProventos();
+        // Mostra o valor do provento imediatamente, escondendo seu skeleton
+        skeletonTotalProventos.classList.add('hidden');
+        totalProventosEl.classList.remove('hidden');
+        // *** FIM DA OTIMIZAÇÃO 1 ***
+        
         renderizarHistorico();
         renderizarGraficoPatrimonio(); 
         
@@ -1481,14 +1492,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             refreshIcon.classList.add('spin-animation');
         }
 
-        if (!force) {
-            const proventosFuturosCache = processarProventosIA(proventosConhecidos);
-            if (proventosFuturosCache.length > 0) {
-                proventosAtuais = proventosFuturosCache;
-                renderizarProventos();
-            }
-        }
-        
         if (carteiraCalculada.length === 0) {
              precosAtuais = []; 
              proventosAtuais = []; 
@@ -1655,13 +1658,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
+    // *** INÍCIO DA OTIMIZAÇÃO 2 ***
+
     /** Busca e exibe os dados da página de detalhes */
     async function handleMostrarDetalhes(symbol) {
+        // 1. Limpa e prepara o modal imediatamente
         detalhesMensagem.classList.add('hidden');
-        detalhesLoading.classList.remove('hidden');
+        detalhesLoading.classList.remove('hidden'); // Mostra o loader principal
         detalhesPreco.innerHTML = '';
         detalhesAiProvento.innerHTML = ''; 
-        detalhesHistoricoContainer.classList.add('hidden');
+        detalhesHistoricoContainer.classList.add('hidden'); // Esconde o container de IA
         detalhesTituloTexto.textContent = symbol;
         detalhesNomeLongo.textContent = 'A carregar...';
         
@@ -1675,6 +1681,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
+        
+        // 2. Dispara as duas promessas em paralelo
+        fetchAndRenderDetalhesPreco(symbol, tickerParaApi, cacheKeyPreco);
+        
+        if (isFII(symbol)) {
+            detalhesHistoricoContainer.classList.remove('hidden'); 
+            fetchHistoricoIA(symbol); // Dispara a busca da IA
+        }
+        
+        // 3. Esconde o loader principal
+        // (As funções filhas controlarão seus próprios loaders internos)
+        detalhesLoading.classList.add('hidden');
+    }
+    
+    /** (Função Auxiliar Otimização 2) Busca e renderiza apenas os dados de PREÇO */
+    async function fetchAndRenderDetalhesPreco(symbol, tickerParaApi, cacheKeyPreco) {
         let precoData = await getCache(cacheKeyPreco);
         
         if (!precoData) {
@@ -1688,16 +1710,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showToast("Erro ao buscar preço."); 
             }
         }
-
-        let promessaAi = null;
         
-        if (isFII(symbol)) {
-            detalhesHistoricoContainer.classList.remove('hidden'); 
-            promessaAi = fetchHistoricoIA(symbol); 
-        }
-        
-        detalhesLoading.classList.add('hidden');
-
         if (precoData) {
             detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
             const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
@@ -1766,6 +1779,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // *** FIM DA OTIMIZAÇÃO 2 ***
+
     // 1. Função que BUSCA o JSON de 12 meses (apenas 1 vez)
     async function fetchHistoricoIA(symbol) {
         // Mostra o skeleton de loading

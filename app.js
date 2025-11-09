@@ -2252,8 +2252,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         mudarAba('tab-dashboard'); 
         
         // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
-        await atualizarTodosDados(false); 
-        await handleAtualizarNoticias(false); // Carrega notícias na inicialização
+        atualizarTodosDados(false); 
+        handleAtualizarNoticias(false); // Carrega notícias na inicialização
         
         setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
         // *** FIM DA MUDANÇA ***

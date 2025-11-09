@@ -1289,7 +1289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (precoCache) return precoCache;
             }
             try {
-                const tickerParaApi = isFII(ativo.symbol) ? `${ticker}.SA` : ativo.symbol;
+const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 const result = data.results?.[0];
 
@@ -2282,3 +2282,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Inicia a aplicação
     await init();
 });
+

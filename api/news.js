@@ -27,7 +27,6 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 // Constrói o payload para a API Gemini (Modo JSON de Resumos com Hostname)
 function getGeminiPayload(todayString) {
 
-    // *** PROMPT ATUALIZADO (Inclusão de 'relatedTickers') ***
     const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 10 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **nesta semana** (data de hoje: ${todayString}).
 
 REGRAS:
@@ -43,14 +42,13 @@ REGRAS:
 
 EXEMPLO DE RESPOSTA JSON:
 [
-  {"title": "IFIX atinge nova máxima: O que esperar?", "summary": "O IFIX atingiu nova máxima histórica nesta semana. Analistas debatem se o movimento é sustentável ou se uma correção está próxima, de olho na Selic.", "sourceName": "InfoMoney", "sourceHostname": "infomoney.com.br", "publicationDate": "2025-11-06", "relatedTickers": []},
+  {"title": "IFIX atinge nova máxima: O que esperar?", "summary": "O IFIX atiu nova máxima histórica nesta semana. Analistas debatem se o movimento é sustentável ou se uma correção está próxima, de olho na Selic.", "sourceName": "InfoMoney", "sourceHostname": "infomoney.com.br", "publicationDate": "2025-11-06", "relatedTickers": []},
   {"title": "HGLG11 e CPTS11 anunciam aquisições", "summary": "O fundo HGLG11 investiu R$ 63 milhões em galpões. Já o CPTS11 anunciou uma nova emissão.", "sourceName": "Money Times", "sourceHostname": "moneytimes.com.br", "publicationDate": "2025-11-05", "relatedTickers": ["HGLG11", "CPTS11"]}
 ]
 
 IMPORTANTE: Sua resposta DEVE começar com '[' e terminar com ']'. Nenhuma outra palavra, frase ou formatação é permitida antes ou depois do array JSON.`;
 
     const userQuery = `Gere um array JSON com os 10 resumos de notícias mais recentes (desta semana, ${todayString}) sobre FIIs. Inclua "title", "summary", "sourceName", "sourceHostname", "publicationDate" (YYYY-MM-DD) e "relatedTickers" (array de FIIs mencionados).`;
-    // *** FIM DA ATUALIZAÇÃO ***
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
@@ -101,7 +99,6 @@ export default async function handler(request, response) {
         // CACHE DE 6 HORAS (21600 segundos)
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
-        // *** INÍCIO DA CORREÇÃO (LÓGICA DE PARSE MAIS SEGURA) ***
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar [ ... ]
 
@@ -132,7 +129,6 @@ export default async function handler(request, response) {
 
         // Se chegou aqui, parsedJson é um array válido
         return response.status(200).json({ json: parsedJson });
-        // *** FIM DA CORREÇÃO ***
 
     } catch (error) {
         console.error("Erro interno no proxy Gemini (Notícias):", error);

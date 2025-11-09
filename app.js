@@ -1336,7 +1336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .filter(p => p !== null);
     }
 
-    // *** INÍCIO DA CORREÇÃO (BUG CACHE ANTIGO) ***
+    // *** INÍCIO DA CORREÇÃO (BUG CACHE ANTIGO + BUG ADD ATIVO) ***
     async function buscarProventosFuturos(force = false, fiisParaBuscarOverride = null) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
@@ -1350,7 +1350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let proventosPool = []; // Pool de proventos para filtrar
         let fiisParaBuscar = [];
 
-        // NOVO: Se for 'force', limpa proventos futuros do IndexedDB 'proventosConhecidos'
+        // Se for 'force', limpa proventos futuros do IndexedDB 'proventosConhecidos'
         if (force) {
             console.log("Forçando atualização, limpando proventos futuros conhecidos...");
             const proventosAntigos = proventosConhecidos.filter(p => !p.processado);
@@ -1366,13 +1366,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const cacheKey = `provento_ia_${symbol}`;
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
-            }
-            
-            const proventoCache = await getCache(cacheKey);
-            if (proventoCache) {
-                proventosPool.push(proventoCache);
+                fiisParaBuscar.push(symbol); // Pula a verificação de cache
             } else {
-                fiisParaBuscar.push(symbol);
+                const proventoCache = await getCache(cacheKey);
+                if (proventoCache) {
+                    proventosPool.push(proventoCache);
+                } else {
+                    fiisParaBuscar.push(symbol);
+                }
             }
         }
         
@@ -1664,8 +1665,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Agora, busca o provento SÓ do ativo novo, em segundo plano.
         if (isFII(ticker)) {
             console.log(`Buscando provento (em background) apenas para: ${ticker}`);
-            // Usa 'false' para não forçar (caso já tenha cache "vazio")
-            buscarProventosFuturos(false, [ticker]).then(async (novosProventos) => {
+            // *** INÍCIO DA CORREÇÃO (BUG ADD ATIVO) ***
+            // Usa 'true' para forçar a busca na rede imediatamente
+            buscarProventosFuturos(true, [ticker]).then(async (novosProventos) => {
+            // *** FIM DA CORREÇÃO ***
+                
                 // Verifica se algo mudou (novo provento ou era um cache "vazio")
                 const proventoAtual = proventosAtuais.find(p => p.symbol === ticker);
                 const novoProvento = novosProventos.find(p => p.symbol === ticker);

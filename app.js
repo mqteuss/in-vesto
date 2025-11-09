@@ -159,6 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detalhesLoading = document.getElementById('detalhes-loading');
     const detalhesPreco = document.getElementById('detalhes-preco');
     const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
+    const periodoSelectorGroup = document.getElementById('periodo-selector-group'); // *** MUDANÇA AQUI ***
     const detalhesAiProvento = document.getElementById('detalhes-ai-provento'); 
     const listaHistorico = document.getElementById('lista-historico');
     const historicoStatus = document.getElementById('historico-status');
@@ -207,7 +208,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     let touchStartY = 0;
     let touchMoveY = 0;
     let isDraggingDetalhes = false;
-    let newWorker; 
+    let newWorker;
+    
+    // *** MUDANÇA AQUI: Estado para o modal de detalhes ***
+    let currentDetalhesSymbol = null;
+    let currentDetalhesMeses = 12;
+    // *** FIM DA MUDANÇA ***
 
     // ==========================================================
     // Notificações Toast
@@ -368,6 +374,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             await vestoDB.delete('apiCache', `preco_${symbol}`);
             await vestoDB.delete('apiCache', `provento_ia_${symbol}`);
             await vestoDB.delete('apiCache', `detalhe_preco_${symbol}`);
+            
+            // *** MUDANÇA AQUI: Limpa todos os caches de histórico IA para este ativo ***
+            await vestoDB.delete('apiCache', `hist_ia_${symbol}_3`);
+            await vestoDB.delete('apiCache', `hist_ia_${symbol}_6`);
+            await vestoDB.delete('apiCache', `hist_ia_${symbol}_9`);
+            await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`);
             
             if (isFII(symbol)) {
                 // Limpa o cache de histórico agregado (que agora está no IDB)
@@ -1667,6 +1679,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = ''; 
+        
+        // *** MUDANÇA AQUI: Reseta o estado do modal ***
+        currentDetalhesSymbol = null;
+        currentDetalhesMeses = 12; 
+        
+        // Reseta os botões para o padrão (12M ativo)
+        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.meses === '12');
+        });
+        // *** FIM DA MUDANÇA ***
     }
     
     /** Busca e exibe os dados da página de detalhes */
@@ -1678,6 +1700,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesTituloTexto.textContent = symbol;
         detalhesNomeLongo.textContent = 'A carregar...';
+        
+        // *** MUDANÇA AQUI: Define o estado do modal ***
+        currentDetalhesSymbol = symbol;
+        currentDetalhesMeses = 12; // Padrão
+        
+        // Reseta os botões para o padrão (12M ativo)
+        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.meses === '12');
+        });
+        // *** FIM DA MUDANÇA ***
         
         const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
@@ -1699,14 +1731,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (isFII(symbol)) {
             detalhesHistoricoContainer.classList.remove('hidden'); 
-            detalhesAiProvento.innerHTML = `
-                <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
-                <div id="historico-12m-loading" class="space-y-3 animate-pulse pt-2">
-                    <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
-                    <div class="h-4 bg-gray-700 rounded-md w-1/2"></div>
-                </div>
-            `;
-            promessaAi = callGeminiHistoricoAPI(symbol, todayString); 
+            // *** MUDANÇA AQUI: Chama a função separada com o padrão 12M ***
+            promessaAi = fetchEExibirHistoricoIA(symbol, 12); 
         }
         
         detalhesLoading.classList.add('hidden');
@@ -1778,32 +1804,57 @@ document.addEventListener('DOMContentLoaded', async () => {
             detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
         }
 
-        detalhesHistoricoContainer.classList.remove('hidden'); 
+        // Se a promessa da IA ainda estiver pendente (o que é provável), 
+        // o loading já foi setado e o .then() dela cuidará do resto.
+    }
+    
+    // *** MUDANÇA AQUI: Nova função para buscar histórico da IA ***
+    async function fetchEExibirHistoricoIA(symbol, meses) {
+        // Mostra o skeleton de loading
+        detalhesAiProvento.innerHTML = `
+            <div id="historico-periodo-loading" class="space-y-3 animate-pulse pt-2">
+                <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
+                <div class="h-4 bg-gray-700 rounded-md w-1/2"></div>
+                <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>
+            </div>
+        `;
         
-        if (promessaAi) {
-            try {
-                const aiResult = await promessaAi;
-                detalhesAiProvento.innerHTML = `
-                    <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
-                    <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${aiResult}</p>
-                `;
-            } catch (e) {
-                showToast("Erro na consulta IA."); // ERRO (vermelho)
-                detalhesAiProvento.innerHTML = `
-                    <h4 class="text-base font-semibold text-white mb-2">Histórico de Proventos (12 Meses)</h4>
-                    <div class="border border-red-700 bg-red-900/50 p-4 rounded-lg flex items-center gap-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <div>
-                            <h5 class="font-semibold text-red-300">Erro na Consulta</h5>
-                            <p class="text-sm text-red-400">${e.message}</p>
-                        </div>
-                    </div>
-                `;
+        try {
+            // Tenta buscar do cache primeiro
+            const cacheKey = `hist_ia_${symbol}_${meses}`;
+            let aiResult = await getCache(cacheKey);
+
+            if (!aiResult) {
+                console.log(`Buscando histórico de ${meses} meses para ${symbol} na API...`);
+                aiResult = await callGeminiHistoricoAPI(symbol, todayString, meses);
+                if (aiResult) {
+                    // Salva no cache por 24h
+                    await setCache(cacheKey, aiResult, CACHE_24_HORAS);
+                }
+            } else {
+                console.log(`Usando cache para histórico de ${meses} meses de ${symbol}.`);
             }
+
+            // Exibe o resultado
+            detalhesAiProvento.innerHTML = `
+                <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${aiResult}</p>
+            `;
+        } catch (e) {
+            showToast("Erro na consulta IA."); // ERRO (vermelho)
+            detalhesAiProvento.innerHTML = `
+                <div class="border border-red-700 bg-red-900/50 p-4 rounded-lg flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                        <h5 class="font-semibold text-red-300">Erro na Consulta</h5>
+                        <p class="text-sm text-red-400">${e.message}</p>
+                    </div>
+                </div>
+            `;
         }
     }
+    // *** FIM DA MUDANÇA ***
     
     /** Muda a aba visível */
     function mudarAba(tabId) {
@@ -1947,6 +1998,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     });
+    
+    // *** MUDANÇA AQUI: Listener para os botões de período ***
+    periodoSelectorGroup.addEventListener('click', (e) => {
+        const target = e.target.closest('.periodo-selector-btn');
+        if (!target) return;
+
+        const meses = parseInt(target.dataset.meses, 10);
+        
+        // Se já estiver ativo, não faz nada
+        if (meses === currentDetalhesMeses) {
+            return;
+        }
+
+        // Atualiza o estado
+        currentDetalhesMeses = meses;
+        
+        // Atualiza a classe 'active'
+        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        target.classList.add('active');
+
+        // Busca os novos dados
+        if (currentDetalhesSymbol) {
+            fetchEExibirHistoricoIA(currentDetalhesSymbol, currentDetalhesMeses);
+        }
+    });
+    // *** FIM DA MUDANÇA ***
 
     copiarDadosBtn.addEventListener('click', handleCopiarDados);
     abrirImportarModalBtn.addEventListener('click', showImportModal);
@@ -1961,8 +2040,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Funções da API Gemini (BFF)
     // ==========================================================
 
-    async function callGeminiHistoricoAPI(ticker, todayString) {
-        const body = { mode: 'historico_12m', payload: { ticker, todayString } };
+    // *** MUDANÇA AQUI: Função atualizada para aceitar 'meses' ***
+    async function callGeminiHistoricoAPI(ticker, todayString, meses = 12) { // Padrão 12 meses
+        const body = { 
+            mode: 'historico_12m', // O nome do modo continua o mesmo no backend
+            payload: { ticker, todayString, meses } // Enviamos os meses no payload
+        };
         const response = await fetchBFF('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1970,6 +2053,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         return response.text; // Retorna o texto formatado
     }
+    // *** FIM DA MUDANÇA ***
     
     async function callGeminiProventosCarteiraAPI(fiiList, todayString) {
         const body = { mode: 'proventos_carteira', payload: { fiiList, todayString } };

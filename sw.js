@@ -105,16 +105,19 @@ self.addEventListener('fetch', event => {
             })
     );
   } else {
+    // *** CORREÇÃO DO BUG 'clone()' ***
     // Cache-First (Stale-While-Revalidate) for all other assets (CDNs, fonts, icons)
     event.respondWith(
         caches.open(CACHE_NAME).then(cache => {
             return cache.match(event.request).then(cachedResponse => {
                 
                 const fetchPromise = fetch(event.request).then(networkResponse => {
+                    // Verificação para garantir que a resposta é válida antes de clonar
                     if (networkResponse && networkResponse.status === 200) {
-                        cache.put(event.request, networkResponse.clone());
+                        const responseToCache = networkResponse.clone(); // Clona AQUI
+                        cache.put(event.request, responseToCache); // Salva o clone
                     }
-                    return networkResponse;
+                    return networkResponse; // Retorna a original
                 });
 
                 // Return cache if it exists, otherwise wait for network
@@ -122,6 +125,7 @@ self.addEventListener('fetch', event => {
             });
         })
     );
+    // *** FIM DA CORREÇÃO ***
   }
 });
 

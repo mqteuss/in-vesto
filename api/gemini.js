@@ -25,23 +25,18 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 // Constrói o payload para a API Gemini
 function getGeminiPayload(mode, payload) {
-    // 'meses' não é mais usado por 'historico_12m', mas o deixamos caso outro modo precise
-    const { ticker, todayString, fiiList, meses } = payload;
+    const { ticker, todayString, fiiList } = payload;
     let systemPrompt = '';
     let userQuery = '';
 
     switch (mode) {
         
-        // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
         case 'historico_12m':
-            // Otimização 3: Sempre busca 12 meses em JSON. O 'meses' do payload é ignorado.
             systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua única tarefa é encontrar o histórico de proventos (dividendos) dos *últimos 12 meses* para o FII solicitado. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução ou markdown.\nOrdene a resposta do mais recente para o mais antigo (até 12 itens).\n\n- O mês deve estar no formato "MM/AA" (ex: "10/25").\n- O valor deve ser um número (ex: 0.10).\n\nExemplo de Resposta:\n[\n  {"mes": "10/25", "valor": 0.10},\n  {"mes": "09/25", "valor": 0.10}\n]\n\nSe não encontrar dados, retorne um array JSON vazio: []`;
             userQuery = `Gere o histórico de proventos JSON (últimos 12 meses) para o FII ${ticker}.`;
             break;
-        // *** FIM DA MUDANÇA ***
 
         case 'proventos_carteira':
-            // Este prompt foi atualizado para incluir pagamentos de HOJE
             systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do provento (dividendo) mais recente anunciado para uma lista de FIIs. **Inclua proventos cujo pagamento está agendado para hoje (${todayString})** ou para uma data futura. Use a busca na web para garantir que a informação seja a mais recente.
 
 TAREFA CRÍTICA: Ao buscar a data de pagamento, verifique ativamente por "fatos relevantes" ou "comunicados ao mercado" recentes (de hoje, ${todayString}) que possam ter *alterado* ou *corrigido* a data de pagamento anunciada. A data corrigida é a data correta.
@@ -115,11 +110,8 @@ export default async function handler(request, response) {
         // Cache de 24 horas (86400 segundos)
         response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); 
 
-        // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
-        // Todos os modos agora esperam JSON.
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio' || mode === 'historico_12m') {
             try {
-                // Tenta limpar e parsear o JSON
                 let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
                 const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar um array [ ... ]
                 
@@ -130,23 +122,17 @@ export default async function handler(request, response) {
                 const parsedJson = JSON.parse(jsonText);
                 
                 if (Array.isArray(parsedJson)) {
-                    // Retorna a chave 'json' com o array
                     return response.status(200).json({ json: parsedJson });
                 } else {
                     throw new Error("API retornou um JSON válido, mas não um array.");
                 }
             } catch (e) {
-                // Se o JSON.parse falhar (ex: "Não foi encontrado...")
                 console.warn(`[Alerta API Gemini] A API retornou texto inválido ("${text}") em vez de JSON. Retornando array vazio. Erro: ${e.message}`);
-                // Retorna a chave 'json' com um array vazio
                 return response.status(200).json({ json: [] }); 
             }
         } else {
-            // Este modo (se houver algum) espera texto.
-            // (Atualmente, nenhum modo usa isso, mas é um fallback seguro)
             return response.status(200).json({ text: text.replace(/\*/g, '') });
         }
-        // *** FIM DA MUDANÇA ***
 
     } catch (error) {
         console.error("Erro interno no proxy Gemini:", error);

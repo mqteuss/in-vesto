@@ -125,6 +125,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Elementos DOM
     const refreshButton = document.getElementById('refresh-button');
+    // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+    const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
+    // *** FIM DA MUDANÇA ***
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
     const toastElement = document.getElementById('toast-notification');
@@ -1180,6 +1183,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+    async function handleAtualizarNoticias(force = false) {
+        fiiNewsSkeleton.classList.remove('hidden');
+        fiiNewsList.innerHTML = '';
+        fiiNewsMensagem.classList.add('hidden');
+
+        const refreshIcon = refreshNoticiasButton.querySelector('svg');
+        if (force) {
+            refreshIcon.classList.add('spin-animation');
+        }
+
+        try {
+            const articles = await fetchNoticiasBFF(force);
+            renderizarNoticias(articles);
+        } catch (e) {
+            console.error("Erro ao buscar notícias (função separada):", e);
+            fiiNewsSkeleton.classList.add('hidden');
+            fiiNewsMensagem.textContent = 'Erro ao carregar notícias.';
+            fiiNewsMensagem.classList.remove('hidden');
+        } finally {
+            refreshIcon.classList.remove('spin-animation');
+        }
+    }
+    // *** FIM DA MUDANÇA ***
+
     /** * Busca o JSON de resumos de notícias
      * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
      */
@@ -1439,9 +1467,9 @@ document.addEventListener('DOMContentLoaded', async () => {
      async function atualizarTodosDados(force = false) { 
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
-        fiiNewsSkeleton.classList.remove('hidden');
-        fiiNewsList.innerHTML = '';
-        fiiNewsMensagem.classList.add('hidden');
+        // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+        // Linhas de notícias removidas daqui
+        // *** FIM DA MUDANÇA ***
         
         calcularCarteira();
         await processarDividendosPagos(); 
@@ -1473,22 +1501,18 @@ document.addEventListener('DOMContentLoaded', async () => {
              renderizarProventos(); 
              renderizarGraficoHistorico({ labels: [], data: [] }); 
              refreshIcon.classList.remove('spin-animation');
-             try {
-                 const articles = await fetchNoticiasBFF(force);
-                 renderizarNoticias(articles);
-             } catch (e) {
-                 console.error("Erro ao buscar notícias (carteira vazia):", e);
-                 fiiNewsSkeleton.classList.add('hidden');
-                 fiiNewsMensagem.textContent = 'Erro ao carregar notícias.';
-                 fiiNewsMensagem.classList.remove('hidden');
-             }
+             // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+             // Bloco try/catch de notícias removido daqui
+             // *** FIM DA MUDANÇA ***
              return;
         }
 
         const promessaPrecos = buscarPrecosCarteira(force); 
         const promessaProventos = buscarProventosFuturos(force);
         const promessaHistorico = buscarHistoricoProventosAgregado(force);
-        const promessaNoticias = fetchNoticiasBFF(force); 
+        // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+        // promessaNoticias removida daqui
+        // *** FIM DA MUDANÇA ***
 
         promessaPrecos.then(async precos => {
             if (precos.length > 0) {
@@ -1523,19 +1547,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarGraficoHistorico({ labels: [], data: [] }); 
         });
         
-        promessaNoticias.then(articles => {
-            renderizarNoticias(articles);
-        }).catch(err => {
-            console.error("Erro ao buscar notícias (BFF):", err);
-            fiiNewsSkeleton.classList.add('hidden');
-            fiiNewsMensagem.textContent = 'Erro ao carregar notícias.';
-            fiiNewsMensagem.classList.remove('hidden');
-        });
+        // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+        // Bloco promessaNoticias.then() removido daqui
+        // *** FIM DA MUDANÇA ***
 
         try {
-            await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico, promessaNoticias]); 
+            // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+            await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
+            // *** FIM DA MUDANÇA ***
         } finally {
-            console.log("Todas as sincronizações (BFF) terminaram.");
+            console.log("Sincronização de CARTEIRA terminada.");
             refreshIcon.classList.remove('spin-animation');
             dashboardStatus.classList.add('hidden');
             dashboardLoading.classList.add('hidden');
@@ -1886,6 +1907,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshButton.addEventListener('click', async () => {
         await atualizarTodosDados(true); 
     });
+    // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+    refreshNoticiasButton.addEventListener('click', async () => {
+        await handleAtualizarNoticias(true); 
+    });
+    // *** FIM DA MUDANÇA ***
     
     showAddModalBtn.addEventListener('click', showAddModal);
     emptyStateAddBtn.addEventListener('click', showAddModal);
@@ -2211,9 +2237,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         await carregarProventosConhecidos();
         mudarAba('tab-dashboard'); 
         
+        // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
         await atualizarTodosDados(false); 
+        await handleAtualizarNoticias(false); // Carrega notícias na inicialização
         
         setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
+        // *** FIM DA MUDANÇA ***
     }
     
     // Inicia a aplicação

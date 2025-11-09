@@ -125,9 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Elementos DOM
     const refreshButton = document.getElementById('refresh-button');
-    // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
-    // *** FIM DA MUDANÇA ***
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
     const toastElement = document.getElementById('toast-notification');
@@ -213,11 +211,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let isDraggingDetalhes = false;
     let newWorker;
     
-    // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
     let currentDetalhesSymbol = null;
-    let currentDetalhesMeses = 3; // MUDADO DE 12 PARA 3
-    let currentDetalhesHistoricoJSON = null; // Armazena o JSON de 12 meses
-    // *** FIM DA MUDANÇA ***
+    let currentDetalhesMeses = 3; 
+    let currentDetalhesHistoricoJSON = null; 
 
     // ==========================================================
     // Notificações Toast
@@ -379,15 +375,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             await vestoDB.delete('apiCache', `provento_ia_${symbol}`);
             await vestoDB.delete('apiCache', `detalhe_preco_${symbol}`);
             
-            // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 4) ***
-            // Limpa o cache JSON de 12 meses (o único que existe agora)
             await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
             
-            // Remove o loop que buscava por 'hist_agregado_v4_'
             if (isFII(symbol)) {
                  await vestoDB.delete('apiCache', 'cache_grafico_historico');
             }
-            // *** FIM DA MUDANÇA ***
 
         } catch (e) {
             console.error("Erro ao remover cache do ativo:", e);
@@ -1183,7 +1175,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // *** INÍCIO DA MUDANÇA (CORREÇÃO CACHE NOTÍCIAS) ***
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v4';
         
@@ -1250,7 +1241,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw error;
         }
     }
-    // *** FIM DA MUDANÇA ***
     
     // ==========================================================
     // Funções de Fetch (API)
@@ -1388,7 +1378,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             await setCache(cacheKey, provento, CACHE_24_HORAS); 
                             proventosPool.push(provento); // Adiciona ao pool de processamento
 
-                            // Adiciona à lista de proventos conhecidos se ainda नहीं estiver lá
+                            // Adiciona à lista de proventos conhecidos se ainda não estiver lá
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
@@ -1409,26 +1399,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         return processarProventosIA(proventosPool); 
     }
 
-    // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 4) ***
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
         const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
         
-        // Usa a chave estática
         const cacheKey = 'cache_grafico_historico';
         
         if (force) {
             await vestoDB.delete('apiCache', cacheKey);
         }
         
-        const cache = await getCache(cacheKey);
-        let aiData;
+        let aiData = await getCache(cacheKey);
 
-        if (cache) {
-            aiData = cache;
-        } else {
+        if (!aiData) {
             try {
                 aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
                 if (aiData && aiData.length > 0) {
@@ -1439,7 +1424,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return { labels: [], data: [] }; 
             }
         }
-    // *** FIM DA MUDANÇA (Restante da função é igual) ***
 
         if (!aiData || aiData.length === 0) return { labels: [], data: [] };
 
@@ -1481,9 +1465,6 @@ document.addEventListener('DOMContentLoaded', async () => {
      async function atualizarTodosDados(force = false) { 
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
-        // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
-        // Linhas de notícias removidas daqui
-        // *** FIM DA MUDANÇA ***
         
         calcularCarteira();
         await processarDividendosPagos(); 
@@ -1515,18 +1496,12 @@ document.addEventListener('DOMContentLoaded', async () => {
              renderizarProventos(); 
              renderizarGraficoHistorico({ labels: [], data: [] }); 
              refreshIcon.classList.remove('spin-animation');
-             // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
-             // Bloco try/catch de notícias removido daqui
-             // *** FIM DA MUDANÇA ***
              return;
         }
 
         const promessaPrecos = buscarPrecosCarteira(force); 
         const promessaProventos = buscarProventosFuturos(force);
         const promessaHistorico = buscarHistoricoProventosAgregado(force);
-        // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
-        // promessaNoticias removida daqui
-        // *** FIM DA MUDANÇA ***
 
         promessaPrecos.then(async precos => {
             if (precos.length > 0) {
@@ -1561,14 +1536,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarGraficoHistorico({ labels: [], data: [] }); 
         });
         
-        // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
-        // Bloco promessaNoticias.then() removido daqui
-        // *** FIM DA MUDANÇA ***
-
         try {
-            // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
             await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
-            // *** FIM DA MUDANÇA ***
         } finally {
             console.log("Sincronização de CARTEIRA terminada.");
             refreshIcon.classList.remove('spin-animation');
@@ -1611,10 +1580,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                      throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                  }
                  
-                 // *** INÍCIO DA CORREÇÃO ***
-                 // (Linha removida que limpava 'cache_grafico_historico')
-                 // *** FIM DA CORREÇÃO ***
-
             } catch (error) {
                  console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
                  showToast("Ativo não encontrado."); 
@@ -1647,10 +1612,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         addButton.disabled = false;
         hideAddModal();
         
-        // *** INÍCIO DA CORREÇÃO ***
-        await removerCacheAtivo(ticker); // Limpa o cache APENAS deste ativo
-        await atualizarTodosDados(false); // ATUALIZADO DE 'true' PARA 'false'
-        // *** FIM DA CORREÇÃO ***
+        await removerCacheAtivo(ticker); 
+        await atualizarTodosDados(false); 
     }
 
     /** Remove um ativo (e todas as suas transações) */
@@ -1668,13 +1631,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 await removerCacheAtivo(symbol); 
                 
-                 // *** INÍCIO DA CORREÇÃO ***
-                 // (Linha removida que limpava 'cache_grafico_historico')
-                 // *** FIM DA CORREÇÃO ***
-                 
-                // *** INÍCIO DA CORREÇÃO ***
-                await atualizarTodosDados(false); // ATUALIZADO DE 'true' PARA 'false'
-                // *** FIM DA CORREÇÃO ***
+                await atualizarTodosDados(false); 
             }
         );
     }
@@ -1689,15 +1646,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = ''; 
         
-        // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
         currentDetalhesSymbol = null;
-        currentDetalhesMeses = 3; // Padrão agora é 3M
-        currentDetalhesHistoricoJSON = null; // Limpa o JSON armazenado
+        currentDetalhesMeses = 3; 
+        currentDetalhesHistoricoJSON = null; 
         
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '3'); // Padrão agora é 3M
+            btn.classList.toggle('active', btn.dataset.meses === '3'); 
         });
-        // *** FIM DA MUDANÇA ***
     }
     
     /** Busca e exibe os dados da página de detalhes */
@@ -1710,15 +1665,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesTituloTexto.textContent = symbol;
         detalhesNomeLongo.textContent = 'A carregar...';
         
-        // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
         currentDetalhesSymbol = symbol;
-        currentDetalhesMeses = 3; // Padrão agora é 3M
-        currentDetalhesHistoricoJSON = null; // Limpa o JSON anterior
+        currentDetalhesMeses = 3; 
+        currentDetalhesHistoricoJSON = null; 
         
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '3'); // Padrão agora é 3M
+            btn.classList.toggle('active', btn.dataset.meses === '3'); 
         });
-        // *** FIM DA MUDANÇA ***
         
         const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
@@ -1740,10 +1693,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (isFII(symbol)) {
             detalhesHistoricoContainer.classList.remove('hidden'); 
-            // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
-            // Chama a função que busca o JSON (apenas 12 meses)
             promessaAi = fetchHistoricoIA(symbol); 
-            // *** FIM DA MUDANÇA ***
         }
         
         detalhesLoading.classList.add('hidden');
@@ -1816,8 +1766,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
-    
     // 1. Função que BUSCA o JSON de 12 meses (apenas 1 vez)
     async function fetchHistoricoIA(symbol) {
         // Mostra o skeleton de loading
@@ -1836,11 +1784,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!aiResultJSON) {
                 console.log(`Buscando histórico JSON de 12 meses para ${symbol} na API...`);
-                // A API agora retorna 'response.json' em vez de 'response.text'
-                aiResultJSON = await callGeminiHistoricoAPI(symbol, todayString); // Não passa mais 'meses'
+                aiResultJSON = await callGeminiHistoricoAPI(symbol, todayString); 
                 
                 if (aiResultJSON && Array.isArray(aiResultJSON)) {
-                    // Salva o JSON no cache por 24h
                     await setCache(cacheKey, aiResultJSON, CACHE_24_HORAS);
                 } else {
                     aiResultJSON = []; // Garante que é um array
@@ -1849,10 +1795,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log(`Usando cache para histórico JSON de ${symbol}.`);
             }
 
-            // Armazena o JSON na variável global
             currentDetalhesHistoricoJSON = aiResultJSON;
             
-            // Renderiza o período padrão (3M)
             renderHistoricoIADetalhes(3);
 
         } catch (e) {
@@ -1874,7 +1818,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 2. Função que RENDERIZA o texto a partir do JSON filtrado (instantâneo)
     function renderHistoricoIADetalhes(meses) {
         if (!currentDetalhesHistoricoJSON) {
-            // Se o JSON ainda não carregou, o loading já está visível
             return;
         }
 
@@ -1887,20 +1830,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // Filtra o JSON (slice(0, 3) pega 3, slice(0, 6) pega 6, etc.)
         const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses);
-
-        // Constrói o texto
         const textoFormatado = dadosFiltrados
             .map(item => `${item.mes}: ${formatBRL(item.valor)}`)
-            .join('\n'); // Junta com quebra de linha
+            .join('\n'); 
 
-        // Exibe o resultado
         detalhesAiProvento.innerHTML = `
             <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${textoFormatado}</p>
         `;
     }
-    // *** FIM DA MUDANÇA ***
     
     /** Muda a aba visível */
     function mudarAba(tabId) {
@@ -1921,11 +1859,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshButton.addEventListener('click', async () => {
         await atualizarTodosDados(true); 
     });
-    // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+    
     refreshNoticiasButton.addEventListener('click', async () => {
         await handleAtualizarNoticias(true); 
     });
-    // *** FIM DA MUDANÇA ***
     
     showAddModalBtn.addEventListener('click', showAddModal);
     emptyStateAddBtn.addEventListener('click', showAddModal);
@@ -2047,7 +1984,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
         if (!target) return;
@@ -2065,10 +2001,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         target.classList.add('active');
 
-        // Apenas renderiza! Não faz nova chamada de API.
         renderHistoricoIADetalhes(currentDetalhesMeses);
     });
-    // *** FIM DA MUDANÇA ***
 
     copiarDadosBtn.addEventListener('click', handleCopiarDados);
     abrirImportarModalBtn.addEventListener('click', showImportModal);
@@ -2083,11 +2017,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Funções da API Gemini (BFF)
     // ==========================================================
 
-    // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
-    async function callGeminiHistoricoAPI(ticker, todayString) { // 'meses' removido
+    async function callGeminiHistoricoAPI(ticker, todayString) { 
         const body = { 
             mode: 'historico_12m', 
-            // 'meses' não é mais enviado no payload
             payload: { ticker, todayString } 
         };
         const response = await fetchBFF('/api/gemini', {
@@ -2095,10 +2027,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        // A API agora retorna 'json'
         return response.json; 
     }
-    // *** FIM DA MUDANÇA ***
     
     async function callGeminiProventosCarteiraAPI(fiiList, todayString) {
         const body = { mode: 'proventos_carteira', payload: { fiiList, todayString } };
@@ -2251,12 +2181,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         await carregarProventosConhecidos();
         mudarAba('tab-dashboard'); 
         
-        // *** INÍCIO DA MUDANÇA (SEPARAÇÃO DE NOTÍCIAS) ***
+        // Dispara as duas funções em paralelo, sem esperar uma pela outra.
         atualizarTodosDados(false); 
-        handleAtualizarNoticias(false); // Carrega notícias na inicialização
+        handleAtualizarNoticias(false); 
         
         setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
-        // *** FIM DA MUDANÇA ***
     }
     
     // Inicia a aplicação

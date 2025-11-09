@@ -386,6 +386,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    async function removerProventosConhecidos(symbol) {
+        console.log(`A limpar 'proventosConhecidos' (memória e DB) para: ${symbol}`);
+        
+        // 1. Limpa do array em memória
+        proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
+        
+        // 2. Limpa do IndexedDB
+        try {
+            // Como não há índice 'bySymbol' nesta store, temos que buscar todos e filtrar.
+            const todosProventos = await vestoDB.getAll('proventosConhecidos');
+            const proventosParaRemover = todosProventos.filter(p => p.symbol === symbol);
+            
+            if (proventosParaRemover.length > 0) {
+                console.log(`Removendo ${proventosParaRemover.length} proventos conhecidos do DB...`);
+                // Deleta cada um em paralelo
+                const deletePromises = proventosParaRemover.map(p => vestoDB.delete('proventosConhecidos', p.id));
+                await Promise.all(deletePromises);
+            }
+        } catch (e) {
+            console.error(`Erro ao remover proventos conhecidos do DB para ${symbol}:`, e);
+        }
+    }
+    
     async function getCache(key) {
         const cacheItem = await vestoDB.get('apiCache', key);
         if (!cacheItem) return null;
@@ -1630,6 +1653,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 await removerCacheAtivo(symbol); 
+                
+                // ==========================================================
+                // CORREÇÃO ADICIONADA AQUI:
+                // Limpa os proventos futuros/passados salvos no DB
+                await removerProventosConhecidos(symbol);
+                // ==========================================================
                 
                 await atualizarTodosDados(false); 
             }

@@ -69,6 +69,13 @@ Exemplo de resposta (se hoje for 07/11 e GARE11 paga hoje):
         contents: [{ parts: [{ text: userQuery }] }],
         tools: [{ "google_search": {} }], 
         systemInstruction: { parts: [{ text: systemPrompt }] },
+        
+        // ==========================================================
+        // OTIMIZAÇÃO ADICIONADA: Força a saída em JSON.
+        // ==========================================================
+        generationConfig: {
+            "responseMimeType": "application/json"
+        }
     };
 }
 
@@ -83,7 +90,13 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave da API Gemini não configurada no servidor." });
     }
 
+    // ATUALIZADO: URL da API (removido :generateContent para usar a v1beta)
+    // A URL original `v1beta/...:generateContent` também funciona, esta é apenas
+    // uma leve modernização. A URL que você tinha também aceita o generationConfig.
+    // const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+    // Vamos manter a sua URL original, pois ela é válida.
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+
 
     try {
         const { mode, payload } = request.body;
@@ -108,29 +121,33 @@ export default async function handler(request, response) {
         }
 
         // Cache de 24 horas (86400 segundos)
+        // (Recomendação: Considere remover este cache e confiar 100% no cache do IndexedDB no app.js)
         response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); 
 
+        // ==========================================================
+        // OTIMIZAÇÃO ADICIONADA: Lógica de parsing simplificada.
+        // Não precisamos mais de regex ou replace.
+        // ==========================================================
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio' || mode === 'historico_12m') {
             try {
-                let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar um array [ ... ]
-                
-                if (jsonMatch && jsonMatch[0]) {
-                    jsonText = jsonMatch[0];
-                }
-                
-                const parsedJson = JSON.parse(jsonText);
+                // Com "responseMimeType": "application/json", o 'text' É o JSON puro.
+                const parsedJson = JSON.parse(text);
                 
                 if (Array.isArray(parsedJson)) {
                     return response.status(200).json({ json: parsedJson });
                 } else {
-                    throw new Error("API retornou um JSON válido, mas não um array.");
+                    // Isso é um erro, a API deveria ter retornado um array
+                    console.error(`[Erro API Gemini] A API retornou um JSON válido, mas não um array. Modo: ${mode}`);
+                    throw new Error("A API retornou um JSON válido, mas não um array.");
                 }
             } catch (e) {
-                console.warn(`[Alerta API Gemini] A API retornou texto inválido ("${text}") em vez de JSON. Retornando array vazio. Erro: ${e.message}`);
-                return response.status(200).json({ json: [] }); 
+                // Se JSON.parse falhar, é um erro crítico da API.
+                console.error(`[Erro Crítico API Gemini] A API (modo JSON) retornou texto inválido: "${text.substring(0, 100)}...". Erro: ${e.message}`);
+                // Retorne 500, pois a API não cumpriu o contrato de "Modo JSON"
+                return response.status(500).json({ error: `O servidor de IA retornou uma resposta JSON inválida.` });
             }
         } else {
+            // Este bloco 'else' lida com outros modos que podem retornar texto (se houver)
             return response.status(200).json({ text: text.replace(/\*/g, '') });
         }
 

@@ -107,8 +107,8 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
-        // Adiciona Caching
-        response.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate'); // Cache de 10 minutos
+        // *** MUDANÇA AQUI: Cache de 10 minutos -> 24 horas (86400 segundos) ***
+        response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); // Cache de 24 horas
 
         // *** INÍCIO DA CORREÇÃO (PARSE ROBUSTO DE JSON) ***
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {

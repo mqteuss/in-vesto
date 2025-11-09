@@ -1270,9 +1270,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    /** * Busca preços, usando cache individual por ativo
-     * (Já estava respeitando 'force')
-     */
     async function buscarPrecosCarteira(force = false) { 
         if (carteiraCalculada.length === 0) return [];
         console.log("A buscar preços na API (cache por ativo)...");
@@ -1289,25 +1286,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (precoCache) return precoCache;
             }
             try {
-const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
+                // *** INÍCIO DA CORREÇÃO (ReferenceError: ticker is not defined) ***
+                const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
+                // *** FIM DA CORREÇÃO ***
+                
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 const result = data.results?.[0];
 
-                if (result && !result.error) {
-                    if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
+                if (result && !result.error) { 
+                    if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', ''); 
                     await setCache(cacheKey, result); 
-                    return result;
-                } else {
-                    console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
-                    return null;
+                    return result; 
+                } else { 
+                    console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`); 
+                    return null; 
                 }
-            } catch (err) {
-                console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
-                return null;
+            } catch (err) { 
+                console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err); 
+                return null; 
             }
         });
-        const resultados = await Promise.all(promessas);
-        return resultados.filter(p => p !== null);
+        const resultados = await Promise.all(promessas); 
+        return resultados.filter(p => p !== null); 
     }
 
     /** Filtra proventos da IA para datas futuras */
@@ -1493,13 +1493,11 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
     // ==========================================================
     
      async function atualizarTodosDados(force = false) { 
-        // *** INÍCIO DA CORREÇÃO (Problema 1) ***
         // Só mostra o skeleton se for uma atualização FORÇADA
         if (force) {
             renderizarDashboardSkeletons(true);
             renderizarCarteiraSkeletons(true);
         }
-        // *** FIM DA CORREÇÃO ***
         
         calcularCarteira();
         await processarDividendosPagos(); 
@@ -1537,13 +1535,11 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
         const promessaPrecos = buscarPrecosCarteira(force); 
         const promessaHistorico = buscarHistoricoProventosAgregado(force);
         
-        // *** INÍCIO DA CORREÇÃO (Problema 2) ***
         // Só busca proventos na rede se for uma atualização FORÇADA
         let promessaProventos = null;
         if (force) {
             promessaProventos = buscarProventosFuturos(true); // 'true' para limpar cache
         }
-        // *** FIM DA CORREÇÃO ***
 
         promessaPrecos.then(async precos => {
             if (precos.length > 0) {
@@ -1558,7 +1554,6 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
             if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
 
-        // *** INÍCIO DA CORREÇÃO (Problema 2) ***
         // Só processa a promessa de proventos se ela foi iniciada (force = true)
         if (promessaProventos) {
             promessaProventos.then(async proventosFuturos => {
@@ -1573,7 +1568,6 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
                 if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
             });
         }
-        // *** FIM DA CORREÇÃO ***
         
         promessaHistorico.then(({ labels, data }) => {
             renderizarGraficoHistorico({ labels, data });
@@ -1584,14 +1578,12 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
         });
         
         try {
-            // *** INÍCIO DA CORREÇÃO (Problema 2) ***
             // Adiciona a promessa de proventos ao 'allSettled' apenas se ela existir
             const promessas = [promessaPrecos, promessaHistorico];
             if (promessaProventos) {
                 promessas.push(promessaProventos);
             }
             await Promise.allSettled(promessas); 
-            // *** FIM DA CORREÇÃO ***
         } finally {
             console.log("Sincronização de CARTEIRA terminada.");
             refreshIcon.classList.remove('spin-animation');
@@ -1669,7 +1661,6 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
         await removerCacheAtivo(ticker); 
         await atualizarTodosDados(false); // Roda sem proventos e sem piscar
         
-        // *** INÍCIO DA CORREÇÃO (Problema 2) ***
         // Agora, busca o provento SÓ do ativo novo, em segundo plano.
         if (isFII(ticker)) {
             console.log(`Buscando provento (em background) apenas para: ${ticker}`);
@@ -1692,7 +1683,6 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
                 }
             });
         }
-        // *** FIM DA CORREÇÃO ***
     }
 
     /** Remove um ativo (e todas as suas transações) */
@@ -1701,6 +1691,7 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
             'Remover Ativo', 
             `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
             async () => { 
+                // Remove transações
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
                 
                 const transacoesParaRemover = await vestoDB.getAllFromIndex('transacoes', 'bySymbol', symbol);
@@ -1708,7 +1699,16 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
                     await vestoDB.delete('transacoes', t.id);
                 }
 
-                await removerCacheAtivo(symbol); 
+                // *** INÍCIO DA CORREÇÃO (LIMPAR PROVENTOS CONHECIDOS) ***
+                const proventosParaRemover = proventosConhecidos.filter(p => p.symbol === symbol);
+                for (const provento of proventosParaRemover) {
+                    await vestoDB.delete('proventosConhecidos', provento.id);
+                }
+                // Atualiza o array em memória
+                proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
+                // *** FIM DA CORREÇÃO ***
+
+                await removerCacheAtivo(symbol); // Limpa o apiCache
                 
                 await atualizarTodosDados(false); // Roda sem proventos e sem piscar
             }
@@ -1734,8 +1734,6 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
         });
     }
     
-    // *** INÍCIO DA OTIMIZAÇÃO 2 ***
-
     /** Busca e exibe os dados da página de detalhes */
     async function handleMostrarDetalhes(symbol) {
         // 1. Limpa e prepara o modal imediatamente
@@ -1855,8 +1853,6 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
         }
     }
     
-    // *** FIM DA OTIMIZAÇÃO 2 ***
-
     // 1. Função que BUSCA o JSON de 12 meses (apenas 1 vez)
     async function fetchHistoricoIA(symbol) {
         // Mostra o skeleton de loading
@@ -2282,4 +2278,3 @@ const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
     // Inicia a aplicação
     await init();
 });
-

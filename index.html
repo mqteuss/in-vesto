@@ -138,7 +138,7 @@
                         </svg>
                     </button>
                 </div>
-                </div>
+            </div>
             
             <h2 class="text-xl font-semibold text-white mb-3">Minha Posição</h2>
             
@@ -390,7 +390,16 @@
                      <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
                      
                      <div id="detalhes-historico-container" class="hidden">
-                        <div id="detalhes-ai-provento" class="my-4"></div>
+                        
+                        <h4 class="text-base font-semibold text-white">Histórico de Proventos</h4>
+                        <div id="periodo-selector-group" class="mt-2 grid grid-cols-4 gap-2">
+                            <button class="periodo-selector-btn" data-meses="3">3M</button>
+                            <button class="periodo-selector-btn" data-meses="6">6M</button>
+                            <button class="periodo-selector-btn" data-meses="9">9M</button>
+                            <button class="periodo-selector-btn active" data-meses="12">12M</button>
+                        </div>
+                        <div id="detalhes-ai-provento" class="mt-4">
+                            </div>
                         <div id="detalhes-historico" class="space-y-2 scrollable-content pr-2"></div>
                      </div>
                 </div>

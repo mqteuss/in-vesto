@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
     let currentDetalhesSymbol = null;
-    let currentDetalhesMeses = 12;
+    let currentDetalhesMeses = 3; // MUDADO DE 12 PARA 3
     let currentDetalhesHistoricoJSON = null; // Armazena o JSON de 12 meses
     // *** FIM DA MUDANÇA ***
 
@@ -1653,11 +1653,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
         currentDetalhesSymbol = null;
-        currentDetalhesMeses = 12; 
+        currentDetalhesMeses = 3; // Padrão agora é 3M
         currentDetalhesHistoricoJSON = null; // Limpa o JSON armazenado
         
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '12');
+            btn.classList.toggle('active', btn.dataset.meses === '3'); // Padrão agora é 3M
         });
         // *** FIM DA MUDANÇA ***
     }
@@ -1674,11 +1674,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
         currentDetalhesSymbol = symbol;
-        currentDetalhesMeses = 12; // Padrão
+        currentDetalhesMeses = 3; // Padrão agora é 3M
         currentDetalhesHistoricoJSON = null; // Limpa o JSON anterior
         
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '12');
+            btn.classList.toggle('active', btn.dataset.meses === '3'); // Padrão agora é 3M
         });
         // *** FIM DA MUDANÇA ***
         
@@ -1814,8 +1814,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Armazena o JSON na variável global
             currentDetalhesHistoricoJSON = aiResultJSON;
             
-            // Renderiza o período padrão (12M)
-            renderHistoricoIADetalhes(12);
+            // Renderiza o período padrão (3M)
+            renderHistoricoIADetalhes(3);
 
         } catch (e) {
             showToast("Erro na consulta IA."); 

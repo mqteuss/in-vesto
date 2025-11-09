@@ -62,31 +62,67 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
+  // 1. API calls go directly to network
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
+  // 2. Non-GET requests go directly to network
   if (event.request.method !== 'GET') {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  event.respondWith(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.match(event.request).then(cachedResponse => {
-        
-        const fetchPromise = fetch(event.request).then(networkResponse => {
-          if (networkResponse && networkResponse.status === 200) {
-            cache.put(event.request, networkResponse.clone());
-          }
-          return networkResponse;
-        });
+  // 3. Check if it's a main app file
+  const appShellPaths = [
+    '/',
+    '/index.html',
+    '/style.css',
+    '/app.js',
+    '/manifest.json'
+  ];
 
-        return cachedResponse || fetchPromise;
-      });
-    })
-  );
+  const isAppShellRequest = appShellPaths.includes(url.pathname) && url.origin === self.location.origin;
+
+  if (isAppShellRequest) {
+    // *** Otimização 3: Network-First for App Shell ***
+    event.respondWith(
+        fetch(event.request)
+            .then(networkResponse => {
+                // OK, update cache
+                if (networkResponse && networkResponse.status === 200) {
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, networkResponse.clone());
+                    });
+                }
+                return networkResponse;
+            })
+            .catch(err => {
+                // Network failed, get from cache (Offline mode)
+                console.log(`[SW] Network failed for ${url.pathname}, serving from cache.`);
+                return caches.match(event.request);
+            })
+    );
+  } else {
+    // Cache-First (Stale-While-Revalidate) for all other assets (CDNs, fonts, icons)
+    event.respondWith(
+        caches.open(CACHE_NAME).then(cache => {
+            return cache.match(event.request).then(cachedResponse => {
+                
+                const fetchPromise = fetch(event.request).then(networkResponse => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        cache.put(event.request, networkResponse.clone());
+                    }
+                    return networkResponse;
+                });
+
+                // Return cache if it exists, otherwise wait for network
+                return cachedResponse || fetchPromise;
+            });
+        })
+    );
+  }
 });
 
 self.addEventListener('message', (event) => {

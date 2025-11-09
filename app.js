@@ -1576,10 +1576,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                      throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                  }
                  
-                 // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 4) ***
-                 // Limpa o cache do gráfico de histórico (Otimizado)
-                 await vestoDB.delete('apiCache', 'cache_grafico_historico');
-                 // *** FIM DA MUDANÇA ***
+                 // *** INÍCIO DA CORREÇÃO ***
+                 // (Linha removida que limpava 'cache_grafico_historico')
+                 // *** FIM DA CORREÇÃO ***
 
             } catch (error) {
                  console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
@@ -1613,7 +1612,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         addButton.disabled = false;
         hideAddModal();
         
-        await atualizarTodosDados(true); 
+        // *** INÍCIO DA CORREÇÃO ***
+        await removerCacheAtivo(ticker); // Limpa o cache APENAS deste ativo
+        await atualizarTodosDados(false); // ATUALIZADO DE 'true' PARA 'false'
+        // *** FIM DA CORREÇÃO ***
     }
 
     /** Remove um ativo (e todas as suas transações) */
@@ -1631,12 +1633,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 await removerCacheAtivo(symbol); 
                 
-                 // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 4) ***
-                 // Limpa o cache do gráfico de histórico (Otimizado)
-                 await vestoDB.delete('apiCache', 'cache_grafico_historico');
-                 // *** FIM DA MUDANÇA ***
+                 // *** INÍCIO DA CORREÇÃO ***
+                 // (Linha removida que limpava 'cache_grafico_historico')
+                 // *** FIM DA CORREÇÃO ***
                  
-                await atualizarTodosDados(true); 
+                // *** INÍCIO DA CORREÇÃO ***
+                await atualizarTodosDados(false); // ATUALIZADO DE 'true' PARA 'false'
+                // *** FIM DA CORREÇÃO ***
             }
         );
     }

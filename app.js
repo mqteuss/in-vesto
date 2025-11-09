@@ -1289,7 +1289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (precoCache) return precoCache;
             }
             try {
-                const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
+                const tickerParaApi = isFII(ativo.symbol) ? `${ticker}.SA` : ativo.symbol;
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 const result = data.results?.[0];
 
@@ -1321,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const ativoCarteira = carteiraCalculada.find(a => a.symbol === proventoIA.symbol);
                 if (!ativoCarteira) return null;
                 
-                // *** CORREÇÃO: Aceita o cache "vazio" (value=0) ***
+                // Aceita o cache "vazio" (value=0) e proventos reais
                 if (proventoIA.paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(proventoIA.paymentDate)) {
                     const parts = proventoIA.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
@@ -1336,7 +1336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .filter(p => p !== null);
     }
 
-    // *** INÍCIO DA CORREÇÃO (Problema 2) ***
+    // *** INÍCIO DA CORREÇÃO (BUG CACHE ANTIGO) ***
     async function buscarProventosFuturos(force = false, fiisParaBuscarOverride = null) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
@@ -1349,6 +1349,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let proventosPool = []; // Pool de proventos para filtrar
         let fiisParaBuscar = [];
+
+        // NOVO: Se for 'force', limpa proventos futuros do IndexedDB 'proventosConhecidos'
+        if (force) {
+            console.log("Forçando atualização, limpando proventos futuros conhecidos...");
+            const proventosAntigos = proventosConhecidos.filter(p => !p.processado);
+            for (const provento of proventosAntigos) {
+                await vestoDB.delete('proventosConhecidos', provento.id);
+            }
+            // Atualiza o array em memória
+            proventosConhecidos = proventosConhecidos.filter(p => p.processado);
+        }
 
         // 1. Processa o que já está em cache
         for (const symbol of fiiList) {
@@ -1365,7 +1376,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // Se for um override (só 1 ativo), não loga a carteira inteira
         if (!fiisParaBuscarOverride) {
             console.log("Proventos em cache (para filtrar):", proventosPool.map(p => p.symbol));
             console.log("Proventos para buscar (API):", fiisParaBuscar);
@@ -1383,16 +1393,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                             fiisEncontrados.add(provento.symbol);
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_24_HORAS); 
-                            proventosPool.push(provento); // Adiciona ao pool de processamento
+                            proventosPool.push(provento); 
 
-                            // Adiciona à lista de proventos conhecidos se ainda não estiver lá
+                            // Adiciona à lista de proventos conhecidos
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
                                 await vestoDB.put('proventosConhecidos', novoProvento);
-                                proventosConhecidos.push(novoProvento); // Atualiza array em memória
+                                proventosConhecidos.push(novoProvento); 
                             }
                         }
                     }
@@ -1405,7 +1415,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const cacheKey = `provento_ia_${fiiBuscado}`;
                         const proventoVazio = { symbol: fiiBuscado, value: 0, paymentDate: null };
                         await setCache(cacheKey, proventoVazio, CACHE_24_HORAS);
-                        proventosPool.push(proventoVazio); // Adiciona ao pool para filtragem
+                        proventosPool.push(proventoVazio); 
                     }
                 }
                 

@@ -34,7 +34,7 @@ REGRAS:
 2.  Responda APENAS com um array JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
 3.  Cada objeto no array deve conter 6 campos:
     - "title": O título exato ou ligeiramente abreviado da notícia.
-    - "summary": Um resumo um pouco mais detalhado, com cerca de 3 a 5 frases, explicando o ponto principal e o contexto da notícia.
+    - "summary": Um resumo da notícia com 3 ou 5 frases (ligeiramente maior).
     - "sourceName": O nome do portal (ex: "InfoMoney").
     - "sourceHostname": O domínio raiz da fonte (ex: "infomoney.com.br"). ESTE CAMPO É OBRIGATÓRIO.
     - "publicationDate": A data da publicação no formato YYYY-MM-DD.

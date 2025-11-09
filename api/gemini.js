@@ -25,15 +25,20 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 // Constrói o payload para a API Gemini
 function getGeminiPayload(mode, payload) {
-    const { ticker, todayString, fiiList } = payload;
+    // *** MUDANÇA AQUI: 'meses' foi adicionado ***
+    const { ticker, todayString, fiiList, meses } = payload;
     let systemPrompt = '';
     let userQuery = '';
 
     switch (mode) {
         case 'historico_12m':
-            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua única tarefa é encontrar o histórico de proventos (dividendos) dos *últimos 12 meses* para o FII solicitado. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).\n\nResponda em português.\n\nFormate a resposta EXATAMENTE assim, com um item por linha (do mais recente para o mais antigo) e sem nenhum outro texto, introdução ou asteriscos:\n[MM/AA]: R$ [VALOR]\n[MM/AA]: R$ [VALOR]\n... (até 12 linhas)\n\nExemplo:\n10/25: R$ 0,10\n09/25: R$ 0,10\n\nSe não encontrar dados, apenas diga:\n"Não foi possível encontrar o histórico de proventos dos últimos 12 meses para ${ticker}."`;
-            userQuery = `Qual é o histórico de proventos (últimos 12 meses) para o FII ${ticker}?`;
+            // *** MUDANÇA AQUI: Define o número de meses (padrão 12) ***
+            const numMeses = meses || 12; 
+            
+            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua única tarefa é encontrar o histórico de proventos (dividendos) dos *últimos ${numMeses} meses* para o FII solicitado. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).\n\nResponda em português.\n\nFormate a resposta EXATAMENTE assim, com um item por linha (do mais recente para o mais antigo) e sem nenhum outro texto, introdução ou asteriscos:\n[MM/AA]: R$ [VALOR]\n[MM/AA]: R$ [VALOR]\n... (até ${numMeses} linhas)\n\nExemplo:\n10/25: R$ 0,10\n09/25: R$ 0,10\n\nSe não encontrar dados, apenas diga:\n"Não foi possível encontrar o histórico de proventos dos últimos ${numMeses} meses para ${ticker}."`;
+            userQuery = `Qual é o histórico de proventos (últimos ${numMeses} meses) para o FII ${ticker}?`;
             break;
+            // *** FIM DA MUDANÇA ***
 
         case 'proventos_carteira':
             // Este prompt foi atualizado para incluir pagamentos de HOJE
@@ -107,10 +112,9 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
-        // *** MUDANÇA AQUI: Cache de 10 minutos -> 24 horas (86400 segundos) ***
-        response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); // Cache de 24 horas
+        // Cache de 24 horas (86400 segundos)
+        response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); 
 
-        // *** INÍCIO DA CORREÇÃO (PARSE ROBUSTO DE JSON) ***
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             try {
                 // Tenta limpar e parsear o JSON
@@ -130,15 +134,13 @@ export default async function handler(request, response) {
                 }
             } catch (e) {
                 // Se o JSON.parse falhar (ex: "Não foi encontrado...")
-                // Loga o erro no servidor, mas retorna um array VAZIO para o front-end
                 console.warn(`[Alerta API Gemini] A API retornou texto inválido ("${text}") em vez de JSON. Retornando array vazio. Erro: ${e.message}`);
-                return response.status(200).json({ json: [] }); // Retorna um array vazio para não quebrar o front-end
+                return response.status(200).json({ json: [] }); 
             }
         } else {
             // Este modo espera texto (historico_12m)
             return response.status(200).json({ text: text.replace(/\*/g, '') });
         }
-        // *** FIM DA CORREÇÃO ***
 
     } catch (error) {
         console.error("Erro interno no proxy Gemini:", error);

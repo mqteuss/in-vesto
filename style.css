@@ -282,3 +282,25 @@ select {
     background-color: #6D28D9; /* purple-700 */
     color: #FFF;
 }
+
+/* *** NOVO ESTILO ADICIONADO AQUI *** */
+/* Seletor de Período (Detalhes) */
+.periodo-selector-btn {
+    background-color: #374151; /* gray-700 */
+    color: #d1d5db; /* gray-300 */
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 500; /* medium */
+    padding-top: 0.5rem; /* py-2 */
+    padding-bottom: 0.5rem;
+    border-radius: 0.5rem; /* rounded-lg */
+    transition: all 0.2s ease-in-out;
+}
+.periodo-selector-btn:hover {
+    background-color: #4b5563; /* gray-600 */
+}
+.periodo-selector-btn.active {
+    background-color: #8B5CF6; /* accent-bg */
+    color: #ffffff; /* text-white */
+    font-weight: 600; /* semibold */
+}
+/* *** FIM DO NOVO ESTILO *** */

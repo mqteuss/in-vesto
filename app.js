@@ -1321,6 +1321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const ativoCarteira = carteiraCalculada.find(a => a.symbol === proventoIA.symbol);
                 if (!ativoCarteira) return null;
                 
+                // *** CORREÇÃO: Aceita o cache "vazio" (value=0) ***
                 if (proventoIA.paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(proventoIA.paymentDate)) {
                     const parts = proventoIA.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
@@ -1335,19 +1336,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             .filter(p => p !== null);
     }
 
-    // *** INÍCIO DA CORREÇÃO (CACHE DE PROVENTOS VAZIOS) ***
-    async function buscarProventosFuturos(force = false) {
+    // *** INÍCIO DA CORREÇÃO (Problema 2) ***
+    async function buscarProventosFuturos(force = false, fiisParaBuscarOverride = null) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
             .map(a => a.symbol);
+        
+        // Usa a lista override (se fornecida) ou a carteira inteira
+        const fiiList = fiisParaBuscarOverride || fiiNaCarteira;
             
-        if (fiiNaCarteira.length === 0) return [];
+        if (fiiList.length === 0) return [];
 
         let proventosPool = []; // Pool de proventos para filtrar
         let fiisParaBuscar = [];
 
         // 1. Processa o que já está em cache
-        for (const symbol of fiiNaCarteira) {
+        for (const symbol of fiiList) {
             const cacheKey = `provento_ia_${symbol}`;
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
@@ -1361,8 +1365,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        console.log("Proventos em cache (para filtrar):", proventosPool.map(p => p.symbol));
-        console.log("Proventos para buscar (API):", fiisParaBuscar);
+        // Se for um override (só 1 ativo), não loga a carteira inteira
+        if (!fiisParaBuscarOverride) {
+            console.log("Proventos em cache (para filtrar):", proventosPool.map(p => p.symbol));
+            console.log("Proventos para buscar (API):", fiisParaBuscar);
+        }
 
         // 2. Busca novos na API
         if (fiisParaBuscar.length > 0) {
@@ -1476,21 +1483,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================================
     
      async function atualizarTodosDados(force = false) { 
-        renderizarDashboardSkeletons(true);
-        renderizarCarteiraSkeletons(true);
+        // *** INÍCIO DA CORREÇÃO (Problema 1) ***
+        // Só mostra o skeleton se for uma atualização FORÇADA
+        if (force) {
+            renderizarDashboardSkeletons(true);
+            renderizarCarteiraSkeletons(true);
+        }
+        // *** FIM DA CORREÇÃO ***
         
         calcularCarteira();
         await processarDividendosPagos(); 
         
-        // *** INÍCIO DA OTIMIZAÇÃO 1 ***
-        // Renderiza proventos futuros a partir do cache ANTES da chamada de rede.
+        // Otimização 1: Renderiza proventos do cache imediatamente
         const proventosFuturosCache = processarProventosIA(proventosConhecidos);
         proventosAtuais = proventosFuturosCache;
         renderizarProventos();
-        // Mostra o valor do provento imediatamente, escondendo seu skeleton
         skeletonTotalProventos.classList.add('hidden');
         totalProventosEl.classList.remove('hidden');
-        // *** FIM DA OTIMIZAÇÃO 1 ***
         
         renderizarHistorico();
         renderizarGraficoPatrimonio(); 
@@ -1516,8 +1525,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const promessaPrecos = buscarPrecosCarteira(force); 
-        const promessaProventos = buscarProventosFuturos(force);
         const promessaHistorico = buscarHistoricoProventosAgregado(force);
+        
+        // *** INÍCIO DA CORREÇÃO (Problema 2) ***
+        // Só busca proventos na rede se for uma atualização FORÇADA
+        let promessaProventos = null;
+        if (force) {
+            promessaProventos = buscarProventosFuturos(true); // 'true' para limpar cache
+        }
+        // *** FIM DA CORREÇÃO ***
 
         promessaPrecos.then(async precos => {
             if (precos.length > 0) {
@@ -1532,17 +1548,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
 
-        promessaProventos.then(async proventosFuturos => {
-            proventosAtuais = proventosFuturos; 
-            renderizarProventos(); 
-            if (precosAtuais.length > 0) { 
-                await renderizarCarteira(); 
-            }
-        }).catch(err => {
-            console.error("Erro ao buscar proventos (BFF):", err);
-            showToast("Erro ao buscar proventos."); 
-            if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
-        });
+        // *** INÍCIO DA CORREÇÃO (Problema 2) ***
+        // Só processa a promessa de proventos se ela foi iniciada (force = true)
+        if (promessaProventos) {
+            promessaProventos.then(async proventosFuturos => {
+                proventosAtuais = proventosFuturos; 
+                renderizarProventos(); 
+                if (precosAtuais.length > 0) { 
+                    await renderizarCarteira(); 
+                }
+            }).catch(err => {
+                console.error("Erro ao buscar proventos (BFF):", err);
+                showToast("Erro ao buscar proventos."); 
+                if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
+            });
+        }
+        // *** FIM DA CORREÇÃO ***
         
         promessaHistorico.then(({ labels, data }) => {
             renderizarGraficoHistorico({ labels, data });
@@ -1553,7 +1574,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         
         try {
-            await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
+            // *** INÍCIO DA CORREÇÃO (Problema 2) ***
+            // Adiciona a promessa de proventos ao 'allSettled' apenas se ela existir
+            const promessas = [promessaPrecos, promessaHistorico];
+            if (promessaProventos) {
+                promessas.push(promessaProventos);
+            }
+            await Promise.allSettled(promessas); 
+            // *** FIM DA CORREÇÃO ***
         } finally {
             console.log("Sincronização de CARTEIRA terminada.");
             refreshIcon.classList.remove('spin-animation');
@@ -1629,7 +1657,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideAddModal();
         
         await removerCacheAtivo(ticker); 
-        await atualizarTodosDados(false); 
+        await atualizarTodosDados(false); // Roda sem proventos e sem piscar
+        
+        // *** INÍCIO DA CORREÇÃO (Problema 2) ***
+        // Agora, busca o provento SÓ do ativo novo, em segundo plano.
+        if (isFII(ticker)) {
+            console.log(`Buscando provento (em background) apenas para: ${ticker}`);
+            // Usa 'false' para não forçar (caso já tenha cache "vazio")
+            buscarProventosFuturos(false, [ticker]).then(async (novosProventos) => {
+                // Verifica se algo mudou (novo provento ou era um cache "vazio")
+                const proventoAtual = proventosAtuais.find(p => p.symbol === ticker);
+                const novoProvento = novosProventos.find(p => p.symbol === ticker);
+                
+                const mudou = (proventoAtual?.value !== novoProvento?.value) || (proventoAtual?.paymentDate !== novoProvento?.paymentDate);
+                
+                if (mudou) {
+                     console.log(`Provento de ${ticker} atualizado, renderizando...`);
+                     // Atualiza o pool global e renderiza
+                     proventosAtuais = processarProventosIA(proventosConhecidos);
+                     renderizarProventos();
+                     await renderizarCarteira(); // Re-renderiza a carteira com o novo provento
+                } else {
+                     console.log(`Provento de ${ticker} não mudou (ou continua vazio).`);
+                }
+            });
+        }
+        // *** FIM DA CORREÇÃO ***
     }
 
     /** Remove um ativo (e todas as suas transações) */
@@ -1647,7 +1700,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 await removerCacheAtivo(symbol); 
                 
-                await atualizarTodosDados(false); 
+                await atualizarTodosDados(false); // Roda sem proventos e sem piscar
             }
         );
     }

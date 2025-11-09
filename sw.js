@@ -15,6 +15,7 @@ const APP_SHELL_FILES_LOCAL = [
 ];
 
 const APP_SHELL_FILES_CDN = [
+  'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
 ];

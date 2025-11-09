@@ -45,7 +45,9 @@ EXEMPLO DE RESPOSTA JSON:
 [
   {"title": "IFIX atinge nova máxima: O que esperar?", "summary": "O IFIX atingiu nova máxima histórica nesta semana. Analistas debatem se o movimento é sustentável ou se uma correção está próxima, de olho na Selic.", "sourceName": "InfoMoney", "sourceHostname": "infomoney.com.br", "publicationDate": "2025-11-06", "relatedTickers": []},
   {"title": "HGLG11 e CPTS11 anunciam aquisições", "summary": "O fundo HGLG11 investiu R$ 63 milhões em galpões. Já o CPTS11 anunciou uma nova emissão.", "sourceName": "Money Times", "sourceHostname": "moneytimes.com.br", "publicationDate": "2025-11-05", "relatedTickers": ["HGLG11", "CPTS11"]}
-]`;
+]
+
+IMPORTANTE: Sua resposta DEVE começar com '[' e terminar com ']'. Nenhuma outra palavra, frase ou formatação é permitida antes ou depois do array JSON.`;
 
     const userQuery = `Gere um array JSON com os 10 resumos de notícias mais recentes (desta semana, ${todayString}) sobre FIIs. Inclua "title", "summary", "sourceName", "sourceHostname", "publicationDate" (YYYY-MM-DD) e "relatedTickers" (array de FIIs mencionados).`;
     // *** FIM DA ATUALIZAÇÃO ***

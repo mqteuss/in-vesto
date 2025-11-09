@@ -99,26 +99,38 @@ export default async function handler(request, response) {
         // CACHE DE 6 HORAS (21600 segundos)
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
-        // *** VALIDAÇÃO DE SEGURANÇA ***
+        // *** INÍCIO DA CORREÇÃO (LÓGICA DE PARSE MAIS SEGURA) ***
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const jsonMatch = jsonText.match(/\[.*\]/s); 
+        const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar [ ... ]
 
         let parsedJson;
 
         if (jsonMatch && jsonMatch[0]) {
-            jsonText = jsonMatch[0];
-            parsedJson = JSON.parse(jsonText);
+            // Encontrou um array, tenta o parse
+            try {
+                parsedJson = JSON.parse(jsonMatch[0]);
+            } catch (e) {
+                console.error("Erro ao fazer parse do JSON encontrado (match):", e.message);
+                throw new Error(`Erro interno ao processar JSON: ${e.message}`);
+            }
         } else {
-            parsedJson = JSON.parse(jsonText);
+            // Não encontrou um array. Verifica se o texto *inteiro* é um JSON (improvável, mas seguro)
+            try {
+                 parsedJson = JSON.parse(jsonText);
+                 if (!Array.isArray(parsedJson)) {
+                     // Se fez o parse mas não é um array, é um erro.
+                     throw new Error("API retornou um JSON válido, mas não um array.");
+                 }
+            } catch (e) {
+                // Se falhou (ex: "Unexpected token 'S'"), é porque a API retornou texto.
+                console.warn("[Alerta API News] A API retornou texto em vez de JSON:", jsonText);
+                throw new Error(`A API de notícias retornou texto inesperado: ${jsonText.substring(0, 50)}...`);
+            }
         }
 
-        if (Array.isArray(parsedJson)) {
-            return response.status(200).json({ json: parsedJson });
-        } else {
-            console.warn("Gemini retornou um JSON válido, mas não era um array:", parsedJson);
-            throw new Error("A API retornou um formato de dados inesperado.");
-        }
-        // *** FIM DA VALIDAÇÃO ***
+        // Se chegou aqui, parsedJson é um array válido
+        return response.status(200).json({ json: parsedJson });
+        // *** FIM DA CORREÇÃO ***
 
     } catch (error) {
         console.error("Erro interno no proxy Gemini (Notícias):", error);

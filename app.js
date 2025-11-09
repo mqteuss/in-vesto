@@ -1335,9 +1335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .filter(p => p !== null);
     }
 
-    /** * Busca proventos futuros, usando cache individual por FII
-     * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
-     */
+    // *** INÍCIO DA CORREÇÃO (CACHE DE PROVENTOS VAZIOS) ***
     async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
@@ -1370,10 +1368,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
+                const fiisEncontrados = new Set();
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
                     for (const provento of novosProventos) {
                         if (provento && provento.symbol && provento.paymentDate) {
+                            fiisEncontrados.add(provento.symbol);
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_24_HORAS); 
                             proventosPool.push(provento); // Adiciona ao pool de processamento
@@ -1390,6 +1390,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                     }
                 }
+                
+                // Salva um cache "vazio" para FIIs buscados que não retornaram proventos
+                for (const fiiBuscado of fiisParaBuscar) {
+                    if (!fiisEncontrados.has(fiiBuscado)) {
+                        console.log(`Cache "vazio" salvo para ${fiiBuscado} por 24h.`);
+                        const cacheKey = `provento_ia_${fiiBuscado}`;
+                        const proventoVazio = { symbol: fiiBuscado, value: 0, paymentDate: null };
+                        await setCache(cacheKey, proventoVazio, CACHE_24_HORAS);
+                        proventosPool.push(proventoVazio); // Adiciona ao pool para filtragem
+                    }
+                }
+                
             } catch (error) {
                 console.error("Erro ao buscar novos proventos com IA:", error);
             }
@@ -1398,6 +1410,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 3. Retorna apenas os proventos que são REALMENTE futuros
         return processarProventosIA(proventosPool); 
     }
+    // *** FIM DA CORREÇÃO ***
 
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));

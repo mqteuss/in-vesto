@@ -10,6 +10,8 @@ const CACHE_NAME = 'vesto-cache-v1';
 const APP_SHELL_FILES_LOCAL = [
   '/', // Acessa a raiz
   'index.html', // O arquivo HTML principal
+  'style.css', // <-- ADICIONADO
+  'app.js', // <-- ADICIONADO
   'manifest.json', // O manifesto do PWA
   'icons/icon-192x192.png', // Ícones do PWA
   'icons/icon-512x512.png'  // Ícones do PWA

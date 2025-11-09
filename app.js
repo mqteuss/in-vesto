@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detalhesLoading = document.getElementById('detalhes-loading');
     const detalhesPreco = document.getElementById('detalhes-preco');
     const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
-    const periodoSelectorGroup = document.getElementById('periodo-selector-group'); // *** MUDANÇA AQUI ***
+    const periodoSelectorGroup = document.getElementById('periodo-selector-group'); 
     const detalhesAiProvento = document.getElementById('detalhes-ai-provento'); 
     const listaHistorico = document.getElementById('lista-historico');
     const historicoStatus = document.getElementById('historico-status');
@@ -210,10 +210,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let isDraggingDetalhes = false;
     let newWorker;
     
-    // *** MUDANÇA AQUI: Estado para o modal de detalhes ***
+    // (Otimização 3)
     let currentDetalhesSymbol = null;
-    let currentDetalhesMeses = 3;
-    // *** FIM DA MUDANÇA ***
+    let currentDetalhesMeses = 3; // <-- MUDANÇA (Linha 205)
+    let currentDetalhesHistoricoJSON = null; 
 
     // ==========================================================
     // Notificações Toast
@@ -223,17 +223,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         clearTimeout(toastTimer);
         toastMessageElement.textContent = message;
 
-        // Reseta classes de cor
         toastElement.classList.remove(
-            'bg-red-800', 'border-red-600',       // Classes de Erro
-            'bg-green-700', 'border-green-500'    // Classes de Sucesso (AGORA VERDE)
+            'bg-red-800', 'border-red-600',       
+            'bg-green-700', 'border-green-500'    
         );
         
-        // Aplica classes de cor com base no 'type'
         if (type === 'success') {
-            toastElement.classList.add('bg-green-700', 'border-green-500'); // SUCESSO (VERDE)
-        } else { // 'error' ou default
-            toastElement.classList.add('bg-red-800', 'border-red-600'); // ERRO (VERMELHO)
+            toastElement.classList.add('bg-green-700', 'border-green-500'); 
+        } else { 
+            toastElement.classList.add('bg-red-800', 'border-red-600'); 
         }
 
         if (isToastShowing && toastElement.classList.contains('toast-visible')) {
@@ -364,7 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } 
         catch (e) { 
             console.error("Erro ao salvar no cache IDB:", e); 
-            await clearBrapiCache(); // Limpa cache em caso de erro (ex: QuotaExceeded)
+            await clearBrapiCache(); 
         }
     }
     
@@ -375,23 +373,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             await vestoDB.delete('apiCache', `provento_ia_${symbol}`);
             await vestoDB.delete('apiCache', `detalhe_preco_${symbol}`);
             
-            // *** MUDANÇA AQUI: Limpa todos os caches de histórico IA para este ativo ***
-            await vestoDB.delete('apiCache', `hist_ia_${symbol}_3`);
-            await vestoDB.delete('apiCache', `hist_ia_${symbol}_6`);
-            await vestoDB.delete('apiCache', `hist_ia_${symbol}_9`);
-            await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`);
+            // (Otimização 3 e 4)
+            // Limpa o cache JSON de 12 meses (o único que existe agora)
+            await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
             
             if (isFII(symbol)) {
-                // Limpa o cache de histórico agregado (que agora está no IDB)
-                const allKeys = await vestoDB.getAll('apiCache'); // Isso é ineficiente, mas OK para cache
-                const histKeys = allKeys
-                    .filter(item => item.key.startsWith('hist_agregado_v4_'))
-                    .map(item => item.key);
-                    
-                for (const key of histKeys) {
-                    await vestoDB.delete('apiCache', key);
-                }
+                 // Limpa o cache do gráfico de histórico (Otimizado)
+                 await vestoDB.delete('apiCache', 'cache_grafico_historico');
             }
+
         } catch (e) {
             console.error("Erro ao remover cache do ativo:", e);
         }
@@ -402,7 +392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!cacheItem) return null;
         
         const duration = cacheItem.duration ?? CACHE_DURATION; 
-        if (duration === -1) { return cacheItem.data; } // Cache perpétuo
+        if (duration === -1) { return cacheItem.data; } 
         
         const isExpired = (Date.now() - cacheItem.timestamp) > duration;
         if (isExpired) { 
@@ -540,7 +530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             importTextModal.classList.remove('visible');
             importTextModalContent.classList.remove('modal-out');
-            importTextTextarea.value = ''; // Limpa o textarea
+            importTextTextarea.value = ''; 
         }, 200);
     }
     
@@ -588,12 +578,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function salvarSnapshotPatrimonio(totalValor) {
         if (totalValor <= 0 && patrimonio.length === 0) return; 
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const today = new Date().toISOString().split('T')[0]; 
         
         const snapshot = { date: today, value: totalValor };
         await vestoDB.put('patrimonio', snapshot);
         
-        // Atualiza o array em memória
         const index = patrimonio.findIndex(p => p.date === today);
         if (index > -1) {
             patrimonio[index].value = totalValor;
@@ -618,7 +607,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /** Processa dividendos que já foram pagos e os move para o "Caixa" */
     async function processarDividendosPagos() {
         const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0); // Compara apenas com o início do dia
+        hoje.setHours(0, 0, 0, 0); 
         
         const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
         let precisaSalvarCaixa = false;
@@ -638,7 +627,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         console.log(`Processado pagamento de ${provento.symbol}: ${formatBRL(valorRecebido)}`);
                     }
                     
-                    provento.processado = true; // Marca como processado
+                    provento.processado = true; 
                     proventosParaSalvar.push(provento);
                 }
             }
@@ -906,10 +895,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarCarteiraSkeletons(false);
         
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-        const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p])); // Apenas futuros
+        const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p])); 
         const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-        let totalValorCarteira = 0; // Apenas ativos
+        let totalValorCarteira = 0; 
         let totalCustoCarteira = 0;
         let dadosGrafico = [];
 
@@ -918,7 +907,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarDashboardSkeletons(false);
             
             const corPLTotal = saldoCaixa > 0 ? 'text-green-500' : 'text-gray-500';
-            totalCarteiraValor.textContent = formatBRL(saldoCaixa); // Mostra o caixa se não houver ativos
+            totalCarteiraValor.textContent = formatBRL(saldoCaixa); 
             totalCarteiraCusto.textContent = formatBRL(0);
             totalCarteiraPL.textContent = `${formatBRL(saldoCaixa)} (---%)`;
             totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
@@ -929,7 +918,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             renderizarGraficoAlocacao([]); 
             renderizarGraficoHistorico({ labels: [], data: [] }); 
-            await salvarSnapshotPatrimonio(saldoCaixa); // Salva o caixa como patrimônio
+            await salvarSnapshotPatrimonio(saldoCaixa); 
             renderizarGraficoPatrimonio();
         } else {
             carteiraStatus.classList.add('hidden');
@@ -939,7 +928,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         listaCarteira.innerHTML = ''; 
         carteiraOrdenada.forEach(ativo => {
             const dadoPreco = precosMap.get(ativo.symbol);
-            const dadoProvento = proventosMap.get(ativo.symbol); // Futuro
+            const dadoProvento = proventosMap.get(ativo.symbol); 
             
             const card = document.createElement('div');
             card.className = 'card-bg p-4 rounded-2xl shadow-lg card-animate-in';
@@ -965,7 +954,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (lucroPrejuizo > 0.01) corPL = 'text-green-500';
             else if (lucroPrejuizo < -0.01) corPL = 'text-red-500';
 
-            totalValorCarteira += totalPosicao; // Soma apenas o valor dos ativos
+            totalValorCarteira += totalPosicao; 
             totalCustoCarteira += custoTotal;
             if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
             
@@ -1067,11 +1056,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderizarProventos() {
-        // Esta função agora renderiza apenas os *próximos* proventos
         let totalEstimado = 0;
         const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
         
-        proventosAtuais.forEach(provento => { // proventosAtuais contém apenas futuros
+        proventosAtuais.forEach(provento => { 
             const quantity = carteiraMap.get(provento.symbol) || 0;
             if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) { 
                 totalEstimado += (quantity * provento.value);
@@ -1186,11 +1174,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    /** * Busca o JSON de resumos de notícias
-     * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
-     */
     async function fetchNoticiasBFF(force = false) {
-        const cacheKey = 'noticias_json_v4'; // A chave de cache não precisa do prefixo
+        const cacheKey = 'noticias_json_v4'; 
         if (force) {
             await vestoDB.delete('apiCache', cacheKey);
         }
@@ -1220,7 +1205,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Funções de Fetch (API)
     // ==========================================================
 
-    /** Wrapper de Fetch para o BFF com timeout */
     async function fetchBFF(url, options = {}) {
         try {
             const controller = new AbortController();
@@ -1244,9 +1228,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    /** * Busca preços, usando cache individual por ativo
-     * (Já estava respeitando 'force')
-     */
     async function buscarPrecosCarteira(force = false) { 
         if (carteiraCalculada.length === 0) return [];
         console.log("A buscar preços na API (cache por ativo)...");
@@ -1284,7 +1265,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return resultados.filter(p => p !== null);
     }
 
-    /** Filtra proventos da IA para datas futuras */
     function processarProventosIA(proventosDaIA = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
@@ -1299,7 +1279,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const parts = proventoIA.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                     
-                    // Apenas futuros (igual ou depois de hoje)
                     if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
                         return proventoIA;
                     }
@@ -1309,9 +1288,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             .filter(p => p !== null);
     }
 
-    /** * Busca proventos futuros, usando cache individual por FII
-     * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
-     */
     async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
@@ -1319,10 +1295,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             
         if (fiiNaCarteira.length === 0) return [];
 
-        let proventosPool = []; // Pool de proventos para filtrar
+        let proventosPool = []; 
         let fiisParaBuscar = [];
 
-        // 1. Processa o que já está em cache
         for (const symbol of fiiNaCarteira) {
             const cacheKey = `provento_ia_${symbol}`;
             if (force) {
@@ -1340,7 +1315,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("Proventos em cache (para filtrar):", proventosPool.map(p => p.symbol));
         console.log("Proventos para buscar (API):", fiisParaBuscar);
 
-        // 2. Busca novos na API
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
@@ -1350,16 +1324,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (provento && provento.symbol && provento.paymentDate) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_24_HORAS); 
-                            proventosPool.push(provento); // Adiciona ao pool de processamento
+                            proventosPool.push(provento); 
 
-                            // Adiciona à lista de proventos conhecidos se ainda não estiver lá
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
                                 await vestoDB.put('proventosConhecidos', novoProvento);
-                                proventosConhecidos.push(novoProvento); // Atualiza array em memória
+                                proventosConhecidos.push(novoProvento); 
                             }
                         }
                     }
@@ -1369,19 +1342,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // 3. Retorna apenas os proventos que são REALMENTE futuros
         return processarProventosIA(proventosPool); 
     }
 
-    /** * Busca o histórico de proventos agregados para o gráfico
-     * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
-     */
+    // (Otimização 4)
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
         const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
-        const cacheKey = 'hist_agregado_v4_' + fiiSymbols.join('-');
+        
+        // Usa a chave estática
+        const cacheKey = 'cache_grafico_historico';
         
         if (force) {
             await vestoDB.delete('apiCache', cacheKey);
@@ -1441,20 +1413,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Funções Principais (Handlers)
     // ==========================================================
     
-     /** * Função principal de atualização de dados
-      * *** CORRIGIDO: 'force' é passado para todas as funções ***
-      */
      async function atualizarTodosDados(force = false) { 
-        // *** CORRIGIDO: Não limpa mais os dados, apenas exibe os skeletons ***
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
         fiiNewsSkeleton.classList.remove('hidden');
         fiiNewsList.innerHTML = '';
         fiiNewsMensagem.classList.add('hidden');
         
-        // Carrega dados locais primeiro
         calcularCarteira();
-        await processarDividendosPagos(); // Processa dividendos passados ANTES de renderizar
+        await processarDividendosPagos(); 
         renderizarHistorico();
         renderizarGraficoPatrimonio(); 
         
@@ -1468,9 +1435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             refreshIcon.classList.add('spin-animation');
         }
 
-        // *** CORRIGIDO: Carrega dados do cache (de proventos) antes de buscar na rede ***
         if (!force) {
-            // Pega proventos futuros (já filtrados) da lista de conhecidos
             const proventosFuturosCache = processarProventosIA(proventosConhecidos);
             if (proventosFuturosCache.length > 0) {
                 proventosAtuais = proventosFuturosCache;
@@ -1478,7 +1443,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // Se não houver carteira, renderiza o estado vazio e para
         if (carteiraCalculada.length === 0) {
              precosAtuais = []; 
              proventosAtuais = []; 
@@ -1486,7 +1450,6 @@ document.addEventListener('DOMContentLoaded', async () => {
              renderizarProventos(); 
              renderizarGraficoHistorico({ labels: [], data: [] }); 
              refreshIcon.classList.remove('spin-animation');
-             // Ainda busca notícias mesmo com carteira vazia
              try {
                  const articles = await fetchNoticiasBFF(force);
                  renderizarNoticias(articles);
@@ -1499,13 +1462,11 @@ document.addEventListener('DOMContentLoaded', async () => {
              return;
         }
 
-        // Dispara as buscas de rede em paralelo
         const promessaPrecos = buscarPrecosCarteira(force); 
         const promessaProventos = buscarProventosFuturos(force);
         const promessaHistorico = buscarHistoricoProventosAgregado(force);
         const promessaNoticias = fetchNoticiasBFF(force); 
 
-        // Handler para quando os preços chegarem
         promessaPrecos.then(async precos => {
             if (precos.length > 0) {
                 precosAtuais = precos; 
@@ -1515,33 +1476,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }).catch(async err => {
             console.error("Erro ao buscar preços (BFF):", err);
-            showToast("Erro ao buscar preços."); // ERRO (vermelho)
+            showToast("Erro ao buscar preços."); 
             if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
 
-        // Handler para proventos
         promessaProventos.then(async proventosFuturos => {
-            proventosAtuais = proventosFuturos; // Seta os proventos futuros filtrados
+            proventosAtuais = proventosFuturos; 
             renderizarProventos(); 
-            if (precosAtuais.length > 0) { // Re-renderiza carteira se os preços já chegaram
+            if (precosAtuais.length > 0) { 
                 await renderizarCarteira(); 
             }
         }).catch(err => {
             console.error("Erro ao buscar proventos (BFF):", err);
-            showToast("Erro ao buscar proventos."); // ERRO (vermelho)
+            showToast("Erro ao buscar proventos."); 
             if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
         });
         
-        // Handler para histórico de proventos (gráfico)
         promessaHistorico.then(({ labels, data }) => {
             renderizarGraficoHistorico({ labels, data });
         }).catch(err => {
             console.error("Erro ao buscar histórico agregado (BFF):", err);
-            showToast("Erro ao buscar histórico."); // ERRO (vermelho)
+            showToast("Erro ao buscar histórico."); 
             renderizarGraficoHistorico({ labels: [], data: [] }); 
         });
         
-        // Handler para notícias
         promessaNoticias.then(articles => {
             renderizarNoticias(articles);
         }).catch(err => {
@@ -1570,7 +1528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
         if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0) { 
-            showToast("Preencha todos os campos."); // ERRO (vermelho)
+            showToast("Preencha todos os campos."); 
             tickerInput.classList.add('border-red-500');
             quantityInput.classList.add('border-red-500');
             precoMedioInput.classList.add('border-red-500'); 
@@ -1595,18 +1553,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                      throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                  }
                  
-                 // Limpa o cache do gráfico de histórico para forçar recálculo
-                 const allKeys = await vestoDB.getAll('apiCache'); // Ineficiente, mas OK
-                 const histKeys = allKeys
-                    .filter(item => item.key.startsWith('hist_agregado_v4_'))
-                    .map(item => item.key);
-                 for (const key of histKeys) {
-                    await vestoDB.delete('apiCache', key);
-                 }
-
+                 // (Otimização 4)
+                 await vestoDB.delete('apiCache', 'cache_grafico_historico');
+                 
             } catch (error) {
                  console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
-                 showToast("Ativo não encontrado."); // ERRO (vermelho)
+                 showToast("Ativo não encontrado."); 
                  tickerInput.value = '';
                  tickerInput.placeholder = "Ativo não encontrado";
                  tickerInput.classList.add('border-red-500');
@@ -1630,13 +1582,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         
         await vestoDB.put('transacoes', novaTransacao);
-        transacoes.push(novaTransacao); // Atualiza array em memória
+        transacoes.push(novaTransacao); 
 
         addButton.innerHTML = `Adicionar`;
         addButton.disabled = false;
         hideAddModal();
         
-        await atualizarTodosDados(true); // Força atualização ao adicionar novo ativo
+        await atualizarTodosDados(true); 
     }
 
     /** Remove um ativo (e todas as suas transações) */
@@ -1645,10 +1597,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             'Remover Ativo', 
             `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
             async () => { 
-                // Remove do array em memória
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
                 
-                // Remove do IndexedDB usando o índice
                 const transacoesParaRemover = await vestoDB.getAllFromIndex('transacoes', 'bySymbol', symbol);
                 for (const t of transacoesParaRemover) {
                     await vestoDB.delete('transacoes', t.id);
@@ -1656,16 +1606,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 await removerCacheAtivo(symbol); 
                 
-                // Limpa o cache do gráfico de histórico para forçar recálculo
-                 const allKeys = await vestoDB.getAll('apiCache'); // Ineficiente, mas OK
-                 const histKeys = allKeys
-                    .filter(item => item.key.startsWith('hist_agregado_v4_'))
-                    .map(item => item.key);
-                 for (const key of histKeys) {
-                    await vestoDB.delete('apiCache', key);
-                 }
+                 // (Otimização 4)
+                 await vestoDB.delete('apiCache', 'cache_grafico_historico');
                  
-                await atualizarTodosDados(true); // Força atualização ao remover
+                await atualizarTodosDados(true); 
             }
         );
     }
@@ -1680,15 +1624,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = ''; 
         
-        // *** MUDANÇA AQUI: Reseta o estado do modal ***
+        // (Otimização 3)
         currentDetalhesSymbol = null;
-        currentDetalhesMeses = 3; 
+        currentDetalhesMeses = 3; // <-- MUDANÇA (Linha 1022)
+        currentDetalhesHistoricoJSON = null; 
         
-        // Reseta os botões para o padrão (12M ativo)
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '12');
+            btn.classList.toggle('active', btn.dataset.meses === '3'); // <-- MUDANÇA (Linha 1027)
         });
-        // *** FIM DA MUDANÇA ***
     }
     
     /** Busca e exibe os dados da página de detalhes */
@@ -1701,15 +1644,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesTituloTexto.textContent = symbol;
         detalhesNomeLongo.textContent = 'A carregar...';
         
-        // *** MUDANÇA AQUI: Define o estado do modal ***
+        // (Otimização 3)
         currentDetalhesSymbol = symbol;
-        currentDetalhesMeses = 3; // Padrão
+        currentDetalhesMeses = 3; // <-- MUDANÇA (Linha 1045)
+        currentDetalhesHistoricoJSON = null; 
         
-        // Reseta os botões para o padrão (12M ativo)
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '12');
+            btn.classList.toggle('active', btn.dataset.meses === '3'); // <-- MUDANÇA (Linha 1050)
         });
-        // *** FIM DA MUDANÇA ***
         
         const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
@@ -1723,7 +1665,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else throw new Error(precoData?.error || 'Ativo não encontrado');
             } catch (e) { 
                 precoData = null; 
-                showToast("Erro ao buscar preço."); // ERRO (vermelho)
+                showToast("Erro ao buscar preço."); 
             }
         }
 
@@ -1731,8 +1673,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (isFII(symbol)) {
             detalhesHistoricoContainer.classList.remove('hidden'); 
-            // *** MUDANÇA AQUI: Chama a função separada com o padrão 12M ***
-            promessaAi = fetchEExibirHistoricoIA(symbol, 12); 
+            // (Otimização 3)
+            promessaAi = fetchHistoricoIA(symbol); 
         }
         
         detalhesLoading.classList.add('hidden');
@@ -1803,14 +1745,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
         }
-
-        // Se a promessa da IA ainda estiver pendente (o que é provável), 
-        // o loading já foi setado e o .then() dela cuidará do resto.
     }
     
-    // *** MUDANÇA AQUI: Nova função para buscar histórico da IA ***
-    async function fetchEExibirHistoricoIA(symbol, meses) {
-        // Mostra o skeleton de loading
+    // *** INÍCIO DA MUDANÇA (OTIMIZAÇÃO 3) ***
+    
+    // 1. Função que BUSCA o JSON de 12 meses (apenas 1 vez)
+    async function fetchHistoricoIA(symbol) {
         detalhesAiProvento.innerHTML = `
             <div id="historico-periodo-loading" class="space-y-3 animate-pulse pt-2">
                 <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
@@ -1820,27 +1760,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
         
         try {
-            // Tenta buscar do cache primeiro
-            const cacheKey = `hist_ia_${symbol}_${meses}`;
-            let aiResult = await getCache(cacheKey);
+            const cacheKey = `hist_ia_${symbol}_12`;
+            let aiResultJSON = await getCache(cacheKey);
 
-            if (!aiResult) {
-                console.log(`Buscando histórico de ${meses} meses para ${symbol} na API...`);
-                aiResult = await callGeminiHistoricoAPI(symbol, todayString, meses);
-                if (aiResult) {
-                    // Salva no cache por 24h
-                    await setCache(cacheKey, aiResult, CACHE_24_HORAS);
+            if (!aiResultJSON) {
+                console.log(`Buscando histórico JSON de 12 meses para ${symbol} na API...`);
+                aiResultJSON = await callGeminiHistoricoAPI(symbol, todayString); 
+                
+                if (aiResultJSON && Array.isArray(aiResultJSON)) {
+                    await setCache(cacheKey, aiResultJSON, CACHE_24_HORAS);
+                } else {
+                    aiResultJSON = []; 
                 }
             } else {
-                console.log(`Usando cache para histórico de ${meses} meses de ${symbol}.`);
+                console.log(`Usando cache para histórico JSON de ${symbol}.`);
             }
 
-            // Exibe o resultado
-            detalhesAiProvento.innerHTML = `
-                <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${aiResult}</p>
-            `;
+            currentDetalhesHistoricoJSON = aiResultJSON;
+            
+            // Renderiza o período padrão (3M)
+            renderHistoricoIADetalhes(3);
+
         } catch (e) {
-            showToast("Erro na consulta IA."); // ERRO (vermelho)
+            showToast("Erro na consulta IA."); 
             detalhesAiProvento.innerHTML = `
                 <div class="border border-red-700 bg-red-900/50 p-4 rounded-lg flex items-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1854,6 +1796,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
         }
     }
+    
+    // 2. Função que RENDERIZA o texto a partir do JSON filtrado (instantâneo)
+    function renderHistoricoIADetalhes(meses) {
+        if (!currentDetalhesHistoricoJSON) {
+            return;
+        }
+
+        if (currentDetalhesHistoricoJSON.length === 0) {
+            detalhesAiProvento.innerHTML = `
+                <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg">
+                    Não foi possível encontrar o histórico de proventos.
+                </p>
+            `;
+            return;
+        }
+
+        const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses);
+
+        const textoFormatado = dadosFiltrados
+            .map(item => `${item.mes}: ${formatBRL(item.valor)}`)
+            .join('\n'); 
+
+        detalhesAiProvento.innerHTML = `
+            <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${textoFormatado || 'Sem dados para este período.'}</p>
+        `;
+    }
     // *** FIM DA MUDANÇA ***
     
     /** Muda a aba visível */
@@ -1865,7 +1833,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
         
-        // Mostra/esconde o botão FAB
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     
@@ -1874,8 +1841,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================================
 
     refreshButton.addEventListener('click', async () => {
-        // *** CORRIGIDO: clearBrapiCache() removido daqui para não limpar o cache de proventos de 24h ***
-        // Apenas força a atualização de preços (que é por ativo)
         await atualizarTodosDados(true); 
     });
     
@@ -1960,7 +1925,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         touchMoveY = e.touches[0].clientY;
         const diff = touchMoveY - touchStartY;
         if (diff > 0) { 
-            e.preventDefault(); // Evita scroll da página
+            e.preventDefault(); 
             detalhesPageContent.style.transform = `translateY(${diff}px)`;
         }
     }, { passive: false }); 
@@ -1999,33 +1964,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // *** MUDANÇA AQUI: Listener para os botões de período ***
+    // (Otimização 3)
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
         if (!target) return;
 
         const meses = parseInt(target.dataset.meses, 10);
         
-        // Se já estiver ativo, não faz nada
         if (meses === currentDetalhesMeses) {
             return;
         }
 
-        // Atualiza o estado
         currentDetalhesMeses = meses;
         
-        // Atualiza a classe 'active'
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         target.classList.add('active');
 
-        // Busca os novos dados
-        if (currentDetalhesSymbol) {
-            fetchEExibirHistoricoIA(currentDetalhesSymbol, currentDetalhesMeses);
-        }
+        // Apenas renderiza! Não faz nova chamada de API.
+        renderHistoricoIADetalhes(currentDetalhesMeses);
     });
-    // *** FIM DA MUDANÇA ***
 
     copiarDadosBtn.addEventListener('click', handleCopiarDados);
     abrirImportarModalBtn.addEventListener('click', showImportModal);
@@ -2040,20 +1999,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Funções da API Gemini (BFF)
     // ==========================================================
 
-    // *** MUDANÇA AQUI: Função atualizada para aceitar 'meses' ***
-    async function callGeminiHistoricoAPI(ticker, todayString, meses = 12) { // Padrão 12 meses
+    // (Otimização 3)
+    async function callGeminiHistoricoAPI(ticker, todayString) { // 'meses' removido
         const body = { 
-            mode: 'historico_12m', // O nome do modo continua o mesmo no backend
-            payload: { ticker, todayString, meses } // Enviamos os meses no payload
+            mode: 'historico_12m', 
+            payload: { ticker, todayString } 
         };
         const response = await fetchBFF('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response.text; // Retorna o texto formatado
+        // *** MUDANÇA (CORREÇÃO) AQUI (Linha 1409) ***
+        return response.json; // <-- Corrigido de response.text para response.json
     }
-    // *** FIM DA MUDANÇA ***
     
     async function callGeminiProventosCarteiraAPI(fiiList, todayString) {
         const body = { mode: 'proventos_carteira', payload: { fiiList, todayString } };
@@ -2062,7 +2021,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response.json; // Retorna um array JSON
+        return response.json; 
     }
     
     async function callGeminiHistoricoPortfolioAPI(fiiList, todayString) {
@@ -2072,7 +2031,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response.json; // Retorna um array JSON
+        return response.json; 
     }
 
     // ==========================================================
@@ -2097,17 +2056,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 data: exportData
             };
 
-            // Não formatamos o JSON (sem 'null, 2') para economizar espaço
             const jsonString = JSON.stringify(bundle); 
             
-            // Usamos a API do Clipboard para copiar o texto
             await navigator.clipboard.writeText(jsonString);
             
-            showToast("Dados copiados para a área de transferência!", 'success'); // SUCESSO (VERDE)
+            showToast("Dados copiados para a área de transferência!", 'success'); 
 
         } catch (err) {
             console.error("Erro ao copiar dados para o clipboard:", err);
-            showToast("Erro ao copiar dados."); // ERRO (vermelho)
+            showToast("Erro ao copiar dados."); 
         } finally {
             copiarDadosBtn.disabled = false;
         }
@@ -2116,7 +2073,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function handleImportarTexto() {
         const texto = importTextTextarea.value;
         if (!texto || texto.trim() === '') {
-            showToast("Área de texto vazia."); // ERRO (vermelho)
+            showToast("Área de texto vazia."); 
             return;
         }
 
@@ -2124,20 +2081,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             backup = JSON.parse(texto);
             
-            // Validação
             if (!backup.version || backup.version !== 'vesto-v1' || !backup.data || !Array.isArray(backup.data.transacoes)) {
                 throw new Error("Texto de backup inválido ou corrompido.");
             }
             
-            // Confirmação (usando o modal genérico)
-            hideImportModal(); // Esconde o modal de texto
+            hideImportModal(); 
             
-            setTimeout(() => { // Pequeno delay para a transição do modal
+            setTimeout(() => { 
                  showModal(
                     'Importar Backup?',
                     'Atenção: Isso irá APAGAR todos os seus dados atuais e substituí-los pelo backup. Esta ação não pode ser desfeita.',
                     () => { 
-                        // Reutilizamos a MESMA função de importação!
                         importarDados(backup.data); 
                     }
                 );
@@ -2145,7 +2099,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (err) {
             console.error("Erro ao ler texto de backup:", err);
-            showToast(err.message || "Erro ao ler texto."); // ERRO (vermelho)
+            showToast(err.message || "Erro ao ler texto."); 
         }
     }
 
@@ -2157,17 +2111,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const stores = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos'];
             
-            // 1. Limpar todos os dados atuais do DB
             const clearPromises = stores.map(store => vestoDB.clear(store));
             await Promise.all(clearPromises);
             console.log("Stores limpos.");
 
-            // 2. Popular os stores com os dados do backup
             const populatePromises = [];
             for (const storeName of stores) {
                 if (data[storeName] && Array.isArray(data[storeName])) {
                     for (const item of data[storeName]) {
-                        // O 'put' vai inserir cada item um por um
                         populatePromises.push(vestoDB.put(storeName, item));
                     }
                 }
@@ -2175,20 +2126,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             await Promise.all(populatePromises);
             console.log("Stores populados.");
 
-            // 3. Recarregar o estado do app a partir do novo DB
             await carregarTransacoes();
             await carregarPatrimonio();
             await carregarCaixa();
             await carregarProventosConhecidos();
             
-            // 4. Forçar atualização total da UI com os novos dados
             await atualizarTodosDados(true);
             
-            showToast("Dados importados com sucesso!", 'success'); // SUCESSO (VERDE)
+            showToast("Dados importados com sucesso!", 'success'); 
 
         } catch (err) {
             console.error("Erro grave durante a importação:", err);
-            showToast("Erro grave ao importar dados."); // ERRO (vermelho)
+            showToast("Erro grave ao importar dados."); 
         } finally {
             importTextConfirmBtn.textContent = 'Restaurar';
             importTextConfirmBtn.disabled = false;
@@ -2205,8 +2154,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log("[IDB] Inicialização concluída.");
         } catch (e) {
             console.error("[IDB] Falha fatal ao inicializar o DB.", e);
-            showToast("Erro crítico: Banco de dados não pôde ser carregado."); // ERRO (vermelho)
-            return; // Aborta a inicialização
+            showToast("Erro crítico: Banco de dados não pôde ser carregado."); 
+            return; 
         }
         
         checkNotificationPermission(); 
@@ -2216,10 +2165,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         await carregarProventosConhecidos();
         mudarAba('tab-dashboard'); 
         
-        // *** CORRIGIDO: Carga inicial agora usa o cache ***
         await atualizarTodosDados(false); 
         
-        setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); // Atualização em background
+        setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
     }
     
     // Inicia a aplicação

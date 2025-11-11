@@ -320,6 +320,7 @@
     <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-16 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">
         <div id="add-ativo-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
             <h3 id="add-modal-title" class="text-xl font-semibold text-white mb-5 text-center">Adicionar Compra</h3>
+            
             <div class="space-y-4">
                 <input 
                     type="text" 
@@ -327,6 +328,14 @@
                     placeholder="Ativo (ex: MXRF11)" 
                     class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors"
                 >
+                <input 
+                    type="date" 
+                    id="date-input" 
+                    placeholder="Data da Compra"
+                    class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors"
+                    style="color-scheme: dark;"
+                >
+                
                 <div class="flex gap-3">
                     <input
                         type="number"
@@ -427,5 +436,3 @@
 
 </body>
 </html>
-
-

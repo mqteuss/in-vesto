@@ -67,7 +67,7 @@ Exemplo de resposta (se hoje for 07/11 e GARE11 paga hoje):
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }], 
+        tools: [{ "google_search": {} }], // <-- Solicitação da busca web
         systemInstruction: { parts: [{ text: systemPrompt }] },
     };
 }
@@ -83,7 +83,9 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave da API Gemini não configurada no servidor." });
     }
 
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+    // --- CORREÇÃO APLICADA ---
+    // Alterado para 'gemini-2.0-flash-lite' que possui limite de 30 RPM.
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 
     try {
         const { mode, payload } = request.body;

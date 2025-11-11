@@ -177,6 +177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tickerInput = document.getElementById('ticker-input');
     const quantityInput = document.getElementById('quantity-input');
     const precoMedioInput = document.getElementById('preco-medio-input'); 
+    const dateInput = document.getElementById('date-input'); // <-- CAMPO DE DATA ADICIONADO
     const addButton = document.getElementById('add-button');
     const updateNotification = document.getElementById('update-notification');
     const updateButton = document.getElementById('update-button');
@@ -521,23 +522,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 200); 
     }
     
+    // --- ATUALIZADO ---
     function showAddModal() {
         addAtivoModal.classList.add('visible');
         addAtivoModalContent.classList.remove('modal-out');
+        // Define a data atual como padrão no input
+        dateInput.value = new Date().toISOString().split('T')[0];
         tickerInput.focus();
     }
     
+    // --- ATUALIZADO ---
     function hideAddModal() {
         addAtivoModalContent.classList.add('modal-out');
         setTimeout(() => {
             addAtivoModal.classList.remove('visible');
             addAtivoModalContent.classList.remove('modal-out');
+            // Limpa todos os campos, incluindo a data
             tickerInput.value = '';
             quantityInput.value = '';
             precoMedioInput.value = '';
+            dateInput.value = '';
+            // Remove classes de erro de todos os campos
             tickerInput.classList.remove('border-red-500');
             quantityInput.classList.remove('border-red-500');
             precoMedioInput.classList.remove('border-red-500');
+            dateInput.classList.remove('border-red-500');
         }, 200);
     }
     
@@ -677,7 +686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 symbol: symbol, 
                 quantity: 0, 
                 totalCost: 0, 
-                dataCompra: t.date 
+                dataCompra: t.date // Define a data da *primeira* transação encontrada (após ordenar)
             };
             ativo.quantity += t.quantity;
             ativo.totalCost += t.quantity * t.price;
@@ -1452,6 +1461,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const carteiraMap = new Map(fiiNaCarteira.map(a => [a.symbol, { 
             quantity: a.quantity, 
+            // *** IMPORTANTE: USA A DATA DA PRIMEIRA TRANSAÇÃO (ORDENADA) ***
             inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
         }]));
         
@@ -1471,6 +1481,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const inicioMesCompraTime = ativo.inicioMesCompra;
                 const valorPorCota = mesData[symbol] || 0;
                 
+                // A MÁGICA ACONTECE AQUI:
+                // Só soma o provento se o mês do provento (timeDoMes)
+                // for igual ou maior que o mês da primeira compra (inicioMesCompraTime)
                 if (timeDoMes >= inicioMesCompraTime) {
                      totalMes += (valorPorCota * quantity);
                 }
@@ -1569,29 +1582,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // --- FUNÇÃO TOTALMENTE ATUALIZADA ---
     /** Adiciona uma nova transação de compra */
     async function handleAdicionarAtivo() {
         let ticker = tickerInput.value.trim().toUpperCase();
         let novaQuantidade = parseInt(quantityInput.value, 10);
         let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
+        let dataTransacao = dateInput.value; // 1. LÊ A DATA DO INPUT
 
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
-        if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0) { 
+        // 2. VALIDAÇÃO (incluindo a data)
+        if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0 || !dataTransacao) { 
             showToast("Preencha todos os campos."); 
             tickerInput.classList.add('border-red-500');
             quantityInput.classList.add('border-red-500');
             precoMedioInput.classList.add('border-red-500'); 
+            dateInput.classList.add('border-red-500'); // Valida a data
             setTimeout(() => {
                 tickerInput.classList.remove('border-red-500');
                 quantityInput.classList.remove('border-red-500');
                 precoMedioInput.classList.remove('border-red-500'); 
+                dateInput.classList.remove('border-red-500'); // Limpa a validação da data
             }, 2000);
             return;
         }
         
         const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
         
+        // Verificação de ticker (só se for o primeiro ativo)
         if (!ativoExistente) {
             addButton.innerHTML = `<span class="loader-sm"></span>`;
             addButton.disabled = true;
@@ -1619,9 +1638,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } 
         
+        // 3. SALVAR COM A DATA CORRETA
+        // Usamos T12:00:00 para garantir que o fuso horário não
+        // mude a data para o dia anterior ao converter para UTC (ISOString)
+        const dataISO = new Date(dataTransacao + 'T12:00:00').toISOString();
+
         const novaTransacao = {
             id: 'tx_' + Date.now(),
-            date: new Date().toISOString(),
+            date: dataISO, // <-- USA A DATA DO INPUT
             symbol: ticker,
             type: 'buy',
             quantity: novaQuantidade,
@@ -1636,7 +1660,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideAddModal();
         
         await removerCacheAtivo(ticker); 
-        await atualizarTodosDados(false); 
+        await atualizarTodosDados(false); // Força atualização (false para não girar o ícone)
     }
 
     /** Remove um ativo (e todas as suas transações) */
@@ -1904,6 +1928,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     tickerInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
     quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
     precoMedioInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); 
+    dateInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); // Adicionado listener para data
     
     notifyButton.addEventListener('click', requestNotificationPermission);
 

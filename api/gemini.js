@@ -9,22 +9,18 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
         try {
             const response = await fetch(url, options);
             
-            // Continua tentando em caso de rate limit ou erro de servidor
             if (response.status === 429 || response.status >= 500) {
                 throw new Error(`API Error: ${response.status} ${response.statusText}`);
             }
             
-            // Erros da API (como 400 Bad Request) são erros finais e não devem ser tentados novamente.
             if (!response.ok) {
                  const errorBody = await response.json();
-                 // Joga um erro final que será pego pelo handler principal
                  throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
             }
             
             return response.json();
             
         } catch (error) {
-            // Se for o último retry, joga o erro para o handler principal
             if (i === retries - 1) throw error; 
             
             console.warn(`Tentativa ${i+1} falhou, aguardando ${delay * (i + 1)}ms...`);
@@ -39,7 +35,6 @@ function getGeminiPayload(mode, payload) {
     let systemPrompt = '';
     let userQuery = '';
 
-    // 🔥 MUDANÇA 1: Configuração centralizada para forçar JSON
     const jsonGenerationConfig = {
         "generationConfig": {
             "response_mime_type": "application/json"
@@ -56,7 +51,7 @@ function getGeminiPayload(mode, payload) {
                 contents: [{ parts: [{ text: userQuery }] }],
                 tools: [{ "google_search": {} }], 
                 systemInstruction: { parts: [{ text: systemPrompt }] },
-                ...jsonGenerationConfig // Adiciona a configuração JSON
+                ...jsonGenerationConfig 
             };
 
         case 'proventos_carteira':
@@ -82,7 +77,7 @@ Exemplo de resposta (se hoje for 07/11 e GARE11 paga hoje):
                 contents: [{ parts: [{ text: userQuery }] }],
                 tools: [{ "google_search": {} }], 
                 systemInstruction: { parts: [{ text: systemPrompt }] },
-                ...jsonGenerationConfig // Adiciona a configuração JSON
+                ...jsonGenerationConfig 
             };
 
         case 'historico_portfolio':
@@ -93,7 +88,7 @@ Exemplo de resposta (se hoje for 07/11 e GARE11 paga hoje):
                 contents: [{ parts: [{ text: userQuery }] }],
                 tools: [{ "google_search": {} }], 
                 systemInstruction: { parts: [{ text: systemPrompt }] },
-                ...jsonGenerationConfig // Adiciona a configuração JSON
+                ...jsonGenerationConfig 
             };
 
         default:
@@ -112,8 +107,8 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave da API Gemini não configurada no servidor." });
     }
 
-    // 🔥 MUDANÇA 2: Usando o ID do modelo "preview" estável, sem a data
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
+    // 🔥 AQUI ESTÁ A CORREÇÃO: Voltamos para o modelo com data
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
 
     try {
         const { mode, payload } = request.body;
@@ -127,10 +122,8 @@ export default async function handler(request, response) {
 
         const candidate = result?.candidates?.[0];
 
-        // 🔥 MUDANÇA 3: Verificação de segurança aprimorada
         if (candidate?.finishReason !== "STOP") {
              const reason = candidate?.finishReason || "REASON_UNSPECIFIED";
-             // Se for MAX_TOKENS, o JSON.parse abaixo falhará (o que é o correto)
              if (reason !== "MAX_TOKENS") {
                 throw new Error(`A resposta foi bloqueada. Razão: ${reason}`);
              }
@@ -142,37 +135,26 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
-        // 🔥 MUDANÇA 4: Lógica de cache condicional
         if (mode === 'proventos_carteira') {
-            // Cache curto (1 hora) para dados que precisam de atualização "hoje"
             response.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate'); 
         } else if (mode === 'historico_portfolio' || mode === 'historico_12m') {
-            // Cache longo (24 horas) para dados históricos
             response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); 
         }
 
-        // 🔥 MUDANÇA 5: Lógica de JSON drasticamente simplificada
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio' || mode === 'historico_12m') {
             try {
-                // Não é mais necessário limpar "```json" ou usar regex.
-                // A API *garante* que 'text' é um JSON string válido.
                 const parsedJson = JSON.parse(text); 
                 
                 if (Array.isArray(parsedJson)) {
                     return response.status(200).json({ json: parsedJson });
                 } else {
-                    // Caso o prompt falhe e não retorne um array
                     throw new Error("API retornou um JSON válido, mas não um array.");
                 }
             } catch (e) {
-                // 🔥 MUDANÇA 6: Erro de parse agora é um erro 500
-                // Isso acontece se a IA falhar em gerar o JSON ou estourar os tokens
                 console.error(`[Erro Crítico API Gemini] Falha ao fazer parse do JSON. Texto recebido: "${text}". Erro: ${e.message}`);
-                // Retorna 500, pois o contrato da API (retornar JSON) foi quebrado.
                 return response.status(500).json({ error: "Ocorreu um erro ao processar a resposta da IA." }); 
             }
         } else {
-            // Fallback para outros modos (se você adicionar modos de texto puro)
             return response.status(200).json({ text: text });
         }
 

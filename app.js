@@ -142,9 +142,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const skeletonTotalCusto = document.getElementById('skeleton-total-custo');
     const skeletonTotalPL = document.getElementById('skeleton-total-pl');
     const skeletonTotalProventos = document.getElementById('skeleton-total-proventos');
+    const skeletonTotalCaixa = document.getElementById('skeleton-total-caixa'); // <-- NOVO
     const totalCarteiraValor = document.getElementById('total-carteira-valor');
     const totalCarteiraCusto = document.getElementById('total-carteira-custo');
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
+    const totalCaixaValor = document.getElementById('total-caixa-valor'); // <-- NOVO
     const listaCarteira = document.getElementById('lista-carteira');
     const carteiraStatus = document.getElementById('carteira-status');
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
@@ -900,9 +902,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // --- ATUALIZADO ---
     function renderizarDashboardSkeletons(show) {
-        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos];
-        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl];
+        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa]; // Adicionado skeletonTotalCaixa
+        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor]; // Adicionado totalCaixaValor
         
         if (show) {
             skeletons.forEach(el => el.classList.remove('hidden'));
@@ -923,6 +926,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // --- ATUALIZADO ---
     async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
         
@@ -939,10 +943,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarDashboardSkeletons(false);
             
             const corPLTotal = saldoCaixa > 0 ? 'text-green-500' : 'text-gray-500';
-            totalCarteiraValor.textContent = formatBRL(saldoCaixa); // Mostra o caixa se não houver ativos
+            
+            // --- Lógica de Carteira Vazia ATUALIZADA ---
+            totalCarteiraValor.textContent = formatBRL(0); // Valor em ativos é zero
+            totalCaixaValor.textContent = formatBRL(saldoCaixa); // Caixa é mostrado separadamente
             totalCarteiraCusto.textContent = formatBRL(0);
-            totalCarteiraPL.textContent = `${formatBRL(saldoCaixa)} (---%)`;
-            totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
+            totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`; // L/P de ativos é zero
+            totalCarteiraPL.className = `text-lg font-semibold text-gray-500`; // Cor neutra
             
             dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
             dashboardLoading.classList.add('hidden');
@@ -950,7 +957,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             renderizarGraficoAlocacao([]); 
             renderizarGraficoHistorico({ labels: [], data: [] }); 
-            await salvarSnapshotPatrimonio(saldoCaixa); // Salva o caixa como patrimônio
+            await salvarSnapshotPatrimonio(saldoCaixa); // Salva o caixa como patrimônio (ativos + caixa)
             renderizarGraficoPatrimonio();
         } else {
             carteiraStatus.classList.add('hidden');
@@ -1065,9 +1072,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             listaCarteira.appendChild(card);
         });
         
+        // --- Lógica de Carteira Cheia ATUALIZADA ---
         if (carteiraOrdenada.length > 0) {
-            const patrimonioTotal = totalValorCarteira + saldoCaixa;
-            const totalLucroPrejuizo = (totalValorCarteira - totalCustoCarteira) + saldoCaixa;
+            const patrimonioTotalAtivos = totalValorCarteira; // Apenas ativos
+            const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira; // Apenas L/P dos ativos
             const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
             
             let corPLTotal = 'text-gray-500';
@@ -1075,12 +1083,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
             
             renderizarDashboardSkeletons(false);
-            totalCarteiraValor.textContent = formatBRL(patrimonioTotal);
+            
+            totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos); // Mostra valor dos ativos
+            totalCaixaValor.textContent = formatBRL(saldoCaixa); // Mostra caixa
             totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
             totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
             totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
             
-            await salvarSnapshotPatrimonio(patrimonioTotal);
+            // Salva o snapshot com o patrimônio *real* (Ativos + Caixa)
+            const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
+            await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
         }
         
         renderizarGraficoAlocacao(dadosGrafico);

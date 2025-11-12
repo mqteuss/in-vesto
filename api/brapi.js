@@ -1,4 +1,3 @@
-// api/brapi.js
 export default async function handler(request, response) {
     const { BRAPI_API_TOKEN } = process.env;
 
@@ -8,7 +7,7 @@ export default async function handler(request, response) {
 
     const urlParts = new URL(request.url, `https://${request.headers.host}`);
     const pathWithQuery = urlParts.searchParams.get('path');
-    
+
     if (!pathWithQuery) {
          return response.status(400).json({ error: "Parâmetro 'path' é obrigatório." });
     }
@@ -30,7 +29,7 @@ export default async function handler(request, response) {
         }
 
         const data = await apiResponse.json();
-        
+
         response.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate');
 
         return response.status(200).json(data);

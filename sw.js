@@ -1,17 +1,11 @@
-/* ==========================================================
- * VESTO SERVICE WORKER (sw.js)
- * ========================================================== */
-
 const CACHE_NAME = 'vesto-cache-v1';
 
 const APP_SHELL_FILES_LOCAL = [
-  '/', 
-  'index.html', 
-  'style.css',
-  'app.js',
-  'manifest.json', 
-  'icons/icon-192x192.png', 
-  'icons/icon-512x512.png'  
+  '/',
+  'index.html',
+  'manifest.json',
+  'icons/icon-192x192.png',
+  'icons/icon-512x512.png'
 ];
 
 const APP_SHELL_FILES_CDN = [
@@ -22,7 +16,7 @@ const APP_SHELL_FILES_CDN = [
 
 self.addEventListener('install', event => {
   console.log('[SW] Instalando...');
-  
+
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -52,10 +46,10 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames
-          .filter(name => name !== CACHE_NAME) 
-          .map(name => caches.delete(name)) 
+          .filter(name => name !== CACHE_NAME)
+          .map(name => caches.delete(name))
       );
-    }).then(() => self.clients.claim()) 
+    }).then(() => self.clients.claim())
   );
 });
 
@@ -75,7 +69,7 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {
-        
+
         const fetchPromise = fetch(event.request).then(networkResponse => {
           if (networkResponse && networkResponse.status === 200) {
             cache.put(event.request, networkResponse.clone());
@@ -92,6 +86,6 @@ self.addEventListener('fetch', event => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'SKIP_WAITING') {
     console.log('[SW] Recebeu ordem para SKIP_WAITING');
-    self.skipWaiting(); 
+    self.skipWaiting();
   }
 });

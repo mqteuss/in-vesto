@@ -503,6 +503,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         return cores;
     }
     
+    // --- NOVA FUNÇÃO ---
+    /**
+     * Pega os proventos futuros (array) e agrupa os totais por Mês/Ano.
+     * @param {Array} proventosFuturos - Array de {symbol, value, paymentDate}
+     * @returns {Object} - Objeto no formato { "MM/AA": totalValor }
+     */
+    function processarProventosFuturosParaGrafico(proventosFuturos = []) {
+        const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
+        const totaisPorMes = {}; // { "MM/AA": 150.50 }
+
+        proventosFuturos.forEach(provento => {
+            const quantity = carteiraMap.get(provento.symbol) || 0;
+            const valor = provento.value || 0;
+            const dataPagamentoStr = provento.paymentDate; // "YYYY-MM-DD"
+
+            if (quantity > 0 && valor > 0 && dataPagamentoStr) {
+                try {
+                    const dataPagamento = new Date(dataPagamentoStr + 'T12:00:00'); // Fuso seguro
+                    const mes = (dataPagamento.getMonth() + 1).toString().padStart(2, '0');
+                    const ano = dataPagamento.getFullYear().toString().slice(-2);
+                    const mesLabel = `${mes}/${ano}`; // "11/25"
+
+                    const totalReceber = quantity * valor;
+
+                    if (!totaisPorMes[mesLabel]) {
+                        totaisPorMes[mesLabel] = 0;
+                    }
+                    totaisPorMes[mesLabel] += totalReceber;
+
+                } catch (e) {
+                    console.error("Erro ao processar data de provento futuro:", dataPagamentoStr, e);
+                }
+            }
+        });
+
+        // Arredonda os totais
+        for (const mes in totaisPorMes) {
+            totaisPorMes[mes] = parseFloat(totaisPorMes[mes].toFixed(2));
+        }
+
+        console.log("Proventos futuros agrupados p/ gráfico:", totaisPorMes);
+        return totaisPorMes;
+    }
+    
     // ==========================================================
     // Funções dos Modais
     // ==========================================================
@@ -1510,6 +1554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Funções Principais (Handlers)
     // ==========================================================
     
+     // --- ATUALIZADO ---
      async function atualizarTodosDados(force = false) { 
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
@@ -1563,25 +1608,57 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Erro ao buscar preços."); 
             if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
-
-        promessaProventos.then(async proventosFuturos => {
-            proventosAtuais = proventosFuturos; 
-            renderizarProventos(); 
-            if (precosAtuais.length > 0) { 
-                await renderizarCarteira(); 
-            }
-        }).catch(err => {
-            console.error("Erro ao buscar proventos (BFF):", err);
-            showToast("Erro ao buscar proventos."); 
-            if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
-        });
         
-        promessaHistorico.then(({ labels, data }) => {
-            renderizarGraficoHistorico({ labels, data });
+        // --- NOVA LÓGICA DE GRÁFICO COMBINADO ---
+        Promise.all([promessaProventos, promessaHistorico]).then(async ([proventosFuturos, dadosHistoricoPassado]) => {
+            
+            // --- Parte 1: Lógica do promessaProventos original ---
+            proventosAtuais = proventosFuturos;
+            renderizarProventos(); // Renderiza o total "Próx. Proventos"
+
+            // --- Parte 2: Lógica do gráfico combinado ---
+            const { labels: labelsPassados, data: dataPassados } = dadosHistoricoPassado;
+
+            // 2.1 Processa os futuros para o formato do gráfico
+            const dadosFuturosGrafico = processarProventosFuturosParaGrafico(proventosAtuais); // { "11/25": 150, "12/25": 160 }
+
+            // 2.2 Combina os dados
+            const dadosCombinados = new Map();
+            if (labelsPassados && dataPassados) {
+                labelsPassados.forEach((label, index) => {
+                    dadosCombinados.set(label, dataPassados[index]);
+                });
+            }
+
+            for (const mesLabel in dadosFuturosGrafico) {
+                dadosCombinados.set(mesLabel, dadosFuturosGrafico[mesLabel]);
+            }
+
+            // 2.3 Ordena os dados por data
+            const sortedLabels = Array.from(dadosCombinados.keys()).sort((a, b) => {
+                const dateA = parseMesAno(a);
+                const dateB = parseMesAno(b);
+                if (!dateA || !dateB) return 0;
+                return dateA - dateB;
+            });
+
+            // Pega os últimos 12 meses (ou menos)
+            const finalLabels = sortedLabels.slice(-12);
+            const finalData = finalLabels.map(label => dadosCombinados.get(label));
+
+            // 2.4 Renderiza o gráfico
+            renderizarGraficoHistorico({ labels: finalLabels, data: finalData });
+
+            // --- Parte 3: Lógica final (renderizar carteira) ---
+            if (precosAtuais.length > 0) {
+                await renderizarCarteira();
+            }
+
         }).catch(err => {
-            console.error("Erro ao buscar histórico agregado (BFF):", err);
-            showToast("Erro ao buscar histórico."); 
-            renderizarGraficoHistorico({ labels: [], data: [] }); 
+            console.error("Erro ao buscar proventos (futuros ou passados):", err);
+            showToast("Erro ao buscar dados de proventos.");
+            renderizarGraficoHistorico({ labels: [], data: [] });
+            totalProventosEl.textContent = "Erro";
         });
         
         try {

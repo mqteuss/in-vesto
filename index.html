@@ -429,14 +429,18 @@
 
                         <h4 class="text-base font-semibold text-white">Histórico de Proventos</h4>
                         <div id="periodo-selector-group" class="mt-2 grid grid-cols-4 gap-2">
-                            <button class="periodo-selector-btn active" data-meses="3">3</button>
+                            <button class="periodo-selector-btn active" data-meses="3">3M</button>
                             <button class="periodo-selector-btn" data-meses="6">6M</button>
                             <button class="periodo-selector-btn" data-meses="9">9M</button>
                             <button class="periodo-selector-btn" data-meses="12">12M</button>
                         </div>
+                        
                         <div id="detalhes-ai-provento" class="mt-4">
+                            <div class="relative h-48 w-full">
+                                <canvas id="detalhes-proventos-chart"></canvas>
+                            </div>
                         </div>
-                     </div>
+                        </div>
                 </div>
             </div>
         </div>

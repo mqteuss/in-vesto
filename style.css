@@ -3,7 +3,11 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #101010; 
+    /* ===== [INÍCIO] Fundo com Profundidade ===== */
+    background-color: #101010;
+    background-image: radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.08), transparent 30%),
+                      radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.05), transparent 40%);
+    /* ===== [FIM] Fundo com Profundidade ===== */
     color: #f3f4f6;
     /* Adiciona suavização de fonte para melhor leitura em telas escuras */
     -webkit-font-smoothing: antialiased;
@@ -72,6 +76,15 @@ body {
 .tab-button.active .tab-button-icon-wrapper {
      animation: gentleFloat 1.5s ease-in-out infinite;
 }
+
+/* ===== [INÍCIO] Ícones Preenchidos (Ativo/Inativo) ===== */
+.tab-button .icon-active { display: none; }
+.tab-button .icon-inactive { display: block; }
+
+.tab-button.active .icon-active { display: block; }
+.tab-button.active .icon-inactive { display: none; }
+/* ===== [FIM] Ícones Preenchidos (Ativo/Inativo) ===== */
+
 
 /* Loaders e Spinners */
 .spin-animation { animation: spin 1s linear infinite; }
@@ -154,6 +167,22 @@ input[type=number] {
     from { opacity: 1; transform: scale(1) translateY(0); }
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
+
+/* ===== [INÍCIO] Interatividade Polida (Focus Glow) ===== */
+#add-ativo-modal input[type="text"],
+#add-ativo-modal input[type="date"],
+#add-ativo-modal input[type="number"] {
+    transition: all 0.2s ease-in-out;
+}
+
+#add-ativo-modal input[type="text"]:focus,
+#add-ativo-modal input[type="date"]:focus,
+#add-ativo-modal input[type="number"]:focus {
+    border-color: #8B5CF6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+}
+/* ===== [FIM] Interatividade Polida (Focus Glow) ===== */
+
 
 /* Página Modal (Detalhes) */
 .page-modal { 

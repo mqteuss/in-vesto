@@ -17,7 +17,7 @@ body {
 .card-bg {
     background-color: #1A1A1A;
     border: 1px solid #2A2A2A;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    /* box-shadow: FOI REMOVIDO DAQUI */
 }
 
 .accent-bg {
@@ -319,6 +319,29 @@ select {
     color: #ffffff; /* text-white */
     font-weight: 600; /* semibold */
 }
+
+/* ===== [INÍCIO] Micro-interações (Tap) - SUGESTÃO 3 ===== */
+button:active,
+.accent-bg:active,
+#refresh-button:active,
+#refresh-noticias-button:active,
+#show-add-modal-btn:active,
+.periodo-selector-btn:active,
+.news-ticker-tag:active,
+#copiar-dados-btn:active,
+#abrir-importar-modal-btn:active {
+    transform: scale(0.96);
+    transition: transform 0.1s ease-out;
+}
+
+/* Efeito de "tap" para os cards (é mais sutil) */
+#lista-carteira .card-bg:active,
+#fii-news-list .card-bg:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease-out;
+}
+/* ===== [FIM] Micro-interações (Tap) ===== */
+
 
 /* ===== [INÍCIO] Animação de Shimmer (Carregamento) ===== */
         

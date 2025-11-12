@@ -10,69 +10,24 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* * ==========================================================
- * Visual Retouch: Glow e Anel de Foco
- * ==========================================================
- */
-:root {
-    --accent-glow: 0 0 15px rgba(139, 92, 246, 0.3);
-    --accent-focus-ring: 0 0 0 3px rgba(139, 92, 246, 0.4);
-}
-
-/* Anel de foco roxo sutil para acessibilidade e visual */
-.focus-ring:focus-visible,
-.focus-ring:focus {
-    outline: none;
-    box-shadow: var(--accent-focus-ring);
-}
-
-/* Aplica o anel de foco aos inputs e botões */
-input:focus,
-select:focus,
-button:focus-visible {
-    outline: none;
-    box-shadow: var(--accent-focus-ring);
-}
-
-/* ==========================================================
- * Cards e Backgrounds
- * ==========================================================
- */
 .card-bg {
     background-color: #1A1A1A;
     border: 1px solid #2A2A2A;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), var(--accent-glow); /* <-- GLOW ADICIONADO */
-    transition: background-color 0.2s ease, transform 0.3s ease, box-shadow 0.3s ease; /* <-- TRANSIÇÃO ADICIONADA */
-}
-
-/* Efeito de "flutuar" nos cards da carteira */
-#lista-carteira .card-bg:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), var(--accent-glow);
-}
-/* Efeito de "flutuar" nos cards de notícia */
-#fii-news-list .card-bg:hover {
-     transform: translateY(-3px);
-     background-color: #1F1F1F;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .accent-bg {
     background-color: #8B5CF6; /* Roxo (violet-500) */
     color: #FFF;
-    transition: background-color 0.2s ease, box-shadow 0.2s ease; /* <-- TRANSIÇÃO ADICIONADA */
 }
 .accent-bg:hover {
     background-color: #7C3AED; /* Roxo mais escuro (violet-600) */
-    box-shadow: var(--accent-glow); /* <-- GLOW ADICIONADO */
 }
 
 .accent-text { color: #8B5CF6; }
 .hover-accent-text:hover { color: #A78BFA; }
 
-/* ==========================================================
- * Animações
- * ==========================================================
- */
+/* Animações */
 .tab-content { display: none; }
 .tab-content.active {
     display: block;
@@ -88,10 +43,7 @@ button:focus-visible {
 }
 .card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
 
-/* ==========================================================
- * Barra de Navegação
- * ==========================================================
- */
+/* Barra de Navegação */
 @keyframes gentleFloat {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-3px); }
@@ -102,14 +54,12 @@ button:focus-visible {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid #2A2A2A; 
-    box-shadow: var(--accent-glow); /* <-- GLOW ADICIONADO */
 }
 
 .tab-button {
-    color: #52525b; /* <-- COR ALTERADA (Mais apagado) */
+    color: #6b7280; 
     transition: all 0.3s ease-in-out;
     flex: 1; 
-    opacity: 0.7; /* <-- OPACIDADE ADICIONADA */
 }
 
 .tab-button:active { transform: scale(0.90); }
@@ -117,17 +67,13 @@ button:focus-visible {
 .tab-button.active {
     color: #8B5CF6; 
     transform: translateY(-4px); 
-    opacity: 1.0; /* <-- OPACIDADE ADICIONADA */
 }
 
 .tab-button.active .tab-button-icon-wrapper {
      animation: gentleFloat 1.5s ease-in-out infinite;
 }
 
-/* ==========================================================
- * Loaders e Spinners
- * ==========================================================
- */
+/* Loaders e Spinners */
 .spin-animation { animation: spin 1s linear infinite; }
 @keyframes spin {
     from { transform: rotate(0deg); }
@@ -169,10 +115,7 @@ input[type=number] {
     100% { transform: rotate(360deg); }
 }
 
-/* ==========================================================
- * Scrollbars
- * ==========================================================
- */
+/* Scrollbars */
 .scrollable-content {
      max-height: 40vh; 
      overflow-y: auto;
@@ -192,16 +135,9 @@ input[type=number] {
     border: 2px solid #1A1A1A;
 }
 
-/* ==========================================================
- * Modal Genérico
- * ==========================================================
- */
+/* Modal Genérico */
 .custom-modal { display: none; }
 .custom-modal.visible { display: flex; }
-
-.custom-modal .modal-content {
-     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), var(--accent-glow); /* <-- GLOW ADICIONADO */
-}
 
 .custom-modal.visible .modal-content {
     animation: modalIn 0.2s ease-out forwards;
@@ -219,10 +155,7 @@ input[type=number] {
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
-/* ==========================================================
- * Página Modal (Detalhes)
- * ==========================================================
- */
+/* Página Modal (Detalhes) */
 .page-modal { 
     opacity: 0;
     pointer-events: none;
@@ -245,7 +178,6 @@ input[type=number] {
     margin: 0 auto; 
     max-width: 32rem; /* Corresponde ao max-w-lg do app-container */
     z-index: 80;
-    box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.5), var(--accent-glow); /* <-- GLOW ADICIONADO */
 }
 .page-modal.visible .page-content {
     transform: translateY(0);
@@ -254,11 +186,6 @@ input[type=number] {
     transform: translateY(100%);
 }
 
-/* ==========================================================
- * Inputs e Selects
- * ==========================================================
- */
-
 /* Remove aparência nativa do <select> */
 select {
     -webkit-appearance: none;
@@ -266,25 +193,7 @@ select {
     appearance: none;
 }
 
-/* Base para inputs do modal de adicionar ativo */
-.input-base {
-    background-color: #0A0A0A; /* <-- MAIS ESCURO */
-    border: 1px solid #2A2A2A;
-    border-radius: 0.5rem; /* rounded-lg */
-    padding: 0.75rem; /* p-3 */
-    width: 100%;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-.input-base:focus {
-    border-color: #8B5CF6;
-    box-shadow: var(--accent-focus-ring);
-    outline: none;
-}
-
-/* ==========================================================
- * Gaveta (Drawer) do Card
- * ==========================================================
- */
+/* Gaveta (Drawer) do Card */
 .card-drawer {
     max-height: 0;
     overflow: hidden;
@@ -309,10 +218,7 @@ select {
     transform: rotate(180deg);
 }
 
-/* ==========================================================
- * Sino de Notificação
- * ==========================================================
- */
+/* Sino de Notificação */
 #request-notify-btn.notify-on {
     color: #8B5CF6; 
     animation: ringBell 1.5s ease-in-out infinite;
@@ -326,10 +232,7 @@ select {
     color: #4b5563; 
 }
 
-/* ==========================================================
- * Notificação Toast
- * ==========================================================
- */
+/* Notificação Toast */
 #toast-notification {
     opacity: 0;
     transform: translateY(-100%);
@@ -352,11 +255,6 @@ select {
   30%, 50%, 70% { transform: translateX(-2%) translateY(1rem); }
   40%, 60% { transform: translateX(2%) translateY(1rem); }
 }
-
-/* ==========================================================
- * Notícias e Detalhes (Componentes)
- * ==========================================================
- */
 
 /* Estilização do card de resumo de notícia */
 .news-card-summary {
@@ -400,48 +298,4 @@ select {
     background-color: #8B5CF6; /* accent-bg */
     color: #ffffff; /* text-white */
     font-weight: 600; /* semibold */
-    box-shadow: var(--accent-glow); /* <-- GLOW ADICIONADO */
 }
-
-/* ==========================================================
- * Skeletons (Animação de Carregamento)
- * ==========================================================
- */
-
-.skeleton-base {
-    background-color: #2A2A2A; /* <-- COR MAIS SUAVE */
-    border-radius: 0.375rem; /* rounded-md */
-    animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-/* Skeleton do Resumo da Carteira */
-.skeleton-dash-title { height: 2.5rem; width: 75%; margin-left: auto; margin-right: auto; margin-top: 0.25rem; }
-.skeleton-dash-subtitle { height: 1.5rem; width: 66%; margin-left: auto; margin-right: auto; margin-top: 0.25rem; }
-.skeleton-dash-pl { height: 1.5rem; width: 100%; margin-left: auto; margin-right: auto; margin-top: 0.25rem; }
-
-/* Skeleton da Lista da Carteira */
-.skeleton-card {
-    background-color: #1A1A1A;
-    border: 1px solid #2A2A2A;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    padding: 1rem;
-    border-radius: 1rem;
-}
-.skeleton-card-icon { width: 2.25rem; height: 2.25rem; border-radius: 9999px; flex-shrink: 0; }
-.skeleton-card-line1 { height: 1.5rem; width: 6rem; }
-.skeleton-card-line2 { height: 1rem; width: 4rem; margin-top: 0.5rem; }
-.skeleton-card-price { height: 1.5rem; width: 4rem; margin-left: auto; }
-.skeleton-card-perc { height: 1.5rem; width: 5rem; margin-left: auto; margin-top: 0.5rem; }
-.skeleton-card-drawer-icon { width: 1.5rem; height: 1.5rem; border-radius: 9999px; }
-
-/* Skeleton de Notícias */
-.skeleton-news-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; flex-shrink: 0; }
-.skeleton-news-line1 { height: 1rem; width: 100%; }
-.skeleton-news-line2 { height: 0.75rem; width: 25%; margin-top: 0.5rem; }
-.skeleton-news-arrow { width: 1.5rem; height: 1.5rem; border-radius: 9999px; flex-shrink: 0; margin-left: 0.5rem; }
-

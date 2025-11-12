@@ -210,17 +210,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastAlocacaoData = null; 
     let lastHistoricoData = null;
     let lastPatrimonioData = null; 
+    let detalhesChartInstance = null;
     let toastTimer = null;
     let isToastShowing = false;
     let touchStartY = 0;
     let touchMoveY = 0;
     let isDraggingDetalhes = false;
     let newWorker;
-    
-    // ===== [INÍCIO 1/4] Adicionar nova variável de estado =====
-    let detalhesChartInstance = null; // Para o gráfico na página de detalhes
-    // ===== [FIM 1/4] =====
-    
     let transacaoEmEdicao = null;
     let currentDetalhesSymbol = null;
     let currentDetalhesMeses = 3; 
@@ -860,13 +856,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // ===== [INÍCIO 3/4] Adicionar nova função para o gráfico de detalhes =====
-    /**
-     * Renderiza o gráfico de barras de proventos na PÁGINA DE DETALHES.
-     */
     function renderizarGraficoProventosDetalhes({ labels, data }) {
         const canvas = document.getElementById('detalhes-proventos-chart');
-        if (!canvas) return; // Se o canvas não estiver lá, não faz nada
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
     
         if (!labels || !data || labels.length === 0) {
@@ -877,8 +869,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
     
-        // Gradiente (igual ao do dashboard)
-        const gradient = ctx.createLinearGradient(0, 0, 0, 192); // 192 = h-48
+        const gradient = ctx.createLinearGradient(0, 0, 0, 192);
         gradient.addColorStop(0, 'rgba(167, 139, 250, 0.9)'); 
         gradient.addColorStop(1, 'rgba(109, 40, 217, 0.9)'); 
         
@@ -887,12 +878,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');
     
         if (detalhesChartInstance) {
-            // Atualiza o gráfico existente
             detalhesChartInstance.data.labels = labels;
             detalhesChartInstance.data.datasets[0].data = data;
             detalhesChartInstance.update();
         } else {
-            // Cria um novo gráfico
             detalhesChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -909,7 +898,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 },
                 options: {
                     responsive: true, 
-                    maintainAspectRatio: false, // Importante para o container h-48
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -930,9 +919,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             grid: { color: '#2A2A2A' }, 
                             ticks: { 
                                 display: true,
-                                color: '#6b7280', // text-gray-500
+                                color: '#6b7280',
                                 font: { size: 10 },
-                                // Formata o eixo Y para R$
                                 callback: function(value) {
                                     return formatBRL(value);
                                 }
@@ -941,7 +929,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         x: { 
                             grid: { display: false },
                             ticks: {
-                                color: '#9ca3af', // text-gray-400
+                                color: '#9ca3af',
                                 font: { size: 10 }
                             }
                         }
@@ -950,7 +938,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    // ===== [FIM 3/4] =====
     
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
@@ -1098,18 +1085,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const lucroPrejuizo = totalPosicao - custoTotal;
             const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
             
-            // Define as classes de cor e fundo para a tag de P/L
             let corPL = 'text-gray-500';
-            let bgPL = 'bg-gray-800'; // Fundo neutro
+            let bgPL = 'bg-gray-800';
             if (lucroPrejuizo > 0.01) {
                  corPL = 'text-green-500';
-                 bgPL = 'bg-green-900/50'; // Fundo verde
+                 bgPL = 'bg-green-900/50';
             } else if (lucroPrejuizo < -0.01) {
                  corPL = 'text-red-500';
-                 bgPL = 'bg-red-900/50'; // Fundo vermelho
+                 bgPL = 'bg-red-900/50';
             }
 
-            // Cria o HTML da tag (apenas se o preço estiver carregado)
             let plTagHtml = '';
             if (dadoPreco) {
                 plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
@@ -1885,12 +1870,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
         
-        // ===== [INÍCIO 2/4] Destruir o gráfico ao fechar =====
+        // ===== [MUDANÇA 1/3] Limpar a nova seção =====
+        document.getElementById('detalhes-transacoes-container').classList.add('hidden');
+        document.getElementById('detalhes-lista-transacoes').innerHTML = '';
+        document.getElementById('detalhes-transacoes-vazio').classList.add('hidden');
+        // ===========================================
+        
         if (detalhesChartInstance) {
             detalhesChartInstance.destroy();
             detalhesChartInstance = null;
         }
-        // ===== [FIM 2/4] =====
         
         currentDetalhesSymbol = null;
         currentDetalhesMeses = 3; 
@@ -2009,10 +1998,72 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
         }
+        
+        // ===== [MUDANÇA 2/3] Chamar a nova função =====
+        renderizarTransacoesDetalhes(symbol);
+        // ============================================
     }
     
+    // ===== [INÍCIO - MUDANÇA 3/3] Adicionar a nova função =====
+    /**
+     * Renderiza a lista de transações do usuário na página de Detalhes.
+     * @param {string} symbol - O símbolo do ativo (ex: MXRF11).
+     */
+    function renderizarTransacoesDetalhes(symbol) {
+        const listaContainer = document.getElementById('detalhes-lista-transacoes');
+        const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
+        const container = document.getElementById('detalhes-transacoes-container');
+    
+        // 1. Limpa o conteúdo anterior
+        listaContainer.innerHTML = '';
+        
+        // 2. Filtra e ordena as transações
+        const txsDoAtivo = transacoes
+            .filter(t => t.symbol === symbol)
+            .sort((a, b) => new Date(b.date) - new Date(a.date)); // Mais recentes primeiro
+    
+        // 3. Verifica se há transações
+        if (txsDoAtivo.length === 0) {
+            vazioMsg.classList.remove('hidden');
+            listaContainer.classList.add('hidden');
+        } else {
+            vazioMsg.classList.add('hidden');
+            listaContainer.classList.remove('hidden');
+            
+            // 4. Cria e adiciona os cards
+            txsDoAtivo.forEach(t => {
+                const card = document.createElement('div');
+                // Usamos um card mais simples, sem botões de ação
+                card.className = 'card-bg p-3 rounded-lg flex items-center justify-between'; 
+                
+                const cor = 'text-green-500';
+                const sinal = '+';
+                
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                            <p class="text-sm font-semibold text-white">Compra</p>
+                            <p class="text-xs text-gray-400">${formatDate(t.date)}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
+                        <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
+                    </div>
+                `;
+                listaContainer.appendChild(card);
+            });
+        }
+        
+        // 5. Finalmente, mostra o container inteiro
+        container.classList.remove('hidden');
+    }
+    // ===== [FIM - MUDANÇA 3/3] =====
+    
     async function fetchHistoricoIA(symbol) {
-        // Mostra o skeleton de loading
         detalhesAiProvento.innerHTML = `
             <div id="historico-periodo-loading" class="space-y-3 animate-pulse pt-2 h-48">
                 <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
@@ -2040,7 +2091,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             currentDetalhesHistoricoJSON = aiResultJSON;
             
-            renderHistoricoIADetalhes(3); // Renderiza o gráfico com os 3M iniciais
+            renderHistoricoIADetalhes(3);
 
         } catch (e) {
             showToast("Erro na consulta IA."); 
@@ -2058,24 +2109,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // ===== [INÍCIO 4/4] Substituir a lógica de renderHistoricoIADetalhes =====
-    /**
-     * 2. Função que RENDERIZA o gráfico a partir do JSON filtrado (instantâneo)
-     * (Esta função foi ATUALIZADA para chamar o gráfico em vez de texto)
-     */
     function renderHistoricoIADetalhes(meses) {
         if (!currentDetalhesHistoricoJSON) {
             return;
         }
 
         if (currentDetalhesHistoricoJSON.length === 0) {
-            // Mostra mensagem de erro se não houver dados
             detalhesAiProvento.innerHTML = `
                 <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg">
                     Não foi possível encontrar o histórico de proventos.
                 </p>
             `;
-            // Garante que qualquer gráfico antigo seja destruído
             if (detalhesChartInstance) {
                 detalhesChartInstance.destroy();
                 detalhesChartInstance = null;
@@ -2083,8 +2127,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // Garante que o container do canvas está lá
-        // (Caso tenha sido substituído por uma msg de erro antes)
         if (!document.getElementById('detalhes-proventos-chart')) {
              detalhesAiProvento.innerHTML = `
                 <div class="relative h-48 w-full">
@@ -2093,17 +2135,13 @@ document.addEventListener('DOMContentLoaded', async () => {
              `;
         }
 
-        // Filtra os dados e inverte (gráfico deve ser do mais antigo para o mais novo)
         const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
         
-        // Extrai labels e data para o gráfico
         const labels = dadosFiltrados.map(item => item.mes);
         const data = dadosFiltrados.map(item => item.valor);
 
-        // Chama a nova função de renderização do gráfico
         renderizarGraficoProventosDetalhes({ labels, data });
     }
-    // ===== [FIM 4/4] =====
     
     /** Muda a aba visível */
     function mudarAba(tabId) {

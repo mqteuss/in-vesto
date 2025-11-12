@@ -1,8 +1,3 @@
-// api/gemini.js
-// Esta é uma Vercel Serverless Function.
-// Ela atua como um proxy seguro para a API Google Gemini.
-
-// Função de retry (backoff) para o servidor
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -23,7 +18,6 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     }
 }
 
-// Constrói o payload para a API Gemini
 function getGeminiPayload(mode, payload) {
     const { ticker, todayString, fiiList } = payload;
     let systemPrompt = '';
@@ -72,7 +66,6 @@ Exemplo de resposta (se hoje for 07/11 e GARE11 paga hoje):
     };
 }
 
-// Handler principal da Vercel Serverless Function
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
         return response.status(405).json({ error: "Método não permitido, use POST." });
@@ -107,13 +100,12 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
-        // Cache de 24 horas (86400 segundos)
         response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); 
 
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio' || mode === 'historico_12m') {
             try {
                 let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar um array [ ... ]
+                const jsonMatch = jsonText.match(/\[.*\]/s);
                 
                 if (jsonMatch && jsonMatch[0]) {
                     jsonText = jsonMatch[0];

@@ -1067,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dadoProvento = proventosMap.get(ativo.symbol);
             
             const card = document.createElement('div');
-            card.className = 'card-bg p-4 rounded-2xl shadow-lg card-animate-in';
+            card.className = 'card-bg p-4 rounded-2xl card-animate-in';
             
             let precoAtual = 0, variacao = 0, precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
 
@@ -1163,7 +1163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-500">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
-                            <span class="text-base font-semibold text-gray-300">${formatBRL(custoTotal)}</span>
+                            <span class="text-base font-semibold text-white">${formatBRL(custoTotal)}</span>
                         </div>
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-500">L/P</span>
@@ -2076,7 +2076,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function fetchHistoricoIA(symbol) {
         detalhesAiProvento.innerHTML = `
-            <div id="historico-periodo-loading" class="space-y-3 animate-pulse pt-2 h-48">
+            <div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48">
                 <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
                 <div class="h-4 bg-gray-700 rounded-md w-1/2"></div>
                 <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>

@@ -3,18 +3,40 @@
 body {
     font-family: 'Inter', sans-serif;
     background-color: #101010;
-    /* AQUI A MUDANÇA: Aumentei os valores de transparência para expandir os gradientes */
-    background-image: radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.08), transparent 55%),
-                      radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.05), transparent 65%);
     color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    
+    position: relative;
+    overflow-x: hidden;
 }
 
-.card-bg {
-    background-color: #1A1A1A;
-    border: 1px solid #2A2A2A;
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+    
+    background-image: 
+        radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.15), transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.10), transparent 40%);
+    
+    filter: blur(80px);
+    transform: scale(1.2); 
 }
+
+/* ===== [MUDANÇA] Efeito Vidro Fosco (iOS 26) ===== */
+.card-bg {
+    background-color: rgba(26, 26, 26, 0.65); 
+    border: 1px solid rgba(58, 58, 58, 0.5); 
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+/* =================================================== */
 
 .accent-bg {
     background-color: #8B5CF6;
@@ -68,7 +90,7 @@ body {
 }
 
 .tab-button.active .tab-button-icon-wrapper {
-      animation: gentleFloat 1.5s ease-in-out infinite;
+     animation: gentleFloat 1.5s ease-in-out infinite;
 }
 
 .spin-animation { animation: spin 1s linear infinite; }
@@ -112,10 +134,10 @@ input[type=number] {
 }
 
 .scrollable-content {
-      max-height: 40vh; 
-      overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: #2A2A2A #1A1A1A;
+     max-height: 40vh; 
+     overflow-y: auto;
+     scrollbar-width: thin;
+     scrollbar-color: #2A2A2A #1A1A1A;
 }
 .scrollable-content::-webkit-scrollbar { 
     width: 6px; 
@@ -133,16 +155,24 @@ input[type=number] {
 .custom-modal { display: none; }
 .custom-modal.visible { display: flex; }
 
-.custom-modal.visible .modal-content {
-    animation: modalIn 0.2s ease-out forwards;
+/* ===== [MUDANÇA] Animação Elástica (iOS 26) ===== */
+@keyframes modalIn {
+    from { 
+        opacity: 0; 
+        transform: scale(0.9);
+    }
+    to { 
+        opacity: 1; 
+        transform: scale(1);
+    }
 }
+.custom-modal.visible .modal-content {
+    animation: modalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+/* ================================================ */
+
 .modal-content.modal-out {
     animation: modalOut 0.2s ease-in forwards;
-}
-
-@keyframes modalIn {
-    from { opacity: 0; transform: scale(0.95) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
 }
 @keyframes modalOut {
     from { opacity: 1; transform: scale(1) translateY(0); }

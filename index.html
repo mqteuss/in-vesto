@@ -399,20 +399,24 @@
     <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
         <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
 
-            <div class="flex justify-between items-center p-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
+            <div class="flex justify-between items-center relative pt-6 pb-4 px-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
+                
+                <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-10 h-1.5 bg-gray-700 rounded-full"></div>
+
                 <div id="detalhes-titulo" class="flex-1 min-w-0">
                     <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
                      <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
                 </div>
-                <button id="detalhes-voltar-btn" class="p-2 ml-3 text-gray-400 hover:text-white rounded-full transition-colors flex-shrink-0">
+                
+                <button id="detalhes-voltar-btn" class="absolute top-4 right-4 p-2 text-gray-400 hover:text-white rounded-full transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
 
-            <div id="detalhes-conteudo-scroll" class="overflow-y-auto h-[calc(90vh-65px)] p-4">
-                <div id="detalhes-conteudo" class="space-y-5">
+            <div id="detalhes-conteudo-scroll" class="overflow-y-auto h-[calc(90vh-72px)] p-4">
+            <div id="detalhes-conteudo" class="space-y-5">
                      <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
                         <span class="loader"></span>
                      </div>

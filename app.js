@@ -142,11 +142,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const skeletonTotalCusto = document.getElementById('skeleton-total-custo');
     const skeletonTotalPL = document.getElementById('skeleton-total-pl');
     const skeletonTotalProventos = document.getElementById('skeleton-total-proventos');
-    const skeletonTotalCaixa = document.getElementById('skeleton-total-caixa'); // <-- NOVO
+    const skeletonTotalCaixa = document.getElementById('skeleton-total-caixa');
     const totalCarteiraValor = document.getElementById('total-carteira-valor');
     const totalCarteiraCusto = document.getElementById('total-carteira-custo');
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
-    const totalCaixaValor = document.getElementById('total-caixa-valor'); // <-- NOVO
+    const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
     const carteiraStatus = document.getElementById('carteira-status');
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
@@ -176,10 +176,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addAtivoModal = document.getElementById('add-ativo-modal');
     const addAtivoModalContent = document.getElementById('add-ativo-modal-content');
     const addAtivoCancelBtn = document.getElementById('add-ativo-cancel-btn');
+    
+    // ===== [INÍCIO] Novos elementos do formulário =====
+    const addAtivoForm = document.getElementById('add-ativo-form');
+    const addModalTitle = document.getElementById('add-modal-title');
+    const transacaoIdInput = document.getElementById('transacao-id-input');
+    // ===== [FIM] Novos elementos do formulário =====
+    
     const tickerInput = document.getElementById('ticker-input');
     const quantityInput = document.getElementById('quantity-input');
     const precoMedioInput = document.getElementById('preco-medio-input'); 
-    const dateInput = document.getElementById('date-input'); // <-- CAMPO DE DATA ADICIONADO
+    const dateInput = document.getElementById('date-input');
     const addButton = document.getElementById('add-button');
     const updateNotification = document.getElementById('update-notification');
     const updateButton = document.getElementById('update-button');
@@ -214,6 +221,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let isDraggingDetalhes = false;
     let newWorker;
     
+    // ===== [INÍCIO] Novo estado para edição =====
+    let transacaoEmEdicao = null;
+    // ===== [FIM] Novo estado para edição =====
+    
     let currentDetalhesSymbol = null;
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
@@ -226,17 +237,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         clearTimeout(toastTimer);
         toastMessageElement.textContent = message;
 
-        // Reseta classes de cor
         toastElement.classList.remove(
-            'bg-red-800', 'border-red-600',       // Classes de Erro
-            'bg-green-700', 'border-green-500'    // Classes de Sucesso (AGORA VERDE)
+            'bg-red-800', 'border-red-600',
+            'bg-green-700', 'border-green-500'
         );
         
-        // Aplica classes de cor com base no 'type'
         if (type === 'success') {
-            toastElement.classList.add('bg-green-700', 'border-green-500'); // SUCESSO (VERDE)
-        } else { // 'error' ou default
-            toastElement.classList.add('bg-red-800', 'border-red-600'); // ERRO (VERMELHO)
+            toastElement.classList.add('bg-green-700', 'border-green-500');
+        } else {
+            toastElement.classList.add('bg-red-800', 'border-red-600');
         }
 
         if (isToastShowing && toastElement.classList.contains('toast-visible')) {
@@ -367,7 +376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } 
         catch (e) { 
             console.error("Erro ao salvar no cache IDB:", e); 
-            await clearBrapiCache(); // Limpa cache em caso de erro (ex: QuotaExceeded)
+            await clearBrapiCache();
         }
     }
     
@@ -392,18 +401,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function removerProventosConhecidos(symbol) {
         console.log(`A limpar 'proventosConhecidos' (memória e DB) para: ${symbol}`);
         
-        // 1. Limpa do array em memória
         proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
         
-        // 2. Limpa do IndexedDB
         try {
-            // Como não há índice 'bySymbol' nesta store, temos que buscar todos e filtrar.
             const todosProventos = await vestoDB.getAll('proventosConhecidos');
             const proventosParaRemover = todosProventos.filter(p => p.symbol === symbol);
             
             if (proventosParaRemover.length > 0) {
                 console.log(`Removendo ${proventosParaRemover.length} proventos conhecidos do DB...`);
-                // Deleta cada um em paralelo
                 const deletePromises = proventosParaRemover.map(p => vestoDB.delete('proventosConhecidos', p.id));
                 await Promise.all(deletePromises);
             }
@@ -417,7 +422,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!cacheItem) return null;
         
         const duration = cacheItem.duration ?? CACHE_DURATION; 
-        if (duration === -1) { return cacheItem.data; } // Cache perpétuo
+        if (duration === -1) { return cacheItem.data; }
         
         const isExpired = (Date.now() - cacheItem.timestamp) > duration;
         if (isExpired) { 
@@ -453,6 +458,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             return date.toLocaleDateString('pt-BR', options);
         } catch (e) { return dateString; }
     };
+    
+    // ===== [INÍCIO] Nova função auxiliar para formatar datas para inputs =====
+    /**
+     * Converte uma data (ISO string ou objeto Date) para o formato 'YYYY-MM-DD'.
+     * @param {string | Date} dateString - A data para formatar.
+     * @returns {string} A data no formato 'YYYY-MM-DD'.
+     */
+    const formatDateToInput = (dateString) => {
+        try {
+            const date = new Date(dateString);
+            // Corrige o fuso horário. new Date('2025-11-12T00:00:00Z') vira dia 11 local.
+            // Usamos UTC para pegar os valores corretos.
+            const year = date.getUTCFullYear();
+            const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+            const day = date.getUTCDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (e) {
+            console.error("Erro ao formatar data para input:", e);
+            return new Date().toISOString().split('T')[0];
+        }
+    };
+    // ===== [FIM] Nova função auxiliar =====
+    
     const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
     
     function parseMesAno(mesAnoStr) { 
@@ -528,9 +556,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showAddModal() {
         addAtivoModal.classList.add('visible');
         addAtivoModalContent.classList.remove('modal-out');
-        // Define a data atual como padrão no input
-        dateInput.value = new Date().toISOString().split('T')[0];
-        tickerInput.focus();
+        
+        // Se não estiver em modo de edição, define a data atual
+        if (!transacaoEmEdicao) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+            tickerInput.focus();
+        }
     }
     
     // --- ATUALIZADO ---
@@ -539,12 +570,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             addAtivoModal.classList.remove('visible');
             addAtivoModalContent.classList.remove('modal-out');
-            // Limpa todos os campos, incluindo a data
+            
+            // Limpa todos os campos
             tickerInput.value = '';
             quantityInput.value = '';
             precoMedioInput.value = '';
             dateInput.value = '';
-            // Remove classes de erro de todos os campos
+            transacaoIdInput.value = ''; // Limpa o ID oculto
+            
+            // Reseta o estado de edição
+            transacaoEmEdicao = null;
+            tickerInput.disabled = false;
+            addModalTitle.textContent = 'Adicionar Compra';
+            addButton.textContent = 'Adicionar';
+            
+            // Remove classes de erro
             tickerInput.classList.remove('border-red-500');
             quantityInput.classList.remove('border-red-500');
             precoMedioInput.classList.remove('border-red-500');
@@ -563,7 +603,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             importTextModal.classList.remove('visible');
             importTextModalContent.classList.remove('modal-out');
-            importTextTextarea.value = ''; // Limpa o textarea
+            importTextTextarea.value = '';
         }, 200);
     }
     
@@ -616,7 +656,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const snapshot = { date: today, value: totalValor };
         await vestoDB.put('patrimonio', snapshot);
         
-        // Atualiza o array em memória
         const index = patrimonio.findIndex(p => p.date === today);
         if (index > -1) {
             patrimonio[index].value = totalValor;
@@ -641,7 +680,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /** Processa dividendos que já foram pagos e os move para o "Caixa" */
     async function processarDividendosPagos() {
         const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0); // Compara apenas com o início do dia
+        hoje.setHours(0, 0, 0, 0);
         
         const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
         let precisaSalvarCaixa = false;
@@ -661,7 +700,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         console.log(`Processado pagamento de ${provento.symbol}: ${formatBRL(valorRecebido)}`);
                     }
                     
-                    provento.processado = true; // Marca como processado
+                    provento.processado = true;
                     proventosParaSalvar.push(provento);
                 }
             }
@@ -688,7 +727,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 symbol: symbol, 
                 quantity: 0, 
                 totalCost: 0, 
-                dataCompra: t.date // Define a data da *primeira* transação encontrada (após ordenar)
+                dataCompra: t.date
             };
             ativo.quantity += t.quantity;
             ativo.totalCost += t.quantity * t.price;
@@ -902,10 +941,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- ATUALIZADO ---
     function renderizarDashboardSkeletons(show) {
-        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa]; // Adicionado skeletonTotalCaixa
-        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor]; // Adicionado totalCaixaValor
+        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
+        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
         
         if (show) {
             skeletons.forEach(el => el.classList.remove('hidden'));
@@ -926,15 +964,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- ATUALIZADO ---
     async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
         
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-        const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p])); // Apenas futuros
+        const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p]));
         const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-        let totalValorCarteira = 0; // Apenas ativos
+        let totalValorCarteira = 0;
         let totalCustoCarteira = 0;
         let dadosGrafico = [];
 
@@ -942,14 +979,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             carteiraStatus.classList.remove('hidden');
             renderizarDashboardSkeletons(false);
             
-            const corPLTotal = saldoCaixa > 0 ? 'text-green-500' : 'text-gray-500';
-            
-            // --- Lógica de Carteira Vazia ATUALIZADA ---
-            totalCarteiraValor.textContent = formatBRL(0); // Valor em ativos é zero
-            totalCaixaValor.textContent = formatBRL(saldoCaixa); // Caixa é mostrado separadamente
+            totalCarteiraValor.textContent = formatBRL(0);
+            totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(0);
-            totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`; // L/P de ativos é zero
-            totalCarteiraPL.className = `text-lg font-semibold text-gray-500`; // Cor neutra
+            totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
+            totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
             
             dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
             dashboardLoading.classList.add('hidden');
@@ -957,7 +991,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             renderizarGraficoAlocacao([]); 
             renderizarGraficoHistorico({ labels: [], data: [] }); 
-            await salvarSnapshotPatrimonio(saldoCaixa); // Salva o caixa como patrimônio (ativos + caixa)
+            await salvarSnapshotPatrimonio(saldoCaixa);
             renderizarGraficoPatrimonio();
         } else {
             carteiraStatus.classList.add('hidden');
@@ -967,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         listaCarteira.innerHTML = ''; 
         carteiraOrdenada.forEach(ativo => {
             const dadoPreco = precosMap.get(ativo.symbol);
-            const dadoProvento = proventosMap.get(ativo.symbol); // Futuro
+            const dadoProvento = proventosMap.get(ativo.symbol);
             
             const card = document.createElement('div');
             card.className = 'card-bg p-4 rounded-2xl shadow-lg card-animate-in';
@@ -993,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (lucroPrejuizo > 0.01) corPL = 'text-green-500';
             else if (lucroPrejuizo < -0.01) corPL = 'text-red-500';
 
-            totalValorCarteira += totalPosicao; // Soma apenas o valor dos ativos
+            totalValorCarteira += totalPosicao;
             totalCustoCarteira += custoTotal;
             if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
             
@@ -1072,10 +1106,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             listaCarteira.appendChild(card);
         });
         
-        // --- Lógica de Carteira Cheia ATUALIZADA ---
         if (carteiraOrdenada.length > 0) {
-            const patrimonioTotalAtivos = totalValorCarteira; // Apenas ativos
-            const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira; // Apenas L/P dos ativos
+            const patrimonioTotalAtivos = totalValorCarteira;
+            const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
             const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
             
             let corPLTotal = 'text-gray-500';
@@ -1084,13 +1117,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             renderizarDashboardSkeletons(false);
             
-            totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos); // Mostra valor dos ativos
-            totalCaixaValor.textContent = formatBRL(saldoCaixa); // Mostra caixa
+            totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
+            totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
             totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
             totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
             
-            // Salva o snapshot com o patrimônio *real* (Ativos + Caixa)
             const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
             await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
         }
@@ -1100,11 +1132,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderizarProventos() {
-        // Esta função agora renderiza apenas os *próximos* proventos
         let totalEstimado = 0;
         const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
         
-        proventosAtuais.forEach(provento => { // proventosAtuais contém apenas futuros
+        proventosAtuais.forEach(provento => {
             const quantity = carteiraMap.get(provento.symbol) || 0;
             if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) { 
                 totalEstimado += (quantity * provento.value);
@@ -1113,6 +1144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
     
+    // ===== [INÍCIO] Função renderizarHistorico ATUALIZADA =====
     function renderizarHistorico() {
         listaHistorico.innerHTML = '';
         if (transacoes.length === 0) {
@@ -1121,31 +1153,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         historicoStatus.classList.add('hidden');
-        [...transacoes].reverse().forEach(t => {
+        // Ordena por data, da mais recente para a mais antiga
+        [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
             const card = document.createElement('div');
             card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
             const cor = 'text-green-500';
             const sinal = '+';
             const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            
             card.innerHTML = `
                 <div class="flex items-center gap-3">
                     ${icone}
                     <div>
                         <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
-                        <p class="text-sm text-gray-400">${formatDate(t.date, true)}</p>
+                        <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
                     </div>
                 </div>
-                <div class="text-right">
-                    <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                    <p class="text-sm text-gray-400">${formatBRL(t.price)}</p>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
+                        <p class="text-sm text-gray-400">${formatBRL(t.price)}</p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button class="p-1 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                              <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button class="p-1 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             `;
             listaHistorico.appendChild(card);
         });
     }
+    // ===== [FIM] Função renderizarHistorico ATUALIZADA =====
 
     // ==========================================================
-    // Funções de Notícias (ATUALIZADA com Tickers Clicáveis)
+    // Funções de Notícias
     // ==========================================================
     
     function renderizarNoticias(articles) { 
@@ -1222,17 +1272,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v4';
         
-        // 1. Tenta ler o cache primeiro, SE não for forçado
         if (!force) {
             const cache = await getCache(cacheKey);
             if (cache) {
                 console.log("Usando notícias do cache (sem skeleton).");
                 renderizarNoticias(cache);
-                return; // Encontrou no cache, para aqui.
+                return;
             }
         }
         
-        // 2. Se o cache estiver vazio ou se force=true, mostra o skeleton
         fiiNewsSkeleton.classList.remove('hidden');
         fiiNewsList.innerHTML = '';
         fiiNewsMensagem.classList.add('hidden');
@@ -1243,9 +1291,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            // 3. Busca na rede
             console.log("Buscando notícias na rede (BFF)...");
-            const articles = await fetchAndCacheNoticiasBFF_NetworkOnly(); // Nova função
+            const articles = await fetchAndCacheNoticiasBFF_NetworkOnly();
             renderizarNoticias(articles);
         } catch (e) {
             console.error("Erro ao buscar notícias (função separada):", e);
@@ -1257,16 +1304,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    /** * Busca o JSON de resumos de notícias APENAS DA REDE e salva no cache.
-     * A verificação de cache foi movida para handleAtualizarNoticias.
-     */
     async function fetchAndCacheNoticiasBFF_NetworkOnly() {
         const cacheKey = 'noticias_json_v4';
         
-        // 1. Deleta o cache antigo (necessário se for atualização forçada)
         await vestoDB.delete('apiCache', cacheKey);
         
-        // 2. Busca na rede
         try {
             const response = await fetchBFF('/api/news', {
                 method: 'POST',
@@ -1275,7 +1317,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             const articles = response.json;
             
-            // 3. Salva no cache
             if (articles && Array.isArray(articles)) {
                 await setCache(cacheKey, articles, CACHE_6_HORAS);
             }
@@ -1290,7 +1331,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Funções de Fetch (API)
     // ==========================================================
 
-    /** Wrapper de Fetch para o BFF com timeout */
     async function fetchBFF(url, options = {}) {
         try {
             const controller = new AbortController();
@@ -1314,9 +1354,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    /** * Busca preços, usando cache individual por ativo
-     * (Já estava respeitando 'force')
-     */
     async function buscarPrecosCarteira(force = false) { 
         if (carteiraCalculada.length === 0) return [];
         console.log("A buscar preços na API (cache por ativo)...");
@@ -1354,7 +1391,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return resultados.filter(p => p !== null);
     }
 
-    /** Filtra proventos da IA para datas futuras */
     function processarProventosIA(proventosDaIA = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
@@ -1369,7 +1405,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const parts = proventoIA.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                     
-                    // Apenas futuros (igual ou depois de hoje)
                     if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
                         return proventoIA;
                     }
@@ -1379,9 +1414,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             .filter(p => p !== null);
     }
 
-    /** * Busca proventos futuros, usando cache individual por FII
-     * *** CORRIGIDO: Agora respeita o parâmetro 'force' ***
-     */
     async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
@@ -1389,10 +1421,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             
         if (fiiNaCarteira.length === 0) return [];
 
-        let proventosPool = []; // Pool de proventos para filtrar
+        let proventosPool = [];
         let fiisParaBuscar = [];
 
-        // 1. Processa o que já está em cache
         for (const symbol of fiiNaCarteira) {
             const cacheKey = `provento_ia_${symbol}`;
             if (force) {
@@ -1410,7 +1441,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("Proventos em cache (para filtrar):", proventosPool.map(p => p.symbol));
         console.log("Proventos para buscar (API):", fiisParaBuscar);
 
-        // 2. Busca novos na API
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
@@ -1420,16 +1450,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if (provento && provento.symbol && provento.paymentDate) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_24_HORAS); 
-                            proventosPool.push(provento); // Adiciona ao pool de processamento
+                            proventosPool.push(provento);
 
-                            // Adiciona à lista de proventos conhecidos se ainda não estiver lá
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
                                 await vestoDB.put('proventosConhecidos', novoProvento);
-                                proventosConhecidos.push(novoProvento); // Atualiza array em memória
+                                proventosConhecidos.push(novoProvento);
                             }
                         }
                     }
@@ -1439,7 +1468,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // 3. Retorna apenas os proventos que são REALMENTE futuros
         return processarProventosIA(proventosPool); 
     }
 
@@ -1473,7 +1501,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const carteiraMap = new Map(fiiNaCarteira.map(a => [a.symbol, { 
             quantity: a.quantity, 
-            // *** IMPORTANTE: USA A DATA DA PRIMEIRA TRANSAÇÃO (ORDENADA) ***
             inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
         }]));
         
@@ -1493,9 +1520,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const inicioMesCompraTime = ativo.inicioMesCompra;
                 const valorPorCota = mesData[symbol] || 0;
                 
-                // A MÁGICA ACONTECE AQUI:
-                // Só soma o provento se o mês do provento (timeDoMes)
-                // for igual ou maior que o mês da primeira compra (inicioMesCompraTime)
                 if (timeDoMes >= inicioMesCompraTime) {
                      totalMes += (valorPorCota * quantity);
                 }
@@ -1594,86 +1618,111 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- FUNÇÃO TOTALMENTE ATUALIZADA ---
-    /** Adiciona uma nova transação de compra */
-    async function handleAdicionarAtivo() {
+    // ===== [INÍCIO] Nova função unificada para Adicionar e Editar =====
+    /** Salva uma transação (nova ou existente) */
+    async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
         let novaQuantidade = parseInt(quantityInput.value, 10);
         let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
-        let dataTransacao = dateInput.value; // 1. LÊ A DATA DO INPUT
+        let dataTransacao = dateInput.value;
+        let transacaoID = transacaoIdInput.value; // Pega o ID (se houver)
 
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
-        // 2. VALIDAÇÃO (incluindo a data)
+        // Validação
         if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0 || !dataTransacao) { 
             showToast("Preencha todos os campos."); 
-            tickerInput.classList.add('border-red-500');
-            quantityInput.classList.add('border-red-500');
-            precoMedioInput.classList.add('border-red-500'); 
-            dateInput.classList.add('border-red-500'); // Valida a data
+            if (!ticker) tickerInput.classList.add('border-red-500');
+            if (!novaQuantidade || novaQuantidade <= 0) quantityInput.classList.add('border-red-500');
+            if (!novoPreco || novoPreco < 0) precoMedioInput.classList.add('border-red-500'); 
+            if (!dataTransacao) dateInput.classList.add('border-red-500');
             setTimeout(() => {
                 tickerInput.classList.remove('border-red-500');
                 quantityInput.classList.remove('border-red-500');
                 precoMedioInput.classList.remove('border-red-500'); 
-                dateInput.classList.remove('border-red-500'); // Limpa a validação da data
+                dateInput.classList.remove('border-red-500');
             }, 2000);
             return;
         }
         
-        const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
+        addButton.innerHTML = `<span class="loader-sm"></span>`;
+        addButton.disabled = true;
+
+        // Modo de ADIÇÃO (Sem ID): Verifica o ticker
+        if (!transacaoID) {
+            const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
+            if (!ativoExistente) {
+                const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
+                try {
+                     const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+                     if (!quoteData.results || quoteData.results[0].error) {
+                         throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
+                     }
+                } catch (error) {
+                     console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
+                     showToast("Ativo não encontrado."); 
+                     tickerInput.value = '';
+                     tickerInput.placeholder = "Ativo não encontrado";
+                     tickerInput.classList.add('border-red-500');
+                     setTimeout(() => { 
+                        tickerInput.placeholder = "Ativo (ex: MXRF11)"; 
+                        tickerInput.classList.remove('border-red-500');
+                     }, 2000);
+                     addButton.innerHTML = `Adicionar`;
+                     addButton.disabled = false;
+                     return;
+                }
+            } 
+        }
         
-        // Verificação de ticker (só se for o primeiro ativo)
-        if (!ativoExistente) {
-            addButton.innerHTML = `<span class="loader-sm"></span>`;
-            addButton.disabled = true;
-            
-            const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
-            try {
-                 const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                 if (!quoteData.results || quoteData.results[0].error) {
-                     throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
-                 }
-                 
-            } catch (error) {
-                 console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
-                 showToast("Ativo não encontrado."); 
-                 tickerInput.value = '';
-                 tickerInput.placeholder = "Ativo não encontrado";
-                 tickerInput.classList.add('border-red-500');
-                 setTimeout(() => { 
-                    tickerInput.placeholder = "Ativo (ex: MXRF11)"; 
-                    tickerInput.classList.remove('border-red-500');
-                 }, 2000);
-                 addButton.innerHTML = `Adicionar`;
-                 addButton.disabled = false;
-                 return;
-            }
-        } 
-        
-        // 3. SALVAR COM A DATA CORRETA
-        // Usamos T12:00:00 para garantir que o fuso horário não
-        // mude a data para o dia anterior ao converter para UTC (ISOString)
+        // Converte a data para ISO, garantindo fuso neutro
         const dataISO = new Date(dataTransacao + 'T12:00:00').toISOString();
 
-        const novaTransacao = {
-            id: 'tx_' + Date.now(),
-            date: dataISO, // <-- USA A DATA DO INPUT
-            symbol: ticker,
-            type: 'buy',
-            quantity: novaQuantidade,
-            price: novoPreco
-        };
-        
-        await vestoDB.put('transacoes', novaTransacao);
-        transacoes.push(novaTransacao); // Atualiza array em memória
+        if (transacaoID) {
+            // --- MODO EDIÇÃO ---
+            console.log("Modo Edição: Salvando ID", transacaoID);
+            const transacaoAtualizada = {
+                id: transacaoID,
+                date: dataISO,
+                symbol: ticker, // Ticker não muda, mas salvamos
+                type: 'buy',
+                quantity: novaQuantidade,
+                price: novoPreco
+            };
+            
+            await vestoDB.put('transacoes', transacaoAtualizada);
+            // Atualiza array em memória
+            const index = transacoes.findIndex(t => t.id === transacaoID);
+            if (index > -1) {
+                transacoes[index] = transacaoAtualizada;
+            }
+            showToast("Transação atualizada!", 'success');
+            
+        } else {
+            // --- MODO ADIÇÃO ---
+            console.log("Modo Adição: Criando nova transação");
+            const novaTransacao = {
+                id: 'tx_' + Date.now(),
+                date: dataISO,
+                symbol: ticker,
+                type: 'buy',
+                quantity: novaQuantidade,
+                price: novoPreco
+            };
+            
+            await vestoDB.put('transacoes', novaTransacao);
+            transacoes.push(novaTransacao); // Atualiza array em memória
+            showToast("Ativo adicionado!", 'success');
+        }
 
-        addButton.innerHTML = `Adicionar`;
+        addButton.innerHTML = `Adicionar`; // Será resetado por hideAddModal
         addButton.disabled = false;
         hideAddModal();
         
         await removerCacheAtivo(ticker); 
-        await atualizarTodosDados(false); // Força atualização (false para não girar o ícone)
+        await atualizarTodosDados(false);
     }
+    // ===== [FIM] Nova função unificada =====
 
     /** Remove um ativo (e todas as suas transações) */
     function handleRemoverAtivo(symbol) {
@@ -1689,17 +1738,89 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 await removerCacheAtivo(symbol); 
-                
-                // ==========================================================
-                // CORREÇÃO ADICIONADA AQUI:
-                // Limpa os proventos futuros/passados salvos no DB
                 await removerProventosConhecidos(symbol);
-                // ==========================================================
                 
                 await atualizarTodosDados(false); 
             }
         );
     }
+    
+    // ===== [INÍCIO] Novas funções para Editar/Excluir transação =====
+    
+    /**
+     * Abre o modal de adição/edição com os dados de uma transação existente.
+     * @param {string} id - O ID da transação a ser editada.
+     */
+    function handleAbrirModalEdicao(id) {
+        const tx = transacoes.find(t => t.id === id);
+        if (!tx) {
+            console.error("Não foi possível encontrar a transação para editar:", id);
+            showToast("Erro: Transação não encontrada.");
+            return;
+        }
+        
+        console.log("Abrindo modo de edição para:", tx);
+        
+        // Define o estado global
+        transacaoEmEdicao = tx;
+        
+        // Preenche o modal
+        addModalTitle.textContent = 'Editar Compra';
+        transacaoIdInput.value = tx.id;
+        tickerInput.value = tx.symbol;
+        tickerInput.disabled = true; // Impede a mudança do ticker
+        dateInput.value = formatDateToInput(tx.date); // Usa a nova função aux
+        quantityInput.value = tx.quantity;
+        precoMedioInput.value = tx.price;
+        addButton.textContent = 'Salvar';
+        
+        showAddModal();
+    }
+    
+    /**
+     * Exclui uma única transação do banco de dados.
+     * @param {string} id - O ID da transação a ser excluída.
+     * @param {string} symbol - O símbolo do ativo (para limpar o cache).
+     */
+    function handleExcluirTransacao(id, symbol) {
+        const tx = transacoes.find(t => t.id === id);
+        if (!tx) {
+             showToast("Erro: Transação não encontrada.");
+             return;
+        }
+
+        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
+        
+        showModal(
+            'Excluir Transação', 
+            msg, 
+            async () => { 
+                console.log(`Excluindo transação ${id} do ativo ${symbol}`);
+                
+                // 1. Deleta do DB
+                await vestoDB.delete('transacoes', id);
+                
+                // 2. Remove da memória
+                transacoes = transacoes.filter(t => t.id !== id);
+                
+                // 3. Limpa caches
+                await removerCacheAtivo(symbol);
+                
+                // 4. Verifica se este era o último ativo. Se sim, limpa proventos
+                const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
+                if (!outrasTransacoes) {
+                    console.log(`Última transação de ${symbol} removida. Limpando proventos conhecidos.`);
+                    await removerProventosConhecidos(symbol);
+                }
+                
+                // 5. Atualiza tudo
+                await atualizarTodosDados(false); 
+                showToast("Transação excluída.", 'success');
+            }
+        );
+    }
+    // ===== [FIM] Novas funções para Editar/Excluir transação =====
+    
     
     /** Limpa a página de detalhes */
     function limparDetalhes() {
@@ -1831,9 +1952,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // 1. Função que BUSCA o JSON de 12 meses (apenas 1 vez)
     async function fetchHistoricoIA(symbol) {
-        // Mostra o skeleton de loading
         detalhesAiProvento.innerHTML = `
             <div id="historico-periodo-loading" class="space-y-3 animate-pulse pt-2">
                 <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
@@ -1843,7 +1962,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
         
         try {
-            // A chave de cache agora é estática para 12 meses
             const cacheKey = `hist_ia_${symbol}_12`;
             let aiResultJSON = await getCache(cacheKey);
 
@@ -1854,7 +1972,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (aiResultJSON && Array.isArray(aiResultJSON)) {
                     await setCache(cacheKey, aiResultJSON, CACHE_24_HORAS);
                 } else {
-                    aiResultJSON = []; // Garante que é um array
+                    aiResultJSON = [];
                 }
             } else {
                 console.log(`Usando cache para histórico JSON de ${symbol}.`);
@@ -1880,7 +1998,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // 2. Função que RENDERIZA o texto a partir do JSON filtrado (instantâneo)
     function renderHistoricoIADetalhes(meses) {
         if (!currentDetalhesHistoricoJSON) {
             return;
@@ -1936,11 +2053,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target === addAtivoModal) { hideAddModal(); } 
     });
     
-    addButton.addEventListener('click', handleAdicionarAtivo);
-    tickerInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
-    quantityInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo());
-    precoMedioInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); 
-    dateInput.addEventListener('keypress', (e) => e.key === 'Enter' && handleAdicionarAtivo()); // Adicionado listener para data
+    // ===== [INÍCIO] Listener do Formulário ATUALIZADO =====
+    // Removemos os listeners antigos de 'click' e 'keypress' do botão/inputs
+    // e adicionamos um listener 'submit' ao formulário
+    addAtivoForm.addEventListener('submit', (e) => {
+        e.preventDefault(); // Impede o envio padrão do formulário
+        handleSalvarTransacao();
+    });
+    // ===== [FIM] Listener do Formulário ATUALIZADO =====
     
     notifyButton.addEventListener('click', requestNotificationPermission);
 
@@ -1962,6 +2082,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             icon?.classList.toggle('open');
         }
     });
+    
+    // ===== [INÍCIO] Novo listener para a lista de Histórico =====
+    listaHistorico.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+
+        const action = target.dataset.action;
+        const id = target.dataset.id;
+        const symbol = target.dataset.symbol; // Apenas para exclusão
+
+        if (action === 'edit') {
+            handleAbrirModalEdicao(id);
+        } else if (action === 'delete') {
+            handleExcluirTransacao(id, symbol);
+        }
+    });
+    // ===== [FIM] Novo listener para a lista de Histórico =====
     
     dashboardDrawers.addEventListener('click', (e) => {
         const target = e.target.closest('button');
@@ -2247,7 +2384,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await carregarProventosConhecidos();
         mudarAba('tab-dashboard'); 
         
-        // Dispara as duas funções em paralelo, sem esperar uma pela outra.
         atualizarTodosDados(false); 
         handleAtualizarNoticias(false); 
         

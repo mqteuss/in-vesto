@@ -1,20 +1,12 @@
-// Configurações padrão do Chart.js
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
-// Adiciona o listener para 'DOMContentLoaded' para garantir que o HTML
-// seja carregado antes de o script rodar, já que estamos usando 'defer'.
 document.addEventListener('DOMContentLoaded', async () => {
     
-    // Constantes
-    const REFRESH_INTERVAL = 1860000; // 31 minutos
-    const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
-    const CACHE_24_HORAS = 1000 * 60 * 60 * 24; // 24 horas
-    const CACHE_6_HORAS = 1000 * 60 * 60 * 6; // 6 HORAS
-    
-    // ==========================================================
-    // IndexedDB Wrapper
-    // ==========================================================
+    const REFRESH_INTERVAL = 1860000;
+    const CACHE_DURATION = 1000 * 60 * 30;
+    const CACHE_24_HORAS = 1000 * 60 * 60 * 24;
+    const CACHE_6_HORAS = 1000 * 60 * 60 * 6;
     
     const DB_NAME = 'vestoDB';
     const DB_VERSION = 1;
@@ -28,7 +20,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
-                    console.log('[IDB] Executando onupgradeneeded...');
                     
                     if (!db.objectStoreNames.contains('transacoes')) {
                         const transStore = db.createObjectStore('transacoes', { keyPath: 'id' });
@@ -41,7 +32,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         db.createObjectStore('appState', { keyPath: 'key' });
                     }
                     if (!db.objectStoreNames.contains('proventosConhecidos')) {
-                        // ID será 'SYMBOL_PAYMENTDATE'
                         db.createObjectStore('proventosConhecidos', { keyPath: 'id' });
                     }
                     if (!db.objectStoreNames.contains('apiCache')) {
@@ -123,7 +113,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
     
-    // Elementos DOM
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -137,7 +126,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dashboardLoading = document.getElementById('dashboard-loading');
     const dashboardMensagem = document.getElementById('dashboard-mensagem');
     const dashboardDrawers = document.getElementById('dashboard-drawers');
-    const notifyButton = document.getElementById('request-notify-btn');
     const skeletonTotalValor = document.getElementById('skeleton-total-valor');
     const skeletonTotalCusto = document.getElementById('skeleton-total-custo');
     const skeletonTotalPL = document.getElementById('skeleton-total-pl');
@@ -194,7 +182,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const importTextConfirmBtn = document.getElementById('import-text-confirm-btn');
     const importTextCancelBtn = document.getElementById('import-text-cancel-btn');
 
-    // Estado da App
     let transacoes = [];        
     let carteiraCalculada = []; 
     let patrimonio = [];
@@ -205,7 +192,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let patrimonioChartInstance = null; 
     let onConfirmCallback = null; 
     let precosAtuais = [];
-    let proventosAtuais = []; // Apenas proventos futuros
+    let proventosAtuais = [];
     const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
     let lastAlocacaoData = null; 
     let lastHistoricoData = null;
@@ -222,10 +209,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
 
-    // ==========================================================
-    // Notificações Toast
-    // ==========================================================
-    
     function showToast(message, type = 'error') {
         clearTimeout(toastTimer);
         toastMessageElement.textContent = message;
@@ -255,10 +238,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1500); 
     }
 
-    // ==========================================================
-    // Service Worker (PWA)
-    // ==========================================================
-    
     function showUpdateBar() {
         console.log('Mostrando aviso de atualização.');
         updateNotification.classList.remove('hidden');
@@ -300,68 +279,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Service Worker não é suportado neste navegador.');
     }
     
-    // ==========================================================
-    // Notificações Push
-    // ==========================================================
-    
-    function checkNotificationPermission() {
-        if (!('Notification' in window)) {
-            console.warn('Este navegador não suporta notificações.');
-            notifyButton.classList.add('hidden'); 
-            return;
-        }
-        if (Notification.permission === 'granted') {
-            notifyButton.classList.add('notify-on'); 
-            notifyButton.title = "Notificações ativadas! Clique para testar.";
-        } else if (Notification.permission === 'denied') {
-            notifyButton.classList.add('notify-off'); 
-            notifyButton.title = "Notificações bloqueadas.";
-            notifyButton.disabled = true;
-        } else {
-            notifyButton.classList.remove('notify-on'); 
-            notifyButton.title = "Clique para ativar as notificações.";
-        }
-    }
-
-    function requestNotificationPermission() {
-         if (Notification.permission === 'granted') {
-            console.log('Permissão já concedida. Testando notificação...');
-            testNotification();
-            return;
-         }
-         if (Notification.permission === 'denied') {
-            console.error('Notificações bloqueadas pelo usuário.');
-            return;
-         }
-         Notification.requestPermission().then(permission => {
-            console.log('Resultado da permissão:', permission);
-            checkNotificationPermission(); 
-            if (permission === 'granted') {
-                testNotification(); 
-            }
-         });
-    }
-    
-    function testNotification() {
-        if (!('Notification' in window) || Notification.permission !== 'granted') {
-            console.warn('Não é possível testar notificações. Permissão não concedida.');
-            return;
-        }
-        const options = {
-            body: 'Tudo pronto! Você será notificado sobre suas finanças.',
-            icon: 'icons/icon-192x192.png',
-            badge: 'icons/icon-192x192.png', 
-            vibrate: [100, 50, 100],
-        };
-        navigator.serviceWorker.ready.then(registration => {
-            registration.showNotification('Vesto está Ativado!', options);
-        });
-    }
-    
-    // ==========================================================
-    // Funções de Cache (IndexedDB)
-    // ==========================================================
-    
     async function setCache(key, data, duration = CACHE_DURATION) { 
         const cacheItem = { key: key, timestamp: Date.now(), data: data, duration: duration };
         try { 
@@ -394,10 +311,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function removerProventosConhecidos(symbol) {
         console.log(`A limpar 'proventosConhecidos' (memória e DB) para: ${symbol}`);
         
-        // 1. Limpa do array em memória
         proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
         
-        // 2. Limpa do IndexedDB
         try {
             const todosProventos = await vestoDB.getAll('proventosConhecidos');
             const proventosParaRemover = todosProventos.filter(p => p.symbol === symbol);
@@ -432,10 +347,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await vestoDB.clear('apiCache');
     }
 
-    // ==========================================================
-    // Funções Auxiliares
-    // ==========================================================
-    
     const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
     const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
     const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -516,10 +427,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         for (let i = 0; i < num; i++) { cores.push(PALETA_CORES[i % PALETA_CORES.length]); }
         return cores;
     }
-    
-    // ==========================================================
-    // Funções dos Modais
-    // ==========================================================
     
     function showModal(title, message, onConfirm) {
         customModalTitle.textContent = title;
@@ -606,10 +513,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 400); 
     }
     
-    // ==========================================================
-    // Funções de Dados (IndexedDB)
-    // ==========================================================
-    
     async function carregarTransacoes() {
         transacoes = await vestoDB.getAll('transacoes');
     }
@@ -631,7 +534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function salvarSnapshotPatrimonio(totalValor) {
         if (totalValor <= 0 && patrimonio.length === 0) return; 
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const today = new Date().toISOString().split('T')[0];
         
         const snapshot = { date: today, value: totalValor };
         await vestoDB.put('patrimonio', snapshot);
@@ -657,7 +560,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         proventosConhecidos = await vestoDB.getAll('proventosConhecidos');
     }
 
-    /** Processa dividendos que já foram pagos e os move para o "Caixa" */
     async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -724,10 +626,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }));
     }
 
-    // ==========================================================
-    // Funções de Renderização
-    // ==========================================================
-    
     function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;
@@ -1398,10 +1296,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // ==========================================================
-    // Funções de Fetch (API)
-    // ==========================================================
-
     async function fetchBFF(url, options = {}) {
         try {
             const controller = new AbortController();
@@ -1485,7 +1379,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             .filter(p => p !== null);
     }
 
-    // ===== [INÍCIO DA MUDANÇA (BUG FIX)] =====
     async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
@@ -1496,17 +1389,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         let proventosPool = [];
         let fiisParaBuscar = [];
 
-        // 1. Processa o que já está em cache
         for (const symbol of fiiNaCarteira) {
             const cacheKey = `provento_ia_${symbol}`;
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
-                
-                // ===== [ESTA É A CORREÇÃO DO BUG] =====
-                // Limpa também a store de proventos conhecidos para
-                // não exibir dados antigos na próxima inicialização.
                 await removerProventosConhecidos(symbol);
-                // ======================================
             }
             
             const proventoCache = await getCache(cacheKey);
@@ -1520,7 +1407,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("Proventos em cache (para filtrar):", proventosPool.map(p => p.symbol));
         console.log("Proventos para buscar (API):", fiisParaBuscar);
 
-        // 2. Busca novos na API
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
@@ -1533,8 +1419,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                             proventosPool.push(provento);
 
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
-                            // A verificação 'existe' agora usa o array de memória 'proventosConhecidos',
-                            // que foi limpo pela função removerProventosConhecidos()
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
@@ -1550,10 +1434,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // 3. Retorna apenas os proventos que são REALMENTE futuros
         return processarProventosIA(proventosPool); 
     }
-    // ===== [FIM DA MUDANÇA (BUG FIX)] =====
 
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
@@ -1613,10 +1495,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         return { labels, data };
     }
-
-    // ==========================================================
-    // Funções Principais (Handlers)
-    // ==========================================================
     
      async function atualizarTodosDados(force = false) { 
         renderizarDashboardSkeletons(true);
@@ -1885,7 +1763,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
         
-        // Limpa a nova seção de histórico de transações
         document.getElementById('detalhes-transacoes-container').classList.add('hidden');
         document.getElementById('detalhes-lista-transacoes').innerHTML = '';
         document.getElementById('detalhes-transacoes-vazio').classList.add('hidden');
@@ -2013,28 +1890,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
         }
         
-        // Renderiza a lista de transações do usuário para este ativo
         renderizarTransacoesDetalhes(symbol);
     }
     
-    /**
-     * Renderiza a lista de transações do usuário na página de Detalhes.
-     * @param {string} symbol - O símbolo do ativo (ex: MXRF11).
-     */
     function renderizarTransacoesDetalhes(symbol) {
         const listaContainer = document.getElementById('detalhes-lista-transacoes');
         const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
         const container = document.getElementById('detalhes-transacoes-container');
     
-        // 1. Limpa o conteúdo anterior
         listaContainer.innerHTML = '';
         
-        // 2. Filtra e ordena as transações
         const txsDoAtivo = transacoes
             .filter(t => t.symbol === symbol)
-            .sort((a, b) => new Date(b.date) - new Date(a.date)); // Mais recentes primeiro
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
     
-        // 3. Verifica se há transações
         if (txsDoAtivo.length === 0) {
             vazioMsg.classList.remove('hidden');
             listaContainer.classList.add('hidden');
@@ -2042,10 +1911,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             vazioMsg.classList.add('hidden');
             listaContainer.classList.remove('hidden');
             
-            // 4. Cria e adiciona os cards
             txsDoAtivo.forEach(t => {
                 const card = document.createElement('div');
-                // Usamos um card mais simples, sem botões de ação
                 card.className = 'card-bg p-3 rounded-lg flex items-center justify-between'; 
                 
                 const cor = 'text-green-500';
@@ -2070,7 +1937,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
-        // 5. Finalmente, mostra o container inteiro
         container.classList.remove('hidden');
     }
     
@@ -2154,7 +2020,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarGraficoProventosDetalhes({ labels, data });
     }
     
-    /** Muda a aba visível */
     function mudarAba(tabId) {
         tabContents.forEach(content => {
             content.classList.toggle('active', content.id === tabId);
@@ -2166,10 +2031,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     
-    // ==========================================================
-    // Event Listeners
-    // ==========================================================
-
     refreshButton.addEventListener('click', async () => {
         await atualizarTodosDados(true); 
     });
@@ -2190,8 +2051,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         handleSalvarTransacao();
     });
     
-    notifyButton.addEventListener('click', requestNotificationPermission);
-
     listaCarteira.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target) return;
@@ -2342,10 +2201,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target === importTextModal) { hideImportModal(); } 
     });
 
-    // ==========================================================
-    // Funções da API Gemini (BFF)
-    // ==========================================================
-
     async function callGeminiHistoricoAPI(ticker, todayString) { 
         const body = { 
             mode: 'historico_12m', 
@@ -2378,10 +2233,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         return response.json; 
     }
-
-    // ==========================================================
-    // Funções de Backup (Copiar/Colar)
-    // ==========================================================
 
     async function handleCopiarDados() {
         console.log("Iniciando cópia para o clipboard...");
@@ -2488,10 +2339,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             importTextConfirmBtn.disabled = false;
         }
     }
-
-    // ==========================================================
-    // Inicialização
-    // ==========================================================
     
     async function init() {
         try {
@@ -2503,7 +2350,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return; 
         }
         
-        checkNotificationPermission(); 
         await carregarTransacoes();
         await carregarPatrimonio();
         await carregarCaixa();
@@ -2516,6 +2362,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
     }
     
-    // Inicia a aplicação
     await init();
 });

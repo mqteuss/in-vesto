@@ -176,13 +176,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addAtivoModal = document.getElementById('add-ativo-modal');
     const addAtivoModalContent = document.getElementById('add-ativo-modal-content');
     const addAtivoCancelBtn = document.getElementById('add-ativo-cancel-btn');
-    
-    // ===== [INÍCIO] Novos elementos do formulário =====
     const addAtivoForm = document.getElementById('add-ativo-form');
     const addModalTitle = document.getElementById('add-modal-title');
     const transacaoIdInput = document.getElementById('transacao-id-input');
-    // ===== [FIM] Novos elementos do formulário =====
-    
     const tickerInput = document.getElementById('ticker-input');
     const quantityInput = document.getElementById('quantity-input');
     const precoMedioInput = document.getElementById('preco-medio-input'); 
@@ -221,10 +217,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     let isDraggingDetalhes = false;
     let newWorker;
     
-    // ===== [INÍCIO] Novo estado para edição =====
-    let transacaoEmEdicao = null;
-    // ===== [FIM] Novo estado para edição =====
+    // ===== [INÍCIO 1/4] Adicionar nova variável de estado =====
+    let detalhesChartInstance = null; // Para o gráfico na página de detalhes
+    // ===== [FIM 1/4] =====
     
+    let transacaoEmEdicao = null;
     let currentDetalhesSymbol = null;
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
@@ -459,17 +456,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { return dateString; }
     };
     
-    // ===== [INÍCIO] Nova função auxiliar para formatar datas para inputs =====
-    /**
-     * Converte uma data (ISO string ou objeto Date) para o formato 'YYYY-MM-DD'.
-     * @param {string | Date} dateString - A data para formatar.
-     * @returns {string} A data no formato 'YYYY-MM-DD'.
-     */
     const formatDateToInput = (dateString) => {
         try {
             const date = new Date(dateString);
-            // Corrige o fuso horário. new Date('2025-11-12T00:00:00Z') vira dia 11 local.
-            // Usamos UTC para pegar os valores corretos.
             const year = date.getUTCFullYear();
             const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
             const day = date.getUTCDate().toString().padStart(2, '0');
@@ -479,7 +468,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return new Date().toISOString().split('T')[0];
         }
     };
-    // ===== [FIM] Nova função auxiliar =====
     
     const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
     
@@ -552,39 +540,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 200); 
     }
     
-    // --- ATUALIZADO ---
     function showAddModal() {
         addAtivoModal.classList.add('visible');
         addAtivoModalContent.classList.remove('modal-out');
         
-        // Se não estiver em modo de edição, define a data atual
         if (!transacaoEmEdicao) {
             dateInput.value = new Date().toISOString().split('T')[0];
             tickerInput.focus();
         }
     }
     
-    // --- ATUALIZADO ---
     function hideAddModal() {
         addAtivoModalContent.classList.add('modal-out');
         setTimeout(() => {
             addAtivoModal.classList.remove('visible');
             addAtivoModalContent.classList.remove('modal-out');
             
-            // Limpa todos os campos
             tickerInput.value = '';
             quantityInput.value = '';
             precoMedioInput.value = '';
             dateInput.value = '';
-            transacaoIdInput.value = ''; // Limpa o ID oculto
+            transacaoIdInput.value = '';
             
-            // Reseta o estado de edição
             transacaoEmEdicao = null;
             tickerInput.disabled = false;
             addModalTitle.textContent = 'Adicionar Compra';
             addButton.textContent = 'Adicionar';
             
-            // Remove classes de erro
             tickerInput.classList.remove('border-red-500');
             quantityInput.classList.remove('border-red-500');
             precoMedioInput.classList.remove('border-red-500');
@@ -878,6 +860,98 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // ===== [INÍCIO 3/4] Adicionar nova função para o gráfico de detalhes =====
+    /**
+     * Renderiza o gráfico de barras de proventos na PÁGINA DE DETALHES.
+     */
+    function renderizarGraficoProventosDetalhes({ labels, data }) {
+        const canvas = document.getElementById('detalhes-proventos-chart');
+        if (!canvas) return; // Se o canvas não estiver lá, não faz nada
+        const ctx = canvas.getContext('2d');
+    
+        if (!labels || !data || labels.length === 0) {
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null; 
+            }
+            return;
+        }
+    
+        // Gradiente (igual ao do dashboard)
+        const gradient = ctx.createLinearGradient(0, 0, 0, 192); // 192 = h-48
+        gradient.addColorStop(0, 'rgba(167, 139, 250, 0.9)'); 
+        gradient.addColorStop(1, 'rgba(109, 40, 217, 0.9)'); 
+        
+        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 192);
+        hoverGradient.addColorStop(0, 'rgba(196, 181, 253, 1)'); 
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');
+    
+        if (detalhesChartInstance) {
+            // Atualiza o gráfico existente
+            detalhesChartInstance.data.labels = labels;
+            detalhesChartInstance.data.datasets[0].data = data;
+            detalhesChartInstance.update();
+        } else {
+            // Cria um novo gráfico
+            detalhesChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Recebido',
+                        data: data,
+                        backgroundColor: gradient,
+                        hoverBackgroundColor: hoverGradient,
+                        borderColor: 'rgba(167, 139, 250, 0.3)', 
+                        borderWidth: 1,
+                        borderRadius: 4 
+                    }]
+                },
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false, // Importante para o container h-48
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1A1A1A',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false, 
+                            callbacks: {
+                                title: (context) => `Mês: ${context[0].label}`, 
+                                label: (context) => `Valor: ${formatBRL(context.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#2A2A2A' }, 
+                            ticks: { 
+                                display: true,
+                                color: '#6b7280', // text-gray-500
+                                font: { size: 10 },
+                                // Formata o eixo Y para R$
+                                callback: function(value) {
+                                    return formatBRL(value);
+                                }
+                            }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: {
+                                color: '#9ca3af', // text-gray-400
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    // ===== [FIM 3/4] =====
+    
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
@@ -1023,9 +1097,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             const custoTotal = ativo.precoMedio * ativo.quantity;
             const lucroPrejuizo = totalPosicao - custoTotal;
             const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
+            
+            // Define as classes de cor e fundo para a tag de P/L
             let corPL = 'text-gray-500';
-            if (lucroPrejuizo > 0.01) corPL = 'text-green-500';
-            else if (lucroPrejuizo < -0.01) corPL = 'text-red-500';
+            let bgPL = 'bg-gray-800'; // Fundo neutro
+            if (lucroPrejuizo > 0.01) {
+                 corPL = 'text-green-500';
+                 bgPL = 'bg-green-900/50'; // Fundo verde
+            } else if (lucroPrejuizo < -0.01) {
+                 corPL = 'text-red-500';
+                 bgPL = 'bg-red-900/50'; // Fundo vermelho
+            }
+
+            // Cria o HTML da tag (apenas se o preço estiver carregado)
+            let plTagHtml = '';
+            if (dadoPreco) {
+                plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
+                    ${lucroPrejuizoPercent.toFixed(1)}% L/P
+                </span>`;
+            }
 
             totalValorCarteira += totalPosicao;
             totalCustoCarteira += custoTotal;
@@ -1062,7 +1152,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                         <div>
                             <h2 class="text-xl font-bold text-white">${ativo.symbol}</h2>
-                            <p class="text-sm text-gray-500">${ativo.quantity} cota(s)</p>
+                            <p class="text-sm text-gray-500 mb-1">${ativo.quantity} cota(s)</p>
+                            ${plTagHtml}
                         </div>
                     </div>
                     <div class="text-right flex-shrink-0 ml-2">
@@ -1144,7 +1235,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
     
-    // ===== [INÍCIO] Função renderizarHistorico ATUALIZADA =====
     function renderizarHistorico() {
         listaHistorico.innerHTML = '';
         if (transacoes.length === 0) {
@@ -1153,7 +1243,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         historicoStatus.classList.add('hidden');
-        // Ordena por data, da mais recente para a mais antiga
         [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
             const card = document.createElement('div');
             card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
@@ -1192,12 +1281,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             listaHistorico.appendChild(card);
         });
     }
-    // ===== [FIM] Função renderizarHistorico ATUALIZADA =====
 
-    // ==========================================================
-    // Funções de Notícias
-    // ==========================================================
-    
     function renderizarNoticias(articles) { 
         fiiNewsSkeleton.classList.add('hidden');
         fiiNewsList.innerHTML = ''; 
@@ -1618,18 +1702,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // ===== [INÍCIO] Nova função unificada para Adicionar e Editar =====
-    /** Salva uma transação (nova ou existente) */
     async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
         let novaQuantidade = parseInt(quantityInput.value, 10);
         let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
         let dataTransacao = dateInput.value;
-        let transacaoID = transacaoIdInput.value; // Pega o ID (se houver)
+        let transacaoID = transacaoIdInput.value;
 
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
-        // Validação
         if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0 || !dataTransacao) { 
             showToast("Preencha todos os campos."); 
             if (!ticker) tickerInput.classList.add('border-red-500');
@@ -1648,7 +1729,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         addButton.innerHTML = `<span class="loader-sm"></span>`;
         addButton.disabled = true;
 
-        // Modo de ADIÇÃO (Sem ID): Verifica o ticker
         if (!transacaoID) {
             const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
             if (!ativoExistente) {
@@ -1675,23 +1755,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             } 
         }
         
-        // Converte a data para ISO, garantindo fuso neutro
         const dataISO = new Date(dataTransacao + 'T12:00:00').toISOString();
 
         if (transacaoID) {
-            // --- MODO EDIÇÃO ---
             console.log("Modo Edição: Salvando ID", transacaoID);
             const transacaoAtualizada = {
                 id: transacaoID,
                 date: dataISO,
-                symbol: ticker, // Ticker não muda, mas salvamos
+                symbol: ticker,
                 type: 'buy',
                 quantity: novaQuantidade,
                 price: novoPreco
             };
             
             await vestoDB.put('transacoes', transacaoAtualizada);
-            // Atualiza array em memória
             const index = transacoes.findIndex(t => t.id === transacaoID);
             if (index > -1) {
                 transacoes[index] = transacaoAtualizada;
@@ -1699,7 +1776,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Transação atualizada!", 'success');
             
         } else {
-            // --- MODO ADIÇÃO ---
             console.log("Modo Adição: Criando nova transação");
             const novaTransacao = {
                 id: 'tx_' + Date.now(),
@@ -1711,20 +1787,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             
             await vestoDB.put('transacoes', novaTransacao);
-            transacoes.push(novaTransacao); // Atualiza array em memória
+            transacoes.push(novaTransacao);
             showToast("Ativo adicionado!", 'success');
         }
 
-        addButton.innerHTML = `Adicionar`; // Será resetado por hideAddModal
+        addButton.innerHTML = `Adicionar`;
         addButton.disabled = false;
         hideAddModal();
         
         await removerCacheAtivo(ticker); 
         await atualizarTodosDados(false);
     }
-    // ===== [FIM] Nova função unificada =====
 
-    /** Remove um ativo (e todas as suas transações) */
     function handleRemoverAtivo(symbol) {
         showModal(
             'Remover Ativo', 
@@ -1745,12 +1819,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
     }
     
-    // ===== [INÍCIO] Novas funções para Editar/Excluir transação =====
-    
-    /**
-     * Abre o modal de adição/edição com os dados de uma transação existente.
-     * @param {string} id - O ID da transação a ser editada.
-     */
     function handleAbrirModalEdicao(id) {
         const tx = transacoes.find(t => t.id === id);
         if (!tx) {
@@ -1761,15 +1829,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         console.log("Abrindo modo de edição para:", tx);
         
-        // Define o estado global
         transacaoEmEdicao = tx;
         
-        // Preenche o modal
         addModalTitle.textContent = 'Editar Compra';
         transacaoIdInput.value = tx.id;
         tickerInput.value = tx.symbol;
-        tickerInput.disabled = true; // Impede a mudança do ticker
-        dateInput.value = formatDateToInput(tx.date); // Usa a nova função aux
+        tickerInput.disabled = true;
+        dateInput.value = formatDateToInput(tx.date);
         quantityInput.value = tx.quantity;
         precoMedioInput.value = tx.price;
         addButton.textContent = 'Salvar';
@@ -1777,11 +1843,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         showAddModal();
     }
     
-    /**
-     * Exclui uma única transação do banco de dados.
-     * @param {string} id - O ID da transação a ser excluída.
-     * @param {string} symbol - O símbolo do ativo (para limpar o cache).
-     */
     function handleExcluirTransacao(id, symbol) {
         const tx = transacoes.find(t => t.id === id);
         if (!tx) {
@@ -1797,32 +1858,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             async () => { 
                 console.log(`Excluindo transação ${id} do ativo ${symbol}`);
                 
-                // 1. Deleta do DB
                 await vestoDB.delete('transacoes', id);
                 
-                // 2. Remove da memória
                 transacoes = transacoes.filter(t => t.id !== id);
                 
-                // 3. Limpa caches
                 await removerCacheAtivo(symbol);
                 
-                // 4. Verifica se este era o último ativo. Se sim, limpa proventos
                 const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
                 if (!outrasTransacoes) {
                     console.log(`Última transação de ${symbol} removida. Limpando proventos conhecidos.`);
                     await removerProventosConhecidos(symbol);
                 }
                 
-                // 5. Atualiza tudo
                 await atualizarTodosDados(false); 
                 showToast("Transação excluída.", 'success');
             }
         );
     }
-    // ===== [FIM] Novas funções para Editar/Excluir transação =====
     
-    
-    /** Limpa a página de detalhes */
     function limparDetalhes() {
         detalhesMensagem.classList.remove('hidden');
         detalhesLoading.classList.add('hidden');
@@ -1830,7 +1883,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesNomeLongo.textContent = ''; 
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
-        detalhesAiProvento.innerHTML = ''; 
+        detalhesAiProvento.innerHTML = '';
+        
+        // ===== [INÍCIO 2/4] Destruir o gráfico ao fechar =====
+        if (detalhesChartInstance) {
+            detalhesChartInstance.destroy();
+            detalhesChartInstance = null;
+        }
+        // ===== [FIM 2/4] =====
         
         currentDetalhesSymbol = null;
         currentDetalhesMeses = 3; 
@@ -1841,7 +1901,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    /** Busca e exibe os dados da página de detalhes */
     async function handleMostrarDetalhes(symbol) {
         detalhesMensagem.classList.add('hidden');
         detalhesLoading.classList.remove('hidden');
@@ -1953,8 +2012,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function fetchHistoricoIA(symbol) {
+        // Mostra o skeleton de loading
         detalhesAiProvento.innerHTML = `
-            <div id="historico-periodo-loading" class="space-y-3 animate-pulse pt-2">
+            <div id="historico-periodo-loading" class="space-y-3 animate-pulse pt-2 h-48">
                 <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
                 <div class="h-4 bg-gray-700 rounded-md w-1/2"></div>
                 <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>
@@ -1980,7 +2040,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             currentDetalhesHistoricoJSON = aiResultJSON;
             
-            renderHistoricoIADetalhes(3);
+            renderHistoricoIADetalhes(3); // Renderiza o gráfico com os 3M iniciais
 
         } catch (e) {
             showToast("Erro na consulta IA."); 
@@ -1998,29 +2058,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // ===== [INÍCIO 4/4] Substituir a lógica de renderHistoricoIADetalhes =====
+    /**
+     * 2. Função que RENDERIZA o gráfico a partir do JSON filtrado (instantâneo)
+     * (Esta função foi ATUALIZADA para chamar o gráfico em vez de texto)
+     */
     function renderHistoricoIADetalhes(meses) {
         if (!currentDetalhesHistoricoJSON) {
             return;
         }
 
         if (currentDetalhesHistoricoJSON.length === 0) {
+            // Mostra mensagem de erro se não houver dados
             detalhesAiProvento.innerHTML = `
                 <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg">
                     Não foi possível encontrar o histórico de proventos.
                 </p>
             `;
+            // Garante que qualquer gráfico antigo seja destruído
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null;
+            }
             return;
         }
 
-        const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses);
-        const textoFormatado = dadosFiltrados
-            .map(item => `${item.mes}: ${formatBRL(item.valor)}`)
-            .join('\n'); 
+        // Garante que o container do canvas está lá
+        // (Caso tenha sido substituído por uma msg de erro antes)
+        if (!document.getElementById('detalhes-proventos-chart')) {
+             detalhesAiProvento.innerHTML = `
+                <div class="relative h-48 w-full">
+                    <canvas id="detalhes-proventos-chart"></canvas>
+                </div>
+             `;
+        }
 
-        detalhesAiProvento.innerHTML = `
-            <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg whitespace-pre-wrap">${textoFormatado}</p>
-        `;
+        // Filtra os dados e inverte (gráfico deve ser do mais antigo para o mais novo)
+        const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
+        
+        // Extrai labels e data para o gráfico
+        const labels = dadosFiltrados.map(item => item.mes);
+        const data = dadosFiltrados.map(item => item.valor);
+
+        // Chama a nova função de renderização do gráfico
+        renderizarGraficoProventosDetalhes({ labels, data });
     }
+    // ===== [FIM 4/4] =====
     
     /** Muda a aba visível */
     function mudarAba(tabId) {
@@ -2053,14 +2136,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target === addAtivoModal) { hideAddModal(); } 
     });
     
-    // ===== [INÍCIO] Listener do Formulário ATUALIZADO =====
-    // Removemos os listeners antigos de 'click' e 'keypress' do botão/inputs
-    // e adicionamos um listener 'submit' ao formulário
     addAtivoForm.addEventListener('submit', (e) => {
-        e.preventDefault(); // Impede o envio padrão do formulário
+        e.preventDefault();
         handleSalvarTransacao();
     });
-    // ===== [FIM] Listener do Formulário ATUALIZADO =====
     
     notifyButton.addEventListener('click', requestNotificationPermission);
 
@@ -2083,14 +2162,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // ===== [INÍCIO] Novo listener para a lista de Histórico =====
     listaHistorico.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target) return;
 
         const action = target.dataset.action;
         const id = target.dataset.id;
-        const symbol = target.dataset.symbol; // Apenas para exclusão
+        const symbol = target.dataset.symbol;
 
         if (action === 'edit') {
             handleAbrirModalEdicao(id);
@@ -2098,7 +2176,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             handleExcluirTransacao(id, symbol);
         }
     });
-    // ===== [FIM] Novo listener para a lista de Histórico =====
     
     dashboardDrawers.addEventListener('click', (e) => {
         const target = e.target.closest('button');

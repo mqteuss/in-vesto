@@ -1,15 +1,11 @@
-/* Importação da fonte (movida do HTML para cá para melhor organização) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 body {
     font-family: 'Inter', sans-serif;
-    /* ===== [INÍCIO] Fundo com Profundidade ===== */
     background-color: #101010;
     background-image: radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.08), transparent 30%),
                       radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.05), transparent 40%);
-    /* ===== [FIM] Fundo com Profundidade ===== */
     color: #f3f4f6;
-    /* Adiciona suavização de fonte para melhor leitura em telas escuras */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -17,21 +13,19 @@ body {
 .card-bg {
     background-color: #1A1A1A;
     border: 1px solid #2A2A2A;
-    /* box-shadow: FOI REMOVIDO DAQUI */
 }
 
 .accent-bg {
-    background-color: #8B5CF6; /* Roxo (violet-500) */
+    background-color: #8B5CF6;
     color: #FFF;
 }
 .accent-bg:hover {
-    background-color: #7C3AED; /* Roxo mais escuro (violet-600) */
+    background-color: #7C3AED;
 }
 
 .accent-text { color: #8B5CF6; }
 .hover-accent-text:hover { color: #A78BFA; }
 
-/* Animações */
 .tab-content { display: none; }
 .tab-content.active {
     display: block;
@@ -47,7 +41,6 @@ body {
 }
 .card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
 
-/* Barra de Navegação */
 @keyframes gentleFloat {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-3px); }
@@ -77,14 +70,12 @@ body {
      animation: gentleFloat 1.5s ease-in-out infinite;
 }
 
-/* Loaders e Spinners */
 .spin-animation { animation: spin 1s linear infinite; }
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
 
-/* Esconde setas de input[type=number] */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
     -webkit-appearance: none; 
@@ -119,7 +110,6 @@ input[type=number] {
     100% { transform: rotate(360deg); }
 }
 
-/* Scrollbars */
 .scrollable-content {
      max-height: 40vh; 
      overflow-y: auto;
@@ -139,7 +129,6 @@ input[type=number] {
     border: 2px solid #1A1A1A;
 }
 
-/* Modal Genérico */
 .custom-modal { display: none; }
 .custom-modal.visible { display: flex; }
 
@@ -159,7 +148,6 @@ input[type=number] {
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
-/* ===== [INÍCIO] Interatividade Polida (Focus Glow) ===== */
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
 #add-ativo-modal input[type="number"] {
@@ -172,10 +160,7 @@ input[type=number] {
     border-color: #8B5CF6;
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
 }
-/* ===== [FIM] Interatividade Polida (Focus Glow) ===== */
 
-
-/* Página Modal (Detalhes) */
 .page-modal { 
     opacity: 0;
     pointer-events: none;
@@ -196,7 +181,7 @@ input[type=number] {
     left: 0;
     right: 0;
     margin: 0 auto; 
-    max-width: 32rem; /* Corresponde ao max-w-lg do app-container */
+    max-width: 32rem;
     z-index: 80;
 }
 .page-modal.visible .page-content {
@@ -206,21 +191,19 @@ input[type=number] {
     transform: translateY(100%);
 }
 
-/* Remove aparência nativa do <select> */
 select {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
 }
 
-/* Gaveta (Drawer) do Card */
 .card-drawer {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.4s ease-in-out;
 }
 .card-drawer.open {
-    max-height: 350px; /* Altura máxima de exemplo para a gaveta */
+    max-height: 350px;
 }
 .card-drawer .drawer-content {
     opacity: 0;
@@ -238,31 +221,16 @@ select {
     transform: rotate(180deg);
 }
 
-/* Sino de Notificação */
-#request-notify-btn.notify-on {
-    color: #8B5CF6; 
-    animation: ringBell 1.5s ease-in-out infinite;
-}
-@keyframes ringBell {
-    0%, 100% { transform: rotate(0); }
-    10%, 30%, 50%, 70% { transform: rotate(15deg); }
-    20%, 40%, 60%, 80% { transform: rotate(-15deg); }
-}
-#request-notify-btn.notify-off {
-    color: #4b5563; 
-}
-
-/* Notificação Toast */
 #toast-notification {
     opacity: 0;
     transform: translateY(-100%);
     transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border-radius: 0.75rem; /* rounded-xl */
+    border-radius: 0.75rem;
 }
 
 #toast-notification.toast-visible {
     opacity: 1;
-    transform: translateY(1rem); /* 1rem = p-4 do container pai */
+    transform: translateY(1rem);
 }
 
 .toast-shake {
@@ -276,51 +244,47 @@ select {
   40%, 60% { transform: translateX(2%) translateY(1rem); }
 }
 
-/* Estilização do card de resumo de notícia */
 .news-card-summary {
     line-height: 1.6;
-    color: #d1d5db; /* text-gray-300 */
+    color: #d1d5db;
 }
-/* Estilo das Tags de Ticker */
 .news-ticker-tag {
     display: inline-block;
-    background-color: #374151; /* gray-700 */
-    color: #d1d5db; /* gray-300 */
-    font-size: 0.75rem; /* text-xs */
-    font-weight: 500; /* medium */
-    padding: 2px 10px; /* py-0.5 px-2.5 */
-    border-radius: 9999px; /* rounded-full */
-    margin-right: 6px; /* mr-1.5 */
-    margin-bottom: 6px; /* mb-1.5 */
+    background-color: #374151;
+    color: #d1d5db;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    margin-right: 6px;
+    margin-bottom: 6px;
     transition: all 0.2s ease;
     cursor: pointer;
 }
 .news-ticker-tag:hover {
-    background-color: #6D28D9; /* purple-700 */
+    background-color: #6D28D9;
     color: #FFF;
 }
 
-/* Seletor de Período (Detalhes) */
 .periodo-selector-btn {
-    background-color: #374151; /* gray-700 */
-    color: #d1d5db; /* gray-300 */
-    font-size: 0.875rem; /* text-sm */
-    font-weight: 500; /* medium */
-    padding-top: 0.5rem; /* py-2 */
+    background-color: #374151;
+    color: #d1d5db;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding-top: 0.5rem;
     padding-bottom: 0.5rem;
-    border-radius: 0.5rem; /* rounded-lg */
+    border-radius: 0.5rem;
     transition: all 0.2s ease-in-out;
 }
 .periodo-selector-btn:hover {
-    background-color: #4b5563; /* gray-600 */
+    background-color: #4b5563;
 }
 .periodo-selector-btn.active {
-    background-color: #8B5CF6; /* accent-bg */
-    color: #ffffff; /* text-white */
-    font-weight: 600; /* semibold */
+    background-color: #8B5CF6;
+    color: #ffffff;
+    font-weight: 600;
 }
 
-/* ===== [INÍCIO] Micro-interações (Tap) - SUGESTÃO 3 ===== */
 button:active,
 .accent-bg:active,
 #refresh-button:active,
@@ -334,18 +298,12 @@ button:active,
     transition: transform 0.1s ease-out;
 }
 
-/* Efeito de "tap" para os cards (é mais sutil) */
 #lista-carteira .card-bg:active,
 #fii-news-list .card-bg:active {
     transform: scale(0.98);
     transition: transform 0.1s ease-out;
 }
-/* ===== [FIM] Micro-interações (Tap) ===== */
 
-
-/* ===== [INÍCIO] Animação de Shimmer (Carregamento) ===== */
-        
-/* 1. A animação da "luz" */
 @keyframes shimmer {
     0% {
         transform: translateX(-100%);
@@ -355,7 +313,6 @@ button:active,
     }
 }
 
-/* 2. Classe para aplicar em elementos que SÃO o skeleton (ex: o card do dashboard) */
 .animate-shimmer {
     position: relative;
     overflow: hidden;
@@ -371,14 +328,13 @@ button:active,
     background: linear-gradient(
         90deg,
         transparent 20%,
-        rgba(255, 255, 255, 0.08), /* Luz branca sutil */
+        rgba(255, 255, 255, 0.08),
         transparent 80%
     );
     transform: translateX(-100%);
     animation: shimmer 1.5s infinite linear;
 }
 
-/* 3. Classe para aplicar em PAIS de skeletons (ex: o container do card da lista) */
 .animate-shimmer-parent .bg-gray-700 {
     position: relative;
     overflow: hidden;
@@ -394,11 +350,9 @@ button:active,
     background: linear-gradient(
         90deg,
         transparent 20%,
-        rgba(255, 255, 255, 0.08), /* Luz branca sutil */
+        rgba(255, 255, 255, 0.08),
         transparent 80%
     );
     transform: translateX(-100%);
     animation: shimmer 1.5s infinite linear;
 }
-
-/* ===== [FIM] Animação de Shimmer (Carregamento) ===== */

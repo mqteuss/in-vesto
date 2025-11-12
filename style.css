@@ -3,8 +3,9 @@
 body {
     font-family: 'Inter', sans-serif;
     background-color: #101010;
-    background-image: radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.08), transparent 30%),
-                      radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.05), transparent 40%);
+    /* AQUI A MUDANÇA: Aumentei os valores de transparência para expandir os gradientes */
+    background-image: radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.08), transparent 55%),
+                      radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.05), transparent 65%);
     color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -67,7 +68,7 @@ body {
 }
 
 .tab-button.active .tab-button-icon-wrapper {
-     animation: gentleFloat 1.5s ease-in-out infinite;
+      animation: gentleFloat 1.5s ease-in-out infinite;
 }
 
 .spin-animation { animation: spin 1s linear infinite; }
@@ -111,10 +112,10 @@ input[type=number] {
 }
 
 .scrollable-content {
-     max-height: 40vh; 
-     overflow-y: auto;
-     scrollbar-width: thin;
-     scrollbar-color: #2A2A2A #1A1A1A;
+      max-height: 40vh; 
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #2A2A2A #1A1A1A;
 }
 .scrollable-content::-webkit-scrollbar { 
     width: 6px; 

@@ -1,9 +1,3 @@
-// api/news.js
-// Esta é uma Vercel Serverless Function.
-// Ela usa a API Gemini com a chave NEWS_GEMINI_API_KEY e Web Search
-// para buscar um JSON de resumos de notícias, incluindo o hostname da fonte.
-
-// Função de retry (backoff) para o servidor
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -24,7 +18,6 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     }
 }
 
-// Constrói o payload para a API Gemini (Modo JSON de Resumos com Hostname)
 function getGeminiPayload(todayString) {
 
     const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 10 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **nesta semana** (data de hoje: ${todayString}).
@@ -34,7 +27,7 @@ REGRAS:
 2.  Responda APENAS com um array JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
 3.  Cada objeto no array deve conter 6 campos:
     - "title": O título exato ou ligeiramente abreviado da notícia.
-    - "summary": Um resumo da notícia com 3 ou 4 frases (ligeiramente maior).
+    - "summary": Um resumo da notícia com 2 ou 3 frases (ligeiramente maior).
     - "sourceName": O nome do portal (ex: "InfoMoney").
     - "sourceHostname": O domínio raiz da fonte (ex: "infomoney.com.br"). ESTE CAMPO É OBRIGATÓRIO.
     - "publicationDate": A data da publicação no formato YYYY-MM-DD.
@@ -57,7 +50,6 @@ IMPORTANTE: Sua resposta DEVE começar com '[' e terminar com ']'. Nenhuma outra
     };
 }
 
-// Handler principal da Vercel Serverless Function
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
         return response.status(405).json({ error: "Método não permitido, use POST." });
@@ -96,16 +88,14 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
-        // CACHE DE 6 HORAS (21600 segundos)
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar [ ... ]
+        const jsonMatch = jsonText.match(/\[.*\]/s);
 
         let parsedJson;
 
         if (jsonMatch && jsonMatch[0]) {
-            // Encontrou um array, tenta o parse
             try {
                 parsedJson = JSON.parse(jsonMatch[0]);
             } catch (e) {
@@ -113,21 +103,17 @@ export default async function handler(request, response) {
                 throw new Error(`Erro interno ao processar JSON: ${e.message}`);
             }
         } else {
-            // Não encontrou um array. Verifica se o texto *inteiro* é um JSON (improvável, mas seguro)
             try {
                  parsedJson = JSON.parse(jsonText);
                  if (!Array.isArray(parsedJson)) {
-                     // Se fez o parse mas não é um array, é um erro.
                      throw new Error("API retornou um JSON válido, mas não um array.");
                  }
             } catch (e) {
-                // Se falhou (ex: "Unexpected token 'S'"), é porque a API retornou texto.
                 console.warn("[Alerta API News] A API retornou texto em vez de JSON:", jsonText);
                 throw new Error(`A API de notícias retornou texto inesperado: ${jsonText.substring(0, 50)}...`);
             }
         }
 
-        // Se chegou aqui, parsedJson é um array válido
         return response.status(200).json({ json: parsedJson });
 
     } catch (error) {

@@ -394,8 +394,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function removerProventosConhecidos(symbol) {
         console.log(`A limpar 'proventosConhecidos' (memória e DB) para: ${symbol}`);
         
+        // 1. Limpa do array em memória
         proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
         
+        // 2. Limpa do IndexedDB
         try {
             const todosProventos = await vestoDB.getAll('proventosConhecidos');
             const proventosParaRemover = todosProventos.filter(p => p.symbol === symbol);
@@ -1483,6 +1485,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .filter(p => p !== null);
     }
 
+    // ===== [INÍCIO DA MUDANÇA (BUG FIX)] =====
     async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
@@ -1493,10 +1496,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         let proventosPool = [];
         let fiisParaBuscar = [];
 
+        // 1. Processa o que já está em cache
         for (const symbol of fiiNaCarteira) {
             const cacheKey = `provento_ia_${symbol}`;
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
+                
+                // ===== [ESTA É A CORREÇÃO DO BUG] =====
+                // Limpa também a store de proventos conhecidos para
+                // não exibir dados antigos na próxima inicialização.
+                await removerProventosConhecidos(symbol);
+                // ======================================
             }
             
             const proventoCache = await getCache(cacheKey);
@@ -1510,6 +1520,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("Proventos em cache (para filtrar):", proventosPool.map(p => p.symbol));
         console.log("Proventos para buscar (API):", fiisParaBuscar);
 
+        // 2. Busca novos na API
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
@@ -1522,6 +1533,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             proventosPool.push(provento);
 
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
+                            // A verificação 'existe' agora usa o array de memória 'proventosConhecidos',
+                            // que foi limpo pela função removerProventosConhecidos()
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
@@ -1537,8 +1550,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
+        // 3. Retorna apenas os proventos que são REALMENTE futuros
         return processarProventosIA(proventosPool); 
     }
+    // ===== [FIM DA MUDANÇA (BUG FIX)] =====
 
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
@@ -1870,11 +1885,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
         
-        // ===== [MUDANÇA 1/3] Limpar a nova seção =====
+        // Limpa a nova seção de histórico de transações
         document.getElementById('detalhes-transacoes-container').classList.add('hidden');
         document.getElementById('detalhes-lista-transacoes').innerHTML = '';
         document.getElementById('detalhes-transacoes-vazio').classList.add('hidden');
-        // ===========================================
         
         if (detalhesChartInstance) {
             detalhesChartInstance.destroy();
@@ -1999,12 +2013,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
         }
         
-        // ===== [MUDANÇA 2/3] Chamar a nova função =====
+        // Renderiza a lista de transações do usuário para este ativo
         renderizarTransacoesDetalhes(symbol);
-        // ============================================
     }
     
-    // ===== [INÍCIO - MUDANÇA 3/3] Adicionar a nova função =====
     /**
      * Renderiza a lista de transações do usuário na página de Detalhes.
      * @param {string} symbol - O símbolo do ativo (ex: MXRF11).
@@ -2061,7 +2073,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 5. Finalmente, mostra o container inteiro
         container.classList.remove('hidden');
     }
-    // ===== [FIM - MUDANÇA 3/3] =====
     
     async function fetchHistoricoIA(symbol) {
         detalhesAiProvento.innerHTML = `

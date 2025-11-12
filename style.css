@@ -77,15 +77,6 @@ body {
      animation: gentleFloat 1.5s ease-in-out infinite;
 }
 
-/* ===== [INÍCIO] Ícones Preenchidos (Ativo/Inativo) ===== */
-.tab-button .icon-active { display: none; }
-.tab-button .icon-inactive { display: block; }
-
-.tab-button.active .icon-active { display: block; }
-.tab-button.active .icon-inactive { display: none; }
-/* ===== [FIM] Ícones Preenchidos (Ativo/Inativo) ===== */
-
-
 /* Loaders e Spinners */
 .spin-animation { animation: spin 1s linear infinite; }
 @keyframes spin {

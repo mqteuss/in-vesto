@@ -3,7 +3,7 @@
   "short_name": "Vesto",
   "description": "Vesto - Seu rastreador de carteira de investimentos e proventos.",
   "start_url": ".",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#101010",
   "theme_color": "#8B5CF6",
   "orientation": "portrait-primary",

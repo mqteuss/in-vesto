@@ -69,7 +69,7 @@ function criarCardElemento(ativo, dados) {
     // --- HTML da Tag P/L ---
     let plTagHtml = '';
     if (dadoPreco) {
-        plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
+        plTagHtml = `<span class="text-xs font.semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
             ${lucroPrejuizoPercent.toFixed(1)}% L/P
         </span>`;
     }
@@ -189,7 +189,7 @@ function atualizarCardElemento(card, ativo, dados) {
     // --- Atualiza P/L Tag (HTML interno) ---
     let plTagHtml = '';
     if (dadoPreco) {
-        plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
+        plTagHtml = `<span class="text-xs font.semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
             ${lucroPrejuizoPercent.toFixed(1)}% L/P
         </span>`;
     }
@@ -1020,6 +1020,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // ======================================================
+    // FUNÇÃO MODIFICADA
+    // ======================================================
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
@@ -1047,6 +1050,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = data;
+            
+            // Atualiza os novos raios no update também
+            patrimonioChartInstance.data.datasets[0].pointRadius = 3;
+            patrimonioChartInstance.data.datasets[0].pointHitRadius = 15;
+            patrimonioChartInstance.data.datasets[0].pointHoverRadius = 5;
+            
             patrimonioChartInstance.update();
         } else {
             patrimonioChartInstance = new Chart(ctx, {
@@ -1060,8 +1069,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         backgroundColor: gradient,
                         borderColor: '#8B5CF6', 
                         tension: 0.1,
-                        pointRadius: 2,
-                        pointBackgroundColor: '#A78BFA'
+                        pointRadius: 3, // ANTES: 2
+                        pointBackgroundColor: '#A78BFA',
+                        pointHitRadius: 15, // NOVO: Aumenta a área de "clique"
+                        pointHoverRadius: 5 // NOVO: Aumenta o ponto ao passar o mouse/clicar
                     }]
                 },
                 options: {
@@ -1082,6 +1093,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
+    // ======================================================
+    // FIM DA FUNÇÃO MODIFICADA
+    // ======================================================
     
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
@@ -1130,7 +1144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(0);
             totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
-            totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
+            totalCarteiraPL.className = `text-lg font.semibold text-gray-500`;
             dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
             dashboardLoading.classList.add('hidden');
             dashboardStatus.classList.remove('hidden');
@@ -1236,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
             totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
-            totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
+            totalCarteiraPL.className = `text-lg font.semibold ${corPLTotal}`;
             
             const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
             await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);

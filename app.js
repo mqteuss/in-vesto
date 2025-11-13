@@ -78,15 +78,20 @@ function criarCardElemento(ativo, dados) {
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
+            
+            // DEPOIS (Corrigido): Agrupado com space-y-1
             proventoHtml = `
-            <div class="flex justify-between items-center mt-3">
-                <span class="text-sm text-gray-500">Provento</span>
-                <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
-            </div>
-            <div class="flex justify-between items-center -mt-2">
-                <span class="text-sm text-gray-500">Pagamento</span>
-                <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
+            <div class="mt-3 space-y-1">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Provento</span>
+                    <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
+                </div>
+                <div class="flex justify-between items-center"> 
+                    <span class="text-sm text-gray-500">Pagamento</span>
+                    <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
+                </div>
             </div>`;
+
         } else {
             proventoHtml = `
             <div class="flex justify-between items-center mt-3">
@@ -194,14 +199,18 @@ function atualizarCardElemento(card, ativo, dados) {
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
+            
+            // DEPOIS (Corrigido): Agrupado com space-y-1
             proventoHtml = `
-            <div class="flex justify-between items-center mt-3">
-                <span class="text-sm text-gray-500">Provento</span>
-                <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
-            </div>
-            <div class="flex justify-between items-center -mt-2">
-                <span class="text-sm text-gray-500">Pagamento</span>
-                <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
+            <div class="mt-3 space-y-1">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Provento</span>
+                    <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
+                </div>
+                <div class="flex justify-between items-center"> 
+                    <span class="text-sm text-gray-500">Pagamento</span>
+                    <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
+                </div>
             </div>`;
         } else {
             proventoHtml = `

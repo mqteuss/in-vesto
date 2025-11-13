@@ -1,3 +1,8 @@
+// api/gemini.js
+// Esta é uma Vercel Serverless Function.
+// Ela atua como um proxy seguro para a API Google Gemini.
+
+// Função de retry (backoff) para o servidor
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -18,6 +23,7 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     }
 }
 
+// Constrói o payload para a API Gemini
 function getGeminiPayload(mode, payload) {
     const { ticker, todayString, fiiList } = payload;
     let systemPrompt = '';
@@ -31,23 +37,28 @@ function getGeminiPayload(mode, payload) {
             break;
 
         case 'proventos_carteira':
-            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do provento (dividendo) mais recente anunciado para uma lista de FIIs. **Inclua proventos cujo pagamento está agendado para hoje (${todayString})** ou para uma data futura. Use a busca na web para garantir que a informação seja a mais recente.
+            // **** ALTERAÇÃO AQUI ****
+            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do provento (dividendo) mais recente **OFICIALMENTE ANUNCIADO** para uma lista de FIIs.
+Sua busca deve focar APENAS em proventos cujo pagamento está agendado para **hoje (${todayString})** ou para uma **data futura**.
 
-TAREFA CRÍTICA: Ao buscar a data de pagamento, verifique ativamente por "fatos relevantes" ou "comunicados ao mercado" recentes (de hoje, ${todayString}) que possam ter *alterado* ou *corrigido* a data de pagamento anunciada. A data corrigida é a data correta.
-
-Para FIIs sem provento futuro (ou para hoje) anunciado, retorne 'value' como 0 e 'paymentDate' como null.
+TAREFA CRÍTICA / ALERTA:
+1.  Busque ativamente por "fatos relevantes" ou "comunicados ao mercado" recentes (de hoje, ${todayString}) que possam ter *alterado* ou *corrigido* a data de pagamento anunciada.
+2.  Se um provento futuro (com pagamento hoje ou depois) **NÃO FOI OFICIALMENTE ANUNCIADO** (via fato relevante ou comunicado), **NÃO ADIVINHE**, não projete, e não use datas de meses passados como base.
+3.  Nestes casos (sem anúncio oficial futuro), a resposta DEVE ser 'value' como 0 e 'paymentDate' como null.
 
 IMPORTANTE: A data 'paymentDate' DEVE estar no formato AAAA-MM-DD (ex: 2025-11-07).
 
 Responda APENAS com um array JSON válido, sem nenhum outro texto, introdução, markdown (\`\`\`) ou formatação.
 
-Exemplo de resposta (se hoje for 07/11 e GARE11 paga hoje):
+Exemplo de resposta (se hoje for 07/11/2025 e GARE11 tem um anúncio oficial de pagamento para hoje, mas HGLG11 não tem anúncio futuro):
 [
   {"symbol": "MXRF11", "value": 0.10, "paymentDate": "2025-11-15"},
-  {"symbol": "HGLG11", "value": 1.10, "paymentDate": "2025-11-14"},
-  {"symbol": "GARE11", "value": 0.08, "paymentDate": "2025-11-07"} 
+  {"symbol": "GARE11", "value": 0.08, "paymentDate": "2025-11-07"},
+  {"symbol": "HGLG11", "value": 0, "paymentDate": null} 
 ]`;
-            userQuery = `Encontre o provento mais recente anunciado (incluindo pagamentos de hoje, ${todayString}, e futuros) para os seguintes FIIs: ${fiiList.join(', ')}. Verifique ativamente por fatos relevantes ou comunicados recentes que possam ter *corrigido* a data de pagamento.`;
+            // **** FIM DA ALTERAÇÃO ****
+            
+            userQuery = `Encontre o provento mais recente **oficialmente anunciado** (incluindo pagamentos de hoje, ${todayString}, e futuros) para os FIIs: ${fiiList.join(', ')}. Verifique ativamente por fatos relevantes ou comunicados recentes que possam ter *corrigido* a data de pagamento. Não adivinhe pagamentos futuros que não foram anunciados.`;
             break;
 
         case 'historico_portfolio':
@@ -66,6 +77,7 @@ Exemplo de resposta (se hoje for 07/11 e GARE11 paga hoje):
     };
 }
 
+// Handler principal da Vercel Serverless Function
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
         return response.status(405).json({ error: "Método não permitido, use POST." });
@@ -91,7 +103,7 @@ export default async function handler(request, response) {
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
-        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKSENS") {
+        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") { // Corrigido MAX_TOKSENS -> MAX_TOKENS
              if (candidate?.finishReason) {
                  throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
              }
@@ -100,12 +112,13 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
+        // Cache de 24 horas (86400 segundos)
         response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); 
 
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio' || mode === 'historico_12m') {
             try {
                 let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                const jsonMatch = jsonText.match(/\[.*\]/s);
+                const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar um array [ ... ]
                 
                 if (jsonMatch && jsonMatch[0]) {
                     jsonText = jsonMatch[0];

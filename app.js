@@ -69,7 +69,7 @@ function criarCardElemento(ativo, dados) {
     // --- HTML da Tag P/L ---
     let plTagHtml = '';
     if (dadoPreco) {
-        plTagHtml = `<span class="text-xs font.semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
+        plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
             ${lucroPrejuizoPercent.toFixed(1)}% L/P
         </span>`;
     }
@@ -189,7 +189,7 @@ function atualizarCardElemento(card, ativo, dados) {
     // --- Atualiza P/L Tag (HTML interno) ---
     let plTagHtml = '';
     if (dadoPreco) {
-        plTagHtml = `<span class="text-xs font.semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
+        plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
             ${lucroPrejuizoPercent.toFixed(1)}% L/P
         </span>`;
     }
@@ -420,6 +420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let onConfirmCallback = null; 
     let precosAtuais = [];
     let proventosAtuais = [];
+    let mesesProcessados = []; // <--- NOVO
     const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
     let lastAlocacaoData = null; 
     let lastHistoricoData = null;
@@ -741,6 +742,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         proventosConhecidos = await vestoDB.getAll('proventosConhecidos');
     }
 
+    // --- NOVA FUNÇÃO ---
+    async function carregarHistoricoProcessado() {
+        const histState = await vestoDB.get('appState', 'historicoProcessado');
+        mesesProcessados = histState ? histState.value : [];
+        console.log("Histórico de meses processados:", mesesProcessados);
+    }
+
+    // --- NOVA FUNÇÃO ---
+    async function salvarHistoricoProcessado() {
+        await vestoDB.put('appState', { key: 'historicoProcessado', value: mesesProcessados });
+        console.log("Histórico de meses processados salvo:", mesesProcessados);
+    }
+
     async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -1020,9 +1034,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // ======================================================
-    // FUNÇÃO MODIFICADA
-    // ======================================================
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
@@ -1093,9 +1104,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    // ======================================================
-    // FIM DA FUNÇÃO MODIFICADA
-    // ======================================================
     
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
@@ -1144,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(0);
             totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
-            totalCarteiraPL.className = `text-lg font.semibold text-gray-500`;
+            totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
             dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
             dashboardLoading.classList.add('hidden');
             dashboardStatus.classList.remove('hidden');
@@ -1250,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
             totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
-            totalCarteiraPL.className = `text-lg font.semibold ${corPLTotal}`;
+            totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
             
             const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
             await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
@@ -1594,6 +1602,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return processarProventosIA(proventosPool); 
     }
 
+    // --- FUNÇÃO MODIFICADA ---
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
@@ -1627,10 +1636,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
         }]));
         
+        // --- INÍCIO DA NOVA LÓGICA ---
+        let precisaSalvarCaixa = false;
+        let precisaSalvarHistorico = false;
+        
+        // Pega o mês e ano atuais para comparar
+        const dataAtual = new Date();
+        const mesAtual = dataAtual.getMonth(); // 0-11
+        const anoAtual = dataAtual.getFullYear();
+        // --- FIM DA NOVA LÓGICA ---
+
         const labels = aiData.map(d => d.mes);
         const data = aiData.map(mesData => {
             let totalMes = 0;
-            const dataDoMes = parseMesAno(mesData.mes); 
+            const dataDoMes = parseMesAno(mesData.mes); // ex: '10/25' vira Date(2025, 9, 1)
             
             if (!dataDoMes) return 0;
             const timeDoMes = dataDoMes.getTime();
@@ -1647,8 +1666,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                      totalMes += (valorPorCota * quantity);
                 }
             });
+            
+            // --- INÍCIO DA NOVA LÓGICA ---
+            // Verifica se este mês do gráfico é um mês passado E se ainda não foi processado
+            const mesHistorico = dataDoMes.getMonth(); // 0-11
+            const anoHistorico = dataDoMes.getFullYear();
+
+            // É um mês passado?
+            const isPastMonth = anoHistorico < anoAtual || (anoHistorico === anoAtual && mesHistorico < mesAtual);
+            // Não foi processado?
+            const isNotProcessed = !mesesProcessados.includes(mesData.mes);
+            
+            if (isPastMonth && isNotProcessed && totalMes > 0) {
+                console.log(`Processando histórico de ${mesData.mes}: Adicionando ${formatBRL(totalMes)} ao caixa.`);
+                saldoCaixa += totalMes;
+                mesesProcessados.push(mesData.mes); // Marca como processado
+                precisaSalvarCaixa = true;
+                precisaSalvarHistorico = true;
+            }
+            // --- FIM DA NOVA LÓGICA ---
+            
             return totalMes;
         });
+
+        // --- INÍCIO DA NOVA LÓGICA ---
+        // Salva os dados se algo foi alterado
+        if (precisaSalvarCaixa) {
+            await salvarCaixa();
+            // Atualiza o valor na tela imediatamente
+            totalCaixaValor.textContent = formatBRL(saldoCaixa);
+        }
+        if (precisaSalvarHistorico) {
+            await salvarHistoricoProcessado();
+        }
+        // --- FIM DA NOVA LÓGICA ---
 
         return { labels, data };
     }
@@ -2467,6 +2518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const clearPromises = stores.map(store => vestoDB.clear(store));
             await Promise.all(clearPromises);
             console.log("Stores limpos.");
+            mesesProcessados = []; // <--- NOVO
 
             const populatePromises = [];
             for (const storeName of stores) {
@@ -2497,6 +2549,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // --- FUNÇÃO MODIFICADA ---
     async function init() {
         try {
             await vestoDB.init();
@@ -2511,6 +2564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await carregarPatrimonio();
         await carregarCaixa();
         await carregarProventosConhecidos();
+        await carregarHistoricoProcessado(); // <--- NOVO
         mudarAba('tab-dashboard'); 
         
         atualizarTodosDados(false); 

@@ -1,6 +1,224 @@
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
+// ===================================================================
+// FUNÇÕES UTILITÁRIAS GLOBAIS
+// (Movidas para fora para estarem acessíveis globalmente)
+// ===================================================================
+
+const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
+const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
+const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
+const formatDate = (dateString, includeTime = false) => {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+        if (includeTime) {
+            options.hour = '2-digit';
+            options.minute = '2-digit';
+        } else {
+             options.timeZone = 'UTC'; 
+        }
+        return date.toLocaleDateString('pt-BR', options);
+    } catch (e) { return dateString; }
+};
+
+const formatDateToInput = (dateString) => {
+    try {
+        const date = new Date(dateString);
+        const year = date.getUTCFullYear();
+        const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+        const day = date.getUTCDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    } catch (e) {
+        console.error("Erro ao formatar data para input:", e);
+        return new Date().toISOString().split('T')[0];
+    }
+};
+
+const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
+
+function parseMesAno(mesAnoStr) { 
+    try {
+        const [mesStr, anoStr] = mesAnoStr.split('/');
+        const mes = parseInt(mesStr, 10) - 1; 
+        const ano = parseInt("20" + anoStr, 10); 
+        if (!isNaN(mes) && !isNaN(ano) && mes >= 0 && mes <= 11) {
+            return new Date(ano, mes, 1); 
+        }
+        return null;
+    } catch (e) {
+        console.error("Erro ao analisar data 'MM/AA':", mesAnoStr, e);
+        return null;
+    }
+}
+
+// ===================================================================
+// NOVAS FUNÇÕES DE RENDERIZAÇÃO (OTIMIZADAS)
+// (Usadas pela nova renderizarCarteira)
+// ===================================================================
+
+function criarCardElemento(ativo, dados) {
+    const {
+        dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
+        totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
+        corPL, bgPL, dadoProvento
+    } = dados;
+
+    // --- HTML da Tag P/L ---
+    let plTagHtml = '';
+    if (dadoPreco) {
+        plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
+            ${lucroPrejuizoPercent.toFixed(1)}% L/P
+        </span>`;
+    }
+    
+    // --- HTML do Provento ---
+    let proventoHtml = '';
+    if (isFII(ativo.symbol)) { 
+        if (dadoProvento && dadoProvento.value > 0) {
+            proventoHtml = `
+            <div class="flex justify-between items-center mt-3">
+                <span class="text-sm text-gray-500">Provento</span>
+                <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
+            </div>
+            <div class="flex justify-between items-center -mt-2">
+                <span class="text-sm text-gray-500">Pagamento</span>
+                <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
+            </div>`;
+        } else {
+            proventoHtml = `
+            <div class="flex justify-between items-center mt-3">
+                <span class="text-sm text-gray-500">Provento</span>
+                <span class="text-sm font-medium text-gray-400">Sem provento futuro.</span>
+            </div>`;
+        }
+    }
+
+    // --- Cria o Elemento ---
+    const card = document.createElement('div');
+    card.className = 'card-bg p-4 rounded-2xl card-animate-in';
+    card.setAttribute('data-symbol', ativo.symbol); // O ID principal!
+
+    // --- O HTML (Note os 'data-field' adicionados) ---
+    card.innerHTML = `
+        <div class="flex justify-between items-start">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gray-700 p-1.5 flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-purple-400">
+                        <path d="M1.5 13.5a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H4.5a3 3 0 0 1-3-3v-6Zm16.5 0a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3v-6Zm-8.25-9a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3V4.5Z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white">${ativo.symbol}</h2>
+                    <p class="text-sm text-gray-500 mb-1" data-field="cota-qtd">${ativo.quantity} cota(s)</p>
+                    <div data-field="pl-tag">${plTagHtml}</div>
+                </div>
+            </div>
+            <div class="text-right flex-shrink-0 ml-2">
+                <span data-field="variacao-valor" class="${corVariacao} font-semibold text-lg">${dadoPreco ? variacaoFormatada : '...'}</span>
+                <p data-field="preco-valor" class="text-gray-100 text-lg">${precoFormatado}</p>
+            </div>
+        </div>
+        <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
+            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-symbol="${ativo.symbol}" data-action="toggle" title="Mostrar mais">
+                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+            </button>
+        </div>
+        <div id="drawer-${ativo.symbol}" class="card-drawer">
+            <div class="drawer-content space-y-3 pt-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Posição</span>
+                    <span data-field="posicao-valor" class="text-base font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span data-field="pm-label" class="text-sm text-gray-500">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
+                    <span data-field="custo-valor" class="text-base font-semibold text-white">${formatBRL(custoTotal)}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">L/P</span>
+                    <span data-field="pl-valor" class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
+                </div>
+                <div data-field="provento-container">${proventoHtml}</div> 
+                <div class="flex justify-end gap-3 pt-2">
+                    <button class="py-1 px-3 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">
+                        Detalhes
+                    </button>
+                    <button class="py-1 px-3 text-xs font-medium text-red-400 bg-red-900/50 hover:bg-red-900/80 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
+                        Remover
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+function atualizarCardElemento(card, ativo, dados) {
+    const {
+        dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
+        totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
+        corPL, bgPL, dadoProvento
+    } = dados;
+
+    // --- Atualiza os campos simples ---
+    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
+    card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
+    card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : 'A calcular...';
+    card.querySelector('[data-field="pm-label"]').textContent = `Custo (P.M. ${formatBRL(ativo.precoMedio)})`;
+    card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
+
+    // --- Atualiza Variação (Valor e Cor) ---
+    const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
+    variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
+    variacaoEl.className = `${corVariacao} font-semibold text-lg`; // Redefine as classes de cor
+
+    // --- Atualiza P/L (Valor e Cor) ---
+    const plValorEl = card.querySelector('[data-field="pl-valor"]');
+    plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...';
+    plValorEl.className = `text-base font-semibold ${corPL}`; // Redefine as classes de cor
+
+    // --- Atualiza P/L Tag (HTML interno) ---
+    let plTagHtml = '';
+    if (dadoPreco) {
+        plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
+            ${lucroPrejuizoPercent.toFixed(1)}% L/P
+        </span>`;
+    }
+    card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
+
+    // --- Atualiza Provento (HTML interno) ---
+    if (isFII(ativo.symbol)) { 
+        let proventoHtml = '';
+        if (dadoProvento && dadoProvento.value > 0) {
+            proventoHtml = `
+            <div class="flex justify-between items-center mt-3">
+                <span class="text-sm text-gray-500">Provento</span>
+                <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
+            </div>
+            <div class="flex justify-between items-center -mt-2">
+                <span class="text-sm text-gray-500">Pagamento</span>
+                <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
+            </div>`;
+        } else {
+            proventoHtml = `
+            <div class="flex justify-between items-center mt-3">
+                <span class="text-sm text-gray-500">Provento</span>
+                <span class="text-sm font-medium text-gray-400">Sem provento futuro.</span>
+            </div>`;
+        }
+        card.querySelector('[data-field="provento-container"]').innerHTML = proventoHtml;
+    }
+}
+
+
+// ===================================================================
+// INÍCIO DO CÓDIGO PRINCIPAL DA APLICAÇÃO
+// ===================================================================
+
 document.addEventListener('DOMContentLoaded', async () => {
     
     const REFRESH_INTERVAL = 1860000;
@@ -347,53 +565,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await vestoDB.clear('apiCache');
     }
 
-    const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
-    const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
-    const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
-    const formatDate = (dateString, includeTime = false) => {
-        if (!dateString) return 'N/A';
-        try {
-            const date = new Date(dateString);
-            const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
-            if (includeTime) {
-                options.hour = '2-digit';
-                options.minute = '2-digit';
-            } else {
-                 options.timeZone = 'UTC'; 
-            }
-            return date.toLocaleDateString('pt-BR', options);
-        } catch (e) { return dateString; }
-    };
-    
-    const formatDateToInput = (dateString) => {
-        try {
-            const date = new Date(dateString);
-            const year = date.getUTCFullYear();
-            const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-            const day = date.getUTCDate().toString().padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        } catch (e) {
-            console.error("Erro ao formatar data para input:", e);
-            return new Date().toISOString().split('T')[0];
-        }
-    };
-    
-    const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
-    
-    function parseMesAno(mesAnoStr) { 
-        try {
-            const [mesStr, anoStr] = mesAnoStr.split('/');
-            const mes = parseInt(mesStr, 10) - 1; 
-            const ano = parseInt("20" + anoStr, 10); 
-            if (!isNaN(mes) && !isNaN(ano) && mes >= 0 && mes <= 11) {
-                return new Date(ano, mes, 1); 
-            }
-            return null;
-        } catch (e) {
-            console.error("Erro ao analisar data 'MM/AA':", mesAnoStr, e);
-            return null;
-        }
-    }
+    // Funções de formatação (formatBRL, etc) foram MOVIDAS para o topo do arquivo (escopo global)
     
     function getSaoPauloDateTime() {
         try {
@@ -919,15 +1091,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (show) {
             skeletonListaCarteira.classList.remove('hidden');
             carteiraStatus.classList.add('hidden');
-            listaCarteira.innerHTML = ''; 
+            // NÃO LIMPE O INNERHTML AQUI
         } else {
             skeletonListaCarteira.classList.add('hidden');
         }
     }
     
+    // ===================================================================
+    // FUNÇÃO renderizarCarteira SUBSTITUÍDA PELA VERSÃO OTIMIZADA
+    // ===================================================================
+
     async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
-        
+
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
         const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p]));
         const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
@@ -936,39 +1112,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         let totalCustoCarteira = 0;
         let dadosGrafico = [];
 
+        // Lógica do "Estado Vazio" (quase igual a antes)
         if (carteiraOrdenada.length === 0) {
+            listaCarteira.innerHTML = ''; // Aqui é seguro, pois é o estado vazio
             carteiraStatus.classList.remove('hidden');
             renderizarDashboardSkeletons(false);
-            
             totalCarteiraValor.textContent = formatBRL(0);
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(0);
             totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
             totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
-            
             dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
             dashboardLoading.classList.add('hidden');
             dashboardStatus.classList.remove('hidden');
-            
-            renderizarGraficoAlocacao([]); 
-            renderizarGraficoHistorico({ labels: [], data: [] }); 
+            renderizarGraficoAlocacao([]);
+            renderizarGraficoHistorico({ labels: [], data: [] });
             await salvarSnapshotPatrimonio(saldoCaixa);
             renderizarGraficoPatrimonio();
+            return; // Importante: saia da função aqui
         } else {
             carteiraStatus.classList.add('hidden');
             dashboardStatus.classList.add('hidden');
         }
 
-        listaCarteira.innerHTML = ''; 
+        // --- A MÁGICA DA RECONCILIAÇÃO COMEÇA AQUI ---
+
+        // 1. Crie um "mapa" de quais ativos DEVEM estar na tela
+        const symbolsNaCarteira = new Set(carteiraOrdenada.map(a => a.symbol));
+
+        // 2. Verifique quais cards JÁ ESTÃO na tela e remova os "órfãos"
+        const cardsNaTela = listaCarteira.querySelectorAll('[data-symbol]');
+        cardsNaTela.forEach(card => {
+            const symbol = card.dataset.symbol;
+            if (!symbolsNaCarteira.has(symbol)) {
+                // Este card não está mais na carteira, remova-o!
+                card.remove();
+            }
+        });
+
+        // 3. Itere sobre os dados e ATUALIZE ou CRIE os cards
         carteiraOrdenada.forEach(ativo => {
             const dadoPreco = precosMap.get(ativo.symbol);
             const dadoProvento = proventosMap.get(ativo.symbol);
-            
-            const card = document.createElement('div');
-            card.className = 'card-bg p-4 rounded-2xl card-animate-in';
-            
-            let precoAtual = 0, variacao = 0, precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
 
+            // --- Faça TODOS os cálculos primeiro ---
+            // Isso evita lógica duplicada dentro das funções de renderização
+            let precoAtual = 0, variacao = 0, precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
             if (dadoPreco) {
                 precoAtual = dadoPreco.regularMarketPrice ?? 0;
                 variacao = dadoPreco.regularMarketChangePercent ?? 0;
@@ -985,103 +1174,45 @@ document.addEventListener('DOMContentLoaded', async () => {
             const lucroPrejuizo = totalPosicao - custoTotal;
             const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
             
-            let corPL = 'text-gray-500';
-            let bgPL = 'bg-gray-800';
-            if (lucroPrejuizo > 0.01) {
-                 corPL = 'text-green-500';
-                 bgPL = 'bg-green-900/50';
-            } else if (lucroPrejuizo < -0.01) {
-                 corPL = 'text-red-500';
-                 bgPL = 'bg-red-900/50';
-            }
+            let corPL = 'text-gray-500', bgPL = 'bg-gray-800';
+            if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; bgPL = 'bg-green-900/50'; }
+            else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; bgPL = 'bg-red-900/50'; }
 
-            let plTagHtml = '';
-            if (dadoPreco) {
-                plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
-                    ${lucroPrejuizoPercent.toFixed(1)}% L/P
-                </span>`;
-            }
+            // Agrupe os dados calculados para passar para as funções
+            const dadosRender = {
+                dadoPreco,
+                precoFormatado,
+                variacaoFormatada,
+                corVariacao,
+                totalPosicao,
+                custoTotal,
+                lucroPrejuizo,
+                lucroPrejuizoPercent,
+                corPL,
+                bgPL,
+                dadoProvento
+            };
+
+            // --- Fim dos Cálculos ---
 
             totalValorCarteira += totalPosicao;
             totalCustoCarteira += custoTotal;
             if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
+
+            // 4. Verifique se o card JÁ EXISTE
+            let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
             
-            let proventoHtml = '';
-            if (isFII(ativo.symbol)) { 
-                if (dadoProvento && dadoProvento.value > 0) {
-                    proventoHtml = `
-                    <div class="flex justify-between items-center mt-3">
-                        <span class="text-sm text-gray-500">Provento</span>
-                        <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
-                    </div>
-                    <div class="flex justify-between items-center -mt-2">
-                        <span class="text-sm text-gray-500">Pagamento</span>
-                        <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
-                    </div>`;
-                } else {
-                    proventoHtml = `
-                    <div class="flex justify-between items-center mt-3">
-                        <span class="text-sm text-gray-500">Provento</span>
-                        <span class="text-sm font-medium text-gray-400">Sem provento futuro.</span>
-                    </div>`;
-                }
+            if (card) {
+                // --- CAMINHO 1: O Card existe, APENAS ATUALIZE ---
+                atualizarCardElemento(card, ativo, dadosRender);
+            } else {
+                // --- CAMINHO 2: O Card NÃO existe, CRIE E ADICIONE ---
+                card = criarCardElemento(ativo, dadosRender);
+                listaCarteira.appendChild(card);
             }
-            
-            card.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gray-700 p-1.5 flex items-center justify-center flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-purple-400">
-                                <path d="M1.5 13.5a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H4.5a3 3 0 0 1-3-3v-6Zm16.5 0a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3v-6Zm-8.25-9a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3V4.5Z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-white">${ativo.symbol}</h2>
-                            <p class="text-sm text-gray-500 mb-1">${ativo.quantity} cota(s)</p>
-                            ${plTagHtml}
-                        </div>
-                    </div>
-                    <div class="text-right flex-shrink-0 ml-2">
-                        <span class="${corVariacao} font-semibold text-lg">${dadoPreco ? variacaoFormatada : '...'}</span>
-                        <p class="text-gray-100 text-lg">${precoFormatado}</p>
-                    </div>
-                </div>
-                <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
-                    <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-symbol="${ativo.symbol}" data-action="toggle" title="Mostrar mais">
-                        <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                        </svg>
-                    </button>
-                </div>
-                <div id="drawer-${ativo.symbol}" class="card-drawer">
-                    <div class="drawer-content space-y-3 pt-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-500">Posição</span>
-                            <span class="text-base font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-500">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
-                            <span class="text-base font-semibold text-white">${formatBRL(custoTotal)}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-gray-500">L/P</span>
-                            <span class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
-                        </div>
-                        ${proventoHtml} 
-                        <div class="flex justify-end gap-3 pt-2">
-                            <button class="py-1 px-3 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">
-                                Detalhes
-                            </button>
-                            <button class="py-1 px-3 text-xs font-medium text-red-400 bg-red-900/50 hover:bg-red-900/80 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
-                                Remover
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            listaCarteira.appendChild(card);
         });
-        
+
+        // 5. Atualize os totais do Dashboard (igual a antes)
         if (carteiraOrdenada.length > 0) {
             const patrimonioTotalAtivos = totalValorCarteira;
             const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
@@ -1092,7 +1223,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
             
             renderizarDashboardSkeletons(false);
-            
             totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
@@ -1106,6 +1236,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarGraficoAlocacao(dadosGrafico);
         renderizarGraficoPatrimonio(); 
     }
+
+    // ===================================================================
+    // RESTANTE DO CÓDIGO ORIGINAL
+    // ===================================================================
 
     function renderizarProventos() {
         let totalEstimado = 0;

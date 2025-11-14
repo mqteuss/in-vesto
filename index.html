@@ -111,6 +111,23 @@
                 </div>
             </div> 
 
+            <div class="card-bg p-4 rounded-2xl mt-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-white ml-2">Watchlist</h3>
+                    <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="watchlist-drawer" title="Mostrar mais">
+                        <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </button>
+                </div>
+                <div id="watchlist-drawer" class="card-drawer open">
+                    <div class="drawer-content pt-4 space-y-3">
+                        <div id="watchlist-lista" class="space-y-3">
+                            </div>
+                        <p id="watchlist-status" class="text-gray-500 text-center py-4 hidden">Sua watchlist está vazia.</p>
+                    </div>
+                </div>
+            </div>
             <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden">
                 <p id="dashboard-mensagem">A carregar dados...</p>
                  <div id="dashboard-loading" class="flex justify-center items-center py-4">
@@ -400,6 +417,15 @@
                     <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
                      <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
                 </div>
+                
+                <button id="detalhes-favorito-btn" class="p-2 ml-3 text-gray-500 hover:text-yellow-400 rounded-full transition-colors flex-shrink-0" title="Adicionar aos favoritos">
+                    <svg id="detalhes-favorito-icon-empty" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" />
+                    </svg>
+                    <svg id="detalhes-favorito-icon-filled" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" />
+                    </svg>
+                </button>
                 <button id="detalhes-voltar-btn" class="p-2 ml-3 text-gray-400 hover:text-white rounded-full transition-colors flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />

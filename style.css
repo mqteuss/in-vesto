@@ -13,17 +13,29 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* ALTERADO: Substituído cor sólida por gradiente sutil para profundidade */
 .card-bg {
-    background-color: #1A1A1A;
+    /* ANTES: background-color: #1A1A1A; */
+    background-image: linear-gradient(to bottom, #1E1E1E, #1A1A1A); /* Sutil (Claro -> Escuro) */
     border: 1px solid #2A2A2A;
 }
 
+/* ALTERADO: Substituído cor sólida por gradiente para botões de ação */
 .accent-bg {
+    /* ANTES:
     background-color: #8B5CF6;
     color: #FFF;
+    */
+    background-image: linear-gradient(to right, #8B5CF6 0%, #A78BFA 100%);
+    color: #FFF;
+    border-radius: 0.5rem; /* Garante que o gradiente respeite a borda */
+    background-size: 100% auto; /* Tamanho inicial do gradiente */
+    transition: all 0.3s ease-out;
 }
 .accent-bg:hover {
-    background-color: #7C3AED;
+    /* ANTES: background-color: #7C3AED; */
+    background-size: 150% auto; /* "Dá zoom" no gradiente ao passar o mouse */
+    background-position: right center; /* Move o gradiente para um efeito sutil */
 }
 
 .accent-text { color: #8B5CF6; }
@@ -69,9 +81,34 @@ body {
     transform: translateY(-4px); 
 }
 
+/* ALTERADO: Adicionado 'position: relative' */
 .tab-button.active .tab-button-icon-wrapper {
       animation: gentleFloat 1.5s ease-in-out infinite;
+      position: relative; /* NOVO */
 }
+
+/* NOVO: Regra para o "halo" da aba ativa */
+.tab-button.active .tab-button-icon-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px; 
+    height: 40px;
+    background-color: rgba(139, 92, 246, 0.15); /* Roxo sutil */
+    border-radius: 9999px;
+    z-index: -1; /* Coloca atrás do ícone (SVG) */
+    opacity: 0;
+    animation: fadeInHalo 0.3s ease-out forwards;
+}
+
+/* NOVO: Animação para o halo aparecer */
+@keyframes fadeInHalo {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
 
 .spin-animation { animation: spin 1s linear infinite; }
 @keyframes spin {

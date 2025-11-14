@@ -354,6 +354,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tabContents = document.querySelectorAll('.tab-content');
     const toastElement = document.getElementById('toast-notification');
     const toastMessageElement = document.getElementById('toast-message');
+    // --- ALTERADO: Seletores dos ícones do Toast ---
+    const toastIconError = document.getElementById('toast-icon-error');
+    const toastIconSuccess = document.getElementById('toast-icon-success');
+    // --- FIM DA ALTERAÇÃO ---
     const fiiNewsList = document.getElementById('fii-news-list');
     const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
     const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
@@ -454,6 +458,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
 
+    // --- FUNÇÃO showToast ALTERADA ---
     function showToast(message, type = 'error') {
         clearTimeout(toastTimer);
         toastMessageElement.textContent = message;
@@ -465,8 +470,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (type === 'success') {
             toastElement.classList.add('bg-green-700', 'border-green-500');
+            toastIconError.classList.add('hidden'); // Esconde erro
+            toastIconSuccess.classList.remove('hidden'); // Mostra sucesso
         } else {
             toastElement.classList.add('bg-red-800', 'border-red-600');
+            toastIconError.classList.remove('hidden'); // Mostra erro
+            toastIconSuccess.classList.add('hidden'); // Esconde sucesso
         }
 
         if (isToastShowing && toastElement.classList.contains('toast-visible')) {
@@ -482,6 +491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             isToastShowing = false;
         }, 1500); 
     }
+    // --- FIM DA ALTERAÇÃO ---
 
     function showUpdateBar() {
         console.log('Mostrando aviso de atualização.');

@@ -128,7 +128,7 @@ function criarCardElemento(ativo, dados) {
         </div>
         <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
             <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-symbol="${ativo.symbol}" data-action="toggle" title="Mostrar mais">
-                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2A2A2A" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>
             </button>
@@ -235,8 +235,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const CACHE_24_HORAS = 1000 * 60 * 60 * 24;
     const CACHE_6_HORAS = 1000 * 60 * 60 * 6;
     
+    // ANTES: const DB_VERSION = 1;
     const DB_NAME = 'vestoDB';
-    const DB_VERSION = 1;
+    const DB_VERSION = 2; // <-- MODIFICADO
 
     const vestoDB = {
         db: null,
@@ -264,6 +265,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!db.objectStoreNames.contains('apiCache')) {
                         db.createObjectStore('apiCache', { keyPath: 'key' });
                     }
+
+                    // --- NOVO CÓDIGO AQUI ---
+                    if (!db.objectStoreNames.contains('watchlist')) {
+                        console.log('[IDB] Criando store: watchlist');
+                        db.createObjectStore('watchlist', { keyPath: 'symbol' });
+                    }
+                    // --- FIM DO NOVO CÓDIGO ---
                 };
                 
                 request.onsuccess = (event) => {
@@ -408,19 +416,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     const importTextTextarea = document.getElementById('import-text-textarea');
     const importTextConfirmBtn = document.getElementById('import-text-confirm-btn');
     const importTextCancelBtn = document.getElementById('import-text-cancel-btn');
+    
+    // --- NOVOS SELETORES ---
+    const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn'); 
+    const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
+    const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
+    const watchlistListaEl = document.getElementById('watchlist-lista'); 
+    const watchlistStatusEl = document.getElementById('watchlist-status'); 
+    // --- FIM NOVOS SELETORES ---
 
     let transacoes = [];        
     let carteiraCalculada = []; 
     let patrimonio = [];
     let saldoCaixa = 0;
     let proventosConhecidos = [];
+    let watchlist = []; // <-- NOVO
     let alocacaoChartInstance = null;
     let historicoChartInstance = null;
     let patrimonioChartInstance = null; 
     let onConfirmCallback = null; 
     let precosAtuais = [];
     let proventosAtuais = [];
-    let mesesProcessados = []; // <--- NOVO
+    let mesesProcessados = [];
     const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
     let lastAlocacaoData = null; 
     let lastHistoricoData = null;
@@ -741,6 +758,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function carregarProventosConhecidos() {
         proventosConhecidos = await vestoDB.getAll('proventosConhecidos');
     }
+    
+    // --- NOVO CÓDIGO (3 Funções) ---
+    async function carregarWatchlist() {
+        watchlist = await vestoDB.getAll('watchlist');
+    }
+
+    function renderizarWatchlist() {
+        watchlistListaEl.innerHTML = ''; // Limpa a lista
+
+        if (watchlist.length === 0) {
+            watchlistStatusEl.classList.remove('hidden');
+            return;
+        }
+        
+        watchlistStatusEl.classList.add('hidden');
+        
+        watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
+
+        watchlist.forEach(item => {
+            const symbol = item.symbol;
+            const el = document.createElement('div');
+            el.className = 'flex justify-between items-center p-3 bg-gray-800 rounded-lg';
+            el.innerHTML = `
+                <span class="font-semibold text-white">${symbol}</span>
+                <button class="py-1 px-3 text-xs font-medium text-purple-300 bg-purple-900/50 hover:bg-purple-900/80 rounded-md transition-colors" data-symbol="${symbol}" data-action="details">
+                    Ver Detalhes
+                </button>
+            `;
+            watchlistListaEl.appendChild(el);
+        });
+    }
+    
+    function atualizarIconeFavorito(symbol) {
+        if (!symbol || !detalhesFavoritoBtn) return;
+
+        const isFavorite = watchlist.some(item => item.symbol === symbol);
+        
+        detalhesFavoritoIconEmpty.classList.toggle('hidden', isFavorite);
+        detalhesFavoritoIconFilled.classList.toggle('hidden', !isFavorite);
+        detalhesFavoritoBtn.dataset.symbol = symbol; // Armazena o símbolo no botão
+    }
+    // --- FIM DO NOVO CÓDIGO ---
 
     // --- NOVA FUNÇÃO ---
     async function carregarHistoricoProcessado() {
@@ -1788,6 +1847,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // --- NOVO CÓDIGO (Handler) ---
+    async function handleToggleFavorito() {
+        const symbol = detalhesFavoritoBtn.dataset.symbol;
+        if (!symbol) return;
+
+        const isFavorite = watchlist.some(item => item.symbol === symbol);
+
+        try {
+            if (isFavorite) {
+                // Remover
+                await vestoDB.delete('watchlist', symbol);
+                watchlist = watchlist.filter(item => item.symbol !== symbol);
+                showToast(`${symbol} removido dos favoritos.`);
+            } else {
+                // Adicionar
+                const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
+                await vestoDB.put('watchlist', newItem);
+                watchlist.push(newItem);
+                showToast(`${symbol} adicionado aos favoritos!`, 'success');
+            }
+            
+            atualizarIconeFavorito(symbol); // Atualiza o ícone
+            renderizarWatchlist(); // Atualiza a lista no dashboard
+        } catch (e) {
+            console.error("Erro ao salvar favorito:", e);
+            showToast("Erro ao salvar favorito.");
+        }
+    }
+    // --- FIM DO NOVO CÓDIGO ---
+    
     async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
         let novaQuantidade = parseInt(quantityInput.value, 10);
@@ -1900,6 +1989,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await removerCacheAtivo(symbol); 
                 await removerProventosConhecidos(symbol);
                 
+                // --- NOVO CÓDIGO ---
+                // Também remove da watchlist se existir
+                await vestoDB.delete('watchlist', symbol);
+                watchlist = watchlist.filter(item => item.symbol !== symbol);
+                renderizarWatchlist();
+                // --- FIM NOVO CÓDIGO ---
+                
                 await atualizarTodosDados(false); 
             }
         );
@@ -1954,6 +2050,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!outrasTransacoes) {
                     console.log(`Última transação de ${symbol} removida. Limpando proventos conhecidos.`);
                     await removerProventosConhecidos(symbol);
+                    
+                    // --- NOVO CÓDIGO ---
+                    // Se foi a última transação, pergunte se quer manter na watchlist
+                    const isFavorite = watchlist.some(item => item.symbol === symbol);
+                    if (isFavorite) {
+                        setTimeout(() => {
+                             showModal(
+                                'Manter na Watchlist?',
+                                `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua watchlist?`,
+                                () => {} // Apenas fecha
+                            );
+                            // Não fazemos nada, o ativo continua na watchlist
+                        }, 300); // Pequeno delay para o modal fechar
+                    }
+                    // --- FIM NOVO CÓDIGO ---
                 }
                 
                 await atualizarTodosDados(false); 
@@ -1979,6 +2090,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             detalhesChartInstance.destroy();
             detalhesChartInstance = null;
         }
+        
+        // --- NOVO CÓDIGO ---
+        // Limpa o estado do botão favorito
+        detalhesFavoritoIconEmpty.classList.remove('hidden');
+        detalhesFavoritoIconFilled.classList.add('hidden');
+        detalhesFavoritoBtn.dataset.symbol = '';
+        // --- FIM NOVO CÓDIGO ---
         
         currentDetalhesSymbol = null;
         currentDetalhesMeses = 3; 
@@ -2099,6 +2217,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         renderizarTransacoesDetalhes(symbol);
+        
+        // --- NOVO CÓDIGO (Adicionado no FIM da função) ---
+        atualizarIconeFavorito(symbol);
+        // --- FIM DO NOVO CÓDIGO ---
     }
     
     function renderizarTransacoesDetalhes(symbol) {
@@ -2293,6 +2415,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
+    // Listener para os drawers principais
     dashboardDrawers.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target || !target.dataset.targetDrawer) return;
@@ -2304,6 +2427,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         drawer?.classList.toggle('open');
         icon?.classList.toggle('open');
     });
+
+    // --- NOVO CÓDIGO ---
+    // Listener para o toggle da Watchlist (separado, pois está fora do #dashboard-drawers)
+    const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
+    if (watchlistToggleBtn) {
+        watchlistToggleBtn.addEventListener('click', (e) => {
+            const target = e.currentTarget; // O botão
+            const drawerId = target.dataset.targetDrawer;
+            const drawer = document.getElementById(drawerId);
+            const icon = target.querySelector('.card-arrow-icon');
+            
+            drawer?.classList.toggle('open');
+            icon?.classList.toggle('open');
+        });
+    }
+    // --- FIM NOVO CÓDIGO ---
 
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -2380,6 +2519,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
+    // --- NOVOS LISTENERS ---
+    detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
+
+    // Listener para cliques nos botões "Ver Detalhes" da watchlist
+    watchlistListaEl.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (target && target.dataset.action === 'details' && target.dataset.symbol) {
+            showDetalhesModal(target.dataset.symbol);
+        }
+    });
+    // --- FIM NOVOS LISTENERS ---
+    
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
         if (!target) return;
@@ -2447,7 +2598,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         copiarDadosBtn.disabled = true;
 
         try {
-            const storesToExport = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos'];
+            // --- NOVO CÓDIGO ---
+            const storesToExport = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos', 'watchlist']; // Adicionado 'watchlist'
+            // --- FIM NOVO CÓDIGO ---
             const exportData = {};
             
             for (const storeName of storesToExport) {
@@ -2455,7 +2608,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             const bundle = {
-                version: 'vesto-v1',
+                version: 'vesto-v1', // Você pode mudar isso para v2 se quiser, mas v1 funciona
                 exportedAt: new Date().toISOString(),
                 data: exportData
             };
@@ -2485,7 +2638,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             backup = JSON.parse(texto);
             
-            if (!backup.version || backup.version !== 'vesto-v1' || !backup.data || !Array.isArray(backup.data.transacoes)) {
+            // Verificação ligeiramente modificada para ser flexível
+            if (!backup.version || !backup.version.startsWith('vesto-v') || !backup.data || !Array.isArray(backup.data.transacoes)) {
                 throw new Error("Texto de backup inválido ou corrompido.");
             }
             
@@ -2513,17 +2667,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         importTextConfirmBtn.disabled = true;
 
         try {
-            const stores = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos'];
+            // --- NOVO CÓDIGO ---
+            const stores = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos', 'watchlist']; // Adicionado 'watchlist'
+            // --- FIM NOVO CÓDIGO ---
             
             const clearPromises = stores.map(store => vestoDB.clear(store));
             await Promise.all(clearPromises);
             console.log("Stores limpos.");
-            mesesProcessados = []; // <--- NOVO
+            mesesProcessados = [];
 
             const populatePromises = [];
             for (const storeName of stores) {
                 if (data[storeName] && Array.isArray(data[storeName])) {
                     for (const item of data[storeName]) {
+                        // Verificação de segurança simples para 'watchlist'
+                        if (storeName === 'watchlist' && !item.symbol) continue; 
+                        
                         populatePromises.push(vestoDB.put(storeName, item));
                     }
                 }
@@ -2535,8 +2694,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             await carregarPatrimonio();
             await carregarCaixa();
             await carregarProventosConhecidos();
+            await carregarWatchlist(); // <-- NOVO
             
             await atualizarTodosDados(true);
+            renderizarWatchlist(); // <-- NOVO
             
             showToast("Dados importados com sucesso!", 'success'); 
 
@@ -2564,7 +2725,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         await carregarPatrimonio();
         await carregarCaixa();
         await carregarProventosConhecidos();
-        await carregarHistoricoProcessado(); // <--- NOVO
+        await carregarHistoricoProcessado();
+        await carregarWatchlist(); // <-- NOVO
+        
+        renderizarWatchlist(); // <-- NOVO
         mudarAba('tab-dashboard'); 
         
         atualizarTodosDados(false); 

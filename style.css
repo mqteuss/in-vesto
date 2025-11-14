@@ -1,5 +1,3 @@
-/* REMOVIDA: A linha @import url('https://fonts.googleapis.com/css2?family=Inter:...') foi removida daqui. */
-
 body {
     /* ANTES: font-family: 'Inter', sans-serif; */
     /* DEPOIS: A pilha de fontes do sistema */

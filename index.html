@@ -22,7 +22,7 @@
 
         <div id="tab-dashboard" class="tab-content active p-4">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Dashboard</h1>
+                <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Dashboard</h1>
             </div>
 
             <div id="resumo-carteira-card" class="card-bg rounded-2xl mb-6 overflow-hidden">
@@ -139,7 +139,7 @@
         <div id="tab-carteira" class="tab-content p-4">
 
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Meus Ativos</h1>
+                <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Meus Ativos</h1>
 
                 <div class="flex items-center gap-3">
                     <button id="copiar-dados-btn" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Fazer backup (Download)">
@@ -216,7 +216,7 @@
 
         <div id="tab-noticias" class="tab-content p-4">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Notícias</h1>
+                <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Notícias</h1>
                 <button id="refresh-noticias-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar notícias">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
                         <path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path>
@@ -263,7 +263,7 @@
 
         <div id="tab-historico" class="tab-content p-4">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Histórico</h1>
+                <h1 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">Histórico</h1>
             </div>
             <div id="lista-historico" class="space-y-3"></div>
             <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
@@ -476,9 +476,15 @@
     <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
         <div id="toast-notification" 
              class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl text-white font-medium">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            
+            <svg id="toast-icon-error" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
+            
+            <svg id="toast-icon-success" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+
             <span id="toast-message" class="flex-1">Erro ao processar.</span>
         </div>
     </div>

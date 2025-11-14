@@ -192,10 +192,25 @@ input[type=number] {
     transition: all 0.2s ease-in-out;
 }
 
+/* --- NOVO: Estilo para inputs preenchidos --- */
+#add-ativo-modal input[type="text"]:not(:placeholder-shown),
+#add-ativo-modal input[type="number"]:not(:placeholder-shown) {
+    background-color: #222222; 
+    color: #f3f4f6; 
+}
+#add-ativo-modal input[type="date"]:valid {
+     background-color: #222222;
+     color: #f3f4f6;
+}
+/* --- FIM DA ADIÇÃO --- */
+
+
+/* --- ALTERADO: Adicionado background-color para resetar no foco --- */
 #add-ativo-modal input[type="text"]:focus,
 #add-ativo-modal input[type="date"]:focus,
 #add-ativo-modal input[type="number"]:focus {
     border-color: #8B5CF6;
+    background-color: #1A1A1A; /* NOVO: Garante reset do fundo */
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
 }
 

@@ -156,24 +156,31 @@ input[type=number] {
     100% { transform: rotate(360deg); }
 }
 
+/* AQUI A MODIFICAÇÃO: Ocultando a barra de rolagem */
 .scrollable-content {
       max-height: 40vh; 
       overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: #2A2A2A #1A1A1A;
+      scrollbar-width: none; /* NOVO: Oculta no Firefox */
+      -ms-overflow-style: none; /* NOVO: Oculta no IE/Edge antigo */
+      /* REMOVIDO: scrollbar-width: thin; */
+      /* REMOVIDO: scrollbar-color: #2A2A2A #1A1A1A; */
 }
 .scrollable-content::-webkit-scrollbar { 
-    width: 6px; 
+    display: none; /* NOVO: Oculta no Chrome/Safari/Edge */
+    /* REMOVIDO: width: 6px; */
 }
-.scrollable-content::-webkit-scrollbar-track {
-    background: #1A1A1A;
-    border-radius: 10px;
+/* REMOVIDO: Regras .scrollable-content::-webkit-scrollbar-track e -thumb */
+
+/* NOVO: Regra para ocultar a barra de rolagem da página de Detalhes */
+#detalhes-conteudo-scroll {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge antigo */
 }
-.scrollable-content::-webkit-scrollbar-thumb {
-    background-color: #4b5563;
-    border-radius: 10px;
-    border: 2px solid #1A1A1A;
+#detalhes-conteudo-scroll::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Edge */
 }
+/* FIM DA MODIFICAÇÃO */
+
 
 .custom-modal { display: none; }
 .custom-modal.visible { display: flex; }

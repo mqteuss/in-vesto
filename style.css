@@ -4,11 +4,9 @@ body {
     /* ANTES: font-family: 'Inter', sans-serif; */
     /* DEPOIS: A pilha de fontes do sistema */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    background-color: #101010;
-    /* AQUI A MUDANÇA: Gradiente alinhado com o título principal.
-      ANTES: rgba(139, 92, 246, 0.08) e rgba(59, 130, 246, 0.05)
-      DEPOIS: purple-400 (rgba(192, 132, 252, 0.08)) e violet-600 (rgba(124, 58, 237, 0.05))
-    */
+    /* AQUI A MUDANÇA: Cor de fundo mais escura, baseada na imagem */
+    background-color: #131217; /* ANTES: #101010 */
+    /* Gradiente radial MANTIDO, como pedido */
     background-image: radial-gradient(circle at 10% 10%, rgba(192, 132, 252, 0.08), transparent 55%),
                       radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.05), transparent 65%);
     color: #f3f4f6;
@@ -28,11 +26,11 @@ body::-webkit-scrollbar {
 /* FIM DA MODIFICAÇÃO */
 
 
-/* ALTERADO: Substituído cor sólida por gradiente sutil para profundidade */
+/* ALTERADO: Cor dos cards alterada para o tom da imagem */
 .card-bg {
-    /* ANTES: background-color: #1A1A1A; */
-    background-image: linear-gradient(to bottom, #1E1E1E, #1A1A1A); /* Sutil (Claro -> Escuro) */
-    border: 1px solid #2A2A2A;
+    /* ANTES: background-image: linear-gradient(to bottom, #1E1E1E, #1A1A1A); */
+    background-color: #1C1B22; /* NOVO: Cor sólida dos cards da imagem */
+    border: 1px solid #2A2A2A; /* Bordas mantidas por enquanto */
 }
 
 /* ALTERADO: Gradiente alinhado com o título principal.
@@ -75,8 +73,10 @@ body::-webkit-scrollbar {
     50% { transform: translateY(-3px); }
 }
 
+/* AQUI A MUDANÇA: Cor da barra de navegação alinhada aos cards */
 .bottom-nav {
-    background-color: rgba(26, 26, 26, 0.6); 
+    /* ANTES: background-color: rgba(26, 26, 26, 0.6); */
+    background-color: rgba(28, 27, 34, 0.6); /* Cor #1C1B22 com 60% opacidade */
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid #2A2A2A; 
@@ -241,7 +241,8 @@ input[type=number] {
 .page-content {
     transition: transform 0.4s ease-in-out;
     transform: translateY(100%);
-    background-color: #101010; 
+    /* AQUI A MUDANÇA: Cor de fundo mais escura, baseada na imagem */
+    background-color: #131217; /* ANTES: #101010 */
     position: fixed; 
     bottom: 0;
     left: 0;

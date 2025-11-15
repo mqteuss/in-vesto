@@ -30,7 +30,7 @@
                     <span class="text-sm text-gray-400">Valor Total em Ativos</span>
                     
                     <div id="skeleton-total-valor" class="h-10 w-3/4 bg-gray-700 rounded-md animate-shimmer mx-auto mt-2"></div>
-                    <h2 id="total-carteira-valor" class="text-4xl font-bold mt-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-500 hidden">R$ 0,00</h2>
+                    <h2 id="total-carteira-valor" class="text-4xl font-bold mt-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</h2>
                 </div>
             
                 <div class="px-5 pb-5 pt-4">
@@ -352,13 +352,13 @@
                         type="text" 
                         id="ticker-input" 
                         placeholder="Ativo (ex: MXRF11)" 
-                        class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors"
+                        class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
                     >
                     <input 
                         type="date" 
                         id="date-input" 
                         placeholder="Data da Compra"
-                        class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors"
+                        class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
                         style="color-scheme: dark;"
                     >
 
@@ -367,14 +367,14 @@
                             type="number"
                             id="quantity-input"
                             placeholder="Qtd."
-                            class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
+                            class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-center"
                         >
                         <input
                             type="number"
                             id="preco-medio-input"
                             placeholder="Preço (R$)"
                             step="0.01"
-                            class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] text-center"
+                            class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-center"
                         >
                     </div>
                 </div>
@@ -396,7 +396,7 @@
         <div id="import-text-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
             <h3 id="import-modal-title" class="text-xl font-semibold text-white mb-4 text-center">Importar Dados</h3>
             <p class="text-sm text-gray-400 mb-4 text-center">Cole o seu 'código' de backup abaixo para restaurar.</p>
-            <textarea id="import-text-textarea" class="w-full h-24 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-[#8B5CF6] transition-colors" placeholder="Cole o seu 'código' de backup aqui..."></textarea>
+            <textarea id="import-text-textarea" class="w-full h-24 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors" placeholder="Cole o seu 'código' de backup aqui..."></textarea>
             <div class="flex justify-end gap-3 mt-6">
                 <button id="import-text-cancel-btn" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
                 <button 

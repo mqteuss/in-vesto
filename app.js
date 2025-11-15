@@ -107,6 +107,7 @@ function criarCardElemento(ativo, dados) {
     card.setAttribute('data-symbol', ativo.symbol); // O ID principal!
 
     // --- O HTML (Note os 'data-field' adicionados) ---
+    // A classe 'text-purple-400' no SVG é mantida, pois corresponde ao #c084fc do Tailwind CDN.
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -128,7 +129,7 @@ function criarCardElemento(ativo, dados) {
         </div>
         <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
             <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-symbol="${ativo.symbol}" data-action="toggle" title="Mostrar mais">
-                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2A2A2A" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>
             </button>
@@ -627,15 +628,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+    // --- FUNÇÃO MODIFICADA ---
     function gerarCores(num) {
+        // Paleta alinhada com os gradientes do título (purple-400, violet-600) e cores adjacentes
         const PALETA_CORES = [
-            '#8B5CF6', '#6D28D9', '#A78BFA', '#4C1D95', '#3b82f6', 
-            '#22c55e', '#f97316', '#ef4444', '#14b8a6', '#eab308'
+            '#c084fc', // purple-400 (Mais claro)
+            '#7c3aed', // violet-600 (Mais escuro)
+            '#a855f7', // purple-500
+            '#8b5cf6', // violet-500
+            '#6d28d9', // violet-700
+            '#5b21b6', // violet-800
+            '#3b82f6', // blue-500 (Para variedade)
+            '#22c55e', // green-500 (Para variedade)
+            '#f97316', // orange-500
+            '#ef4444'  // red-500
         ];
         let cores = [];
         for (let i = 0; i < num; i++) { cores.push(PALETA_CORES[i % PALETA_CORES.length]); }
         return cores;
     }
+    // --- FIM DA MODIFICAÇÃO ---
     
     function showModal(title, message, onConfirm) {
         customModalTitle.textContent = title;
@@ -943,6 +955,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // --- FUNÇÃO MODIFICADA ---
     function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');
         if (!canvas) return;
@@ -960,19 +973,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
+        // Gradiente alinhado ao título: de purple-400 (#c084fc) para violet-600 (#7c3aed)
         const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
-        gradient.addColorStop(0, 'rgba(167, 139, 250, 0.9)'); 
-        gradient.addColorStop(1, 'rgba(109, 40, 217, 0.9)'); 
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); // #c084fc
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  // #7c3aed
         
+        // Gradiente de hover: de purple-300 (#d8b4fe) para violet-500 (#8b5cf6)
         const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
-        hoverGradient.addColorStop(0, 'rgba(196, 181, 253, 1)'); 
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); // #d8b4fe
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  // #8b5cf6
         
         if (historicoChartInstance) {
             historicoChartInstance.data.labels = labels;
             historicoChartInstance.data.datasets[0].data = data;
             historicoChartInstance.data.datasets[0].backgroundColor = gradient;
             historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
+            historicoChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)'; // Border mais clara
             historicoChartInstance.update();
         } else {
             historicoChartInstance = new Chart(ctx, {
@@ -984,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         data: data,
                         backgroundColor: gradient,
                         hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(167, 139, 250, 0.3)', 
+                        borderColor: 'rgba(192, 132, 252, 0.3)', // Border mais clara
                         borderWidth: 1,
                         borderRadius: 5 
                     }]
@@ -1019,7 +1035,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
+    // --- FIM DA MODIFICAÇÃO ---
     
+    // --- FUNÇÃO MODIFICADA ---
     function renderizarGraficoProventosDetalhes({ labels, data }) {
         const canvas = document.getElementById('detalhes-proventos-chart');
         if (!canvas) return;
@@ -1033,17 +1051,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
     
+        // Gradiente alinhado ao título: de purple-400 (#c084fc) para violet-600 (#7c3aed)
         const gradient = ctx.createLinearGradient(0, 0, 0, 192);
-        gradient.addColorStop(0, 'rgba(167, 139, 250, 0.9)'); 
-        gradient.addColorStop(1, 'rgba(109, 40, 217, 0.9)'); 
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); // #c084fc
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  // #7c3aed
         
+        // Gradiente de hover: de purple-300 (#d8b4fe) para violet-500 (#8b5cf6)
         const hoverGradient = ctx.createLinearGradient(0, 0, 0, 192);
-        hoverGradient.addColorStop(0, 'rgba(196, 181, 253, 1)'); 
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); // #d8b4fe
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  // #8b5cf6
     
         if (detalhesChartInstance) {
             detalhesChartInstance.data.labels = labels;
             detalhesChartInstance.data.datasets[0].data = data;
+            detalhesChartInstance.data.datasets[0].backgroundColor = gradient;
+            detalhesChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
+            detalhesChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)';
             detalhesChartInstance.update();
         } else {
             detalhesChartInstance = new Chart(ctx, {
@@ -1055,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         data: data,
                         backgroundColor: gradient,
                         hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(167, 139, 250, 0.3)', 
+                        borderColor: 'rgba(192, 132, 252, 0.3)', 
                         borderWidth: 1,
                         borderRadius: 4 
                     }]
@@ -1102,7 +1125,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
+    // --- FIM DA MODIFICAÇÃO ---
     
+    // --- FUNÇÃO MODIFICADA ---
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
@@ -1123,13 +1148,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        // Gradiente alinhado ao título: de purple-400 (#c084fc) para violet-600 (#7c3aed)
         const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-        gradient.addColorStop(0, 'rgba(139, 92, 246, 0.6)'); 
-        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.0)'); 
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.6)'); // #c084fc
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');  // #7c3aed (com fade out)
 
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = data;
+            
+            // Atualiza cores
+            patrimonioChartInstance.data.datasets[0].backgroundColor = gradient;
+            patrimonioChartInstance.data.datasets[0].borderColor = '#c084fc';
+            patrimonioChartInstance.data.datasets[0].pointBackgroundColor = '#c084fc';
             
             // Atualiza os novos raios no update também
             patrimonioChartInstance.data.datasets[0].pointRadius = 3;
@@ -1147,12 +1178,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         data: data,
                         fill: true,
                         backgroundColor: gradient,
-                        borderColor: '#8B5CF6', 
+                        borderColor: '#c084fc', // Cor da linha (purple-400)
                         tension: 0.1,
-                        pointRadius: 3, // ANTES: 2
-                        pointBackgroundColor: '#A78BFA',
-                        pointHitRadius: 15, // NOVO: Aumenta a área de "clique"
-                        pointHoverRadius: 5 // NOVO: Aumenta o ponto ao passar o mouse/clicar
+                        pointRadius: 3, 
+                        pointBackgroundColor: '#c084fc', // Cor do ponto (purple-400)
+                        pointHitRadius: 15, 
+                        pointHoverRadius: 5 
                     }]
                 },
                 options: {
@@ -1173,6 +1204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
+    // --- FIM DA MODIFICAÇÃO ---
     
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];

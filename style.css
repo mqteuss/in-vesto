@@ -16,6 +16,18 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* NOVO: Regras para ocultar a barra de rolagem principal da página */
+html, body {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge antigo */
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Edge */
+}
+/* FIM DA MODIFICAÇÃO */
+
+
 /* ALTERADO: Substituído cor sólida por gradiente sutil para profundidade */
 .card-bg {
     /* ANTES: background-color: #1A1A1A; */

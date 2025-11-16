@@ -1,6 +1,6 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO CORRIGIDA (com nomes de tabela em minúsculas)
+// VERSÃO CORRIGIDA (com nomes de tabela e COLUNA em minúsculas)
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
@@ -23,7 +23,6 @@ function handleSupabaseError(error, context) {
     if (error.message.includes("Email not confirmed")) {
          return "Email não confirmado. Verifique sua caixa de entrada.";
     }
-    // CORREÇÃO: Pega a mensagem de erro da hint se ela existir (ex: tabela não encontrada)
     return error.hint || error.message || "Ocorreu um erro desconhecido.";
 }
 
@@ -48,7 +47,7 @@ export async function initialize() {
         // 2. Inicializar o cliente
         supabaseClient = createClient(supabaseUrl, supabaseKey, {
             auth: {
-                persistSession: true, // Salva a sessão no localStorage
+                persistSession: true, 
                 autoRefreshToken: true,
                 detectSessionInUrl: true
             },
@@ -122,7 +121,7 @@ export async function signOut() {
  * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
  */
 
-// --- Transações --- (já estava minúsculo)
+// --- Transações ---
 
 export async function getTransacoes() {
     const { data, error } = await supabaseClient
@@ -177,7 +176,7 @@ export async function deleteTransacoesDoAtivo(symbol) {
 }
 
 
-// --- Patrimônio --- (já estava minúsculo)
+// --- Patrimônio ---
 
 export async function getPatrimonio() {
     const { data, error } = await supabaseClient
@@ -200,16 +199,17 @@ export async function savePatrimonioSnapshot(snapshot) {
 
 
 // --- AppState (Caixa e Histórico Processado) ---
-// CORRIGIDO: 'appState' -> 'appstate'
 
 export async function getAppState(key) {
     const { data, error } = await supabaseClient
-        .from('appstate') // CORRIGIDO
+        .from('appstate') 
         .select('value_json')
         .eq('key', key)
         .single(); 
 
-    if (error && error.code !== 'PGRST116') { 
+    // CORREÇÃO: Trata o erro 406 (Not Acceptable) como "não encontrado".
+    // Isso acontece quando o .single() não encontra dados que passem no RLS.
+    if (error && error.code !== 'PGRST116' && error.status !== 406) { 
         throw new Error(handleSupabaseError(error, "getAppState"));
     }
     return data ? data.value_json : null;
@@ -220,19 +220,19 @@ export async function saveAppState(key, value_json) {
     if (!user) throw new Error("Usuário não autenticado.");
     const record = { key, value_json, user_id: user.id };
     const { error } = await supabaseClient
-        .from('appstate') // CORRIGIDO
+        .from('appstate') 
         .upsert(record, { onConflict: 'user_id, key' });
     if (error) throw new Error(handleSupabaseError(error, "saveAppState"));
 }
 
 
 // --- Proventos Conhecidos ---
-// CORRIGIDO: 'proventosConhecidos' -> 'proventosconhecidos'
 
 export async function getProventosConhecidos() {
     const { data, error } = await supabaseClient
-        .from('proventosconhecidos') // CORRIGIDO
-        .select('*');
+        .from('proventosconhecidos') 
+        // CORREÇÃO: Seleciona 'paymentdate' e renomeia para 'paymentDate'
+        .select('*, paymentdate:paymentDate'); 
     if (error) throw new Error(handleSupabaseError(error, "getProventosConhecidos"));
     return data || [];
 }
@@ -240,9 +240,17 @@ export async function getProventosConhecidos() {
 export async function addProventoConhecido(provento) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-    const proventoComUser = { ...provento, user_id: user.id };
+    
+    // CORREÇÃO: Renomeia 'paymentDate' para 'paymentdate' antes de inserir
+    const proventoComUser = { 
+        ...provento, 
+        paymentdate: provento.paymentDate, // Traduz
+        user_id: user.id
+    };
+    delete proventoComUser.paymentDate; // Remove a chave errada
+
     const { error } = await supabaseClient
-        .from('proventosconhecidos') // CORRIGIDO
+        .from('proventosconhecidos') 
         .upsert(proventoComUser, { onConflict: 'user_id, id' });
     if (error) throw new Error(handleSupabaseError(error, "addProventoConhecido"));
 }
@@ -251,7 +259,7 @@ export async function updateProventoProcessado(id) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
     const { error } = await supabaseClient
-        .from('proventosconhecidos') // CORRIGIDO
+        .from('proventosconhecidos') 
         .update({ processado: true })
         .eq('id', id)
         .eq('user_id', user.id); 
@@ -262,7 +270,7 @@ export async function deleteProventosDoAtivo(symbol) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
     const { error } = await supabaseClient
-        .from('proventosconhecidos') // CORRIGIDO
+        .from('proventosconhecidos') 
         .delete()
         .eq('symbol', symbol)
         .eq('user_id', user.id); 
@@ -270,12 +278,13 @@ export async function deleteProventosDoAtivo(symbol) {
 }
 
 
-// --- Watchlist --- (já estava minúsculo)
+// --- Watchlist ---
 
 export async function getWatchlist() {
     const { data, error } = await supabaseClient
         .from('watchlist')
-        .select('symbol, addedAt');
+         // CORREÇÃO: Seleciona 'addedat' e renomeia para 'addedAt'
+        .select('symbol, addedat:addedAt');
     if (error) throw new Error(handleSupabaseError(error, "getWatchlist"));
     return data || [];
 }
@@ -283,7 +292,15 @@ export async function getWatchlist() {
 export async function addWatchlist(item) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-    const itemComUser = { ...item, user_id: user.id };
+
+    // CORREÇÃO: Renomeia 'addedAt' para 'addedat' antes de inserir
+    const itemComUser = { 
+        ...item, 
+        addedat: item.addedAt, // Traduz
+        user_id: user.id 
+    };
+    delete itemComUser.addedAt; // Remove a chave errada
+
     const { error } = await supabaseClient
         .from('watchlist')
         .insert(itemComUser); 

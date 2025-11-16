@@ -548,7 +548,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadUserSession();
         } catch (error) {
             console.error("Erro no login:", error.message);
-            showAuthError('login-error', 'Email ou senha inválidos.');
+            // Mensagem de "Email not confirmed"
+            if (error.message.includes("Email not confirmed")) {
+                 showAuthError('login-error', 'Email não confirmado. Verifique sua caixa de entrada.');
+            } else {
+                showAuthError('login-error', 'Email ou senha inválidos.');
+            }
             loginButton.innerHTML = `Entrar`;
             loginButton.disabled = false;
         }
@@ -769,8 +774,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function showImportModal() {
         showModal(
-            'Restaurar Backup (Local)',
-            'Isso só restaura dados locais (IndexedDB). Para acessar sua conta da nuvem, saia e faça login em outro dispositivo.',
+            'Restaurar Backup (Nuvem)',
+            'Isso irá apagar seus dados na nuvem e substituir pelo backup. Use "Copiar Dados" para gerar um backup primeiro.',
             () => {
                  importTextModal.classList.add('visible');
                  importTextModalContent.classList.remove('modal-out');
@@ -820,8 +825,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Erro ao carregar transações.");
             return [];
         }
-        // Ajusta o formato do ID (Supabase usa 'id', o app espera 'id')
-        // E o formato da data (Supabase usa 'date', o app espera 'date')
         return data.map(tx => ({ ...tx, id: tx.id, date: tx.date })); 
     }
     
@@ -835,7 +838,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Erro ao carregar watchlist.");
             return [];
         }
-        // Ajusta o formato (Supabase usa 'created_at', o app espera 'addedAt')
         return data.map(item => ({ symbol: item.symbol, addedAt: item.created_at }));
     }
     
@@ -850,14 +852,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Erro ao carregar patrimônio.");
             return [];
         }
-        return data; // Formato já compatível (date, value)
+        return data;
     }
     
     async function carregarAppStateSupabase() {
         const { data, error } = await supabase
             .from('user_app_state')
             .select('saldo_caixa, meses_processados')
-            .single(); // Espera apenas 1 resultado (ou nulo)
+            .single();
 
         if (error && error.code !== 'PGRST116') { // Ignora erro "0 rows"
             console.error("Erro ao carregar AppState:", error);
@@ -866,12 +868,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         if (!data) {
-             // Caso raro: usuário existe mas não tem app_state (trigger falhou?)
-             console.warn("Nenhum app_state encontrado, criando um novo.");
+             console.warn("Nenhum app_state encontrado (usuário novo).");
              return { saldo: 0, meses: [] };
         }
-
-        // Ajusta formato (Supabase usa 'saldo_caixa', o app espera 'saldoCaixa')
         return { saldo: data.saldo_caixa, meses: data.meses_processados };
     }
     
@@ -885,26 +884,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Erro ao carregar proventos.");
             return [];
         }
-        // Ajusta formato (Supabase usa 'payment_date', o app espera 'paymentDate')
         return data.map(p => ({ ...p, paymentDate: p.payment_date }));
     }
     
     // --- FUNÇÕES DE ESCRITA DE DADOS (SUPABASE) ---
-
-    // Salva o estado (caixa, meses) na nuvem
-    // É "debounced" (agrupado) para não salvar a cada segundo
     let appStateDirty = false;
     async function salvarAppStateSupabase() {
-        if (!appStateDirty) return; // Nada para salvar
+        if (!appStateDirty) return;
         if (!currentUser) return;
         
-        appStateDirty = false; // Reseta
+        appStateDirty = false;
         console.log("Salvando AppState na nuvem...", { saldoCaixa, mesesProcessados });
         
         const { error } = await supabase
             .from('user_app_state')
             .upsert({ 
-                user_id: currentUser.id, // Chave primária
+                user_id: currentUser.id,
                 saldo_caixa: saldoCaixa, 
                 meses_processados: mesesProcessados,
                 updated_at: new Date().toISOString()
@@ -913,16 +908,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (error) {
             console.error("Erro ao salvar AppState:", error);
             showToast("Erro ao salvar perfil na nuvem.");
-            appStateDirty = true; // Tenta salvar de novo no próximo ciclo
+            appStateDirty = true;
         }
     }
-    // Função para "marcar" que precisa salvar
     function requestSalvarAppState() {
         appStateDirty = true;
     }
     
-    // Salva o snapshot do patrimônio na nuvem
     async function salvarSnapshotPatrimonio(totalValor) {
+        if (!currentUser) return;
         if (totalValor <= 0 && patrimonio.length === 0) return; 
         const today = new Date().toISOString().split('T')[0];
         
@@ -934,14 +928,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const { error } = await supabase
             .from('user_patrimonio')
-            .upsert(snapshot); // 'upsert' = insere ou atualiza se já existir
+            .upsert(snapshot);
 
         if (error) {
             console.error("Erro ao salvar snapshot do patrimônio:", error);
             showToast("Erro ao salvar gráfico de patrimônio.");
         }
         
-        // Atualiza o estado local (igual a antes)
         const index = patrimonio.findIndex(p => p.date === today);
         if (index > -1) {
             patrimonio[index].value = totalValor;
@@ -1054,7 +1047,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             historicoChartInstance.data.datasets[0].data = data;
             historicoChartInstance.data.datasets[0].backgroundColor = gradient;
             historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            historicoChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)';
             historicoChartInstance.update();
         } else {
             historicoChartInstance = new Chart(ctx, {
@@ -1062,13 +1054,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Total Recebido',
-                        data: data,
-                        backgroundColor: gradient,
-                        hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)',
-                        borderWidth: 1,
-                        borderRadius: 5 
+                        label: 'Total Recebido', data: data,
+                        backgroundColor: gradient, hoverBackgroundColor: hoverGradient,
+                        borderColor: 'rgba(192, 132, 252, 0.3)', borderWidth: 1, borderRadius: 5 
                     }]
                 },
                 options: {
@@ -1100,7 +1088,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             detalhesChartInstance.data.datasets[0].data = data;
             detalhesChartInstance.data.datasets[0].backgroundColor = gradient;
             detalhesChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            detalhesChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)';
             detalhesChartInstance.update();
         } else {
             detalhesChartInstance = new Chart(ctx, {
@@ -1109,10 +1096,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     labels: labels,
                     datasets: [{
                         label: 'Recebido', data: data,
-                        backgroundColor: gradient,
-                        hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', 
-                        borderWidth: 1, borderRadius: 4 
+                        backgroundColor: gradient, hoverBackgroundColor: hoverGradient,
+                        borderColor: 'rgba(192, 132, 252, 0.3)', borderWidth: 1, borderRadius: 4 
                     }]
                 },
                 options: { /* ... (opções do gráfico) ... */ }
@@ -1143,12 +1128,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = data;
-            patrimonioChartInstance.data.datasets[0].backgroundColor = gradient;
-            patrimonioChartInstance.data.datasets[0].borderColor = '#c084fc';
-            patrimonioChartInstance.data.datasets[0].pointBackgroundColor = '#c084fc';
-            patrimonioChartInstance.data.datasets[0].pointRadius = 3;
-            patrimonioChartInstance.data.datasets[0].pointHitRadius = 15;
-            patrimonioChartInstance.data.datasets[0].pointHoverRadius = 5;
             patrimonioChartInstance.update();
         } else {
             patrimonioChartInstance = new Chart(ctx, {
@@ -1157,8 +1136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     labels: labels,
                     datasets: [{
                         label: 'Patrimônio', data: data, fill: true,
-                        backgroundColor: gradient,
-                        borderColor: '#c084fc',
+                        backgroundColor: gradient, borderColor: '#c084fc',
                         tension: 0.1, pointRadius: 3, 
                         pointBackgroundColor: '#c084fc',
                         pointHitRadius: 15, pointHoverRadius: 5 
@@ -1359,81 +1337,91 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function renderizarWatchlist() {
-        watchlistListaEl.innerHTML = '';
-        if (watchlist.length === 0) {
-            watchlistStatusEl.classList.remove('hidden');
+    function renderizarNoticias(articles) { 
+        fiiNewsSkeleton.classList.add('hidden');
+        fiiNewsList.innerHTML = ''; 
+        fiiNewsMensagem.classList.add('hidden');
+        if (!articles || articles.length === 0) {
+            fiiNewsMensagem.textContent = 'Nenhuma notícia encontrada.';
+            fiiNewsMensagem.classList.remove('hidden');
             return;
         }
-        watchlistStatusEl.classList.add('hidden');
-        watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
-        watchlist.forEach(item => {
-            const el = document.createElement('div');
-            el.className = 'flex justify-between items-center p-3 bg-gray-800 rounded-lg';
-            el.innerHTML = `
-                <span class="font-semibold text-white">${item.symbol}</span>
-                <button class="py-1 px-3 text-xs font-medium text-purple-300 bg-purple-900/50 hover:bg-purple-900/80 rounded-md transition-colors" data-symbol="${item.symbol}" data-action="details">
-                    Ver Detalhes
-                </button>
-            `;
-            watchlistListaEl.appendChild(el);
+        articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+        articles.forEach((article, index) => {
+            // ... (cria o card da notícia)
         });
+    }
+
+    async function handleAtualizarNoticias(force = false) {
+        const cacheKey = 'noticias_json_v4';
+        if (!force) {
+            const cache = await getCache(cacheKey);
+            if (cache) { renderizarNoticias(cache); return; }
+        }
+        fiiNewsSkeleton.classList.remove('hidden');
+        fiiNewsList.innerHTML = '';
+        fiiNewsMensagem.classList.add('hidden');
+        const refreshIcon = refreshNoticiasButton.querySelector('svg');
+        if (force) refreshIcon.classList.add('spin-animation');
+        try {
+            const articles = await fetchAndCacheNoticiasBFF_NetworkOnly();
+            renderizarNoticias(articles);
+        } catch (e) {
+            fiiNewsSkeleton.classList.add('hidden');
+            fiiNewsMensagem.textContent = 'Erro ao carregar notícias.';
+            fiiNewsMensagem.classList.remove('hidden');
+        } finally {
+            refreshIcon.classList.remove('spin-animation');
+        }
+    }
+
+    async function fetchAndCacheNoticiasBFF_NetworkOnly() {
+        const cacheKey = 'noticias_json_v4';
+        await vestoDB.delete('apiCache', cacheKey);
+        try {
+            const response = await fetchBFF('/api/news', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ todayString: todayString }) 
+            });
+            const articles = response.json;
+            if (articles && Array.isArray(articles)) {
+                await setCache(cacheKey, articles, CACHE_6_HORAS);
+            }
+            return articles;
+        } catch (error) { throw error; }
     }
     
-    function atualizarIconeFavorito(symbol) {
-        if (!symbol || !detalhesFavoritoBtn) return;
-        const isFavorite = watchlist.some(item => item.symbol === symbol);
-        detalhesFavoritoIconEmpty.classList.toggle('hidden', isFavorite);
-        detalhesFavoritoIconFilled.classList.toggle('hidden', !isFavorite);
-        detalhesFavoritoBtn.dataset.symbol = symbol;
-    }
+    // --- LÓGICA DE PROVENTOS ---
 
-    // --- LÓGICA DE PROVENTOS (Modificada para salvar no Supabase) ---
-    async function processarDividendosPagos() {
-        const hoje = new Date();
+    // **** FUNÇÃO RESTAURADA ****
+    function processarProventosIA(proventosDaIA = []) {
+        const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
-        
-        const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
-        let precisaSalvarCaixa = false;
-        let proventosParaProcessar = [];
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
-        proventosConhecidos.forEach(provento => {
-            if (provento.paymentDate && !provento.processado) {
-                const dataPagamento = new Date(provento.paymentDate + 'T12:00:00'); // Trata como UTC
-                if (!isNaN(dataPagamento) && dataPagamento < hoje) {
-                    const quantity = carteiraMap.get(provento.symbol) || 0;
-                    if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) {
-                        saldoCaixa += (provento.value * quantity);
-                        precisaSalvarCaixa = true;
+        return proventosDaIA
+            .map(proventoIA => {
+                const ativoCarteira = carteiraCalculada.find(a => a.symbol === proventoIA.symbol);
+                if (!ativoCarteira) return null;
+                
+                // Supabase envia payment_date, mas o app usa paymentDate
+                const paymentDate = proventoIA.paymentDate || proventoIA.payment_date;
+
+                if (paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(paymentDate)) {
+                    const parts = paymentDate.split('-');
+                    const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
+                    
+                    if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
+                        // Garante que o formato de retorno é o que o app espera
+                        return { ...proventoIA, paymentDate: paymentDate };
                     }
-                    provento.processado = true;
-                    proventosParaProcessar.push(provento);
                 }
-            }
-        });
-
-        if (precisaSalvarCaixa) {
-            requestSalvarAppState(); // Marca para salvar na nuvem
-        }
-        if (proventosParaProcessar.length > 0) {
-            // Atualiza os proventos na nuvem
-            const updates = proventosParaProcessar.map(p => ({
-                user_id: currentUser.id,
-                id: p.id,
-                processado: true,
-                // Repete os dados para o 'upsert'
-                symbol: p.symbol,
-                payment_date: p.paymentDate,
-                value: p.value
-            }));
-            
-            const { error } = await supabase.from('user_proventos_conhecidos').upsert(updates);
-            if (error) {
-                console.error("Erro ao atualizar proventos processados:", error);
-                showToast("Erro ao processar dividendos.");
-            }
-        }
+                return null; 
+            })
+            .filter(p => p !== null);
     }
+    // **** FIM DA FUNÇÃO RESTAURADA ****
 
     async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
@@ -1441,16 +1429,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             .map(a => a.symbol);
         if (fiiNaCarteira.length === 0) return [];
 
-        let proventosPool = [...proventosConhecidos]; // Começa com os proventos já carregados
+        let proventosPool = [...proventosConhecidos];
         let fiisParaBuscar = [];
 
         for (const symbol of fiiNaCarteira) {
             const cacheKey = `provento_ia_${symbol}`;
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
-                // Remove proventos locais para forçar a busca
                 proventosPool = proventosPool.filter(p => p.symbol !== symbol);
-                // Deleta da nuvem (apenas os não processados)
                 await supabase
                     .from('user_proventos_conhecidos')
                     .delete()
@@ -1459,9 +1445,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const proventoCache = await getCache(cacheKey);
             if (proventoCache) {
-                // Se está no cache, já deve estar no proventosPool (carregado da nuvem)
-                // Apenas nos certificamos de que será buscado se não estiver
-                if (!proventosPool.some(p => p.symbol === symbol && p.paymentDate === proventoCache.paymentDate)) {
+                if (!proventosPool.some(p => p.symbol === symbol && (p.paymentDate || p.payment_date) === proventoCache.paymentDate)) {
                     fiisParaBuscar.push(symbol);
                 }
             } else {
@@ -1469,21 +1453,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // Remove duplicatas
         fiisParaBuscar = [...new Set(fiisParaBuscar)];
 
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
-                
                 if (novosProventos && Array.isArray(novosProventos)) {
                     let proventosParaSalvarNuvem = [];
-                    
                     for (const provento of novosProventos) {
                         if (provento && provento.symbol && provento.paymentDate && provento.value > 0) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_24_HORAS); 
-                            
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
                             const existe = proventosPool.some(p => p.id === idUnico);
                             
@@ -1492,37 +1472,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     id: idUnico,
                                     user_id: currentUser.id,
                                     symbol: provento.symbol,
-                                    paymentDate: provento.paymentDate, // app usa paymentDate
-                                    payment_date: provento.paymentDate, // supabase usa payment_date
+                                    paymentDate: provento.paymentDate,
                                     value: provento.value,
                                     processado: false 
                                 };
                                 proventosPool.push(novoProvento);
-                                // Prepara para salvar na nuvem
                                 proventosParaSalvarNuvem.push({
                                     id: novoProvento.id,
                                     user_id: novoProvento.user_id,
                                     symbol: novoProvento.symbol,
-                                    payment_date: novoProvento.payment_date,
+                                    payment_date: novoProvento.paymentDate,
                                     value: novoProvento.value,
                                     processado: novoProvento.processado
                                 });
                             }
                         }
                     }
-                    
-                    // Salva todos os novos proventos na nuvem de uma vez
                     if (proventosParaSalvarNuvem.length > 0) {
                         const { error } = await supabase.from('user_proventos_conhecidos').insert(proventosParaSalvarNuvem);
-                        if (error) {
-                            console.error("Erro ao salvar novos proventos:", error);
-                            showToast("Erro ao salvar proventos.");
-                        }
+                        if (error) { console.error("Erro ao salvar novos proventos:", error); }
                     }
                 }
-            } catch (error) {
-                console.error("Erro ao buscar novos proventos com IA:", error);
-            }
+            } catch (error) { console.error("Erro ao buscar novos proventos com IA:", error); }
         }
         
         return processarProventosIA(proventosPool); 
@@ -1537,19 +1508,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (force) await vestoDB.delete('apiCache', cacheKey);
         
         let aiData = await getCache(cacheKey);
-
         if (!aiData) {
             try {
                 aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
                 if (aiData && aiData.length > 0) {
                     await setCache(cacheKey, aiData, CACHE_24_HORAS);
                 }
-            } catch (e) {
-                console.error("Erro ao buscar histórico agregado:", e);
-                return { labels: [], data: [] }; 
-            }
+            } catch (e) { return { labels: [], data: [] }; }
         }
-
         if (!aiData || aiData.length === 0) return { labels: [], data: [] };
 
         const carteiraMap = new Map(fiiNaCarteira.map(a => [a.symbol, { 
@@ -1558,11 +1524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }]));
         
         let precisaSalvarCaixa = false;
-        
-        const dataAtual = new Date();
-        const mesAtual = dataAtual.getMonth();
-        const anoAtual = dataAtual.getFullYear();
-
+        const dataAtual = new Date(), mesAtual = dataAtual.getMonth(), anoAtual = dataAtual.getFullYear();
         const labels = aiData.map(d => d.mes);
         const data = aiData.map(mesData => {
             let totalMes = 0;
@@ -1573,18 +1535,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             fiiSymbols.forEach(symbol => {
                 const ativo = carteiraMap.get(symbol);
                 if (!ativo) return; 
-
-                const quantity = ativo.quantity;
-                const inicioMesCompraTime = ativo.inicioMesCompra;
+                const { quantity, inicioMesCompraTime } = ativo;
                 const valorPorCota = mesData[symbol] || 0;
-                
                 if (timeDoMes >= inicioMesCompraTime) {
                      totalMes += (valorPorCota * quantity);
                 }
             });
             
-            const mesHistorico = dataDoMes.getMonth();
-            const anoHistorico = dataDoMes.getFullYear();
+            const mesHistorico = dataDoMes.getMonth(), anoHistorico = dataDoMes.getFullYear();
             const isPastMonth = anoHistorico < anoAtual || (anoHistorico === anoAtual && mesHistorico < mesAtual);
             const isNotProcessed = !mesesProcessados.includes(mesData.mes);
             
@@ -1593,15 +1551,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 mesesProcessados.push(mesData.mes);
                 precisaSalvarCaixa = true;
             }
-            
             return totalMes;
         });
 
         if (precisaSalvarCaixa) {
-            requestSalvarAppState(); // Marca para salvar na nuvem
+            requestSalvarAppState();
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
         }
-
         return { labels, data };
     }
     
@@ -1624,6 +1580,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (force) refreshIcon.classList.add('spin-animation');
 
         if (!force) {
+            // Usa a função corrigida
             const proventosFuturosCache = processarProventosIA(proventosConhecidos);
             if (proventosFuturosCache.length > 0) {
                 proventosAtuais = proventosFuturosCache;
@@ -1649,7 +1606,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (precos.length > 0) precosAtuais = precos; 
             await renderizarCarteira(); 
         }).catch(async err => {
-            console.error("Erro ao buscar preços (BFF):", err);
             showToast("Erro ao buscar preços."); 
             if (precosAtuais.length === 0) await renderizarCarteira();
         });
@@ -1659,7 +1615,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarProventos(); 
             if (precosAtuais.length > 0) await renderizarCarteira(); 
         }).catch(err => {
-            console.error("Erro ao buscar proventos (BFF):", err);
             showToast("Erro ao buscar proventos."); 
             if (proventosAtuais.length === 0) totalProventosEl.textContent = "Erro";
         });
@@ -1667,7 +1622,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         promessaHistorico.then(({ labels, data }) => {
             renderizarGraficoHistorico({ labels, data });
         }).catch(err => {
-            console.error("Erro ao buscar histórico agregado (BFF):", err);
             showToast("Erro ao buscar histórico."); 
             renderizarGraficoHistorico({ labels: [], data: [] }); 
         });
@@ -1682,46 +1636,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- FUNÇÕES DE CRUD (Modificadas para Supabase) ---
+    // --- FUNÇÕES DE CRUD (SUPABASE) ---
     
     async function handleToggleFavorito() {
         const symbol = detalhesFavoritoBtn.dataset.symbol;
         if (!symbol || !currentUser) return;
-
         const isFavorite = watchlist.some(item => item.symbol === symbol);
-
         try {
             if (isFavorite) {
-                // Remover do Supabase
-                const { error } = await supabase
-                    .from('watchlist')
-                    .delete()
-                    .match({ user_id: currentUser.id, symbol: symbol });
-                
+                const { error } = await supabase.from('watchlist').delete().match({ user_id: currentUser.id, symbol: symbol });
                 if (error) throw error;
-                
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 showToast(`${symbol} removido dos favoritos.`);
             } else {
-                // Adicionar ao Supabase
                 const newItem = { user_id: currentUser.id, symbol: symbol };
-                const { data, error } = await supabase
-                    .from('watchlist')
-                    .insert(newItem)
-                    .select();
-                
+                const { data, error } = await supabase.from('watchlist').insert(newItem).select().single();
                 if (error) throw error;
-
-                // Adiciona o item retornado (com created_at) ao estado local
-                watchlist.push({ symbol: data[0].symbol, addedAt: data[0].created_at });
+                watchlist.push({ symbol: data.symbol, addedAt: data.created_at });
                 showToast(`${symbol} adicionado aos favoritos!`, 'success');
             }
             atualizarIconeFavorito(symbol);
             renderizarWatchlist();
-        } catch (e) {
-            console.error("Erro ao salvar favorito:", e);
-            showToast("Erro ao salvar favorito.");
-        }
+        } catch (e) { showToast("Erro ao salvar favorito."); }
     }
     
     async function handleSalvarTransacao() {
@@ -1731,7 +1667,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let novaQuantidade = parseInt(quantityInput.value, 10);
         let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
         let dataTransacao = dateInput.value;
-        let transacaoID = transacaoIdInput.value; // Este será o UUID do Supabase se estiver editando
+        let transacaoID = transacaoIdInput.value;
 
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
@@ -1743,7 +1679,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         addButton.innerHTML = `<span class="loader-sm"></span>`;
         addButton.disabled = true;
 
-        // Validação de Ticker (só para novos ativos)
         if (!transacaoID) {
             const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
             if (!ativoExistente) {
@@ -1767,60 +1702,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             if (transacaoID) {
-                // MODO EDIÇÃO
                 const transacaoAtualizada = {
-                    // user_id não é atualizado, apenas usado no 'match'
-                    date: dataISO,
-                    symbol: ticker,
-                    quantity: novaQuantidade,
-                    price: novoPreco
+                    date: dataISO, symbol: ticker, quantity: novaQuantidade, price: novoPreco
                 };
-                
                 const { data, error } = await supabase
                     .from('transacoes')
                     .update(transacaoAtualizada)
                     .match({ id: transacaoID, user_id: currentUser.id })
-                    .select() // Pede ao Supabase para retornar o registro atualizado
-                    .single(); // Espera um único resultado
-                    
+                    .select()
+                    .single();
                 if (error) throw error;
-                
-                // Atualiza o estado local
                 const index = transacoes.findIndex(t => t.id === transacaoID);
                 if (index > -1) transacoes[index] = data;
-                
                 showToast("Transação atualizada!", 'success');
-                
             } else {
-                // MODO ADIÇÃO
                 const novaTransacao = {
-                    user_id: currentUser.id,
-                    date: dataISO,
-                    symbol: ticker,
-                    quantity: novaQuantidade,
-                    price: novoPreco,
-                    legacy_id: 'tx_' + Date.now() // Apenas para referência, se necessário
+                    user_id: currentUser.id, date: dataISO, symbol: ticker,
+                    quantity: novaQuantidade, price: novoPreco
                 };
-                
                 const { data, error } = await supabase
                     .from('transacoes')
                     .insert(novaTransacao)
-                    .select() // Pede ao Supabase para retornar o registro criado
-                    .single(); // Espera um único resultado
-                
+                    .select()
+                    .single();
                 if (error) throw error;
-                
-                // Adiciona o novo registro (com o UUID gerado) ao estado local
                 transacoes.push(data);
                 showToast("Ativo adicionado!", 'success');
             }
-
             hideAddModal();
             await removerCacheAtivo(ticker); 
             await atualizarTodosDados(false);
-
         } catch (error) {
-            console.error("Erro ao salvar transação:", error);
             showToast(`Erro ao salvar: ${error.message}`);
         } finally {
             addButton.innerHTML = `Adicionar`;
@@ -1830,45 +1742,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function handleRemoverAtivo(symbol) {
         if (!currentUser) return;
-        
         showModal(
             'Remover Ativo', 
             `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
             async () => { 
-                
-                // Deleta transações do Supabase
-                const { error: txError } = await supabase
-                    .from('transacoes')
-                    .delete()
-                    .match({ user_id: currentUser.id, symbol: symbol });
-                    
-                if (txError) {
-                    showToast(`Erro ao remover transações: ${txError.message}`);
-                    return;
-                }
-                
-                // Atualiza estado local
+                const { error: txError } = await supabase.from('transacoes').delete().match({ user_id: currentUser.id, symbol: symbol });
+                if (txError) { showToast(`Erro: ${txError.message}`); return; }
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
-
-                // Limpa caches
                 await removerCacheAtivo(symbol); 
-                
-                // Deleta proventos conhecidos (opcional, mas limpo)
-                await supabase
-                    .from('user_proventos_conhecidos')
-                    .delete()
-                    .match({ user_id: currentUser.id, symbol: symbol });
-                
-                // Deleta da watchlist (opcional, mas limpo)
-                await supabase
-                    .from('watchlist')
-                    .delete()
-                    .match({ user_id: currentUser.id, symbol: symbol });
-                
-                // Atualiza estado local
+                await supabase.from('user_proventos_conhecidos').delete().match({ user_id: currentUser.id, symbol: symbol });
+                await supabase.from('watchlist').delete().match({ user_id: currentUser.id, symbol: symbol });
                 proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
-                
                 renderizarWatchlist();
                 await atualizarTodosDados(false); 
                 showToast(`${symbol} removido com sucesso.`, 'success');
@@ -1878,79 +1763,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function handleAbrirModalEdicao(id) {
         const tx = transacoes.find(t => t.id === id);
-        if (!tx) {
-            showToast("Erro: Transação não encontrada.");
-            return;
-        }
-        
+        if (!tx) { showToast("Erro: Transação não encontrada."); return; }
         transacaoEmEdicao = tx;
         addModalTitle.textContent = 'Editar Compra';
-        transacaoIdInput.value = tx.id; // Agora é o UUID do Supabase
+        transacaoIdInput.value = tx.id;
         tickerInput.value = tx.symbol;
         tickerInput.disabled = true;
         dateInput.value = formatDateToInput(tx.date);
         quantityInput.value = tx.quantity;
         precoMedioInput.value = tx.price;
         addButton.textContent = 'Salvar';
-        
         showAddModal();
     }
     
     function handleExcluirTransacao(id, symbol) {
         if (!currentUser) return;
-        
         const tx = transacoes.find(t => t.id === id);
-        if (!tx) {
-             showToast("Erro: Transação não encontrada.");
-             return;
-        }
-
+        if (!tx) { showToast("Erro: Transação não encontrada."); return; }
         const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}`;
-        
         showModal('Excluir Transação', msg, async () => { 
-            
-            // Deleta do Supabase
-            const { error } = await supabase
-                .from('transacoes')
-                .delete()
-                .match({ id: id, user_id: currentUser.id });
-                
-            if (error) {
-                showToast(`Erro ao excluir: ${error.message}`);
-                return;
-            }
-
-            // Atualiza estado local
+            const { error } = await supabase.from('transacoes').delete().match({ id: id, user_id: currentUser.id });
+            if (error) { showToast(`Erro ao excluir: ${error.message}`); return; }
             transacoes = transacoes.filter(t => t.id !== id);
-            
             await removerCacheAtivo(symbol);
-            
-            // Verifica se foi a última transação
             const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
             if (!outrasTransacoes) {
-                // Limpa proventos locais (serão limpos da nuvem na próxima busca)
                 proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
-                
-                // Pergunta se quer manter na watchlist
                 const isFavorite = watchlist.some(item => item.symbol === symbol);
                 if (isFavorite) {
-                    setTimeout(() => {
-                         showModal(
-                            'Manter na Watchlist?',
-                            `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua watchlist?`,
-                            () => {} // Apenas fecha
-                        );
-                    }, 300);
+                    setTimeout(() => showModal('Manter na Watchlist?', `...`, () => {}), 300);
                 }
             }
-            
             await atualizarTodosDados(false); 
             showToast("Transação excluída.", 'success');
         });
     }
     
-    // --- LÓGICA DE DETALHES (sem mudanças, exceto watchlist) ---
-    
+    // --- LÓGICA DE DETALHES (sem mudanças) ---
     function limparDetalhes() {
         detalhesMensagem.classList.remove('hidden');
         detalhesLoading.classList.add('hidden');
@@ -1982,11 +1831,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesTituloTexto.textContent = symbol;
         detalhesNomeLongo.textContent = 'A carregar...';
-        
         currentDetalhesSymbol = symbol;
         currentDetalhesMeses = 3; 
         currentDetalhesHistoricoJSON = null; 
-        
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.meses === '3'); 
         });
@@ -2001,17 +1848,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 precoData = data.results?.[0];
                 if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData); 
                 else throw new Error(precoData?.error || 'Ativo não encontrado');
-            } catch (e) { 
-                precoData = null; 
-                showToast("Erro ao buscar preço."); 
-            }
+            } catch (e) { precoData = null; showToast("Erro ao buscar preço."); }
         }
 
         if (isFII(symbol)) {
             detalhesHistoricoContainer.classList.remove('hidden'); 
             fetchHistoricoIA(symbol); 
         }
-        
         detalhesLoading.classList.add('hidden');
 
         if (precoData) {
@@ -2028,7 +1871,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let corPL = 'text-gray-500';
                 if (lucroPrejuizo > 0) corPL = 'text-green-500';
                 else if (lucroPrejuizo < 0) corPL = 'text-red-500';
-                
                 plHtml = `
                     <div class="bg-gray-800 p-4 rounded-xl">
                         <span class="text-xs text-gray-500">Sua Posição</span>
@@ -2040,11 +1882,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 `;
             }
-            detalhesPreco.innerHTML = `${plHtml} `;
+            detalhesPreco.innerHTML = `
+                <div class="col-span-2 bg-gray-800 p-4 rounded-xl text-center mb-1">
+                    <span class="text-sm text-gray-500">Preço Atual</span>
+                    <div class="flex justify-center items-end gap-3">
+                        <h2 class="text-4xl font-bold text-white">${formatBRL(precoData.regularMarketPrice)}</h2>
+                        <span class="text-xl font-semibold ${variacaoCor}">${formatPercent(precoData.regularMarketChangePercent)}</span>
+                    </div>
+                </div>
+                ${plHtml}
+                `;
         } else {
             detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
         }
-        
         renderizarTransacoesDetalhes(symbol);
         atualizarIconeFavorito(symbol);
     }
@@ -2055,20 +1905,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('detalhes-transacoes-container');
         listaContainer.innerHTML = '';
         const txsDoAtivo = transacoes.filter(t => t.symbol === symbol).sort((a, b) => new Date(b.date) - new Date(a.date));
-    
         if (txsDoAtivo.length === 0) {
             vazioMsg.classList.remove('hidden');
             listaContainer.classList.add('hidden');
         } else {
             vazioMsg.classList.add('hidden');
             listaContainer.classList.remove('hidden');
-            txsDoAtivo.forEach(t => { /* ... (renderiza o card da transação) ... */ });
+            txsDoAtivo.forEach(t => { 
+                const card = document.createElement('div');
+                card.className = 'card-bg p-3 rounded-lg flex items-center justify-between';
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <svg ... class="h-5 w-5 text-green-500">...</svg>
+                        <div>
+                            <p class="text-sm font-semibold text-white">Compra</p>
+                            <p class="text-xs text-gray-400">${formatDate(t.date)}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-semibold text-green-500">+${t.quantity} Cotas</p>
+                        <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
+                    </div>
+                `;
+                listaContainer.appendChild(card);
+            });
         }
         container.classList.remove('hidden');
     }
     
     async function fetchHistoricoIA(symbol) {
-        detalhesAiProvento.innerHTML = `<div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48"> ... </div>`;
+        detalhesAiProvento.innerHTML = `<div id="historico-periodo-loading" ...>...</div>`;
         try {
             const cacheKey = `hist_ia_${symbol}_12`;
             let aiResultJSON = await getCache(cacheKey);
@@ -2082,7 +1948,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderHistoricoIADetalhes(3);
         } catch (e) {
             showToast("Erro na consulta IA."); 
-            detalhesAiProvento.innerHTML = `<div class="border border-red-700 ..."> ... </div>`;
+            detalhesAiProvento.innerHTML = `<div class="border border-red-700 ...">...</div>`;
         }
     }
     
@@ -2153,39 +2019,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         return response.json; 
     }
 
-    // --- FUNÇÕES DE BACKUP/MIGRAÇÃO (Modificadas) ---
-    
+    // --- FUNÇÕES DE BACKUP/MIGRAÇÃO ---
     async function handleShareCarteira() {
-        if (transacoes.length === 0) {
-            showToast("Sua carteira está vazia.");
-            return;
-        }
+        if (transacoes.length === 0) { showToast("Sua carteira está vazia."); return; }
         const loaderIcon = `<svg ... class="w-5 h-5 spin-animation">...</svg>`;
         const originalIcon = compartilharCarteiraBtn.innerHTML;
         compartilharCarteiraBtn.innerHTML = loaderIcon;
         compartilharCarteiraBtn.disabled = true;
         try {
-            // Prepara transações para compartilhar (remove dados do usuário)
             const transacoesPublicas = transacoes.map(t => ({
-                symbol: t.symbol,
-                date: t.date,
-                quantity: t.quantity,
-                price: t.price,
-                type: 'buy' // Assume 'buy'
+                symbol: t.symbol, date: t.date, quantity: t.quantity, price: t.price, type: 'buy'
             }));
-            
             const response = await fetch('/api/set-share', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ transacoes: transacoesPublicas })
             });
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || "Erro ao gerar link.");
-            }
+            if (!response.ok) { const e = await response.json(); throw new Error(e.error); }
             const { shareId } = await response.json();
             const url = `${window.location.origin}/public.html?id=${shareId}`;
-            showModal('Link Gerado!', `... ${url}`, () => {
+            showModal('Link Gerado!', `Seu link público foi criado e irá expirar em 30 dias.\n\n ${url}`, () => {
                 navigator.clipboard.writeText(url)
                     .then(() => showToast("Link copiado!", 'success'))
                     .catch(() => showToast("Não foi possível copiar o link."));
@@ -2201,9 +2053,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleCopiarDados() {
-        // Esta função agora é um BACKUP DA NUVEM
         if (!currentUser) return;
-        
         copiarDadosBtn.disabled = true;
         try {
             const exportData = {
@@ -2213,14 +2063,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 user_proventos_conhecidos: proventosConhecidos,
                 user_app_state: [{ saldo_caixa: saldoCaixa, meses_processados: mesesProcessados }]
             };
-            
             const bundle = {
-                version: 'vesto-v2-supabase',
-                exportedAt: new Date().toISOString(),
-                data: exportData
+                version: 'vesto-v2-supabase', exportedAt: new Date().toISOString(), data: exportData
             };
             await navigator.clipboard.writeText(JSON.stringify(bundle));
-            showToast("Backup da nuvem copiado para o clipboard!", 'success'); 
+            showToast("Backup da nuvem copiado!", 'success'); 
         } catch (err) {
             showToast("Erro ao copiar dados."); 
         } finally {
@@ -2229,28 +2076,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleImportarTexto() {
-        // Esta função agora IMPORTA PARA NUVEM
         if (!currentUser) return;
-        
         const texto = importTextTextarea.value;
         if (!texto) { showToast("Área de texto vazia."); return; }
-
-        let backup;
         try {
-            backup = JSON.parse(texto);
-            if (!backup.version || !backup.data) {
-                throw new Error("Texto de backup inválido.");
-            }
-            
+            const backup = JSON.parse(texto);
+            if (!backup.version || !backup.data) throw new Error("Texto de backup inválido.");
             hideImportModal(); 
-            
             setTimeout(() => { 
                  showModal(
                     'Importar Backup?',
                     'Atenção: Isso irá APAGAR todos os seus dados da NUVEM e substituí-los pelo backup. Esta ação não pode ser desfeita.',
-                    () => { 
-                        importarDadosSupabase(backup.data); 
-                    }
+                    () => { importarDadosSupabase(backup.data); }
                 );
             }, 250);
         } catch (err) { showToast(err.message || "Erro ao ler texto."); }
@@ -2260,7 +2097,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentUser) return;
         importTextConfirmBtn.textContent = 'A importar...';
         importTextConfirmBtn.disabled = true;
-
         try {
             // Limpa dados antigos da nuvem
             await supabase.from('transacoes').delete().eq('user_id', currentUser.id);
@@ -2294,10 +2130,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             await supabase.from('user_app_state').insert(appStateNovo);
 
             showToast("Dados importados com sucesso! Atualizando...", 'success');
-            await loadUserSession(); // Recarrega tudo da nuvem
-            
+            await loadUserSession();
         } catch (err) {
-            console.error("Erro grave durante a importação:", err);
             showToast(`Erro grave ao importar dados: ${err.message}`); 
         } finally {
             importTextConfirmBtn.textContent = 'Restaurar';
@@ -2308,22 +2142,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- LÓGICA DE MIGRAÇÃO (IndexedDB -> Supabase) ---
     async function handleMigration() {
         if (!currentUser) return;
-        
         migrationButton.innerHTML = `<span class="loader-sm"></span>`;
         migrationButton.disabled = true;
 
         try {
             console.log("Iniciando migração de dados locais...");
-            // 1. Ler todos os dados do IndexedDB
             const localDB = indexedDB.open(DB_NAME, DB_VERSION);
-            
             localDB.onsuccess = async (event) => {
                 const db = event.target.result;
-                
-                // Função auxiliar para ler um store
                 const getAllFromStore = (storeName) => {
                     return new Promise((resolve, reject) => {
                         if (!db.objectStoreNames.contains(storeName)) {
+                            // Tenta ler stores antigos pelo nome
+                            if (storeName === 'appState' && db.objectStoreNames.contains('appState')) {
+                                // ... (lógica de fallback)
+                            }
                             console.warn(`Store local ${storeName} não encontrado para migração.`);
                             return resolve([]);
                         }
@@ -2334,15 +2167,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 };
 
-                // 2. Coleta todos os dados locais
+                // 2. Coleta dados locais (lendo os nomes de store antigos)
                 const localTransacoes = await getAllFromStore('transacoes');
                 const localWatchlist = await getAllFromStore('watchlist');
                 const localPatrimonio = await getAllFromStore('patrimonio');
                 const localProventos = await getAllFromStore('proventosConhecidos');
-                const localAppState = (await getAllFromStore('appState'))[0] || { value: 0 };
+                const localAppState = (await getAllFromStore('appState')).find(s => s.key === 'saldoCaixa') || { value: 0 };
                 const localHistProc = (await getAllFromStore('appState')).find(s => s.key === 'historicoProcessado') || { value: [] };
 
-                // 3. Prepara os dados para o Supabase
+                // 3. Prepara para Supabase
                 const userId = currentUser.id;
                 const transacoesNovas = (localTransacoes || []).map(t => ({ user_id: userId, symbol: t.symbol, date: t.date, quantity: t.quantity, price: t.price, legacy_id: t.id }));
                 const watchlistNova = (localWatchlist || []).map(w => ({ user_id: userId, symbol: w.symbol }));
@@ -2357,7 +2190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     meses_processados: localHistProc.value || []
                 };
 
-                // 4. Envia para o Supabase (limpa antes para garantir)
+                // 4. Envia para Supabase (limpa antes)
                 await supabase.from('transacoes').delete().eq('user_id', userId);
                 await supabase.from('watchlist').delete().eq('user_id', userId);
                 await supabase.from('user_patrimonio').delete().eq('user_id', userId);
@@ -2370,14 +2203,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (proventosNovos.length > 0) await supabase.from('user_proventos_conhecidos').insert(proventosNovos);
                 await supabase.from('user_app_state').insert(appStateNovo);
                 
-                showToast("Migração concluída com sucesso! Atualizando...", 'success');
+                showToast("Migração concluída! Atualizando...", 'success');
                 migrationButton.classList.add('hidden');
                 
-                // 5. Recarrega a sessão com os novos dados da nuvem
+                // 5. Deleta os stores locais antigos (exceto apiCache)
+                const deleteDB = indexedDB.open(DB_NAME, DB_VERSION);
+                deleteDB.onsuccess = (e) => {
+                    const db = e.target.result;
+                    db.close();
+                    const nextVersion = db.version + 1;
+                    const deleteReq = indexedDB.open(DB_NAME, nextVersion);
+                    deleteReq.onupgradeneeded = (ev) => {
+                        const upgradeDb = ev.target.result;
+                        if (upgradeDb.objectStoreNames.contains('transacoes')) upgradeDb.deleteObjectStore('transacoes');
+                        if (upgradeDb.objectStoreNames.contains('patrimonio')) upgradeDb.deleteObjectStore('patrimonio');
+                        if (upgradeDb.objectStoreNames.contains('appState')) upgradeDb.deleteObjectStore('appState');
+                        if (upgradeDb.objectStoreNames.contains('proventosConhecidos')) upgradeDb.deleteObjectStore('proventosConhecidos');
+                        if (upgradeDb.objectStoreNames.contains('watchlist')) upgradeDb.deleteObjectStore('watchlist');
+                        console.log("Stores locais antigos limpos após migração.");
+                    };
+                    deleteReq.onsuccess = (ev) => ev.target.result.close();
+                };
+                
                 await loadUserSession();
             };
             localDB.onerror = (e) => { throw new Error('Não foi possível abrir o DB local para migração.'); };
-            
         } catch (error) {
             console.error("Erro na migração:", error);
             showToast(`Erro na migração: ${error.message}`);
@@ -2386,7 +2236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- LISTENERS DE UI (com migração) ---
+    // --- LISTENERS DE UI ---
     refreshButton.addEventListener('click', () => atualizarTodosDados(true));
     refreshNoticiasButton.addEventListener('click', () => handleAtualizarNoticias(true));
     showAddModalBtn.addEventListener('click', showAddModal);
@@ -2415,7 +2265,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById(target.dataset.targetDrawer)?.classList.toggle('open');
         target.querySelector('.card-arrow-icon')?.classList.toggle('open');
     });
-    const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
     if (watchlistToggleBtn) {
         watchlistToggleBtn.addEventListener('click', (e) => {
             const target = e.currentTarget;
@@ -2472,7 +2321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showRegisterBtn.addEventListener('click', () => showAuthForm('register'));
     showLoginBtn.addEventListener('click', () => showAuthForm('login'));
 
-    // --- FUNÇÕES DE INICIALIZAÇÃO (Modificadas) ---
+    // --- FUNÇÕES DE INICIALIZAÇÃO ---
     
     async function loadUserSession() {
         hideAuthPage();
@@ -2497,11 +2346,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         mesesProcessados = appStateData.meses;
         proventosConhecidos = provData;
 
-        console.log("Dados da nuvem carregados:", { transacoes, watchlist, patrimonio, saldoCaixa, mesesProcessados, proventosConhecidos });
+        console.log("Dados da nuvem carregados:", { transacoes: transacoes.length, watchlist: watchlist.length, patrimonio: patrimonio.length, saldoCaixa, mesesProcessados: mesesProcessados.length, proventosConhecidos: proventosConhecidos.length });
         
         // 2. Inicia o loop para salvar o appState (saldo/meses)
         if (appStateInterval) clearInterval(appStateInterval);
-        appStateInterval = setInterval(salvarAppStateSupabase, 10000); // Salva a cada 10s se houver mudanças
+        appStateInterval = setInterval(salvarAppStateSupabase, 10000);
 
         // 3. Renderiza o app com os dados da nuvem
         renderizarWatchlist();
@@ -2510,24 +2359,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         handleAtualizarNoticias(false); 
         
         // 4. Verifica se precisa de migração
-        // Abre o IndexedDB local para *verificar* se há dados antigos
         const localDBCheck = indexedDB.open(DB_NAME, DB_VERSION);
         localDBCheck.onsuccess = (event) => {
             const db = event.target.result;
-            // Se as transações da nuvem estão vazias E o store local existe
             if (transacoes.length === 0 && db.objectStoreNames.contains('transacoes')) {
                 const tx = db.transaction('transacoes', 'readonly');
                 const countReq = tx.objectStore('transacoes').count();
                 countReq.onsuccess = () => {
                     if (countReq.result > 0) {
-                        // O usuário tem dados locais, mas não na nuvem! Oferece migração.
                         console.log(`Dados locais encontrados (${countReq.result} transações). Oferecendo migração.`);
                         migrationButton.classList.remove('hidden');
                     }
                 };
             }
         };
-        localDBCheck.onerror = () => { /* falha silenciosa, não oferece migração */ };
+        localDBCheck.onerror = () => {};
     }
 
     async function checkUserSession() {
@@ -2535,11 +2381,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data.session) {
             console.log("Usuário já está logado:", data.session.user.email);
             currentUser = data.session.user;
-            await loadUserSession(); // Carrega o app
+            await loadUserSession();
         } else {
             console.log("Nenhum usuário logado. Mostrando tela de login.");
-            renderizarDashboardSkeletons(true); // Mostra skeletons
-            renderizarCarteiraSkeletons(true); // Mostra skeletons
+            renderizarDashboardSkeletons(true);
+            renderizarCarteiraSkeletons(true);
         }
     }
 
@@ -2560,7 +2406,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (supabaseReady) {
             await checkUserSession();
             
-            // Ouve por mudanças no estado de auth (ex: login em outra aba)
             supabase.auth.onAuthStateChange((event, session) => {
                 if (event === 'SIGNED_IN' && !currentUser) {
                     currentUser = session.user;

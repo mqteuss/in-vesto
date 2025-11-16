@@ -3,8 +3,7 @@ import * as supabaseDB from './supabase.js';
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
-// ... (Todas as funções de formatação (formatBRL, etc) e de renderização (criarCardElemento, etc) permanecem idênticas) ...
-// ... (Linhas 5 a 1224) ...
+// ... (Todo o código das linhas 5-1258 permanece o mesmo) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -285,8 +284,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
     
-    // ... (Declaração de todas as variáveis (const authContainer, etc) permanece idêntica) ...
-    // ... (Linhas 305 a 367) ...
     const authContainer = document.getElementById('auth-container');
     const authLoading = document.getElementById('auth-loading');
     const loginForm = document.getElementById('login-form');
@@ -403,8 +400,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
 
-    // ... (Todas as funções do app (showToast, service worker, cache, modais, etc) permanecem idênticas) ...
-    // ... (Linhas 369 a 1224) ...
     function showToast(message, type = 'error') {
         clearTimeout(toastTimer);
         toastMessageElement.textContent = message;
@@ -2197,8 +2192,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     
-    // ... (Todos os event listeners (refresh, modais, abas, etc) permanecem idênticos) ...
-    // ... (Linhas 1204 a 1224) ...
     refreshButton.addEventListener('click', async () => {
         await atualizarTodosDados(true); 
     });
@@ -2381,6 +2374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         renderHistoricoIADetalhes(currentDetalhesMeses);
     });
+
     async function callGeminiHistoricoAPI(ticker, todayString) { 
         const body = { 
             mode: 'historico_12m', 
@@ -2472,10 +2466,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         showAuthLoading(true);
 
-        // ===================================================================
-        // CORREÇÃO: A inicialização do Supabase (que é assíncrona)
-        // deve acontecer ANTES de adicionar os listeners.
-        // ===================================================================
         let session;
         try {
             session = await supabaseDB.initialize();
@@ -2483,10 +2473,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error("Erro na inicialização:", e);
             showAuthLoading(false);
             showLoginError("Erro ao conectar com o servidor. Tente novamente.");
-            return; // Interrompe a execução se a inicialização falhar
+            return; 
         }
         
-        // Agora é seguro adicionar os listeners, pois o supabaseClient existe
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
@@ -2499,6 +2488,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (error) {
                 showLoginError(error);
+            } else {
+                // SUCESSO NO LOGIN: Recarrega a página manualmente
+                window.location.reload();
             }
         });
 
@@ -2513,9 +2505,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await supabaseDB.signUp(email, password);
             
             if (result === 'success') {
-                showAuthLoading(true);
+                // CORREÇÃO: Removida a linha 'showAuthLoading(true);'
+                // Isso permite que o modal apareça sobre o formulário de cadastro.
                 showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
-                    showAuthLoading(false);
+                    // Ao fechar o modal, volta para a tela de login
+                    signupForm.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                    showAuthLoading(false); 
                 });
             } else {
                 showSignupError(result);
@@ -2540,7 +2536,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
-        // Agora, verificamos a sessão que já foi carregada
         if (session) {
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');

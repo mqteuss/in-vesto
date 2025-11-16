@@ -3,7 +3,8 @@ import * as supabaseDB from './supabase.js';
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
-// ... (Todo o código das linhas 5-1299 permanece o mesmo) ...
+// ... (Todas as funções de formatação (formatBRL, etc) e de renderização (criarCardElemento, etc) permanecem idênticas) ...
+// ... (Linhas 5 a 1037) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -1579,9 +1580,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const mesAtual = dataAtual.getMonth(); 
         const anoAtual = dataAtual.getFullYear();
         
-        // ===================================================================
-        // CORREÇÃO: Reseta o saldoCaixa antes de recalcular
-        // ===================================================================
         if (force) {
             saldoCaixa = 0;
             mesesProcessados = [];
@@ -1773,6 +1771,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!transacaoID) {
             const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
+
+            // ===================================================================
+            // CORREÇÃO: Reseta o caixa se for um NOVO FII
+            // ===================================================================
+            if (!ativoExistente && isFII(ticker)) {
+                console.log("[Caixa] Novo FII detectado. Resetando saldoCaixa e mesesProcessados.");
+                saldoCaixa = 0;
+                await salvarCaixa();
+                mesesProcessados = [];
+                await salvarHistoricoProcessado();
+            }
+
             if (!ativoExistente) {
                 const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
                 try {
@@ -1836,7 +1846,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideAddModal();
         
         await removerCacheAtivo(ticker); 
-        await atualizarTodosDados(false);
+        // ===================================================================
+        // CORREÇÃO: Força a atualização (true) se o caixa foi resetado
+        // ===================================================================
+        const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
+        const forceUpdate = (!ativoExistente && isFII(ticker));
+        
+        await atualizarTodosDados(forceUpdate);
     }
 
     function handleRemoverAtivo(symbol) {
@@ -1854,16 +1870,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 renderizarWatchlist();
                 
-                // ===================================================================
-                // CORREÇÃO: Zera o caixa e o histórico para forçar recálculo
-                // ===================================================================
                 saldoCaixa = 0;
                 await salvarCaixa();
                 
                 mesesProcessados = [];
                 await salvarHistoricoProcessado();
                 
-                // Força uma atualização completa (true) para recalcular o saldoCaixa
                 await atualizarTodosDados(true); 
             }
         );
@@ -1910,9 +1922,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
 
-                // ===================================================================
-                // CORREÇÃO: Zera o caixa e o histórico para forçar recálculo
-                // ===================================================================
                 saldoCaixa = 0;
                 await salvarCaixa();
                 mesesProcessados = [];
@@ -2559,20 +2568,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
-        // ===================================================================
-        // CORREÇÃO: LÓGICA DE EXIBIÇÃO DE LOGIN/APP
-        // ===================================================================
         if (session) {
             currentUserId = session.user.id;
-            authContainer.classList.add('hidden');    // Esconde o Login
-            appWrapper.classList.remove('hidden'); // Mostra o App
+            authContainer.classList.add('hidden');    
+            appWrapper.classList.remove('hidden'); 
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
         } else {
-            // Se a sessão for nula (usuário deslogado)
-            appWrapper.classList.add('hidden');      // Esconde o App
-            authContainer.classList.remove('hidden'); // Mostra o Login
-            showAuthLoading(false);                 // Garante que o formulário de login apareça
+            // ===================================================================
+            // CORREÇÃO: Mostra a tela de login se a sessão for nula
+            // ===================================================================
+            appWrapper.classList.add('hidden');      
+            authContainer.classList.remove('hidden'); 
+            showAuthLoading(false);                 
         }
     }
     

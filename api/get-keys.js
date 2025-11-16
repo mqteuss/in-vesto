@@ -5,10 +5,11 @@
 export default async function handler(request, response) {
     
     // Pega as chaves públicas das Variáveis de Ambiente do Vercel
-    const { URL_SUPABASE, SUPABASE_ANON_KEY } = process.env;
+    // CORRIGIDO: Lendo 'SUPABASE_URL' (como na sua imagem) em vez de 'URL_SUPABASE'
+    const { SUPABASE_URL, SUPABASE_ANON_KEY } = process.env;
 
-    if (!URL_SUPABASE || !SUPABASE_ANON_KEY) {
-        console.error("Erro: Chaves do Supabase não configuradas no Vercel.");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        console.error("Erro: Chaves do Supabase (SUPABASE_URL ou SUPABASE_ANON_KEY) não configuradas no Vercel.");
         return response.status(500).json({ 
             error: "Configuração do servidor incompleta. As chaves do Supabase não foram encontradas." 
         });
@@ -20,7 +21,7 @@ export default async function handler(request, response) {
     
     // Envia as chaves para o cliente
     return response.status(200).json({
-        supabaseUrl: URL_SUPABASE,
+        supabaseUrl: SUPABASE_URL,
         supabaseKey: SUPABASE_ANON_KEY
     });
 }

@@ -3,6 +3,7 @@ Chart.defaults.borderColor = '#374151';
 
 // ===================================================================
 // FUNÇÕES UTILITÁRIAS GLOBAIS
+// (Movidas para fora para estarem acessíveis globalmente)
 // ===================================================================
 
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
@@ -54,7 +55,8 @@ function parseMesAno(mesAnoStr) {
 }
 
 // ===================================================================
-// FUNÇÕES DE RENDERIZAÇÃO (Otimizadas)
+// NOVAS FUNÇÕES DE RENDERIZAÇÃO (OTIMIZADAS)
+// (Usadas pela nova renderizarCarteira)
 // ===================================================================
 
 function criarCardElemento(ativo, dados) {
@@ -64,6 +66,7 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento
     } = dados;
 
+    // --- HTML da Tag P/L ---
     let plTagHtml = '';
     if (dadoPreco) {
         plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
@@ -71,9 +74,12 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
     
+    // --- HTML do Provento ---
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
+            
+            // DEPOIS (Corrigido): Agrupado com space-y-1
             proventoHtml = `
             <div class="mt-3 space-y-1">
                 <div class="flex justify-between items-center">
@@ -85,6 +91,7 @@ function criarCardElemento(ativo, dados) {
                     <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
+
         } else {
             proventoHtml = `
             <div class="flex justify-between items-center mt-3">
@@ -94,10 +101,13 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
+    // --- Cria o Elemento ---
     const card = document.createElement('div');
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
-    card.setAttribute('data-symbol', ativo.symbol);
+    card.setAttribute('data-symbol', ativo.symbol); // O ID principal!
 
+    // --- O HTML (Note os 'data-field' adicionados) ---
+    // A classe 'text-purple-400' no SVG é mantida, pois corresponde ao #c084fc do Tailwind CDN.
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -160,20 +170,24 @@ function atualizarCardElemento(card, ativo, dados) {
         corPL, bgPL, dadoProvento
     } = dados;
 
+    // --- Atualiza os campos simples ---
     card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
     card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : 'A calcular...';
     card.querySelector('[data-field="pm-label"]').textContent = `Custo (P.M. ${formatBRL(ativo.precoMedio)})`;
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
 
+    // --- Atualiza Variação (Valor e Cor) ---
     const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
     variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-    variacaoEl.className = `${corVariacao} font-semibold text-lg`; 
+    variacaoEl.className = `${corVariacao} font-semibold text-lg`; // Redefine as classes de cor
 
+    // --- Atualiza P/L (Valor e Cor) ---
     const plValorEl = card.querySelector('[data-field="pl-valor"]');
     plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...';
-    plValorEl.className = `text-base font-semibold ${corPL}`; 
+    plValorEl.className = `text-base font-semibold ${corPL}`; // Redefine as classes de cor
 
+    // --- Atualiza P/L Tag (HTML interno) ---
     let plTagHtml = '';
     if (dadoPreco) {
         plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
@@ -182,9 +196,12 @@ function atualizarCardElemento(card, ativo, dados) {
     }
     card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
 
+    // --- Atualiza Provento (HTML interno) ---
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
+            
+            // DEPOIS (Corrigido): Agrupado com space-y-1
             proventoHtml = `
             <div class="mt-3 space-y-1">
                 <div class="flex justify-between items-center">
@@ -214,15 +231,15 @@ function atualizarCardElemento(card, ativo, dados) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     
-    // --- CONSTANTES ---
     const REFRESH_INTERVAL = 1860000;
     const CACHE_DURATION = 1000 * 60 * 30;
     const CACHE_24_HORAS = 1000 * 60 * 60 * 24;
     const CACHE_6_HORAS = 1000 * 60 * 60 * 6;
-    const DB_NAME = 'vestoDB'; // Usado apenas para Cache
+    
+    const DB_NAME = 'vestoDB';
     const DB_VERSION = 2;
 
-    // --- SELETORES DE AUTH ---
+    // --- NOVOS SELETORES DE AUTH ---
     const authPage = document.getElementById('auth-page');
     const authContent = document.getElementById('auth-content');
     const loginForm = document.getElementById('login-form');
@@ -239,9 +256,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const showRegisterBtn = document.getElementById('show-register-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
     const logoutButton = document.getElementById('logout-button');
-    const migrationButton = document.getElementById('migration-button'); // Botão de Migração
+    const migrationButton = document.getElementById('migration-button'); // Adicionado seletor
+    // --- FIM DOS NOVOS SELETORES ---
 
-    // --- Objeto vestoDB (APENAS PARA CACHE) ---
     const vestoDB = {
         db: null,
         
@@ -251,91 +268,115 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
-                    // Limpa stores antigos (exceto apiCache)
-                    if (db.objectStoreNames.contains('transacoes')) db.deleteObjectStore('transacoes');
-                    if (db.objectStoreNames.contains('patrimonio')) db.deleteObjectStore('patrimonio');
-                    if (db.objectStoreNames.contains('appState')) db.deleteObjectStore('appState');
-                    if (db.objectStoreNames.contains('proventosConhecidos')) db.deleteObjectStore('proventosConhecidos');
-                    if (db.objectStoreNames.contains('watchlist')) db.deleteObjectStore('watchlist');
-
-                    // Garante que o apiCache existe
+                    
+                    // Mantém apenas o apiCache e o watchlist (local, antes da migração)
                     if (!db.objectStoreNames.contains('apiCache')) {
                         db.createObjectStore('apiCache', { keyPath: 'key' });
+                    }
+                    if (!db.objectStoreNames.contains('watchlist')) {
+                        db.createObjectStore('watchlist', { keyPath: 'symbol' });
+                    }
+                    
+                    // Dados que serão migrados
+                    if (!db.objectStoreNames.contains('transacoes')) {
+                        const transStore = db.createObjectStore('transacoes', { keyPath: 'id' });
+                        transStore.createIndex('bySymbol', 'symbol', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('patrimonio')) {
+                        db.createObjectStore('patrimonio', { keyPath: 'date' });
+                    }
+                    if (!db.objectStoreNames.contains('appState')) {
+                        db.createObjectStore('appState', { keyPath: 'key' });
+                    }
+                    if (!db.objectStoreNames.contains('proventosConhecidos')) {
+                        db.createObjectStore('proventosConhecidos', { keyPath: 'id' });
                     }
                 };
                 
                 request.onsuccess = (event) => {
                     this.db = event.target.result;
-                    console.log('[IDB] Conexão de Cache estabelecida.');
+                    console.log('[IDB] Conexão estabelecida.');
                     resolve();
                 };
                 
                 request.onerror = (event) => {
-                    console.error('[IDB] Erro ao abrir DB de Cache:', event.target.error);
+                    console.error('[IDB] Erro ao abrir DB:', event.target.error);
                     reject(event.target.error);
                 };
             });
         },
         
         _getStore(storeName, mode = 'readonly') {
-            if (!this.db) throw new Error('DB de Cache não inicializado.');
+            if (!this.db) throw new Error('DB não inicializado.');
             return this.db.transaction(storeName, mode).objectStore(storeName);
         },
 
         get(storeName, key) {
             return new Promise((resolve, reject) => {
-                try {
-                    const store = this._getStore(storeName);
-                    const request = store.get(key);
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = (e) => reject(e.target.error);
-                } catch(e) { reject(e); }
+                const store = this._getStore(storeName);
+                const request = store.get(key);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        },
+
+        getAll(storeName) {
+            return new Promise((resolve, reject) => {
+                const store = this._getStore(storeName);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        },
+        
+        getAllFromIndex(storeName, indexName, query) {
+             return new Promise((resolve, reject) => {
+                const store = this._getStore(storeName);
+                const index = store.index(indexName);
+                const request = index.getAll(query);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (e) => reject(e.target.error);
             });
         },
 
         put(storeName, value) {
             return new Promise((resolve, reject) => {
-                try {
-                    const store = this._getStore(storeName, 'readwrite');
-                    const request = store.put(value);
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = (e) => reject(e.target.error);
-                } catch(e) { reject(e); }
+                const store = this._getStore(storeName, 'readwrite');
+                const request = store.put(value);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (e) => reject(e.target.error);
             });
         },
 
         delete(storeName, key) {
             return new Promise((resolve, reject) => {
-                try {
-                    const store = this._getStore(storeName, 'readwrite');
-                    const request = store.delete(key);
-                    request.onsuccess = () => resolve();
-                    request.onerror = (e) => reject(e.target.error);
-                } catch(e) { reject(e); }
+                const store = this._getStore(storeName, 'readwrite');
+                const request = store.delete(key);
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e.target.error);
             });
         },
 
         clear(storeName) {
             return new Promise((resolve, reject) => {
-                try {
-                    const store = this._getStore(storeName, 'readwrite');
-                    const request = store.clear();
-                    request.onsuccess = () => resolve();
-                    request.onerror = (e) => reject(e.target.error);
-                } catch(e) { reject(e); }
+                const store = this._getStore(storeName, 'readwrite');
+                const request = store.clear();
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e.target.error);
             });
         }
     };
     
-    // --- SELETORES DO APP ---
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
     const toastElement = document.getElementById('toast-notification');
     const toastMessageElement = document.getElementById('toast-message');
+    // --- ALTERADO: Seletores dos ícones do Toast ---
     const toastIconError = document.getElementById('toast-icon-error');
     const toastIconSuccess = document.getElementById('toast-icon-success');
+    // --- FIM DA ALTERAÇÃO ---
     const fiiNewsList = document.getElementById('fii-news-list');
     const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
     const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
@@ -354,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
     const carteiraStatus = document.getElementById('carteira-status');
-    const carteiraMensagem = document.getElementById('carteira-mensagem');
+    const carteiraMensagem = document.getElementById('carteira-mensagem'); // Adicionado seletor
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
     const totalProventosEl = document.getElementById('total-proventos');
@@ -394,19 +435,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const updateButton = document.getElementById('update-button');
     const copiarDadosBtn = document.getElementById('copiar-dados-btn');
     const abrirImportarModalBtn = document.getElementById('abrir-importar-modal-btn');
-    const compartilharCarteiraBtn = document.getElementById('compartilhar-carteira-btn');
+    const compartilharCarteiraBtn = document.getElementById('compartilhar-carteira-btn'); // Adicionado seletor
     const importTextModal = document.getElementById('import-text-modal');
     const importTextModalContent = document.getElementById('import-text-modal-content');
     const importTextTextarea = document.getElementById('import-text-textarea');
     const importTextConfirmBtn = document.getElementById('import-text-confirm-btn');
     const importTextCancelBtn = document.getElementById('import-text-cancel-btn');
+    
+    // --- NOVOS SELETORES ---
     const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn'); 
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
     const watchlistStatusEl = document.getElementById('watchlist-status'); 
+    // --- FIM NOVOS SELETORES ---
 
-    // --- VARIÁVEIS DE ESTADO GLOBAL ---
     let transacoes = [];        
     let carteiraCalculada = []; 
     let patrimonio = [];
@@ -435,11 +478,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesSymbol = null;
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
+
+    // --- NOVAS VARIÁVEIS GLOBAIS DE AUTH ---
     let supabase = null;
     let currentUser = null;
     let appStateInterval = null; // Timer para salvar o appState
+    // --- FIM DAS NOVAS VARIÁVEIS ---
 
     // --- FUNÇÕES DE AUTH ---
+
+    // 1. Busca as chaves e inicializa o Supabase
     async function initSupabase() {
         try {
             const response = await fetch('/api/config');
@@ -452,9 +500,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!config.supabaseUrl || !config.supabaseKey) {
                 throw new Error('Configuração do Supabase incompleta.');
             }
+
+            // Inicializa o cliente Supabase
+            // (Usando a sintaxe global do CDN: supabase.createClient)
             supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
             console.log("Supabase inicializado.");
             return true;
+
         } catch (error) {
             console.error("Erro fatal ao inicializar Supabase:", error);
             showAuthError('login-error', `Erro de conexão: ${error.message}`);
@@ -462,6 +514,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // 2. Mostra erros nos formulários de login/registro
     function showAuthError(elementId, message) {
         const el = document.getElementById(elementId);
         if (el) {
@@ -475,6 +528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         registerSuccess.classList.add('hidden');
     }
 
+    // 3. Funções para trocar entre os formulários
     function showAuthForm(formToShow) {
         hideAuthMessages();
         if (formToShow === 'register') {
@@ -482,6 +536,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => {
                 loginForm.classList.add('hidden');
                 loginForm.classList.remove('form-out');
+                
                 registerForm.classList.remove('hidden');
                 registerForm.classList.add('form-in');
                 registerEmailInput.focus();
@@ -491,6 +546,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => {
                 registerForm.classList.add('hidden');
                 registerForm.classList.remove('form-out');
+                
                 loginForm.classList.remove('hidden');
                 loginForm.classList.add('form-in');
                 loginEmailInput.focus();
@@ -498,11 +554,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // 4. Esconde a tela de login
     function hideAuthPage() {
         authPage.classList.add('auth-hidden');
-        logoutButton.classList.remove('hidden');
+        logoutButton.classList.remove('hidden'); // Mostra o botão de logout
     }
 
+    // 5. Mostra a tela de login (para logout)
     function showAuthPage() {
         // Limpa a carteira da tela
         listaCarteira.innerHTML = '';
@@ -511,7 +569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         carteiraStatus.classList.remove('hidden');
         carteiraMensagem.textContent = "Você foi desconectado.";
         dashboardLoading.classList.add('hidden');
-        logoutButton.classList.add('hidden');
+        logoutButton.classList.add('hidden'); // Esconde o botão de logout
         migrationButton.classList.add('hidden'); // Esconde o botão de migração
         
         // Reseta os forms
@@ -523,11 +581,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Mostra a tela de login
         authPage.classList.remove('auth-hidden');
-        
+
         // Para o timer de salvar o appState
         if (appStateInterval) clearInterval(appStateInterval);
     }
 
+    // 6. Manipulador de Login
     async function handleLogin(e) {
         e.preventDefault();
         hideAuthMessages();
@@ -544,11 +603,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             if (error) throw error;
+
+            console.log("Login bem-sucedido:", data.user.email);
             currentUser = data.user;
+            
+            // Inicia o carregamento dos dados do usuário
             await loadUserSession();
+
         } catch (error) {
             console.error("Erro no login:", error.message);
-            // Mensagem de "Email not confirmed"
             if (error.message.includes("Email not confirmed")) {
                  showAuthError('login-error', 'Email não confirmado. Verifique sua caixa de entrada.');
             } else {
@@ -559,6 +622,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // 7. Manipulador de Registro
     async function handleRegister(e) {
         e.preventDefault();
         hideAuthMessages();
@@ -573,10 +637,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 email: email,
                 password: password,
             });
+
             if (error) throw error;
+
+            console.log("Registro bem-sucedido:", data.user.email);
             registerSuccess.textContent = "Sucesso! Verifique seu email para confirmar a conta.";
             registerSuccess.classList.remove('hidden');
             registerForm.reset();
+
         } catch (error) {
             console.error("Erro no registro:", error.message);
             let userMessage = "Erro ao criar conta.";
@@ -592,6 +660,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // 8. Manipulador de Logout
     async function handleLogout() {
         showModal('Sair', 'Tem certeza que deseja sair?', async () => {
             const { error } = await supabase.auth.signOut();
@@ -605,8 +674,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- FUNÇÕES DE SW E CACHE (IndexedDB) ---
+    // --- FIM DAS FUNÇÕES DE AUTH ---
+
     function showUpdateBar() {
+        console.log('Mostrando aviso de atualização.');
         updateNotification.classList.remove('hidden');
         setTimeout(() => {
             updateNotification.style.opacity = '1';
@@ -616,94 +687,100 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registrado com sucesso:', registration.scope);
             registration.addEventListener('updatefound', () => {
+                console.log('[PWA] Nova versão do SW encontrada, instalando...');
                 newWorker = registration.installing;
                 newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        console.log('[PWA] Novo SW está "esperando" para ativar.');
                         showUpdateBar();
                     }
                 });
             });
         });
+
         updateButton.addEventListener('click', () => {
-            if (newWorker) newWorker.postMessage({ action: 'SKIP_WAITING' });
+            console.log('[PWA] Usuário clicou em Atualizar. Enviando SKIP_WAITING...');
+            updateButton.textContent = 'A atualizar...';
+            updateButton.disabled = true;
+            if (newWorker) {
+                newWorker.postMessage({ action: 'SKIP_WAITING' });
+            }
         });
+
         navigator.serviceWorker.addEventListener('controllerchange', () => {
+            console.log('[PWA] Novo SW ativado! Recarregando a página...');
             window.location.reload();
         });
+    } else {
+        console.log('Service Worker não é suportado neste navegador.');
     }
     
     async function setCache(key, data, duration = CACHE_DURATION) { 
         const cacheItem = { key: key, timestamp: Date.now(), data: data, duration: duration };
         try { 
             await vestoDB.put('apiCache', cacheItem);
-        } catch (e) { console.error("Erro ao salvar no cache IDB:", e); }
-    }
-    
-    async function getCache(key) {
-        const cacheItem = await vestoDB.get('apiCache', key);
-        if (!cacheItem) return null;
-        const duration = cacheItem.duration ?? CACHE_DURATION; 
-        if (duration === -1) { return cacheItem.data; }
-        const isExpired = (Date.now() - cacheItem.timestamp) > duration;
-        if (isExpired) { 
-            await vestoDB.delete('apiCache', key); 
-            return null; 
+        } 
+        catch (e) { 
+            console.error("Erro ao salvar no cache IDB:", e); 
         }
-        return cacheItem.data;
-    }
-    
-    async function clearBrapiCache() {
-        await vestoDB.clear('apiCache');
     }
     
     async function removerCacheAtivo(symbol) {
+        console.log(`A limpar cache específico para: ${symbol}`);
         try {
             await vestoDB.delete('apiCache', `preco_${symbol}`);
             await vestoDB.delete('apiCache', `provento_ia_${symbol}`);
             await vestoDB.delete('apiCache', `detalhe_preco_${symbol}`);
+            
             await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
+            
             if (isFII(symbol)) {
                  await vestoDB.delete('apiCache', 'cache_grafico_historico');
             }
-        } catch (e) { console.error("Erro ao remover cache do ativo:", e); }
+
+        } catch (e) {
+            console.error("Erro ao remover cache do ativo:", e);
+        }
     }
     
-    // --- FUNÇÕES DE UI (Modais, Toasts, etc.) ---
+    // REMOVIDO: removerProventosConhecidos (agora é tratado no Supabase)
     
-    function showToast(message, type = 'error') {
-        clearTimeout(toastTimer);
-        toastMessageElement.textContent = message;
-        toastElement.classList.remove('bg-red-800', 'border-red-600', 'bg-green-700', 'border-green-500');
-        if (type === 'success') {
-            toastElement.classList.add('bg-green-700', 'border-green-500');
-            toastIconError.classList.add('hidden');
-            toastIconSuccess.classList.remove('hidden');
-        } else {
-            toastElement.classList.add('bg-red-800', 'border-red-600');
-            toastIconError.classList.remove('hidden');
-            toastIconSuccess.classList.add('hidden');
+    async function getCache(key) {
+        try {
+            const cacheItem = await vestoDB.get('apiCache', key);
+            if (!cacheItem) return null;
+            
+            const duration = cacheItem.duration ?? CACHE_DURATION; 
+            if (duration === -1) { return cacheItem.data; }
+            
+            const isExpired = (Date.now() - cacheItem.timestamp) > duration;
+            if (isExpired) { 
+                await vestoDB.delete('apiCache', key); 
+                return null; 
+            }
+            return cacheItem.data;
+        } catch (e) {
+            console.error("Erro ao ler cache IDB:", e);
+            return null;
         }
-        if (isToastShowing && toastElement.classList.contains('toast-visible')) {
-            toastElement.classList.add('toast-shake');
-            setTimeout(() => toastElement.classList.remove('toast-shake'), 500);
-        } else {
-            isToastShowing = true;
-            toastElement.classList.remove('toast-shake');
-            toastElement.classList.add('toast-visible');
-        }
-        toastTimer = setTimeout(() => {
-            toastElement.classList.remove('toast-visible');
-            isToastShowing = false;
-        }, 1500); 
+    }
+    
+    async function clearBrapiCache() {
+        console.warn("A limpar cache da Brapi e Notícias (IDB)...");
+        await vestoDB.clear('apiCache');
     }
     
     function getSaoPauloDateTime() {
         try {
             const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
             const spDate = new Date(spTimeStr);
-            return { dayOfWeek: spDate.getDay(), hour: spDate.getHours() };
+            const dayOfWeek = spDate.getDay(); 
+            const hour = spDate.getHours();
+            return { dayOfWeek, hour };
         } catch (e) {
+            console.error("Erro ao obter fuso horário de São Paulo, usando fuso local.", e);
             const localDate = new Date();
             return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
         }
@@ -719,7 +796,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     function gerarCores(num) {
-        const PALETA_CORES = ['#c084fc', '#7c3aed', '#a855f7', '#8b5cf6', '#6d28d9', '#5b21b6', '#3b82f6', '#22c55e', '#f97316', '#ef4444'];
+        const PALETA_CORES = [
+            '#c084fc', '#7c3aed', '#a855f7', '#8b5cf6',
+            '#6d28d9', '#5b21b6', '#3b82f6', '#22c55e',
+            '#f97316', '#ef4444'
+        ];
         let cores = [];
         for (let i = 0; i < num; i++) { cores.push(PALETA_CORES[i % PALETA_CORES.length]); }
         return cores;
@@ -745,6 +826,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showAddModal() {
         addAtivoModal.classList.add('visible');
         addAtivoModalContent.classList.remove('modal-out');
+        
         if (!transacaoEmEdicao) {
             dateInput.value = new Date().toISOString().split('T')[0];
             tickerInput.focus();
@@ -825,6 +907,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Erro ao carregar transações.");
             return [];
         }
+        // Converte o ID para o formato que o app espera (era 'id' e 'date')
         return data.map(tx => ({ ...tx, id: tx.id, date: tx.date })); 
     }
     
@@ -838,6 +921,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Erro ao carregar watchlist.");
             return [];
         }
+        // Converte o nome da coluna para o que o app espera
         return data.map(item => ({ symbol: item.symbol, addedAt: item.created_at }));
     }
     
@@ -852,14 +936,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Erro ao carregar patrimônio.");
             return [];
         }
-        return data;
+        return data; // Formato já é (date, value)
     }
     
     async function carregarAppStateSupabase() {
         const { data, error } = await supabase
             .from('user_app_state')
             .select('saldo_caixa, meses_processados')
-            .single();
+            .single(); // Espera apenas 1 resultado (ou nulo)
 
         if (error && error.code !== 'PGRST116') { // Ignora erro "0 rows"
             console.error("Erro ao carregar AppState:", error);
@@ -868,9 +952,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         if (!data) {
+             // Usuário novo, trigger ainda pode não ter rodado, ou falhou
              console.warn("Nenhum app_state encontrado (usuário novo).");
              return { saldo: 0, meses: [] };
         }
+
+        // Converte nomes de colunas
         return { saldo: data.saldo_caixa, meses: data.meses_processados };
     }
     
@@ -884,22 +971,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast("Erro ao carregar proventos.");
             return [];
         }
+        // Converte nomes de colunas
         return data.map(p => ({ ...p, paymentDate: p.payment_date }));
     }
     
     // --- FUNÇÕES DE ESCRITA DE DADOS (SUPABASE) ---
+
     let appStateDirty = false;
     async function salvarAppStateSupabase() {
-        if (!appStateDirty) return;
+        if (!appStateDirty) return; // Nada para salvar
         if (!currentUser) return;
         
-        appStateDirty = false;
+        appStateDirty = false; // Reseta
         console.log("Salvando AppState na nuvem...", { saldoCaixa, mesesProcessados });
         
         const { error } = await supabase
             .from('user_app_state')
             .upsert({ 
-                user_id: currentUser.id,
+                user_id: currentUser.id, // Chave primária
                 saldo_caixa: saldoCaixa, 
                 meses_processados: mesesProcessados,
                 updated_at: new Date().toISOString()
@@ -908,9 +997,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (error) {
             console.error("Erro ao salvar AppState:", error);
             showToast("Erro ao salvar perfil na nuvem.");
-            appStateDirty = true;
+            appStateDirty = true; // Tenta salvar de novo no próximo ciclo
         }
     }
+    // Função para "marcar" que precisa salvar
     function requestSalvarAppState() {
         appStateDirty = true;
     }
@@ -928,13 +1018,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const { error } = await supabase
             .from('user_patrimonio')
-            .upsert(snapshot);
+            .upsert(snapshot); // 'upsert' = insere ou atualiza se já existir
 
         if (error) {
             console.error("Erro ao salvar snapshot do patrimônio:", error);
             showToast("Erro ao salvar gráfico de patrimônio.");
         }
         
+        // Atualiza o estado local (igual a antes)
         const index = patrimonio.findIndex(p => p.date === today);
         if (index > -1) {
             patrimonio[index].value = totalValor;
@@ -949,12 +1040,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
 
         for (const t of transacoesOrdenadas) {
+            // if (t.type !== 'buy') continue; // No futuro, podemos ter 'sell'
             const symbol = t.symbol;
             let ativo = ativosMap.get(symbol) || { 
                 symbol: symbol, 
                 quantity: 0, 
                 totalCost: 0, 
-                dataCompra: t.date
+                dataCompra: t.date // Usa a data da primeira transação
             };
             ativo.quantity += t.quantity;
             ativo.totalCost += t.quantity * t.price;
@@ -978,7 +1070,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ctx = canvas.getContext('2d');
         
         if (dadosGrafico.length === 0) {
-            if (alocacaoChartInstance) { alocacaoChartInstance.destroy(); alocacaoChartInstance = null; }
+            if (alocacaoChartInstance) {
+                alocacaoChartInstance.destroy();
+                alocacaoChartInstance = null; 
+            }
             lastAlocacaoData = null; 
             return;
         }
@@ -989,6 +1084,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (newDataString === lastAlocacaoData) { return; }
         lastAlocacaoData = newDataString; 
+        
         const colors = gerarCores(labels.length);
 
         if (alocacaoChartInstance) {
@@ -1031,7 +1127,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         lastHistoricoData = newDataString; 
         
         if (!labels || !data || labels.length === 0) {
-            if (historicoChartInstance) { historicoChartInstance.destroy(); historicoChartInstance = null; }
+            if (historicoChartInstance) {
+                historicoChartInstance.destroy();
+                historicoChartInstance = null; 
+            }
             return;
         }
         
@@ -1047,6 +1146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             historicoChartInstance.data.datasets[0].data = data;
             historicoChartInstance.data.datasets[0].backgroundColor = gradient;
             historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
+            historicoChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)';
             historicoChartInstance.update();
         } else {
             historicoChartInstance = new Chart(ctx, {
@@ -1054,15 +1154,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Total Recebido', data: data,
-                        backgroundColor: gradient, hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', borderWidth: 1, borderRadius: 5 
+                        label: 'Total Recebido',
+                        data: data,
+                        backgroundColor: gradient,
+                        hoverBackgroundColor: hoverGradient,
+                        borderColor: 'rgba(192, 132, 252, 0.3)',
+                        borderWidth: 1,
+                        borderRadius: 5 
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { /* ... */ } },
-                    scales: { /* ... */ }
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1A1A1A',
+                            titleColor: '#f3f4f6',
+                            bodyColor: '#f3f4f6',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false, 
+                            callbacks: {
+                                title: (context) => `Mês: ${context[0].label}`, 
+                                label: (context) => `Total: ${formatBRL(context.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#2A2A2A' }, 
+                            ticks: { display: false }
+                        },
+                        x: { grid: { display: false } }
+                    }
                 }
             });
         }
@@ -1072,10 +1198,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const canvas = document.getElementById('detalhes-proventos-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
+    
         if (!labels || !data || labels.length === 0) {
-            if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; }
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null; 
+            }
             return;
         }
+    
         const gradient = ctx.createLinearGradient(0, 0, 0, 192);
         gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)');
         gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');
@@ -1088,6 +1219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             detalhesChartInstance.data.datasets[0].data = data;
             detalhesChartInstance.data.datasets[0].backgroundColor = gradient;
             detalhesChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
+            detalhesChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)';
             detalhesChartInstance.update();
         } else {
             detalhesChartInstance = new Chart(ctx, {
@@ -1095,12 +1227,54 @@ document.addEventListener('DOMContentLoaded', async () => {
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Recebido', data: data,
-                        backgroundColor: gradient, hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', borderWidth: 1, borderRadius: 4 
+                        label: 'Recebido',
+                        data: data,
+                        backgroundColor: gradient,
+                        hoverBackgroundColor: hoverGradient,
+                        borderColor: 'rgba(192, 132, 252, 0.3)', 
+                        borderWidth: 1,
+                        borderRadius: 4 
                     }]
                 },
-                options: { /* ... (opções do gráfico) ... */ }
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1A1A1A',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false, 
+                            callbacks: {
+                                title: (context) => `Mês: ${context[0].label}`, 
+                                label: (context) => `Valor: ${formatBRL(context.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#2A2A2A' }, 
+                            ticks: { 
+                                display: true,
+                                color: '#6b7280',
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return formatBRL(value);
+                                }
+                            }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: {
+                                color: '#9ca3af',
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
             });
         }
     }
@@ -1109,6 +1283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
+        
         const labels = patrimonio.map(p => formatDate(p.date));
         const data = patrimonio.map(p => p.value);
         const newDataString = JSON.stringify({ labels, data });
@@ -1117,7 +1292,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         lastPatrimonioData = newDataString;
         
         if (labels.length === 0) {
-            if (patrimonioChartInstance) { patrimonioChartInstance.destroy(); patrimonioChartInstance = null; }
+            if (patrimonioChartInstance) {
+                patrimonioChartInstance.destroy();
+                patrimonioChartInstance = null;
+            }
             return;
         }
 
@@ -1128,6 +1306,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = data;
+            patrimonioChartInstance.data.datasets[0].backgroundColor = gradient;
+            patrimonioChartInstance.data.datasets[0].borderColor = '#c084fc';
+            patrimonioChartInstance.data.datasets[0].pointBackgroundColor = '#c084fc';
+            patrimonioChartInstance.data.datasets[0].pointRadius = 3;
+            patrimonioChartInstance.data.datasets[0].pointHitRadius = 15;
+            patrimonioChartInstance.data.datasets[0].pointHoverRadius = 5;
             patrimonioChartInstance.update();
         } else {
             patrimonioChartInstance = new Chart(ctx, {
@@ -1135,14 +1319,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Patrimônio', data: data, fill: true,
-                        backgroundColor: gradient, borderColor: '#c084fc',
-                        tension: 0.1, pointRadius: 3, 
+                        label: 'Patrimônio',
+                        data: data,
+                        fill: true,
+                        backgroundColor: gradient,
+                        borderColor: '#c084fc',
+                        tension: 0.1,
+                        pointRadius: 3, 
                         pointBackgroundColor: '#c084fc',
-                        pointHitRadius: 15, pointHoverRadius: 5 
+                        pointHitRadius: 15, 
+                        pointHoverRadius: 5 
                     }]
                 },
-                options: { /* ... (opções do gráfico) ... */ }
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Patrimônio: ${formatBRL(context.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: false, ticks: { display: false }, grid: { color: '#2A2A2A' } },
+                        x: { ticks: { display: false }, grid: { display: false } }
+                    }
+                }
             });
         }
     }
@@ -1341,32 +1544,100 @@ document.addEventListener('DOMContentLoaded', async () => {
         fiiNewsSkeleton.classList.add('hidden');
         fiiNewsList.innerHTML = ''; 
         fiiNewsMensagem.classList.add('hidden');
+
         if (!articles || articles.length === 0) {
             fiiNewsMensagem.textContent = 'Nenhuma notícia encontrada.';
             fiiNewsMensagem.classList.remove('hidden');
             return;
         }
+        
         articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+
         articles.forEach((article, index) => {
-            // ... (cria o card da notícia)
+            const sourceName = article.sourceName || 'Fonte';
+            const sourceHostname = article.sourceHostname || 'google.com'; 
+            const publicationDate = article.publicationDate ? formatDate(article.publicationDate) : 'Data indisponível';
+            const drawerId = `news-drawer-${index}`;
+            const faviconUrl = `https://www.google.com/s2/favicons?domain=${sourceHostname}&sz=32`;
+            
+            let tagsHtml = '';
+            if (article.relatedTickers && article.relatedTickers.length > 0) {
+                const tags = article.relatedTickers.map(ticker => `
+                    <button 
+                        class="news-ticker-tag"
+                        data-action="view-ticker"
+                        data-symbol="${ticker}"
+                    >
+                        ${ticker}
+                    </button>
+                `).join('');
+                tagsHtml = `<div class="mt-3 flex flex-wrap items-center">${tags}</div>`;
+            }
+            
+            const drawerContentHtml = `
+                <p class="news-card-summary">
+                    ${article.summary || 'Resumo da notícia não disponível.'}
+                </p>
+                ${tagsHtml}
+            `;
+
+            const newsCard = document.createElement('div');
+            newsCard.className = 'card-bg rounded-2xl p-4 space-y-3'; 
+            newsCard.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <img src="${faviconUrl}" alt="Logo ${sourceName}" 
+                         class="w-10 h-10 rounded-lg object-contain p-1.5 flex-shrink-0 bg-gray-700"
+                         onerror="this.style.backgroundColor='#4b5563'; this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';" 
+                    />
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold text-white">${article.title || 'Título indisponível'}</h4>
+                        <span class="text-sm text-gray-400">${sourceName} &bull; ${publicationDate}</span>
+                    </div>
+                     <button class"p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700 flex-shrink-0 ml-2" 
+                             data-action="toggle-news" data-target="${drawerId}" title="Ler mais">
+                        <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <div id="${drawerId}" class="card-drawer">
+                    <div class="drawer-content pt-3 border-t border-gray-800">
+                        ${drawerContentHtml}
+                    </div>
+                </div>
+            `;
+            fiiNewsList.appendChild(newsCard);
         });
     }
 
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v4';
+        
         if (!force) {
             const cache = await getCache(cacheKey);
-            if (cache) { renderizarNoticias(cache); return; }
+            if (cache) {
+                console.log("Usando notícias do cache (sem skeleton).");
+                renderizarNoticias(cache);
+                return;
+            }
         }
+        
         fiiNewsSkeleton.classList.remove('hidden');
         fiiNewsList.innerHTML = '';
         fiiNewsMensagem.classList.add('hidden');
+
         const refreshIcon = refreshNoticiasButton.querySelector('svg');
-        if (force) refreshIcon.classList.add('spin-animation');
+        if (force) {
+            refreshIcon.classList.add('spin-animation');
+        }
+
         try {
+            console.log("Buscando notícias na rede (BFF)...");
             const articles = await fetchAndCacheNoticiasBFF_NetworkOnly();
             renderizarNoticias(articles);
         } catch (e) {
+            console.error("Erro ao buscar notícias (função separada):", e);
             fiiNewsSkeleton.classList.add('hidden');
             fiiNewsMensagem.textContent = 'Erro ao carregar notícias.';
             fiiNewsMensagem.classList.remove('hidden');
@@ -1377,7 +1648,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchAndCacheNoticiasBFF_NetworkOnly() {
         const cacheKey = 'noticias_json_v4';
+        
         await vestoDB.delete('apiCache', cacheKey);
+        
         try {
             const response = await fetchBFF('/api/news', {
                 method: 'POST',
@@ -1385,11 +1658,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ todayString: todayString }) 
             });
             const articles = response.json;
+            
             if (articles && Array.isArray(articles)) {
                 await setCache(cacheKey, articles, CACHE_6_HORAS);
             }
             return articles;
-        } catch (error) { throw error; }
+        } catch (error) {
+            console.error("Erro ao buscar notícias (BFF):", error);
+            throw error;
+        }
     }
     
     // --- LÓGICA DE PROVENTOS ---
@@ -1437,6 +1714,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
                 proventosPool = proventosPool.filter(p => p.symbol !== symbol);
+                // Deleta da nuvem (apenas os não processados)
                 await supabase
                     .from('user_proventos_conhecidos')
                     .delete()
@@ -1445,6 +1723,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const proventoCache = await getCache(cacheKey);
             if (proventoCache) {
+                // Se está no cache, já deve estar no proventosPool (carregado da nuvem)
+                // Apenas nos certificamos de que será buscado se não estiver
                 if (!proventosPool.some(p => p.symbol === symbol && (p.paymentDate || p.payment_date) === proventoCache.paymentDate)) {
                     fiisParaBuscar.push(symbol);
                 }
@@ -1453,17 +1733,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
+        // Remove duplicatas
         fiisParaBuscar = [...new Set(fiisParaBuscar)];
 
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
+                
                 if (novosProventos && Array.isArray(novosProventos)) {
                     let proventosParaSalvarNuvem = [];
+                    
                     for (const provento of novosProventos) {
                         if (provento && provento.symbol && provento.paymentDate && provento.value > 0) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_24_HORAS); 
+                            
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
                             const existe = proventosPool.some(p => p.id === idUnico);
                             
@@ -1472,28 +1756,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     id: idUnico,
                                     user_id: currentUser.id,
                                     symbol: provento.symbol,
-                                    paymentDate: provento.paymentDate,
+                                    paymentDate: provento.paymentDate, // app usa paymentDate
                                     value: provento.value,
                                     processado: false 
                                 };
                                 proventosPool.push(novoProvento);
+                                // Prepara para salvar na nuvem
                                 proventosParaSalvarNuvem.push({
                                     id: novoProvento.id,
                                     user_id: novoProvento.user_id,
                                     symbol: novoProvento.symbol,
-                                    payment_date: novoProvento.paymentDate,
+                                    payment_date: novoProvento.paymentDate, // supabase usa payment_date
                                     value: novoProvento.value,
                                     processado: novoProvento.processado
                                 });
                             }
                         }
                     }
+                    
+                    // Salva todos os novos proventos na nuvem de uma vez
                     if (proventosParaSalvarNuvem.length > 0) {
                         const { error } = await supabase.from('user_proventos_conhecidos').insert(proventosParaSalvarNuvem);
-                        if (error) { console.error("Erro ao salvar novos proventos:", error); }
+                        if (error) {
+                            console.error("Erro ao salvar novos proventos:", error);
+                        }
                     }
                 }
-            } catch (error) { console.error("Erro ao buscar novos proventos com IA:", error); }
+            } catch (error) {
+                console.error("Erro ao buscar novos proventos com IA:", error);
+            }
         }
         
         return processarProventosIA(proventosPool); 
@@ -1508,14 +1799,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (force) await vestoDB.delete('apiCache', cacheKey);
         
         let aiData = await getCache(cacheKey);
+
         if (!aiData) {
             try {
                 aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
                 if (aiData && aiData.length > 0) {
                     await setCache(cacheKey, aiData, CACHE_24_HORAS);
                 }
-            } catch (e) { return { labels: [], data: [] }; }
+            } catch (e) {
+                console.error("Erro ao buscar histórico agregado:", e);
+                return { labels: [], data: [] }; 
+            }
         }
+
         if (!aiData || aiData.length === 0) return { labels: [], data: [] };
 
         const carteiraMap = new Map(fiiNaCarteira.map(a => [a.symbol, { 
@@ -1524,7 +1820,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }]));
         
         let precisaSalvarCaixa = false;
-        const dataAtual = new Date(), mesAtual = dataAtual.getMonth(), anoAtual = dataAtual.getFullYear();
+        
+        const dataAtual = new Date();
+        const mesAtual = dataAtual.getMonth();
+        const anoAtual = dataAtual.getFullYear();
+
         const labels = aiData.map(d => d.mes);
         const data = aiData.map(mesData => {
             let totalMes = 0;
@@ -1535,14 +1835,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             fiiSymbols.forEach(symbol => {
                 const ativo = carteiraMap.get(symbol);
                 if (!ativo) return; 
-                const { quantity, inicioMesCompraTime } = ativo;
+
+                const quantity = ativo.quantity;
+                const inicioMesCompraTime = ativo.inicioMesCompra;
                 const valorPorCota = mesData[symbol] || 0;
+                
                 if (timeDoMes >= inicioMesCompraTime) {
                      totalMes += (valorPorCota * quantity);
                 }
             });
             
-            const mesHistorico = dataDoMes.getMonth(), anoHistorico = dataDoMes.getFullYear();
+            const mesHistorico = dataDoMes.getMonth();
+            const anoHistorico = dataDoMes.getFullYear();
             const isPastMonth = anoHistorico < anoAtual || (anoHistorico === anoAtual && mesHistorico < mesAtual);
             const isNotProcessed = !mesesProcessados.includes(mesData.mes);
             
@@ -1551,13 +1855,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 mesesProcessados.push(mesData.mes);
                 precisaSalvarCaixa = true;
             }
+            
             return totalMes;
         });
 
         if (precisaSalvarCaixa) {
-            requestSalvarAppState();
+            requestSalvarAppState(); // Marca para salvar na nuvem
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
         }
+
         return { labels, data };
     }
     
@@ -1606,6 +1912,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (precos.length > 0) precosAtuais = precos; 
             await renderizarCarteira(); 
         }).catch(async err => {
+            console.error("Erro ao buscar preços (BFF):", err);
             showToast("Erro ao buscar preços."); 
             if (precosAtuais.length === 0) await renderizarCarteira();
         });
@@ -1615,6 +1922,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarProventos(); 
             if (precosAtuais.length > 0) await renderizarCarteira(); 
         }).catch(err => {
+            console.error("Erro ao buscar proventos (BFF):", err);
             showToast("Erro ao buscar proventos."); 
             if (proventosAtuais.length === 0) totalProventosEl.textContent = "Erro";
         });
@@ -1622,6 +1930,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         promessaHistorico.then(({ labels, data }) => {
             renderizarGraficoHistorico({ labels, data });
         }).catch(err => {
+            console.error("Erro ao buscar histórico agregado (BFF):", err);
             showToast("Erro ao buscar histórico."); 
             renderizarGraficoHistorico({ labels: [], data: [] }); 
         });
@@ -1641,23 +1950,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleToggleFavorito() {
         const symbol = detalhesFavoritoBtn.dataset.symbol;
         if (!symbol || !currentUser) return;
+
         const isFavorite = watchlist.some(item => item.symbol === symbol);
+
         try {
             if (isFavorite) {
-                const { error } = await supabase.from('watchlist').delete().match({ user_id: currentUser.id, symbol: symbol });
+                // Remover do Supabase
+                const { error } = await supabase
+                    .from('watchlist')
+                    .delete()
+                    .match({ user_id: currentUser.id, symbol: symbol });
+                
                 if (error) throw error;
+                
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 showToast(`${symbol} removido dos favoritos.`);
             } else {
+                // Adicionar ao Supabase
                 const newItem = { user_id: currentUser.id, symbol: symbol };
-                const { data, error } = await supabase.from('watchlist').insert(newItem).select().single();
+                const { data, error } = await supabase
+                    .from('watchlist')
+                    .insert(newItem)
+                    .select()
+                    .single(); // Espera um único resultado
+                
                 if (error) throw error;
+
+                // Adiciona o item retornado (com created_at) ao estado local
                 watchlist.push({ symbol: data.symbol, addedAt: data.created_at });
                 showToast(`${symbol} adicionado aos favoritos!`, 'success');
             }
             atualizarIconeFavorito(symbol);
             renderizarWatchlist();
-        } catch (e) { showToast("Erro ao salvar favorito."); }
+        } catch (e) {
+            console.error("Erro ao salvar favorito:", e);
+            showToast("Erro ao salvar favorito.");
+        }
     }
     
     async function handleSalvarTransacao() {
@@ -1667,7 +1995,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let novaQuantidade = parseInt(quantityInput.value, 10);
         let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
         let dataTransacao = dateInput.value;
-        let transacaoID = transacaoIdInput.value;
+        let transacaoID = transacaoIdInput.value; // Este será o UUID do Supabase se estiver editando
 
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
@@ -1679,6 +2007,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         addButton.innerHTML = `<span class="loader-sm"></span>`;
         addButton.disabled = true;
 
+        // Validação de Ticker (só para novos ativos)
         if (!transacaoID) {
             const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
             if (!ativoExistente) {
@@ -1702,37 +2031,58 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             if (transacaoID) {
+                // MODO EDIÇÃO
                 const transacaoAtualizada = {
-                    date: dataISO, symbol: ticker, quantity: novaQuantidade, price: novoPreco
+                    date: dataISO,
+                    symbol: ticker,
+                    quantity: novaQuantidade,
+                    price: novoPreco
                 };
+                
                 const { data, error } = await supabase
                     .from('transacoes')
                     .update(transacaoAtualizada)
                     .match({ id: transacaoID, user_id: currentUser.id })
-                    .select()
-                    .single();
+                    .select() // Pede ao Supabase para retornar o registro atualizado
+                    .single(); // Espera um único resultado
+                    
                 if (error) throw error;
+                
+                // Atualiza o estado local
                 const index = transacoes.findIndex(t => t.id === transacaoID);
                 if (index > -1) transacoes[index] = data;
+                
                 showToast("Transação atualizada!", 'success');
+                
             } else {
+                // MODO ADIÇÃO
                 const novaTransacao = {
-                    user_id: currentUser.id, date: dataISO, symbol: ticker,
-                    quantity: novaQuantidade, price: novoPreco
+                    user_id: currentUser.id,
+                    date: dataISO,
+                    symbol: ticker,
+                    quantity: novaQuantidade,
+                    price: novoPreco
                 };
+                
                 const { data, error } = await supabase
                     .from('transacoes')
                     .insert(novaTransacao)
-                    .select()
-                    .single();
+                    .select() // Pede ao Supabase para retornar o registro criado
+                    .single(); // Espera um único resultado
+                
                 if (error) throw error;
+                
+                // Adiciona o novo registro (com o UUID gerado) ao estado local
                 transacoes.push(data);
                 showToast("Ativo adicionado!", 'success');
             }
+
             hideAddModal();
             await removerCacheAtivo(ticker); 
             await atualizarTodosDados(false);
+
         } catch (error) {
+            console.error("Erro ao salvar transação:", error);
             showToast(`Erro ao salvar: ${error.message}`);
         } finally {
             addButton.innerHTML = `Adicionar`;
@@ -1742,18 +2092,45 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function handleRemoverAtivo(symbol) {
         if (!currentUser) return;
+        
         showModal(
             'Remover Ativo', 
             `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
             async () => { 
-                const { error: txError } = await supabase.from('transacoes').delete().match({ user_id: currentUser.id, symbol: symbol });
-                if (txError) { showToast(`Erro: ${txError.message}`); return; }
+                
+                // Deleta transações do Supabase
+                const { error: txError } = await supabase
+                    .from('transacoes')
+                    .delete()
+                    .match({ user_id: currentUser.id, symbol: symbol });
+                    
+                if (txError) {
+                    showToast(`Erro ao remover transações: ${txError.message}`);
+                    return;
+                }
+                
+                // Atualiza estado local
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
+
+                // Limpa caches
                 await removerCacheAtivo(symbol); 
-                await supabase.from('user_proventos_conhecidos').delete().match({ user_id: currentUser.id, symbol: symbol });
-                await supabase.from('watchlist').delete().match({ user_id: currentUser.id, symbol: symbol });
+                
+                // Deleta proventos conhecidos
+                await supabase
+                    .from('user_proventos_conhecidos')
+                    .delete()
+                    .match({ user_id: currentUser.id, symbol: symbol });
+                
+                // Deleta da watchlist
+                await supabase
+                    .from('watchlist')
+                    .delete()
+                    .match({ user_id: currentUser.id, symbol: symbol });
+                
+                // Atualiza estado local
                 proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
+                
                 renderizarWatchlist();
                 await atualizarTodosDados(false); 
                 showToast(`${symbol} removido com sucesso.`, 'success');
@@ -1763,43 +2140,77 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function handleAbrirModalEdicao(id) {
         const tx = transacoes.find(t => t.id === id);
-        if (!tx) { showToast("Erro: Transação não encontrada."); return; }
+        if (!tx) {
+            showToast("Erro: Transação não encontrada.");
+            return;
+        }
+        
         transacaoEmEdicao = tx;
         addModalTitle.textContent = 'Editar Compra';
-        transacaoIdInput.value = tx.id;
+        transacaoIdInput.value = tx.id; // Agora é o UUID do Supabase
         tickerInput.value = tx.symbol;
         tickerInput.disabled = true;
         dateInput.value = formatDateToInput(tx.date);
         quantityInput.value = tx.quantity;
         precoMedioInput.value = tx.price;
         addButton.textContent = 'Salvar';
+        
         showAddModal();
     }
     
     function handleExcluirTransacao(id, symbol) {
         if (!currentUser) return;
+        
         const tx = transacoes.find(t => t.id === id);
-        if (!tx) { showToast("Erro: Transação não encontrada."); return; }
+        if (!tx) {
+             showToast("Erro: Transação não encontrada.");
+             return;
+        }
+
         const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}`;
+        
         showModal('Excluir Transação', msg, async () => { 
-            const { error } = await supabase.from('transacoes').delete().match({ id: id, user_id: currentUser.id });
-            if (error) { showToast(`Erro ao excluir: ${error.message}`); return; }
+            
+            // Deleta do Supabase
+            const { error } = await supabase
+                .from('transacoes')
+                .delete()
+                .match({ id: id, user_id: currentUser.id });
+                
+            if (error) {
+                showToast(`Erro ao excluir: ${error.message}`);
+                return;
+            }
+
+            // Atualiza estado local
             transacoes = transacoes.filter(t => t.id !== id);
+            
             await removerCacheAtivo(symbol);
+            
+            // Verifica se foi a última transação
             const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
             if (!outrasTransacoes) {
                 proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
+                
                 const isFavorite = watchlist.some(item => item.symbol === symbol);
                 if (isFavorite) {
-                    setTimeout(() => showModal('Manter na Watchlist?', `...`, () => {}), 300);
+                    setTimeout(() => {
+                         showModal(
+                            'Manter na Watchlist?',
+                            `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua watchlist?`,
+                            () => {} // Apenas fecha
+                        );
+                    }, 300);
                 }
             }
+            
             await atualizarTodosDados(false); 
             showToast("Transação excluída.", 'success');
         });
     }
     
-    // --- LÓGICA DE DETALHES (sem mudanças) ---
+    // --- LÓGICA DE DETALHES (sem mudanças, exceto watchlist) ---
+    
     function limparDetalhes() {
         detalhesMensagem.classList.remove('hidden');
         detalhesLoading.classList.add('hidden');
@@ -1891,7 +2302,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
                 ${plHtml}
-                `;
+                <div class="col-span-2 grid grid-cols-3 gap-3">
+                    <div class="bg-gray-800 p-3 rounded-xl text-center">
+                        <span class="text-xs text-gray-500">Abertura</span>
+                        <p class="text-base font-semibold text-white">${formatBRL(precoData.regularMarketOpen)}</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-xl text-center">
+                        <span class="text-xs text-gray-500">Máx. Dia</span>
+                        <p class="text-base font-semibold text-green-500">${formatBRL(precoData.regularMarketDayHigh)}</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-xl text-center">
+                        <span class="text-xs text-gray-500">Mín. Dia</span>
+                        <p class="text-base font-semibold text-red-500">${formatBRL(precoData.regularMarketDayLow)}</p>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-xl">
+                    <span class="text-xs text-gray-500">Máx. 52 Semanas</span>
+                    <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekHigh)}</p>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-xl">
+                    <span class="text-xs text-gray-500">Mín. 52 Semanas</span>
+                    <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekLow)}</p>
+                </div>
+                <div class="col-span-2 bg-gray-800 p-4 rounded-xl">
+                    <span class="text-xs text-gray-500">Valor de Mercado</span>
+                    <p class="text-lg font-semibold text-white">${formatNumber(precoData.marketCap)}</p>
+                </div>
+            `;
         } else {
             detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
         }
@@ -1905,6 +2342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('detalhes-transacoes-container');
         listaContainer.innerHTML = '';
         const txsDoAtivo = transacoes.filter(t => t.symbol === symbol).sort((a, b) => new Date(b.date) - new Date(a.date));
+    
         if (txsDoAtivo.length === 0) {
             vazioMsg.classList.remove('hidden');
             listaContainer.classList.add('hidden');
@@ -1916,7 +2354,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.className = 'card-bg p-3 rounded-lg flex items-center justify-between';
                 card.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <svg ... class="h-5 w-5 text-green-500">...</svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                         <div>
                             <p class="text-sm font-semibold text-white">Compra</p>
                             <p class="text-xs text-gray-400">${formatDate(t.date)}</p>
@@ -1934,7 +2374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function fetchHistoricoIA(symbol) {
-        detalhesAiProvento.innerHTML = `<div id="historico-periodo-loading" ...>...</div>`;
+        detalhesAiProvento.innerHTML = `<div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48"><div class="h-4 bg-gray-700 rounded-md w-3/4"></div><div class="h-4 bg-gray-700 rounded-md w-1/2"></div></div>`;
         try {
             const cacheKey = `hist_ia_${symbol}_12`;
             let aiResultJSON = await getCache(cacheKey);
@@ -1948,19 +2388,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderHistoricoIADetalhes(3);
         } catch (e) {
             showToast("Erro na consulta IA."); 
-            detalhesAiProvento.innerHTML = `<div class="border border-red-700 ...">...</div>`;
+            detalhesAiProvento.innerHTML = `<div class="border border-red-700 bg-red-900/50 p-4 rounded-lg flex items-center gap-3"><svg ...></svg><div><h5 ...>Erro na Consulta</h5><p ...>${e.message}</p></div></div>`;
         }
     }
     
     function renderHistoricoIADetalhes(meses) {
         if (!currentDetalhesHistoricoJSON) return;
         if (currentDetalhesHistoricoJSON.length === 0) {
-            detalhesAiProvento.innerHTML = `<p ...>Não foi possível encontrar...</p>`;
+            detalhesAiProvento.innerHTML = `<p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg">Não foi possível encontrar o histórico de proventos.</p>`;
             if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; }
             return;
         }
         if (!document.getElementById('detalhes-proventos-chart')) {
-             detalhesAiProvento.innerHTML = `<div ...><canvas id="detalhes-proventos-chart"></canvas></div>`;
+             detalhesAiProvento.innerHTML = `<div class="relative h-48 w-full"><canvas id="detalhes-proventos-chart"></canvas></div>`;
         }
         const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
         const labels = dadosFiltrados.map(item => item.mes);
@@ -2022,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- FUNÇÕES DE BACKUP/MIGRAÇÃO ---
     async function handleShareCarteira() {
         if (transacoes.length === 0) { showToast("Sua carteira está vazia."); return; }
-        const loaderIcon = `<svg ... class="w-5 h-5 spin-animation">...</svg>`;
+        const loaderIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 spin-animation"><path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path></svg>`;
         const originalIcon = compartilharCarteiraBtn.innerHTML;
         compartilharCarteiraBtn.innerHTML = loaderIcon;
         compartilharCarteiraBtn.disabled = true;
@@ -2153,10 +2593,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const getAllFromStore = (storeName) => {
                     return new Promise((resolve, reject) => {
                         if (!db.objectStoreNames.contains(storeName)) {
-                            // Tenta ler stores antigos pelo nome
-                            if (storeName === 'appState' && db.objectStoreNames.contains('appState')) {
-                                // ... (lógica de fallback)
-                            }
                             console.warn(`Store local ${storeName} não encontrado para migração.`);
                             return resolve([]);
                         }
@@ -2167,7 +2603,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 };
 
-                // 2. Coleta dados locais (lendo os nomes de store antigos)
+                // 2. Coleta dados locais
                 const localTransacoes = await getAllFromStore('transacoes');
                 const localWatchlist = await getAllFromStore('watchlist');
                 const localPatrimonio = await getAllFromStore('patrimonio');
@@ -2278,9 +2714,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     customModal.addEventListener('click', (e) => { if (e.target === customModal) hideModal(); });
     detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
     detalhesPageModal.addEventListener('click', (e) => { if (e.target === detalhesPageModal) hideDetalhesModal(); });
-    detalhesPageContent.addEventListener('touchstart', (e) => { /* ... (lógica de swipe) ... */ }, { passive: true }); 
-    detalhesPageContent.addEventListener('touchmove', (e) => { /* ... (lógica de swipe) ... */ }, { passive: false }); 
-    detalhesPageContent.addEventListener('touchend', (e) => { /* ... (lógica de swipe) ... */ });
+    detalhesPageContent.addEventListener('touchstart', (e) => {
+        if (detalhesConteudoScroll.scrollTop === 0) {
+            touchStartY = e.touches[0].clientY;
+            touchMoveY = touchStartY; 
+            isDraggingDetalhes = true;
+            detalhesPageContent.style.transition = 'none'; 
+        }
+    }, { passive: true }); 
+    detalhesPageContent.addEventListener('touchmove', (e) => {
+        if (!isDraggingDetalhes) return;
+        touchMoveY = e.touches[0].clientY;
+        const diff = touchMoveY - touchStartY;
+        if (diff > 0) { 
+            e.preventDefault(); 
+            detalhesPageContent.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false }); 
+    detalhesPageContent.addEventListener('touchend', (e) => {
+        if (!isDraggingDetalhes) return;
+        isDraggingDetalhes = false;
+        const diff = touchMoveY - touchStartY;
+        detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
+        if (diff > 100) { hideDetalhesModal(); } 
+        else { detalhesPageContent.style.transform = ''; }
+        touchStartY = 0;
+        touchMoveY = 0;
+    });
     fiiNewsList.addEventListener('click', (e) => {
         const button = e.target.closest('button'); if (!button) return;
         const action = button.dataset.action;
@@ -2373,7 +2833,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
             }
         };
-        localDBCheck.onerror = () => {};
+        localDBCheck.onerror = () => { /* falha silenciosa, não oferece migração */ };
     }
 
     async function checkUserSession() {
@@ -2390,7 +2850,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function init() {
-        // 1. Inicializa o IndexedDB (APENAS PARA CACHE)
+        // 1. Inicializa o IndexedDB (APENAS PARA CACHE E MIGRAÇÃO)
         try {
             await vestoDB.init();
         } catch (e) {

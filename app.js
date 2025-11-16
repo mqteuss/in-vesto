@@ -1,11 +1,6 @@
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
-// ===================================================================
-// FUNÇÕES UTILITÁRIAS GLOBAIS
-// (Movidas para fora para estarem acessíveis globalmente)
-// ===================================================================
-
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -54,11 +49,6 @@ function parseMesAno(mesAnoStr) {
     }
 }
 
-// ===================================================================
-// NOVAS FUNÇÕES DE RENDERIZAÇÃO (OTIMIZADAS)
-// (Usadas pela nova renderizarCarteira)
-// ===================================================================
-
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -66,7 +56,6 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento
     } = dados;
 
-    // --- HTML da Tag P/L ---
     let plTagHtml = '';
     if (dadoPreco) {
         plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
@@ -74,12 +63,10 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
     
-    // --- HTML do Provento ---
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
             
-            // DEPOIS (Corrigido): Agrupado com space-y-1
             proventoHtml = `
             <div class="mt-3 space-y-1">
                 <div class="flex justify-between items-center">
@@ -101,13 +88,10 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // --- Cria o Elemento ---
     const card = document.createElement('div');
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
-    card.setAttribute('data-symbol', ativo.symbol); // O ID principal!
+    card.setAttribute('data-symbol', ativo.symbol); 
 
-    // --- O HTML (Note os 'data-field' adicionados) ---
-    // A classe 'text-purple-400' no SVG é mantida, pois corresponde ao #c084fc do Tailwind CDN.
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -170,24 +154,20 @@ function atualizarCardElemento(card, ativo, dados) {
         corPL, bgPL, dadoProvento
     } = dados;
 
-    // --- Atualiza os campos simples ---
     card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
     card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : 'A calcular...';
     card.querySelector('[data-field="pm-label"]').textContent = `Custo (P.M. ${formatBRL(ativo.precoMedio)})`;
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
 
-    // --- Atualiza Variação (Valor e Cor) ---
     const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
     variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-    variacaoEl.className = `${corVariacao} font-semibold text-lg`; // Redefine as classes de cor
+    variacaoEl.className = `${corVariacao} font-semibold text-lg`; 
 
-    // --- Atualiza P/L (Valor e Cor) ---
     const plValorEl = card.querySelector('[data-field="pl-valor"]');
     plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...';
-    plValorEl.className = `text-base font-semibold ${corPL}`; // Redefine as classes de cor
+    plValorEl.className = `text-base font-semibold ${corPL}`; 
 
-    // --- Atualiza P/L Tag (HTML interno) ---
     let plTagHtml = '';
     if (dadoPreco) {
         plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
@@ -196,12 +176,10 @@ function atualizarCardElemento(card, ativo, dados) {
     }
     card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
 
-    // --- Atualiza Provento (HTML interno) ---
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
             
-            // DEPOIS (Corrigido): Agrupado com space-y-1
             proventoHtml = `
             <div class="mt-3 space-y-1">
                 <div class="flex justify-between items-center">
@@ -225,10 +203,6 @@ function atualizarCardElemento(card, ativo, dados) {
 }
 
 
-// ===================================================================
-// INÍCIO DO CÓDIGO PRINCIPAL DA APLICAÇÃO
-// ===================================================================
-
 document.addEventListener('DOMContentLoaded', async () => {
     
     const REFRESH_INTERVAL = 1860000;
@@ -239,7 +213,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const DB_NAME = 'vestoDB';
     const DB_VERSION = 2;
 
-    // --- NOVOS SELETORES DE AUTH ---
     const authPage = document.getElementById('auth-page');
     const authContent = document.getElementById('auth-content');
     const loginForm = document.getElementById('login-form');
@@ -256,7 +229,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const showRegisterBtn = document.getElementById('show-register-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
     const logoutButton = document.getElementById('logout-button');
-    // --- FIM DOS NOVOS SELETORES ---
 
     const vestoDB = {
         db: null,
@@ -369,10 +341,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tabContents = document.querySelectorAll('.tab-content');
     const toastElement = document.getElementById('toast-notification');
     const toastMessageElement = document.getElementById('toast-message');
-    // --- ALTERADO: Seletores dos ícones do Toast ---
     const toastIconError = document.getElementById('toast-icon-error');
     const toastIconSuccess = document.getElementById('toast-icon-success');
-    // --- FIM DA ALTERAÇÃO ---
     const fiiNewsList = document.getElementById('fii-news-list');
     const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
     const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
@@ -391,7 +361,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
     const carteiraStatus = document.getElementById('carteira-status');
-    const carteiraMensagem = document.getElementById('carteira-mensagem'); // Adicionado seletor
+    const carteiraMensagem = document.getElementById('carteira-mensagem'); 
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
     const totalProventosEl = document.getElementById('total-proventos');
@@ -431,20 +401,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const updateButton = document.getElementById('update-button');
     const copiarDadosBtn = document.getElementById('copiar-dados-btn');
     const abrirImportarModalBtn = document.getElementById('abrir-importar-modal-btn');
-    const compartilharCarteiraBtn = document.getElementById('compartilhar-carteira-btn'); // Adicionado seletor
+    const compartilharCarteiraBtn = document.getElementById('compartilhar-carteira-btn'); 
     const importTextModal = document.getElementById('import-text-modal');
     const importTextModalContent = document.getElementById('import-text-modal-content');
     const importTextTextarea = document.getElementById('import-text-textarea');
     const importTextConfirmBtn = document.getElementById('import-text-confirm-btn');
     const importTextCancelBtn = document.getElementById('import-text-cancel-btn');
     
-    // --- NOVOS SELETORES ---
     const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn'); 
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
     const watchlistStatusEl = document.getElementById('watchlist-status'); 
-    // --- FIM NOVOS SELETORES ---
 
     let transacoes = [];        
     let carteiraCalculada = []; 
@@ -475,12 +443,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
 
-    // --- NOVAS VARIÁVEIS GLOBAIS DE AUTH ---
     let supabase = null;
     let currentUser = null;
-    // --- FIM DAS NOVAS VARIÁVEIS ---
 
-    // --- FUNÇÃO showToast ALTERADA ---
     function showToast(message, type = 'error') {
         clearTimeout(toastTimer);
         toastMessageElement.textContent = message;
@@ -492,12 +457,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (type === 'success') {
             toastElement.classList.add('bg-green-700', 'border-green-500');
-            toastIconError.classList.add('hidden'); // Esconde erro
-            toastIconSuccess.classList.remove('hidden'); // Mostra sucesso
+            toastIconError.classList.add('hidden'); 
+            toastIconSuccess.classList.remove('hidden'); 
         } else {
             toastElement.classList.add('bg-red-800', 'border-red-600');
-            toastIconError.classList.remove('hidden'); // Mostra erro
-            toastIconSuccess.classList.add('hidden'); // Esconde sucesso
+            toastIconError.classList.remove('hidden'); 
+            toastIconSuccess.classList.add('hidden'); 
         }
 
         if (isToastShowing && toastElement.classList.contains('toast-visible')) {
@@ -513,11 +478,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             isToastShowing = false;
         }, 1500); 
     }
-    // --- FIM DA ALTERAÇÃO ---
 
-    // --- NOVAS FUNÇÕES DE AUTH ---
-
-    // 1. Busca as chaves e inicializa o Supabase
     async function initSupabase() {
         try {
             const response = await fetch('/api/config');
@@ -531,8 +492,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error('Configuração do Supabase incompleta.');
             }
 
-            // Inicializa o cliente Supabase
-            // (Usando a sintaxe global do CDN: supabase.createClient)
             supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
             console.log("Supabase inicializado.");
             return true;
@@ -544,7 +503,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 2. Mostra erros nos formulários de login/registro
     function showAuthError(elementId, message) {
         const el = document.getElementById(elementId);
         if (el) {
@@ -558,7 +516,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         registerSuccess.classList.add('hidden');
     }
 
-    // 3. Funções para trocar entre os formulários
     function showAuthForm(formToShow) {
         hideAuthMessages();
         if (formToShow === 'register') {
@@ -584,35 +541,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 4. Esconde a tela de login
     function hideAuthPage() {
         authPage.classList.add('auth-hidden');
-        logoutButton.classList.remove('hidden'); // Mostra o botão de logout
+        logoutButton.classList.remove('hidden'); 
     }
 
-    // 5. Mostra a tela de login (para logout)
     function showAuthPage() {
-        // Limpa a carteira da tela
         listaCarteira.innerHTML = '';
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
         carteiraStatus.classList.remove('hidden');
         carteiraMensagem.textContent = "Você foi desconectado.";
         dashboardLoading.classList.add('hidden');
-        logoutButton.classList.add('hidden'); // Esconde o botão de logout
+        logoutButton.classList.add('hidden'); 
         
-        // Reseta os forms
         loginEmailInput.value = '';
         loginPasswordInput.value = '';
         registerEmailInput.value = '';
         registerPasswordInput.value = '';
         showAuthForm('login');
 
-        // Mostra a tela de login
         authPage.classList.remove('auth-hidden');
+        
+        currentUser = null;
+        transacoes = [];
+        carteiraCalculada = [];
+        patrimonio = [];
+        saldoCaixa = 0;
+        proventosConhecidos = [];
+        watchlist = [];
+        mesesProcessados = [];
     }
 
-    // 6. Manipulador de Login
     async function handleLogin(e) {
         e.preventDefault();
         hideAuthMessages();
@@ -633,7 +593,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log("Login bem-sucedido:", data.user.email);
             currentUser = data.user;
             
-            // Inicia o carregamento dos dados do usuário
             await loadUserSession();
 
         } catch (error) {
@@ -644,7 +603,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 7. Manipulador de Registro
     async function handleRegister(e) {
         e.preventDefault();
         hideAuthMessages();
@@ -682,7 +640,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 8. Manipulador de Logout
     async function handleLogout() {
         showModal('Sair', 'Tem certeza que deseja sair?', async () => {
             const { error } = await supabase.auth.signOut();
@@ -690,13 +647,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.error("Erro ao sair:", error);
                 showToast("Erro ao tentar sair.");
             } else {
-                currentUser = null;
                 showAuthPage();
             }
         });
     }
-
-    // --- FIM DAS NOVAS FUNÇÕES DE AUTH ---
 
     function showUpdateBar() {
         console.log('Mostrando aviso de atualização.');
@@ -769,21 +723,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function removerProventosConhecidos(symbol) {
-        console.log(`A limpar 'proventosConhecidos' (memória e DB) para: ${symbol}`);
+        console.log(`A limpar 'proventosConhecidos' (memória e Supabase) para: ${symbol}`);
         
+        const proventosParaRemover = proventosConhecidos.filter(p => p.symbol === symbol);
         proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
         
-        try {
-            const todosProventos = await vestoDB.getAll('proventosConhecidos');
-            const proventosParaRemover = todosProventos.filter(p => p.symbol === symbol);
-            
-            if (proventosParaRemover.length > 0) {
-                console.log(`Removendo ${proventosParaRemover.length} proventos conhecidos do DB...`);
-                const deletePromises = proventosParaRemover.map(p => vestoDB.delete('proventosConhecidos', p.id));
-                await Promise.all(deletePromises);
+        if (proventosParaRemover.length > 0) {
+            const idsParaRemover = proventosParaRemover.map(p => p.id);
+            const { error } = await supabase
+                .from('proventosConhecidos')
+                .delete()
+                .in('id', idsParaRemover);
+                
+            if (error) {
+                console.error(`Erro ao remover proventos conhecidos do Supabase para ${symbol}:`, error);
+                showToast("Erro de sincronização ao remover proventos.");
             }
-        } catch (e) {
-            console.error(`Erro ao remover proventos conhecidos do DB para ${symbol}:`, e);
         }
     }
     
@@ -807,8 +762,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await vestoDB.clear('apiCache');
     }
 
-    // Funções de formatação (formatBRL, etc) foram MOVIDAS para o topo do arquivo (escopo global)
-    
     function getSaoPauloDateTime() {
         try {
             const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
@@ -832,26 +785,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // --- FUNÇÃO MODIFICADA ---
     function gerarCores(num) {
-        // Paleta alinhada com os gradientes do título (purple-400, violet-600) e cores adjacentes
         const PALETA_CORES = [
-            '#c084fc', // purple-400 (Mais claro)
-            '#7c3aed', // violet-600 (Mais escuro)
-            '#a855f7', // purple-500
-            '#8b5cf6', // violet-500
-            '#6d28d9', // violet-700
-            '#5b21b6', // violet-800
-            '#3b82f6', // blue-500 (Para variedade)
-            '#22c55e', // green-500 (Para variedade)
-            '#f97316', // orange-500
-            '#ef4444'  // red-500
+            '#c084fc', 
+            '#7c3aed', 
+            '#a855f7', 
+            '#8b5cf6', 
+            '#6d28d9', 
+            '#5b21b6', 
+            '#3b82f6', 
+            '#22c55e', 
+            '#f97316', 
+            '#ef4444'  
         ];
         let cores = [];
         for (let i = 0; i < num; i++) { cores.push(PALETA_CORES[i % PALETA_CORES.length]); }
         return cores;
     }
-    // --- FIM DA MODIFICAÇÃO ---
     
     function showModal(title, message, onConfirm) {
         customModalTitle.textContent = title;
@@ -938,10 +888,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 400); 
     }
     
-    async function carregarTransacoes() {
-        transacoes = await vestoDB.getAll('transacoes');
-    }
-    
     async function carregarPatrimonio() {
          let allPatrimonio = await vestoDB.getAll('patrimonio');
          allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -971,27 +917,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             patrimonio.push(snapshot);
         }
     }
-
-    async function carregarCaixa() {
-        const caixaState = await vestoDB.get('appState', 'saldoCaixa');
-        saldoCaixa = caixaState ? caixaState.value : 0;
-    }
-
-    async function salvarCaixa() {
-        await vestoDB.put('appState', { key: 'saldoCaixa', value: saldoCaixa });
-    }
-
-    async function carregarProventosConhecidos() {
-        proventosConhecidos = await vestoDB.getAll('proventosConhecidos');
-    }
     
-    // --- NOVO CÓDIGO (3 Funções) ---
-    async function carregarWatchlist() {
-        watchlist = await vestoDB.getAll('watchlist');
+    async function syncAppState(key, value) {
+        if (!currentUser) return;
+        
+        const { error } = await supabase
+            .from('appState')
+            .upsert({ 
+                user_id: currentUser.id, 
+                key: key, 
+                value: value 
+            }, { onConflict: 'user_id, key' }); 
+            
+        if (error) {
+            console.error(`Erro ao sincronizar appState (${key}):`, error);
+            showToast("Erro de sincronização. Verifique sua conexão.");
+        } else {
+            console.log(`AppState (${key}) sincronizado.`);
+        }
     }
 
     function renderizarWatchlist() {
-        watchlistListaEl.innerHTML = ''; // Limpa a lista
+        watchlistListaEl.innerHTML = ''; 
 
         if (watchlist.length === 0) {
             watchlistStatusEl.classList.remove('hidden');
@@ -1023,21 +970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         detalhesFavoritoIconEmpty.classList.toggle('hidden', isFavorite);
         detalhesFavoritoIconFilled.classList.toggle('hidden', !isFavorite);
-        detalhesFavoritoBtn.dataset.symbol = symbol; // Armazena o símbolo no botão
-    }
-    // --- FIM DO NOVO CÓDIGO ---
-
-    // --- NOVA FUNÇÃO ---
-    async function carregarHistoricoProcessado() {
-        const histState = await vestoDB.get('appState', 'historicoProcessado');
-        mesesProcessados = histState ? histState.value : [];
-        console.log("Histórico de meses processados:", mesesProcessados);
-    }
-
-    // --- NOVA FUNÇÃO ---
-    async function salvarHistoricoProcessado() {
-        await vestoDB.put('appState', { key: 'historicoProcessado', value: mesesProcessados });
-        console.log("Histórico de meses processados salvo:", mesesProcessados);
+        detalhesFavoritoBtn.dataset.symbol = symbol; 
     }
 
     async function processarDividendosPagos() {
@@ -1069,11 +1002,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         if (precisaSalvarCaixa) {
-            await salvarCaixa();
+            await syncAppState('saldoCaixa', saldoCaixa);
         }
         if (proventosParaSalvar.length > 0) {
-            for (const provento of proventosParaSalvar) {
-                await vestoDB.put('proventosConhecidos', provento);
+            const { error } = await supabase
+                .from('proventosConhecidos')
+                .upsert(proventosParaSalvar, { onConflict: 'id, user_id' });
+                
+            if (error) {
+                console.error("Erro ao salvar proventos processados no Supabase:", error);
             }
         }
     }
@@ -1159,7 +1096,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- FUNÇÃO MODIFICADA ---
     function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');
         if (!canvas) return;
@@ -1177,22 +1113,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        // Gradiente alinhado ao título: de purple-400 (#c084fc) para violet-600 (#7c3aed)
         const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); // #c084fc
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  // #7c3aed
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
         
-        // Gradiente de hover: de purple-300 (#d8b4fe) para violet-500 (#8b5cf6)
         const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
-        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); // #d8b4fe
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  // #8b5cf6
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
         
         if (historicoChartInstance) {
             historicoChartInstance.data.labels = labels;
             historicoChartInstance.data.datasets[0].data = data;
             historicoChartInstance.data.datasets[0].backgroundColor = gradient;
             historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            historicoChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)'; // Border mais clara
+            historicoChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)'; 
             historicoChartInstance.update();
         } else {
             historicoChartInstance = new Chart(ctx, {
@@ -1204,7 +1138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         data: data,
                         backgroundColor: gradient,
                         hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', // Border mais clara
+                        borderColor: 'rgba(192, 132, 252, 0.3)', 
                         borderWidth: 1,
                         borderRadius: 5 
                     }]
@@ -1239,9 +1173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    // --- FIM DA MODIFICAÇÃO ---
     
-    // --- FUNÇÃO MODIFICADA ---
     function renderizarGraficoProventosDetalhes({ labels, data }) {
         const canvas = document.getElementById('detalhes-proventos-chart');
         if (!canvas) return;
@@ -1255,15 +1187,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
     
-        // Gradiente alinhado ao título: de purple-400 (#c084fc) para violet-600 (#7c3aed)
         const gradient = ctx.createLinearGradient(0, 0, 0, 192);
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); // #c084fc
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  // #7c3aed
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
         
-        // Gradiente de hover: de purple-300 (#d8b4fe) para violet-500 (#8b5cf6)
         const hoverGradient = ctx.createLinearGradient(0, 0, 0, 192);
-        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); // #d8b4fe
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  // #8b5cf6
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
     
         if (detalhesChartInstance) {
             detalhesChartInstance.data.labels = labels;
@@ -1329,9 +1259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    // --- FIM DA MODIFICAÇÃO ---
     
-    // --- FUNÇÃO MODIFICADA ---
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
@@ -1352,21 +1280,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // Gradiente alinhado ao título: de purple-400 (#c084fc) para violet-600 (#7c3aed)
         const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.6)'); // #c084fc
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');  // #7c3aed (com fade out)
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.6)'); 
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');  
 
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = data;
             
-            // Atualiza cores
             patrimonioChartInstance.data.datasets[0].backgroundColor = gradient;
             patrimonioChartInstance.data.datasets[0].borderColor = '#c084fc';
             patrimonioChartInstance.data.datasets[0].pointBackgroundColor = '#c084fc';
             
-            // Atualiza os novos raios no update também
             patrimonioChartInstance.data.datasets[0].pointRadius = 3;
             patrimonioChartInstance.data.datasets[0].pointHitRadius = 15;
             patrimonioChartInstance.data.datasets[0].pointHoverRadius = 5;
@@ -1382,10 +1307,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         data: data,
                         fill: true,
                         backgroundColor: gradient,
-                        borderColor: '#c084fc', // Cor da linha (purple-400)
+                        borderColor: '#c084fc', 
                         tension: 0.1,
                         pointRadius: 3, 
-                        pointBackgroundColor: '#c084fc', // Cor do ponto (purple-400)
+                        pointBackgroundColor: '#c084fc', 
                         pointHitRadius: 15, 
                         pointHoverRadius: 5 
                     }]
@@ -1408,7 +1333,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    // --- FIM DA MODIFICAÇÃO ---
     
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
@@ -1427,16 +1351,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (show) {
             skeletonListaCarteira.classList.remove('hidden');
             carteiraStatus.classList.add('hidden');
-            // NÃO LIMPE O INNERHTML AQUI
         } else {
             skeletonListaCarteira.classList.add('hidden');
         }
     }
     
-    // ===================================================================
-    // FUNÇÃO renderizarCarteira SUBSTITUÍDA PELA VERSÃO OTIMIZADA
-    // ===================================================================
-
     async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
@@ -1448,9 +1367,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         let totalCustoCarteira = 0;
         let dadosGrafico = [];
 
-        // Lógica do "Estado Vazio" (quase igual a antes)
         if (carteiraOrdenada.length === 0) {
-            listaCarteira.innerHTML = ''; // Aqui é seguro, pois é o estado vazio
+            listaCarteira.innerHTML = ''; 
             carteiraStatus.classList.remove('hidden');
             renderizarDashboardSkeletons(false);
             totalCarteiraValor.textContent = formatBRL(0);
@@ -1465,34 +1383,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarGraficoHistorico({ labels: [], data: [] });
             await salvarSnapshotPatrimonio(saldoCaixa);
             renderizarGraficoPatrimonio();
-            return; // Importante: saia da função aqui
+            return; 
         } else {
             carteiraStatus.classList.add('hidden');
             dashboardStatus.classList.add('hidden');
         }
 
-        // --- A MÁGICA DA RECONCILIAÇÃO COMEÇA AQUI ---
-
-        // 1. Crie um "mapa" de quais ativos DEVEM estar na tela
         const symbolsNaCarteira = new Set(carteiraOrdenada.map(a => a.symbol));
 
-        // 2. Verifique quais cards JÁ ESTÃO na tela e remova os "órfãos"
         const cardsNaTela = listaCarteira.querySelectorAll('[data-symbol]');
         cardsNaTela.forEach(card => {
             const symbol = card.dataset.symbol;
             if (!symbolsNaCarteira.has(symbol)) {
-                // Este card não está mais na carteira, remova-o!
                 card.remove();
             }
         });
 
-        // 3. Itere sobre os dados e ATUALIZE ou CRIE os cards
         carteiraOrdenada.forEach(ativo => {
             const dadoPreco = precosMap.get(ativo.symbol);
             const dadoProvento = proventosMap.get(ativo.symbol);
 
-            // --- Faça TODOS os cálculos primeiro ---
-            // Isso evita lógica duplicada dentro das funções de renderização
             let precoAtual = 0, variacao = 0, precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
             if (dadoPreco) {
                 precoAtual = dadoPreco.regularMarketPrice ?? 0;
@@ -1514,7 +1424,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; bgPL = 'bg-green-900/50'; }
             else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; bgPL = 'bg-red-900/50'; }
 
-            // Agrupe os dados calculados para passar para as funções
             const dadosRender = {
                 dadoPreco,
                 precoFormatado,
@@ -1529,26 +1438,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dadoProvento
             };
 
-            // --- Fim dos Cálculos ---
-
             totalValorCarteira += totalPosicao;
             totalCustoCarteira += custoTotal;
             if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
 
-            // 4. Verifique se o card JÁ EXISTE
             let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
             
             if (card) {
-                // --- CAMINHO 1: O Card existe, APENAS ATUALIZE ---
                 atualizarCardElemento(card, ativo, dadosRender);
             } else {
-                // --- CAMINHO 2: O Card NÃO existe, CRIE E ADICIONE ---
                 card = criarCardElemento(ativo, dadosRender);
                 listaCarteira.appendChild(card);
             }
         });
 
-        // 5. Atualize os totais do Dashboard (igual a antes)
         if (carteiraOrdenada.length > 0) {
             const patrimonioTotalAtivos = totalValorCarteira;
             const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
@@ -1572,10 +1475,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarGraficoAlocacao(dadosGrafico);
         renderizarGraficoPatrimonio(); 
     }
-
-    // ===================================================================
-    // RESTANTE DO CÓDIGO ORIGINAL
-    // ===================================================================
 
     function renderizarProventos() {
         let totalEstimado = 0;
@@ -1892,9 +1791,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
-                                const novoProvento = { ...provento, processado: false, id: idUnico };
-                                await vestoDB.put('proventosConhecidos', novoProvento);
-                                proventosConhecidos.push(novoProvento);
+                                const novoProvento = { 
+                                    ...provento, 
+                                    processado: false, 
+                                    id: idUnico,
+                                    user_id: currentUser.id 
+                                };
+                                
+                                const { error } = await supabase
+                                    .from('proventosConhecidos')
+                                    .insert(novoProvento);
+                                    
+                                if (error) {
+                                    console.error("Erro ao salvar novo provento no Supabase:", error);
+                                } else {
+                                    proventosConhecidos.push(novoProvento);
+                                }
                             }
                         }
                     }
@@ -1907,7 +1819,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return processarProventosIA(proventosPool); 
     }
 
-    // --- FUNÇÃO MODIFICADA ---
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
@@ -1941,20 +1852,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
         }]));
         
-        // --- INÍCIO DA NOVA LÓGICA ---
         let precisaSalvarCaixa = false;
         let precisaSalvarHistorico = false;
         
-        // Pega o mês e ano atuais para comparar
         const dataAtual = new Date();
-        const mesAtual = dataAtual.getMonth(); // 0-11
+        const mesAtual = dataAtual.getMonth(); 
         const anoAtual = dataAtual.getFullYear();
-        // --- FIM DA NOVA LÓGICA ---
 
         const labels = aiData.map(d => d.mes);
         const data = aiData.map(mesData => {
             let totalMes = 0;
-            const dataDoMes = parseMesAno(mesData.mes); // ex: '10/25' vira Date(2025, 9, 1)
+            const dataDoMes = parseMesAno(mesData.mes); 
             
             if (!dataDoMes) return 0;
             const timeDoMes = dataDoMes.getTime();
@@ -1972,39 +1880,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
             
-            // --- INÍCIO DA NOVA LÓGICA ---
-            // Verifica se este mês do gráfico é um mês passado E se ainda não foi processado
-            const mesHistorico = dataDoMes.getMonth(); // 0-11
+            const mesHistorico = dataDoMes.getMonth(); 
             const anoHistorico = dataDoMes.getFullYear();
 
-            // É um mês passado?
             const isPastMonth = anoHistorico < anoAtual || (anoHistorico === anoAtual && mesHistorico < mesAtual);
-            // Não foi processado?
             const isNotProcessed = !mesesProcessados.includes(mesData.mes);
             
             if (isPastMonth && isNotProcessed && totalMes > 0) {
                 console.log(`Processando histórico de ${mesData.mes}: Adicionando ${formatBRL(totalMes)} ao caixa.`);
                 saldoCaixa += totalMes;
-                mesesProcessados.push(mesData.mes); // Marca como processado
+                mesesProcessados.push(mesData.mes); 
                 precisaSalvarCaixa = true;
                 precisaSalvarHistorico = true;
             }
-            // --- FIM DA NOVA LÓGICA ---
             
             return totalMes;
         });
 
-        // --- INÍCIO DA NOVA LÓGICA ---
-        // Salva os dados se algo foi alterado
         if (precisaSalvarCaixa) {
-            await salvarCaixa();
-            // Atualiza o valor na tela imediatamente
+            await syncAppState('saldoCaixa', saldoCaixa);
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
         }
         if (precisaSalvarHistorico) {
-            await salvarHistoricoProcessado();
+            await syncAppState('historicoProcessado', mesesProcessados);
         }
-        // --- FIM DA NOVA LÓGICA ---
 
         return { labels, data };
     }
@@ -2093,35 +1992,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- NOVO CÓDIGO (Handler) ---
     async function handleToggleFavorito() {
         const symbol = detalhesFavoritoBtn.dataset.symbol;
-        if (!symbol) return;
+        if (!symbol || !currentUser) return;
 
         const isFavorite = watchlist.some(item => item.symbol === symbol);
 
         try {
             if (isFavorite) {
-                // Remover
-                await vestoDB.delete('watchlist', symbol);
+                const { error } = await supabase
+                    .from('watchlist')
+                    .delete()
+                    .match({ user_id: currentUser.id, symbol: symbol });
+                    
+                if (error) throw error;
+                
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 showToast(`${symbol} removido dos favoritos.`);
             } else {
-                // Adicionar
-                const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
-                await vestoDB.put('watchlist', newItem);
-                watchlist.push(newItem);
+                const newItem = { 
+                    user_id: currentUser.id, 
+                    symbol: symbol, 
+                    addedAt: new Date().toISOString() 
+                };
+                
+                const { data, error } = await supabase
+                    .from('watchlist')
+                    .insert(newItem)
+                    .select(); 
+                    
+                if (error) throw error;
+                
+                watchlist.push(data[0]);
                 showToast(`${symbol} adicionado aos favoritos!`, 'success');
             }
             
-            atualizarIconeFavorito(symbol); // Atualiza o ícone
-            renderizarWatchlist(); // Atualiza a lista no dashboard
+            atualizarIconeFavorito(symbol); 
+            renderizarWatchlist(); 
         } catch (e) {
             console.error("Erro ao salvar favorito:", e);
             showToast("Erro ao salvar favorito.");
         }
     }
-    // --- FIM DO NOVO CÓDIGO ---
     
     async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
@@ -2177,41 +2089,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         const dataISO = new Date(dataTransacao + 'T12:00:00').toISOString();
+        
+        let transacaoParaSalvar;
+        let isEditing = !!transacaoID;
 
-        if (transacaoID) {
-            console.log("Modo Edição: Salvando ID", transacaoID);
-            const transacaoAtualizada = {
+        if (isEditing) {
+            transacaoParaSalvar = {
                 id: transacaoID,
+                user_id: currentUser.id,
                 date: dataISO,
                 symbol: ticker,
                 type: 'buy',
                 quantity: novaQuantidade,
                 price: novoPreco
             };
-            
-            await vestoDB.put('transacoes', transacaoAtualizada);
-            const index = transacoes.findIndex(t => t.id === transacaoID);
-            if (index > -1) {
-                transacoes[index] = transacaoAtualizada;
-            }
-            showToast("Transação atualizada!", 'success');
-            
         } else {
-            console.log("Modo Adição: Criando nova transação");
-            const novaTransacao = {
+            transacaoParaSalvar = {
                 id: 'tx_' + Date.now(),
+                user_id: currentUser.id,
                 date: dataISO,
                 symbol: ticker,
                 type: 'buy',
                 quantity: novaQuantidade,
                 price: novoPreco
             };
-            
-            await vestoDB.put('transacoes', novaTransacao);
-            transacoes.push(novaTransacao);
-            showToast("Ativo adicionado!", 'success');
         }
 
+        const { data, error } = await supabase
+            .from('transacoes')
+            .upsert(transacaoParaSalvar)
+            .select();
+
+        if (error) {
+            console.error("Erro ao salvar transação no Supabase:", error);
+            showToast("Erro ao salvar transação.");
+        } else {
+            if (isEditing) {
+                const index = transacoes.findIndex(t => t.id === transacaoID);
+                if (index > -1) {
+                    transacoes[index] = data[0];
+                }
+                showToast("Transação atualizada!", 'success');
+            } else {
+                transacoes.push(data[0]);
+                showToast("Ativo adicionado!", 'success');
+            }
+        }
+        
         addButton.innerHTML = `Adicionar`;
         addButton.disabled = false;
         hideAddModal();
@@ -2225,22 +2149,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             'Remover Ativo', 
             `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
             async () => { 
-                transacoes = transacoes.filter(t => t.symbol !== symbol);
                 
-                const transacoesParaRemover = await vestoDB.getAllFromIndex('transacoes', 'bySymbol', symbol);
-                for (const t of transacoesParaRemover) {
-                    await vestoDB.delete('transacoes', t.id);
+                const { error: txError } = await supabase
+                    .from('transacoes')
+                    .delete()
+                    .match({ user_id: currentUser.id, symbol: symbol });
+                    
+                if (txError) {
+                    console.error("Erro ao remover transações do Supabase:", txError);
+                    showToast("Erro ao remover transações.");
+                    return;
                 }
+                
+                transacoes = transacoes.filter(t => t.symbol !== symbol);
 
                 await removerCacheAtivo(symbol); 
                 await removerProventosConhecidos(symbol);
                 
-                // --- NOVO CÓDIGO ---
-                // Também remove da watchlist se existir
-                await vestoDB.delete('watchlist', symbol);
+                const { error: wlError } = await supabase
+                    .from('watchlist')
+                    .delete()
+                    .match({ user_id: currentUser.id, symbol: symbol });
+                
+                if (wlError) {
+                     console.warn("Não foi possível remover da watchlist (Supabase):", wlError.message);
+                }
+                
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 renderizarWatchlist();
-                // --- FIM NOVO CÓDIGO ---
                 
                 await atualizarTodosDados(false); 
             }
@@ -2286,7 +2222,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             async () => { 
                 console.log(`Excluindo transação ${id} do ativo ${symbol}`);
                 
-                await vestoDB.delete('transacoes', id);
+                const { error } = await supabase
+                    .from('transacoes')
+                    .delete()
+                    .match({ id: id });
+                    
+                if (error) {
+                    console.error("Erro ao excluir transação do Supabase:", error);
+                    showToast("Erro ao excluir transação.");
+                    return;
+                }
                 
                 transacoes = transacoes.filter(t => t.id !== id);
                 
@@ -2297,20 +2242,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.log(`Última transação de ${symbol} removida. Limpando proventos conhecidos.`);
                     await removerProventosConhecidos(symbol);
                     
-                    // --- NOVO CÓDIGO ---
-                    // Se foi a última transação, pergunte se quer manter na watchlist
                     const isFavorite = watchlist.some(item => item.symbol === symbol);
                     if (isFavorite) {
                         setTimeout(() => {
                              showModal(
                                 'Manter na Watchlist?',
                                 `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua watchlist?`,
-                                () => {} // Apenas fecha
+                                () => {} 
                             );
-                            // Não fazemos nada, o ativo continua na watchlist
-                        }, 300); // Pequeno delay para o modal fechar
+                        }, 300); 
                     }
-                    // --- FIM NOVO CÓDIGO ---
                 }
                 
                 await atualizarTodosDados(false); 
@@ -2337,12 +2278,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             detalhesChartInstance = null;
         }
         
-        // --- NOVO CÓDIGO ---
-        // Limpa o estado do botão favorito
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
         detalhesFavoritoBtn.dataset.symbol = '';
-        // --- FIM DO NOVO CÓDIGO ---
         
         currentDetalhesSymbol = null;
         currentDetalhesMeses = 3; 
@@ -2464,9 +2402,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         renderizarTransacoesDetalhes(symbol);
         
-        // --- NOVO CÓDIGO (Adicionado no FIM da função) ---
         atualizarIconeFavorito(symbol);
-        // --- FIM DO NOVO CÓDIGO ---
     }
     
     function renderizarTransacoesDetalhes(symbol) {
@@ -2661,7 +2597,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // Listener para os drawers principais
     dashboardDrawers.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target || !target.dataset.targetDrawer) return;
@@ -2674,12 +2609,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon?.classList.toggle('open');
     });
 
-    // --- NOVO CÓDIGO ---
-    // Listener para o toggle da Watchlist (separado, pois está fora do #dashboard-drawers)
     const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
     if (watchlistToggleBtn) {
         watchlistToggleBtn.addEventListener('click', (e) => {
-            const target = e.currentTarget; // O botão
+            const target = e.currentTarget; 
             const drawerId = target.dataset.targetDrawer;
             const drawer = document.getElementById(drawerId);
             const icon = target.querySelector('.card-arrow-icon');
@@ -2688,7 +2621,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             icon?.classList.toggle('open');
         });
     }
-    // --- FIM NOVO CÓDIGO ---
 
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -2765,17 +2697,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // --- NOVOS LISTENERS ---
     detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
 
-    // Listener para cliques nos botões "Ver Detalhes" da watchlist
     watchlistListaEl.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (target && target.dataset.action === 'details' && target.dataset.symbol) {
             showDetalhesModal(target.dataset.symbol);
         }
     });
-    // --- FIM NOVOS LISTENERS ---
     
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
@@ -2799,7 +2728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     copiarDadosBtn.addEventListener('click', handleCopiarDados);
     abrirImportarModalBtn.addEventListener('click', showImportModal);
-    compartilharCarteiraBtn.addEventListener('click', handleShareCarteira); // Adicionado listener
+    compartilharCarteiraBtn.addEventListener('click', handleShareCarteira); 
     
     importTextCancelBtn.addEventListener('click', hideImportModal);
     importTextConfirmBtn.addEventListener('click', handleImportarTexto);
@@ -2807,13 +2736,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target === importTextModal) { hideImportModal(); } 
     });
 
-    // --- NOVOS LISTENERS DE AUTH ---
     loginForm.addEventListener('submit', handleLogin);
     registerForm.addEventListener('submit', handleRegister);
     logoutButton.addEventListener('click', handleLogout);
     showRegisterBtn.addEventListener('click', () => showAuthForm('register'));
     showLoginBtn.addEventListener('click', () => showAuthForm('login'));
-    // --- FIM DOS NOVOS LISTENERS DE AUTH ---
 
     async function callGeminiHistoricoAPI(ticker, todayString) { 
         const body = { 
@@ -2874,21 +2801,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const { shareId } = await response.json();
             
-            // Constrói a URL completa
             const url = `${window.location.origin}/public.html?id=${shareId}`;
 
-            // Mostra um modal de sucesso com o link
             showModal(
                 'Link Gerado!',
                 `Seu link público foi criado e irá expirar em 30 dias. Copie e compartilhe:\n\n ${url}`,
                 () => {
-                    // Tenta copiar para a área de transferência ao clicar em "OK"
                     navigator.clipboard.writeText(url)
                         .then(() => showToast("Link copiado para a área de transferência!", 'success'))
                         .catch(() => showToast("Não foi possível copiar o link automaticamente."));
                 }
             );
-            // Renomeia o botão "Confirmar" do modal
             customModalOk.textContent = 'OK (Copiar Link)';
 
         } catch (error) {
@@ -2897,7 +2820,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } finally {
             compartilharCarteiraBtn.innerHTML = originalIcon;
             compartilharCarteiraBtn.disabled = false;
-            customModalOk.textContent = 'Confirmar'; // Reseta o botão do modal
+            customModalOk.textContent = 'Confirmar'; 
         }
     }
 
@@ -2906,17 +2829,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         copiarDadosBtn.disabled = true;
 
         try {
-            // --- NOVO CÓDIGO ---
-            const storesToExport = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos', 'watchlist']; // Adicionado 'watchlist'
-            // --- FIM NOVO CÓDIGO ---
+            const storesToExport = ['transacoes', 'appState', 'proventosConhecidos', 'watchlist']; 
             const exportData = {};
             
-            for (const storeName of storesToExport) {
-                exportData[storeName] = await vestoDB.getAll(storeName);
-            }
+            exportData.transacoes = transacoes;
+            exportData.watchlist = watchlist;
+            exportData.proventosConhecidos = proventosConhecidos;
+            exportData.appState = [
+                { key: 'saldoCaixa', value: saldoCaixa },
+                { key: 'historicoProcessado', value: mesesProcessados }
+            ];
+            exportData.patrimonio = await vestoDB.getAll('patrimonio');
+
             
             const bundle = {
-                version: 'vesto-v1', // Você pode mudar isso para v2 se quiser, mas v1 funciona
+                version: 'vesto-v1', 
                 exportedAt: new Date().toISOString(),
                 data: exportData
             };
@@ -2946,8 +2873,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             backup = JSON.parse(texto);
             
-            // Verificação ligeiramente modificada para ser flexível
-            if (!backup.version || !backup.version.startsWith('vesto-v') || !backup.data || !Array.isArray(backup.data.transacoes)) {
+            if (!backup.version || !backup.version.startsWith('vesto-v') || !backup.data) {
                 throw new Error("Texto de backup inválido ou corrompido.");
             }
             
@@ -2956,7 +2882,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => { 
                  showModal(
                     'Importar Backup?',
-                    'Atenção: Isso irá APAGAR todos os seus dados atuais e substituí-los pelo backup. Esta ação não pode ser desfeita.',
+                    'Atenção: Isso irá APAGAR todos os seus dados na nuvem e substituí-los pelo backup. Esta ação não pode ser desfeita.',
                     () => { 
                         importarDados(backup.data); 
                     }
@@ -2970,102 +2896,151 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function importarDados(data) {
-        console.log("Iniciando importação...");
+        if (!currentUser) {
+            showToast("Você precisa estar logado para importar.");
+            return;
+        }
+        
+        console.log("Iniciando importação para o Supabase...");
         importTextConfirmBtn.textContent = 'A importar...';
         importTextConfirmBtn.disabled = true;
 
         try {
-            // --- NOVO CÓDIGO ---
-            const stores = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos', 'watchlist']; // Adicionado 'watchlist'
-            // --- FIM NOVO CÓDIGO ---
-            
-            const clearPromises = stores.map(store => vestoDB.clear(store));
-            await Promise.all(clearPromises);
-            console.log("Stores limpos.");
-            mesesProcessados = [];
+            const { id: userId } = currentUser;
 
-            const populatePromises = [];
-            for (const storeName of stores) {
-                if (data[storeName] && Array.isArray(data[storeName])) {
-                    for (const item of data[storeName]) {
-                        // Verificação de segurança simples para 'watchlist'
-                        if (storeName === 'watchlist' && !item.symbol) continue; 
-                        
-                        populatePromises.push(vestoDB.put(storeName, item));
-                    }
+            const tablesToClear = ['transacoes', 'watchlist', 'appState', 'proventosConhecidos'];
+            for (const table of tablesToClear) {
+                const { error } = await supabase.from(table).delete().match({ user_id: userId });
+                if (error) throw new Error(`Erro ao limpar ${table}: ${error.message}`);
+            }
+            console.log("Tabelas do Supabase limpas.");
+
+            await vestoDB.clear('patrimonio');
+            console.log("IDB 'patrimonio' limpo.");
+            
+            if (data.transacoes && data.transacoes.length > 0) {
+                const transacoesParaImportar = data.transacoes.map(t => ({...t, user_id: userId}));
+                const { error } = await supabase.from('transacoes').insert(transacoesParaImportar);
+                if (error) throw new Error(`Erro ao importar transacoes: ${error.message}`);
+            }
+            
+            if (data.watchlist && data.watchlist.length > 0) {
+                const watchlistParaImportar = data.watchlist.map(w => ({...w, user_id: userId, id: undefined }));
+                const { error } = await supabase.from('watchlist').insert(watchlistParaImportar);
+                if (error) throw new Error(`Erro ao importar watchlist: ${error.message}`);
+            }
+
+            if (data.proventosConhecidos && data.proventosConhecidos.length > 0) {
+                const proventosParaImportar = data.proventosConhecidos.map(p => ({...p, user_id: userId}));
+                const { error } = await supabase.from('proventosConhecidos').insert(proventosParaImportar);
+                if (error) throw new Error(`Erro ao importar proventosConhecidos: ${error.message}`);
+            }
+
+            if (data.appState && data.appState.length > 0) {
+                const appStateParaImportar = data.appState.map(s => ({
+                    user_id: userId,
+                    key: s.key,
+                    value: s.value
+                }));
+                const { error } = await supabase.from('appState').insert(appStateParaImportar);
+                if (error) throw new Error(`Erro ao importar appState: ${error.message}`);
+            }
+            
+            if (data.patrimonio && data.patrimonio.length > 0) {
+                 for (const item of data.patrimonio) {
+                    await vestoDB.put('patrimonio', item);
                 }
             }
-            await Promise.all(populatePromises);
-            console.log("Stores populados.");
 
-            await carregarTransacoes();
-            await carregarPatrimonio();
-            await carregarCaixa();
-            await carregarProventosConhecidos();
-            await carregarWatchlist(); // <-- NOVO
+            console.log("Importação para Supabase concluída. Recarregando sessão.");
             
-            await atualizarTodosDados(true);
-            renderizarWatchlist(); // <-- NOVO
+            await loadUserSession();
             
             showToast("Dados importados com sucesso!", 'success'); 
 
         } catch (err) {
             console.error("Erro grave durante a importação:", err);
-            showToast("Erro grave ao importar dados."); 
+            showToast(err.message || "Erro grave ao importar dados."); 
         } finally {
             importTextConfirmBtn.textContent = 'Restaurar';
             importTextConfirmBtn.disabled = false;
         }
     }
     
-    // --- FUNÇÃO init() MODIFICADA ---
-    
-    // Nova função que é chamada APÓS o login
     async function loadUserSession() {
-        hideAuthPage(); // Esconde a tela de login
+        hideAuthPage(); 
         
-        // *Aqui é onde vamos carregar os dados do Supabase*
-        // Por enquanto, vamos manter a lógica de carregar do IndexedDB
-        // para garantir que o resto do app funcione.
-        // Vamos substituir isso na PRÓXIMA etapa.
-        
-        console.log("Sessão carregada, iniciando o app...");
-        
-        // Lógica de carregamento antiga (temporária)
-        await carregarTransacoes();
-        await carregarPatrimonio();
-        await carregarCaixa();
-        await carregarProventosConhecidos();
-        await carregarHistoricoProcessado();
-        await carregarWatchlist();
-        
-        renderizarWatchlist();
-        mudarAba('tab-dashboard'); 
-        
-        atualizarTodosDados(false); 
-        handleAtualizarNoticias(false); 
-        
-        // Intervalo de refresh (temporário, moveremos para a sessão)
-        // setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
+        dashboardStatus.classList.remove('hidden');
+        dashboardLoading.classList.remove('hidden');
+        dashboardMensagem.textContent = 'Sincronizando seus dados...';
+
+        try {
+            console.log("Sincronizando dados do Supabase...");
+
+            const [
+                transacoesRes, 
+                watchlistRes, 
+                proventosRes, 
+                appStateRes,
+                patrimonioLocal
+            ] = await Promise.all([
+                supabase.from('transacoes').select('*'),
+                supabase.from('watchlist').select('*'),
+                supabase.from('proventosConhecidos').select('*'),
+                supabase.from('appState').select('key, value'),
+                vestoDB.getAll('patrimonio')
+            ]);
+            
+            if (transacoesRes.error) throw new Error(`Transações: ${transacoesRes.error.message}`);
+            if (watchlistRes.error) throw new Error(`Watchlist: ${watchlistRes.error.message}`);
+            if (proventosRes.error) throw new Error(`Proventos: ${proventosRes.error.message}`);
+            if (appStateRes.error) throw new Error(`AppState: ${appStateRes.error.message}`);
+
+            transacoes = transacoesRes.data || [];
+            watchlist = watchlistRes.data || [];
+            proventosConhecidos = proventosRes.data || [];
+            
+            const appStateData = appStateRes.data || [];
+            const saldoCaixaState = appStateData.find(s => s.key === 'saldoCaixa');
+            const histProcessadoState = appStateData.find(s => s.key === 'historicoProcessado');
+
+            saldoCaixa = saldoCaixaState ? saldoCaixaState.value : 0;
+            mesesProcessados = histProcessadoState ? histProcessadoState.value : [];
+            
+            patrimonio = patrimonioLocal || [];
+            patrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            console.log(`Dados sincronizados: ${transacoes.length} tx, ${watchlist.length} wl, ${proventosConhecidos.length} prov.`);
+
+            renderizarWatchlist();
+            mudarAba('tab-dashboard'); 
+            
+            await atualizarTodosDados(false); 
+            handleAtualizarNoticias(false); 
+
+        } catch (error) {
+            console.error("Erro fatal ao carregar dados do Supabase:", error);
+            showAuthError('login-error', `Erro ao sincronizar dados: ${error.message}. Tente novamente.`);
+            handleLogout(); 
+        } finally {
+            dashboardStatus.classList.add('hidden');
+            dashboardLoading.classList.add('hidden');
+        }
     }
 
-    // Nova função que verifica a sessão no carregamento da página
     async function checkUserSession() {
         const { data } = await supabase.auth.getSession();
         
         if (data.session) {
             console.log("Usuário já está logado:", data.session.user.email);
             currentUser = data.session.user;
-            await loadUserSession(); // Carrega o app
+            await loadUserSession(); 
         } else {
             console.log("Nenhum usuário logado. Mostrando tela de login.");
-            // Não faz nada, a tela de login já está visível
         }
     }
 
-    // A função init() agora SÓ inicializa as dependências
     async function init() {
-        // 1. Inicializa o IndexedDB (ainda vamos usá-lo para cache)
         try {
             await vestoDB.init();
             console.log("[IDB] Inicialização concluída.");
@@ -3075,10 +3050,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return; 
         }
         
-        // 2. Inicializa o Supabase
         const supabaseReady = await initSupabase();
         
-        // 3. Se o Supabase estiver pronto, verifica a sessão do usuário
         if (supabaseReady) {
             await checkUserSession();
         }

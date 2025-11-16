@@ -11,7 +11,7 @@ body {
                       radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.05), transparent 65%);
     color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    -moz-osx-smoothing: grayscale;
 }
 
 /* NOVO: Regras para ocultar a barra de rolagem principal da página */
@@ -213,19 +213,31 @@ input[type=number] {
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
+/* ===================================================================
+NOVOS ESTILOS: Foco para formulários de Auth e Add Ativo
+===================================================================
+*/
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
-#add-ativo-modal input[type="number"] {
+#add-ativo-modal input[type="number"],
+#auth-container input[type="text"],
+#auth-container input[type="email"],
+#auth-container input[type="password"] {
     transition: all 0.2s ease-in-out;
 }
 
 /* ALTERADO: Cor de foco alinhada com o título (purple-400) */
 #add-ativo-modal input[type="text"]:focus,
 #add-ativo-modal input[type="date"]:focus,
-#add-ativo-modal input[type="number"]:focus {
+#add-ativo-modal input[type="number"]:focus,
+#auth-container input[type="text"]:focus,
+#auth-container input[type="email"]:focus,
+#auth-container input[type="password"]:focus {
     border-color: #c084fc; /* ANTES: #8B5CF6 */
     box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.3); /* ANTES: rgba(139, 92, 246, 0.3) */
 }
+/* FIM DOS NOVOS ESTILOS */
+
 
 .page-modal { 
     opacity: 0;
@@ -362,7 +374,8 @@ button:active,
 .periodo-selector-btn:active,
 .news-ticker-tag:active,
 #copiar-dados-btn:active,
-#abrir-importar-modal-btn:active {
+#abrir-importar-modal-btn:active,
+#logout-btn:active { /* NOVO: Adicionado logout-btn */
     transform: scale(0.96);
     transition: transform 0.1s ease-out;
 }
@@ -427,4 +440,12 @@ mer-parent .bg-gray-700::before {
     );
     transform: translateX(-100%);
     animation: shimmer 1.5s infinite linear;
+}
+
+/* ===================================================================
+NOVO: Estilos utilitários
+===================================================================
+*/
+.hidden {
+    display: none !important; /* Adicionado !important para garantir que sobreponha */
 }

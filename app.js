@@ -1,10 +1,7 @@
+import * as supabaseDB from './supabase.js';
+
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
-
-// ===================================================================
-// FUNÇÕES UTILITÁRIAS GLOBAIS
-// (Movidas para fora para estarem acessíveis globalmente)
-// ===================================================================
 
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
@@ -54,11 +51,6 @@ function parseMesAno(mesAnoStr) {
     }
 }
 
-// ===================================================================
-// NOVAS FUNÇÕES DE RENDERIZAÇÃO (OTIMIZADAS)
-// (Usadas pela nova renderizarCarteira)
-// ===================================================================
-
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -66,7 +58,6 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento
     } = dados;
 
-    // --- HTML da Tag P/L ---
     let plTagHtml = '';
     if (dadoPreco) {
         plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
@@ -74,12 +65,10 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
     
-    // --- HTML do Provento ---
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
             
-            // DEPOIS (Corrigido): Agrupado com space-y-1
             proventoHtml = `
             <div class="mt-3 space-y-1">
                 <div class="flex justify-between items-center">
@@ -101,13 +90,10 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // --- Cria o Elemento ---
     const card = document.createElement('div');
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
-    card.setAttribute('data-symbol', ativo.symbol); // O ID principal!
+    card.setAttribute('data-symbol', ativo.symbol); 
 
-    // --- O HTML (Note os 'data-field' adicionados) ---
-    // A classe 'text-purple-400' no SVG é mantida, pois corresponde ao #c084fc do Tailwind CDN.
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -170,24 +156,20 @@ function atualizarCardElemento(card, ativo, dados) {
         corPL, bgPL, dadoProvento
     } = dados;
 
-    // --- Atualiza os campos simples ---
     card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
     card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : 'A calcular...';
     card.querySelector('[data-field="pm-label"]').textContent = `Custo (P.M. ${formatBRL(ativo.precoMedio)})`;
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
 
-    // --- Atualiza Variação (Valor e Cor) ---
     const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
     variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-    variacaoEl.className = `${corVariacao} font-semibold text-lg`; // Redefine as classes de cor
+    variacaoEl.className = `${corVariacao} font-semibold text-lg`; 
 
-    // --- Atualiza P/L (Valor e Cor) ---
     const plValorEl = card.querySelector('[data-field="pl-valor"]');
     plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...';
-    plValorEl.className = `text-base font-semibold ${corPL}`; // Redefine as classes de cor
+    plValorEl.className = `text-base font-semibold ${corPL}`; 
 
-    // --- Atualiza P/L Tag (HTML interno) ---
     let plTagHtml = '';
     if (dadoPreco) {
         plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
@@ -196,12 +178,10 @@ function atualizarCardElemento(card, ativo, dados) {
     }
     card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
 
-    // --- Atualiza Provento (HTML interno) ---
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
             
-            // DEPOIS (Corrigido): Agrupado com space-y-1
             proventoHtml = `
             <div class="mt-3 space-y-1">
                 <div class="flex justify-between items-center">
@@ -225,10 +205,6 @@ function atualizarCardElemento(card, ativo, dados) {
 }
 
 
-// ===================================================================
-// INÍCIO DO CÓDIGO PRINCIPAL DA APLICAÇÃO
-// ===================================================================
-
 document.addEventListener('DOMContentLoaded', async () => {
     
     const REFRESH_INTERVAL = 1860000;
@@ -236,9 +212,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const CACHE_24_HORAS = 1000 * 60 * 60 * 24;
     const CACHE_6_HORAS = 1000 * 60 * 60 * 6;
     
-    // ANTES: const DB_VERSION = 1;
-    const DB_NAME = 'vestoDB';
-    const DB_VERSION = 2; // <-- MODIFICADO
+    const DB_NAME = 'vestoCacheDB';
+    const DB_VERSION = 1; 
 
     const vestoDB = {
         db: null,
@@ -249,40 +224,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
-                    
-                    if (!db.objectStoreNames.contains('transacoes')) {
-                        const transStore = db.createObjectStore('transacoes', { keyPath: 'id' });
-                        transStore.createIndex('bySymbol', 'symbol', { unique: false });
-                    }
-                    if (!db.objectStoreNames.contains('patrimonio')) {
-                        db.createObjectStore('patrimonio', { keyPath: 'date' });
-                    }
-                    if (!db.objectStoreNames.contains('appState')) {
-                        db.createObjectStore('appState', { keyPath: 'key' });
-                    }
-                    if (!db.objectStoreNames.contains('proventosConhecidos')) {
-                        db.createObjectStore('proventosConhecidos', { keyPath: 'id' });
-                    }
                     if (!db.objectStoreNames.contains('apiCache')) {
                         db.createObjectStore('apiCache', { keyPath: 'key' });
                     }
-
-                    // --- NOVO CÓDIGO AQUI ---
-                    if (!db.objectStoreNames.contains('watchlist')) {
-                        console.log('[IDB] Criando store: watchlist');
-                        db.createObjectStore('watchlist', { keyPath: 'symbol' });
-                    }
-                    // --- FIM DO NOVO CÓDIGO ---
                 };
                 
                 request.onsuccess = (event) => {
                     this.db = event.target.result;
-                    console.log('[IDB] Conexão estabelecida.');
                     resolve();
                 };
                 
                 request.onerror = (event) => {
-                    console.error('[IDB] Erro ao abrir DB:', event.target.error);
+                    console.error('[IDB Cache] Erro ao abrir DB:', event.target.error);
                     reject(event.target.error);
                 };
             });
@@ -297,25 +250,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return new Promise((resolve, reject) => {
                 const store = this._getStore(storeName);
                 const request = store.get(key);
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = (e) => reject(e.target.error);
-            });
-        },
-
-        getAll(storeName) {
-            return new Promise((resolve, reject) => {
-                const store = this._getStore(storeName);
-                const request = store.getAll();
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = (e) => reject(e.target.error);
-            });
-        },
-        
-        getAllFromIndex(storeName, indexName, query) {
-             return new Promise((resolve, reject) => {
-                const store = this._getStore(storeName);
-                const index = store.index(indexName);
-                const request = index.getAll(query);
                 request.onsuccess = () => resolve(request.result);
                 request.onerror = (e) => reject(e.target.error);
             });
@@ -349,16 +283,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
     
+    const authContainer = document.getElementById('auth-container');
+    const authLoading = document.getElementById('auth-loading');
+    const loginForm = document.getElementById('login-form');
+    const loginEmailInput = document.getElementById('login-email');
+    const loginPasswordInput = document.getElementById('login-password');
+    const loginSubmitBtn = document.getElementById('login-submit-btn');
+    const loginError = document.getElementById('login-error');
+    const signupForm = document.getElementById('signup-form');
+    const signupEmailInput = document.getElementById('signup-email');
+    const signupPasswordInput = document.getElementById('signup-password');
+    const signupSubmitBtn = document.getElementById('signup-submit-btn');
+    const signupError = document.getElementById('signup-error');
+    const showSignupBtn = document.getElementById('show-signup-btn');
+    const showLoginBtn = document.getElementById('show-login-btn');
+    const appWrapper = document.getElementById('app-wrapper');
+    const logoutBtn = document.getElementById('logout-btn');
+
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
     const toastElement = document.getElementById('toast-notification');
     const toastMessageElement = document.getElementById('toast-message');
-    // --- ALTERADO: Seletores dos ícones do Toast ---
     const toastIconError = document.getElementById('toast-icon-error');
     const toastIconSuccess = document.getElementById('toast-icon-success');
-    // --- FIM DA ALTERAÇÃO ---
     const fiiNewsList = document.getElementById('fii-news-list');
     const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
     const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
@@ -414,28 +363,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addButton = document.getElementById('add-button');
     const updateNotification = document.getElementById('update-notification');
     const updateButton = document.getElementById('update-button');
-    const copiarDadosBtn = document.getElementById('copiar-dados-btn');
-    const abrirImportarModalBtn = document.getElementById('abrir-importar-modal-btn');
-    const importTextModal = document.getElementById('import-text-modal');
-    const importTextModalContent = document.getElementById('import-text-modal-content');
-    const importTextTextarea = document.getElementById('import-text-textarea');
-    const importTextConfirmBtn = document.getElementById('import-text-confirm-btn');
-    const importTextCancelBtn = document.getElementById('import-text-cancel-btn');
-    
-    // --- NOVOS SELETORES ---
     const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn'); 
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
     const watchlistStatusEl = document.getElementById('watchlist-status'); 
-    // --- FIM NOVOS SELETORES ---
 
+    let currentUserId = null;
     let transacoes = [];        
     let carteiraCalculada = []; 
     let patrimonio = [];
     let saldoCaixa = 0;
     let proventosConhecidos = [];
-    let watchlist = []; // <-- NOVO
+    let watchlist = []; 
     let alocacaoChartInstance = null;
     let historicoChartInstance = null;
     let patrimonioChartInstance = null; 
@@ -459,7 +399,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
 
-    // --- FUNÇÃO showToast ALTERADA ---
     function showToast(message, type = 'error') {
         clearTimeout(toastTimer);
         toastMessageElement.textContent = message;
@@ -471,12 +410,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (type === 'success') {
             toastElement.classList.add('bg-green-700', 'border-green-500');
-            toastIconError.classList.add('hidden'); // Esconde erro
-            toastIconSuccess.classList.remove('hidden'); // Mostra sucesso
+            toastIconError.classList.add('hidden'); 
+            toastIconSuccess.classList.remove('hidden'); 
         } else {
             toastElement.classList.add('bg-red-800', 'border-red-600');
-            toastIconError.classList.remove('hidden'); // Mostra erro
-            toastIconSuccess.classList.add('hidden'); // Esconde sucesso
+            toastIconError.classList.remove('hidden'); 
+            toastIconSuccess.classList.add('hidden'); 
         }
 
         if (isToastShowing && toastElement.classList.contains('toast-visible')) {
@@ -492,10 +431,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             isToastShowing = false;
         }, 1500); 
     }
-    // --- FIM DA ALTERAÇÃO ---
 
     function showUpdateBar() {
-        console.log('Mostrando aviso de atualização.');
         updateNotification.classList.remove('hidden');
         setTimeout(() => {
             updateNotification.style.opacity = '1';
@@ -505,13 +442,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').then(registration => {
-            console.log('SW registrado com sucesso:', registration.scope);
             registration.addEventListener('updatefound', () => {
-                console.log('[PWA] Nova versão do SW encontrada, instalando...');
                 newWorker = registration.installing;
                 newWorker.addEventListener('statechange', () => {
                     if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        console.log('[PWA] Novo SW está "esperando" para ativar.');
                         showUpdateBar();
                     }
                 });
@@ -519,7 +453,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         updateButton.addEventListener('click', () => {
-            console.log('[PWA] Usuário clicou em Atualizar. Enviando SKIP_WAITING...');
             updateButton.textContent = 'A atualizar...';
             updateButton.disabled = true;
             if (newWorker) {
@@ -528,11 +461,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-            console.log('[PWA] Novo SW ativado! Recarregando a página...');
             window.location.reload();
         });
-    } else {
-        console.log('Service Worker não é suportado neste navegador.');
     }
     
     async function setCache(key, data, duration = CACHE_DURATION) { 
@@ -547,12 +477,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function removerCacheAtivo(symbol) {
-        console.log(`A limpar cache específico para: ${symbol}`);
         try {
             await vestoDB.delete('apiCache', `preco_${symbol}`);
             await vestoDB.delete('apiCache', `provento_ia_${symbol}`);
             await vestoDB.delete('apiCache', `detalhe_preco_${symbol}`);
-            
             await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
             
             if (isFII(symbol)) {
@@ -565,19 +493,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function removerProventosConhecidos(symbol) {
-        console.log(`A limpar 'proventosConhecidos' (memória e DB) para: ${symbol}`);
-        
         proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
         
         try {
-            const todosProventos = await vestoDB.getAll('proventosConhecidos');
-            const proventosParaRemover = todosProventos.filter(p => p.symbol === symbol);
-            
-            if (proventosParaRemover.length > 0) {
-                console.log(`Removendo ${proventosParaRemover.length} proventos conhecidos do DB...`);
-                const deletePromises = proventosParaRemover.map(p => vestoDB.delete('proventosConhecidos', p.id));
-                await Promise.all(deletePromises);
-            }
+            await supabaseDB.deleteProventosDoAtivo(symbol);
         } catch (e) {
             console.error(`Erro ao remover proventos conhecidos do DB para ${symbol}:`, e);
         }
@@ -599,11 +518,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function clearBrapiCache() {
-        console.warn("A limpar cache da Brapi e Notícias (IDB)...");
         await vestoDB.clear('apiCache');
     }
-
-    // Funções de formatação (formatBRL, etc) foram MOVIDAS para o topo do arquivo (escopo global)
     
     function getSaoPauloDateTime() {
         try {
@@ -628,26 +544,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // --- FUNÇÃO MODIFICADA ---
     function gerarCores(num) {
-        // Paleta alinhada com os gradientes do título (purple-400, violet-600) e cores adjacentes
         const PALETA_CORES = [
-            '#c084fc', // purple-400 (Mais claro)
-            '#7c3aed', // violet-600 (Mais escuro)
-            '#a855f7', // purple-500
-            '#8b5cf6', // violet-500
-            '#6d28d9', // violet-700
-            '#5b21b6', // violet-800
-            '#3b82f6', // blue-500 (Para variedade)
-            '#22c55e', // green-500 (Para variedade)
-            '#f97316', // orange-500
-            '#ef4444'  // red-500
+            '#c084fc', '#7c3aed', '#a855f7', '#8b5cf6',
+            '#6d28d9', '#5b21b6', '#3b82f6', '#22c55e',
+            '#f97316', '#ef4444'
         ];
         let cores = [];
         for (let i = 0; i < num; i++) { cores.push(PALETA_CORES[i % PALETA_CORES.length]); }
         return cores;
     }
-    // --- FIM DA MODIFICAÇÃO ---
     
     function showModal(title, message, onConfirm) {
         customModalTitle.textContent = title;
@@ -700,21 +606,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 200);
     }
     
-    function showImportModal() {
-        importTextModal.classList.add('visible');
-        importTextModalContent.classList.remove('modal-out');
-        importTextTextarea.focus();
-    }
-    
-    function hideImportModal() {
-        importTextModalContent.classList.add('modal-out');
-        setTimeout(() => {
-            importTextModal.classList.remove('visible');
-            importTextModalContent.classList.remove('modal-out');
-            importTextTextarea.value = '';
-        }, 200);
-    }
-    
     function showDetalhesModal(symbol) {
         detalhesPageContent.style.transform = ''; 
         detalhesPageContent.classList.remove('closing'); 
@@ -735,18 +626,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function carregarTransacoes() {
-        transacoes = await vestoDB.getAll('transacoes');
+        transacoes = await supabaseDB.getTransacoes();
     }
     
     async function carregarPatrimonio() {
-         let allPatrimonio = await vestoDB.getAll('patrimonio');
+         let allPatrimonio = await supabaseDB.getPatrimonio();
          allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
          
          if (allPatrimonio.length > 365) {
-            const toDelete = allPatrimonio.slice(0, allPatrimonio.length - 365);
-            for (const item of toDelete) {
-                await vestoDB.delete('patrimonio', item.date);
-            }
             patrimonio = allPatrimonio.slice(allPatrimonio.length - 365);
          } else {
             patrimonio = allPatrimonio;
@@ -758,7 +645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const today = new Date().toISOString().split('T')[0];
         
         const snapshot = { date: today, value: totalValor };
-        await vestoDB.put('patrimonio', snapshot);
+        await supabaseDB.savePatrimonioSnapshot(snapshot);
         
         const index = patrimonio.findIndex(p => p.date === today);
         if (index > -1) {
@@ -769,25 +656,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function carregarCaixa() {
-        const caixaState = await vestoDB.get('appState', 'saldoCaixa');
+        const caixaState = await supabaseDB.getAppState('saldoCaixa');
         saldoCaixa = caixaState ? caixaState.value : 0;
     }
 
     async function salvarCaixa() {
-        await vestoDB.put('appState', { key: 'saldoCaixa', value: saldoCaixa });
+        await supabaseDB.saveAppState('saldoCaixa', { value: saldoCaixa });
     }
 
     async function carregarProventosConhecidos() {
-        proventosConhecidos = await vestoDB.getAll('proventosConhecidos');
+        proventosConhecidos = await supabaseDB.getProventosConhecidos();
     }
     
-    // --- NOVO CÓDIGO (3 Funções) ---
     async function carregarWatchlist() {
-        watchlist = await vestoDB.getAll('watchlist');
+        watchlist = await supabaseDB.getWatchlist();
     }
 
     function renderizarWatchlist() {
-        watchlistListaEl.innerHTML = ''; // Limpa a lista
+        watchlistListaEl.innerHTML = ''; 
 
         if (watchlist.length === 0) {
             watchlistStatusEl.classList.remove('hidden');
@@ -819,21 +705,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         detalhesFavoritoIconEmpty.classList.toggle('hidden', isFavorite);
         detalhesFavoritoIconFilled.classList.toggle('hidden', !isFavorite);
-        detalhesFavoritoBtn.dataset.symbol = symbol; // Armazena o símbolo no botão
+        detalhesFavoritoBtn.dataset.symbol = symbol; 
     }
-    // --- FIM DO NOVO CÓDIGO ---
 
-    // --- NOVA FUNÇÃO ---
     async function carregarHistoricoProcessado() {
-        const histState = await vestoDB.get('appState', 'historicoProcessado');
+        const histState = await supabaseDB.getAppState('historicoProcessado');
         mesesProcessados = histState ? histState.value : [];
-        console.log("Histórico de meses processados:", mesesProcessados);
     }
 
-    // --- NOVA FUNÇÃO ---
     async function salvarHistoricoProcessado() {
-        await vestoDB.put('appState', { key: 'historicoProcessado', value: mesesProcessados });
-        console.log("Histórico de meses processados salvo:", mesesProcessados);
+        await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
 
     async function processarDividendosPagos() {
@@ -855,7 +736,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const valorRecebido = provento.value * quantity;
                         saldoCaixa += valorRecebido;
                         precisaSalvarCaixa = true;
-                        console.log(`Processado pagamento de ${provento.symbol}: ${formatBRL(valorRecebido)}`);
                     }
                     
                     provento.processado = true;
@@ -869,7 +749,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (proventosParaSalvar.length > 0) {
             for (const provento of proventosParaSalvar) {
-                await vestoDB.put('proventosConhecidos', provento);
+                await supabaseDB.updateProventoProcessado(provento.id);
             }
         }
     }
@@ -955,7 +835,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- FUNÇÃO MODIFICADA ---
     function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');
         if (!canvas) return;
@@ -973,22 +852,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        // Gradiente alinhado ao título: de purple-400 (#c084fc) para violet-600 (#7c3aed)
         const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); // #c084fc
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  // #7c3aed
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
         
-        // Gradiente de hover: de purple-300 (#d8b4fe) para violet-500 (#8b5cf6)
         const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
-        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); // #d8b4fe
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  // #8b5cf6
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
         
         if (historicoChartInstance) {
             historicoChartInstance.data.labels = labels;
             historicoChartInstance.data.datasets[0].data = data;
             historicoChartInstance.data.datasets[0].backgroundColor = gradient;
             historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            historicoChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)'; // Border mais clara
+            historicoChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)'; 
             historicoChartInstance.update();
         } else {
             historicoChartInstance = new Chart(ctx, {
@@ -1000,7 +877,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         data: data,
                         backgroundColor: gradient,
                         hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', // Border mais clara
+                        borderColor: 'rgba(192, 132, 252, 0.3)', 
                         borderWidth: 1,
                         borderRadius: 5 
                     }]
@@ -1035,9 +912,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    // --- FIM DA MODIFICAÇÃO ---
     
-    // --- FUNÇÃO MODIFICADA ---
     function renderizarGraficoProventosDetalhes({ labels, data }) {
         const canvas = document.getElementById('detalhes-proventos-chart');
         if (!canvas) return;
@@ -1051,15 +926,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
     
-        // Gradiente alinhado ao título: de purple-400 (#c084fc) para violet-600 (#7c3aed)
         const gradient = ctx.createLinearGradient(0, 0, 0, 192);
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); // #c084fc
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  // #7c3aed
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
         
-        // Gradiente de hover: de purple-300 (#d8b4fe) para violet-500 (#8b5cf6)
         const hoverGradient = ctx.createLinearGradient(0, 0, 0, 192);
-        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); // #d8b4fe
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  // #8b5cf6
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
     
         if (detalhesChartInstance) {
             detalhesChartInstance.data.labels = labels;
@@ -1125,9 +998,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    // --- FIM DA MODIFICAÇÃO ---
     
-    // --- FUNÇÃO MODIFICADA ---
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
@@ -1148,21 +1019,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // Gradiente alinhado ao título: de purple-400 (#c084fc) para violet-600 (#7c3aed)
         const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.6)'); // #c084fc
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');  // #7c3aed (com fade out)
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.6)'); 
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');  
 
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = data;
             
-            // Atualiza cores
             patrimonioChartInstance.data.datasets[0].backgroundColor = gradient;
             patrimonioChartInstance.data.datasets[0].borderColor = '#c084fc';
             patrimonioChartInstance.data.datasets[0].pointBackgroundColor = '#c084fc';
             
-            // Atualiza os novos raios no update também
             patrimonioChartInstance.data.datasets[0].pointRadius = 3;
             patrimonioChartInstance.data.datasets[0].pointHitRadius = 15;
             patrimonioChartInstance.data.datasets[0].pointHoverRadius = 5;
@@ -1178,10 +1046,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         data: data,
                         fill: true,
                         backgroundColor: gradient,
-                        borderColor: '#c084fc', // Cor da linha (purple-400)
+                        borderColor: '#c084fc', 
                         tension: 0.1,
                         pointRadius: 3, 
-                        pointBackgroundColor: '#c084fc', // Cor do ponto (purple-400)
+                        pointBackgroundColor: '#c084fc', 
                         pointHitRadius: 15, 
                         pointHoverRadius: 5 
                     }]
@@ -1204,7 +1072,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    // --- FIM DA MODIFICAÇÃO ---
     
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
@@ -1223,16 +1090,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (show) {
             skeletonListaCarteira.classList.remove('hidden');
             carteiraStatus.classList.add('hidden');
-            // NÃO LIMPE O INNERHTML AQUI
         } else {
             skeletonListaCarteira.classList.add('hidden');
         }
     }
     
-    // ===================================================================
-    // FUNÇÃO renderizarCarteira SUBSTITUÍDA PELA VERSÃO OTIMIZADA
-    // ===================================================================
-
     async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
@@ -1244,9 +1106,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         let totalCustoCarteira = 0;
         let dadosGrafico = [];
 
-        // Lógica do "Estado Vazio" (quase igual a antes)
         if (carteiraOrdenada.length === 0) {
-            listaCarteira.innerHTML = ''; // Aqui é seguro, pois é o estado vazio
+            listaCarteira.innerHTML = ''; 
             carteiraStatus.classList.remove('hidden');
             renderizarDashboardSkeletons(false);
             totalCarteiraValor.textContent = formatBRL(0);
@@ -1261,34 +1122,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderizarGraficoHistorico({ labels: [], data: [] });
             await salvarSnapshotPatrimonio(saldoCaixa);
             renderizarGraficoPatrimonio();
-            return; // Importante: saia da função aqui
+            return; 
         } else {
             carteiraStatus.classList.add('hidden');
             dashboardStatus.classList.add('hidden');
         }
 
-        // --- A MÁGICA DA RECONCILIAÇÃO COMEÇA AQUI ---
-
-        // 1. Crie um "mapa" de quais ativos DEVEM estar na tela
         const symbolsNaCarteira = new Set(carteiraOrdenada.map(a => a.symbol));
 
-        // 2. Verifique quais cards JÁ ESTÃO na tela e remova os "órfãos"
         const cardsNaTela = listaCarteira.querySelectorAll('[data-symbol]');
         cardsNaTela.forEach(card => {
             const symbol = card.dataset.symbol;
             if (!symbolsNaCarteira.has(symbol)) {
-                // Este card não está mais na carteira, remova-o!
                 card.remove();
             }
         });
 
-        // 3. Itere sobre os dados e ATUALIZE ou CRIE os cards
         carteiraOrdenada.forEach(ativo => {
             const dadoPreco = precosMap.get(ativo.symbol);
             const dadoProvento = proventosMap.get(ativo.symbol);
 
-            // --- Faça TODOS os cálculos primeiro ---
-            // Isso evita lógica duplicada dentro das funções de renderização
             let precoAtual = 0, variacao = 0, precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
             if (dadoPreco) {
                 precoAtual = dadoPreco.regularMarketPrice ?? 0;
@@ -1310,7 +1163,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; bgPL = 'bg-green-900/50'; }
             else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; bgPL = 'bg-red-900/50'; }
 
-            // Agrupe os dados calculados para passar para as funções
             const dadosRender = {
                 dadoPreco,
                 precoFormatado,
@@ -1325,26 +1177,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dadoProvento
             };
 
-            // --- Fim dos Cálculos ---
-
             totalValorCarteira += totalPosicao;
             totalCustoCarteira += custoTotal;
             if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
 
-            // 4. Verifique se o card JÁ EXISTE
             let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
             
             if (card) {
-                // --- CAMINHO 1: O Card existe, APENAS ATUALIZE ---
                 atualizarCardElemento(card, ativo, dadosRender);
             } else {
-                // --- CAMINHO 2: O Card NÃO existe, CRIE E ADICIONE ---
                 card = criarCardElemento(ativo, dadosRender);
                 listaCarteira.appendChild(card);
             }
         });
 
-        // 5. Atualize os totais do Dashboard (igual a antes)
         if (carteiraOrdenada.length > 0) {
             const patrimonioTotalAtivos = totalValorCarteira;
             const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
@@ -1368,10 +1214,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarGraficoAlocacao(dadosGrafico);
         renderizarGraficoPatrimonio(); 
     }
-
-    // ===================================================================
-    // RESTANTE DO CÓDIGO ORIGINAL
-    // ===================================================================
 
     function renderizarProventos() {
         let totalEstimado = 0;
@@ -1510,7 +1352,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!force) {
             const cache = await getCache(cacheKey);
             if (cache) {
-                console.log("Usando notícias do cache (sem skeleton).");
                 renderizarNoticias(cache);
                 return;
             }
@@ -1526,7 +1367,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            console.log("Buscando notícias na rede (BFF)...");
             const articles = await fetchAndCacheNoticiasBFF_NetworkOnly();
             renderizarNoticias(articles);
         } catch (e) {
@@ -1587,7 +1427,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function buscarPrecosCarteira(force = false) { 
         if (carteiraCalculada.length === 0) return [];
-        console.log("A buscar preços na API (cache por ativo)...");
         
         const promessas = carteiraCalculada.map(async (ativo) => {
             const cacheKey = `preco_${ativo.symbol}`;
@@ -1610,7 +1449,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     await setCache(cacheKey, result); 
                     return result;
                 } else {
-                    console.warn(`Ativo ${tickerParaApi} retornou erro ou sem dados.`);
                     return null;
                 }
             } catch (err) {
@@ -1670,9 +1508,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        console.log("Proventos em cache (para filtrar):", proventosPool.map(p => p.symbol));
-        console.log("Proventos para buscar (API):", fiisParaBuscar);
-
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
@@ -1689,7 +1524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             
                             if (!existe) {
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
-                                await vestoDB.put('proventosConhecidos', novoProvento);
+                                await supabaseDB.addProventoConhecido(novoProvento);
                                 proventosConhecidos.push(novoProvento);
                             }
                         }
@@ -1703,7 +1538,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return processarProventosIA(proventosPool); 
     }
 
-    // --- FUNÇÃO MODIFICADA ---
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
@@ -1737,20 +1571,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
         }]));
         
-        // --- INÍCIO DA NOVA LÓGICA ---
         let precisaSalvarCaixa = false;
         let precisaSalvarHistorico = false;
         
-        // Pega o mês e ano atuais para comparar
         const dataAtual = new Date();
-        const mesAtual = dataAtual.getMonth(); // 0-11
+        const mesAtual = dataAtual.getMonth(); 
         const anoAtual = dataAtual.getFullYear();
-        // --- FIM DA NOVA LÓGICA ---
 
         const labels = aiData.map(d => d.mes);
         const data = aiData.map(mesData => {
             let totalMes = 0;
-            const dataDoMes = parseMesAno(mesData.mes); // ex: '10/25' vira Date(2025, 9, 1)
+            const dataDoMes = parseMesAno(mesData.mes); 
             
             if (!dataDoMes) return 0;
             const timeDoMes = dataDoMes.getTime();
@@ -1768,39 +1599,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
             
-            // --- INÍCIO DA NOVA LÓGICA ---
-            // Verifica se este mês do gráfico é um mês passado E se ainda não foi processado
-            const mesHistorico = dataDoMes.getMonth(); // 0-11
+            const mesHistorico = dataDoMes.getMonth(); 
             const anoHistorico = dataDoMes.getFullYear();
 
-            // É um mês passado?
             const isPastMonth = anoHistorico < anoAtual || (anoHistorico === anoAtual && mesHistorico < mesAtual);
-            // Não foi processado?
             const isNotProcessed = !mesesProcessados.includes(mesData.mes);
             
             if (isPastMonth && isNotProcessed && totalMes > 0) {
-                console.log(`Processando histórico de ${mesData.mes}: Adicionando ${formatBRL(totalMes)} ao caixa.`);
                 saldoCaixa += totalMes;
-                mesesProcessados.push(mesData.mes); // Marca como processado
+                mesesProcessados.push(mesData.mes); 
                 precisaSalvarCaixa = true;
                 precisaSalvarHistorico = true;
             }
-            // --- FIM DA NOVA LÓGICA ---
             
             return totalMes;
         });
 
-        // --- INÍCIO DA NOVA LÓGICA ---
-        // Salva os dados se algo foi alterado
         if (precisaSalvarCaixa) {
             await salvarCaixa();
-            // Atualiza o valor na tela imediatamente
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
         }
         if (precisaSalvarHistorico) {
             await salvarHistoricoProcessado();
         }
-        // --- FIM DA NOVA LÓGICA ---
 
         return { labels, data };
     }
@@ -1882,14 +1703,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
         } finally {
-            console.log("Sincronização de CARTEIRA terminada.");
             refreshIcon.classList.remove('spin-animation');
             dashboardStatus.classList.add('hidden');
             dashboardLoading.classList.add('hidden');
         }
     }
     
-    // --- NOVO CÓDIGO (Handler) ---
     async function handleToggleFavorito() {
         const symbol = detalhesFavoritoBtn.dataset.symbol;
         if (!symbol) return;
@@ -1898,26 +1717,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             if (isFavorite) {
-                // Remover
-                await vestoDB.delete('watchlist', symbol);
+                await supabaseDB.deleteWatchlist(symbol);
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 showToast(`${symbol} removido dos favoritos.`);
             } else {
-                // Adicionar
                 const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
-                await vestoDB.put('watchlist', newItem);
+                await supabaseDB.addWatchlist(newItem);
                 watchlist.push(newItem);
                 showToast(`${symbol} adicionado aos favoritos!`, 'success');
             }
             
-            atualizarIconeFavorito(symbol); // Atualiza o ícone
-            renderizarWatchlist(); // Atualiza a lista no dashboard
+            atualizarIconeFavorito(symbol); 
+            renderizarWatchlist(); 
         } catch (e) {
             console.error("Erro ao salvar favorito:", e);
             showToast("Erro ao salvar favorito.");
         }
     }
-    // --- FIM DO NOVO CÓDIGO ---
     
     async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
@@ -1975,9 +1791,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dataISO = new Date(dataTransacao + 'T12:00:00').toISOString();
 
         if (transacaoID) {
-            console.log("Modo Edição: Salvando ID", transacaoID);
             const transacaoAtualizada = {
-                id: transacaoID,
                 date: dataISO,
                 symbol: ticker,
                 type: 'buy',
@@ -1985,15 +1799,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 price: novoPreco
             };
             
-            await vestoDB.put('transacoes', transacaoAtualizada);
+            await supabaseDB.updateTransacao(transacaoID, transacaoAtualizada);
+            
             const index = transacoes.findIndex(t => t.id === transacaoID);
             if (index > -1) {
-                transacoes[index] = transacaoAtualizada;
+                transacoes[index] = { ...transacoes[index], ...transacaoAtualizada };
             }
             showToast("Transação atualizada!", 'success');
             
         } else {
-            console.log("Modo Adição: Criando nova transação");
             const novaTransacao = {
                 id: 'tx_' + Date.now(),
                 date: dataISO,
@@ -2003,7 +1817,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 price: novoPreco
             };
             
-            await vestoDB.put('transacoes', novaTransacao);
+            await supabaseDB.addTransacao(novaTransacao);
             transacoes.push(novaTransacao);
             showToast("Ativo adicionado!", 'success');
         }
@@ -2023,20 +1837,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             async () => { 
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
                 
-                const transacoesParaRemover = await vestoDB.getAllFromIndex('transacoes', 'bySymbol', symbol);
-                for (const t of transacoesParaRemover) {
-                    await vestoDB.delete('transacoes', t.id);
-                }
-
+                await supabaseDB.deleteTransacoesDoAtivo(symbol);
                 await removerCacheAtivo(symbol); 
                 await removerProventosConhecidos(symbol);
                 
-                // --- NOVO CÓDIGO ---
-                // Também remove da watchlist se existir
-                await vestoDB.delete('watchlist', symbol);
+                await supabaseDB.deleteWatchlist(symbol);
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 renderizarWatchlist();
-                // --- FIM NOVO CÓDIGO ---
                 
                 await atualizarTodosDados(false); 
             }
@@ -2046,12 +1853,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     function handleAbrirModalEdicao(id) {
         const tx = transacoes.find(t => t.id === id);
         if (!tx) {
-            console.error("Não foi possível encontrar a transação para editar:", id);
             showToast("Erro: Transação não encontrada.");
             return;
         }
-        
-        console.log("Abrindo modo de edição para:", tx);
         
         transacaoEmEdicao = tx;
         
@@ -2080,33 +1884,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             'Excluir Transação', 
             msg, 
             async () => { 
-                console.log(`Excluindo transação ${id} do ativo ${symbol}`);
-                
-                await vestoDB.delete('transacoes', id);
-                
+                await supabaseDB.deleteTransacao(id);
                 transacoes = transacoes.filter(t => t.id !== id);
                 
                 await removerCacheAtivo(symbol);
                 
                 const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
                 if (!outrasTransacoes) {
-                    console.log(`Última transação de ${symbol} removida. Limpando proventos conhecidos.`);
                     await removerProventosConhecidos(symbol);
                     
-                    // --- NOVO CÓDIGO ---
-                    // Se foi a última transação, pergunte se quer manter na watchlist
                     const isFavorite = watchlist.some(item => item.symbol === symbol);
                     if (isFavorite) {
                         setTimeout(() => {
                              showModal(
                                 'Manter na Watchlist?',
                                 `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua watchlist?`,
-                                () => {} // Apenas fecha
+                                () => {} 
                             );
-                            // Não fazemos nada, o ativo continua na watchlist
-                        }, 300); // Pequeno delay para o modal fechar
+                        }, 300); 
                     }
-                    // --- FIM NOVO CÓDIGO ---
                 }
                 
                 await atualizarTodosDados(false); 
@@ -2133,12 +1929,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             detalhesChartInstance = null;
         }
         
-        // --- NOVO CÓDIGO ---
-        // Limpa o estado do botão favorito
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
         detalhesFavoritoBtn.dataset.symbol = '';
-        // --- FIM NOVO CÓDIGO ---
         
         currentDetalhesSymbol = null;
         currentDetalhesMeses = 3; 
@@ -2260,9 +2053,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         renderizarTransacoesDetalhes(symbol);
         
-        // --- NOVO CÓDIGO (Adicionado no FIM da função) ---
         atualizarIconeFavorito(symbol);
-        // --- FIM DO NOVO CÓDIGO ---
     }
     
     function renderizarTransacoesDetalhes(symbol) {
@@ -2326,7 +2117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             let aiResultJSON = await getCache(cacheKey);
 
             if (!aiResultJSON) {
-                console.log(`Buscando histórico JSON de 12 meses para ${symbol} na API...`);
                 aiResultJSON = await callGeminiHistoricoAPI(symbol, todayString); 
                 
                 if (aiResultJSON && Array.isArray(aiResultJSON)) {
@@ -2334,8 +2124,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     aiResultJSON = [];
                 }
-            } else {
-                console.log(`Usando cache para histórico JSON de ${symbol}.`);
             }
 
             currentDetalhesHistoricoJSON = aiResultJSON;
@@ -2457,7 +2245,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // Listener para os drawers principais
     dashboardDrawers.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (!target || !target.dataset.targetDrawer) return;
@@ -2470,12 +2257,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon?.classList.toggle('open');
     });
 
-    // --- NOVO CÓDIGO ---
-    // Listener para o toggle da Watchlist (separado, pois está fora do #dashboard-drawers)
     const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
     if (watchlistToggleBtn) {
         watchlistToggleBtn.addEventListener('click', (e) => {
-            const target = e.currentTarget; // O botão
+            const target = e.currentTarget; 
             const drawerId = target.dataset.targetDrawer;
             const drawer = document.getElementById(drawerId);
             const icon = target.querySelector('.card-arrow-icon');
@@ -2484,7 +2269,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             icon?.classList.toggle('open');
         });
     }
-    // --- FIM NOVO CÓDIGO ---
 
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -2561,17 +2345,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // --- NOVOS LISTENERS ---
     detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
 
-    // Listener para cliques nos botões "Ver Detalhes" da watchlist
     watchlistListaEl.addEventListener('click', (e) => {
         const target = e.target.closest('button');
         if (target && target.dataset.action === 'details' && target.dataset.symbol) {
             showDetalhesModal(target.dataset.symbol);
         }
     });
-    // --- FIM NOVOS LISTENERS ---
     
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
@@ -2591,15 +2372,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         target.classList.add('active');
 
         renderHistoricoIADetalhes(currentDetalhesMeses);
-    });
-
-    copiarDadosBtn.addEventListener('click', handleCopiarDados);
-    abrirImportarModalBtn.addEventListener('click', showImportModal);
-    
-    importTextCancelBtn.addEventListener('click', hideImportModal);
-    importTextConfirmBtn.addEventListener('click', handleImportarTexto);
-    importTextModal.addEventListener('click', (e) => {
-        if (e.target === importTextModal) { hideImportModal(); } 
     });
 
     async function callGeminiHistoricoAPI(ticker, todayString) { 
@@ -2635,148 +2407,134 @@ document.addEventListener('DOMContentLoaded', async () => {
         return response.json; 
     }
 
-    async function handleCopiarDados() {
-        console.log("Iniciando cópia para o clipboard...");
-        copiarDadosBtn.disabled = true;
-
-        try {
-            // --- NOVO CÓDIGO ---
-            const storesToExport = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos', 'watchlist']; // Adicionado 'watchlist'
-            // --- FIM NOVO CÓDIGO ---
-            const exportData = {};
-            
-            for (const storeName of storesToExport) {
-                exportData[storeName] = await vestoDB.getAll(storeName);
-            }
-            
-            const bundle = {
-                version: 'vesto-v1', // Você pode mudar isso para v2 se quiser, mas v1 funciona
-                exportedAt: new Date().toISOString(),
-                data: exportData
-            };
-
-            const jsonString = JSON.stringify(bundle); 
-            
-            await navigator.clipboard.writeText(jsonString);
-            
-            showToast("Dados copiados para a área de transferência!", 'success'); 
-
-        } catch (err) {
-            console.error("Erro ao copiar dados para o clipboard:", err);
-            showToast("Erro ao copiar dados."); 
-        } finally {
-            copiarDadosBtn.disabled = false;
+    function showAuthLoading(isLoading) {
+        if (isLoading) {
+            authLoading.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            signupForm.classList.add('hidden');
+        } else {
+            authLoading.classList.add('hidden');
+            loginForm.classList.remove('hidden');
         }
     }
-
-    function handleImportarTexto() {
-        const texto = importTextTextarea.value;
-        if (!texto || texto.trim() === '') {
-            showToast("Área de texto vazia."); 
-            return;
-        }
-
-        let backup;
-        try {
-            backup = JSON.parse(texto);
-            
-            // Verificação ligeiramente modificada para ser flexível
-            if (!backup.version || !backup.version.startsWith('vesto-v') || !backup.data || !Array.isArray(backup.data.transacoes)) {
-                throw new Error("Texto de backup inválido ou corrompido.");
-            }
-            
-            hideImportModal(); 
-            
-            setTimeout(() => { 
-                 showModal(
-                    'Importar Backup?',
-                    'Atenção: Isso irá APAGAR todos os seus dados atuais e substituí-los pelo backup. Esta ação não pode ser desfeita.',
-                    () => { 
-                        importarDados(backup.data); 
-                    }
-                );
-            }, 250);
-
-        } catch (err) {
-            console.error("Erro ao ler texto de backup:", err);
-            showToast(err.message || "Erro ao ler texto."); 
-        }
+    
+    function showLoginError(message) {
+        loginError.textContent = message;
+        loginError.classList.remove('hidden');
+        loginSubmitBtn.innerHTML = 'Entrar';
+        loginSubmitBtn.disabled = false;
     }
 
-    async function importarDados(data) {
-        console.log("Iniciando importação...");
-        importTextConfirmBtn.textContent = 'A importar...';
-        importTextConfirmBtn.disabled = true;
+    function showSignupError(message) {
+        signupError.textContent = message;
+        signupError.classList.remove('hidden');
+        signupSubmitBtn.innerHTML = 'Criar conta';
+        signupSubmitBtn.disabled = false;
+    }
 
+    async function carregarDadosIniciais() {
         try {
-            // --- NOVO CÓDIGO ---
-            const stores = ['transacoes', 'patrimonio', 'appState', 'proventosConhecidos', 'watchlist']; // Adicionado 'watchlist'
-            // --- FIM NOVO CÓDIGO ---
-            
-            const clearPromises = stores.map(store => vestoDB.clear(store));
-            await Promise.all(clearPromises);
-            console.log("Stores limpos.");
-            mesesProcessados = [];
-
-            const populatePromises = [];
-            for (const storeName of stores) {
-                if (data[storeName] && Array.isArray(data[storeName])) {
-                    for (const item of data[storeName]) {
-                        // Verificação de segurança simples para 'watchlist'
-                        if (storeName === 'watchlist' && !item.symbol) continue; 
-                        
-                        populatePromises.push(vestoDB.put(storeName, item));
-                    }
-                }
-            }
-            await Promise.all(populatePromises);
-            console.log("Stores populados.");
-
             await carregarTransacoes();
             await carregarPatrimonio();
             await carregarCaixa();
             await carregarProventosConhecidos();
-            await carregarWatchlist(); // <-- NOVO
+            await carregarHistoricoProcessado();
+            await carregarWatchlist(); 
             
-            await atualizarTodosDados(true);
-            renderizarWatchlist(); // <-- NOVO
+            renderizarWatchlist(); 
             
-            showToast("Dados importados com sucesso!", 'success'); 
+            atualizarTodosDados(false); 
+            handleAtualizarNoticias(false); 
+            
+            setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
 
-        } catch (err) {
-            console.error("Erro grave durante a importação:", err);
-            showToast("Erro grave ao importar dados."); 
-        } finally {
-            importTextConfirmBtn.textContent = 'Restaurar';
-            importTextConfirmBtn.disabled = false;
+        } catch (e) {
+            console.error("Erro ao carregar dados iniciais:", e);
+            showToast("Falha ao carregar dados da nuvem.");
         }
     }
     
-    // --- FUNÇÃO MODIFICADA ---
     async function init() {
         try {
             await vestoDB.init();
-            console.log("[IDB] Inicialização concluída.");
         } catch (e) {
-            console.error("[IDB] Falha fatal ao inicializar o DB.", e);
-            showToast("Erro crítico: Banco de dados não pôde ser carregado."); 
+            console.error("[IDB Cache] Falha fatal ao inicializar o DB.", e);
+            showToast("Erro crítico: Banco de dados local não pôde ser carregado."); 
             return; 
         }
         
-        await carregarTransacoes();
-        await carregarPatrimonio();
-        await carregarCaixa();
-        await carregarProventosConhecidos();
-        await carregarHistoricoProcessado();
-        await carregarWatchlist(); // <-- NOVO
+        showAuthLoading(true);
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
+            loginSubmitBtn.disabled = true;
+            loginError.classList.add('hidden');
+
+            const email = loginEmailInput.value;
+            const password = loginPasswordInput.value;
+            const error = await supabaseDB.signIn(email, password);
+            
+            if (error) {
+                showLoginError(error);
+            }
+        });
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
+            signupSubmitBtn.disabled = true;
+            signupError.classList.add('hidden');
+
+            const email = signupEmailInput.value;
+            const password = signupPasswordInput.value;
+            const result = await supabaseDB.signUp(email, password);
+            
+            if (result === 'success') {
+                showAuthLoading(true);
+                showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
+                    showAuthLoading(false);
+                });
+            } else {
+                showSignupError(result);
+            }
+        });
+
+        showSignupBtn.addEventListener('click', () => {
+            loginForm.classList.add('hidden');
+            signupForm.classList.remove('hidden');
+            loginError.classList.add('hidden');
+        });
+
+        showLoginBtn.addEventListener('click', () => {
+            signupForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            signupError.classList.add('hidden');
+        });
         
-        renderizarWatchlist(); // <-- NOVO
-        mudarAba('tab-dashboard'); 
-        
-        atualizarTodosDados(false); 
-        handleAtualizarNoticias(false); 
-        
-        setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
+        logoutBtn.addEventListener('click', () => {
+            showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
+                await supabaseDB.signOut();
+            });
+        });
+
+        try {
+            const session = await supabaseDB.initialize();
+            
+            if (session) {
+                currentUserId = session.user.id;
+                authContainer.classList.add('hidden');
+                appWrapper.classList.remove('hidden');
+                mudarAba('tab-dashboard'); 
+                await carregarDadosIniciais();
+            } else {
+                showAuthLoading(false);
+            }
+        } catch (e) {
+            console.error("Erro na inicialização:", e);
+            showAuthLoading(false);
+            showLoginError("Erro ao conectar com o servidor. Tente novamente.");
+        }
     }
     
     await init();

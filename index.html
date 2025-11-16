@@ -18,478 +18,332 @@
 </head>
 <body class="antialiased">
 
-    <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
-
-        <div id="tab-dashboard" class="tab-content active p-4">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Dashboard</h1>
-            </div>
-
-            <div id="resumo-carteira-card" class="card-bg rounded-2xl mb-6 overflow-hidden">
-                <div class="p-5 text-center bg-gradient-to-b from-purple-900/20 to-transparent">
-                    <span class="text-sm text-gray-400">Valor Total em Ativos</span>
-                    
-                    <div id="skeleton-total-valor" class="h-10 w-3/4 bg-gray-700 rounded-md animate-shimmer mx-auto mt-2"></div>
-                    <h2 id="total-carteira-valor" class="text-4xl font-bold mt-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</h2>
-                </div>
+    <div id="auth-container" class="max-w-lg mx-auto min-h-screen p-4 flex flex-col justify-center">
+        <h1 class="text-6xl font-extrabold text-center tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase mb-10">Vesto</h1>
+    
+        <form id="login-form" class="card-bg p-6 rounded-2xl space-y-4">
+            <h2 class="text-xl font-semibold text-white text-center mb-4">Login</h2>
             
-                <div class="px-5 pb-5 pt-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="text-center">
-                            <span class="text-sm text-gray-500">Caixa (Proventos)</span>
-                            <div id="skeleton-total-caixa" class="h-8 w-2/3 bg-gray-700 rounded-md animate-shimmer mt-1 mx-auto"></div>
-                            <h2 id="total-caixa-valor" class="text-2xl font-semibold mt-1 text-gray-300 hidden">R$ 0,00</h2>
-                        </div>
-                        <div class="text-center">
-                            <span class="text-sm text-gray-500">Próx. Proventos</span>
-                            <div id="skeleton-total-proventos" class="h-8 w-2/3 bg-gray-700 rounded-md animate-shimmer mt-1 mx-auto"></div>
-                            <p id="total-proventos" class="text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</p>
-                        </div>
+            <div id="login-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-lg"></div>
+            
+            <input 
+                type="email" 
+                id="login-email" 
+                placeholder="Email" 
+                required
+                class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
+            >
+            <input 
+                type="password" 
+                id="login-password" 
+                placeholder="Senha" 
+                required
+                class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
+            >
+            
+            <button 
+                id="login-submit-btn"
+                type="submit"
+                class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
+            >
+                Entrar
+            </button>
+
+            <p class="text-sm text-center text-gray-400 pt-2">
+                Não tem uma conta?
+                <button type="button" id="show-signup-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">
+                    Cadastre-se
+                </button>
+            </p>
+        </form>
+
+        <form id="signup-form" class="card-bg p-6 rounded-2xl space-y-4 hidden">
+            <h2 class="text-xl font-semibold text-white text-center mb-4">Criar Conta</h2>
+
+            <div id="signup-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-lg"></div>
+
+            <input 
+                type="email" 
+                id="signup-email" 
+                placeholder="Email" 
+                required
+                class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
+            >
+            <input 
+                type="password" 
+                id="signup-password" 
+                placeholder="Senha (mín. 6 caracteres)" 
+                required
+                class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
+            >
+            
+            <button 
+                id="signup-submit-btn"
+                type="submit"
+                class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
+            >
+                Criar conta
+            </button>
+            
+            <p class="text-sm text-center text-gray-400 pt-2">
+                Já tem uma conta?
+                <button type="button" id="show-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">
+                    Entrar
+                </button>
+            </p>
+        </form>
+        
+        <div id="auth-loading" class="text-center text-gray-500 mt-12 hidden">
+             <div class="flex justify-center items-center py-4">
+                <span class="loader"></span>
+             </div>
+             <p>A conectar...</p>
+        </div>
+    </div>
+
+    <div id="app-wrapper" class="hidden">
+
+        <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
+
+            <div id="tab-dashboard" class="tab-content active p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Dashboard</h1>
+                </div>
+
+                <div id="resumo-carteira-card" class="card-bg rounded-2xl mb-6 overflow-hidden">
+                    <div class="p-5 text-center bg-gradient-to-b from-purple-900/20 to-transparent">
+                        <span class="text-sm text-gray-400">Valor Total em Ativos</span>
+                        
+                        <div id="skeleton-total-valor" class="h-10 w-3/4 bg-gray-700 rounded-md animate-shimmer mx-auto mt-2"></div>
+                        <h2 id="total-carteira-valor" class="text-4xl font-bold mt-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</h2>
                     </div>
-                    
-                    <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-800">
-                        <div class="text-center">
-                            <span class="text-xs text-gray-500">Custo Total</span>
-                            <div id="skeleton-total-custo" class="h-6 w-2/3 bg-gray-700 rounded-md animate-shimmer mt-1 mx-auto"></div>
-                            <p id="total-carteira-custo" class="text-lg font-semibold text-gray-300 hidden">R$ 0,00</p>
+                
+                    <div class="px-5 pb-5 pt-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-center">
+                                <span class="text-sm text-gray-500">Caixa (Proventos)</span>
+                                <div id="skeleton-total-caixa" class="h-8 w-2/3 bg-gray-700 rounded-md animate-shimmer mt-1 mx-auto"></div>
+                                <h2 id="total-caixa-valor" class="text-2xl font-semibold mt-1 text-gray-300 hidden">R$ 0,00</h2>
+                            </div>
+                            <div class="text-center">
+                                <span class="text-sm text-gray-500">Próx. Proventos</span>
+                                <div id="skeleton-total-proventos" class="h-8 w-2/3 bg-gray-700 rounded-md animate-shimmer mt-1 mx-auto"></div>
+                                <p id="total-proventos" class="text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 hidden">R$ 0,00</p>
+                            </div>
                         </div>
-                        <div class="text-center">
-                            <span class="text-xs text-gray-500">Lucro/Prejuízo</span>
-                            <div id="skeleton-total-pl" class="h-6 w-full bg-gray-700 rounded-md animate-shimmer mt-1"></div>
-                            <p id="total-carteira-pl" class="text-lg font-semibold text-gray-500 hidden">R$ 0,00 (0.00%)</p>
+                        
+                        <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-800">
+                            <div class="text-center">
+                                <span class="text-xs text-gray-500">Custo Total</span>
+                                <div id="skeleton-total-custo" class="h-6 w-2/3 bg-gray-700 rounded-md animate-shimmer mt-1 mx-auto"></div>
+                                <p id="total-carteira-custo" class="text-lg font-semibold text-gray-300 hidden">R$ 0,00</p>
+                            </div>
+                            <div class="text-center">
+                                <span class="text-xs text-gray-500">Lucro/Prejuízo</span>
+                                <div id="skeleton-total-pl" class="h-6 w-full bg-gray-700 rounded-md animate-shimmer mt-1"></div>
+                                <p id="total-carteira-pl" class="text-lg font-semibold text-gray-500 hidden">R$ 0,00 (0.00%)</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div id="dashboard-drawers" class="space-y-4">
-                <div class="card-bg p-4 rounded-2xl">
+                <div id="dashboard-drawers" class="space-y-4">
+                    <div class="card-bg p-4 rounded-2xl">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-white ml-2">Evolução do Patrimônio</h3>
+                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="patrimonio-chart-drawer" title="Mostrar menos">
+                                <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="patrimonio-chart-drawer" class="card-drawer open">
+                            <div id="patrimonio-container" class="drawer-content relative h-64 pt-4">
+                                <canvas id="patrimonio-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-bg p-4 rounded-2xl">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-white ml-2">Alocação</h3>
+                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="alocacao-chart-drawer" title="Mostrar mais">
+                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="alocacao-chart-drawer" class="card-drawer">
+                            <div id="grafico-container" class="drawer-content relative h-64 pt-4">
+                                <canvas id="alocacao-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-bg p-4 rounded-2xl">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-white ml-2">Proventos Recebidos</h3>
+                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="proventos-chart-drawer" title="Mostrar mais">
+                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="proventos-chart-drawer" class="card-drawer">
+                            <div id="historico-grafico-container" class="drawer-content relative h-64 pt-4">
+                                <canvas id="historico-proventos-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div> 
+
+                <div class="card-bg p-4 rounded-2xl mt-4">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-white ml-2">Evolução do Patrimônio</h3>
-                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="patrimonio-chart-drawer" title="Mostrar menos">
+                        <h3 class="text-lg font-semibold text-white ml-2">Watchlist</h3>
+                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="watchlist-drawer" title="Mostrar mais">
                             <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                             </svg>
                         </button>
                     </div>
-                    <div id="patrimonio-chart-drawer" class="card-drawer open">
-                        <div id="patrimonio-container" class="drawer-content relative h-64 pt-4">
-                            <canvas id="patrimonio-chart"></canvas>
+                    <div id="watchlist-drawer" class="card-drawer open">
+                        <div class="drawer-content pt-4 space-y-3">
+                            <div id="watchlist-lista" class="space-y-3">
+                                </div>
+                            <p id="watchlist-status" class="text-gray-500 text-center py-4 hidden">Sua watchlist está vazia.</p>
                         </div>
                     </div>
                 </div>
+                <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden">
+                    <p id="dashboard-mensagem">A carregar dados...</p>
+                     <div id="dashboard-loading" class="flex justify-center items-center py-4">
+                        <span class="loader"></span>
+                     </div>
+                </div>
+            </div>
 
-                <div class="card-bg p-4 rounded-2xl">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-white ml-2">Alocação</h3>
-                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="alocacao-chart-drawer" title="Mostrar mais">
-                            <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            <div id="tab-carteira" class="tab-content p-4">
+
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Carteira</h1>
+
+                    <div class="flex items-center gap-3">
+                        <button id="logout-btn" class="p-2 text-gray-500 hover:text-red-500 rounded-lg transition-all duration-200 hover:bg-gray-800" title="Sair">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                        
+                        <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar dados">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                                <path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path>
                             </svg>
                         </button>
                     </div>
-                    <div id="alocacao-chart-drawer" class="card-drawer">
-                        <div id="grafico-container" class="drawer-content relative h-64 pt-4">
-                            <canvas id="alocacao-chart"></canvas>
-                        </div>
-                    </div>
                 </div>
 
-                <div class="card-bg p-4 rounded-2xl">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-white ml-2">Proventos Recebidos</h3>
-                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="proventos-chart-drawer" title="Mostrar mais">
-                            <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div id="proventos-chart-drawer" class="card-drawer">
-                        <div id="historico-grafico-container" class="drawer-content relative h-64 pt-4">
-                            <canvas id="historico-proventos-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div> 
+                <h2 class="text-xl font-semibold text-white mb-3">Minha Posição</h2>
 
-            <div class="card-bg p-4 rounded-2xl mt-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-white ml-2">Watchlist</h3>
-                    <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="watchlist-drawer" title="Mostrar mais">
-                        <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                        </svg>
-                    </button>
-                </div>
-                <div id="watchlist-drawer" class="card-drawer open">
-                    <div class="drawer-content pt-4 space-y-3">
-                        <div id="watchlist-lista" class="space-y-3">
+                <div id="lista-carteira" class="space-y-4"></div>
+
+                <div id="skeleton-lista-carteira" class="space-y-4">
+                    <div class="card-bg p-4 rounded-2xl animate-shimmer-parent">
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-gray-700 flex-shrink-0"></div>
+                                <div class="space-y-2">
+                                    <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
+                                    <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
+                                </div>
                             </div>
-                        <p id="watchlist-status" class="text-gray-500 text-center py-4 hidden">Sua watchlist está vazia.</p>
+                            <div class="text-right flex-shrink-0 ml-2 space-y-2">
+                                <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
+                                <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
+                            <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
+                        </div>
+                    </div>
+                    <div class="card-bg p-4 rounded-2xl animate-shimmer-parent">
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-gray-700 flex-shrink-0"></div>
+                                <div class="space-y-2">
+                                    <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
+                                    <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0 ml-2 space-y-2">
+                                <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
+                                <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
+                            <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden">
-                <p id="dashboard-mensagem">A carregar dados...</p>
-                 <div id="dashboard-loading" class="flex justify-center items-center py-4">
-                    <span class="loader"></span>
-                 </div>
-            </div>
-        </div>
 
-        <div id="tab-carteira" class="tab-content p-4">
-
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Carteira</h1>
-
-                <div class="flex items-center gap-3">
-                    <button id="copiar-dados-btn" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Fazer backup (Download)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                        </svg>
+                <div id="carteira-status" class="text-center text-gray-500 mt-12 hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
+                    </svg>
+                    <p id="carteira-mensagem" class="text-lg mt-4 font-semibold text-gray-200">A sua carteira está vazia.</p>
+                    <button id="empty-state-add-btn" class="mt-6 py-2 px-5 accent-bg text-white font-semibold rounded-lg shadow-md transition-transform active:scale-95 hover:bg-violet-600">
+                        Adicionar primeiro ativo
                     </button>
-                    <button id="abrir-importar-modal-btn" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Restaurar backup (Upload)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                        </svg>
-                    </button>
-                    <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar dados">
+                </div>
+            </div>
+
+            <div id="tab-noticias" class="tab-content p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Notícias</h1>
+                    <button id="refresh-noticias-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar notícias">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
                             <path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path>
                         </svg>
                     </button>
                 </div>
+                <div id="fii-news-skeleton" class="space-y-4 animate-shimmer-parent hidden">
+                    </div>
+                <div id="fii-news-list" class="space-y-4"></div>
+                <p id="fii-news-mensagem" class="text-gray-500 text-center hidden p-4"></p>
             </div>
 
-            <h2 class="text-xl font-semibold text-white mb-3">Minha Posição</h2>
-
-            <div id="lista-carteira" class="space-y-4"></div>
-
-            <div id="skeleton-lista-carteira" class="space-y-4">
-                <div class="card-bg p-4 rounded-2xl animate-shimmer-parent">
-                    <div class="flex justify-between items-start">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-gray-700 flex-shrink-0"></div>
-                            <div class="space-y-2">
-                                <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
-                                <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
-                            </div>
-                        </div>
-                        <div class="text-right flex-shrink-0 ml-2 space-y-2">
-                            <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
-                            <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
-                        </div>
-                    </div>
-                    <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
-                        <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
-                    </div>
+            <div id="tab-historico" class="tab-content p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Histórico</h1>
                 </div>
-                <div class="card-bg p-4 rounded-2xl animate-shimmer-parent">
-                    <div class="flex justify-between items-start">
-                        <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-gray-700 flex-shrink-0"></div>
-                            <div class="space-y-2">
-                                <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
-                                <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
-                            </div>
-                        </div>
-                        <div class="text-right flex-shrink-0 ml-2 space-y-2">
-                            <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
-                            <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
-                        </div>
+                <div id="lista-historico" class="space-y-3"></div>
+                <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
                     </div>
-                    <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
-                        <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="carteira-status" class="text-center text-gray-500 mt-12 hidden">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
-                </svg>
-                <p id="carteira-mensagem" class="text-lg mt-4 font-semibold text-gray-200">A sua carteira está vazia.</p>
-                <button id="empty-state-add-btn" class="mt-6 py-2 px-5 accent-bg text-white font-semibold rounded-lg shadow-md transition-transform active:scale-95 hover:bg-violet-600">
-                    Adicionar primeiro ativo
-                </button>
             </div>
         </div>
 
-        <div id="tab-noticias" class="tab-content p-4">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Notícias</h1>
-                <button id="refresh-noticias-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar notícias">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                        <path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path>
-                    </svg>
-                </button>
+        <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
             </div>
 
-            <div id="fii-news-skeleton" class="space-y-4 animate-shimmer-parent hidden">
-                <div class="card-bg rounded-2xl p-4">
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
-                        <div class="flex-1 space-y-2 pt-1">
-                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                            <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
-                        </div>
-                        <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
-                    </div>
-                </div>
-                <div class="card-bg rounded-2xl p-4">
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
-                        <div class="flex-1 space-y-2 pt-1">
-                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                            <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
-                        </div>
-                        <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
-                    </div>
-                </div>
-                <div class="card-bg rounded-2xl p-4">
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
-                        <div class="flex-1 space-y-2 pt-1">
-                            <div class="h-4 bg-gray-700 rounded-md w-full"></div>
-                            <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
-                        </div>
-                        <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="fii-news-list" class="space-y-4"></div>
-            <p id="fii-news-mensagem" class="text-gray-500 text-center hidden p-4"></p>
-        </div>
-
-        <div id="tab-historico" class="tab-content p-4">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Histórico</h1>
-            </div>
-            <div id="lista-historico" class="space-y-3"></div>
-            <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
-                </svg>
-                <p id="historico-mensagem" class="text-lg mt-4 font-semibold text-gray-200">Nenhuma transação encontrada.</p>
-                <p class="text-sm text-gray-400 mt-1">Seu histórico de compras aparecerá aqui.</p>
-            </div>
-        </div>
-    </div>
-
-    <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
-        <div class="card-bg rounded-xl p-4 shadow-2xl flex items-center justify-between gap-3">
-            <span class="text-sm font-medium text-gray-100">Uma nova versão está disponível!</span>
-            <button id="update-button" class="py-2 px-4 accent-bg text-white rounded-lg transition-colors text-sm font-semibold">
-                Atualizar
+        <button id="show-add-modal-btn" class="fixed bottom-24 right-5 z-40 accent-bg text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 hover:bg-violet-600" title="Adicionar Ativo">
             </button>
-        </div>
-    </div>
 
-    <button id="show-add-modal-btn" class="fixed bottom-24 right-5 z-40 accent-bg text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 hover:bg-violet-600" title="Adicionar Ativo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-    </button>
-
-    <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
-        <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
-            <div class="tab-button-icon-wrapper"> 
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
-                </svg>
-            </div>
-            <span class="text-xs mt-1 font-medium">Dashboard</span>
-        </button>
-
-        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-carteira" title="Carteira">
-            <div class="tab-button-icon-wrapper"> 
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
-                    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d-"M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
-                </svg>
-            </div>
-            <span class="text-xs mt-1 font-medium">Carteira</span>
-        </button>
-
-        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-noticias" title="Notícias">
-            <div class="tab-button-icon-wrapper"> 
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path>
-                </svg>
-            </div>
-            <span class="text-xs mt-1 font-medium">Notícias</span>
-        </button>
-
-        <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-historico" title="Histórico">
-            <div class="tab-button-icon-wrapper"> 
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 3v18h18"></path><path d="M7 12h10"></path><path d="M7 6h10"></path><path d="M7 18h10"></path>
-                </svg>
-            </div>
-            <span class="text-xs mt-1 font-medium">Histórico</span>
-        </button>
-    </nav>
-    <div id="custom-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div id="custom-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
-            <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar Ação</h3>
-            <p id="custom-modal-message" class="text-sm text-gray-300 text-center mb-6">Tem certeza?</p>
-            <div class="flex justify-end gap-3">
-                <button id="custom-modal-cancel" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
-                <button id="custom-modal-ok" class="py-2 px-4 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-16 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">
-        <div id="add-ativo-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
-            <h3 id="add-modal-title" class="text-xl font-semibold text-white mb-5 text-center">Adicionar Compra</h3>
-
-            <form id="add-ativo-form">
-                <input type="hidden" id="transacao-id-input">
-                
-                <div class="space-y-4">
-                    <input 
-                        type="text" 
-                        id="ticker-input" 
-                        placeholder="Ativo (ex: MXRF11)" 
-                        class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
-                    >
-                    <input 
-                        type="date" 
-                        id="date-input" 
-                        placeholder="Data da Compra"
-                        class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
-                        style="color-scheme: dark;"
-                    >
-
-                    <div class="flex gap-3">
-                        <input
-                            type="number"
-                            id="quantity-input"
-                            placeholder="Qtd."
-                            class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-center"
-                        >
-                        <input
-                            type="number"
-                            id="preco-medio-input"
-                            placeholder="Preço (R$)"
-                            step="0.01"
-                            class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-center"
-                        >
-                    </div>
-                </div>
-                <div class="flex justify-end gap-3 mt-6">
-                    <button id="add-ativo-cancel-btn" type="button" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
-                    <button 
-                        id="add-button" 
-                        type="submit"
-                        class="py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
-                    >
-                        Adicionar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="import-text-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="import-modal-title" role="dialog" aria-modal="true">
-        <div id="import-text-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
-            <h3 id="import-modal-title" class="text-xl font-semibold text-white mb-4 text-center">Importar Dados</h3>
-            <p class="text-sm text-gray-400 mb-4 text-center">Cole o seu 'código' de backup abaixo para restaurar.</p>
-            <textarea id="import-text-textarea" class="w-full h-24 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors" placeholder="Cole o seu 'código' de backup aqui..."></textarea>
-            <div class="flex justify-end gap-3 mt-6">
-                <button id="import-text-cancel-btn" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
-                <button 
-                    id="import-text-confirm-btn" 
-                    class="py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95"
-                >
-                    Restaurar
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
-        <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
-
-            <div class="flex justify-between items-center p-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
-                <div id="detalhes-titulo" class="flex-1 min-w-0">
-                    <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
-                     <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
-                </div>
-                
-                <button id="detalhes-favorito-btn" class="p-2 ml-3 text-gray-500 hover:text-yellow-400 rounded-full transition-colors flex-shrink-0" title="Adicionar aos favoritos">
-                    <svg id="detalhes-favorito-icon-empty" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" />
-                    </svg>
-                    <svg id="detalhes-favorito-icon-filled" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" />
-                    </svg>
-                </button>
-                <button id="detalhes-voltar-btn" class="p-2 ml-3 text-gray-400 hover:text-white rounded-full transition-colors flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+        <nav class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
+            </nav>
+        
+        <div id="custom-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             </div>
 
-            <div id="detalhes-conteudo-scroll" class="overflow-y-auto h-[calc(90vh-65px)] p-4">
-                <div id="detalhes-conteudo" class="space-y-5">
-                     <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
-                        <span class="loader"></span>
-                     </div>
-                     <p id="detalhes-mensagem" class="text-center text-gray-500 py-8">Clique em "Detalhes" num ativo da sua carteira para ver as informações aqui.</p>
-
-                     <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
-
-                     <div id="detalhes-historico-container" class="hidden">
-
-                        <h4 class="text-base font-semibold text-white">Histórico de Proventos</h4>
-                        <div id="periodo-selector-group" class="mt-2 grid grid-cols-4 gap-2">
-                            <button class="periodo-selector-btn active" data-meses="3">3M</button>
-                            <button class="periodo-selector-btn" data-meses="6">6M</button>
-                            <button class="periodo-selector-btn" data-meses="9">9M</button>
-                            <button class="periodo-selector-btn" data-meses="12">12M</button>
-                        </div>
-                        
-                        <div id="detalhes-ai-provento" class="mt-4">
-                            <div class="relative h-48 w-full">
-                                <canvas id="detalhes-proventos-chart"></canvas>
-                            </div>
-                        </div>
-                        
-                     </div>
-                     
-                     <div id="detalhes-transacoes-container" class="hidden">
-                        <h4 class="text-base font-semibold text-white">Seu Histórico neste Ativo</h4>
-                        <div id="detalhes-lista-transacoes" class="mt-3 space-y-2">
-                            </div>
-                        <p id="detalhes-transacoes-vazio" class="text-sm text-gray-500 text-center p-4 hidden">
-                            Você (ainda) não possui transações para este ativo.
-                        </p>
-                     </div>
-                     </div>
+        <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-16 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">
             </div>
-        </div>
-    </div>
 
-    <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
-        <div id="toast-notification" 
-             class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl text-white font-medium">
-            
-            <svg id="toast-icon-error" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            
-            <svg id="toast-icon-success" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
+            </div>
 
-            <span id="toast-message" class="flex-1">Erro ao processar.</span>
-        </div>
-    </div>
+        <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
+            </div>
 
-    <script src="app.js" defer></script>
+    </div> <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js" type="module"></script>
+    <script src="app.js" type="module"></script>
 
 </body>
 </html>

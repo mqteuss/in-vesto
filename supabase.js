@@ -1,6 +1,6 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO CORRIGIDA (com nomes de tabela e COLUNA em minúsculas)
+// VERSÃO CORRIGIDA (com tradução manual de nomes de coluna)
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
@@ -11,32 +11,34 @@ let supabaseClient = null;
  */
 function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
+    // CORREÇÃO: Pega a 'hint' (dica) do erro, que é mais útil
+    const hint = error.hint; 
+    const message = error.message;
+
+    if (hint) {
+        // Ex: "Perhaps you meant to reference the column 'watchlist.addedat'?"
+        return hint;
+    }
     if (error.code === '42501') { // RLS policy violation
         return "Erro de permissão. Contate o suporte.";
     }
-    if (error.message.includes("fetch")) {
+    if (message.includes("fetch")) {
         return "Erro de rede. Verifique sua conexão.";
     }
-    if (error.message.includes("invalid JWT") || error.message.includes("Invalid token")) {
+    if (message.includes("invalid JWT") || message.includes("Invalid token")) {
         return "Sessão inválida. Por favor, faça login novamente.";
     }
-    if (error.message.includes("Email not confirmed")) {
+    if (message.includes("Email not confirmed")) {
          return "Email não confirmado. Verifique sua caixa de entrada.";
     }
-    return error.hint || error.message || "Ocorreu um erro desconhecido.";
+    return message || "Ocorreu um erro desconhecido.";
 }
 
 /**
  * 1. INICIALIZAÇÃO E AUTENTICAÇÃO
  */
-
-/**
- * Inicializa o cliente Supabase.
- * Busca as chaves da API e configura o listener de autenticação.
- */
 export async function initialize() {
     try {
-        // 1. Buscar as chaves do Vercel
         const response = await fetch('/api/get-keys');
         if (!response.ok) {
             const err = await response.json();
@@ -44,7 +46,6 @@ export async function initialize() {
         }
         const { supabaseUrl, supabaseKey } = await response.json();
 
-        // 2. Inicializar o cliente
         supabaseClient = createClient(supabaseUrl, supabaseKey, {
             auth: {
                 persistSession: true, 
@@ -53,20 +54,16 @@ export async function initialize() {
             },
         });
 
-        // 3. Listener de Autenticação
         supabaseClient.auth.onAuthStateChange((event, session) => {
             console.log("Supabase Auth State Change:", event, session);
-            
             if (event === "INITIAL_SESSION") {
                 return;
             }
-
             if (event === "SIGNED_OUT") {
                 window.location.reload();
             }
         });
         
-        // 4. Retorna a sessão atual (pode ser null)
         const { data } = await supabaseClient.auth.getSession();
         return data.session;
 
@@ -76,9 +73,6 @@ export async function initialize() {
     }
 }
 
-/**
- * Tenta fazer login com email e senha.
- */
 export async function signIn(email, password) {
     try {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -88,9 +82,6 @@ export async function signIn(email, password) {
     }
 }
 
-/**
- * Tenta criar uma nova conta.
- */
 export async function signUp(email, password) {
      try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
@@ -104,9 +95,6 @@ export async function signUp(email, password) {
     }
 }
 
-/**
- * Faz logout do usuário.
- */
 export async function signOut() {
     try {
         const { error } = await supabaseClient.auth.signOut();
@@ -121,85 +109,52 @@ export async function signOut() {
  * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
  */
 
-// --- Transações ---
-
+// --- Transações --- (Nomes já estavam corretos)
 export async function getTransacoes() {
-    const { data, error } = await supabaseClient
-        .from('transacoes')
-        .select('*');
-        
+    const { data, error } = await supabaseClient.from('transacoes').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getTransacoes"));
     return data || [];
 }
-
 export async function addTransacao(transacao) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
     const transacaoComUser = { ...transacao, user_id: user.id };
-    const { error } = await supabaseClient
-        .from('transacoes')
-        .insert(transacaoComUser);
+    const { error } = await supabaseClient.from('transacoes').insert(transacaoComUser);
     if (error) throw new Error(handleSupabaseError(error, "addTransacao"));
 }
-
 export async function updateTransacao(id, transacaoUpdate) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-    const { error } = await supabaseClient
-        .from('transacoes')
-        .update(transacaoUpdate)
-        .eq('id', id)
-        .eq('user_id', user.id); 
+    const { error } = await supabaseClient.from('transacoes').update(transacaoUpdate).eq('id', id).eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "updateTransacao"));
 }
-
 export async function deleteTransacao(id) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-    const { error } = await supabaseClient
-        .from('transacoes')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id); 
+    const { error } = await supabaseClient.from('transacoes').delete().eq('id', id).eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacao"));
 }
-
 export async function deleteTransacoesDoAtivo(symbol) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-    const { error } = await supabaseClient
-        .from('transacoes')
-        .delete()
-        .eq('symbol', symbol)
-        .eq('user_id', user.id); 
+    const { error } = await supabaseClient.from('transacoes').delete().eq('symbol', symbol).eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacoesDoAtivo"));
 }
-
-
-// --- Patrimônio ---
-
+// --- Patrimônio --- (Nomes já estavam corretos)
 export async function getPatrimonio() {
-    const { data, error } = await supabaseClient
-        .from('patrimonio')
-        .select('*');
-    
+    const { data, error } = await supabaseClient.from('patrimonio').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getPatrimonio"));
     return data || [];
 }
-
 export async function savePatrimonioSnapshot(snapshot) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
     const snapshotComUser = { ...snapshot, user_id: user.id };
-    const { error } = await supabaseClient
-        .from('patrimonio')
-        .upsert(snapshotComUser, { onConflict: 'user_id, date' }); 
+    const { error } = await supabaseClient.from('patrimonio').upsert(snapshotComUser, { onConflict: 'user_id, date' }); 
     if (error) throw new Error(handleSupabaseError(error, "savePatrimonioSnapshot"));
 }
 
-
-// --- AppState (Caixa e Histórico Processado) ---
-
+// --- AppState --- (Tabela 'appstate')
 export async function getAppState(key) {
     const { data, error } = await supabaseClient
         .from('appstate') 
@@ -207,54 +162,56 @@ export async function getAppState(key) {
         .eq('key', key)
         .single(); 
 
-    // CORREÇÃO: Trata o erro 406 (Not Acceptable) como "não encontrado".
-    // Isso acontece quando o .single() não encontra dados que passem no RLS.
-    if (error && error.code !== 'PGRST116' && error.status !== 406) { 
+    // CORREÇÃO: Trata o erro 406 (Not Acceptable) / 404 (Not Found)
+    if (error && error.code !== 'PGRST116' && error.status !== 406 && error.status !== 404) { 
         throw new Error(handleSupabaseError(error, "getAppState"));
     }
     return data ? data.value_json : null;
 }
-
 export async function saveAppState(key, value_json) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
     const record = { key, value_json, user_id: user.id };
-    const { error } = await supabaseClient
-        .from('appstate') 
-        .upsert(record, { onConflict: 'user_id, key' });
+    const { error } = await supabaseClient.from('appstate').upsert(record, { onConflict: 'user_id, key' });
     if (error) throw new Error(handleSupabaseError(error, "saveAppState"));
 }
 
 
-// --- Proventos Conhecidos ---
-
+// --- Proventos Conhecidos --- (Tabela 'proventosconhecidos', Coluna 'paymentdate')
 export async function getProventosConhecidos() {
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
-        // CORREÇÃO: Seleciona 'paymentdate' e renomeia para 'paymentDate'
-        .select('*, paymentdate:paymentDate'); 
+        .select('*'); // Pega tudo (incluindo 'paymentdate')
     if (error) throw new Error(handleSupabaseError(error, "getProventosConhecidos"));
-    return data || [];
+    
+    // CORREÇÃO: Traduz 'paymentdate' para 'paymentDate' para o app.js
+    if (data) {
+        return data.map(item => ({
+            ...item,
+            paymentDate: item.paymentdate 
+        }));
+    }
+    return [];
 }
-
 export async function addProventoConhecido(provento) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
     
-    // CORREÇÃO: Renomeia 'paymentDate' para 'paymentdate' antes de inserir
-    const proventoComUser = { 
-        ...provento, 
-        paymentdate: provento.paymentDate, // Traduz
-        user_id: user.id
+    // CORREÇÃO: Traduz 'paymentDate' para 'paymentdate'
+    const proventoParaDB = {
+        id: provento.id,
+        user_id: user.id,
+        symbol: provento.symbol,
+        value: provento.value,
+        processado: provento.processado,
+        paymentdate: provento.paymentDate // Tradução
     };
-    delete proventoComUser.paymentDate; // Remove a chave errada
 
     const { error } = await supabaseClient
         .from('proventosconhecidos') 
-        .upsert(proventoComUser, { onConflict: 'user_id, id' });
+        .upsert(proventoParaDB, { onConflict: 'user_id, id' });
     if (error) throw new Error(handleSupabaseError(error, "addProventoConhecido"));
 }
-
 export async function updateProventoProcessado(id) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
@@ -265,7 +222,6 @@ export async function updateProventoProcessado(id) {
         .eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "updateProventoProcessado"));
 }
-
 export async function deleteProventosDoAtivo(symbol) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
@@ -278,35 +234,38 @@ export async function deleteProventosDoAtivo(symbol) {
 }
 
 
-// --- Watchlist ---
-
+// --- Watchlist --- (Tabela 'watchlist', Coluna 'addedat')
 export async function getWatchlist() {
     const { data, error } = await supabaseClient
         .from('watchlist')
-         // CORREÇÃO: Seleciona 'addedat' e renomeia para 'addedAt'
-        .select('symbol, addedat:addedAt');
+        .select('symbol, addedat'); // Pega a coluna 'addedat'
     if (error) throw new Error(handleSupabaseError(error, "getWatchlist"));
-    return data || [];
+    
+    // CORREÇÃO: Traduz 'addedat' para 'addedAt' para o app.js
+    if (data) {
+        return data.map(item => ({
+            symbol: item.symbol,
+            addedAt: item.addedat
+        }));
+    }
+    return [];
 }
-
 export async function addWatchlist(item) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
 
-    // CORREÇÃO: Renomeia 'addedAt' para 'addedat' antes de inserir
-    const itemComUser = { 
-        ...item, 
-        addedat: item.addedAt, // Traduz
-        user_id: user.id 
+    // CORREÇÃO: Traduz 'addedAt' para 'addedat'
+    const itemParaDB = {
+        user_id: user.id,
+        symbol: item.symbol,
+        addedat: item.addedAt // Tradução
     };
-    delete itemComUser.addedAt; // Remove a chave errada
 
     const { error } = await supabaseClient
         .from('watchlist')
-        .insert(itemComUser); 
+        .insert(itemParaDB); 
     if (error) throw new Error(handleSupabaseError(error, "addWatchlist"));
 }
-
 export async function deleteWatchlist(symbol) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");

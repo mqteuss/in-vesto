@@ -13,8 +13,6 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <link rel="stylesheet" href="style.css">
 </head>
@@ -144,11 +142,6 @@
                 <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Carteira</h1>
 
                 <div class="flex items-center gap-3">
-                    <button id="compartilhar-carteira-btn" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Compartilhar carteira (Link público)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.542A4.992 4.992 0 0113.5 10.686m0 2.856A4.992 4.992 0 018.684 10.686m4.816 2.856L14.25 15.75M8.684 13.542L7.5 15.75m6.75-5.064l1.066-1.066A4.992 4.992 0 0110.686 4.5m2.856 4.816A4.992 4.992 0 0115.75 10.686m-5.064-5.872L9 3.75m5.872 5.064L15.75 9m-5.872-5.064A4.992 4.992 0 019 4.5m0 0A4.992 4.992 0 014.5 9.314m4.5-4.814A4.992 4.992 0 014.5 9m4.5 4.564A4.992 4.992 0 019 15.75m0 0A4.992 4.992 0 014.5 15.064m4.5 0.686A4.992 4.992 0 014.5 15.75m4.5-4.564A4.992 4.992 0 019 10.686m0 5.064A4.992 4.992 0 0113.5 15.75m-4.5-5.064A4.992 4.992 0 014.5 10.686" />
-                        </svg>
-                    </button>
                     <button id="copiar-dados-btn" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Fazer backup (Download)">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -159,13 +152,6 @@
                           <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                         </svg>
                     </button>
-
-                    <button id="logout-button" class="p-2 text-gray-500 hover:text-red-500 rounded-lg transition-all duration-200 hover:bg-gray-800 hidden" title="Sair (Logout)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                    </button>
-                    
                     <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar dados">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
                             <path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path>
@@ -505,82 +491,5 @@
 
     <script src="app.js" defer></script>
 
-    <div id="auth-page" class="page-modal visible fixed inset-0 z-[90] flex items-center justify-center p-4" style="background-color: #131217;">
-        <div id="auth-content" class="w-full max-w-sm">
-            
-            <div class="text-center mb-8">
-                <h1 class="text-5xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">
-                    VESTO
-                </h1>
-                <p class="text-gray-400 mt-2">Acesse sua carteira de qualquer lugar.</p>
-            </div>
-
-            <form id="login-form" class="space-y-4">
-                <div id="login-error" class="hidden p-3 bg-red-800 border border-red-600 rounded-lg text-sm text-center"></div>
-                
-                <input 
-                    type="email" 
-                    id="login-email" 
-                    placeholder="Email" 
-                    required
-                    class="auth-input w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
-                >
-                <input 
-                    type="password" 
-                    id="login-password" 
-                    placeholder="Senha" 
-                    required
-                    class="auth-input w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
-                >
-                <button 
-                    id="login-button" 
-                    type="submit"
-                    class="w-full py-3 px-4 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
-                >
-                    Entrar
-                </button>
-                <p class="text-center text-sm text-gray-500">
-                    Não tem uma conta? 
-                    <button type="button" id="show-register-btn" class="font-medium accent-text hover-accent-text">
-                        Cadastre-se
-                    </button>
-                </p>
-            </form>
-
-            <form id="register-form" class="space-y-4 hidden">
-                <div id="register-error" class="hidden p-3 bg-red-800 border border-red-600 rounded-lg text-sm text-center"></div>
-                <div id="register-success" class="hidden p-3 bg-green-700 border border-green-500 rounded-lg text-sm text-center"></div>
-
-                <input 
-                    type="email" 
-                    id="register-email" 
-                    placeholder="Email" 
-                    required
-                    class="auth-input w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
-                >
-                <input 
-                    type="password" 
-                    id="register-password" 
-                    placeholder="Senha (mínimo 6 caracteres)" 
-                    required
-                    class="auth-input w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
-                >
-                <button 
-                    id="register-button" 
-                    type="submit"
-                    class="w-full py-3 px-4 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
-                >
-                    Criar conta
-                </button>
-                <p class="text-center text-sm text-gray-500">
-                    Já tem uma conta? 
-                    <button type="button" id="show-login-btn" class="font-medium accent-text hover-accent-text">
-                        Entrar
-                    </button>
-                </p>
-            </form>
-
-        </div>
-    </div>
-    </body>
+</body>
 </html>

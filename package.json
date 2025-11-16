@@ -3,11 +3,7 @@
   "version": "1.0.0",
   "description": "BFF para o app Vesto",
   "private": true,
-  "dependencies": {
-    "@vercel/kv": "^2.0.0",
-    "uuid": "^10.0.0",
-    "@supabase/supabase-js": "^2.43.5"
-  },
+  "dependencies": {},
   "engines": {
     "node": "22.x"
   }

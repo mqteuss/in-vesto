@@ -5,9 +5,7 @@ const APP_SHELL_FILES_LOCAL = [
   'index.html',
   'manifest.json',
   'icons/icon-192x192.png',
-  'icons/icon-512x512.png', 
-  'style.css',
-  'app.js'
+  'icons/icon-512x512.png'
 ];
 
 const APP_SHELL_FILES_CDN = [

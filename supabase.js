@@ -1,6 +1,6 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO CORRIGIDA (com user_id E correção de loop de F5)
+// VERSÃO CORRIGIDA (com nomes de tabela em minúsculas)
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
@@ -23,7 +23,8 @@ function handleSupabaseError(error, context) {
     if (error.message.includes("Email not confirmed")) {
          return "Email não confirmado. Verifique sua caixa de entrada.";
     }
-    return error.message || "Ocorreu um erro desconhecido.";
+    // CORREÇÃO: Pega a mensagem de erro da hint se ela existir (ex: tabela não encontrada)
+    return error.hint || error.message || "Ocorreu um erro desconhecido.";
 }
 
 /**
@@ -54,22 +55,16 @@ export async function initialize() {
         });
 
         // 3. Listener de Autenticação
-        // CORRIGIDO: Modificado para evitar o loop de F5
         supabaseClient.auth.onAuthStateChange((event, session) => {
             console.log("Supabase Auth State Change:", event, session);
             
-            // IGNORA a sessão inicial. Isso previne o loop de reload.
             if (event === "INITIAL_SESSION") {
                 return;
             }
 
-            // Se o usuário explicitamente SAIR (SIGNED_OUT), recarrega.
             if (event === "SIGNED_OUT") {
                 window.location.reload();
             }
-            
-            // NOTA: O 'SIGNED_IN' é tratado manualmente no app.js (após login)
-            // para evitar o loop.
         });
         
         // 4. Retorna a sessão atual (pode ser null)
@@ -89,7 +84,6 @@ export async function signIn(email, password) {
     try {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // O app.js vai recarregar a página manualmente
     } catch (error) {
         return handleSupabaseError(error, "signIn");
     }
@@ -100,23 +94,12 @@ export async function signIn(email, password) {
  */
 export async function signUp(email, password) {
      try {
-        // NOTA: Esta função NÃO faz login se a confirmação de email estiver ATIVADA.
-        // Ela SÓ faz login se a confirmação de email estiver DESATIVADA.
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
-        
         if (error) throw error;
-
-        // Se a confirmação de email estiver LIGADA (padrão), 
-        // data.session será null e nós retornamos 'success'.
         if (data.session === null) {
-            return "success"; // Indica que o modal "Verifique seu Email" deve ser mostrado
+            return "success"; 
         }
-        
-        // Se a confirmação de email estiver DESLIGADA,
-        // data.session vai existir, e o app.js vai recarregar.
-        // (O listener 'SIGNED_IN' também pode disparar e recarregar)
         return "success_signed_in"; 
-
     } catch (error) {
         return handleSupabaseError(error, "signUp");
     }
@@ -129,7 +112,6 @@ export async function signOut() {
     try {
         const { error } = await supabaseClient.auth.signOut();
         if (error) throw error;
-        // O listener onAuthStateChange (SIGNED_OUT) cuidará do recarregamento.
     } catch (error) {
         console.error("Erro ao sair:", error);
     }
@@ -138,10 +120,9 @@ export async function signOut() {
 
 /**
  * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
- * (Estas funções já estavam corretas na última versão que enviei)
  */
 
-// --- Transações ---
+// --- Transações --- (já estava minúsculo)
 
 export async function getTransacoes() {
     const { data, error } = await supabaseClient
@@ -155,9 +136,7 @@ export async function getTransacoes() {
 export async function addTransacao(transacao) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const transacaoComUser = { ...transacao, user_id: user.id };
-
     const { error } = await supabaseClient
         .from('transacoes')
         .insert(transacaoComUser);
@@ -167,7 +146,6 @@ export async function addTransacao(transacao) {
 export async function updateTransacao(id, transacaoUpdate) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const { error } = await supabaseClient
         .from('transacoes')
         .update(transacaoUpdate)
@@ -179,7 +157,6 @@ export async function updateTransacao(id, transacaoUpdate) {
 export async function deleteTransacao(id) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const { error } = await supabaseClient
         .from('transacoes')
         .delete()
@@ -191,7 +168,6 @@ export async function deleteTransacao(id) {
 export async function deleteTransacoesDoAtivo(symbol) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const { error } = await supabaseClient
         .from('transacoes')
         .delete()
@@ -201,7 +177,7 @@ export async function deleteTransacoesDoAtivo(symbol) {
 }
 
 
-// --- Patrimônio ---
+// --- Patrimônio --- (já estava minúsculo)
 
 export async function getPatrimonio() {
     const { data, error } = await supabaseClient
@@ -215,27 +191,25 @@ export async function getPatrimonio() {
 export async function savePatrimonioSnapshot(snapshot) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const snapshotComUser = { ...snapshot, user_id: user.id };
-
     const { error } = await supabaseClient
         .from('patrimonio')
         .upsert(snapshotComUser, { onConflict: 'user_id, date' }); 
-        
     if (error) throw new Error(handleSupabaseError(error, "savePatrimonioSnapshot"));
 }
 
 
 // --- AppState (Caixa e Histórico Processado) ---
+// CORRIGIDO: 'appState' -> 'appstate'
 
 export async function getAppState(key) {
     const { data, error } = await supabaseClient
-        .from('appState')
+        .from('appstate') // CORRIGIDO
         .select('value_json')
         .eq('key', key)
         .single(); 
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = 'Range not satisfactory' (não encontrado)
+    if (error && error.code !== 'PGRST116') { 
         throw new Error(handleSupabaseError(error, "getAppState"));
     }
     return data ? data.value_json : null;
@@ -244,24 +218,21 @@ export async function getAppState(key) {
 export async function saveAppState(key, value_json) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-    
     const record = { key, value_json, user_id: user.id };
-    
     const { error } = await supabaseClient
-        .from('appState')
+        .from('appstate') // CORRIGIDO
         .upsert(record, { onConflict: 'user_id, key' });
-        
     if (error) throw new Error(handleSupabaseError(error, "saveAppState"));
 }
 
 
 // --- Proventos Conhecidos ---
+// CORRIGIDO: 'proventosConhecidos' -> 'proventosconhecidos'
 
 export async function getProventosConhecidos() {
     const { data, error } = await supabaseClient
-        .from('proventosConhecidos')
+        .from('proventosconhecidos') // CORRIGIDO
         .select('*');
-        
     if (error) throw new Error(handleSupabaseError(error, "getProventosConhecidos"));
     return data || [];
 }
@@ -269,22 +240,18 @@ export async function getProventosConhecidos() {
 export async function addProventoConhecido(provento) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const proventoComUser = { ...provento, user_id: user.id };
-
     const { error } = await supabaseClient
-        .from('proventosConhecidos')
+        .from('proventosconhecidos') // CORRIGIDO
         .upsert(proventoComUser, { onConflict: 'user_id, id' });
-        
     if (error) throw new Error(handleSupabaseError(error, "addProventoConhecido"));
 }
 
 export async function updateProventoProcessado(id) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const { error } = await supabaseClient
-        .from('proventosConhecidos')
+        .from('proventosconhecidos') // CORRIGIDO
         .update({ processado: true })
         .eq('id', id)
         .eq('user_id', user.id); 
@@ -294,9 +261,8 @@ export async function updateProventoProcessado(id) {
 export async function deleteProventosDoAtivo(symbol) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const { error } = await supabaseClient
-        .from('proventosConhecidos')
+        .from('proventosconhecidos') // CORRIGIDO
         .delete()
         .eq('symbol', symbol)
         .eq('user_id', user.id); 
@@ -304,13 +270,12 @@ export async function deleteProventosDoAtivo(symbol) {
 }
 
 
-// --- Watchlist ---
+// --- Watchlist --- (já estava minúsculo)
 
 export async function getWatchlist() {
     const { data, error } = await supabaseClient
         .from('watchlist')
         .select('symbol, addedAt');
-        
     if (error) throw new Error(handleSupabaseError(error, "getWatchlist"));
     return data || [];
 }
@@ -318,9 +283,7 @@ export async function getWatchlist() {
 export async function addWatchlist(item) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const itemComUser = { ...item, user_id: user.id };
-
     const { error } = await supabaseClient
         .from('watchlist')
         .insert(itemComUser); 
@@ -330,7 +293,6 @@ export async function addWatchlist(item) {
 export async function deleteWatchlist(symbol) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
     const { error } = await supabaseClient
         .from('watchlist')
         .delete()

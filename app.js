@@ -399,14 +399,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addButton = document.getElementById('add-button');
     const updateNotification = document.getElementById('update-notification');
     const updateButton = document.getElementById('update-button');
-    const copiarDadosBtn = document.getElementById('copiar-dados-btn');
-    const abrirImportarModalBtn = document.getElementById('abrir-importar-modal-btn');
+    
     const compartilharCarteiraBtn = document.getElementById('compartilhar-carteira-btn'); 
-    const importTextModal = document.getElementById('import-text-modal');
-    const importTextModalContent = document.getElementById('import-text-modal-content');
-    const importTextTextarea = document.getElementById('import-text-textarea');
-    const importTextConfirmBtn = document.getElementById('import-text-confirm-btn');
-    const importTextCancelBtn = document.getElementById('import-text-cancel-btn');
     
     const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn'); 
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
@@ -723,6 +717,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function removerProventosConhecidos(symbol) {
+        if (!currentUser) return;
         console.log(`A limpar 'proventosConhecidos' (memória e Supabase) para: ${symbol}`);
         
         const proventosParaRemover = proventosConhecidos.filter(p => p.symbol === symbol);
@@ -733,6 +728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { error } = await supabase
                 .from('proventosConhecidos')
                 .delete()
+                .match({ user_id: currentUser.id })
                 .in('id', idsParaRemover);
                 
             if (error) {
@@ -851,21 +847,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             quantityInput.classList.remove('border-red-500');
             precoMedioInput.classList.remove('border-red-500');
             dateInput.classList.remove('border-red-500');
-        }, 200);
-    }
-    
-    function showImportModal() {
-        importTextModal.classList.add('visible');
-        importTextModalContent.classList.remove('modal-out');
-        importTextTextarea.focus();
-    }
-    
-    function hideImportModal() {
-        importTextModalContent.classList.add('modal-out');
-        setTimeout(() => {
-            importTextModal.classList.remove('visible');
-            importTextModalContent.classList.remove('modal-out');
-            importTextTextarea.value = '';
         }, 200);
     }
     
@@ -2225,7 +2206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const { error } = await supabase
                     .from('transacoes')
                     .delete()
-                    .match({ id: id });
+                    .match({ id: id, user_id: currentUser.id });
                     
                 if (error) {
                     console.error("Erro ao excluir transação do Supabase:", error);
@@ -2726,16 +2707,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderHistoricoIADetalhes(currentDetalhesMeses);
     });
 
-    copiarDadosBtn.addEventListener('click', handleCopiarDados);
-    abrirImportarModalBtn.addEventListener('click', showImportModal);
     compartilharCarteiraBtn.addEventListener('click', handleShareCarteira); 
     
-    importTextCancelBtn.addEventListener('click', hideImportModal);
-    importTextConfirmBtn.addEventListener('click', handleImportarTexto);
-    importTextModal.addEventListener('click', (e) => {
-        if (e.target === importTextModal) { hideImportModal(); } 
-    });
-
     loginForm.addEventListener('submit', handleLogin);
     registerForm.addEventListener('submit', handleRegister);
     logoutButton.addEventListener('click', handleLogout);
@@ -2821,149 +2794,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             compartilharCarteiraBtn.innerHTML = originalIcon;
             compartilharCarteiraBtn.disabled = false;
             customModalOk.textContent = 'Confirmar'; 
-        }
-    }
-
-    async function handleCopiarDados() {
-        console.log("Iniciando cópia para o clipboard...");
-        copiarDadosBtn.disabled = true;
-
-        try {
-            const storesToExport = ['transacoes', 'appState', 'proventosConhecidos', 'watchlist']; 
-            const exportData = {};
-            
-            exportData.transacoes = transacoes;
-            exportData.watchlist = watchlist;
-            exportData.proventosConhecidos = proventosConhecidos;
-            exportData.appState = [
-                { key: 'saldoCaixa', value: saldoCaixa },
-                { key: 'historicoProcessado', value: mesesProcessados }
-            ];
-            exportData.patrimonio = await vestoDB.getAll('patrimonio');
-
-            
-            const bundle = {
-                version: 'vesto-v1', 
-                exportedAt: new Date().toISOString(),
-                data: exportData
-            };
-
-            const jsonString = JSON.stringify(bundle); 
-            
-            await navigator.clipboard.writeText(jsonString);
-            
-            showToast("Dados copiados para a área de transferência!", 'success'); 
-
-        } catch (err) {
-            console.error("Erro ao copiar dados para o clipboard:", err);
-            showToast("Erro ao copiar dados."); 
-        } finally {
-            copiarDadosBtn.disabled = false;
-        }
-    }
-
-    function handleImportarTexto() {
-        const texto = importTextTextarea.value;
-        if (!texto || texto.trim() === '') {
-            showToast("Área de texto vazia."); 
-            return;
-        }
-
-        let backup;
-        try {
-            backup = JSON.parse(texto);
-            
-            if (!backup.version || !backup.version.startsWith('vesto-v') || !backup.data) {
-                throw new Error("Texto de backup inválido ou corrompido.");
-            }
-            
-            hideImportModal(); 
-            
-            setTimeout(() => { 
-                 showModal(
-                    'Importar Backup?',
-                    'Atenção: Isso irá APAGAR todos os seus dados na nuvem e substituí-los pelo backup. Esta ação não pode ser desfeita.',
-                    () => { 
-                        importarDados(backup.data); 
-                    }
-                );
-            }, 250);
-
-        } catch (err) {
-            console.error("Erro ao ler texto de backup:", err);
-            showToast(err.message || "Erro ao ler texto."); 
-        }
-    }
-
-    async function importarDados(data) {
-        if (!currentUser) {
-            showToast("Você precisa estar logado para importar.");
-            return;
-        }
-        
-        console.log("Iniciando importação para o Supabase...");
-        importTextConfirmBtn.textContent = 'A importar...';
-        importTextConfirmBtn.disabled = true;
-
-        try {
-            const { id: userId } = currentUser;
-
-            const tablesToClear = ['transacoes', 'watchlist', 'appState', 'proventosConhecidos'];
-            for (const table of tablesToClear) {
-                const { error } = await supabase.from(table).delete().match({ user_id: userId });
-                if (error) throw new Error(`Erro ao limpar ${table}: ${error.message}`);
-            }
-            console.log("Tabelas do Supabase limpas.");
-
-            await vestoDB.clear('patrimonio');
-            console.log("IDB 'patrimonio' limpo.");
-            
-            if (data.transacoes && data.transacoes.length > 0) {
-                const transacoesParaImportar = data.transacoes.map(t => ({...t, user_id: userId}));
-                const { error } = await supabase.from('transacoes').insert(transacoesParaImportar);
-                if (error) throw new Error(`Erro ao importar transacoes: ${error.message}`);
-            }
-            
-            if (data.watchlist && data.watchlist.length > 0) {
-                const watchlistParaImportar = data.watchlist.map(w => ({...w, user_id: userId, id: undefined }));
-                const { error } = await supabase.from('watchlist').insert(watchlistParaImportar);
-                if (error) throw new Error(`Erro ao importar watchlist: ${error.message}`);
-            }
-
-            if (data.proventosConhecidos && data.proventosConhecidos.length > 0) {
-                const proventosParaImportar = data.proventosConhecidos.map(p => ({...p, user_id: userId}));
-                const { error } = await supabase.from('proventosConhecidos').insert(proventosParaImportar);
-                if (error) throw new Error(`Erro ao importar proventosConhecidos: ${error.message}`);
-            }
-
-            if (data.appState && data.appState.length > 0) {
-                const appStateParaImportar = data.appState.map(s => ({
-                    user_id: userId,
-                    key: s.key,
-                    value: s.value
-                }));
-                const { error } = await supabase.from('appState').insert(appStateParaImportar);
-                if (error) throw new Error(`Erro ao importar appState: ${error.message}`);
-            }
-            
-            if (data.patrimonio && data.patrimonio.length > 0) {
-                 for (const item of data.patrimonio) {
-                    await vestoDB.put('patrimonio', item);
-                }
-            }
-
-            console.log("Importação para Supabase concluída. Recarregando sessão.");
-            
-            await loadUserSession();
-            
-            showToast("Dados importados com sucesso!", 'success'); 
-
-        } catch (err) {
-            console.error("Erro grave durante a importação:", err);
-            showToast(err.message || "Erro grave ao importar dados."); 
-        } finally {
-            importTextConfirmBtn.textContent = 'Restaurar';
-            importTextConfirmBtn.disabled = false;
         }
     }
     

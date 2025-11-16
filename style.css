@@ -428,3 +428,41 @@ mer-parent .bg-gray-700::before {
     transform: translateX(-100%);
     animation: shimmer 1.5s infinite linear;
 }
+
+/* ================================== */
+/* NOVOS ESTILOS DA TELA DE AUTENTICAÇÃO */
+/* ================================== */
+
+#auth-page {
+    transition: opacity 0.5s ease-in-out;
+}
+
+#auth-page.auth-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Cor de foco dos inputs de login */
+.auth-input:focus {
+    border-color: #c084fc;
+    box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.3);
+}
+
+/* Animação para os formulários */
+#login-form.form-out,
+#register-form.form-out {
+    animation: authFormOut 0.3s ease-in forwards;
+}
+#login-form.form-in,
+#register-form.form-in {
+    animation: authFormIn 0.3s ease-out forwards;
+}
+
+@keyframes authFormIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes authFormOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+}

@@ -236,9 +236,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const CACHE_24_HORAS = 1000 * 60 * 60 * 24;
     const CACHE_6_HORAS = 1000 * 60 * 60 * 6;
     
-    // ANTES: const DB_VERSION = 1;
     const DB_NAME = 'vestoDB';
-    const DB_VERSION = 2; // <-- MODIFICADO
+    const DB_VERSION = 2;
+
+    // --- NOVOS SELETORES DE AUTH ---
+    const authPage = document.getElementById('auth-page');
+    const authContent = document.getElementById('auth-content');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const loginError = document.getElementById('login-error');
+    const registerError = document.getElementById('register-error');
+    const registerSuccess = document.getElementById('register-success');
+    const loginEmailInput = document.getElementById('login-email');
+    const loginPasswordInput = document.getElementById('login-password');
+    const registerEmailInput = document.getElementById('register-email');
+    const registerPasswordInput = document.getElementById('register-password');
+    const loginButton = document.getElementById('login-button');
+    const registerButton = document.getElementById('register-button');
+    const showRegisterBtn = document.getElementById('show-register-btn');
+    const showLoginBtn = document.getElementById('show-login-btn');
+    const logoutButton = document.getElementById('logout-button');
+    // --- FIM DOS NOVOS SELETORES ---
 
     const vestoDB = {
         db: null,
@@ -266,13 +284,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!db.objectStoreNames.contains('apiCache')) {
                         db.createObjectStore('apiCache', { keyPath: 'key' });
                     }
-
-                    // --- NOVO CÓDIGO AQUI ---
                     if (!db.objectStoreNames.contains('watchlist')) {
-                        console.log('[IDB] Criando store: watchlist');
                         db.createObjectStore('watchlist', { keyPath: 'symbol' });
                     }
-                    // --- FIM DO NOVO CÓDIGO ---
                 };
                 
                 request.onsuccess = (event) => {
@@ -377,6 +391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
     const carteiraStatus = document.getElementById('carteira-status');
+    const carteiraMensagem = document.getElementById('carteira-mensagem'); // Adicionado seletor
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
     const totalProventosEl = document.getElementById('total-proventos');
@@ -416,6 +431,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const updateButton = document.getElementById('update-button');
     const copiarDadosBtn = document.getElementById('copiar-dados-btn');
     const abrirImportarModalBtn = document.getElementById('abrir-importar-modal-btn');
+    const compartilharCarteiraBtn = document.getElementById('compartilhar-carteira-btn'); // Adicionado seletor
     const importTextModal = document.getElementById('import-text-modal');
     const importTextModalContent = document.getElementById('import-text-modal-content');
     const importTextTextarea = document.getElementById('import-text-textarea');
@@ -435,7 +451,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let patrimonio = [];
     let saldoCaixa = 0;
     let proventosConhecidos = [];
-    let watchlist = []; // <-- NOVO
+    let watchlist = [];
     let alocacaoChartInstance = null;
     let historicoChartInstance = null;
     let patrimonioChartInstance = null; 
@@ -458,6 +474,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesSymbol = null;
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
+
+    // --- NOVAS VARIÁVEIS GLOBAIS DE AUTH ---
+    let supabase = null;
+    let currentUser = null;
+    // --- FIM DAS NOVAS VARIÁVEIS ---
 
     // --- FUNÇÃO showToast ALTERADA ---
     function showToast(message, type = 'error') {
@@ -493,6 +514,189 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1500); 
     }
     // --- FIM DA ALTERAÇÃO ---
+
+    // --- NOVAS FUNÇÕES DE AUTH ---
+
+    // 1. Busca as chaves e inicializa o Supabase
+    async function initSupabase() {
+        try {
+            const response = await fetch('/api/config');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Falha ao buscar configuração do servidor.');
+            }
+            const config = await response.json();
+            
+            if (!config.supabaseUrl || !config.supabaseKey) {
+                throw new Error('Configuração do Supabase incompleta.');
+            }
+
+            // Inicializa o cliente Supabase
+            // (Usando a sintaxe global do CDN: supabase.createClient)
+            supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
+            console.log("Supabase inicializado.");
+            return true;
+
+        } catch (error) {
+            console.error("Erro fatal ao inicializar Supabase:", error);
+            showAuthError('login-error', `Erro de conexão: ${error.message}`);
+            return false;
+        }
+    }
+
+    // 2. Mostra erros nos formulários de login/registro
+    function showAuthError(elementId, message) {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+    }
+    function hideAuthMessages() {
+        loginError.classList.add('hidden');
+        registerError.classList.add('hidden');
+        registerSuccess.classList.add('hidden');
+    }
+
+    // 3. Funções para trocar entre os formulários
+    function showAuthForm(formToShow) {
+        hideAuthMessages();
+        if (formToShow === 'register') {
+            loginForm.classList.add('form-out');
+            setTimeout(() => {
+                loginForm.classList.add('hidden');
+                loginForm.classList.remove('form-out');
+                
+                registerForm.classList.remove('hidden');
+                registerForm.classList.add('form-in');
+                registerEmailInput.focus();
+            }, 300);
+        } else {
+            registerForm.classList.add('form-out');
+            setTimeout(() => {
+                registerForm.classList.add('hidden');
+                registerForm.classList.remove('form-out');
+                
+                loginForm.classList.remove('hidden');
+                loginForm.classList.add('form-in');
+                loginEmailInput.focus();
+            }, 300);
+        }
+    }
+
+    // 4. Esconde a tela de login
+    function hideAuthPage() {
+        authPage.classList.add('auth-hidden');
+        logoutButton.classList.remove('hidden'); // Mostra o botão de logout
+    }
+
+    // 5. Mostra a tela de login (para logout)
+    function showAuthPage() {
+        // Limpa a carteira da tela
+        listaCarteira.innerHTML = '';
+        renderizarDashboardSkeletons(true);
+        renderizarCarteiraSkeletons(true);
+        carteiraStatus.classList.remove('hidden');
+        carteiraMensagem.textContent = "Você foi desconectado.";
+        dashboardLoading.classList.add('hidden');
+        logoutButton.classList.add('hidden'); // Esconde o botão de logout
+        
+        // Reseta os forms
+        loginEmailInput.value = '';
+        loginPasswordInput.value = '';
+        registerEmailInput.value = '';
+        registerPasswordInput.value = '';
+        showAuthForm('login');
+
+        // Mostra a tela de login
+        authPage.classList.remove('auth-hidden');
+    }
+
+    // 6. Manipulador de Login
+    async function handleLogin(e) {
+        e.preventDefault();
+        hideAuthMessages();
+        loginButton.innerHTML = `<span class="loader-sm"></span>`;
+        loginButton.disabled = true;
+
+        const email = loginEmailInput.value;
+        const password = loginPasswordInput.value;
+
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) throw error;
+
+            console.log("Login bem-sucedido:", data.user.email);
+            currentUser = data.user;
+            
+            // Inicia o carregamento dos dados do usuário
+            await loadUserSession();
+
+        } catch (error) {
+            console.error("Erro no login:", error.message);
+            showAuthError('login-error', 'Email ou senha inválidos.');
+            loginButton.innerHTML = `Entrar`;
+            loginButton.disabled = false;
+        }
+    }
+
+    // 7. Manipulador de Registro
+    async function handleRegister(e) {
+        e.preventDefault();
+        hideAuthMessages();
+        registerButton.innerHTML = `<span class="loader-sm"></span>`;
+        registerButton.disabled = true;
+
+        const email = registerEmailInput.value;
+        const password = registerPasswordInput.value;
+
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+            });
+
+            if (error) throw error;
+
+            console.log("Registro bem-sucedido:", data.user.email);
+            registerSuccess.textContent = "Sucesso! Verifique seu email para confirmar a conta.";
+            registerSuccess.classList.remove('hidden');
+            registerForm.reset();
+
+        } catch (error) {
+            console.error("Erro no registro:", error.message);
+            let userMessage = "Erro ao criar conta.";
+            if (error.message.includes("Password should be at least 6 characters")) {
+                userMessage = "A senha deve ter pelo menos 6 caracteres.";
+            } else if (error.message.includes("User already registered")) {
+                userMessage = "Este email já está cadastrado.";
+            }
+            showAuthError('register-error', userMessage);
+        } finally {
+            registerButton.innerHTML = `Criar conta`;
+            registerButton.disabled = false;
+        }
+    }
+
+    // 8. Manipulador de Logout
+    async function handleLogout() {
+        showModal('Sair', 'Tem certeza que deseja sair?', async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error("Erro ao sair:", error);
+                showToast("Erro ao tentar sair.");
+            } else {
+                currentUser = null;
+                showAuthPage();
+            }
+        });
+    }
+
+    // --- FIM DAS NOVAS FUNÇÕES DE AUTH ---
 
     function showUpdateBar() {
         console.log('Mostrando aviso de atualização.');
@@ -2138,7 +2342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
         detalhesFavoritoBtn.dataset.symbol = '';
-        // --- FIM NOVO CÓDIGO ---
+        // --- FIM DO NOVO CÓDIGO ---
         
         currentDetalhesSymbol = null;
         currentDetalhesMeses = 3; 
@@ -2595,12 +2799,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     copiarDadosBtn.addEventListener('click', handleCopiarDados);
     abrirImportarModalBtn.addEventListener('click', showImportModal);
+    compartilharCarteiraBtn.addEventListener('click', handleShareCarteira); // Adicionado listener
     
     importTextCancelBtn.addEventListener('click', hideImportModal);
     importTextConfirmBtn.addEventListener('click', handleImportarTexto);
     importTextModal.addEventListener('click', (e) => {
         if (e.target === importTextModal) { hideImportModal(); } 
     });
+
+    // --- NOVOS LISTENERS DE AUTH ---
+    loginForm.addEventListener('submit', handleLogin);
+    registerForm.addEventListener('submit', handleRegister);
+    logoutButton.addEventListener('click', handleLogout);
+    showRegisterBtn.addEventListener('click', () => showAuthForm('register'));
+    showLoginBtn.addEventListener('click', () => showAuthForm('login'));
+    // --- FIM DOS NOVOS LISTENERS DE AUTH ---
 
     async function callGeminiHistoricoAPI(ticker, todayString) { 
         const body = { 
@@ -2633,6 +2846,59 @@ document.addEventListener('DOMContentLoaded', async () => {
             body: JSON.stringify(body)
         });
         return response.json; 
+    }
+
+    async function handleShareCarteira() {
+        if (transacoes.length === 0) {
+            showToast("Sua carteira está vazia.");
+            return;
+        }
+
+        const loaderIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 spin-animation"><path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path></svg>`;
+        const originalIcon = compartilharCarteiraBtn.innerHTML;
+        
+        compartilharCarteiraBtn.innerHTML = loaderIcon;
+        compartilharCarteiraBtn.disabled = true;
+
+        try {
+            const response = await fetch('/api/set-share', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transacoes: transacoes })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Erro ao gerar link.");
+            }
+
+            const { shareId } = await response.json();
+            
+            // Constrói a URL completa
+            const url = `${window.location.origin}/public.html?id=${shareId}`;
+
+            // Mostra um modal de sucesso com o link
+            showModal(
+                'Link Gerado!',
+                `Seu link público foi criado e irá expirar em 30 dias. Copie e compartilhe:\n\n ${url}`,
+                () => {
+                    // Tenta copiar para a área de transferência ao clicar em "OK"
+                    navigator.clipboard.writeText(url)
+                        .then(() => showToast("Link copiado para a área de transferência!", 'success'))
+                        .catch(() => showToast("Não foi possível copiar o link automaticamente."));
+                }
+            );
+            // Renomeia o botão "Confirmar" do modal
+            customModalOk.textContent = 'OK (Copiar Link)';
+
+        } catch (error) {
+            console.error("Erro ao compartilhar carteira:", error);
+            showToast(error.message || "Erro desconhecido ao gerar link.");
+        } finally {
+            compartilharCarteiraBtn.innerHTML = originalIcon;
+            compartilharCarteiraBtn.disabled = false;
+            customModalOk.textContent = 'Confirmar'; // Reseta o botão do modal
+        }
     }
 
     async function handleCopiarDados() {
@@ -2752,31 +3018,70 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- FUNÇÃO MODIFICADA ---
-    async function init() {
-        try {
-            await vestoDB.init();
-            console.log("[IDB] Inicialização concluída.");
-        } catch (e) {
-            console.error("[IDB] Falha fatal ao inicializar o DB.", e);
-            showToast("Erro crítico: Banco de dados não pôde ser carregado."); 
-            return; 
-        }
+    // --- FUNÇÃO init() MODIFICADA ---
+    
+    // Nova função que é chamada APÓS o login
+    async function loadUserSession() {
+        hideAuthPage(); // Esconde a tela de login
         
+        // *Aqui é onde vamos carregar os dados do Supabase*
+        // Por enquanto, vamos manter a lógica de carregar do IndexedDB
+        // para garantir que o resto do app funcione.
+        // Vamos substituir isso na PRÓXIMA etapa.
+        
+        console.log("Sessão carregada, iniciando o app...");
+        
+        // Lógica de carregamento antiga (temporária)
         await carregarTransacoes();
         await carregarPatrimonio();
         await carregarCaixa();
         await carregarProventosConhecidos();
         await carregarHistoricoProcessado();
-        await carregarWatchlist(); // <-- NOVO
+        await carregarWatchlist();
         
-        renderizarWatchlist(); // <-- NOVO
+        renderizarWatchlist();
         mudarAba('tab-dashboard'); 
         
         atualizarTodosDados(false); 
         handleAtualizarNoticias(false); 
         
-        setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
+        // Intervalo de refresh (temporário, moveremos para a sessão)
+        // setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
+    }
+
+    // Nova função que verifica a sessão no carregamento da página
+    async function checkUserSession() {
+        const { data } = await supabase.auth.getSession();
+        
+        if (data.session) {
+            console.log("Usuário já está logado:", data.session.user.email);
+            currentUser = data.session.user;
+            await loadUserSession(); // Carrega o app
+        } else {
+            console.log("Nenhum usuário logado. Mostrando tela de login.");
+            // Não faz nada, a tela de login já está visível
+        }
+    }
+
+    // A função init() agora SÓ inicializa as dependências
+    async function init() {
+        // 1. Inicializa o IndexedDB (ainda vamos usá-lo para cache)
+        try {
+            await vestoDB.init();
+            console.log("[IDB] Inicialização concluída.");
+        } catch (e) {
+            console.error("[IDB] Falha fatal ao inicializar o DB.", e);
+            showAuthError('login-error', "Erro crítico: Banco de dados local não pôde ser carregado.");
+            return; 
+        }
+        
+        // 2. Inicializa o Supabase
+        const supabaseReady = await initSupabase();
+        
+        // 3. Se o Supabase estiver pronto, verifica a sessão do usuário
+        if (supabaseReady) {
+            await checkUserSession();
+        }
     }
     
     await init();

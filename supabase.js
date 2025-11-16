@@ -1,6 +1,6 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO CORRIGIDA (com user_id em todas as queries)
+// VERSÃO CORRIGIDA (com user_id E correção de loop de F5)
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
@@ -17,8 +17,11 @@ function handleSupabaseError(error, context) {
     if (error.message.includes("fetch")) {
         return "Erro de rede. Verifique sua conexão.";
     }
-    if (error.message.includes("invalid JWT")) {
+    if (error.message.includes("invalid JWT") || error.message.includes("Invalid token")) {
         return "Sessão inválida. Por favor, faça login novamente.";
+    }
+    if (error.message.includes("Email not confirmed")) {
+         return "Email não confirmado. Verifique sua caixa de entrada.";
     }
     return error.message || "Ocorreu um erro desconhecido.";
 }
@@ -51,11 +54,22 @@ export async function initialize() {
         });
 
         // 3. Listener de Autenticação
+        // CORRIGIDO: Modificado para evitar o loop de F5
         supabaseClient.auth.onAuthStateChange((event, session) => {
             console.log("Supabase Auth State Change:", event, session);
-            if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-                window.location.reload(); 
+            
+            // IGNORA a sessão inicial. Isso previne o loop de reload.
+            if (event === "INITIAL_SESSION") {
+                return;
             }
+
+            // Se o usuário explicitamente SAIR (SIGNED_OUT), recarrega.
+            if (event === "SIGNED_OUT") {
+                window.location.reload();
+            }
+            
+            // NOTA: O 'SIGNED_IN' é tratado manualmente no app.js (após login)
+            // para evitar o loop.
         });
         
         // 4. Retorna a sessão atual (pode ser null)
@@ -75,6 +89,7 @@ export async function signIn(email, password) {
     try {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        // O app.js vai recarregar a página manualmente
     } catch (error) {
         return handleSupabaseError(error, "signIn");
     }
@@ -85,9 +100,23 @@ export async function signIn(email, password) {
  */
 export async function signUp(email, password) {
      try {
-        const { error } = await supabaseClient.auth.signUp({ email, password });
+        // NOTA: Esta função NÃO faz login se a confirmação de email estiver ATIVADA.
+        // Ela SÓ faz login se a confirmação de email estiver DESATIVADA.
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        
         if (error) throw error;
-        return "success"; // Sucesso!
+
+        // Se a confirmação de email estiver LIGADA (padrão), 
+        // data.session será null e nós retornamos 'success'.
+        if (data.session === null) {
+            return "success"; // Indica que o modal "Verifique seu Email" deve ser mostrado
+        }
+        
+        // Se a confirmação de email estiver DESLIGADA,
+        // data.session vai existir, e o app.js vai recarregar.
+        // (O listener 'SIGNED_IN' também pode disparar e recarregar)
+        return "success_signed_in"; 
+
     } catch (error) {
         return handleSupabaseError(error, "signUp");
     }
@@ -100,6 +129,7 @@ export async function signOut() {
     try {
         const { error } = await supabaseClient.auth.signOut();
         if (error) throw error;
+        // O listener onAuthStateChange (SIGNED_OUT) cuidará do recarregamento.
     } catch (error) {
         console.error("Erro ao sair:", error);
     }
@@ -108,13 +138,12 @@ export async function signOut() {
 
 /**
  * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
- * CORRIGIDAS: Todas as funções agora incluem o user_id para o RLS.
+ * (Estas funções já estavam corretas na última versão que enviei)
  */
 
 // --- Transações ---
 
 export async function getTransacoes() {
-    // A política RLS de SELECT cuida de filtrar apenas pelo user_id logado
     const { data, error } = await supabaseClient
         .from('transacoes')
         .select('*');
@@ -143,7 +172,7 @@ export async function updateTransacao(id, transacaoUpdate) {
         .from('transacoes')
         .update(transacaoUpdate)
         .eq('id', id)
-        .eq('user_id', user.id); // FILTRO DE SEGURANÇA
+        .eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "updateTransacao"));
 }
 
@@ -155,7 +184,7 @@ export async function deleteTransacao(id) {
         .from('transacoes')
         .delete()
         .eq('id', id)
-        .eq('user_id', user.id); // FILTRO DE SEGURANÇA
+        .eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacao"));
 }
 
@@ -167,7 +196,7 @@ export async function deleteTransacoesDoAtivo(symbol) {
         .from('transacoes')
         .delete()
         .eq('symbol', symbol)
-        .eq('user_id', user.id); // FILTRO DE SEGURANÇA
+        .eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacoesDoAtivo"));
 }
 
@@ -258,7 +287,7 @@ export async function updateProventoProcessado(id) {
         .from('proventosConhecidos')
         .update({ processado: true })
         .eq('id', id)
-        .eq('user_id', user.id); // FILTRO DE SEGURANÇA
+        .eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "updateProventoProcessado"));
 }
 
@@ -270,7 +299,7 @@ export async function deleteProventosDoAtivo(symbol) {
         .from('proventosConhecidos')
         .delete()
         .eq('symbol', symbol)
-        .eq('user_id', user.id); // FILTRO DE SEGURANÇA
+        .eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteProventosDoAtivo"));
 }
 
@@ -306,6 +335,6 @@ export async function deleteWatchlist(symbol) {
         .from('watchlist')
         .delete()
         .eq('symbol', symbol)
-        .eq('user_id', user.id); // FILTRO DE SEGURANÇA
+        .eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteWatchlist"));
 }

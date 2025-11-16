@@ -3,7 +3,8 @@ import * as supabaseDB from './supabase.js';
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
-// ... (Todo o código das linhas 5-1258 permanece o mesmo) ...
+// ... (Todas as funções de formatação (formatBRL, etc) e de renderização (criarCardElemento, etc) permanecem idênticas) ...
+// ... (Linhas 5 a 1037) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -727,7 +728,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         let proventosParaSalvar = [];
 
         proventosConhecidos.forEach(provento => {
+            // CORREÇÃO: Usa 'paymentDate' (camelCase) que vem do supabase.js
             if (provento.paymentDate && !provento.processado) {
+                // O formato já é YYYY-MM-DD
                 const parts = provento.paymentDate.split('-');
                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
@@ -1471,6 +1474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const ativoCarteira = carteiraCalculada.find(a => a.symbol === proventoIA.symbol);
                 if (!ativoCarteira) return null;
                 
+                // CORREÇÃO: Usa 'paymentDate' (camelCase) que vem do supabase.js
                 if (proventoIA.paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(proventoIA.paymentDate)) {
                     const parts = proventoIA.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
@@ -1524,6 +1528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
+                                // CORREÇÃO: Passa 'paymentDate' (camelCase)
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
                                 await supabaseDB.addProventoConhecido(novoProvento);
                                 proventosConhecidos.push(novoProvento);
@@ -1682,6 +1687,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         promessaProventos.then(async proventosFuturos => {
+            // CORREÇÃO: Usa 'paymentDate' (camelCase) que vem do supabase.js
             proventosAtuais = proventosFuturos; 
             renderizarProventos(); 
             if (precosAtuais.length > 0) { 
@@ -1722,6 +1728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 showToast(`${symbol} removido dos favoritos.`);
             } else {
+                // CORREÇÃO: Passa 'addedAt' (camelCase)
                 const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
                 await supabaseDB.addWatchlist(newItem);
                 watchlist.push(newItem);
@@ -1831,6 +1838,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         await atualizarTodosDados(false);
     }
 
+    // ===================================================================
+    // CORREÇÃO: LÓGICA DE REMOÇÃO DE ATIVO
+    // ===================================================================
     function handleRemoverAtivo(symbol) {
         showModal(
             'Remover Ativo', 
@@ -1838,6 +1848,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             async () => { 
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
                 
+                // 1. Remove tudo do banco de dados
                 await supabaseDB.deleteTransacoesDoAtivo(symbol);
                 await removerCacheAtivo(symbol); 
                 await removerProventosConhecidos(symbol);
@@ -1846,7 +1857,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 renderizarWatchlist();
                 
-                await atualizarTodosDados(false); 
+                // 2. CORREÇÃO: Zera o caixa e o histórico de processamento
+                // Como um FII foi removido, o saldoCaixa (baseado em proventos)
+                // está incorreto. Precisamos recalcular TUDO.
+                
+                saldoCaixa = 0;
+                await salvarCaixa();
+                
+                mesesProcessados = [];
+                await salvarHistoricoProcessado();
+                
+                // 3. Força uma atualização completa (true) para recalcular o saldo do zero
+                // com os ativos restantes.
+                await atualizarTodosDados(true); 
             }
         );
     }
@@ -1891,6 +1914,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await removerCacheAtivo(symbol);
                 
                 const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
+                
+                // CORREÇÃO: Zera o caixa e força o recálculo
+                // se esta era a última transação (ou para ser seguro)
+                saldoCaixa = 0;
+                await salvarCaixa();
+                mesesProcessados = [];
+                await salvarHistoricoProcessado();
+
                 if (!outrasTransacoes) {
                     await removerProventosConhecidos(symbol);
                     
@@ -1906,7 +1937,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
                 
-                await atualizarTodosDados(false); 
+                // Força a atualização para recalcular o caixa
+                await atualizarTodosDados(true); 
                 showToast("Transação excluída.", 'success');
             }
         );
@@ -2489,7 +2521,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error) {
                 showLoginError(error);
             } else {
-                // SUCESSO NO LOGIN: Recarrega a página manualmente
                 window.location.reload();
             }
         });
@@ -2505,10 +2536,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await supabaseDB.signUp(email, password);
             
             if (result === 'success') {
-                // CORREÇÃO: Removida a linha 'showAuthLoading(true);'
-                // Isso permite que o modal apareça sobre o formulário de cadastro.
                 showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
-                    // Ao fechar o modal, volta para a tela de login
                     signupForm.classList.add('hidden');
                     loginForm.classList.remove('hidden');
                     showAuthLoading(false); 

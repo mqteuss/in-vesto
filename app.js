@@ -2543,20 +2543,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // REMOVIDO: Event listener do loginPasskeyBtn
-
+        
+        /**
+         * ✅ CORREÇÃO APLICADA (Conforme sua sugestão)
+         * Verifica result.success ao invés de result === 'string'
+         */
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // ===================================================================
-            // LÓGICA ATUALIZADA: Validação de Senha Dupla
-            // ===================================================================
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
             const confirmPassword = signupConfirmPasswordInput.value;
 
             // Limpa erros anteriores
             signupError.classList.add('hidden');
-            signupSuccess.classList.add('hidden'); // Esconde msg de sucesso
+            signupSuccess.classList.add('hidden');
             
             if (password !== confirmPassword) {
                 showSignupError("As senhas não coincidem.");
@@ -2572,10 +2573,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const result = await supabaseDB.signUp(email, password);
             
-            if (result === 'success') {
-                // ===================================================================
-                // LÓGICA ATUALIZADA: Mostra mensagem de sucesso e esconde inputs
-                // ===================================================================
+            if (result.success) {
                 // Esconde os campos de input e o botão
                 signupEmailInput.classList.add('hidden');
                 signupPasswordInput.parentElement.classList.add('hidden');
@@ -2591,10 +2589,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 signupSubmitBtn.disabled = false;
 
             } else {
-                // Se der erro (ex: e-mail já existe), mostra o erro
-                showSignupError(result);
+                // Se deu erro, mostra a mensagem retornada
+                showSignupError(result.error || "Erro ao criar conta");
             }
         });
+
 
         showSignupBtn.addEventListener('click', () => {
             loginForm.classList.add('hidden');

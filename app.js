@@ -2554,7 +2554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const result = await supabaseDB.signUp(email, password);
             
-            if (result === 'success') {
+            if (result === 'success' || result === 'success_signed_in') {
                 showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
                     signupForm.classList.add('hidden');
                     loginForm.classList.remove('hidden');

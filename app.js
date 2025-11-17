@@ -2431,6 +2431,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return response.json; 
     }
 
+    // ATUALIZADO: A função de loading não força mais a exibição do login
     function showAuthLoading(isLoading) {
         if (isLoading) {
             authLoading.classList.remove('hidden');
@@ -2438,7 +2439,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupForm.classList.add('hidden');
         } else {
             authLoading.classList.add('hidden');
-            loginForm.classList.remove('hidden');
+            // A função chamadora decidirá qual formulário mostrar
         }
     }
     
@@ -2499,6 +2500,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             session = await supabaseDB.initialize();
         } catch (e) {
             showAuthLoading(false);
+            loginForm.classList.remove('hidden'); // Mostra login em caso de falha
             showLoginError("Erro ao conectar com o servidor. Tente novamente.");
             return; 
         }
@@ -2532,10 +2534,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
+        // ATUALIZADO: Lógica de submit do Signup
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
-            signupSubmitBtn.disabled = true;
             signupError.classList.add('hidden');
 
             const email = signupEmailInput.value;
@@ -2552,18 +2553,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             
+            // MOSTRA O LOADER PRINCIPAL
+            showAuthLoading(true);
+            
             const result = await supabaseDB.signUp(email, password);
             
             if (result === 'success') {
+                // SUCESSO (precisa confirmar email)
+                // O showAuthLoading(false) é chamado dentro do callback do modal
                 showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
+                    showAuthLoading(false); // Esconde o loader
                     signupForm.classList.add('hidden');
-                    loginForm.classList.remove('hidden');
-                    showAuthLoading(false); 
+                    loginForm.classList.remove('hidden'); // Mostra o login
                 });
-                signupSubmitBtn.innerHTML = 'Criar conta';
-                signupSubmitBtn.disabled = false;
+            
+            } else if (result === 'success_signed_in') {
+                // SUCESSO (auto-login, email RLS desativado)
+                window.location.reload();
+
             } else {
-                showSignupError(result);
+                // ERRO
+                showAuthLoading(false); // Esconde o loader
+                signupForm.classList.remove('hidden'); // Mostra o signup form de novo
+                showSignupError(result); // showSignupError lida com o botão
             }
         });
 
@@ -2592,9 +2604,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
         } else {
+            // ATUALIZADO: Mostra o login form explicitamente
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 
             showAuthLoading(false);                 
+            loginForm.classList.remove('hidden');
         }
     }
     

@@ -1896,7 +1896,7 @@ document.addEventListener('DOMContentLoaded', async () => {
              return;
         }
 
-        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
+        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${t.quantity}\nPreço: ${formatBRL(t.price)}`;
         
         showModal(
             'Excluir Transação', 
@@ -2431,7 +2431,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return response.json; 
     }
 
-    // ATUALIZADO: A função de loading não força mais a exibição do login
     function showAuthLoading(isLoading) {
         if (isLoading) {
             authLoading.classList.remove('hidden');
@@ -2534,10 +2533,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // ATUALIZADO: Lógica de submit do Signup
+        // --- LÓGICA DE SUBMIT DO SIGNUP ATUALIZADA ---
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            signupError.classList.add('hidden');
+            signupError.classList.add('hidden'); // Esconde erros antigos
 
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
@@ -2572,12 +2571,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.location.reload();
 
             } else {
-                // ERRO
-                showAuthLoading(false); // Esconde o loader
+                // ERRO (Ex: "Este email já está cadastrado.")
+                showAuthLoading(false); // Esconde o loader "A conectar..."
                 signupForm.classList.remove('hidden'); // Mostra o signup form de novo
-                showSignupError(result); // showSignupError lida com o botão
+                showSignupError(result); // Mostra o erro (ex: "Este email já está cadastrado.")
             }
         });
+        // --- FIM DA LÓGICA ATUALIZADA ---
+
 
         showSignupBtn.addEventListener('click', () => {
             loginForm.classList.add('hidden');
@@ -2604,11 +2605,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
         } else {
-            // ATUALIZADO: Mostra o login form explicitamente
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 
             showAuthLoading(false);                 
-            loginForm.classList.remove('hidden');
+            loginForm.classList.remove('hidden'); // Garante que o login seja exibido
         }
     }
     

@@ -5,6 +5,7 @@ const CACHE_NAME = 'vesto-cache-v2'; // Mudei o nome para forçar a atualizaçã
 // Arquivos que são o "shell" do app e mudam com frequência
 const APP_SHELL_FILES_NETWORK_FIRST = [
   '/',
+  'logo-Vesto.png', 
   'index.html',
   'app.js',
   'supabase.js',

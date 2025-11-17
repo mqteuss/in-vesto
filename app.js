@@ -295,23 +295,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
-    // NOVO: Campo de confirmação de senha
     const signupConfirmPasswordInput = document.getElementById('signup-confirm-password'); 
     const signupSubmitBtn = document.getElementById('signup-submit-btn');
     const signupError = document.getElementById('signup-error');
-    // NOVO: Mensagem de sucesso no registro
     const signupSuccess = document.getElementById('signup-success'); 
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
-    // NOVO: Botões de toggle de senha
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
 
-    // NOVO: Botão de login com digital
-    const loginPasskeyBtn = document.getElementById('login-passkey-btn');
-    // NOVO: Botão de registro de digital (dentro do app)
-    const registerPasskeyBtn = document.getElementById('register-passkey-btn');
+    // REMOVIDO: Botões de biometria
+    // const loginPasskeyBtn = document.getElementById('login-passkey-btn');
+    // const registerPasskeyBtn = document.getElementById('register-passkey-btn');
 
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
@@ -2467,7 +2463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         loginError.classList.remove('hidden');
         loginSubmitBtn.innerHTML = 'Entrar';
         loginSubmitBtn.disabled = false;
-        loginPasskeyBtn.disabled = false; // Reabilita o botão de digital
+        // REMOVIDO: loginPasskeyBtn.disabled = false;
     }
 
     function showSignupError(message) {
@@ -2475,6 +2471,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         signupError.classList.remove('hidden');
         signupSubmitBtn.innerHTML = 'Criar conta';
         signupSubmitBtn.disabled = false;
+
+        // Esconde a msg de sucesso se um erro aparecer
+        signupSuccess.classList.add('hidden');
+        // Garante que os campos de input voltem a aparecer
+        signupEmailInput.classList.remove('hidden');
+        signupPasswordInput.parentElement.classList.remove('hidden');
+        signupConfirmPasswordInput.parentElement.classList.remove('hidden');
+        signupSubmitBtn.classList.remove('hidden');
     }
 
     async function carregarDadosIniciais() {
@@ -2524,7 +2528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
             loginSubmitBtn.disabled = true;
-            loginPasskeyBtn.disabled = true; // Desabilita digital
+            // REMOVIDO: loginPasskeyBtn.disabled = true;
             loginError.classList.add('hidden');
 
             const email = loginEmailInput.value;
@@ -2538,42 +2542,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // ===================================================================
-        // NOVA LÓGICA: Login com Digital (Passkey)
-        // ===================================================================
-        loginPasskeyBtn.addEventListener('click', async () => {
-            loginSubmitBtn.disabled = true;
-            loginPasskeyBtn.disabled = true;
-            loginPasskeyBtn.innerHTML = '<span class="loader-sm"></span>';
-            loginError.classList.add('hidden');
-            
-            const email = loginEmailInput.value;
-            if (!email) {
-                showLoginError("Por favor, digite seu e-mail para usar a digital.");
-                loginSubmitBtn.disabled = false;
-                loginPasskeyBtn.disabled = false;
-                loginPasskeyBtn.innerHTML = 'Entrar com digital'; // Restaura texto
-                return;
-            }
-
-            const error = await supabaseDB.signInWithPasskey(email);
-            
-            if (error) {
-                showLoginError(error);
-                loginSubmitBtn.disabled = false;
-                loginPasskeyBtn.disabled = false;
-                loginPasskeyBtn.innerHTML = 'Entrar com digital'; // Restaura texto
-            } else {
-                // Sucesso!
-                window.location.reload();
-            }
-        });
+        // REMOVIDO: Event listener do loginPasskeyBtn
 
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             // ===================================================================
-            // NOVA LÓGICA: Validação de Senha Dupla
+            // LÓGICA ATUALIZADA: Validação de Senha Dupla
             // ===================================================================
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
@@ -2581,6 +2556,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Limpa erros anteriores
             signupError.classList.add('hidden');
+            signupSuccess.classList.add('hidden'); // Esconde msg de sucesso
             
             if (password !== confirmPassword) {
                 showSignupError("As senhas não coincidem.");
@@ -2598,7 +2574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (result === 'success') {
                 // ===================================================================
-                // NOVA LÓGICA: Mostra mensagem de sucesso ao invés de modal
+                // LÓGICA ATUALIZADA: Mostra mensagem de sucesso e esconde inputs
                 // ===================================================================
                 // Esconde os campos de input e o botão
                 signupEmailInput.classList.add('hidden');
@@ -2615,6 +2591,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 signupSubmitBtn.disabled = false;
 
             } else {
+                // Se der erro (ex: e-mail já existe), mostra o erro
                 showSignupError(result);
             }
         });
@@ -2625,7 +2602,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             loginError.classList.add('hidden');
             
             // Reseta o formulário de registro ao trocar
-            signupSuccess.classList.add('hidden');
+            signupError.classList.add('hidden'); // Esconde erro
+            signupSuccess.classList.add('hidden'); // Esconde sucesso
+            // Garante que os campos voltem a aparecer
             signupEmailInput.classList.remove('hidden');
             signupPasswordInput.parentElement.classList.remove('hidden');
             signupConfirmPasswordInput.parentElement.classList.remove('hidden');
@@ -2644,22 +2623,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
-        // ===================================================================
-        // NOVA LÓGICA: Registro de Digital (Passkey)
-        // ===================================================================
-        registerPasskeyBtn.addEventListener('click', async () => {
-            showToast("Aguarde... Solicitando registro de digital...", "success");
-            const { success, error } = await supabaseDB.registerPasskey();
-            
-            if (error) {
-                showToast(error);
-            } else {
-                showToast("Impressão digital registrada com sucesso!", "success");
-            }
-        });
+        // REMOVIDO: Event listener do registerPasskeyBtn
 
         // ===================================================================
-        // NOVA LÓGICA: Toggle de visibilidade da senha
+        // LÓGICA ATUALIZADA: Toggle de visibilidade da senha
         // ===================================================================
         passwordToggleButtons.forEach(button => {
             button.addEventListener('click', () => {

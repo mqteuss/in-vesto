@@ -5,7 +5,6 @@ const CACHE_NAME = 'vesto-cache-v2'; // Mudei o nome para forçar a atualizaçã
 // Arquivos que são o "shell" do app e mudam com frequência
 const APP_SHELL_FILES_NETWORK_FIRST = [
   '/',
-  'logo-Vesto.png', 
   'index.html',
   'app.js',
   'supabase.js',
@@ -23,12 +22,12 @@ const APP_SHELL_FILES_CACHE_FIRST = [
 
 self.addEventListener('install', event => {
   console.log('[SW] Instalando v2...');
-
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('[SW] Armazenando App Shell (Cache-First) no cache');
-
+        
         // Cache dos arquivos de CDN (no-cors)
         const cdnCachePromise = APP_SHELL_FILES_CACHE_FIRST.filter(url => url.startsWith('http'))
           .map(url => {
@@ -37,12 +36,12 @@ self.addEventListener('install', event => {
               .then(response => cache.put(request, response))
               .catch(err => console.warn(`[SW] Falha ao armazenar CDN: ${url}`, err));
           });
-
+        
         // Cache dos arquivos locais (ícones, manifest)
         const localCachePromise = cache.addAll(
           APP_SHELL_FILES_CACHE_FIRST.filter(url => !url.startsWith('http'))
         );
-
+        
         return Promise.all([...cdnCachePromise, localCachePromise]);
       })
       // Adiciona os arquivos principais (Network-First) ao cache também

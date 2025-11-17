@@ -3,6 +3,8 @@ import * as supabaseDB from './supabase.js';
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
+// ... (Todas as funções de formatação (formatBRL, etc) e de renderização (criarCardElemento, etc) permanecem idênticas) ...
+// ... (Linhas 5 a 1037) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -29,6 +31,7 @@ const formatDateToInput = (dateString) => {
         const day = date.getUTCDate().toString().padStart(2, '0');
         return `${year}-${month}-${day}`;
     } catch (e) {
+        console.error("Erro ao formatar data para input:", e);
         return new Date().toISOString().split('T')[0];
     }
 };
@@ -45,6 +48,7 @@ function parseMesAno(mesAnoStr) {
         }
         return null;
     } catch (e) {
+        console.error("Erro ao analisar data 'MM/AA':", mesAnoStr, e);
         return null;
     }
 }
@@ -233,6 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
                 
                 request.onerror = (event) => {
+                    console.error('[IDB Cache] Erro ao abrir DB:', event.target.error);
                     reject(event.target.error);
                 };
             });
@@ -290,24 +295,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
-    const signupPasswordConfirmInput = document.getElementById('signup-password-confirm');
     const signupSubmitBtn = document.getElementById('signup-submit-btn');
     const signupError = document.getElementById('signup-error');
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
-    
-    const toggleLoginPasswordBtn = document.getElementById('toggle-login-password');
-    const eyeLoginIcon = document.getElementById('eye-login-icon');
-    const eyeLoginOffIcon = document.getElementById('eye-login-off-icon');
-    
-    const toggleSignupPasswordBtn = document.getElementById('toggle-signup-password');
-    const eyeSignupIcon = document.getElementById('eye-signup-icon');
-    const eyeSignupOffIcon = document.getElementById('eye-signup-off-icon');
-    
-    const toggleSignupConfirmPasswordBtn = document.getElementById('toggle-signup-confirm-password');
-    const eyeSignupConfirmIcon = document.getElementById('eye-signup-confirm-icon');
-    const eyeSignupConfirmOffIcon = document.getElementById('eye-signup-confirm-off-icon');
-    
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
 
@@ -482,6 +473,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await vestoDB.put('apiCache', cacheItem);
         } 
         catch (e) { 
+            console.error("Erro ao salvar no cache IDB:", e); 
             await clearBrapiCache();
         }
     }
@@ -498,6 +490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
         } catch (e) {
+            console.error("Erro ao remover cache do ativo:", e);
         }
     }
     
@@ -507,6 +500,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             await supabaseDB.deleteProventosDoAtivo(symbol);
         } catch (e) {
+            console.error(`Erro ao remover proventos conhecidos do DB para ${symbol}:`, e);
         }
     }
     
@@ -537,6 +531,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const hour = spDate.getHours();
             return { dayOfWeek, hour };
         } catch (e) {
+            console.error("Erro ao obter fuso horário de São Paulo, usando fuso local.", e);
             const localDate = new Date();
             return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
         }
@@ -1377,6 +1372,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const articles = await fetchAndCacheNoticiasBFF_NetworkOnly();
             renderizarNoticias(articles);
         } catch (e) {
+            console.error("Erro ao buscar notícias (função separada):", e);
             fiiNewsSkeleton.classList.add('hidden');
             fiiNewsMensagem.textContent = 'Erro ao carregar notícias.';
             fiiNewsMensagem.classList.remove('hidden');
@@ -1403,6 +1399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             return articles;
         } catch (error) {
+            console.error("Erro ao buscar notícias (BFF):", error);
             throw error;
         }
     }
@@ -1422,8 +1419,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             return response.json();
         } catch (error) {
             if (error.name === 'AbortError') {
+                console.error(`Erro ao chamar o BFF ${url}:`, "Timeout de 30s excedido");
                 throw new Error("O servidor demorou muito para responder.");
             }
+            console.error(`Erro ao chamar o BFF ${url}:`, error);
             throw error;
         }
     }
@@ -1455,6 +1454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return null;
                 }
             } catch (err) {
+                console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
                 return null;
             }
         });
@@ -1533,6 +1533,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
             } catch (error) {
+                console.error("Erro ao buscar novos proventos com IA:", error);
             }
         }
         
@@ -1560,6 +1561,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     await setCache(cacheKey, aiData, CACHE_24_HORAS);
                 }
             } catch (e) {
+                console.error("Erro ao buscar histórico agregado:", e);
                 return { labels: [], data: [] }; 
             }
         }
@@ -1680,6 +1682,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await renderizarCarteira(); 
             }
         }).catch(async err => {
+            console.error("Erro ao buscar preços (BFF):", err);
             showToast("Erro ao buscar preços."); 
             if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
@@ -1691,6 +1694,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await renderizarCarteira(); 
             }
         }).catch(err => {
+            console.error("Erro ao buscar proventos (BFF):", err);
             showToast("Erro ao buscar proventos."); 
             if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
         });
@@ -1698,6 +1702,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         promessaHistorico.then(({ labels, data }) => {
             renderizarGraficoHistorico({ labels, data });
         }).catch(err => {
+            console.error("Erro ao buscar histórico agregado (BFF):", err);
             showToast("Erro ao buscar histórico."); 
             renderizarGraficoHistorico({ labels: [], data: [] }); 
         });
@@ -1732,6 +1737,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             atualizarIconeFavorito(symbol); 
             renderizarWatchlist(); 
         } catch (e) {
+            console.error("Erro ao salvar favorito:", e);
             showToast("Erro ao salvar favorito.");
         }
     }
@@ -1766,7 +1772,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!transacaoID) {
             const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
 
+            // ===================================================================
+            // CORREÇÃO: Reseta o caixa se for um NOVO FII
+            // ===================================================================
             if (!ativoExistente && isFII(ticker)) {
+                console.log("[Caixa] Novo FII detectado. Resetando saldoCaixa e mesesProcessados.");
                 saldoCaixa = 0;
                 await salvarCaixa();
                 mesesProcessados = [];
@@ -1781,6 +1791,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                          throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                      }
                 } catch (error) {
+                     console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
                      showToast("Ativo não encontrado."); 
                      tickerInput.value = '';
                      tickerInput.placeholder = "Ativo não encontrado";
@@ -1835,7 +1846,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideAddModal();
         
         await removerCacheAtivo(ticker); 
-        
+        // ===================================================================
+        // CORREÇÃO: Força a atualização (true) se o caixa foi resetado
+        // ===================================================================
         const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
         const forceUpdate = (!ativoExistente && isFII(ticker));
         
@@ -1896,7 +1909,7 @@ document.addEventListener('DOMContentLoaded', async () => {
              return;
         }
 
-        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${t.quantity}\nPreço: ${formatBRL(t.price)}`;
+        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
         
         showModal(
             'Excluir Transação', 
@@ -2438,7 +2451,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupForm.classList.add('hidden');
         } else {
             authLoading.classList.add('hidden');
-            // A função chamadora decidirá qual formulário mostrar
+            loginForm.classList.remove('hidden');
         }
     }
     
@@ -2454,13 +2467,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         signupError.classList.remove('hidden');
         signupSubmitBtn.innerHTML = 'Criar conta';
         signupSubmitBtn.disabled = false;
-    }
-    
-    function togglePasswordVisibility(input, eyeIcon, eyeOffIcon) {
-        const isPassword = input.type === 'password';
-        input.type = isPassword ? 'text' : 'password';
-        eyeIcon.classList.toggle('hidden', isPassword);
-        eyeOffIcon.classList.toggle('hidden', !isPassword);
     }
 
     async function carregarDadosIniciais() {
@@ -2480,6 +2486,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
 
         } catch (e) {
+            console.error("Erro ao carregar dados iniciais:", e);
             showToast("Falha ao carregar dados da nuvem.");
         }
     }
@@ -2488,6 +2495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             await vestoDB.init();
         } catch (e) {
+            console.error("[IDB Cache] Falha fatal ao inicializar o DB.", e);
             showToast("Erro crítico: Banco de dados local não pôde ser carregado."); 
             return; 
         }
@@ -2498,23 +2506,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             session = await supabaseDB.initialize();
         } catch (e) {
+            console.error("Erro na inicialização:", e);
             showAuthLoading(false);
-            loginForm.classList.remove('hidden'); // Mostra login em caso de falha
             showLoginError("Erro ao conectar com o servidor. Tente novamente.");
             return; 
         }
-        
-        toggleLoginPasswordBtn.addEventListener('click', () => {
-            togglePasswordVisibility(loginPasswordInput, eyeLoginIcon, eyeLoginOffIcon);
-        });
-        
-        toggleSignupPasswordBtn.addEventListener('click', () => {
-            togglePasswordVisibility(signupPasswordInput, eyeSignupIcon, eyeSignupOffIcon);
-        });
-        
-        toggleSignupConfirmPasswordBtn.addEventListener('click', () => {
-            togglePasswordVisibility(signupPasswordConfirmInput, eyeSignupConfirmIcon, eyeSignupConfirmOffIcon);
-        });
         
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2533,58 +2529,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // --- LÓGICA DE SUBMIT DO SIGNUP ATUALIZADA COM TRY...CATCH ---
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            signupError.classList.add('hidden'); // Esconde erros antigos
+            signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
+            signupSubmitBtn.disabled = true;
+            signupError.classList.add('hidden');
 
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
-            const passwordConfirm = signupPasswordConfirmInput.value;
+            const result = await supabaseDB.signUp(email, password);
             
-            if (password !== passwordConfirm) {
-                showSignupError("As senhas não coincidem.");
-                return;
-            }
-            
-            if (password.length < 6) {
-                showSignupError("A senha deve ter no mínimo 6 caracteres.");
-                return;
-            }
-            
-            // MOSTRA O LOADER PRINCIPAL
-            showAuthLoading(true);
-            
-            try {
-                const result = await supabaseDB.signUp(email, password);
-                
-                if (result === 'success') {
-                    // SUCESSO (precisa confirmar email)
-                    showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
-                        showAuthLoading(false); // Esconde o loader
-                        signupForm.classList.add('hidden');
-                        loginForm.classList.remove('hidden'); // Mostra o login
-                    });
-                
-                } else if (result === 'success_signed_in') {
-                    // SUCESSO (auto-login, email RLS desativado)
-                    window.location.reload();
-
-                } else {
-                    // ERRO (Ex: "Este email já está cadastrado.")
-                    showAuthLoading(false); // Esconde o loader "A conectar..."
-                    signupForm.classList.remove('hidden'); // Mostra o signup form de novo
-                    showSignupError(result); // Mostra o erro (ex: "Este email já está cadastrado.")
-                }
-            } catch (error) {
-                // --- NOVO: Pega erros inesperados (ex: rede) ---
-                showAuthLoading(false); 
-                signupForm.classList.remove('hidden'); 
-                showSignupError(error.message || "Erro de conexão. Tente novamente.");
+            if (result === 'success') {
+                showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
+                    signupForm.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                    showAuthLoading(false); 
+                });
+            } else {
+                showSignupError(result);
             }
         });
-        // --- FIM DA LÓGICA ATUALIZADA ---
-
 
         showSignupBtn.addEventListener('click', () => {
             loginForm.classList.add('hidden');
@@ -2611,10 +2575,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
         } else {
+            // ===================================================================
+            // CORREÇÃO: Mostra a tela de login se a sessão for nula
+            // ===================================================================
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 
             showAuthLoading(false);                 
-            loginForm.classList.remove('hidden'); // Garante que o login seja exibido
         }
     }
     

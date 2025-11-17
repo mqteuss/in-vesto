@@ -1,14 +1,25 @@
+// supabase.js
+// Módulo para gerenciar a autenticação e o banco de dados Supabase.
+// VERSÃO CORRIGIDA (com tradução manual de nomes de coluna)
+
+// Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
 let supabaseClient = null;
 
+/**
+ * Lida com erros do Supabase e retorna uma mensagem amigável.
+ */
 function handleSupabaseError(error, context) {
+    console.error(`Erro no Supabase (${context}):`, error);
+    // CORREÇÃO: Pega a 'hint' (dica) do erro, que é mais útil
     const hint = error.hint; 
     const message = error.message;
 
     if (hint) {
+        // Ex: "Perhaps you meant to reference the column 'watchlist.addedat'?"
         return hint;
     }
-    if (error.code === '42501') { 
+    if (error.code === '42501') { // RLS policy violation
         return "Erro de permissão. Contate o suporte.";
     }
     if (message.includes("fetch")) {
@@ -23,6 +34,9 @@ function handleSupabaseError(error, context) {
     return message || "Ocorreu um erro desconhecido.";
 }
 
+/**
+ * 1. INICIALIZAÇÃO E AUTENTICAÇÃO
+ */
 export async function initialize() {
     try {
         const response = await fetch('/api/get-keys');
@@ -41,6 +55,7 @@ export async function initialize() {
         });
 
         supabaseClient.auth.onAuthStateChange((event, session) => {
+            console.log("Supabase Auth State Change:", event, session);
             if (event === "INITIAL_SESSION") {
                 return;
             }
@@ -53,6 +68,7 @@ export async function initialize() {
         return data.session;
 
     } catch (error) {
+        console.error("Erro fatal ao inicializar o Supabase:", error);
         throw error;
     }
 }
@@ -84,9 +100,16 @@ export async function signOut() {
         const { error } = await supabaseClient.auth.signOut();
         if (error) throw error;
     } catch (error) {
+        console.error("Erro ao sair:", error);
     }
 }
 
+
+/**
+ * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
+ */
+
+// --- Transações --- (Nomes já estavam corretos)
 export async function getTransacoes() {
     const { data, error } = await supabaseClient.from('transacoes').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getTransacoes"));
@@ -117,6 +140,7 @@ export async function deleteTransacoesDoAtivo(symbol) {
     const { error } = await supabaseClient.from('transacoes').delete().eq('symbol', symbol).eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacoesDoAtivo"));
 }
+// --- Patrimônio --- (Nomes já estavam corretos)
 export async function getPatrimonio() {
     const { data, error } = await supabaseClient.from('patrimonio').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getPatrimonio"));
@@ -130,6 +154,7 @@ export async function savePatrimonioSnapshot(snapshot) {
     if (error) throw new Error(handleSupabaseError(error, "savePatrimonioSnapshot"));
 }
 
+// --- AppState --- (Tabela 'appstate')
 export async function getAppState(key) {
     const { data, error } = await supabaseClient
         .from('appstate') 
@@ -137,6 +162,7 @@ export async function getAppState(key) {
         .eq('key', key)
         .single(); 
 
+    // CORREÇÃO: Trata o erro 406 (Not Acceptable) / 404 (Not Found)
     if (error && error.code !== 'PGRST116' && error.status !== 406 && error.status !== 404) { 
         throw new Error(handleSupabaseError(error, "getAppState"));
     }
@@ -150,12 +176,15 @@ export async function saveAppState(key, value_json) {
     if (error) throw new Error(handleSupabaseError(error, "saveAppState"));
 }
 
+
+// --- Proventos Conhecidos --- (Tabela 'proventosconhecidos', Coluna 'paymentdate')
 export async function getProventosConhecidos() {
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
-        .select('*'); 
+        .select('*'); // Pega tudo (incluindo 'paymentdate')
     if (error) throw new Error(handleSupabaseError(error, "getProventosConhecidos"));
 
+    // CORREÇÃO: Traduz 'paymentdate' para 'paymentDate' para o app.js
     if (data) {
         return data.map(item => ({
             ...item,
@@ -168,13 +197,14 @@ export async function addProventoConhecido(provento) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
 
+    // CORREÇÃO: Traduz 'paymentDate' para 'paymentdate'
     const proventoParaDB = {
         id: provento.id,
         user_id: user.id,
         symbol: provento.symbol,
         value: provento.value,
         processado: provento.processado,
-        paymentdate: provento.paymentDate 
+        paymentdate: provento.paymentDate // Tradução
     };
 
     const { error } = await supabaseClient
@@ -203,12 +233,15 @@ export async function deleteProventosDoAtivo(symbol) {
     if (error) throw new Error(handleSupabaseError(error, "deleteProventosDoAtivo"));
 }
 
+
+// --- Watchlist --- (Tabela 'watchlist', Coluna 'addedat')
 export async function getWatchlist() {
     const { data, error } = await supabaseClient
         .from('watchlist')
-        .select('symbol, addedat'); 
+        .select('symbol, addedat'); // Pega a coluna 'addedat'
     if (error) throw new Error(handleSupabaseError(error, "getWatchlist"));
 
+    // CORREÇÃO: Traduz 'addedat' para 'addedAt' para o app.js
     if (data) {
         return data.map(item => ({
             symbol: item.symbol,
@@ -221,10 +254,11 @@ export async function addWatchlist(item) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
 
+    // CORREÇÃO: Traduz 'addedAt' para 'addedat'
     const itemParaDB = {
         user_id: user.id,
         symbol: item.symbol,
-        addedat: item.addedAt 
+        addedat: item.addedAt // Tradução
     };
 
     const { error } = await supabaseClient

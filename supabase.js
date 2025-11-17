@@ -1,25 +1,14 @@
-// supabase.js
-// Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO CORRIGIDA (Remove biometria, melhora detecção de erro de e-mail)
-
-// Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
 let supabaseClient = null;
 
-/**
- * Lida com erros do Supabase e retorna uma mensagem amigável.
- */
 function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
     const message = error.message;
 
-    // ===================================================================
-    // NOVO: Detecta e-mail duplicado
-    // ===================================================================
     if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
          return "Este e-mail já está cadastrado. Tente fazer login.";
     }
-    if (error.code === '42501') { // RLS policy violation
+    if (error.code === '42501') {
         return "Erro de permissão. Contate o suporte.";
     }
     if (message.includes("fetch")) {
@@ -34,9 +23,6 @@ function handleSupabaseError(error, context) {
     return error.hint || message || "Ocorreu um erro desconhecido.";
 }
 
-/**
- * 1. INICIALIZAÇÃO E AUTENTICAÇÃO
- */
 export async function initialize() {
     try {
         const response = await fetch('/api/get-keys');
@@ -87,17 +73,19 @@ export async function signUp(email, password) {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
         if (error) throw error;
         
-        // Se a confirmação de e-mail estiver LIGADA (padrão do Supabase)
-        if (data.session === null && data.user) {
-            return "success"; // Sucesso, mas precisa confirmar e-mail
+        if (!data.user) {
+            return "Este e-mail já está cadastrado. Tente fazer login.";
         }
         
-        // Se a confirmação de e-mail estiver DESLIGADA
+        if (data.session === null && data.user) {
+            return "success";
+        }
+        
         if (data.session) {
-             return "success_signed_in"; // Sucesso e já logado
+             return "success_signed_in";
         }
 
-        return "success"; // Fallback para sucesso
+        return "success";
         
     } catch (error) {
         return handleSupabaseError(error, "signUp");
@@ -113,18 +101,6 @@ export async function signOut() {
     }
 }
 
-// ===================================================================
-// REMOVIDO: Funções de biometria (Passkey)
-// ===================================================================
-// export async function registerPasskey() { ... }
-// export async function signInWithPasskey(email) { ... }
-
-
-/**
- * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
- */
-
-// --- Transações ---
 export async function getTransacoes() {
     const { data, error } = await supabaseClient.from('transacoes').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getTransacoes"));
@@ -155,7 +131,6 @@ export async function deleteTransacoesDoAtivo(symbol) {
     const { error } = await supabaseClient.from('transacoes').delete().eq('symbol', symbol).eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacoesDoAtivo"));
 }
-// --- Patrimônio ---
 export async function getPatrimonio() {
     const { data, error } = await supabaseClient.from('patrimonio').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getPatrimonio"));
@@ -168,8 +143,6 @@ export async function savePatrimonioSnapshot(snapshot) {
     const { error } = await supabaseClient.from('patrimonio').upsert(snapshotComUser, { onConflict: 'user_id, date' }); 
     if (error) throw new Error(handleSupabaseError(error, "savePatrimonioSnapshot"));
 }
-
-// --- AppState --- (Tabela 'appstate')
 export async function getAppState(key) {
     const { data, error } = await supabaseClient
         .from('appstate') 
@@ -190,8 +163,6 @@ export async function saveAppState(key, value_json) {
     if (error) throw new Error(handleSupabaseError(error, "saveAppState"));
 }
 
-
-// --- Proventos Conhecidos --- (Tabela 'proventosconhecidos', Coluna 'paymentdate')
 export async function getProventosConhecidos() {
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
@@ -245,8 +216,6 @@ export async function deleteProventosDoAtivo(symbol) {
     if (error) throw new Error(handleSupabaseError(error, "deleteProventosDoAtivo"));
 }
 
-
-// --- Watchlist --- (Tabela 'watchlist', Coluna 'addedat')
 export async function getWatchlist() {
     const { data, error } = await supabaseClient
         .from('watchlist')

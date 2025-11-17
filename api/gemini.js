@@ -30,7 +30,7 @@ function getGeminiPayload(mode, payload) {
     let userQuery = '';
 
     switch (mode) {
-
+        
         case 'historico_12m':
             systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua única tarefa é encontrar o histórico de proventos (dividendos) dos *últimos 12 meses* para o FII solicitado. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução ou markdown.\nOrdene a resposta do mais recente para o mais antigo (até 12 itens).\n\n- O mês deve estar no formato "MM/AA" (ex: "10/25").\n- O valor deve ser um número (ex: 0.10).\n\nExemplo de Resposta:\n[\n  {"mes": "10/25", "valor": 0.10},\n  {"mes": "09/25", "valor": 0.10}\n]\n\nSe não encontrar dados, retorne um array JSON vazio: []`;
             userQuery = `Gere o histórico de proventos JSON (últimos 12 meses) para o FII ${ticker}.`;
@@ -57,7 +57,7 @@ Exemplo de resposta (se hoje for 07/11/2025 e GARE11 tem um anúncio oficial de 
   {"symbol": "HGLG11", "value": 0, "paymentDate": null} 
 ]`;
             // **** FIM DA ALTERAÇÃO ****
-
+            
             userQuery = `Encontre o provento mais recente **oficialmente anunciado** (incluindo pagamentos de hoje, ${todayString}, e futuros) para os FIIs: ${fiiList.join(', ')}. Verifique ativamente por fatos relevantes ou comunicados recentes que possam ter *corrigido* a data de pagamento. Não adivinhe pagamentos futuros que não foram anunciados.`;
             break;
 
@@ -119,13 +119,13 @@ export default async function handler(request, response) {
             try {
                 let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
                 const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar um array [ ... ]
-
+                
                 if (jsonMatch && jsonMatch[0]) {
                     jsonText = jsonMatch[0];
                 }
-
+                
                 const parsedJson = JSON.parse(jsonText);
-
+                
                 if (Array.isArray(parsedJson)) {
                     return response.status(200).json({ json: parsedJson });
                 } else {

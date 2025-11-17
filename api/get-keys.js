@@ -21,7 +21,7 @@ export default async function handler(request, response) {
     
     // Envia as chaves para o cliente
     return response.status(200).json({
-        supabaseUrl: SUPABASE_URL, // CORRIGIDO
+        supabaseUrl: SUPABASE_URL,
         supabaseKey: SUPABASE_ANON_KEY
     });
 }

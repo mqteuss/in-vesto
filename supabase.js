@@ -63,7 +63,7 @@ export async function initialize() {
                 window.location.reload();
             }
         });
-
+        
         const { data } = await supabaseClient.auth.getSession();
         return data.session;
 
@@ -183,7 +183,7 @@ export async function getProventosConhecidos() {
         .from('proventosconhecidos') 
         .select('*'); // Pega tudo (incluindo 'paymentdate')
     if (error) throw new Error(handleSupabaseError(error, "getProventosConhecidos"));
-
+    
     // CORREÇÃO: Traduz 'paymentdate' para 'paymentDate' para o app.js
     if (data) {
         return data.map(item => ({
@@ -196,7 +196,7 @@ export async function getProventosConhecidos() {
 export async function addProventoConhecido(provento) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
-
+    
     // CORREÇÃO: Traduz 'paymentDate' para 'paymentdate'
     const proventoParaDB = {
         id: provento.id,
@@ -240,7 +240,7 @@ export async function getWatchlist() {
         .from('watchlist')
         .select('symbol, addedat'); // Pega a coluna 'addedat'
     if (error) throw new Error(handleSupabaseError(error, "getWatchlist"));
-
+    
     // CORREÇÃO: Traduz 'addedat' para 'addedAt' para o app.js
     if (data) {
         return data.map(item => ({

@@ -1,6 +1,12 @@
+/* REMOVIDA: A linha @import url('https://fonts.googleapis.com/css2?family=Inter:...') foi removida daqui. */
+
 body {
+    /* ANTES: font-family: 'Inter', sans-serif; */
+    /* DEPOIS: A pilha de fontes do sistema */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    background-color: #131217; 
+    /* AQUI A MUDANÇA: Cor de fundo mais escura, baseada na imagem */
+    background-color: #131217; /* ANTES: #101010 */
+    /* Gradiente radial MANTIDO, como pedido */
     background-image: radial-gradient(circle at 10% 10%, rgba(192, 132, 252, 0.08), transparent 55%),
                       radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.05), transparent 65%);
     color: #f3f4f6;
@@ -8,34 +14,44 @@ body {
     -moz-osx-smoothing: grayscale;
 }
 
+/* NOVO: Regras para ocultar a barra de rolagem principal da página */
 html, body {
-    scrollbar-width: none; 
-    -ms-overflow-style: none; 
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge antigo */
 }
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
-    display: none; 
+    display: none; /* Chrome/Safari/Edge */
 }
+/* FIM DA MODIFICAÇÃO */
 
+
+/* ALTERADO: Cor dos cards alterada para o tom da imagem */
 .card-bg {
-    background-color: #1C1B22; 
-    border: 1px solid #2A2A2A; 
+    /* ANTES: background-image: linear-gradient(to bottom, #1E1E1E, #1A1A1A); */
+    background-color: #1C1B22; /* NOVO: Cor sólida dos cards da imagem */
+    border: 1px solid #2A2A2A; /* Bordas mantidas por enquanto */
 }
 
+/* ALTERADO: Gradiente alinhado com o título principal.
+  ANTES: #8B5CF6 (purple-500) e #A78BFA (purple-400)
+  DEPOIS: #c084fc (purple-400) e #7c3aed (violet-600)
+*/
 .accent-bg {
     background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);
     color: #FFF;
-    border-radius: 0.5rem; 
-    background-size: 100% auto; 
+    border-radius: 0.5rem; /* Garante que o gradiente respeite a borda */
+    background-size: 100% auto; /* Tamanho inicial do gradiente */
     transition: all 0.3s ease-out;
 }
 .accent-bg:hover {
-    background-size: 150% auto; 
-    background-position: right center; 
+    background-size: 150% auto; /* "Dá zoom" no gradiente ao passar o mouse */
+    background-position: right center; /* Move o gradiente para um efeito sutil */
 }
 
-.accent-text { color: #c084fc; } 
-.hover-accent-text:hover { color: #7c3aed; } 
+/* ALTERADO: Cores alinhadas com o título principal */
+.accent-text { color: #c084fc; } /* ANTES: #8B5CF6 */
+.hover-accent-text:hover { color: #7c3aed; } /* ANTES: #A78BFA */
 
 .tab-content { display: none; }
 .tab-content.active {
@@ -57,8 +73,10 @@ body::-webkit-scrollbar {
     50% { transform: translateY(-3px); }
 }
 
+/* AQUI A MUDANÇA: Cor da barra de navegação alinhada aos cards */
 .bottom-nav {
-    background-color: rgba(28, 27, 34, 0.6); 
+    /* ANTES: background-color: rgba(26, 26, 26, 0.6); */
+    background-color: rgba(28, 27, 34, 0.6); /* Cor #1C1B22 com 60% opacidade */
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid #2A2A2A; 
@@ -73,15 +91,19 @@ body::-webkit-scrollbar {
 .tab-button:active { transform: scale(0.90); }
 
 .tab-button.active {
-    color: #c084fc; 
+    color: #c084fc; /* ANTES: #8B5CF6 */
     transform: translateY(-4px); 
 }
 
+/* ALTERADO: Adicionado 'position: relative' */
 .tab-button.active .tab-button-icon-wrapper {
       animation: gentleFloat 1.5s ease-in-out infinite;
-      position: relative; 
+      position: relative; /* NOVO */
 }
 
+/* NOVO: Regra para o "halo" da aba ativa 
+  ALTERADO: Cor alinhada com o título (purple-400)
+*/
 .tab-button.active .tab-button-icon-wrapper::before {
     content: '';
     position: absolute;
@@ -90,13 +112,14 @@ body::-webkit-scrollbar {
     transform: translate(-50%, -50%);
     width: 40px; 
     height: 40px;
-    background-color: rgba(192, 132, 252, 0.15); 
+    background-color: rgba(192, 132, 252, 0.15); /* ANTES: rgba(139, 92, 246, 0.15) */
     border-radius: 9999px;
-    z-index: -1; 
+    z-index: -1; /* Coloca atrás do ícone (SVG) */
     opacity: 0;
     animation: fadeInHalo 0.3s ease-out forwards;
 }
 
+/* NOVO: Animação para o halo aparecer */
 @keyframes fadeInHalo {
     from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
     to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
@@ -118,21 +141,23 @@ input[type=number] {
     -moz-appearance: textfield; 
 }
 
+/* ALTERADO: Cor do loader alinhada com o título (purple-400) */
 .loader {
     width: 48px;
     height: 48px;
     border: 5px solid #4b5563; 
-    border-bottom-color: #c084fc; 
+    border-bottom-color: #c084fc; /* ANTES: #8B5CF6 */
     border-radius: 50%;
     display: inline-block;
     box-sizing: border-box;
     animation: rotation 1s linear infinite;
 }
+/* ALTERADO: Cor do loader alinhada com o título (purple-400) */
 .loader-sm {
     width: 20px;
     height: 20px;
     border: 3px solid #4b5563;
-    border-bottom-color: #c084fc; 
+    border-bottom-color: #c084fc; /* ANTES: #8B5CF6 */
     border-radius: 50%;
     display: inline-block;
     box-sizing: border-box;
@@ -143,23 +168,31 @@ input[type=number] {
     100% { transform: rotate(360deg); }
 }
 
+/* AQUI A MODIFICAÇÃO: Ocultando a barra de rolagem */
 .scrollable-content {
       max-height: 40vh; 
       overflow-y: auto;
-      scrollbar-width: none; 
-      -ms-overflow-style: none; 
+      scrollbar-width: none; /* NOVO: Oculta no Firefox */
+      -ms-overflow-style: none; /* NOVO: Oculta no IE/Edge antigo */
+      /* REMOVIDO: scrollbar-width: thin; */
+      /* REMOVIDO: scrollbar-color: #2A2A2A #1A1A1A; */
 }
 .scrollable-content::-webkit-scrollbar { 
-    display: none; 
+    display: none; /* NOVO: Oculta no Chrome/Safari/Edge */
+    /* REMOVIDO: width: 6px; */
 }
+/* REMOVIDO: Regras .scrollable-content::-webkit-scrollbar-track e -thumb */
 
+/* NOVO: Regra para ocultar a barra de rolagem da página de Detalhes */
 #detalhes-conteudo-scroll {
-    scrollbar-width: none; 
-    -ms-overflow-style: none; 
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge antigo */
 }
 #detalhes-conteudo-scroll::-webkit-scrollbar {
-    display: none; 
+    display: none; /* Chrome/Safari/Edge */
 }
+/* FIM DA MODIFICAÇÃO */
+
 
 .custom-modal { display: none; }
 .custom-modal.visible { display: flex; }
@@ -180,6 +213,10 @@ input[type=number] {
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
+/* ===================================================================
+NOVOS ESTILOS: Foco para formulários de Auth e Add Ativo
+===================================================================
+*/
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
 #add-ativo-modal input[type="number"],
@@ -189,15 +226,18 @@ input[type=number] {
     transition: all 0.2s ease-in-out;
 }
 
+/* ALTERADO: Cor de foco alinhada com o título (purple-400) */
 #add-ativo-modal input[type="text"]:focus,
 #add-ativo-modal input[type="date"]:focus,
 #add-ativo-modal input[type="number"]:focus,
 #auth-container input[type="text"]:focus,
 #auth-container input[type="email"]:focus,
 #auth-container input[type="password"]:focus {
-    border-color: #c084fc; 
-    box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.3); 
+    border-color: #c084fc; /* ANTES: #8B5CF6 */
+    box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.3); /* ANTES: rgba(139, 92, 246, 0.3) */
 }
+/* FIM DOS NOVOS ESTILOS */
+
 
 .page-modal { 
     opacity: 0;
@@ -213,7 +253,8 @@ input[type=number] {
 .page-content {
     transition: transform 0.4s ease-in-out;
     transform: translateY(100%);
-    background-color: #131217; 
+    /* AQUI A MUDANÇA: Cor de fundo mais escura, baseada na imagem */
+    background-color: #131217; /* ANTES: #101010 */
     position: fixed; 
     bottom: 0;
     left: 0;
@@ -299,8 +340,9 @@ select {
     transition: all 0.2s ease;
     cursor: pointer;
 }
+/* ALTERADO: Cor de hover alinhada com o título (violet-600) */
 .news-ticker-tag:hover {
-    background-color: #7c3aed; 
+    background-color: #7c3aed; /* ANTES: #6D28D9 */
     color: #FFF;
 }
 
@@ -317,8 +359,9 @@ select {
 .periodo-selector-btn:hover {
     background-color: #4b5563;
 }
+/* ALTERADO: Botão ativo agora usa o gradiente principal */
 .periodo-selector-btn.active {
-    background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%); 
+    background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%); /* ANTES: background-color: #8B5CF6; */
     color: #ffffff;
     font-weight: 600;
 }
@@ -332,8 +375,7 @@ button:active,
 .news-ticker-tag:active,
 #copiar-dados-btn:active,
 #abrir-importar-modal-btn:active,
-#logout-btn:active,
-#config-btn:active { 
+#logout-btn:active { /* NOVO: Adicionado logout-btn */
     transform: scale(0.96);
     transition: transform 0.1s ease-out;
 }
@@ -358,6 +400,7 @@ button:active,
     overflow: hidden;
 }
 
+/* ALTERADO: Efeito shimmer premium */
 .animate-shimmer::before {
     content: '';
     position: absolute;
@@ -366,9 +409,9 @@ button:active,
     width: 100%;
     height: 100%;
     background: linear-gradient(
-        110deg, 
+        110deg, /* Angulado */
         transparent 25%,
-        rgba(255, 255, 255, 0.15), 
+        rgba(255, 255, 255, 0.15), /* Mais opaco */
         transparent 75%
     );
     transform: translateX(-100%);
@@ -380,6 +423,7 @@ button:active,
     overflow: hidden;
 }
 
+/* ALTERADO: Efeito shimmer premium */
 .animate-shim
 mer-parent .bg-gray-700::before {
     content: '';
@@ -389,26 +433,19 @@ mer-parent .bg-gray-700::before {
     width: 100%;
     height: 100%;
     background: linear-gradient(
-        110deg, 
+        110deg, /* Angulado */
         transparent 25%,
-        rgba(255, 255, 255, 0.15), 
+        rgba(255, 255, 255, 0.15), /* Mais opaco */
         transparent 75%
     );
     transform: translateX(-100%);
     animation: shimmer 1.5s infinite linear;
 }
 
+/* ===================================================================
+NOVO: Estilos utilitários
+===================================================================
+*/
 .hidden {
-    display: none !important; 
-}
-
-.btn-danger {
-    background-color: #b91c1c; 
-}
-.btn-danger:hover {
-    background-color: #991b1b; 
-}
-.btn-danger:active {
-    transform: scale(0.96);
-    transition: transform 0.1s ease-out;
+    display: none !important; /* Adicionado !important para garantir que sobreponha */
 }

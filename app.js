@@ -309,11 +309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const eyeSignupConfirmOffIcon = document.getElementById('eye-signup-confirm-off-icon');
     
     const appWrapper = document.getElementById('app-wrapper');
-    const configBtn = document.getElementById('config-btn');
-    const configPage = document.getElementById('config-page');
-    const configVoltarBtn = document.getElementById('config-voltar-btn');
     const logoutBtn = document.getElementById('logout-btn');
-    const deleteAccountBtn = document.getElementById('delete-account-btn');
 
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
@@ -634,16 +630,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             limparDetalhes(); 
         }, 400); 
-    }
-    
-    function showConfigPage() {
-        appWrapper.classList.add('hidden');
-        configPage.classList.remove('hidden');
-    }
-
-    function hideConfigPage() {
-        appWrapper.classList.remove('hidden');
-        configPage.classList.add('hidden');
     }
     
     async function carregarTransacoes() {
@@ -2144,7 +2130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchHistoricoIA(symbol) {
         detalhesAiProvento.innerHTML = `
             <div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48">
-                <div class="h-4 bg-gray-700 rounded-md w-3/A"></div>
+                <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
                 <div class="h-4 bg-gray-700 rounded-md w-1/2"></div>
                 <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>
             </div>
@@ -2466,6 +2452,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showSignupError(message) {
         signupError.textContent = message;
         signupError.classList.remove('hidden');
+        signupSubmitBtn.innerHTML = 'Criar conta';
+        signupSubmitBtn.disabled = false;
     }
     
     function togglePasswordVisibility(input, eyeIcon, eyeOffIcon) {
@@ -2535,15 +2523,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const email = loginEmailInput.value;
             const password = loginPasswordInput.value;
+            const error = await supabaseDB.signIn(email, password);
             
-            try {
-                const error = await supabaseDB.signIn(email, password);
-                if (error) {
-                    throw new Error(error);
-                }
+            if (error) {
+                showLoginError(error);
+            } else {
                 window.location.reload();
-            } catch (error) {
-                showLoginError(error.message);
             }
         });
 
@@ -2559,35 +2544,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (password !== passwordConfirm) {
                 showSignupError("As senhas não coincidem.");
-                signupSubmitBtn.innerHTML = 'Criar conta';
-                signupSubmitBtn.disabled = false;
                 return;
             }
             
             if (password.length < 6) {
                 showSignupError("A senha deve ter no mínimo 6 caracteres.");
-                signupSubmitBtn.innerHTML = 'Criar conta';
-                signupSubmitBtn.disabled = false;
                 return;
             }
             
-            try {
-                const result = await supabaseDB.signUp(email, password);
-                
-                if (result === 'success' || result === 'success_signed_in') {
-                    showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
-                        signupForm.classList.add('hidden');
-                        loginForm.classList.remove('hidden');
-                        showAuthLoading(false); 
-                    });
-                } else {
-                    showSignupError(result);
-                }
-            } catch (error) {
-                showSignupError(error.message || "Erro desconhecido ao criar conta.");
-            } finally {
+            const result = await supabaseDB.signUp(email, password);
+            
+            if (result === 'success') {
+                showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
+                    signupForm.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                    showAuthLoading(false); 
+                });
                 signupSubmitBtn.innerHTML = 'Criar conta';
                 signupSubmitBtn.disabled = false;
+            } else {
+                showSignupError(result);
             }
         });
 
@@ -2603,45 +2579,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupError.classList.add('hidden');
         });
         
-        configBtn.addEventListener('click', showConfigPage);
-        configVoltarBtn.addEventListener('click', hideConfigPage);
-        
         logoutBtn.addEventListener('click', () => {
             showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
                 await supabaseDB.signOut();
             });
-        });
-        
-        deleteAccountBtn.addEventListener('click', () => {
-            showModal(
-                "Excluir Conta?", 
-                "Esta ação é irreversível. Todos os seus dados serão apagados. Deseja continuar?", 
-                async () => {
-                    try {
-                        const response = await fetchBFF('/api/delete-account', { method: 'POST' });
-                        if (response.error) {
-                            throw new Error(response.error);
-                        }
-                        showToast("Conta excluída com sucesso.", 'success');
-                        await supabaseDB.signOut();
-                        setTimeout(() => window.location.reload(), 1500);
-                    } catch (error) {
-                        showToast(error.message);
-                    }
-                }
-            );
         });
 
         if (session) {
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
-            configPage.classList.add('hidden');
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
         } else {
             appWrapper.classList.add('hidden');      
-            configPage.classList.add('hidden');
             authContainer.classList.remove('hidden'); 
             showAuthLoading(false);                 
         }

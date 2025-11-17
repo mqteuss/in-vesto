@@ -295,12 +295,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
+    // NOVO: Campo de confirmação de senha
+    const signupConfirmPasswordInput = document.getElementById('signup-confirm-password'); 
     const signupSubmitBtn = document.getElementById('signup-submit-btn');
     const signupError = document.getElementById('signup-error');
+    // NOVO: Mensagem de sucesso no registro
+    const signupSuccess = document.getElementById('signup-success'); 
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
+    // NOVO: Botões de toggle de senha
+    const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
+
+    // NOVO: Botão de login com digital
+    const loginPasskeyBtn = document.getElementById('login-passkey-btn');
+    // NOVO: Botão de registro de digital (dentro do app)
+    const registerPasskeyBtn = document.getElementById('register-passkey-btn');
 
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
@@ -431,7 +442,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         toastTimer = setTimeout(() => {
             toastElement.classList.remove('toast-visible');
             isToastShowing = false;
-        }, 1500); 
+        }, 3000); // Aumentei o tempo para 3s
     }
 
     function showUpdateBar() {
@@ -1772,9 +1783,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!transacaoID) {
             const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
 
-            // ===================================================================
-            // CORREÇÃO: Reseta o caixa se for um NOVO FII
-            // ===================================================================
             if (!ativoExistente && isFII(ticker)) {
                 console.log("[Caixa] Novo FII detectado. Resetando saldoCaixa e mesesProcessados.");
                 saldoCaixa = 0;
@@ -1846,9 +1854,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideAddModal();
         
         await removerCacheAtivo(ticker); 
-        // ===================================================================
-        // CORREÇÃO: Força a atualização (true) se o caixa foi resetado
-        // ===================================================================
         const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
         const forceUpdate = (!ativoExistente && isFII(ticker));
         
@@ -2452,6 +2457,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             authLoading.classList.add('hidden');
             loginForm.classList.remove('hidden');
+            signupForm.classList.add('hidden'); // Garante que o signup esteja oculto
+            signupSuccess.classList.add('hidden'); // Garante que a msg de sucesso esteja oculta
         }
     }
     
@@ -2460,6 +2467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         loginError.classList.remove('hidden');
         loginSubmitBtn.innerHTML = 'Entrar';
         loginSubmitBtn.disabled = false;
+        loginPasskeyBtn.disabled = false; // Reabilita o botão de digital
     }
 
     function showSignupError(message) {
@@ -2516,6 +2524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
             loginSubmitBtn.disabled = true;
+            loginPasskeyBtn.disabled = true; // Desabilita digital
             loginError.classList.add('hidden');
 
             const email = loginEmailInput.value;
@@ -2529,22 +2538,82 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
+        // ===================================================================
+        // NOVA LÓGICA: Login com Digital (Passkey)
+        // ===================================================================
+        loginPasskeyBtn.addEventListener('click', async () => {
+            loginSubmitBtn.disabled = true;
+            loginPasskeyBtn.disabled = true;
+            loginPasskeyBtn.innerHTML = '<span class="loader-sm"></span>';
+            loginError.classList.add('hidden');
+            
+            const email = loginEmailInput.value;
+            if (!email) {
+                showLoginError("Por favor, digite seu e-mail para usar a digital.");
+                loginSubmitBtn.disabled = false;
+                loginPasskeyBtn.disabled = false;
+                loginPasskeyBtn.innerHTML = 'Entrar com digital'; // Restaura texto
+                return;
+            }
+
+            const error = await supabaseDB.signInWithPasskey(email);
+            
+            if (error) {
+                showLoginError(error);
+                loginSubmitBtn.disabled = false;
+                loginPasskeyBtn.disabled = false;
+                loginPasskeyBtn.innerHTML = 'Entrar com digital'; // Restaura texto
+            } else {
+                // Sucesso!
+                window.location.reload();
+            }
+        });
+
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
-            signupSubmitBtn.disabled = true;
-            signupError.classList.add('hidden');
-
+            
+            // ===================================================================
+            // NOVA LÓGICA: Validação de Senha Dupla
+            // ===================================================================
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
+            const confirmPassword = signupConfirmPasswordInput.value;
+
+            // Limpa erros anteriores
+            signupError.classList.add('hidden');
+            
+            if (password !== confirmPassword) {
+                showSignupError("As senhas não coincidem.");
+                return;
+            }
+            if (password.length < 6) {
+                showSignupError("A senha deve ter no mínimo 6 caracteres.");
+                return;
+            }
+            
+            signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
+            signupSubmitBtn.disabled = true;
+
             const result = await supabaseDB.signUp(email, password);
             
             if (result === 'success') {
-                showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
-                    signupForm.classList.add('hidden');
-                    loginForm.classList.remove('hidden');
-                    showAuthLoading(false); 
-                });
+                // ===================================================================
+                // NOVA LÓGICA: Mostra mensagem de sucesso ao invés de modal
+                // ===================================================================
+                // Esconde os campos de input e o botão
+                signupEmailInput.classList.add('hidden');
+                signupPasswordInput.parentElement.classList.add('hidden');
+                signupConfirmPasswordInput.parentElement.classList.add('hidden');
+                signupSubmitBtn.classList.add('hidden');
+                
+                // Mostra a mensagem de sucesso
+                signupSuccess.classList.remove('hidden');
+
+                // Limpa o formulário
+                signupForm.reset();
+                signupSubmitBtn.innerHTML = 'Criar conta';
+                signupSubmitBtn.disabled = false;
+
             } else {
                 showSignupError(result);
             }
@@ -2554,6 +2623,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             loginForm.classList.add('hidden');
             signupForm.classList.remove('hidden');
             loginError.classList.add('hidden');
+            
+            // Reseta o formulário de registro ao trocar
+            signupSuccess.classList.add('hidden');
+            signupEmailInput.classList.remove('hidden');
+            signupPasswordInput.parentElement.classList.remove('hidden');
+            signupConfirmPasswordInput.parentElement.classList.remove('hidden');
+            signupSubmitBtn.classList.remove('hidden');
         });
 
         showLoginBtn.addEventListener('click', () => {
@@ -2568,6 +2644,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
+        // ===================================================================
+        // NOVA LÓGICA: Registro de Digital (Passkey)
+        // ===================================================================
+        registerPasskeyBtn.addEventListener('click', async () => {
+            showToast("Aguarde... Solicitando registro de digital...", "success");
+            const { success, error } = await supabaseDB.registerPasskey();
+            
+            if (error) {
+                showToast(error);
+            } else {
+                showToast("Impressão digital registrada com sucesso!", "success");
+            }
+        });
+
+        // ===================================================================
+        // NOVA LÓGICA: Toggle de visibilidade da senha
+        // ===================================================================
+        passwordToggleButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetId = button.dataset.target;
+                const targetInput = document.getElementById(targetId);
+                if (!targetInput) return;
+
+                const eyeOpen = button.querySelector('.eye-icon-open');
+                const eyeClosed = button.querySelector('.eye-icon-closed');
+
+                if (targetInput.type === 'password') {
+                    targetInput.type = 'text';
+                    eyeOpen.classList.add('hidden');
+                    eyeClosed.classList.remove('hidden');
+                } else {
+                    targetInput.type = 'password';
+                    eyeOpen.classList.remove('hidden');
+                    eyeClosed.classList.add('hidden');
+                }
+            });
+        });
+
         if (session) {
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
@@ -2575,9 +2689,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
         } else {
-            // ===================================================================
-            // CORREÇÃO: Mostra a tela de login se a sessão for nula
-            // ===================================================================
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 
             showAuthLoading(false);                 

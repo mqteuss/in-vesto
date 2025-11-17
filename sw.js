@@ -1,6 +1,6 @@
-// sw.js (Atualizado com estratégia Network-First)
+// sw.js (Corrigido para evitar a "Race Condition" do .clone())
 
-const CACHE_NAME = 'vesto-cache-v2'; // Mudei o nome para forçar a atualização
+const CACHE_NAME = 'vesto-cache-v2';
 
 // Arquivos que são o "shell" do app e mudam com frequência
 const APP_SHELL_FILES_NETWORK_FIRST = [
@@ -83,18 +83,18 @@ self.addEventListener('fetch', event => {
   }
 
   // 3. Estratégia "Network-First" para o App Shell principal
-  // (index.html, app.js, supabase.js, style.css)
   if (APP_SHELL_FILES_NETWORK_FIRST.includes(url.pathname)) {
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
-          // Resposta da rede foi boa, atualiza o cache
-          if (networkResponse.ok) {
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, networkResponse.clone());
-            });
-          }
-          return networkResponse;
+          // ===================================================================
+          // CORREÇÃO: Clona a resposta IMEDIATAMENTE
+          // ===================================================================
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseToCache);
+          });
+          return networkResponse; // Retorna a resposta original
         })
         .catch(err => {
           // Rede falhou (offline), tenta pegar do cache
@@ -113,14 +113,20 @@ self.addEventListener('fetch', event => {
         if (cachedResponse) {
           return cachedResponse;
         }
+        
         // Não encontrou, busca na rede e armazena
         return fetch(event.request).then(networkResponse => {
-          if (networkResponse.ok) {
+          // ===================================================================
+          // CORREÇÃO: Clona a resposta IMEDIATAMENTE
+          // (Também verifica o tipo 'opaque' para CDNs)
+          // ===================================================================
+          if (networkResponse.ok || networkResponse.type === 'opaque') {
+            const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, networkResponse.clone());
+              cache.put(event.request, responseToCache);
             });
           }
-          return networkResponse;
+          return networkResponse; // Retorna a resposta original
         });
       })
   );

@@ -1,6 +1,6 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO CORRIGIDA (com tradução manual de nomes de coluna)
+// VERSÃO CORRIGIDA (Remove biometria, melhora detecção de erro de e-mail)
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
@@ -11,13 +11,13 @@ let supabaseClient = null;
  */
 function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
-    // CORREÇÃO: Pega a 'hint' (dica) do erro, que é mais útil
-    const hint = error.hint; 
     const message = error.message;
 
-    if (hint) {
-        // Ex: "Perhaps you meant to reference the column 'watchlist.addedat'?"
-        return hint;
+    // ===================================================================
+    // NOVO: Detecta e-mail duplicado
+    // ===================================================================
+    if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
+         return "Este e-mail já está cadastrado. Tente fazer login.";
     }
     if (error.code === '42501') { // RLS policy violation
         return "Erro de permissão. Contate o suporte.";
@@ -31,7 +31,7 @@ function handleSupabaseError(error, context) {
     if (message.includes("Email not confirmed")) {
          return "Email não confirmado. Verifique sua caixa de entrada.";
     }
-    return message || "Ocorreu um erro desconhecido.";
+    return error.hint || message || "Ocorreu um erro desconhecido.";
 }
 
 /**
@@ -86,10 +86,19 @@ export async function signUp(email, password) {
      try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
         if (error) throw error;
-        if (data.session === null) {
-            return "success"; 
+        
+        // Se a confirmação de e-mail estiver LIGADA (padrão do Supabase)
+        if (data.session === null && data.user) {
+            return "success"; // Sucesso, mas precisa confirmar e-mail
         }
-        return "success_signed_in"; 
+        
+        // Se a confirmação de e-mail estiver DESLIGADA
+        if (data.session) {
+             return "success_signed_in"; // Sucesso e já logado
+        }
+
+        return "success"; // Fallback para sucesso
+        
     } catch (error) {
         return handleSupabaseError(error, "signUp");
     }
@@ -104,12 +113,18 @@ export async function signOut() {
     }
 }
 
+// ===================================================================
+// REMOVIDO: Funções de biometria (Passkey)
+// ===================================================================
+// export async function registerPasskey() { ... }
+// export async function signInWithPasskey(email) { ... }
+
 
 /**
  * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
  */
 
-// --- Transações --- (Nomes já estavam corretos)
+// --- Transações ---
 export async function getTransacoes() {
     const { data, error } = await supabaseClient.from('transacoes').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getTransacoes"));
@@ -140,7 +155,7 @@ export async function deleteTransacoesDoAtivo(symbol) {
     const { error } = await supabaseClient.from('transacoes').delete().eq('symbol', symbol).eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacoesDoAtivo"));
 }
-// --- Patrimônio --- (Nomes já estavam corretos)
+// --- Patrimônio ---
 export async function getPatrimonio() {
     const { data, error } = await supabaseClient.from('patrimonio').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getPatrimonio"));
@@ -162,7 +177,6 @@ export async function getAppState(key) {
         .eq('key', key)
         .single(); 
 
-    // CORREÇÃO: Trata o erro 406 (Not Acceptable) / 404 (Not Found)
     if (error && error.code !== 'PGRST116' && error.status !== 406 && error.status !== 404) { 
         throw new Error(handleSupabaseError(error, "getAppState"));
     }
@@ -181,10 +195,9 @@ export async function saveAppState(key, value_json) {
 export async function getProventosConhecidos() {
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
-        .select('*'); // Pega tudo (incluindo 'paymentdate')
+        .select('*'); 
     if (error) throw new Error(handleSupabaseError(error, "getProventosConhecidos"));
     
-    // CORREÇÃO: Traduz 'paymentdate' para 'paymentDate' para o app.js
     if (data) {
         return data.map(item => ({
             ...item,
@@ -197,14 +210,13 @@ export async function addProventoConhecido(provento) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
     
-    // CORREÇÃO: Traduz 'paymentDate' para 'paymentdate'
     const proventoParaDB = {
         id: provento.id,
         user_id: user.id,
         symbol: provento.symbol,
         value: provento.value,
         processado: provento.processado,
-        paymentdate: provento.paymentDate // Tradução
+        paymentdate: provento.paymentDate
     };
 
     const { error } = await supabaseClient
@@ -238,10 +250,9 @@ export async function deleteProventosDoAtivo(symbol) {
 export async function getWatchlist() {
     const { data, error } = await supabaseClient
         .from('watchlist')
-        .select('symbol, addedat'); // Pega a coluna 'addedat'
+        .select('symbol, addedat'); 
     if (error) throw new Error(handleSupabaseError(error, "getWatchlist"));
     
-    // CORREÇÃO: Traduz 'addedat' para 'addedAt' para o app.js
     if (data) {
         return data.map(item => ({
             symbol: item.symbol,
@@ -254,11 +265,10 @@ export async function addWatchlist(item) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
 
-    // CORREÇÃO: Traduz 'addedAt' para 'addedat'
     const itemParaDB = {
         user_id: user.id,
         symbol: item.symbol,
-        addedat: item.addedAt // Tradução
+        addedat: item.addedAt
     };
 
     const { error } = await supabaseClient

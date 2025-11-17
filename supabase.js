@@ -68,29 +68,40 @@ export async function signIn(email, password) {
     }
 }
 
+/**
+ * ✅ CORREÇÃO APLICADA (Conforme sua sugestão)
+ * Retorna um objeto { success: boolean, ... }
+ */
 export async function signUp(email, password) {
-     try {
+    try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        
+        // 1. Verifica se houve erro explícito
         if (error) throw error;
         
-        if (!data.user) {
-            return "Este e-mail já está cadastrado. Tente fazer login.";
+        // 2. Verifica se o usuário foi realmente criado
+        if (!data.user || !data.user.id) {
+            throw new Error("User already registered");
         }
         
-        if (data.session === null && data.user) {
-            return "success";
+        // 3. Se confirmação de e-mail estiver LIGADA (padrão)
+        if (data.session === null && data.user && data.user.id) {
+            return { success: true, needsConfirmation: true };
         }
         
-        if (data.session) {
-             return "success_signed_in";
+        // 4. Se confirmação estiver DESLIGADA
+        if (data.session && data.user && data.user.id) {
+            return { success: true, needsConfirmation: false };
         }
 
-        return "success";
+        // 5. Fallback: se chegou aqui, algo deu errado
+        throw new Error("Erro desconhecido ao criar conta");
         
     } catch (error) {
-        return handleSupabaseError(error, "signUp");
+        return { success: false, error: handleSupabaseError(error, "signUp") };
     }
 }
+
 
 export async function signOut() {
     try {

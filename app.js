@@ -2533,7 +2533,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // --- LÓGICA DE SUBMIT DO SIGNUP ATUALIZADA ---
+        // --- LÓGICA DE SUBMIT DO SIGNUP ATUALIZADA COM TRY...CATCH ---
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             signupError.classList.add('hidden'); // Esconde erros antigos
@@ -2555,26 +2555,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             // MOSTRA O LOADER PRINCIPAL
             showAuthLoading(true);
             
-            const result = await supabaseDB.signUp(email, password);
-            
-            if (result === 'success') {
-                // SUCESSO (precisa confirmar email)
-                // O showAuthLoading(false) é chamado dentro do callback do modal
-                showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
-                    showAuthLoading(false); // Esconde o loader
-                    signupForm.classList.add('hidden');
-                    loginForm.classList.remove('hidden'); // Mostra o login
-                });
-            
-            } else if (result === 'success_signed_in') {
-                // SUCESSO (auto-login, email RLS desativado)
-                window.location.reload();
+            try {
+                const result = await supabaseDB.signUp(email, password);
+                
+                if (result === 'success') {
+                    // SUCESSO (precisa confirmar email)
+                    showModal("Verifique seu Email", "Enviamos um link de confirmação para o seu email. Por favor, clique nele para ativar sua conta e fazer login.", () => {
+                        showAuthLoading(false); // Esconde o loader
+                        signupForm.classList.add('hidden');
+                        loginForm.classList.remove('hidden'); // Mostra o login
+                    });
+                
+                } else if (result === 'success_signed_in') {
+                    // SUCESSO (auto-login, email RLS desativado)
+                    window.location.reload();
 
-            } else {
-                // ERRO (Ex: "Este email já está cadastrado.")
-                showAuthLoading(false); // Esconde o loader "A conectar..."
-                signupForm.classList.remove('hidden'); // Mostra o signup form de novo
-                showSignupError(result); // Mostra o erro (ex: "Este email já está cadastrado.")
+                } else {
+                    // ERRO (Ex: "Este email já está cadastrado.")
+                    showAuthLoading(false); // Esconde o loader "A conectar..."
+                    signupForm.classList.remove('hidden'); // Mostra o signup form de novo
+                    showSignupError(result); // Mostra o erro (ex: "Este email já está cadastrado.")
+                }
+            } catch (error) {
+                // --- NOVO: Pega erros inesperados (ex: rede) ---
+                showAuthLoading(false); 
+                signupForm.classList.remove('hidden'); 
+                showSignupError(error.message || "Erro de conexão. Tente novamente.");
             }
         });
         // --- FIM DA LÓGICA ATUALIZADA ---

@@ -15,6 +15,12 @@ function handleSupabaseError(error, context) {
     const hint = error.hint; 
     const message = error.message;
 
+    // --- NOVO: Adicionado tratamento para e-mail já existente ---
+    if (message.includes("User already registered") || message.includes("user already exists")) {
+        return "Este email já está cadastrado. Tente fazer login.";
+    }
+    // --- FIM DA MODIFIFCAÇÃO ---
+
     if (hint) {
         // Ex: "Perhaps you meant to reference the column 'watchlist.addedat'?"
         return hint;

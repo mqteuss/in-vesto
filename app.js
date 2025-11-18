@@ -3,6 +3,24 @@ import * as supabaseDB from './supabase.js';
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
+// ==================================================================
+// CONSTANTES DE CACHE OTIMIZADAS
+// ==================================================================
+const REFRESH_INTERVAL = 900000; // 15 minutos (Update automático da tela)
+
+// Cache Dinâmico para Preços
+const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; // 15 min
+const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; // 12 horas
+
+// Cache Geral
+const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; // 1 hora (Mais fresco que antes)
+const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; // 24 horas (Histórico muda pouco)
+const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; // 12 horas
+
+// Configuração do IndexedDB
+const DB_NAME = 'vestoCacheDB';
+const DB_VERSION = 1; 
+
 // ... (Funções utilitárias permanecem as mesmas) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
@@ -50,6 +68,29 @@ function parseMesAno(mesAnoStr) {
         console.error("Erro ao analisar data 'MM/AA':", mesAnoStr, e);
         return null;
     }
+}
+
+function getSaoPauloDateTime() {
+    try {
+        const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+        const spDate = new Date(spTimeStr);
+        const dayOfWeek = spDate.getDay(); 
+        const hour = spDate.getHours();
+        return { dayOfWeek, hour };
+    } catch (e) {
+        // Fallback se o browser não suportar timeZone
+        const localDate = new Date();
+        return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
+    }
+}
+
+function isB3Open() {
+    const { dayOfWeek, hour } = getSaoPauloDateTime();
+    // Domingo (0) ou Sábado (6) -> Fechado
+    if (dayOfWeek === 0 || dayOfWeek === 6) { return false; } 
+    // Aberto entre 10h e 18h (aproximadamente)
+    if (hour >= 10 && hour < 18) { return true; } 
+    return false;
 }
 
 function criarCardElemento(ativo, dados) {
@@ -204,14 +245,6 @@ function atualizarCardElemento(card, ativo, dados) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     
-    const REFRESH_INTERVAL = 1860000;
-    const CACHE_DURATION = 1000 * 60 * 30;
-    const CACHE_24_HORAS = 1000 * 60 * 60 * 24;
-    const CACHE_6_HORAS = 1000 * 60 * 60 * 6;
-    
-    const DB_NAME = 'vestoCacheDB';
-    const DB_VERSION = 1; 
-
     const vestoDB = {
         db: null,
         init() {
@@ -456,8 +489,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    async function setCache(key, data, duration = CACHE_DURATION) { 
-        const cacheItem = { key: key, timestamp: Date.now(), data: data, duration: duration };
+    async function setCache(key, data, duration) { 
+        // Duração padrão de 1h se não for informado
+        const finalDuration = duration || (1000 * 60 * 60); 
+        const cacheItem = { key: key, timestamp: Date.now(), data: data, duration: finalDuration };
         try { 
             await vestoDB.put('apiCache', cacheItem);
         } 
@@ -497,7 +532,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const cacheItem = await vestoDB.get('apiCache', key);
             if (!cacheItem) return null;
             
-            const duration = cacheItem.duration ?? CACHE_DURATION; 
+            // Se duration for -1, é infinito
+            const duration = cacheItem.duration; 
             if (duration === -1) { return cacheItem.data; }
             
             const isExpired = (Date.now() - cacheItem.timestamp) > duration;
@@ -516,27 +552,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function clearBrapiCache() {
         await vestoDB.clear('apiCache');
-    }
-    
-    function getSaoPauloDateTime() {
-        try {
-            const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
-            const spDate = new Date(spTimeStr);
-            const dayOfWeek = spDate.getDay(); 
-            const hour = spDate.getHours();
-            return { dayOfWeek, hour };
-        } catch (e) {
-            console.error("Erro ao obter fuso horário de São Paulo, usando fuso local.", e);
-            const localDate = new Date();
-            return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
-        }
-    }
-    
-    function isB3Open() {
-        const { dayOfWeek, hour } = getSaoPauloDateTime();
-        if (dayOfWeek === 0 || dayOfWeek === 6) { return false; } 
-        if (hour >= 10 && hour < 18) { return true; } 
-        return false;
     }
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -670,7 +685,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderizarWatchlist() {
-        // OTIMIZAÇÃO: DocumentFragment
         watchlistListaEl.innerHTML = ''; 
 
         if (watchlist.length === 0) {
@@ -1096,10 +1110,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function renderizarCarteira() {
-        // NOTA: A renderização da carteira MANTÉM a lógica de diffing
-        // para preservar animações e evitar repaints desnecessários.
-        // Não usamos DocumentFragment aqui intencionalmente.
-        
         renderizarCarteiraSkeletons(false);
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -1233,7 +1243,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function renderizarHistorico() {
-        // OTIMIZAÇÃO: DocumentFragment
         listaHistorico.innerHTML = '';
         if (transacoes.length === 0) {
             historicoStatus.classList.remove('hidden');
@@ -1284,7 +1293,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderizarNoticias(articles) { 
-        // OTIMIZAÇÃO: DocumentFragment
         fiiNewsSkeleton.classList.add('hidden');
         fiiNewsList.innerHTML = ''; 
         fiiNewsMensagem.classList.add('hidden');
@@ -1405,7 +1413,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const articles = response.json;
             
             if (articles && Array.isArray(articles) && articles.length > 0) {
-                await setCache(cacheKey, articles, CACHE_6_HORAS);
+                // USA CACHE CURTO (1h) PARA NOTÍCIAS
+                await setCache(cacheKey, articles, CACHE_NOTICIAS);
             } else {
                 console.warn("API de notícias retornou vazio ou inválido.");
             }
@@ -1442,6 +1451,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function buscarPrecosCarteira(force = false) { 
         if (carteiraCalculada.length === 0) return [];
         
+        // LOGICA DE CACHE INTELIGENTE
+        const mercadoAberto = isB3Open();
+        const duracaoCachePreco = mercadoAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
+
         const promessas = carteiraCalculada.map(async (ativo) => {
             const cacheKey = `preco_${ativo.symbol}`;
             if (force) {
@@ -1449,8 +1462,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             if (!force) {
+                // Aqui o getCache já verifica a duração salva
                 const precoCache = await getCache(cacheKey);
-                if (precoCache && !isB3Open()) return precoCache;
                 if (precoCache) return precoCache;
             }
             try {
@@ -1460,7 +1473,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (result && !result.error) {
                     if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                    await setCache(cacheKey, result); 
+                    // Salva com a duração calculada acima
+                    await setCache(cacheKey, result, duracaoCachePreco); 
                     return result;
                 } else {
                     return null;
@@ -1530,7 +1544,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     for (const provento of novosProventos) {
                         if (provento && provento.symbol && provento.paymentDate) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
-                            await setCache(cacheKey, provento, CACHE_24_HORAS); 
+                            await setCache(cacheKey, provento, CACHE_PROVENTOS); 
                             proventosPool.push(provento);
 
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
@@ -1570,7 +1584,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
                 if (aiData && aiData.length > 0) {
-                    await setCache(cacheKey, aiData, CACHE_24_HORAS);
+                    await setCache(cacheKey, aiData, CACHE_IA_HISTORICO);
                 }
             } catch (e) {
                 console.error("Erro ao buscar histórico agregado:", e);
@@ -2010,7 +2024,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 precoData = data.results?.[0];
-                if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData); 
+                
+                // Salva cache curto para detalhe também (15min ou 12h dependendo do mercado)
+                const isAberto = isB3Open();
+                const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
+                
+                if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, duracao); 
                 else throw new Error(precoData?.error || 'Ativo não encontrado');
             } catch (e) { 
                 precoData = null; 
@@ -2104,7 +2123,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
         const container = document.getElementById('detalhes-transacoes-container');
     
-        // OTIMIZAÇÃO: DocumentFragment
         listaContainer.innerHTML = '';
         
         const txsDoAtivo = transacoes
@@ -2167,7 +2185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 aiResultJSON = await callGeminiHistoricoAPI(symbol, todayString); 
                 
                 if (aiResultJSON && Array.isArray(aiResultJSON)) {
-                    await setCache(cacheKey, aiResultJSON, CACHE_24_HORAS);
+                    await setCache(cacheKey, aiResultJSON, CACHE_IA_HISTORICO);
                 } else {
                     aiResultJSON = [];
                 }

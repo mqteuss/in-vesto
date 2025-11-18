@@ -2,10 +2,12 @@ const { createClient } = supabase;
 let supabaseClient = null;
 
 function handleSupabaseError(error, context) {
-    console.error(`Erro no Supabase (${context}):`, error);
+    console.error(`[handleSupabaseError] Context: ${context}`);
+    console.error(`[handleSupabaseError] Error object:`, error);
+    console.error(`[handleSupabaseError] Error message:`, error.message);
+    
     const message = error.message;
 
-    // ✅ Sua sugestão foi aplicada aqui
     if (message.includes("User already registered") || 
         message.includes("duplicate key value violates unique constraint") ||
         message.includes("already been registered")) {
@@ -71,28 +73,51 @@ export async function signIn(email, password) {
     }
 }
 
+/**
+ * ✅ CORREÇÃO DEFINITIVA APLICADA
+ * Verifica 'data.user.identities.length' para detectar e-mails duplicados
+ * que ainda não foram confirmados.
+ */
 export async function signUp(email, password) {
     try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
         
-        if (error) throw error;
-        
-        if (!data.user || !data.user.id) {
-            throw new Error("User already registered");
+        // 1. Verifica erro explícito (ex: senha muito curta)
+        if (error) {
+            console.error("[signUp] Erro explícito do Supabase:", error);
+            throw error;
         }
-        
+
+        // 2. ✅ CORREÇÃO CRÍTICA: Verifica se 'identities' está vazio.
+        // Se estiver, é um e-mail já existente (mas não confirmado)
+        // e o Supabase está apenas reenviando o e-mail de confirmação.
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+            console.warn("[signUp] E-mail duplicado (ou não confirmado) detectado. 'identities' está vazio.");
+            // Lançamos nosso próprio erro para ser pego pelo catch
+            throw new Error("User already registered"); 
+        }
+
+        // 3. Sucesso (precisa de confirmação de e-mail)
         if (data.session === null && data.user && data.user.id) {
+            console.log("[signUp] Cadastro OK - Precisa confirmar e-mail");
             return { success: true, needsConfirmation: true };
         }
         
+        // 4. Sucesso (confirmação desligada, logado automaticamente)
         if (data.session && data.user && data.user.id) {
+            console.log("[signUp] Cadastro OK - Logado automaticamente");
             return { success: true, needsConfirmation: false };
         }
 
+        // 5. Fallback
+        console.warn("[signUp] Fallback: data.user ou data.session está em estado inesperado.", data);
         throw new Error("Erro desconhecido ao criar conta");
         
     } catch (error) {
-        return { success: false, error: handleSupabaseError(error, "signUp") };
+        // 6. Bloco Catch: formata o erro (incluindo o "User already registered" que jogamos)
+        const errorMessage = handleSupabaseError(error, "signUp");
+        console.error("[signUp] Retornando erro para UI:", errorMessage);
+        return { success: false, error: errorMessage };
     }
 }
 

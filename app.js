@@ -2466,20 +2466,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         // REMOVIDO: loginPasskeyBtn.disabled = false;
     }
 
+    /**
+     * ✅ CORREÇÃO APLICADA (Conforme seu guia)
+     * Função 'showSignupError' com logs e reset de UI
+     */
     function showSignupError(message) {
+        console.log("[showSignupError] Mostrando erro:", message);
+        
+        // ✅ Define o texto do erro
         signupError.textContent = message;
+        
+        // ✅ Mostra a div de erro (remove 'hidden')
         signupError.classList.remove('hidden');
+        
+        // ✅ Restaura o botão
         signupSubmitBtn.innerHTML = 'Criar conta';
         signupSubmitBtn.disabled = false;
 
-        // Esconde a msg de sucesso se um erro aparecer
+        // ✅ Esconde mensagem de sucesso (caso esteja visível)
         signupSuccess.classList.add('hidden');
-        // Garante que os campos de input voltem a aparecer
+        
+        // ✅ Garante que os campos voltem a aparecer
         signupEmailInput.classList.remove('hidden');
         signupPasswordInput.parentElement.classList.remove('hidden');
         signupConfirmPasswordInput.parentElement.classList.remove('hidden');
         signupSubmitBtn.classList.remove('hidden');
     }
+
 
     async function carregarDadosIniciais() {
         try {
@@ -2543,10 +2556,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // REMOVIDO: Event listener do loginPasskeyBtn
-        
+
         /**
-         * ✅ CORREÇÃO APLICADA (Conforme sua sugestão)
-         * Verifica result.success ao invés de result === 'string'
+         * ✅ CORREÇÃO APLICADA (Conforme seu guia)
+         * Event listener do signupForm com logs e verificação de result.success
          */
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2555,42 +2568,62 @@ document.addEventListener('DOMContentLoaded', async () => {
             const password = signupPasswordInput.value;
             const confirmPassword = signupConfirmPasswordInput.value;
 
-            // Limpa erros anteriores
+            // ✅ SEMPRE limpa mensagens anteriores
             signupError.classList.add('hidden');
             signupSuccess.classList.add('hidden');
             
+            // Validação local: senhas coincidem
             if (password !== confirmPassword) {
                 showSignupError("As senhas não coincidem.");
                 return;
             }
+            
+            // Validação local: senha tem mínimo 6 caracteres
             if (password.length < 6) {
                 showSignupError("A senha deve ter no mínimo 6 caracteres.");
                 return;
             }
             
+            // Mostra loading
             signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
             signupSubmitBtn.disabled = true;
 
+            // ✅ Chama o signup
+            console.log("[UI] Chamando signUp com email:", email);
             const result = await supabaseDB.signUp(email, password);
             
-            if (result.success) {
-                // Esconde os campos de input e o botão
+            // ✅ CRÍTICO: Log do resultado completo
+            console.log("[UI] Resultado do signUp:", result);
+            console.log("[UI] result.success:", result.success);
+            console.log("[UI] result.error:", result.error);
+            
+            // ✅ Verifica explicitamente se success é TRUE
+            if (result.success === true) {
+                console.log("[UI] ✅ SUCESSO - Mostrando mensagem verde");
+                
+                // Esconde os campos
                 signupEmailInput.classList.add('hidden');
                 signupPasswordInput.parentElement.classList.add('hidden');
                 signupConfirmPasswordInput.parentElement.classList.add('hidden');
                 signupSubmitBtn.classList.add('hidden');
                 
-                // Mostra a mensagem de sucesso
+                // Mostra mensagem de sucesso
                 signupSuccess.classList.remove('hidden');
-
-                // Limpa o formulário
+                
+                // Limpa formulário
                 signupForm.reset();
                 signupSubmitBtn.innerHTML = 'Criar conta';
                 signupSubmitBtn.disabled = false;
 
             } else {
-                // Se deu erro, mostra a mensagem retornada
-                showSignupError(result.error || "Erro ao criar conta");
+                // ✅ CRÍTICO: Mostra o erro
+                console.log("[UI] ❌ ERRO - Mostrando mensagem vermelha");
+                console.log("[UI] Mensagem de erro:", result.error);
+                
+                // Garante que tem uma mensagem de erro
+                const errorMessage = result.error || "Erro ao criar conta. Tente novamente.";
+                
+                showSignupError(errorMessage);
             }
         });
 

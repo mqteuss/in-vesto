@@ -4,7 +4,7 @@ const CACHE_NAME = 'vesto-cache-v3'; // Atualizei para v3 para garantir a troca
 
 const APP_SHELL_FILES_NETWORK_FIRST = [
   '/',
-  'logo.png', 
+  'logo-vesto.png', 
   'index.html',
   'app.js',
   'supabase.js',

@@ -3,8 +3,7 @@ import * as supabaseDB from './supabase.js';
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
-// ... (Todas as funções de formatação (formatBRL, etc) e de renderização (criarCardElemento, etc) permanecem idênticas) ...
-// ... (Linhas 5 a 1037) ...
+// ... (Funções utilitárias permanecem as mesmas) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -70,7 +69,6 @@ function criarCardElemento(ativo, dados) {
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
-            
             proventoHtml = `
             <div class="mt-3 space-y-1">
                 <div class="flex justify-between items-center">
@@ -82,7 +80,6 @@ function criarCardElemento(ativo, dados) {
                     <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
-
         } else {
             proventoHtml = `
             <div class="flex justify-between items-center mt-3">
@@ -183,7 +180,6 @@ function atualizarCardElemento(card, ativo, dados) {
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
-            
             proventoHtml = `
             <div class="mt-3 space-y-1">
                 <div class="flex justify-between items-center">
@@ -206,7 +202,6 @@ function atualizarCardElemento(card, ativo, dados) {
     }
 }
 
-
 document.addEventListener('DOMContentLoaded', async () => {
     
     const REFRESH_INTERVAL = 1860000;
@@ -219,35 +214,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const vestoDB = {
         db: null,
-        
         init() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
-                
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
                     if (!db.objectStoreNames.contains('apiCache')) {
                         db.createObjectStore('apiCache', { keyPath: 'key' });
                     }
                 };
-                
                 request.onsuccess = (event) => {
                     this.db = event.target.result;
                     resolve();
                 };
-                
                 request.onerror = (event) => {
                     console.error('[IDB Cache] Erro ao abrir DB:', event.target.error);
                     reject(event.target.error);
                 };
             });
         },
-        
         _getStore(storeName, mode = 'readonly') {
             if (!this.db) throw new Error('DB não inicializado.');
             return this.db.transaction(storeName, mode).objectStore(storeName);
         },
-
         get(storeName, key) {
             return new Promise((resolve, reject) => {
                 const store = this._getStore(storeName);
@@ -256,7 +245,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 request.onerror = (e) => reject(e.target.error);
             });
         },
-
         put(storeName, value) {
             return new Promise((resolve, reject) => {
                 const store = this._getStore(storeName, 'readwrite');
@@ -265,7 +253,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 request.onerror = (e) => reject(e.target.error);
             });
         },
-
         delete(storeName, key) {
             return new Promise((resolve, reject) => {
                 const store = this._getStore(storeName, 'readwrite');
@@ -274,7 +261,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 request.onerror = (e) => reject(e.target.error);
             });
         },
-
         clear(storeName) {
             return new Promise((resolve, reject) => {
                 const store = this._getStore(storeName, 'readwrite');
@@ -304,10 +290,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
-
-    // REMOVIDO: Botões de biometria
-    // const loginPasskeyBtn = document.getElementById('login-passkey-btn');
-    // const registerPasskeyBtn = document.getElementById('register-passkey-btn');
 
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
@@ -438,7 +420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         toastTimer = setTimeout(() => {
             toastElement.classList.remove('toast-visible');
             isToastShowing = false;
-        }, 3000); // Aumentei o tempo para 3s
+        }, 3000);
     }
 
     function showUpdateBar() {
@@ -503,7 +485,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function removerProventosConhecidos(symbol) {
         proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
-        
         try {
             await supabaseDB.deleteProventosDoAtivo(symbol);
         } catch (e) {
@@ -529,7 +510,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return cacheItem.data;
         } catch (e) {
             console.error(`Erro ao buscar cache (${key}):`, e);
-            return null; // Fallback seguro
+            return null;
         }
     }
     
@@ -689,6 +670,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderizarWatchlist() {
+        // OTIMIZAÇÃO: DocumentFragment
         watchlistListaEl.innerHTML = ''; 
 
         if (watchlist.length === 0) {
@@ -700,6 +682,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
+        const fragment = document.createDocumentFragment();
         watchlist.forEach(item => {
             const symbol = item.symbol;
             const el = document.createElement('div');
@@ -710,8 +693,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     Ver Detalhes
                 </button>
             `;
-            watchlistListaEl.appendChild(el);
+            fragment.appendChild(el);
         });
+        watchlistListaEl.appendChild(fragment);
     }
     
     function atualizarIconeFavorito(symbol) {
@@ -1112,6 +1096,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function renderizarCarteira() {
+        // NOTA: A renderização da carteira MANTÉM a lógica de diffing
+        // para preservar animações e evitar repaints desnecessários.
+        // Não usamos DocumentFragment aqui intencionalmente.
+        
         renderizarCarteiraSkeletons(false);
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -1245,6 +1233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function renderizarHistorico() {
+        // OTIMIZAÇÃO: DocumentFragment
         listaHistorico.innerHTML = '';
         if (transacoes.length === 0) {
             historicoStatus.classList.remove('hidden');
@@ -1252,6 +1241,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         historicoStatus.classList.add('hidden');
+        const fragment = document.createDocumentFragment();
+
         [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
             const card = document.createElement('div');
             card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
@@ -1287,11 +1278,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `;
-            listaHistorico.appendChild(card);
+            fragment.appendChild(card);
         });
+        listaHistorico.appendChild(fragment);
     }
 
     function renderizarNoticias(articles) { 
+        // OTIMIZAÇÃO: DocumentFragment
         fiiNewsSkeleton.classList.add('hidden');
         fiiNewsList.innerHTML = ''; 
         fiiNewsMensagem.classList.add('hidden');
@@ -1303,6 +1296,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+        
+        const fragment = document.createDocumentFragment();
 
         articles.forEach((article, index) => {
             const sourceName = article.sourceName || 'Fonte';
@@ -1358,8 +1353,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `;
-            fiiNewsList.appendChild(newsCard);
+            fragment.appendChild(newsCard);
         });
+        fiiNewsList.appendChild(fragment);
     }
 
     async function handleAtualizarNoticias(force = false) {
@@ -2108,6 +2104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
         const container = document.getElementById('detalhes-transacoes-container');
     
+        // OTIMIZAÇÃO: DocumentFragment
         listaContainer.innerHTML = '';
         
         const txsDoAtivo = transacoes
@@ -2121,6 +2118,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             vazioMsg.classList.add('hidden');
             listaContainer.classList.remove('hidden');
             
+            const fragment = document.createDocumentFragment();
+
             txsDoAtivo.forEach(t => {
                 const card = document.createElement('div');
                 card.className = 'card-bg p-3 rounded-lg flex items-center justify-between'; 
@@ -2143,8 +2142,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
                     </div>
                 `;
-                listaContainer.appendChild(card);
+                fragment.appendChild(card);
             });
+            listaContainer.appendChild(fragment);
         }
         
         container.classList.remove('hidden');
@@ -2472,7 +2472,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         loginError.classList.remove('hidden');
         loginSubmitBtn.innerHTML = 'Entrar';
         loginSubmitBtn.disabled = false;
-        // REMOVIDO: loginPasskeyBtn.disabled = false;
     }
 
     function showSignupError(message) {
@@ -2537,7 +2536,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
             loginSubmitBtn.disabled = true;
-            // REMOVIDO: loginPasskeyBtn.disabled = true;
             loginError.classList.add('hidden');
 
             const email = loginEmailInput.value;
@@ -2551,14 +2549,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // REMOVIDO: Event listener do loginPasskeyBtn
-
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // ===================================================================
-            // LÓGICA ATUALIZADA: Validação de Senha Dupla
-            // ===================================================================
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
             const confirmPassword = signupConfirmPasswordInput.value;
@@ -2582,25 +2575,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await supabaseDB.signUp(email, password);
             
             if (result === 'success') {
-                // ===================================================================
-                // LÓGICA ATUALIZADA: Mostra mensagem de sucesso e esconde inputs
-                // ===================================================================
-                // Esconde os campos de input e o botão
                 signupEmailInput.classList.add('hidden');
                 signupPasswordInput.parentElement.classList.add('hidden');
                 signupConfirmPasswordInput.parentElement.classList.add('hidden');
                 signupSubmitBtn.classList.add('hidden');
                 
-                // Mostra a mensagem de sucesso
                 signupSuccess.classList.remove('hidden');
 
-                // Limpa o formulário
                 signupForm.reset();
                 signupSubmitBtn.innerHTML = 'Criar conta';
                 signupSubmitBtn.disabled = false;
 
             } else {
-                // Se der erro (ex: e-mail já existe), mostra o erro
                 showSignupError(result);
             }
         });
@@ -2610,10 +2596,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupForm.classList.remove('hidden');
             loginError.classList.add('hidden');
             
-            // Reseta o formulário de registro ao trocar
-            signupError.classList.add('hidden'); // Esconde erro
-            signupSuccess.classList.add('hidden'); // Esconde sucesso
-            // Garante que os campos voltem a aparecer
+            signupError.classList.add('hidden'); 
+            signupSuccess.classList.add('hidden'); 
+            
             signupEmailInput.classList.remove('hidden');
             signupPasswordInput.parentElement.classList.remove('hidden');
             signupConfirmPasswordInput.parentElement.classList.remove('hidden');
@@ -2632,11 +2617,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
-        // REMOVIDO: Event listener do registerPasskeyBtn
-
-        // ===================================================================
-        // LÓGICA ATUALIZADA: Toggle de visibilidade da senha
-        // ===================================================================
         passwordToggleButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const targetId = button.dataset.target;

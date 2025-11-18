@@ -3,8 +3,7 @@ import * as supabaseDB from './supabase.js';
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
-// ... (Todas as funções de formatação (formatBRL, etc) e de renderização (criarCardElemento, etc) permanecem idênticas) ...
-// ... (Linhas 5 a 1037) ...
+// ... (Funções utilitárias permanecem iguais) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -209,6 +208,19 @@ function atualizarCardElemento(card, ativo, dados) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     
+    // --- VARIÁVEIS E REFERÊNCIAS DO DOM ---
+
+    // Calendário
+    const calendarModal = document.getElementById('calendar-modal');
+    const calendarDaysContainer = document.getElementById('calendar-days');
+    const calendarMonthYear = document.getElementById('calendar-month-year');
+    const calendarPrevBtn = document.getElementById('calendar-prev');
+    const calendarNextBtn = document.getElementById('calendar-next');
+    const calendarCancelBtn = document.getElementById('calendar-cancel');
+    
+    let currentDateCalendar = new Date();
+    let selectedDateCalendar = new Date();
+
     const REFRESH_INTERVAL = 1860000;
     const CACHE_DURATION = 1000 * 60 * 30;
     const CACHE_24_HORAS = 1000 * 60 * 60 * 24;
@@ -219,35 +231,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const vestoDB = {
         db: null,
-        
         init() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
-                
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
                     if (!db.objectStoreNames.contains('apiCache')) {
                         db.createObjectStore('apiCache', { keyPath: 'key' });
                     }
                 };
-                
                 request.onsuccess = (event) => {
                     this.db = event.target.result;
                     resolve();
                 };
-                
                 request.onerror = (event) => {
                     console.error('[IDB Cache] Erro ao abrir DB:', event.target.error);
                     reject(event.target.error);
                 };
             });
         },
-        
         _getStore(storeName, mode = 'readonly') {
             if (!this.db) throw new Error('DB não inicializado.');
             return this.db.transaction(storeName, mode).objectStore(storeName);
         },
-
         get(storeName, key) {
             return new Promise((resolve, reject) => {
                 const store = this._getStore(storeName);
@@ -256,7 +262,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 request.onerror = (e) => reject(e.target.error);
             });
         },
-
         put(storeName, value) {
             return new Promise((resolve, reject) => {
                 const store = this._getStore(storeName, 'readwrite');
@@ -265,7 +270,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 request.onerror = (e) => reject(e.target.error);
             });
         },
-
         delete(storeName, key) {
             return new Promise((resolve, reject) => {
                 const store = this._getStore(storeName, 'readwrite');
@@ -274,7 +278,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 request.onerror = (e) => reject(e.target.error);
             });
         },
-
         clear(storeName) {
             return new Promise((resolve, reject) => {
                 const store = this._getStore(storeName, 'readwrite');
@@ -304,10 +307,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
-
-    // REMOVIDO: Botões de biometria
-    // const loginPasskeyBtn = document.getElementById('login-passkey-btn');
-    // const registerPasskeyBtn = document.getElementById('register-passkey-btn');
 
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
@@ -408,6 +407,107 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
 
+    // --- FUNÇÕES DO CALENDÁRIO CUSTOMIZADO ---
+
+    function renderCalendar() {
+        calendarDaysContainer.innerHTML = '';
+        
+        const year = currentDateCalendar.getFullYear();
+        const month = currentDateCalendar.getMonth();
+        
+        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        calendarMonthYear.textContent = `${monthNames[month]} ${year}`;
+
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        
+        for (let i = 0; i < firstDayIndex; i++) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.classList.add('calendar-day', 'empty');
+            calendarDaysContainer.appendChild(emptyDiv);
+        }
+
+        const today = new Date();
+        
+        for (let i = 1; i <= lastDay; i++) {
+            const dayEl = document.createElement('div');
+            dayEl.classList.add('calendar-day');
+            dayEl.textContent = i;
+            
+            if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                dayEl.classList.add('today');
+            }
+
+            if (i === selectedDateCalendar.getDate() && 
+                month === selectedDateCalendar.getMonth() && 
+                year === selectedDateCalendar.getFullYear()) {
+                dayEl.classList.add('selected');
+            }
+
+            dayEl.addEventListener('click', () => {
+                selectedDateCalendar = new Date(year, month, i);
+                
+                const dayStr = String(i).padStart(2, '0');
+                const monthStr = String(month + 1).padStart(2, '0');
+                
+                // Formata como ISO YYYY-MM-DD para salvar corretamente no backend
+                dateInput.value = `${year}-${monthStr}-${dayStr}`; 
+                
+                hideCalendar();
+            });
+
+            calendarDaysContainer.appendChild(dayEl);
+        }
+    }
+
+    function showCalendar() {
+        if (dateInput.value) {
+            const parts = dateInput.value.split('-');
+            if (parts.length === 3) {
+                // Tenta parsear YYYY-MM-DD
+                currentDateCalendar = new Date(parts[0], parts[1] - 1, parts[2]);
+                selectedDateCalendar = new Date(parts[0], parts[1] - 1, parts[2]);
+            }
+        } else {
+            currentDateCalendar = new Date();
+            selectedDateCalendar = new Date();
+        }
+        
+        renderCalendar();
+        calendarModal.classList.add('visible');
+        calendarModal.querySelector('.modal-content').classList.remove('modal-out');
+        calendarModal.querySelector('.modal-content').style.opacity = '1';
+        calendarModal.querySelector('.modal-content').style.transform = 'scale(1)';
+    }
+
+    function hideCalendar() {
+        const content = calendarModal.querySelector('.modal-content');
+        content.style.opacity = '0';
+        content.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            calendarModal.classList.remove('visible');
+        }, 200);
+    }
+
+    // Event Listeners do Calendário
+    dateInput.addEventListener('click', showCalendar);
+    
+    calendarPrevBtn.addEventListener('click', () => {
+        currentDateCalendar.setMonth(currentDateCalendar.getMonth() - 1);
+        renderCalendar();
+    });
+    
+    calendarNextBtn.addEventListener('click', () => {
+        currentDateCalendar.setMonth(currentDateCalendar.getMonth() + 1);
+        renderCalendar();
+    });
+
+    calendarCancelBtn.addEventListener('click', hideCalendar);
+    
+    calendarModal.addEventListener('click', (e) => {
+        if (e.target === calendarModal) hideCalendar();
+    });
+
     function showToast(message, type = 'error') {
         clearTimeout(toastTimer);
         toastMessageElement.textContent = message;
@@ -438,7 +538,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         toastTimer = setTimeout(() => {
             toastElement.classList.remove('toast-visible');
             isToastShowing = false;
-        }, 3000); // Aumentei o tempo para 3s
+        }, 3000); 
     }
 
     function showUpdateBar() {
@@ -2453,8 +2553,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             authLoading.classList.add('hidden');
             loginForm.classList.remove('hidden');
-            signupForm.classList.add('hidden'); // Garante que o signup esteja oculto
-            signupSuccess.classList.add('hidden'); // Garante que a msg de sucesso esteja oculta
+            signupForm.classList.add('hidden'); 
+            signupSuccess.classList.add('hidden'); 
         }
     }
     
@@ -2463,7 +2563,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         loginError.classList.remove('hidden');
         loginSubmitBtn.innerHTML = 'Entrar';
         loginSubmitBtn.disabled = false;
-        // REMOVIDO: loginPasskeyBtn.disabled = false;
     }
 
     function showSignupError(message) {
@@ -2472,9 +2571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         signupSubmitBtn.innerHTML = 'Criar conta';
         signupSubmitBtn.disabled = false;
 
-        // Esconde a msg de sucesso se um erro aparecer
         signupSuccess.classList.add('hidden');
-        // Garante que os campos de input voltem a aparecer
         signupEmailInput.classList.remove('hidden');
         signupPasswordInput.parentElement.classList.remove('hidden');
         signupConfirmPasswordInput.parentElement.classList.remove('hidden');
@@ -2528,7 +2625,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
             loginSubmitBtn.disabled = true;
-            // REMOVIDO: loginPasskeyBtn.disabled = true;
             loginError.classList.add('hidden');
 
             const email = loginEmailInput.value;
@@ -2542,21 +2638,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // REMOVIDO: Event listener do loginPasskeyBtn
-
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // ===================================================================
-            // LÓGICA ATUALIZADA: Validação de Senha Dupla
-            // ===================================================================
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
             const confirmPassword = signupConfirmPasswordInput.value;
 
-            // Limpa erros anteriores
             signupError.classList.add('hidden');
-            signupSuccess.classList.add('hidden'); // Esconde msg de sucesso
+            signupSuccess.classList.add('hidden'); 
             
             if (password !== confirmPassword) {
                 showSignupError("As senhas não coincidem.");
@@ -2573,25 +2663,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await supabaseDB.signUp(email, password);
             
             if (result === 'success') {
-                // ===================================================================
-                // LÓGICA ATUALIZADA: Mostra mensagem de sucesso e esconde inputs
-                // ===================================================================
-                // Esconde os campos de input e o botão
                 signupEmailInput.classList.add('hidden');
                 signupPasswordInput.parentElement.classList.add('hidden');
                 signupConfirmPasswordInput.parentElement.classList.add('hidden');
                 signupSubmitBtn.classList.add('hidden');
                 
-                // Mostra a mensagem de sucesso
                 signupSuccess.classList.remove('hidden');
 
-                // Limpa o formulário
                 signupForm.reset();
                 signupSubmitBtn.innerHTML = 'Criar conta';
                 signupSubmitBtn.disabled = false;
 
             } else {
-                // Se der erro (ex: e-mail já existe), mostra o erro
                 showSignupError(result);
             }
         });
@@ -2601,10 +2684,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupForm.classList.remove('hidden');
             loginError.classList.add('hidden');
             
-            // Reseta o formulário de registro ao trocar
-            signupError.classList.add('hidden'); // Esconde erro
-            signupSuccess.classList.add('hidden'); // Esconde sucesso
-            // Garante que os campos voltem a aparecer
+            signupError.classList.add('hidden'); 
+            signupSuccess.classList.add('hidden'); 
             signupEmailInput.classList.remove('hidden');
             signupPasswordInput.parentElement.classList.remove('hidden');
             signupConfirmPasswordInput.parentElement.classList.remove('hidden');
@@ -2623,11 +2704,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
-        // REMOVIDO: Event listener do registerPasskeyBtn
-
-        // ===================================================================
-        // LÓGICA ATUALIZADA: Toggle de visibilidade da senha
-        // ===================================================================
         passwordToggleButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const targetId = button.dataset.target;

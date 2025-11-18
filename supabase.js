@@ -303,3 +303,30 @@ export async function deleteWatchlist(symbol) {
         .eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteWatchlist"));
 }
+
+/**
+ * ✅ NOVA FUNÇÃO ADICIONADA
+ * CHAMA A EDGE FUNCTION PARA EXCLUIR O USUÁRIO
+ * O usuário DEVE estar logado para chamar isso.
+ * A Edge Function 'delete-user-self' deve ser criada no seu painel Supabase.
+ */
+export async function deleteUserAccount() {
+    try {
+        // 'delete-user-self' é o nome da sua Edge Function
+        const { error } = await supabaseClient.functions.invoke('delete-user-self', {
+            method: 'POST',
+        });
+        
+        if (error) throw error;
+        
+        // Se chegou aqui, a função foi executada com sucesso
+        return { success: true };
+
+    } catch (error) {
+        console.error("Erro ao invocar Edge Function 'delete-user-self':", error);
+        return { 
+            success: false, 
+            error: "Erro ao excluir conta. Tente novamente mais tarde." 
+        };
+    }
+}

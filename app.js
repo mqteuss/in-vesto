@@ -4,22 +4,24 @@ Chart.defaults.color = '#9ca3af';
 Chart.defaults.borderColor = '#374151'; 
 
 // ==================================================================
-// CONFIGURAÇÃO DE CACHE INTELIGENTE (V4)
+// CONSTANTES DE CACHE OTIMIZADAS
 // ==================================================================
-const REFRESH_INTERVAL = 900000; // 15 minutos (Refresh automático da tela)
+const REFRESH_INTERVAL = 900000; // 15 minutos (Update automático da tela)
 
-// Cache Dinâmico
+// Cache Dinâmico para Preços
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; // 15 min
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; // 12 horas
 
-const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; // 1 hora
-const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; // 24 horas
+// Cache Geral
+const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; // 1 hora (Mais fresco que antes)
+const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; // 24 horas (Histórico muda pouco)
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; // 12 horas
 
+// Configuração do IndexedDB
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
-// ... (Funções utilitárias) ...
+// ... (Funções utilitárias permanecem as mesmas) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -76,6 +78,7 @@ function getSaoPauloDateTime() {
         const hour = spDate.getHours();
         return { dayOfWeek, hour };
     } catch (e) {
+        // Fallback se o browser não suportar timeZone
         const localDate = new Date();
         return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
     }
@@ -85,7 +88,7 @@ function isB3Open() {
     const { dayOfWeek, hour } = getSaoPauloDateTime();
     // Domingo (0) ou Sábado (6) -> Fechado
     if (dayOfWeek === 0 || dayOfWeek === 6) { return false; } 
-    // Aberto aprox 10h as 18h
+    // Aberto entre 10h e 18h (aproximadamente)
     if (hour >= 10 && hour < 18) { return true; } 
     return false;
 }
@@ -487,7 +490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function setCache(key, data, duration) { 
-        // Duração padrão de 1h se não for informado (fallback)
+        // Duração padrão de 1h se não for informado
         const finalDuration = duration || (1000 * 60 * 60); 
         const cacheItem = { key: key, timestamp: Date.now(), data: data, duration: finalDuration };
         try { 
@@ -529,6 +532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const cacheItem = await vestoDB.get('apiCache', key);
             if (!cacheItem) return null;
             
+            // Se duration for -1, é infinito
             const duration = cacheItem.duration; 
             if (duration === -1) { return cacheItem.data; }
             

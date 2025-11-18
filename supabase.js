@@ -305,28 +305,42 @@ export async function deleteWatchlist(symbol) {
 }
 
 /**
- * ✅ NOVA FUNÇÃO ADICIONADA
- * CHAMA A EDGE FUNCTION PARA EXCLUIR O USUÁRIO
- * O usuário DEVE estar logado para chamar isso.
- * A Edge Function 'delete-user-self' deve ser criada no seu painel Supabase.
+ * ✅ FUNÇÃO ATUALIZADA
+ * Chama a API da Vercel para excluir a conta do usuário.
  */
 export async function deleteUserAccount() {
     try {
-        // 'delete-user-self' é o nome da sua Edge Function
-        const { error } = await supabaseClient.functions.invoke('delete-user-self', {
+        // 1. Pega a sessão atual para obter o token
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        
+        if (sessionError) throw sessionError;
+        if (!session) throw new Error("Usuário não está logado.");
+
+        // 2. Chama a sua API da Vercel usando fetch()
+        const response = await fetch('/api/delete-user-self', {
             method: 'POST',
+            headers: {
+                // Envia o token de autenticação para a Vercel
+                'Authorization': `Bearer ${session.access_token}`
+            }
         });
+
+        // 3. Analisa a resposta da Vercel
+        const result = await response.json();
         
-        if (error) throw error;
+        if (!response.ok) {
+            // Se a Vercel retornou um erro, joga esse erro
+            throw new Error(result.error || "Erro do servidor ao excluir conta.");
+        }
         
-        // Se chegou aqui, a função foi executada com sucesso
+        // Se chegou aqui, a Vercel retornou sucesso
         return { success: true };
 
     } catch (error) {
-        console.error("Erro ao invocar Edge Function 'delete-user-self':", error);
+        console.error("Erro ao chamar API /api/delete-user-self:", error);
         return { 
             success: false, 
-            error: "Erro ao excluir conta. Tente novamente mais tarde." 
+            error: error.message || "Erro ao excluir conta. Tente novamente mais tarde." 
         };
     }
 }

@@ -1,6 +1,6 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO CORRIGIDA (Remove biometria, melhora detecção de erro de e-mail)
+// VERSÃO FINAL (Mapeamento camelCase <-> snake_case verificado)
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
@@ -13,9 +13,7 @@ function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
     const message = error.message;
 
-    // ===================================================================
-    // NOVO: Detecta e-mail duplicado
-    // ===================================================================
+    // Detecta e-mail duplicado
     if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
          return "Este e-mail já está cadastrado. Tente fazer login.";
     }
@@ -113,13 +111,6 @@ export async function signOut() {
     }
 }
 
-// ===================================================================
-// REMOVIDO: Funções de biometria (Passkey)
-// ===================================================================
-// export async function registerPasskey() { ... }
-// export async function signInWithPasskey(email) { ... }
-
-
 /**
  * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
  */
@@ -201,7 +192,7 @@ export async function getProventosConhecidos() {
     if (data) {
         return data.map(item => ({
             ...item,
-            paymentDate: item.paymentdate 
+            paymentDate: item.paymentdate // Mapeia do banco (snake) para JS (camel)
         }));
     }
     return [];
@@ -216,7 +207,7 @@ export async function addProventoConhecido(provento) {
         symbol: provento.symbol,
         value: provento.value,
         processado: provento.processado,
-        paymentdate: provento.paymentDate
+        paymentdate: provento.paymentDate // Mapeia do JS (camel) para banco (snake)
     };
 
     const { error } = await supabaseClient
@@ -256,7 +247,7 @@ export async function getWatchlist() {
     if (data) {
         return data.map(item => ({
             symbol: item.symbol,
-            addedAt: item.addedat
+            addedAt: item.addedat // Mapeia do banco (snake) para JS (camel)
         }));
     }
     return [];
@@ -268,7 +259,7 @@ export async function addWatchlist(item) {
     const itemParaDB = {
         user_id: user.id,
         symbol: item.symbol,
-        addedat: item.addedAt
+        addedat: item.addedAt // Mapeia do JS (camel) para banco (snake)
     };
 
     const { error } = await supabaseClient

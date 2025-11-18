@@ -1,6 +1,6 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO OTIMIZADA (Cache de User ID + Remoção de chamadas redundantes + Correção de Cadastro Duplicado)
+// VERSÃO CORRIGIDA: Detecta e-mail duplicado verificando 'identities'
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
@@ -15,7 +15,7 @@ function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
     const message = error.message;
 
-    // Detecta e-mail duplicado
+    // Detecta e-mail duplicado (Mensagem vinda do throw manual ou do servidor)
     if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
          return "Este e-mail já está cadastrado. Tente fazer login.";
     }
@@ -103,9 +103,9 @@ export async function signUp(email, password) {
         
         if (error) throw error;
         
-        // --- CORREÇÃO DO BUG DE E-MAIL DUPLICADO ---
-        // O Supabase retorna falso positivo por segurança (User Enumeration Protection).
-        // Se identities for um array vazio, o usuário já existe no banco.
+        // --- CORREÇÃO DO BUG ---
+        // O Supabase finge que criou o usuário por segurança (User Enumeration Protection),
+        // mas retorna o array 'identities' vazio quando o e-mail já existe.
         if (data.user && data.user.identities && data.user.identities.length === 0) {
             throw new Error("User already registered");
         }
@@ -140,7 +140,6 @@ export async function signOut() {
 
 /**
  * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
- * OTIMIZAÇÃO: Removidas chamadas await supabaseClient.auth.getUser()
  */
 
 // --- Transações ---
@@ -151,7 +150,6 @@ export async function getTransacoes() {
 }
 
 export async function addTransacao(transacao) {
-    // OTIMIZAÇÃO: Uso da variável cached
     if (!currentUserId) throw new Error("Usuário não autenticado.");
     
     const transacaoComUser = { ...transacao, user_id: currentUserId };

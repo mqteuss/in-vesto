@@ -1,6 +1,6 @@
-// sw.js (Atualizado com estratégia Network-First e Fallback de erro)
+// sw.js (Corrigido erro de Response body already used)
 
-const CACHE_NAME = 'vesto-cache-v2'; // Versão v2 para forçar atualização
+const CACHE_NAME = 'vesto-cache-v3'; // Subi para v3 para forçar atualização
 
 // Arquivos que são o "shell" do app e mudam com frequência
 const APP_SHELL_FILES_NETWORK_FIRST = [
@@ -22,7 +22,7 @@ const APP_SHELL_FILES_CACHE_FIRST = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('[SW] Instalando v2...');
+  console.log('[SW] Instalando v3...');
 
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -53,7 +53,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('[SW] Ativando v2...');
+  console.log('[SW] Ativando v3...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -90,8 +90,11 @@ self.addEventListener('fetch', event => {
         .then(networkResponse => {
           // Resposta da rede foi boa, atualiza o cache
           if (networkResponse.ok) {
+            // CORREÇÃO: Clonar IMEDIATAMENTE, antes de qualquer operação async
+            const responseClone = networkResponse.clone();
+            
             caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, networkResponse.clone());
+              cache.put(event.request, responseClone);
             });
           }
           return networkResponse;
@@ -128,8 +131,11 @@ self.addEventListener('fetch', event => {
         // Não encontrou, busca na rede e armazena
         return fetch(event.request).then(networkResponse => {
           if (networkResponse.ok) {
+            // CORREÇÃO: Clonar IMEDIATAMENTE aqui também
+            const responseClone = networkResponse.clone();
+            
             caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, networkResponse.clone());
+              cache.put(event.request, responseClone);
             });
           }
           return networkResponse;

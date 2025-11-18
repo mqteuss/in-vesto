@@ -1,22 +1,22 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO FINAL: Mapeamento correto + Detecção robusta de e-mail duplicado
+// VERSÃO OTIMIZADA (Cache de User ID + Remoção de chamadas redundantes)
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
+
 let supabaseClient = null;
+let currentUserId = null; // OTIMIZAÇÃO: Armazena o ID do usuário em memória
 
 /**
  * Lida com erros do Supabase e retorna uma mensagem amigável.
  */
 function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
-    const message = error.message || "";
+    const message = error.message;
 
-    // Detecta e-mail duplicado (Erros explícitos do DB)
-    if (message.includes("User already registered") || 
-        message.includes("duplicate key") || 
-        message.includes("already been registered")) {
+    // Detecta e-mail duplicado
+    if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
          return "Este e-mail já está cadastrado. Tente fazer login.";
     }
     if (error.code === '42501') { // RLS policy violation
@@ -55,7 +55,15 @@ export async function initialize() {
         });
 
         supabaseClient.auth.onAuthStateChange((event, session) => {
-            console.log("Supabase Auth State Change:", event, session);
+            console.log("Supabase Auth State Change:", event);
+            
+            // OTIMIZAÇÃO: Atualiza o ID cached sempre que o estado mudar
+            if (session?.user) {
+                currentUserId = session.user.id;
+            } else {
+                currentUserId = null;
+            }
+
             if (event === "INITIAL_SESSION") {
                 return;
             }
@@ -65,6 +73,12 @@ export async function initialize() {
         });
         
         const { data } = await supabaseClient.auth.getSession();
+        
+        // OTIMIZAÇÃO: Define o ID inicial
+        if (data.session?.user) {
+            currentUserId = data.session.user.id;
+        }
+
         return data.session;
 
     } catch (error) {
@@ -75,8 +89,9 @@ export async function initialize() {
 
 export async function signIn(email, password) {
     try {
-        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        if (data.user) currentUserId = data.user.id; // Garante atualização no login
     } catch (error) {
         return handleSupabaseError(error, "signIn");
     }
@@ -85,44 +100,16 @@ export async function signIn(email, password) {
 export async function signUp(email, password) {
      try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
-        
         if (error) throw error;
-
-        console.log("Resposta do signUp:", data);
         
-        // ===================================================================
-        // DETECÇÃO MELHORADA DE E-MAIL DUPLICADO
-        // ===================================================================
-        
-        // Caso 1: E-mail duplicado (comportamento de segurança do Supabase)
-        // O Supabase retorna user mas sem session e com identities vazio se o email já existe
-        if (!data.session && data.user) {
-            // Verifica se o array de identidades está vazio
-            if (data.user.identities && data.user.identities.length === 0) {
-                console.log("E-mail duplicado detectado (identities vazio)");
-                return "Este e-mail já está cadastrado. Tente fazer login.";
-            }
-            
-            // Verifica heuristicamente se o usuário foi criado há muito tempo
-            if (data.user.created_at) {
-                const userCreatedAt = new Date(data.user.created_at);
-                const now = new Date();
-                const diffSeconds = (now - userCreatedAt) / 1000;
-                
-                if (diffSeconds > 10) {
-                    console.log("E-mail duplicado detectado (usuário antigo)");
-                    return "Este e-mail já está cadastrado. Tente fazer login.";
-                }
-            }
-        }
-        
-        // Caso 2: Sucesso - Confirmação de e-mail necessária
+        // Se a confirmação de e-mail estiver LIGADA (padrão do Supabase)
         if (data.session === null && data.user) {
             return "success"; // Sucesso, mas precisa confirmar e-mail
         }
         
-        // Caso 3: Sucesso - Confirmação de e-mail DESLIGADA (já loga)
+        // Se a confirmação de e-mail estiver DESLIGADA
         if (data.session) {
+             currentUserId = data.session.user.id;
              return "success_signed_in"; // Sucesso e já logado
         }
 
@@ -136,6 +123,7 @@ export async function signUp(email, password) {
 export async function signOut() {
     try {
         const { error } = await supabaseClient.auth.signOut();
+        currentUserId = null; // Limpa o ID
         if (error) throw error;
     } catch (error) {
         console.error("Erro ao sair:", error);
@@ -144,6 +132,7 @@ export async function signOut() {
 
 /**
  * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
+ * OTIMIZAÇÃO: Removidas chamadas await supabaseClient.auth.getUser()
  */
 
 // --- Transações ---
@@ -152,42 +141,59 @@ export async function getTransacoes() {
     if (error) throw new Error(handleSupabaseError(error, "getTransacoes"));
     return data || [];
 }
+
 export async function addTransacao(transacao) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
-    const transacaoComUser = { ...transacao, user_id: user.id };
+    // OTIMIZAÇÃO: Uso da variável cached
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
+    
+    const transacaoComUser = { ...transacao, user_id: currentUserId };
     const { error } = await supabaseClient.from('transacoes').insert(transacaoComUser);
     if (error) throw new Error(handleSupabaseError(error, "addTransacao"));
 }
+
 export async function updateTransacao(id, transacaoUpdate) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
-    const { error } = await supabaseClient.from('transacoes').update(transacaoUpdate).eq('id', id).eq('user_id', user.id); 
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
+    
+    const { error } = await supabaseClient.from('transacoes')
+        .update(transacaoUpdate)
+        .eq('id', id)
+        .eq('user_id', currentUserId); 
     if (error) throw new Error(handleSupabaseError(error, "updateTransacao"));
 }
+
 export async function deleteTransacao(id) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
-    const { error } = await supabaseClient.from('transacoes').delete().eq('id', id).eq('user_id', user.id); 
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
+
+    const { error } = await supabaseClient.from('transacoes')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', currentUserId); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacao"));
 }
+
 export async function deleteTransacoesDoAtivo(symbol) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
-    const { error } = await supabaseClient.from('transacoes').delete().eq('symbol', symbol).eq('user_id', user.id); 
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
+
+    const { error } = await supabaseClient.from('transacoes')
+        .delete()
+        .eq('symbol', symbol)
+        .eq('user_id', currentUserId); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacoesDoAtivo"));
 }
+
 // --- Patrimônio ---
 export async function getPatrimonio() {
     const { data, error } = await supabaseClient.from('patrimonio').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getPatrimonio"));
     return data || [];
 }
+
 export async function savePatrimonioSnapshot(snapshot) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
-    const snapshotComUser = { ...snapshot, user_id: user.id };
-    const { error } = await supabaseClient.from('patrimonio').upsert(snapshotComUser, { onConflict: 'user_id, date' }); 
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
+
+    const snapshotComUser = { ...snapshot, user_id: currentUserId };
+    const { error } = await supabaseClient.from('patrimonio')
+        .upsert(snapshotComUser, { onConflict: 'user_id, date' }); 
     if (error) throw new Error(handleSupabaseError(error, "savePatrimonioSnapshot"));
 }
 
@@ -204,11 +210,13 @@ export async function getAppState(key) {
     }
     return data ? data.value_json : null;
 }
+
 export async function saveAppState(key, value_json) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
-    const record = { key, value_json, user_id: user.id };
-    const { error } = await supabaseClient.from('appstate').upsert(record, { onConflict: 'user_id, key' });
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
+
+    const record = { key, value_json, user_id: currentUserId };
+    const { error } = await supabaseClient.from('appstate')
+        .upsert(record, { onConflict: 'user_id, key' });
     if (error) throw new Error(handleSupabaseError(error, "saveAppState"));
 }
 
@@ -228,13 +236,13 @@ export async function getProventosConhecidos() {
     }
     return [];
 }
+
 export async function addProventoConhecido(provento) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
     
     const proventoParaDB = {
         id: provento.id,
-        user_id: user.id,
+        user_id: currentUserId,
         symbol: provento.symbol,
         value: provento.value,
         processado: provento.processado,
@@ -246,24 +254,26 @@ export async function addProventoConhecido(provento) {
         .upsert(proventoParaDB, { onConflict: 'user_id, id' });
     if (error) throw new Error(handleSupabaseError(error, "addProventoConhecido"));
 }
+
 export async function updateProventoProcessado(id) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
+
     const { error } = await supabaseClient
         .from('proventosconhecidos') 
         .update({ processado: true })
         .eq('id', id)
-        .eq('user_id', user.id); 
+        .eq('user_id', currentUserId); 
     if (error) throw new Error(handleSupabaseError(error, "updateProventoProcessado"));
 }
+
 export async function deleteProventosDoAtivo(symbol) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
+
     const { error } = await supabaseClient
         .from('proventosconhecidos') 
         .delete()
         .eq('symbol', symbol)
-        .eq('user_id', user.id); 
+        .eq('user_id', currentUserId); 
     if (error) throw new Error(handleSupabaseError(error, "deleteProventosDoAtivo"));
 }
 
@@ -283,12 +293,12 @@ export async function getWatchlist() {
     }
     return [];
 }
+
 export async function addWatchlist(item) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
 
     const itemParaDB = {
-        user_id: user.id,
+        user_id: currentUserId,
         symbol: item.symbol,
         addedat: item.addedAt // Mapeia do JS (camel) para banco (snake)
     };
@@ -298,13 +308,14 @@ export async function addWatchlist(item) {
         .insert(itemParaDB); 
     if (error) throw new Error(handleSupabaseError(error, "addWatchlist"));
 }
+
 export async function deleteWatchlist(symbol) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
+    if (!currentUserId) throw new Error("Usuário não autenticado.");
+
     const { error } = await supabaseClient
         .from('watchlist')
         .delete()
         .eq('symbol', symbol)
-        .eq('user_id', user.id); 
+        .eq('user_id', currentUserId); 
     if (error) throw new Error(handleSupabaseError(error, "deleteWatchlist"));
 }

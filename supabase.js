@@ -5,7 +5,10 @@ function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
     const message = error.message;
 
-    if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
+    // ✅ Sua sugestão foi aplicada aqui
+    if (message.includes("User already registered") || 
+        message.includes("duplicate key value violates unique constraint") ||
+        message.includes("already been registered")) {
          return "Este e-mail já está cadastrado. Tente fazer login.";
     }
     if (error.code === '42501') {
@@ -68,33 +71,24 @@ export async function signIn(email, password) {
     }
 }
 
-/**
- * ✅ CORREÇÃO APLICADA (Conforme sua sugestão)
- * Retorna um objeto { success: boolean, ... }
- */
 export async function signUp(email, password) {
     try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
         
-        // 1. Verifica se houve erro explícito
         if (error) throw error;
         
-        // 2. Verifica se o usuário foi realmente criado
         if (!data.user || !data.user.id) {
             throw new Error("User already registered");
         }
         
-        // 3. Se confirmação de e-mail estiver LIGADA (padrão)
         if (data.session === null && data.user && data.user.id) {
             return { success: true, needsConfirmation: true };
         }
         
-        // 4. Se confirmação estiver DESLIGADA
         if (data.session && data.user && data.user.id) {
             return { success: true, needsConfirmation: false };
         }
 
-        // 5. Fallback: se chegou aqui, algo deu errado
         throw new Error("Erro desconhecido ao criar conta");
         
     } catch (error) {

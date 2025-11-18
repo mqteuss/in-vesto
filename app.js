@@ -304,9 +304,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
-    
-    // ✅ NOVO SELETOR
-    const deleteAccountBtn = document.getElementById('delete-account-btn');
 
     // REMOVIDO: Botões de biometria
     // const loginPasskeyBtn = document.getElementById('login-passkey-btn');
@@ -1913,7 +1910,7 @@ document.addEventListener('DOMContentLoaded', async () => {
              return;
         }
 
-        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${t.quantity}\nPreço: ${formatBRL(t.price)}`;
+        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
         
         showModal(
             'Excluir Transação', 
@@ -2229,8 +2226,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
         
-        // ✅ ATUALIZAÇÃO: O botão "Adicionar" agora só aparece na aba Carteira
-        // e não aparece na aba Conta
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     
@@ -2471,33 +2466,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         // REMOVIDO: loginPasskeyBtn.disabled = false;
     }
 
-    /**
-     * ✅ FUNÇÃO 'showSignupError'
-     * (Corrigida conforme seu guia de depuração)
-     */
     function showSignupError(message) {
-        console.log("[showSignupError] Mostrando erro:", message);
-        
-        // ✅ Define o texto do erro
         signupError.textContent = message;
-        
-        // ✅ Mostra a div de erro (remove 'hidden')
         signupError.classList.remove('hidden');
-        
-        // ✅ Restaura o botão
         signupSubmitBtn.innerHTML = 'Criar conta';
         signupSubmitBtn.disabled = false;
 
-        // ✅ Esconde mensagem de sucesso (caso esteja visível)
+        // Esconde a msg de sucesso se um erro aparecer
         signupSuccess.classList.add('hidden');
-        
-        // ✅ Garante que os campos voltem a aparecer
+        // Garante que os campos de input voltem a aparecer
         signupEmailInput.classList.remove('hidden');
         signupPasswordInput.parentElement.classList.remove('hidden');
         signupConfirmPasswordInput.parentElement.classList.remove('hidden');
         signupSubmitBtn.classList.remove('hidden');
     }
-
 
     async function carregarDadosIniciais() {
         try {
@@ -2562,76 +2544,57 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // REMOVIDO: Event listener do loginPasskeyBtn
 
-        /**
-         * ✅ FUNÇÃO 'signupForm' addEventListener
-         * (Corrigida conforme seu guia de depuração)
-         */
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // ===================================================================
+            // LÓGICA ATUALIZADA: Validação de Senha Dupla
+            // ===================================================================
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
             const confirmPassword = signupConfirmPasswordInput.value;
 
-            // ✅ SEMPRE limpa mensagens anteriores
+            // Limpa erros anteriores
             signupError.classList.add('hidden');
-            signupSuccess.classList.add('hidden');
+            signupSuccess.classList.add('hidden'); // Esconde msg de sucesso
             
-            // Validação local: senhas coincidem
             if (password !== confirmPassword) {
                 showSignupError("As senhas não coincidem.");
                 return;
             }
-            
-            // Validação local: senha tem mínimo 6 caracteres
             if (password.length < 6) {
                 showSignupError("A senha deve ter no mínimo 6 caracteres.");
                 return;
             }
             
-            // Mostra loading
             signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
             signupSubmitBtn.disabled = true;
 
-            // ✅ Chama o signup
-            console.log("[UI] Chamando signUp com email:", email);
             const result = await supabaseDB.signUp(email, password);
             
-            // ✅ CRÍTICO: Log do resultado completo
-            console.log("[UI] Resultado do signUp:", result);
-            console.log("[UI] result.success:", result.success);
-            console.log("[UI] result.error:", result.error);
-            
-            // ✅ Verifica explicitamente se success é TRUE
-            if (result.success === true) {
-                console.log("[UI] ✅ SUCESSO - Mostrando mensagem verde");
-                
-                // Esconde os campos
+            if (result === 'success') {
+                // ===================================================================
+                // LÓGICA ATUALIZADA: Mostra mensagem de sucesso e esconde inputs
+                // ===================================================================
+                // Esconde os campos de input e o botão
                 signupEmailInput.classList.add('hidden');
                 signupPasswordInput.parentElement.classList.add('hidden');
                 signupConfirmPasswordInput.parentElement.classList.add('hidden');
                 signupSubmitBtn.classList.add('hidden');
                 
-                // Mostra mensagem de sucesso
+                // Mostra a mensagem de sucesso
                 signupSuccess.classList.remove('hidden');
-                
-                // Limpa formulário
+
+                // Limpa o formulário
                 signupForm.reset();
                 signupSubmitBtn.innerHTML = 'Criar conta';
                 signupSubmitBtn.disabled = false;
 
             } else {
-                // ✅ CRÍTICO: Mostra o erro
-                console.log("[UI] ❌ ERRO - Mostrando mensagem vermelha");
-                console.log("[UI] Mensagem de erro:", result.error);
-                
-                // Garante que tem uma mensagem de erro
-                const errorMessage = result.error || "Erro ao criar conta. Tente novamente.";
-                
-                showSignupError(errorMessage);
+                // Se der erro (ex: e-mail já existe), mostra o erro
+                showSignupError(result);
             }
         });
-
 
         showSignupBtn.addEventListener('click', () => {
             loginForm.classList.add('hidden');
@@ -2654,62 +2617,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupError.classList.add('hidden');
         });
         
-        // ✅ LISTENER DO BOTÃO DE LOGOUT
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
-                    await supabaseDB.signOut();
-                });
+        logoutBtn.addEventListener('click', () => {
+            showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
+                await supabaseDB.signOut();
             });
-        }
-        
-        // ✅ NOVO LISTENER PARA EXCLUIR CONTA
-        if (deleteAccountBtn) {
-            deleteAccountBtn.addEventListener('click', () => {
-                // Primeira confirmação (genérica)
-                showModal(
-                    'Excluir Conta?',
-                    'Você tem certeza? Esta ação é permanente e irá apagar TODOS os seus dados.',
-                    () => {
-                        // Segunda confirmação (mais forte)
-                        setTimeout(() => {
-                            const confirmText = "EXCLUIR";
-                            // NOTA: 'prompt()' pode ser bloqueado por pop-ups.
-                            // Se isso falhar, precisaremos de um modal de confirmação customizado.
-                            const userInput = prompt(`Isto é irreversível. Para confirmar, digite "${confirmText}"`);
-                            
-                            if (userInput === confirmText) {
-                                // Usuário confirmou
-                                console.log("Excluindo conta...");
-                                
-                                // Desabilita o botão para evitar cliques duplos
-                                deleteAccountBtn.disabled = true;
-                                deleteAccountBtn.textContent = "A excluir...";
-                                
-                                supabaseDB.deleteUserAccount().then(result => {
-                                    if (result.success) {
-                                        showToast("Conta excluída com sucesso.", "success");
-                                        // Força o logout e recarrega a página
-                                        setTimeout(() => {
-                                            supabaseDB.signOut(); 
-                                        }, 1500);
-                                    } else {
-                                        showToast(result.error);
-                                        deleteAccountBtn.disabled = false;
-                                        deleteAccountBtn.textContent = "Excluir Conta";
-                                    }
-                                });
-
-                            } else if (userInput !== null) { // Só mostra erro se não clicou em "Cancelar"
-                                // Usuário falhou na digitação
-                                showToast("Ação cancelada. A digitação não confere.");
-                            }
-                        }, 300); // Pequeno delay para o primeiro modal fechar
-                    }
-                );
-            });
-        }
-
+        });
 
         // REMOVIDO: Event listener do registerPasskeyBtn
 

@@ -401,6 +401,10 @@ button:active,
     display: none !important;
 }
 
+/* ===================================================================
+NOVO: Estilos para o botão de ver/ocultar senha
+===================================================================
+*/
 .password-toggle {
     position: absolute;
     top: 0;
@@ -415,15 +419,4 @@ button:active,
 }
 .password-toggle:hover {
     color: #d1d5db; /* text-gray-300 */
-}
-
-/* ✅ NOVO ESTILO PARA BOTÃO DE PERIGO */
-.btn-danger {
-    background-color: rgba(127, 29, 29, 0.5); /* bg-red-900/50 */
-    color: #f87171; /* text-red-400 */
-    border: 1px solid #7f1d1d; /* border-red-800 */
-}
-.btn-danger:hover {
-    background-color: #7f1d1d; /* bg-red-800 */
-    color: #ef4444; /* text-red-500 */
 }

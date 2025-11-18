@@ -271,6 +271,12 @@
                     <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Carteira</h1>
                     <div class="flex items-center gap-3">
                         
+                        <button id="logout-btn" class="p-2 text-gray-500 hover:text-red-500 rounded-lg transition-all duration-200 hover:bg-gray-800" title="Sair">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                        
                         <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar dados">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
                                 <path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path>
@@ -388,44 +394,6 @@
                     <p class="text-sm text-gray-400 mt-1">Seu histórico de compras aparecerá aqui.</p>
                 </div>
             </div>
-            
-            <div id="tab-conta" class="tab-content p-4">
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Conta</h1>
-                </div>
-            
-                <div class="card-bg p-4 rounded-2xl mb-6">
-                    <h3 class="text-lg font-semibold text-white mb-4">Gerenciamento</h3>
-                    <div class="space-y-3">
-                        
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-300">Sair da sua conta</span>
-                            <button id="logout-btn" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium">
-                                Sair
-                            </button>
-                        </div>
-            
-                    </div>
-                </div>
-            
-                <div class="border border-red-800 bg-red-900/30 p-4 rounded-2xl">
-                    <h3 class="text-lg font-semibold text-red-300 mb-4">Zona de Perigo</h3>
-                    <div class="space-y-4">
-                        
-                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center">
-                            <div class="mb-2 sm:mb-0">
-                                <span class="font-semibold text-red-400">Excluir sua Conta</span>
-                                <p class="text-sm text-gray-400">Esta ação é permanente e não pode ser revertida. Todos os seus dados (transações, patrimônio, etc) serão apagados.</p>
-                            </div>
-                            <button id="delete-account-btn" class="py-2 px-4 btn-danger text-sm font-medium rounded-lg transition-colors flex-shrink-0">
-                                Excluir Conta
-                            </button>
-                        </div>
-            
-                    </div>
-                </div>
-            </div>
-            
         </div>
 
         <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
@@ -480,16 +448,6 @@
                 </div>
                 <span class="text-xs mt-1 font-medium">Histórico</span>
             </button>
-            
-            <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-conta" title="Conta">
-                <div class="tab-button-icon-wrapper"> 
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                    </svg>
-                </div>
-                <span class="text-xs mt-1 font-medium">Conta</span>
-            </button>
-            
         </nav>
         
         <div id="custom-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">

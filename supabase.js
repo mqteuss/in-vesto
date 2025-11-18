@@ -1,19 +1,25 @@
+// supabase.js
+// Módulo para gerenciar a autenticação e o banco de dados Supabase.
+// VERSÃO CORRIGIDA (Remove biometria, melhora detecção de erro de e-mail)
+
+// Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
 let supabaseClient = null;
 
+/**
+ * Lida com erros do Supabase e retorna uma mensagem amigável.
+ */
 function handleSupabaseError(error, context) {
-    console.error(`[handleSupabaseError] Context: ${context}`);
-    console.error(`[handleSupabaseError] Error object:`, error);
-    console.error(`[handleSupabaseError] Error message:`, error.message);
-    
+    console.error(`Erro no Supabase (${context}):`, error);
     const message = error.message;
 
-    if (message.includes("User already registered") || 
-        message.includes("duplicate key value violates unique constraint") ||
-        message.includes("already been registered")) {
+    // ===================================================================
+    // NOVO: Detecta e-mail duplicado
+    // ===================================================================
+    if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
          return "Este e-mail já está cadastrado. Tente fazer login.";
     }
-    if (error.code === '42501') {
+    if (error.code === '42501') { // RLS policy violation
         return "Erro de permissão. Contate o suporte.";
     }
     if (message.includes("fetch")) {
@@ -28,6 +34,9 @@ function handleSupabaseError(error, context) {
     return error.hint || message || "Ocorreu um erro desconhecido.";
 }
 
+/**
+ * 1. INICIALIZAÇÃO E AUTENTICAÇÃO
+ */
 export async function initialize() {
     try {
         const response = await fetch('/api/get-keys');
@@ -73,72 +82,27 @@ export async function signIn(email, password) {
     }
 }
 
-/**
- * ✅ CORREÇÃO DEFINITIVA v4
- * Compara os timestamps 'created_at' e 'updated_at'.
- * - Usuário NOVO: created_at e updated_at são quase idênticos.
- * - E-mail DUPLICADO: updated_at é atualizado, mas created_at é antigo.
- */
 export async function signUp(email, password) {
-    try {
+     try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) throw error;
         
-        // 1. Pega erro explícito (senha curta, e-mail já CONFIRMADO, etc)
-        if (error) {
-            console.error("[signUp] Erro explícito do Supabase:", error);
-            throw error; // Vai pro catch
-        }
-
-        // 2. Fallback: se data ou data.user não existir
-        if (!data || !data.user) {
-            console.warn("[signUp] Fallback: Data ou User nulo, mas sem erro.");
-            throw new Error("Erro desconhecido ao criar conta");
-        }
-
-        // 3. ✅ A VERIFICAÇÃO DEFINITIVA: Timestamps
-        // Converte os timestamps para objetos Date
-        const createdAt = new Date(data.user.created_at);
-        const updatedAt = new Date(data.user.updated_at);
-
-        // Calcula a diferença em milissegundos
-        const diffInMs = Math.abs(updatedAt.getTime() - createdAt.getTime());
-        
-        console.log(`[signUp] CreatedAt: ${createdAt.toISOString()}, UpdatedAt: ${updatedAt.toISOString()}`);
-        console.log(`[signUp] Diferença de tempo: ${diffInMs}ms`);
-
-        // Se a diferença for maior que 2000ms (2 segundos),
-        // consideramos que é um usuário existente sendo atualizado.
-        if (diffInMs > 2000) {
-            console.warn("[signUp] E-mail duplicado detectado. Diferença de timestamp é > 2s.");
-            // Criamos o erro para ser pego pelo catch
-            throw new Error("User already registered");
-        }
-
-        // 4. Sucesso (confirmação de e-mail LIGADA)
-        if (data.session === null) {
-            console.log("[signUp] Cadastro OK. Precisa confirmar e-mail.");
-            return { success: true, needsConfirmation: true };
+        // Se a confirmação de e-mail estiver LIGADA (padrão do Supabase)
+        if (data.session === null && data.user) {
+            return "success"; // Sucesso, mas precisa confirmar e-mail
         }
         
-        // 5. Sucesso (confirmação de e-mail DESLIGADA)
+        // Se a confirmação de e-mail estiver DESLIGADA
         if (data.session) {
-            console.log("[signUp] Cadastro OK. Logado automaticamente.");
-            return { success: true, needsConfirmation: false };
+             return "success_signed_in"; // Sucesso e já logado
         }
 
-        // 6. Fallback final
-        console.warn("[signUp] Fallback: Estado inesperado.", data);
-        throw new Error("Erro desconhecido ao criar conta");
+        return "success"; // Fallback para sucesso
         
     } catch (error) {
-        // 7. Pega TODOS os erros (o explícito do 1, o do timestamp do 3)
-        // e traduz
-        const errorMessage = handleSupabaseError(error, "signUp");
-        console.error("[signUp] Retornando erro para UI:", errorMessage);
-        return { success: false, error: errorMessage };
+        return handleSupabaseError(error, "signUp");
     }
 }
-
 
 export async function signOut() {
     try {
@@ -149,6 +113,18 @@ export async function signOut() {
     }
 }
 
+// ===================================================================
+// REMOVIDO: Funções de biometria (Passkey)
+// ===================================================================
+// export async function registerPasskey() { ... }
+// export async function signInWithPasskey(email) { ... }
+
+
+/**
+ * 2. FUNÇÕES DO BANCO DE DADOS (CRUD)
+ */
+
+// --- Transações ---
 export async function getTransacoes() {
     const { data, error } = await supabaseClient.from('transacoes').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getTransacoes"));
@@ -179,6 +155,7 @@ export async function deleteTransacoesDoAtivo(symbol) {
     const { error } = await supabaseClient.from('transacoes').delete().eq('symbol', symbol).eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteTransacoesDoAtivo"));
 }
+// --- Patrimônio ---
 export async function getPatrimonio() {
     const { data, error } = await supabaseClient.from('patrimonio').select('*');
     if (error) throw new Error(handleSupabaseError(error, "getPatrimonio"));
@@ -191,6 +168,8 @@ export async function savePatrimonioSnapshot(snapshot) {
     const { error } = await supabaseClient.from('patrimonio').upsert(snapshotComUser, { onConflict: 'user_id, date' }); 
     if (error) throw new Error(handleSupabaseError(error, "savePatrimonioSnapshot"));
 }
+
+// --- AppState --- (Tabela 'appstate')
 export async function getAppState(key) {
     const { data, error } = await supabaseClient
         .from('appstate') 
@@ -211,6 +190,8 @@ export async function saveAppState(key, value_json) {
     if (error) throw new Error(handleSupabaseError(error, "saveAppState"));
 }
 
+
+// --- Proventos Conhecidos --- (Tabela 'proventosconhecidos', Coluna 'paymentdate')
 export async function getProventosConhecidos() {
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
@@ -264,6 +245,8 @@ export async function deleteProventosDoAtivo(symbol) {
     if (error) throw new Error(handleSupabaseError(error, "deleteProventosDoAtivo"));
 }
 
+
+// --- Watchlist --- (Tabela 'watchlist', Coluna 'addedat')
 export async function getWatchlist() {
     const { data, error } = await supabaseClient
         .from('watchlist')
@@ -302,45 +285,4 @@ export async function deleteWatchlist(symbol) {
         .eq('symbol', symbol)
         .eq('user_id', user.id); 
     if (error) throw new Error(handleSupabaseError(error, "deleteWatchlist"));
-}
-
-/**
- * ✅ FUNÇÃO ATUALIZADA
- * Chama a API da Vercel para excluir a conta do usuário.
- */
-export async function deleteUserAccount() {
-    try {
-        // 1. Pega a sessão atual para obter o token
-        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-        
-        if (sessionError) throw sessionError;
-        if (!session) throw new Error("Usuário não está logado.");
-
-        // 2. Chama a sua API da Vercel usando fetch()
-        const response = await fetch('/api/delete-user-self', {
-            method: 'POST',
-            headers: {
-                // Envia o token de autenticação para a Vercel
-                'Authorization': `Bearer ${session.access_token}`
-            }
-        });
-
-        // 3. Analisa a resposta da Vercel
-        const result = await response.json();
-        
-        if (!response.ok) {
-            // Se a Vercel retornou um erro, joga esse erro
-            throw new Error(result.error || "Erro do servidor ao excluir conta.");
-        }
-        
-        // Se chegou aqui, a Vercel retornou sucesso
-        return { success: true };
-
-    } catch (error) {
-        console.error("Erro ao chamar API /api/delete-user-self:", error);
-        return { 
-            success: false, 
-            error: error.message || "Erro ao excluir conta. Tente novamente mais tarde." 
-        };
-    }
 }

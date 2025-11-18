@@ -1,6 +1,6 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO FINAL (Mapeamento camelCase <-> snake_case verificado)
+// VERSÃO FINAL: Mapeamento correto + Detecção robusta de e-mail duplicado
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
@@ -11,10 +11,12 @@ let supabaseClient = null;
  */
 function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
-    const message = error.message;
+    const message = error.message || "";
 
-    // Detecta e-mail duplicado
-    if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
+    // Detecta e-mail duplicado (Erros explícitos do DB)
+    if (message.includes("User already registered") || 
+        message.includes("duplicate key") || 
+        message.includes("already been registered")) {
          return "Este e-mail já está cadastrado. Tente fazer login.";
     }
     if (error.code === '42501') { // RLS policy violation
@@ -83,14 +85,43 @@ export async function signIn(email, password) {
 export async function signUp(email, password) {
      try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
-        if (error) throw error;
         
-        // Se a confirmação de e-mail estiver LIGADA (padrão do Supabase)
+        if (error) throw error;
+
+        console.log("Resposta do signUp:", data);
+        
+        // ===================================================================
+        // DETECÇÃO MELHORADA DE E-MAIL DUPLICADO
+        // ===================================================================
+        
+        // Caso 1: E-mail duplicado (comportamento de segurança do Supabase)
+        // O Supabase retorna user mas sem session e com identities vazio se o email já existe
+        if (!data.session && data.user) {
+            // Verifica se o array de identidades está vazio
+            if (data.user.identities && data.user.identities.length === 0) {
+                console.log("E-mail duplicado detectado (identities vazio)");
+                return "Este e-mail já está cadastrado. Tente fazer login.";
+            }
+            
+            // Verifica heuristicamente se o usuário foi criado há muito tempo
+            if (data.user.created_at) {
+                const userCreatedAt = new Date(data.user.created_at);
+                const now = new Date();
+                const diffSeconds = (now - userCreatedAt) / 1000;
+                
+                if (diffSeconds > 10) {
+                    console.log("E-mail duplicado detectado (usuário antigo)");
+                    return "Este e-mail já está cadastrado. Tente fazer login.";
+                }
+            }
+        }
+        
+        // Caso 2: Sucesso - Confirmação de e-mail necessária
         if (data.session === null && data.user) {
             return "success"; // Sucesso, mas precisa confirmar e-mail
         }
         
-        // Se a confirmação de e-mail estiver DESLIGADA
+        // Caso 3: Sucesso - Confirmação de e-mail DESLIGADA (já loga)
         if (data.session) {
              return "success_signed_in"; // Sucesso e já logado
         }

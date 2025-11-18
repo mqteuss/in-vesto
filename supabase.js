@@ -1,6 +1,6 @@
 // supabase.js
 // Módulo para gerenciar a autenticação e o banco de dados Supabase.
-// VERSÃO OTIMIZADA (Cache de User ID + Remoção de chamadas redundantes)
+// VERSÃO OTIMIZADA (Cache de User ID + Remoção de chamadas redundantes + Correção de Cadastro Duplicado)
 
 // Pega o cliente Supabase carregado pelo CDN no index.html
 const { createClient } = supabase;
@@ -100,7 +100,15 @@ export async function signIn(email, password) {
 export async function signUp(email, password) {
      try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        
         if (error) throw error;
+        
+        // --- CORREÇÃO DO BUG DE E-MAIL DUPLICADO ---
+        // O Supabase retorna falso positivo por segurança (User Enumeration Protection).
+        // Se identities for um array vazio, o usuário já existe no banco.
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+            throw new Error("User already registered");
+        }
         
         // Se a confirmação de e-mail estiver LIGADA (padrão do Supabase)
         if (data.session === null && data.user) {

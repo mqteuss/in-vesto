@@ -74,10 +74,10 @@ export async function signIn(email, password) {
 }
 
 /**
- * ✅ CORREÇÃO DEFINITIVA v3
- * Verifica a propriedade 'aud' (audience) do usuário.
- * - 'authenticated' = Usuário novo, criado agora.
- * - 'anon' = E-mail já existente (não confirmado), reenvio de e-mail.
+ * ✅ CORREÇÃO DEFINITIVA v4
+ * Compara os timestamps 'created_at' e 'updated_at'.
+ * - Usuário NOVO: created_at e updated_at são quase idênticos.
+ * - E-mail DUPLICADO: updated_at é atualizado, mas created_at é antigo.
  */
 export async function signUp(email, password) {
     try {
@@ -95,27 +95,34 @@ export async function signUp(email, password) {
             throw new Error("Erro desconhecido ao criar conta");
         }
 
-        // 3. ✅ A VERIFICAÇÃO DEFINITIVA: 'aud' (audience)
-        // Se o e-mail já existe mas não foi confirmado, o Supabase
-        // reenvia o e-mail, mas o 'aud' do usuário retornado é 'anon'.
-        // Um usuário NOVO, recém-criado, tem 'aud' = 'authenticated'.
-        if (data.user.aud === 'anon') {
-            console.warn("[signUp] E-mail duplicado (ou não confirmado) detectado. 'aud' === 'anon'.");
+        // 3. ✅ A VERIFICAÇÃO DEFINITIVA: Timestamps
+        // Converte os timestamps para objetos Date
+        const createdAt = new Date(data.user.created_at);
+        const updatedAt = new Date(data.user.updated_at);
+
+        // Calcula a diferença em milissegundos
+        const diffInMs = Math.abs(updatedAt.getTime() - createdAt.getTime());
+        
+        console.log(`[signUp] CreatedAt: ${createdAt.toISOString()}, UpdatedAt: ${updatedAt.toISOString()}`);
+        console.log(`[signUp] Diferença de tempo: ${diffInMs}ms`);
+
+        // Se a diferença for maior que 2000ms (2 segundos),
+        // consideramos que é um usuário existente sendo atualizado.
+        if (diffInMs > 2000) {
+            console.warn("[signUp] E-mail duplicado detectado. Diferença de timestamp é > 2s.");
             // Criamos o erro para ser pego pelo catch
-            throw new Error("User already registered"); 
+            throw new Error("User already registered");
         }
 
         // 4. Sucesso (confirmação de e-mail LIGADA)
-        // 'aud' === 'authenticated' E 'session' === null
-        if (data.user.aud === 'authenticated' && data.session === null) {
-            console.log("[signUp] Cadastro OK - 'aud'='authenticated', 'session'=null. Precisa confirmar e-mail.");
+        if (data.session === null) {
+            console.log("[signUp] Cadastro OK. Precisa confirmar e-mail.");
             return { success: true, needsConfirmation: true };
         }
         
         // 5. Sucesso (confirmação de e-mail DESLIGADA)
-        // 'aud' === 'authenticated' E 'session' !== null
-        if (data.user.aud === 'authenticated' && data.session) {
-            console.log("[signUp] Cadastro OK - 'aud'='authenticated', 'session' existe. Logado automaticamente.");
+        if (data.session) {
+            console.log("[signUp] Cadastro OK. Logado automaticamente.");
             return { success: true, needsConfirmation: false };
         }
 
@@ -124,7 +131,7 @@ export async function signUp(email, password) {
         throw new Error("Erro desconhecido ao criar conta");
         
     } catch (error) {
-        // 7. Pega TODOS os erros (o explícito do 1, o do 'anon' do 3)
+        // 7. Pega TODOS os erros (o explícito do 1, o do timestamp do 3)
         // e traduz
         const errorMessage = handleSupabaseError(error, "signUp");
         console.error("[signUp] Retornando erro para UI:", errorMessage);

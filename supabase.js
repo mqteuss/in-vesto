@@ -74,47 +74,58 @@ export async function signIn(email, password) {
 }
 
 /**
- * ✅ CORREÇÃO DEFINITIVA APLICADA
- * Verifica 'data.user.identities.length' para detectar e-mails duplicados
- * que ainda não foram confirmados.
+ * ✅ CORREÇÃO DEFINITIVA v3
+ * Verifica a propriedade 'aud' (audience) do usuário.
+ * - 'authenticated' = Usuário novo, criado agora.
+ * - 'anon' = E-mail já existente (não confirmado), reenvio de e-mail.
  */
 export async function signUp(email, password) {
     try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
         
-        // 1. Verifica erro explícito (ex: senha muito curta)
+        // 1. Pega erro explícito (senha curta, e-mail já CONFIRMADO, etc)
         if (error) {
             console.error("[signUp] Erro explícito do Supabase:", error);
-            throw error;
+            throw error; // Vai pro catch
         }
 
-        // 2. ✅ CORREÇÃO CRÍTICA: Verifica se 'identities' está vazio.
-        // Se estiver, é um e-mail já existente (mas não confirmado)
-        // e o Supabase está apenas reenviando o e-mail de confirmação.
-        if (data.user && data.user.identities && data.user.identities.length === 0) {
-            console.warn("[signUp] E-mail duplicado (ou não confirmado) detectado. 'identities' está vazio.");
-            // Lançamos nosso próprio erro para ser pego pelo catch
+        // 2. Fallback: se data ou data.user não existir
+        if (!data || !data.user) {
+            console.warn("[signUp] Fallback: Data ou User nulo, mas sem erro.");
+            throw new Error("Erro desconhecido ao criar conta");
+        }
+
+        // 3. ✅ A VERIFICAÇÃO DEFINITIVA: 'aud' (audience)
+        // Se o e-mail já existe mas não foi confirmado, o Supabase
+        // reenvia o e-mail, mas o 'aud' do usuário retornado é 'anon'.
+        // Um usuário NOVO, recém-criado, tem 'aud' = 'authenticated'.
+        if (data.user.aud === 'anon') {
+            console.warn("[signUp] E-mail duplicado (ou não confirmado) detectado. 'aud' === 'anon'.");
+            // Criamos o erro para ser pego pelo catch
             throw new Error("User already registered"); 
         }
 
-        // 3. Sucesso (precisa de confirmação de e-mail)
-        if (data.session === null && data.user && data.user.id) {
-            console.log("[signUp] Cadastro OK - Precisa confirmar e-mail");
+        // 4. Sucesso (confirmação de e-mail LIGADA)
+        // 'aud' === 'authenticated' E 'session' === null
+        if (data.user.aud === 'authenticated' && data.session === null) {
+            console.log("[signUp] Cadastro OK - 'aud'='authenticated', 'session'=null. Precisa confirmar e-mail.");
             return { success: true, needsConfirmation: true };
         }
         
-        // 4. Sucesso (confirmação desligada, logado automaticamente)
-        if (data.session && data.user && data.user.id) {
-            console.log("[signUp] Cadastro OK - Logado automaticamente");
+        // 5. Sucesso (confirmação de e-mail DESLIGADA)
+        // 'aud' === 'authenticated' E 'session' !== null
+        if (data.user.aud === 'authenticated' && data.session) {
+            console.log("[signUp] Cadastro OK - 'aud'='authenticated', 'session' existe. Logado automaticamente.");
             return { success: true, needsConfirmation: false };
         }
 
-        // 5. Fallback
-        console.warn("[signUp] Fallback: data.user ou data.session está em estado inesperado.", data);
+        // 6. Fallback final
+        console.warn("[signUp] Fallback: Estado inesperado.", data);
         throw new Error("Erro desconhecido ao criar conta");
         
     } catch (error) {
-        // 6. Bloco Catch: formata o erro (incluindo o "User already registered" que jogamos)
+        // 7. Pega TODOS os erros (o explícito do 1, o do 'anon' do 3)
+        // e traduz
         const errorMessage = handleSupabaseError(error, "signUp");
         console.error("[signUp] Retornando erro para UI:", errorMessage);
         return { success: false, error: errorMessage };

@@ -512,18 +512,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function getCache(key) {
-        const cacheItem = await vestoDB.get('apiCache', key);
-        if (!cacheItem) return null;
-        
-        const duration = cacheItem.duration ?? CACHE_DURATION; 
-        if (duration === -1) { return cacheItem.data; }
-        
-        const isExpired = (Date.now() - cacheItem.timestamp) > duration;
-        if (isExpired) { 
-            await vestoDB.delete('apiCache', key); 
-            return null; 
+        try {
+            const cacheItem = await vestoDB.get('apiCache', key);
+            if (!cacheItem) return null;
+            
+            const duration = cacheItem.duration ?? CACHE_DURATION; 
+            if (duration === -1) { return cacheItem.data; }
+            
+            const isExpired = (Date.now() - cacheItem.timestamp) > duration;
+            if (isExpired) { 
+                await vestoDB.delete('apiCache', key).catch(err => {
+                    console.warn(`Erro ao deletar cache expirado (${key}):`, err);
+                }); 
+                return null; 
+            }
+            return cacheItem.data;
+        } catch (e) {
+            console.error(`Erro ao buscar cache (${key}):`, e);
+            return null; // Fallback seguro
         }
-        return cacheItem.data;
     }
     
     async function clearBrapiCache() {
@@ -1337,8 +1344,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <h4 class="font-semibold text-white">${article.title || 'Título indisponível'}</h4>
                         <span class="text-sm text-gray-400">${sourceName} &bull; ${publicationDate}</span>
                     </div>
-                     <button class"p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700 flex-shrink-0 ml-2" 
-                             data-action="toggle-news" data-target="${drawerId}" title="Ler mais">
+                    <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700 flex-shrink-0 ml-2" 
+                            data-action="toggle-news" data-target="${drawerId}" title="Ler mais">
                         <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                         </svg>
@@ -1401,8 +1408,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             const articles = response.json;
             
-            if (articles && Array.isArray(articles)) {
+            if (articles && Array.isArray(articles) && articles.length > 0) {
                 await setCache(cacheKey, articles, CACHE_6_HORAS);
+            } else {
+                console.warn("API de notícias retornou vazio ou inválido.");
             }
             return articles;
         } catch (error) {

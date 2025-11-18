@@ -1,6 +1,6 @@
-// sw.js (Atualizado com estratégia Network-First)
+// sw.js (Atualizado com estratégia Network-First e Fallback de erro)
 
-const CACHE_NAME = 'vesto-cache-v2'; // Mudei o nome para forçar a atualização
+const CACHE_NAME = 'vesto-cache-v2'; // Versão v2 para forçar atualização
 
 // Arquivos que são o "shell" do app e mudam com frequência
 const APP_SHELL_FILES_NETWORK_FIRST = [
@@ -45,7 +45,7 @@ self.addEventListener('install', event => {
 
         return Promise.all([...cdnCachePromise, localCachePromise]);
       })
-      // Adiciona os arquivos principais (Network-First) ao cache também
+      // Adiciona os arquivos principais (Network-First) ao cache também para garantir disponibilidade inicial
       .then(() => caches.open(CACHE_NAME))
       .then(cache => cache.addAll(APP_SHELL_FILES_NETWORK_FIRST))
       .catch(err => console.error("[SW] Falha ao armazenar App Shell (Network-First)", err))
@@ -84,7 +84,6 @@ self.addEventListener('fetch', event => {
   }
 
   // 3. Estratégia "Network-First" para o App Shell principal
-  // (index.html, app.js, supabase.js, style.css)
   if (APP_SHELL_FILES_NETWORK_FIRST.includes(url.pathname)) {
     event.respondWith(
       fetch(event.request)
@@ -99,8 +98,20 @@ self.addEventListener('fetch', event => {
         })
         .catch(err => {
           // Rede falhou (offline), tenta pegar do cache
-          console.log(`[SW] Rede falhou para ${url.pathname}, servindo do cache.`);
-          return caches.match(event.request);
+          console.log(`[SW] Rede falhou para ${url.pathname}, tentando cache...`);
+          return caches.match(event.request)
+            .then(cachedResponse => {
+              if (cachedResponse) {
+                return cachedResponse;
+              }
+              // Se não há cache, retorna uma resposta de erro amigável (FALLBACK)
+              console.error(`[SW] Falha crítica: Sem rede e sem cache para ${url.pathname}`);
+              return new Response('Offline: Recurso não disponível. Verifique sua conexão.', {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: new Headers({ 'Content-Type': 'text/plain' })
+              });
+            });
         })
     );
     return;

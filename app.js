@@ -304,6 +304,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
+    
+    // ✅ NOVO SELETOR
+    const deleteAccountBtn = document.getElementById('delete-account-btn');
 
     // REMOVIDO: Botões de biometria
     // const loginPasskeyBtn = document.getElementById('login-passkey-btn');
@@ -1910,7 +1913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
              return;
         }
 
-        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
+        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${t.quantity}\nPreço: ${formatBRL(t.price)}`;
         
         showModal(
             'Excluir Transação', 
@@ -2226,6 +2229,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
         
+        // ✅ ATUALIZAÇÃO: O botão "Adicionar" agora só aparece na aba Carteira
+        // e não aparece na aba Conta
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     
@@ -2467,8 +2472,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     /**
-     * ✅ CORREÇÃO APLICADA (Conforme seu guia)
-     * Função 'showSignupError' com logs e reset de UI
+     * ✅ FUNÇÃO 'showSignupError'
+     * (Corrigida conforme seu guia de depuração)
      */
     function showSignupError(message) {
         console.log("[showSignupError] Mostrando erro:", message);
@@ -2558,8 +2563,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // REMOVIDO: Event listener do loginPasskeyBtn
 
         /**
-         * ✅ CORREÇÃO APLICADA (Conforme seu guia)
-         * Event listener do signupForm com logs e verificação de result.success
+         * ✅ FUNÇÃO 'signupForm' addEventListener
+         * (Corrigida conforme seu guia de depuração)
          */
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2649,11 +2654,62 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupError.classList.add('hidden');
         });
         
-        logoutBtn.addEventListener('click', () => {
-            showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
-                await supabaseDB.signOut();
+        // ✅ LISTENER DO BOTÃO DE LOGOUT
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
+                    await supabaseDB.signOut();
+                });
             });
-        });
+        }
+        
+        // ✅ NOVO LISTENER PARA EXCLUIR CONTA
+        if (deleteAccountBtn) {
+            deleteAccountBtn.addEventListener('click', () => {
+                // Primeira confirmação (genérica)
+                showModal(
+                    'Excluir Conta?',
+                    'Você tem certeza? Esta ação é permanente e irá apagar TODOS os seus dados.',
+                    () => {
+                        // Segunda confirmação (mais forte)
+                        setTimeout(() => {
+                            const confirmText = "EXCLUIR";
+                            // NOTA: 'prompt()' pode ser bloqueado por pop-ups.
+                            // Se isso falhar, precisaremos de um modal de confirmação customizado.
+                            const userInput = prompt(`Isto é irreversível. Para confirmar, digite "${confirmText}"`);
+                            
+                            if (userInput === confirmText) {
+                                // Usuário confirmou
+                                console.log("Excluindo conta...");
+                                
+                                // Desabilita o botão para evitar cliques duplos
+                                deleteAccountBtn.disabled = true;
+                                deleteAccountBtn.textContent = "A excluir...";
+                                
+                                supabaseDB.deleteUserAccount().then(result => {
+                                    if (result.success) {
+                                        showToast("Conta excluída com sucesso.", "success");
+                                        // Força o logout e recarrega a página
+                                        setTimeout(() => {
+                                            supabaseDB.signOut(); 
+                                        }, 1500);
+                                    } else {
+                                        showToast(result.error);
+                                        deleteAccountBtn.disabled = false;
+                                        deleteAccountBtn.textContent = "Excluir Conta";
+                                    }
+                                });
+
+                            } else if (userInput !== null) { // Só mostra erro se não clicou em "Cancelar"
+                                // Usuário falhou na digitação
+                                showToast("Ação cancelada. A digitação não confere.");
+                            }
+                        }, 300); // Pequeno delay para o primeiro modal fechar
+                    }
+                );
+            });
+        }
+
 
         // REMOVIDO: Event listener do registerPasskeyBtn
 

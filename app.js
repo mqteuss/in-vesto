@@ -136,7 +136,7 @@ function criarCardElemento(ativo, dados) {
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full bg-gray-700 p-1.5 flex items-center justify-center flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-purple-400">
-                        <path d="M1.5 13.5a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H4.5a3 3 0 0 1-3-3v-6Zm16.5 0a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3v-6Zm-8.25-9a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3V4.5Z" />
+                        <path d="M1.5 13.5a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H4.5a3 3 0 0 1-3-3v-6Zm16.5 0a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3v-6Zm-8.25-9a3 3 0 0 1 3-3h1.5a3 3 0 0 1 3 3h1.5a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3h-1.5a3 3 0 0 1-3-3V4.5Z" />
                     </svg>
                 </div>
                 <div>
@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
     const watchlistStatusEl = document.getElementById('watchlist-status');
-
+    
     // --- VARIÁVEIS BIOMETRIA (NOVAS) ---
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================================
-    // FUNÇÕES DE BIOMETRIA (WEBAUTHN)
+    // FUNÇÕES DE BIOMETRIA (WEBAUTHN) - CORRIGIDO PARA VERCEL
     // ==========================================================
     
     async function verificarStatusBiometria() {
@@ -495,15 +495,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
+            // --- CORREÇÃO VERCEL: Detecta domínio automaticamente ---
+            const currentDomain = window.location.hostname;
+
             const publicKey = {
                 challenge: challenge,
-                rp: { name: "Vesto App" },
+                rp: { 
+                    name: "Vesto App",
+                    id: currentDomain // Força o ID correto para produção
+                },
                 user: {
                     id: Uint8Array.from(currentUserId, c => c.charCodeAt(0)),
                     name: "usuario@vesto",
                     displayName: "Usuário Vesto"
                 },
-                pubKeyCredParams: [{ type: "public-key", alg: -7 }], 
+                // Suporte ampliado de algoritmos (ES256 e RS256)
+                pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }], 
                 authenticatorSelection: { 
                     authenticatorAttachment: "platform", 
                     userVerification: "required" 
@@ -519,8 +526,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showToast('Face ID / Digital ativado!', 'success');
             }
         } catch (e) {
-            console.error(e);
-            showToast('Cancelado ou erro na ativação.');
+            console.error("Erro biometria:", e);
+            // Mostra o erro real para facilitar debug no celular
+            showToast(`Erro: ${e.name} - Tente limpar o cache.`);
         }
     }
 
@@ -555,6 +563,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('Biometria desativada.');
     }
 
+    // Event Listeners Biometria
     if (toggleBioBtn) {
         toggleBioBtn.addEventListener('click', () => {
             const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';

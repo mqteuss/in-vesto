@@ -4,24 +4,19 @@ Chart.defaults.color = '#9ca3af';
 Chart.defaults.borderColor = '#374151'; 
 
 // ==================================================================
-// CONSTANTES DE CACHE OTIMIZADAS
+// FUNÇÕES UTILITÁRIAS GERAIS (INCLUINDO NOVAS PARA BIOMETRIA)
 // ==================================================================
-const REFRESH_INTERVAL = 900000; // 15 minutos (Update automático da tela)
 
-// Cache Dinâmico para Preços
-const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; // 15 min
-const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; // 12 horas
+// Converte ArrayBuffer para Base64 (Necessário para salvar ID da biometria)
+function bufferToBase64(buffer) {
+    return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
 
-// Cache Geral
-const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; // 1 hora
-const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; // 24 horas
-const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; // 12 horas
+// Converte Base64 para ArrayBuffer (Necessário para ler ID da biometria)
+function base64ToBuffer(base64) {
+    return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+}
 
-// Configuração do IndexedDB
-const DB_NAME = 'vestoCacheDB';
-const DB_VERSION = 1; 
-
-// ... (Funções utilitárias) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -89,6 +84,24 @@ function isB3Open() {
     if (hour >= 10 && hour < 18) { return true; } 
     return false;
 }
+
+// ==================================================================
+// CONSTANTES DE CACHE OTIMIZADAS
+// ==================================================================
+const REFRESH_INTERVAL = 900000; // 15 minutos (Update automático da tela)
+
+// Cache Dinâmico para Preços
+const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; // 15 min
+const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; // 12 horas
+
+// Cache Geral
+const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; // 1 hora
+const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; // 24 horas
+const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; // 12 horas
+
+// Configuração do IndexedDB
+const DB_NAME = 'vestoCacheDB';
+const DB_VERSION = 1; 
 
 function criarCardElemento(ativo, dados) {
     const {
@@ -390,7 +403,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
     const watchlistStatusEl = document.getElementById('watchlist-status');
     
-    // --- VARIÁVEIS BIOMETRIA (NOVAS) ---
+    // --- VARIÁVEIS BIOMETRIA ---
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
@@ -462,7 +475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================================
-    // FUNÇÕES DE BIOMETRIA (WEBAUTHN) - CORRIGIDO
+    // FUNÇÕES DE BIOMETRIA (CORRIGIDAS PARA VERCEL / ANDROID)
     // ==========================================================
     
     async function verificarStatusBiometria() {
@@ -481,6 +494,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (bioEnabled && currentUserId) {
             biometricLockScreen.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+            // Pequeno delay para garantir que a UI renderizou
             setTimeout(() => autenticarBiometria(), 500);
         }
     }
@@ -495,33 +509,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
+            // Usa o domínio atual para garantir compatibilidade
+            const currentDomain = window.location.hostname;
+
+            // Garante que o ID do usuário seja um Buffer válido
+            const userIdBuffer = Uint8Array.from(currentUserId || "user_id", c => c.charCodeAt(0));
+
             const publicKey = {
                 challenge: challenge,
                 rp: { 
-                    name: "Vesto App"
-                    // ID removido para detecção automática de domínio (evita erros no Vercel/Localhost)
+                    name: "Vesto App",
+                    id: currentDomain 
                 },
                 user: {
-                    id: new TextEncoder().encode(currentUserId), // CORREÇÃO: Encoding seguro
+                    id: userIdBuffer,
                     name: "usuario@vesto",
                     displayName: "Usuário Vesto"
                 },
                 pubKeyCredParams: [
-                    { type: "public-key", alg: -7 }, 
-                    { type: "public-key", alg: -257 }
-                ], 
+                    { type: "public-key", alg: -7 },   // ES256
+                    { type: "public-key", alg: -257 }  // RS256
+                ],
                 authenticatorSelection: { 
                     authenticatorAttachment: "platform", 
-                    userVerification: "required",
-                    residentKey: "required", // CORREÇÃO: Força criação de Passkey (chave residente)
-                    requireResidentKey: true 
+                    userVerification: "required"
                 },
-                timeout: 60000
+                timeout: 60000,
+                attestation: "none"
             };
 
             const credential = await navigator.credentials.create({ publicKey });
             
             if (credential) {
+                // --- FIX: SALVAR O RAW ID DA CREDENCIAL ---
+                const credentialId = bufferToBase64(credential.rawId);
+                localStorage.setItem('vesto_bio_id', credentialId);
+                
                 localStorage.setItem('vesto_bio_enabled', 'true');
                 verificarStatusBiometria();
                 showToast('Face ID / Digital ativado!', 'success');
@@ -535,6 +558,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function autenticarBiometria() {
         if (!window.PublicKeyCredential) return;
 
+        // Recupera o ID da credencial que salvamos na ativação
+        const savedCredId = localStorage.getItem('vesto_bio_id');
+        
+        // Se não tiver ID salvo, não tem como autenticar
+        if (!savedCredId) {
+            console.warn("Nenhuma credencial salva encontrada.");
+            // Se chegou aqui, o estado está inconsistente, então desativa.
+            desativarBiometria();
+            return;
+        }
+
         try {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
@@ -542,7 +576,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const publicKey = {
                 challenge: challenge,
                 timeout: 60000,
-                userVerification: "required"
+                userVerification: "required",
+                // --- FIX: ENVIAR O ID DA CREDENCIAL PARA O ANDROID ---
+                allowCredentials: [{
+                    id: base64ToBuffer(savedCredId),
+                    type: 'public-key',
+                    transports: ['internal']
+                }]
             };
 
             const assertion = await navigator.credentials.get({ publicKey });
@@ -554,11 +594,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
+            if (e.name !== 'NotAllowedError') {
+                 showToast("Falha na leitura biométrica.");
+            }
         }
     }
 
     function desativarBiometria() {
         localStorage.removeItem('vesto_bio_enabled');
+        localStorage.removeItem('vesto_bio_id'); // Limpa também o ID
         verificarStatusBiometria();
         showToast('Biometria desativada.');
     }

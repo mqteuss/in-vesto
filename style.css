@@ -1,9 +1,9 @@
-/* ... (todo o seu css existente das linhas 1 a 404) ... */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    background-color: #131217;
-    background-image: radial-gradient(circle at 10% 10%, rgba(192, 132, 252, 0.08), transparent 55%),
-                      radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.05), transparent 65%);
+    /* MUDANÇA: Preto absoluto para OLED */
+    background-color: #000000;
+    /* MUDANÇA: Removidos gradientes para economia de energia e visual limpo */
+    background-image: none;
     color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-smoothing: grayscale;
@@ -19,8 +19,10 @@ body::-webkit-scrollbar {
 }
 
 .card-bg {
-    background-color: #1C1B22;
-    border: 1px solid #2A2A2A;
+    /* MUDANÇA: Tom de cinza padrão Apple Dark Mode */
+    background-color: #1C1C1E;
+    /* MUDANÇA: Borda sutil ajustada para o novo fundo */
+    border: 1px solid #2C2C2E;
 }
 
 .accent-bg {
@@ -59,10 +61,11 @@ body::-webkit-scrollbar {
 }
 
 .bottom-nav {
-    background-color: rgba(28, 27, 34, 0.6);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid #2A2A2A; 
+    /* MUDANÇA: Ajuste de transparência para fundo preto */
+    background-color: rgba(28, 28, 30, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 0.5px solid #2C2C2E;
 }
 
 .tab-button {
@@ -214,7 +217,8 @@ input[type=number] {
 .page-content {
     transition: transform 0.4s ease-in-out;
     transform: translateY(100%);
-    background-color: #131217;
+    /* MUDANÇA: Fundo do modal consistente com os cards */
+    background-color: #1C1C1E;
     position: fixed; 
     bottom: 0;
     left: 0;
@@ -401,22 +405,18 @@ button:active,
     display: none !important;
 }
 
-/* ===================================================================
-NOVO: Estilos para o botão de ver/ocultar senha
-===================================================================
-*/
 .password-toggle {
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
-    padding-right: 0.75rem; /* 12px */
+    padding-right: 0.75rem;
     display: flex;
     align-items: center;
-    color: #6b7280; /* text-gray-500 */
+    color: #6b7280;
     cursor: pointer;
     transition: color 0.2s ease-in-out;
 }
 .password-toggle:hover {
-    color: #d1d5db; /* text-gray-300 */
+    color: #d1d5db;
 }

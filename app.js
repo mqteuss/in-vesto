@@ -4,15 +4,13 @@ Chart.defaults.color = '#9ca3af';
 Chart.defaults.borderColor = '#374151'; 
 
 // ==================================================================
-// FUNÇÕES UTILITÁRIAS GERAIS (INCLUINDO NOVAS PARA BIOMETRIA)
+// FUNÇÕES UTILITÁRIAS GERAIS
 // ==================================================================
 
-// Converte ArrayBuffer para Base64 (Necessário para salvar ID da biometria)
 function bufferToBase64(buffer) {
     return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
 
-// Converte Base64 para ArrayBuffer (Necessário para ler ID da biometria)
 function base64ToBuffer(base64) {
     return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 }
@@ -86,20 +84,15 @@ function isB3Open() {
 }
 
 // ==================================================================
-// CONSTANTES DE CACHE OTIMIZADAS
+// CONSTANTES DE CACHE
 // ==================================================================
-const REFRESH_INTERVAL = 900000; // 15 minutos (Update automático da tela)
+const REFRESH_INTERVAL = 900000; 
+const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; 
+const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; 
+const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; 
+const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
+const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
 
-// Cache Dinâmico para Preços
-const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; // 15 min
-const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; // 12 horas
-
-// Cache Geral
-const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; // 1 hora
-const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; // 24 horas
-const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; // 12 horas
-
-// Configuração do IndexedDB
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
@@ -144,7 +137,7 @@ function criarCardElemento(ativo, dados) {
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
-    // --- ALTERAÇÃO: Ícone aumentado para w-14 h-14 e texto text-xs ---
+    // --- AQUI ESTÁ O AJUSTE DE TAMANHO DOS ÍCONES (w-14 h-14) ---
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -402,12 +395,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
     const watchlistStatusEl = document.getElementById('watchlist-status');
     
-    // --- VARIÁVEIS BIOMETRIA ---
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
-    const bioStatusIcon = document.getElementById('bio-status-icon'); // NOVO ÍCONE ÚNICO
+    const bioStatusIcon = document.getElementById('bio-status-icon'); 
 
     let currentUserId = null;
     let transacoes = [];        
@@ -473,13 +465,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================================
-    // FUNÇÕES DE BIOMETRIA (CORRIGIDAS PARA VERCEL / ANDROID)
+    // FUNÇÕES DE BIOMETRIA
     // ==========================================================
     
     async function verificarStatusBiometria() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
         
-        // --- ALTERAÇÃO: Lógica para um único ícone (Red = Desativado / Green = Ativado) ---
+        // Ícone fica Verde se Ativo, Vermelho se Desativado
         if (bioStatusIcon) {
             if (bioEnabled) {
                 bioStatusIcon.classList.remove('text-gray-500', 'text-red-500');
@@ -490,8 +482,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // A parte de exibir o bloqueio já foi tratada no index.html para evitar flash,
-        // mas ainda precisamos garantir a autenticação se estiver bloqueado.
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
             document.body.style.overflow = 'hidden';
             setTimeout(() => autenticarBiometria(), 500);
@@ -508,26 +498,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
-            // Usa o domínio atual para garantir compatibilidade
             const currentDomain = window.location.hostname;
-
-            // Garante que o ID do usuário seja um Buffer válido
             const userIdBuffer = Uint8Array.from(currentUserId || "user_id", c => c.charCodeAt(0));
 
             const publicKey = {
                 challenge: challenge,
-                rp: { 
-                    name: "Vesto App",
-                    id: currentDomain 
-                },
+                rp: { name: "Vesto App", id: currentDomain },
                 user: {
                     id: userIdBuffer,
                     name: "usuario@vesto",
                     displayName: "Usuário Vesto"
                 },
                 pubKeyCredParams: [
-                    { type: "public-key", alg: -7 },   // ES256
-                    { type: "public-key", alg: -257 }  // RS256
+                    { type: "public-key", alg: -7 },
+                    { type: "public-key", alg: -257 }
                 ],
                 authenticatorSelection: { 
                     authenticatorAttachment: "platform", 
@@ -540,10 +524,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const credential = await navigator.credentials.create({ publicKey });
             
             if (credential) {
-                // --- FIX: SALVAR O RAW ID DA CREDENCIAL ---
                 const credentialId = bufferToBase64(credential.rawId);
                 localStorage.setItem('vesto_bio_id', credentialId);
-                
                 localStorage.setItem('vesto_bio_enabled', 'true');
                 verificarStatusBiometria();
                 showToast('Face ID / Digital ativado!', 'success');
@@ -556,14 +538,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function autenticarBiometria() {
         if (!window.PublicKeyCredential) return;
-
-        // Recupera o ID da credencial que salvamos na ativação
         const savedCredId = localStorage.getItem('vesto_bio_id');
         
-        // Se não tiver ID salvo, não tem como autenticar
         if (!savedCredId) {
             console.warn("Nenhuma credencial salva encontrada.");
-            // Se chegou aqui, o estado está inconsistente, então desativa.
             desativarBiometria();
             return;
         }
@@ -576,7 +554,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 challenge: challenge,
                 timeout: 60000,
                 userVerification: "required",
-                // --- FIX: ENVIAR O ID DA CREDENCIAL PARA O ANDROID ---
                 allowCredentials: [{
                     id: base64ToBuffer(savedCredId),
                     type: 'public-key',
@@ -601,7 +578,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function desativarBiometria() {
         localStorage.removeItem('vesto_bio_enabled');
-        localStorage.removeItem('vesto_bio_id'); // Limpa também o ID
+        localStorage.removeItem('vesto_bio_id');
         verificarStatusBiometria();
         showToast('Biometria desativada.');
     }
@@ -2202,7 +2179,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 precoData = data.results?.[0];
                 
-                // Salva cache curto para detalhe também (15min ou 12h dependendo do mercado)
                 const isAberto = isB3Open();
                 const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
                 
@@ -2675,9 +2651,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         signupSubmitBtn.innerHTML = 'Criar conta';
         signupSubmitBtn.disabled = false;
 
-        // Esconde a msg de sucesso se um erro aparecer
         signupSuccess.classList.add('hidden');
-        // Garante que os campos de input voltem a aparecer
         signupEmailInput.classList.remove('hidden');
         signupPasswordInput.parentElement.classList.remove('hidden');
         signupConfirmPasswordInput.parentElement.classList.remove('hidden');
@@ -2752,7 +2726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const confirmPassword = signupConfirmPasswordInput.value;
 
             signupError.classList.add('hidden');
-            signupSuccess.classList.add('hidden'); // Esconde msg de sucesso
+            signupSuccess.classList.add('hidden'); 
             
             if (password !== confirmPassword) {
                 showSignupError("As senhas não coincidem.");
@@ -2805,9 +2779,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupError.classList.add('hidden');
         });
         
+        // LOGICA DE LOGOUT CORRIGIDA PARA NÃO PEDIR BIOMETRIA
         logoutBtn.addEventListener('click', () => {
             showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
+                // AVISAMOS QUE O LOGOUT FOI PROPOSITAL
+                sessionStorage.setItem('vesto_just_logged_out', 'true');
                 await supabaseDB.signOut();
+                window.location.reload();
             });
         });
 
@@ -2837,7 +2815,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
             
-            // ---> VERIFICA BIOMETRIA ANTES DE CARREGAR <---
+            // Se entrou com sucesso, removemos a flag de logout para que o próximo refresh bloqueie
+            sessionStorage.removeItem('vesto_just_logged_out');
+            
             await verificarStatusBiometria();
             
             mudarAba('tab-dashboard'); 

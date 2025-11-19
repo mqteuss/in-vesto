@@ -13,15 +13,15 @@ const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; // 15 min
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; // 12 horas
 
 // Cache Geral
-const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; // 1 hora (Mais fresco que antes)
-const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; // 24 horas (Histórico muda pouco)
+const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; // 1 hora
+const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; // 24 horas
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; // 12 horas
 
 // Configuração do IndexedDB
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
-// ... (Funções utilitárias permanecem as mesmas) ...
+// ... (Funções utilitárias) ...
 const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
 const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
@@ -78,7 +78,6 @@ function getSaoPauloDateTime() {
         const hour = spDate.getHours();
         return { dayOfWeek, hour };
     } catch (e) {
-        // Fallback se o browser não suportar timeZone
         const localDate = new Date();
         return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
     }
@@ -86,9 +85,7 @@ function getSaoPauloDateTime() {
 
 function isB3Open() {
     const { dayOfWeek, hour } = getSaoPauloDateTime();
-    // Domingo (0) ou Sábado (6) -> Fechado
     if (dayOfWeek === 0 || dayOfWeek === 6) { return false; } 
-    // Aberto entre 10h e 18h (aproximadamente)
     if (hour >= 10 && hour < 18) { return true; } 
     return false;
 }
@@ -391,7 +388,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
-    const watchlistStatusEl = document.getElementById('watchlist-status'); 
+    const watchlistStatusEl = document.getElementById('watchlist-status');
+
+    // --- VARIÁVEIS BIOMETRIA (NOVAS) ---
+    const biometricLockScreen = document.getElementById('biometric-lock-screen');
+    const btnDesbloquear = document.getElementById('btn-desbloquear');
+    const btnSairLock = document.getElementById('btn-sair-lock');
+    const toggleBioBtn = document.getElementById('toggle-bio-btn');
+    const iconBioOff = document.getElementById('icon-bio-off');
+    const iconBioOn = document.getElementById('icon-bio-on');
 
     let currentUserId = null;
     let transacoes = [];        
@@ -456,6 +461,128 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
 
+    // ==========================================================
+    // FUNÇÕES DE BIOMETRIA (WEBAUTHN)
+    // ==========================================================
+    
+    async function verificarStatusBiometria() {
+        const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
+        
+        if (bioEnabled) {
+            iconBioOff.classList.add('hidden');
+            iconBioOn.classList.remove('hidden');
+            toggleBioBtn.classList.add('text-green-500');
+        } else {
+            iconBioOff.classList.remove('hidden');
+            iconBioOn.classList.add('hidden');
+            toggleBioBtn.classList.remove('text-green-500');
+        }
+
+        if (bioEnabled && currentUserId) {
+            biometricLockScreen.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => autenticarBiometria(), 500);
+        }
+    }
+
+    async function ativarBiometria() {
+        if (!window.PublicKeyCredential) {
+            showToast('Seu dispositivo não suporta biometria.');
+            return;
+        }
+
+        try {
+            const challenge = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge);
+
+            const publicKey = {
+                challenge: challenge,
+                rp: { name: "Vesto App" },
+                user: {
+                    id: Uint8Array.from(currentUserId, c => c.charCodeAt(0)),
+                    name: "usuario@vesto",
+                    displayName: "Usuário Vesto"
+                },
+                pubKeyCredParams: [{ type: "public-key", alg: -7 }], 
+                authenticatorSelection: { 
+                    authenticatorAttachment: "platform", 
+                    userVerification: "required" 
+                },
+                timeout: 60000
+            };
+
+            const credential = await navigator.credentials.create({ publicKey });
+            
+            if (credential) {
+                localStorage.setItem('vesto_bio_enabled', 'true');
+                verificarStatusBiometria();
+                showToast('Face ID / Digital ativado!', 'success');
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Cancelado ou erro na ativação.');
+        }
+    }
+
+    async function autenticarBiometria() {
+        if (!window.PublicKeyCredential) return;
+
+        try {
+            const challenge = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge);
+
+            const publicKey = {
+                challenge: challenge,
+                timeout: 60000,
+                userVerification: "required"
+            };
+
+            const assertion = await navigator.credentials.get({ publicKey });
+
+            if (assertion) {
+                biometricLockScreen.classList.add('hidden');
+                document.body.style.overflow = '';
+                showToast('Acesso liberado!', 'success');
+            }
+        } catch (e) {
+            console.warn("Biometria cancelada ou falhou:", e);
+        }
+    }
+
+    function desativarBiometria() {
+        localStorage.removeItem('vesto_bio_enabled');
+        verificarStatusBiometria();
+        showToast('Biometria desativada.');
+    }
+
+    if (toggleBioBtn) {
+        toggleBioBtn.addEventListener('click', () => {
+            const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
+            if (isEnabled) {
+                showModal("Desativar Biometria?", "Deseja remover o bloqueio por Face ID/Digital?", () => {
+                    desativarBiometria();
+                });
+            } else {
+                showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => {
+                    ativarBiometria();
+                });
+            }
+        });
+    }
+
+    if (btnDesbloquear) {
+        btnDesbloquear.addEventListener('click', autenticarBiometria);
+    }
+    
+    if (btnSairLock) {
+        btnSairLock.addEventListener('click', async () => {
+            await supabaseDB.signOut();
+            window.location.reload();
+        });
+    }
+
+    // ==========================================================
+    
     function showUpdateBar() {
         updateNotification.classList.remove('hidden');
         setTimeout(() => {
@@ -490,7 +617,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function setCache(key, data, duration) { 
-        // Duração padrão de 1h se não for informado
         const finalDuration = duration || (1000 * 60 * 60); 
         const cacheItem = { key: key, timestamp: Date.now(), data: data, duration: finalDuration };
         try { 
@@ -532,7 +658,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const cacheItem = await vestoDB.get('apiCache', key);
             if (!cacheItem) return null;
             
-            // Se duration for -1, é infinito
             const duration = cacheItem.duration; 
             if (duration === -1) { return cacheItem.data; }
             
@@ -2480,8 +2605,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             authLoading.classList.add('hidden');
             loginForm.classList.remove('hidden');
-            signupForm.classList.add('hidden'); // Garante que o signup esteja oculto
-            signupSuccess.classList.add('hidden'); // Garante que a msg de sucesso esteja oculta
+            signupForm.classList.add('hidden'); 
+            signupSuccess.classList.add('hidden'); 
         }
     }
     
@@ -2574,7 +2699,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const password = signupPasswordInput.value;
             const confirmPassword = signupConfirmPasswordInput.value;
 
-            // Limpa erros anteriores
             signupError.classList.add('hidden');
             signupSuccess.classList.add('hidden'); // Esconde msg de sucesso
             
@@ -2660,6 +2784,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
+            
+            // ---> VERIFICA BIOMETRIA ANTES DE CARREGAR <---
+            await verificarStatusBiometria();
+            
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
         } else {

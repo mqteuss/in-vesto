@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1A1A1A">
+    <meta name="theme-color" content="#000000">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -18,7 +18,7 @@
 </head>
 <body class="antialiased">
 
-    <div id="biometric-lock-screen" class="fixed inset-0 z-[100] bg-[#131217] flex flex-col items-center justify-center p-6 hidden">
+    <div id="biometric-lock-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 hidden">
             
         <div class="relative mb-8 group cursor-pointer" id="btn-desbloquear">
             <div class="absolute inset-0 bg-purple-500/20 rounded-full blur-xl group-hover:bg-purple-500/30 transition-all duration-500"></div>
@@ -550,7 +550,7 @@
         <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
             <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
 
-                <div class="flex justify-between items-center p-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
+                <div class="flex justify-between items-center p-4 border-b border-[#2C2C2E] sticky top-0 bg-[#1C1C1E]/90 backdrop-blur-md rounded-t-2xl z-10">
                     <div id="detalhes-titulo" class="flex-1 min-w-0">
                         <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
                          <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>

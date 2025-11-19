@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================================
-    // FUNÇÕES DE BIOMETRIA (WEBAUTHN) - CORRIGIDO PARA VERCEL
+    // FUNÇÕES DE BIOMETRIA (WEBAUTHN) - CORRIGIDO
     // ==========================================================
     
     async function verificarStatusBiometria() {
@@ -495,25 +495,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
-            // --- CORREÇÃO VERCEL: Detecta domínio automaticamente ---
-            const currentDomain = window.location.hostname;
-
             const publicKey = {
                 challenge: challenge,
                 rp: { 
-                    name: "Vesto App",
-                    id: currentDomain // Força o ID correto para produção
+                    name: "Vesto App"
+                    // ID removido para detecção automática de domínio (evita erros no Vercel/Localhost)
                 },
                 user: {
-                    id: Uint8Array.from(currentUserId, c => c.charCodeAt(0)),
+                    id: new TextEncoder().encode(currentUserId), // CORREÇÃO: Encoding seguro
                     name: "usuario@vesto",
                     displayName: "Usuário Vesto"
                 },
-                // Suporte ampliado de algoritmos (ES256 e RS256)
-                pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }], 
+                pubKeyCredParams: [
+                    { type: "public-key", alg: -7 }, 
+                    { type: "public-key", alg: -257 }
+                ], 
                 authenticatorSelection: { 
                     authenticatorAttachment: "platform", 
-                    userVerification: "required" 
+                    userVerification: "required",
+                    residentKey: "required", // CORREÇÃO: Força criação de Passkey (chave residente)
+                    requireResidentKey: true 
                 },
                 timeout: 60000
             };
@@ -527,8 +528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             console.error("Erro biometria:", e);
-            // Mostra o erro real para facilitar debug no celular
-            showToast(`Erro: ${e.name} - Tente limpar o cache.`);
+            showToast(`Erro ao ativar: ${e.message || e.name}`);
         }
     }
 

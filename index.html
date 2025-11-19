@@ -40,7 +40,12 @@
 
     <script>
         try {
-            if (localStorage.getItem('vesto_bio_enabled') === 'true') {
+            const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
+            // Se existir essa flag na sessão, significa que o usuário acabou de clicar em SAIR voluntariamente
+            const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
+
+            // Só bloqueia se a bio estiver ativa E o usuário NÃO tiver acabado de sair
+            if (bioEnabled && !justLoggedOut) {
                 document.getElementById('biometric-lock-screen').classList.remove('hidden');
             }
         } catch (e) { console.error('Erro ao verificar biometria inicial', e); }

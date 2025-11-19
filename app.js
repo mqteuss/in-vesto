@@ -144,12 +144,12 @@ function criarCardElemento(ativo, dados) {
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
-    // --- ALTERAÇÃO: Ícone com Ticker do Ativo ---
+    // --- ALTERAÇÃO: Ícone aumentado para w-14 h-14 e texto text-xs ---
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
-                    <span class="text-[0.65rem] font-bold text-purple-400 tracking-tight leading-none">${ativo.symbol}</span>
+                <div class="w-14 h-14 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
+                    <span class="text-xs font-bold text-purple-400 tracking-tight leading-none">${ativo.symbol}</span>
                 </div>
                 <div>
                     <h2 class="text-xl font-bold text-white">${ativo.symbol}</h2>
@@ -407,8 +407,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
-    const iconBioOff = document.getElementById('icon-bio-off');
-    const iconBioOn = document.getElementById('icon-bio-on');
+    const bioStatusIcon = document.getElementById('bio-status-icon'); // NOVO ÍCONE ÚNICO
 
     let currentUserId = null;
     let transacoes = [];        
@@ -480,20 +479,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function verificarStatusBiometria() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
         
-        if (bioEnabled) {
-            iconBioOff.classList.add('hidden');
-            iconBioOn.classList.remove('hidden');
-            toggleBioBtn.classList.add('text-green-500');
-        } else {
-            iconBioOff.classList.remove('hidden');
-            iconBioOn.classList.add('hidden');
-            toggleBioBtn.classList.remove('text-green-500');
+        // --- ALTERAÇÃO: Lógica para um único ícone (Red = Desativado / Green = Ativado) ---
+        if (bioStatusIcon) {
+            if (bioEnabled) {
+                bioStatusIcon.classList.remove('text-gray-500', 'text-red-500');
+                bioStatusIcon.classList.add('text-green-500');
+            } else {
+                bioStatusIcon.classList.remove('text-green-500', 'text-gray-500');
+                bioStatusIcon.classList.add('text-red-500');
+            }
         }
 
-        if (bioEnabled && currentUserId) {
-            biometricLockScreen.classList.remove('hidden');
+        // A parte de exibir o bloqueio já foi tratada no index.html para evitar flash,
+        // mas ainda precisamos garantir a autenticação se estiver bloqueado.
+        if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
             document.body.style.overflow = 'hidden';
-            // Pequeno delay para garantir que a UI renderizou
             setTimeout(() => autenticarBiometria(), 500);
         }
     }

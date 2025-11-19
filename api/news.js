@@ -27,7 +27,7 @@ REGRAS:
 2.  Responda APENAS com um array JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
 3.  Cada objeto no array deve conter 6 campos:
     - "title": O título exato ou ligeiramente abreviado da notícia.
-    - "summary": Um resumo da notícia com 3 ou 4 frases (ligeiramente maior).
+    - "summary": Um resumo da notícia com 4 frases (ligeiramente maior).
     - "sourceName": O nome do portal (ex: "InfoMoney").
     - "sourceHostname": O domínio raiz da fonte (ex: "infomoney.com.br"). ESTE CAMPO É OBRIGATÓRIO.
     - "publicationDate": A data da publicação no formato YYYY-MM-DD.
@@ -60,7 +60,8 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${NEWS_GEMINI_API_KEY}`;
+    // ATUALIZAÇÃO: Alterado para gemini-3-pro conforme solicitado
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
         const { todayString } = request.body;
@@ -79,7 +80,7 @@ export default async function handler(request, response) {
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
-        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKSENS") {
+        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
              if (candidate?.finishReason) {
                  throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
              }

@@ -2,7 +2,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     /* MUDANÇA: Preto absoluto para OLED */
     background-color: #000000;
-    /* MUDANÇA: Removidos gradientes para economia de energia e visual limpo */
+    /* MUDANÇA: Sem gradientes */
     background-image: none;
     color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
@@ -19,9 +19,8 @@ body::-webkit-scrollbar {
 }
 
 .card-bg {
-    /* MUDANÇA: Tom de cinza padrão Apple Dark Mode */
+    /* MUDANÇA: Fundo #1C1C1E (Apple Dark Mode) */
     background-color: #1C1C1E;
-    /* MUDANÇA: Borda sutil ajustada para o novo fundo */
     border: 1px solid #2C2C2E;
 }
 
@@ -61,7 +60,7 @@ body::-webkit-scrollbar {
 }
 
 .bottom-nav {
-    /* MUDANÇA: Ajuste de transparência para fundo preto */
+    /* MUDANÇA: Transparência ajustada para fundo preto */
     background-color: rgba(28, 28, 30, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -122,30 +121,82 @@ input[type=number] {
     -moz-appearance: textfield; 
 }
 
+/* ==================================================================
+   MUDANÇA: NOVO LOADER FINANCEIRO (Barras Oscilando)
+   ================================================================== */
+
+/* Loader Grande (Carregamento de tela) */
 .loader {
-    width: 48px;
-    height: 48px;
-    border: 5px solid #4b5563; 
-    border-bottom-color: #c084fc;
-    border-radius: 50%;
-    display: inline-block;
-    box-sizing: border-box;
-    animation: rotation 1s linear infinite;
+    position: relative;
+    width: 10px;
+    height: 40px;
+    background: #c084fc; /* Roxo Vesto */
+    animation: finance-bars 0.5s infinite linear;
+    animation-delay: 0.25s;
+    margin: 0 auto;
 }
+
+.loader::before,
+.loader::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 40px;
+    background: #c084fc;
+    animation: finance-bars 0.5s infinite linear;
+}
+
+.loader::before {
+    left: -15px;
+    animation-delay: 0s;
+}
+
+.loader::after {
+    right: -15px;
+    animation-delay: 0.5s;
+}
+
+/* Loader Pequeno (Dentro de botões) */
 .loader-sm {
-    width: 20px;
-    height: 20px;
-    border: 3px solid #4b5563;
-    border-bottom-color: #c084fc;
-    border-radius: 50%;
+    position: relative;
+    width: 4px;
+    height: 16px;
+    background: #ffffff; /* Branco para contraste no botão roxo */
+    animation: finance-bars 0.5s infinite linear;
+    animation-delay: 0.25s;
     display: inline-block;
-    box-sizing: border-box;
-    animation: rotation 1s linear infinite;
+    margin: 0 6px;
+    vertical-align: middle;
 }
-@keyframes rotation { 
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+
+.loader-sm::before,
+.loader-sm::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 16px;
+    background: #ffffff;
+    animation: finance-bars 0.5s infinite linear;
 }
+
+.loader-sm::before {
+    left: -6px;
+    animation-delay: 0s;
+}
+
+.loader-sm::after {
+    right: -6px;
+    animation-delay: 0.5s;
+}
+
+/* Animação que simula volatilidade/candles */
+@keyframes finance-bars {
+    0% { transform: scaleY(1); opacity: 1; }
+    50% { transform: scaleY(0.4); opacity: 0.5; }
+    100% { transform: scaleY(1); opacity: 1; }
+}
+/* ================================================================== */
+
 
 .scrollable-content {
       max-height: 40vh; 
@@ -217,7 +268,7 @@ input[type=number] {
 .page-content {
     transition: transform 0.4s ease-in-out;
     transform: translateY(100%);
-    /* MUDANÇA: Fundo do modal consistente com os cards */
+    /* MUDANÇA: Fundo do modal #1C1C1E */
     background-color: #1C1C1E;
     position: fixed; 
     bottom: 0;

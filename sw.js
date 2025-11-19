@@ -1,8 +1,8 @@
-// sw.js (v4 - Cache Otimizado + Correção de Clone)
+// sw.js (Atualizado para v4 para forçar a limpeza do cache antigo)
 
-const CACHE_NAME = 'vesto-cache-v4'; // Versão atualizada
+const CACHE_NAME = 'vesto-cache-v4'; // MUDANÇA IMPORTANTE: v3 -> v4
 
-// Arquivos que são o "shell" do app e mudam com frequência (Network-First)
+// Arquivos que são o "shell" do app e mudam com frequência
 const APP_SHELL_FILES_NETWORK_FIRST = [
   '/',
   'logo-vesto.png', 
@@ -12,7 +12,7 @@ const APP_SHELL_FILES_NETWORK_FIRST = [
   'style.css'
 ];
 
-// Arquivos que raramente mudam (Cache-First)
+// Arquivos que raramente mudam (ícones, CDNs, etc)
 const APP_SHELL_FILES_CACHE_FIRST = [
   'manifest.json',
   'icons/icon-192x192.png',
@@ -22,7 +22,7 @@ const APP_SHELL_FILES_CACHE_FIRST = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('[SW] Instalando v4...');
+  console.log('[SW] Instalando v4...'); // Log atualizado
 
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -45,6 +45,7 @@ self.addEventListener('install', event => {
 
         return Promise.all([...cdnCachePromise, localCachePromise]);
       })
+      // Adiciona os arquivos principais (Network-First) ao cache também para garantir disponibilidade inicial
       .then(() => caches.open(CACHE_NAME))
       .then(cache => cache.addAll(APP_SHELL_FILES_NETWORK_FIRST))
       .catch(err => console.error("[SW] Falha ao armazenar App Shell (Network-First)", err))
@@ -57,7 +58,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames
-          .filter(name => name !== CACHE_NAME) // Deleta caches antigos
+          .filter(name => name !== CACHE_NAME) // Deleta todos os caches antigos (v1, v2, v3)
           .map(name => {
             console.log('[SW] Deletando cache antigo:', name);
             return caches.delete(name);
@@ -87,8 +88,11 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
+          // Resposta da rede foi boa, atualiza o cache
           if (networkResponse.ok) {
-            const responseClone = networkResponse.clone(); // Correção aplicada
+            // CORREÇÃO: Clonar IMEDIATAMENTE, antes de qualquer operação async
+            const responseClone = networkResponse.clone();
+            
             caches.open(CACHE_NAME).then(cache => {
               cache.put(event.request, responseClone);
             });
@@ -96,26 +100,40 @@ self.addEventListener('fetch', event => {
           return networkResponse;
         })
         .catch(err => {
+          // Rede falhou (offline), tenta pegar do cache
           console.log(`[SW] Rede falhou para ${url.pathname}, tentando cache...`);
           return caches.match(event.request)
             .then(cachedResponse => {
-              if (cachedResponse) return cachedResponse;
+              if (cachedResponse) {
+                return cachedResponse;
+              }
+              // Se não há cache, retorna uma resposta de erro amigável (FALLBACK)
               console.error(`[SW] Falha crítica: Sem rede e sem cache para ${url.pathname}`);
-              return new Response('Offline.', { status: 503 });
+              return new Response('Offline: Recurso não disponível. Verifique sua conexão.', {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: new Headers({ 'Content-Type': 'text/plain' })
+              });
             });
         })
     );
     return;
   }
 
-  // 4. Estratégia "Cache-First" para o resto
+  // 4. Estratégia "Cache-First" para o resto (ícones, CDNs, etc)
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
-        if (cachedResponse) return cachedResponse;
+        // Encontrou no cache, retorna
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        // Não encontrou, busca na rede e armazena
         return fetch(event.request).then(networkResponse => {
           if (networkResponse.ok) {
-            const responseClone = networkResponse.clone(); // Correção aplicada
+            // CORREÇÃO: Clonar IMEDIATAMENTE aqui também
+            const responseClone = networkResponse.clone();
+            
             caches.open(CACHE_NAME).then(cache => {
               cache.put(event.request, responseClone);
             });
@@ -128,6 +146,7 @@ self.addEventListener('fetch', event => {
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'SKIP_WAITING') {
+    console.log('[SW] Recebeu ordem para SKIP_WAITING');
     self.skipWaiting();
   }
 });

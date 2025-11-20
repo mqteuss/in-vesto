@@ -71,9 +71,12 @@ body::-webkit-scrollbar {
     position: fixed;
     bottom: 1.5rem;
     
-    /* Centralização absoluta */
-    left: 50%;
-    transform: translateX(-50%);
+    /* CORREÇÃO DE CENTRALIZAÇÃO:
+       Fixa as ancoras laterais em 0 e usa margem automática */
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
     
     /* Tamanho e limites */
     width: 90%;
@@ -81,10 +84,6 @@ body::-webkit-scrollbar {
     
     z-index: 50;
     border-radius: 9999px;
-    
-    /* Reset de margens e posicionamento direito */
-    margin: 0; 
-    right: auto;
 }
 
 .tab-button {

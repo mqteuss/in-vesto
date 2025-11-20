@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#1A1A1A">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -18,7 +18,7 @@
 </head>
 <body class="antialiased">
 
-    <div id="biometric-lock-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 hidden">
+    <div id="biometric-lock-screen" class="fixed inset-0 z-[100] bg-[#131217] flex flex-col items-center justify-center p-6 hidden">
             
         <div class="relative mb-8 group cursor-pointer" id="btn-desbloquear">
             <div class="absolute inset-0 bg-purple-500/20 rounded-full blur-xl group-hover:bg-purple-500/30 transition-all duration-500"></div>
@@ -41,10 +41,8 @@
     <script>
         try {
             const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
-            // Se existir essa flag na sessão, significa que o usuário acabou de clicar em SAIR voluntariamente
             const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
 
-            // Só bloqueia se a bio estiver ativa E o usuário NÃO tiver acabado de sair
             if (bioEnabled && !justLoggedOut) {
                 document.getElementById('biometric-lock-screen').classList.remove('hidden');
             }
@@ -53,6 +51,7 @@
 
     <div id="auth-container" class="max-w-lg mx-auto min-h-screen p-4 flex flex-col justify-center">
         <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-48 h-auto mx-auto mb-10">
+        
         <form id="login-form" class="card-bg p-6 rounded-2xl space-y-4">
             <h2 class="text-xl font-semibold text-white text-center mb-4">Login</h2>
             
@@ -85,6 +84,12 @@
                 </button>
             </div>
             
+            <div class="flex justify-end">
+                <button type="button" id="show-recover-btn" class="text-xs text-purple-400 hover:text-purple-300 transition-colors focus:outline-none">
+                    Esqueci minha senha
+                </button>
+            </div>
+
             <button 
                 id="login-submit-btn"
                 type="submit"
@@ -169,6 +174,39 @@
                 Já tem uma conta?
                 <button type="button" id="show-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">
                     Entrar
+                </button>
+            </p>
+        </form>
+
+        <form id="recover-form" class="card-bg p-6 rounded-2xl space-y-4 hidden">
+            <h2 class="text-xl font-semibold text-white text-center mb-2">Recuperar Senha</h2>
+            <p class="text-sm text-gray-400 text-center mb-4">Digite seu e-mail para receber o link de redefinição.</p>
+
+            <div id="recover-message" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/50 rounded-lg">
+                E-mail enviado! Verifique sua caixa de entrada e spam.
+            </div>
+            <div id="recover-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-lg"></div>
+
+            <input 
+                type="email" 
+                id="recover-email" 
+                placeholder="Seu e-mail cadastrado" 
+                required
+                class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-white"
+            >
+            
+            <button 
+                id="recover-submit-btn"
+                type="submit"
+                class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
+            >
+                Enviar Link
+            </button>
+            
+            <p class="text-sm text-center text-gray-400 pt-2">
+                Lembrou a senha?
+                <button type="button" id="back-to-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">
+                    Voltar para Login
                 </button>
             </p>
         </form>
@@ -550,7 +588,7 @@
         <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
             <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
 
-                <div class="flex justify-between items-center p-4 border-b border-[#2C2C2E] sticky top-0 bg-[#1C1C1E]/90 backdrop-blur-md rounded-t-2xl z-10">
+                <div class="flex justify-between items-center p-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
                     <div id="detalhes-titulo" class="flex-1 min-w-0">
                         <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
                          <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
@@ -610,6 +648,41 @@
                 </div>
             </div>
         </div>
+        
+        <div id="new-password-modal" class="custom-modal fixed inset-0 z-[70] items-center justify-center p-4 bg-black bg-opacity-80 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
+                <h3 class="text-xl font-semibold text-white text-center mb-4">Definir Nova Senha</h3>
+                <p class="text-sm text-gray-400 text-center mb-6">Sua conta foi verificada. Digite sua nova senha abaixo.</p>
+                
+                <form id="new-password-form" class="space-y-4">
+                    <div class="relative">
+                        <input 
+                            type="password" 
+                            id="new-password-input" 
+                            placeholder="Nova senha (mín. 6 caracteres)" 
+                            required
+                            class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-white pr-10"
+                        >
+                         <button type="button" class="password-toggle" data-target="new-password-input">
+                            <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            </svg>
+                            <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            </svg>
+                        </button>
+                    </div>
+                    <button 
+                        type="submit" 
+                        id="new-password-btn"
+                        class="w-full py-3 accent-bg text-white font-semibold rounded-lg shadow-md"
+                    >
+                        Salvar Nova Senha
+                    </button>
+                </form>
+            </div>
+        </div>
 
         <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
             <div id="toast-notification" 
@@ -619,7 +692,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 
-                <svg id="toast-icon-success" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg id="toast-icon-success" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke-currentColor="stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
 

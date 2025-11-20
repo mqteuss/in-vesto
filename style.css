@@ -1,6 +1,5 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    /* Preto absoluto para OLED */
     background-color: #000000;
     background-image: none;
     color: #f3f4f6;
@@ -19,9 +18,7 @@ body::-webkit-scrollbar {
 
 /* --- CARDS INVISÍVEIS --- */
 .card-bg {
-    /* Fundo preto para fundir com o body */
     background-color: #000000;
-    /* Borda #2C2C2E para contraste visível mas sutil */
     border: 1px solid #2C2C2E;
 }
 
@@ -57,51 +54,74 @@ body::-webkit-scrollbar {
 
 @keyframes gentleFloat {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
+    50% { transform: translateY(-2px); } /* Reduzi a flutuação para caber na barra menor */
 }
 
-/* --- BARRA DE NAVEGAÇÃO CORRIGIDA (Centralizada) --- */
+/* --- BARRA DE NAVEGAÇÃO (Ajustada e Compacta) --- */
 .bottom-nav {
     background-color: rgba(28, 28, 30, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    
     border: 1px solid #2C2C2E;
     
     position: fixed;
     bottom: 1.5rem;
     
-    /* CORREÇÃO DE CENTRALIZAÇÃO:
-       Fixa as ancoras laterais em 0 e usa margem automática */
+    /* Centralização na Tela */
     left: 0;
     right: 0;
     margin-left: auto;
     margin-right: auto;
     
-    /* Tamanho e limites */
+    /* --- DIMENSÕES AJUSTADAS --- */
     width: 90%;
-    max-width: 400px;
+    max-width: 340px; /* Mais estreita horizontalmente (antes 400px) */
+    height: 3.5rem;   /* Mais baixa verticalmente (antes 4rem) */
     
     z-index: 50;
     border-radius: 9999px;
+
+    /* Organização dos ícones */
+    display: flex;               
+    justify-content: space-evenly; /* space-evenly distribui melhor em espaços menores */
+    align-items: center;        
+    padding: 0 0.25rem;
+    box-sizing: border-box;
 }
 
+/* --- BOTÕES INDIVIDUAIS --- */
 .tab-button {
     color: #6b7280; 
     transition: all 0.3s ease-in-out;
-    flex: 1; 
+    
+    flex: 1;                     
+    display: flex;
+    flex-direction: column;
+    align-items: center;         
+    justify-content: center;     
+    height: 100%;                
+    
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .tab-button:active { transform: scale(0.90); }
 
 .tab-button.active {
     color: #c084fc;
-    transform: translateY(-4px); 
+    /* Reduzi a subida para não jogar o ícone para fora da barra menor */
+    transform: translateY(-2px); 
 }
 
 .tab-button.active .tab-button-icon-wrapper {
       animation: gentleFloat 1.5s ease-in-out infinite;
       position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 }
 
 .tab-button.active .tab-button-icon-wrapper::before {
@@ -110,8 +130,11 @@ body::-webkit-scrollbar {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 40px; 
-    height: 40px;
+    
+    /* Reduzi o tamanho do Halo para caber na altura 3.5rem */
+    width: 34px; 
+    height: 34px;
+    
     background-color: rgba(192, 132, 252, 0.15);
     border-radius: 9999px;
     z-index: -1;
@@ -123,7 +146,6 @@ body::-webkit-scrollbar {
     from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
     to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
-
 
 .spin-animation { animation: spin 1s linear infinite; }
 @keyframes spin {
@@ -505,10 +527,7 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active{
-    /* Força o fundo a ser a cor do input (#1C1C1E) usando sombra interna */
     -webkit-box-shadow: 0 0 0 30px #1C1C1E inset !important;
-    /* Força a cor do texto a ser branca */
     -webkit-text-fill-color: white !important;
-    /* Impede a transição de cor de fundo padrão do navegador */
     transition: background-color 5000s ease-in-out 0s;
 }

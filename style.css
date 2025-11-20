@@ -54,10 +54,10 @@ body::-webkit-scrollbar {
 
 @keyframes gentleFloat {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-2px); } /* Reduzi a flutuação para caber na barra menor */
+    50% { transform: translateY(-3px); } /* Ajustado para a nova altura */
 }
 
-/* --- BARRA DE NAVEGAÇÃO (Ajustada e Compacta) --- */
+/* --- BARRA DE NAVEGAÇÃO (Compacta e Ajustada) --- */
 .bottom-nav {
     background-color: rgba(28, 28, 30, 0.85);
     backdrop-filter: blur(20px);
@@ -73,17 +73,17 @@ body::-webkit-scrollbar {
     margin-left: auto;
     margin-right: auto;
     
-    /* --- DIMENSÕES AJUSTADAS --- */
+    /* --- DIMENSÕES NOVAS --- */
     width: 90%;
-    max-width: 340px; /* Mais estreita horizontalmente (antes 400px) */
-    height: 3.5rem;   /* Mais baixa verticalmente (antes 4rem) */
+    max-width: 280px; /* Reduzido para ser bem mais compacto horizontalmente */
+    height: 3.7rem;   /* Aumentado levemente na vertical conforme pedido */
     
     z-index: 50;
     border-radius: 9999px;
 
     /* Organização dos ícones */
     display: flex;               
-    justify-content: space-evenly; /* space-evenly distribui melhor em espaços menores */
+    justify-content: space-evenly; 
     align-items: center;        
     padding: 0 0.25rem;
     box-sizing: border-box;
@@ -112,8 +112,8 @@ body::-webkit-scrollbar {
 
 .tab-button.active {
     color: #c084fc;
-    /* Reduzi a subida para não jogar o ícone para fora da barra menor */
-    transform: translateY(-2px); 
+    /* Com 3.7rem de altura, podemos subir 3px sem sair da borda */
+    transform: translateY(-3px); 
 }
 
 .tab-button.active .tab-button-icon-wrapper {
@@ -131,9 +131,9 @@ body::-webkit-scrollbar {
     left: 50%;
     transform: translate(-50%, -50%);
     
-    /* Reduzi o tamanho do Halo para caber na altura 3.5rem */
-    width: 34px; 
-    height: 34px;
+    /* Ajustado proporcionalmente para a altura 3.7rem */
+    width: 36px; 
+    height: 36px;
     
     background-color: rgba(192, 132, 252, 0.15);
     border-radius: 9999px;

@@ -17,12 +17,12 @@ body::-webkit-scrollbar {
     display: none;
 }
 
-/* --- MUDANÇA PRINCIPAL: CARD "INVISÍVEL" --- */
+/* --- CARDS INVISÍVEIS --- */
 .card-bg {
-    /* Fundo preto igual ao body */
+    /* Fundo preto para fundir com o body */
     background-color: #000000;
-    /* Apenas a borda define o card agora (cinza muito escuro) */
-    border: 1px solid #1C1C1E;
+    /* MUDANÇA: Borda #2C2C2E para contraste visível mas sutil */
+    border: 1px solid #2C2C2E;
 }
 
 .accent-bg {
@@ -60,11 +60,22 @@ body::-webkit-scrollbar {
     50% { transform: translateY(-3px); }
 }
 
+/* --- MUDANÇA: BARRA DE NAVEGAÇÃO MAIS ESTREITA --- */
 .bottom-nav {
     background-color: rgba(28, 28, 30, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-top: 0.5px solid #2C2C2E;
+    
+    /* Borda #2C2C2E para combinar com os cards */
+    border: 1px solid #2C2C2E;
+    
+    /* Lógica para estreitar e centralizar a barra */
+    width: 90%;           /* Ocupa 90% da largura da tela (antes era quase 100%) */
+    max-width: 450px;     /* Limite máximo para não esticar muito em tablets */
+    left: 50%;            /* Posiciona o início no meio da tela */
+    right: auto;          /* Remove a ancoragem da direita */
+    transform: translateX(-50%); /* Traz de volta 50% do próprio tamanho para centralizar exato */
+    bottom: 1.5rem;       /* Ajuste fino da altura (bottom-6 do Tailwind) */
 }
 
 .tab-button {
@@ -216,10 +227,11 @@ input[type=number] {
 .custom-modal { display: none; }
 .custom-modal.visible { display: flex; }
 
-/* --- MUDANÇA: Modal Central (Popups de Confirmação) --- */
+/* POPUP CENTRAL (ALERTAS) */
 .custom-modal.visible .modal-content {
     background-color: #000000;
-    border: 1px solid #1C1C1E;
+    /* Borda #2C2C2E */
+    border: 1px solid #2C2C2E;
     animation: modalIn 0.2s ease-out forwards;
 }
 
@@ -236,9 +248,8 @@ input[type=number] {
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
-/* --- MUDANÇA: Inputs --- 
-   Como o fundo é preto, colocamos um fundo cinza escuro nos inputs
-   para criar contraste (caixa de texto visível) */
+/* INPUTS */
+/* Fundo #1C1C1E para profundidade, Borda #2C2C2E para consistência */
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
 #add-ativo-modal input[type="number"],
@@ -246,7 +257,7 @@ input[type=number] {
 #auth-container input[type="email"],
 #auth-container input[type="password"] {
     transition: all 0.2s ease-in-out;
-    background-color: #1C1C1E;
+    background-color: #1C1C1E; 
     border: 1px solid #2C2C2E;
     color: #ffffff;
 }
@@ -272,14 +283,14 @@ input[type=number] {
     pointer-events: auto;
 }
 
-/* --- MUDANÇA: Page Content (Detalhes que sobem) --- */
+/* MODAL DE DETALHES (SLIDE UP) */
 .page-content {
     transition: transform 0.4s ease-in-out;
     transform: translateY(100%);
     
-    /* Fundo preto e borda no topo para separar do conteúdo atrás */
+    /* Fundo preto e borda no topo #2C2C2E */
     background-color: #000000;
-    border-top: 1px solid #1C1C1E;
+    border-top: 1px solid #2C2C2E;
     
     position: fixed; 
     bottom: 0;

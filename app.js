@@ -487,12 +487,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================================
-    // FUNÇÕES DE BIOMETRIA (ATUALIZADO: SEGURANÇA)
+    // FUNÇÕES DE BIOMETRIA
     // ==========================================================
     
     async function verificarStatusBiometria() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
         
+        // Ícone fica Verde se Ativo, Vermelho se Desativado
         if (bioStatusIcon) {
             if (bioEnabled) {
                 bioStatusIcon.classList.remove('text-gray-500', 'text-red-500');
@@ -502,7 +503,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bioStatusIcon.classList.add('text-red-500');
             }
         }
-        // Removido a chamada automática aqui para controlar no init
+
+        if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => autenticarBiometria(), 500);
+        }
     }
 
     async function ativarBiometria() {
@@ -581,15 +586,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const assertion = await navigator.credentials.get({ publicKey });
 
             if (assertion) {
-                // --- CORREÇÃO DE SEGURANÇA ---
-                // Desbloqueia a tela E carrega os dados
-                if (!biometricLockScreen.classList.contains('hidden')) {
-                    biometricLockScreen.classList.add('hidden');
-                    document.body.style.overflow = '';
-                    showToast('Acesso liberado!', 'success');
-                    // AQUI É O PULO DO GATO: Carrega os dados só agora
-                    carregarDadosIniciais();
-                }
+                biometricLockScreen.classList.add('hidden');
+                document.body.style.overflow = '';
+                showToast('Acesso liberado!', 'success');
             }
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
@@ -628,8 +627,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (btnSairLock) {
         btnSairLock.addEventListener('click', async () => {
-            // Adicionado limpeza de segurança ao sair pelo lock screen
-            localStorage.removeItem('vesto_bio_enabled'); // Evita loop de bloqueio
             await supabaseDB.signOut();
             window.location.reload();
         });
@@ -690,6 +687,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
             
             if (isFII(symbol)) {
+                // MUDANÇA: Adicionando ID do usuário na remoção do cache
                  const userKey = currentUserId ? `_${currentUserId}` : '';
                  await vestoDB.delete('apiCache', `cache_grafico_historico${userKey}`);
             }
@@ -1266,6 +1264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
+    
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
         const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
@@ -2931,25 +2930,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (session) {
             currentUserId = session.user.id;
-            authContainer.classList.add('hidden');
+            authContainer.classList.add('hidden');    
+            appWrapper.classList.remove('hidden'); 
             
-            // --- CORREÇÃO DE SEGURANÇA DA BIOMETRIA (PARTE FINAL) ---
-            const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
-            const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
+            await verificarStatusBiometria();
             
-            // Se a biometria estiver ativa, NÃO libera o app wrapper e NÃO carrega dados
-            if (bioEnabled && !justLoggedOut) {
-                // Mostra apenas a tela de bloqueio
-                biometricLockScreen.classList.remove('hidden');
-                // Tenta autenticar (se der certo, a função autenticarBiometria chama o resto)
-                autenticarBiometria();
-            } else {
-                // Se não tiver biometria, segue o fluxo normal
-                appWrapper.classList.remove('hidden'); 
-                mudarAba('tab-dashboard'); 
-                await carregarDadosIniciais();
-            }
-
+            mudarAba('tab-dashboard'); 
+            await carregarDadosIniciais();
         } else {
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 

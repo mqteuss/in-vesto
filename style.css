@@ -21,7 +21,7 @@ body::-webkit-scrollbar {
 .card-bg {
     /* Fundo preto para fundir com o body */
     background-color: #000000;
-    /* MUDANÇA: Borda #2C2C2E para contraste visível mas sutil */
+    /* Borda #2C2C2E para contraste visível mas sutil */
     border: 1px solid #2C2C2E;
 }
 
@@ -60,22 +60,31 @@ body::-webkit-scrollbar {
     50% { transform: translateY(-3px); }
 }
 
-/* --- MUDANÇA: BARRA DE NAVEGAÇÃO MAIS ESTREITA --- */
+/* --- BARRA DE NAVEGAÇÃO CORRIGIDA (Centralizada) --- */
 .bottom-nav {
     background-color: rgba(28, 28, 30, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     
-    /* Borda #2C2C2E para combinar com os cards */
     border: 1px solid #2C2C2E;
     
-    /* Lógica para estreitar e centralizar a barra */
-    width: 90%;           /* Ocupa 90% da largura da tela (antes era quase 100%) */
-    max-width: 450px;     /* Limite máximo para não esticar muito em tablets */
-    left: 50%;            /* Posiciona o início no meio da tela */
-    right: auto;          /* Remove a ancoragem da direita */
-    transform: translateX(-50%); /* Traz de volta 50% do próprio tamanho para centralizar exato */
-    bottom: 1.5rem;       /* Ajuste fino da altura (bottom-6 do Tailwind) */
+    position: fixed;
+    bottom: 1.5rem;
+    
+    /* Centralização absoluta */
+    left: 50%;
+    transform: translateX(-50%);
+    
+    /* Tamanho e limites */
+    width: 90%;
+    max-width: 400px;
+    
+    z-index: 50;
+    border-radius: 9999px;
+    
+    /* Reset de margens e posicionamento direito */
+    margin: 0; 
+    right: auto;
 }
 
 .tab-button {
@@ -230,7 +239,6 @@ input[type=number] {
 /* POPUP CENTRAL (ALERTAS) */
 .custom-modal.visible .modal-content {
     background-color: #000000;
-    /* Borda #2C2C2E */
     border: 1px solid #2C2C2E;
     animation: modalIn 0.2s ease-out forwards;
 }
@@ -249,7 +257,6 @@ input[type=number] {
 }
 
 /* INPUTS */
-/* Fundo #1C1C1E para profundidade, Borda #2C2C2E para consistência */
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
 #add-ativo-modal input[type="number"],
@@ -288,7 +295,7 @@ input[type=number] {
     transition: transform 0.4s ease-in-out;
     transform: translateY(100%);
     
-    /* Fundo preto e borda no topo #2C2C2E */
+    /* Fundo preto e borda no topo */
     background-color: #000000;
     border-top: 1px solid #2C2C2E;
     
@@ -492,4 +499,17 @@ button:active,
 }
 .password-toggle:hover {
     color: #d1d5db;
+}
+
+/* --- CORREÇÃO: REMOVER FUNDO BRANCO DO AUTOCOMPLETE --- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active{
+    /* Força o fundo a ser a cor do input (#1C1C1E) usando sombra interna */
+    -webkit-box-shadow: 0 0 0 30px #1C1C1E inset !important;
+    /* Força a cor do texto a ser branca */
+    -webkit-text-fill-color: white !important;
+    /* Impede a transição de cor de fundo padrão do navegador */
+    transition: background-color 5000s ease-in-out 0s;
 }

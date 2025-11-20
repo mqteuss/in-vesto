@@ -627,6 +627,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (btnSairLock) {
         btnSairLock.addEventListener('click', async () => {
+            // === CORREÇÃO: Limpeza ao Sair da Biometria ===
+            await vestoDB.clear('apiCache');
+            localStorage.removeItem('vesto_last_user');
+            sessionStorage.clear();
+            
             await supabaseDB.signOut();
             window.location.reload();
         });
@@ -2888,7 +2893,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         logoutBtn.addEventListener('click', () => {
             showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
+                // === MUDANÇA CRUCIAL: Limpar cache local ao sair ===
+                try { await vestoDB.clear('apiCache'); } catch (e) { console.error(e); }
                 sessionStorage.setItem('vesto_just_logged_out', 'true');
+                localStorage.removeItem('vesto_last_user'); // Remove rastreamento
                 await supabaseDB.signOut();
                 window.location.reload();
             });
@@ -2917,6 +2925,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (session) {
             currentUserId = session.user.id;
+
+            // === MUDANÇA CRUCIAL: Verificar se o usuário mudou ===
+            const lastUserId = localStorage.getItem('vesto_last_user');
+            if (lastUserId && lastUserId !== currentUserId) {
+                console.log("[Vesto] Usuário alterado. Limpando cache...");
+                try { 
+                    await vestoDB.clear('apiCache'); 
+                    // Zera variáveis de memória para garantir
+                    transacoes = [];
+                    carteiraCalculada = [];
+                    patrimonio = [];
+                } catch(e) { console.error("Erro ao limpar cache na troca:", e); }
+            }
+            localStorage.setItem('vesto_last_user', currentUserId);
+
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
             

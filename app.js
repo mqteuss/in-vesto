@@ -307,11 +307,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const authContainer = document.getElementById('auth-container');
     const authLoading = document.getElementById('auth-loading');
+    
+    // Login Form
     const loginForm = document.getElementById('login-form');
     const loginEmailInput = document.getElementById('login-email');
     const loginPasswordInput = document.getElementById('login-password');
     const loginSubmitBtn = document.getElementById('login-submit-btn');
     const loginError = document.getElementById('login-error');
+    
+    // Signup Form
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
@@ -319,8 +323,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const signupSubmitBtn = document.getElementById('signup-submit-btn');
     const signupError = document.getElementById('signup-error');
     const signupSuccess = document.getElementById('signup-success'); 
+    
+    // Recover Form
+    const recoverForm = document.getElementById('recover-form');
+    const recoverEmailInput = document.getElementById('recover-email');
+    const recoverSubmitBtn = document.getElementById('recover-submit-btn');
+    const recoverError = document.getElementById('recover-error');
+    const recoverMessage = document.getElementById('recover-message');
+    const showRecoverBtn = document.getElementById('show-recover-btn');
+    const backToLoginBtn = document.getElementById('back-to-login-btn');
+    
+    // Navigation Buttons
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
+    
+    // New Password Modal
+    const newPasswordModal = document.getElementById('new-password-modal');
+    const newPasswordForm = document.getElementById('new-password-form');
+    const newPasswordInput = document.getElementById('new-password-input');
+    const newPasswordBtn = document.getElementById('new-password-btn');
+
+    // App Core
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
@@ -394,13 +417,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
     const watchlistStatusEl = document.getElementById('watchlist-status');
     
-    // --- VARIÁVEIS BIOMETRIA (NOVAS) ---
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
-    const iconBioOff = document.getElementById('icon-bio-off');
-    const iconBioOn = document.getElementById('icon-bio-on');
+    const bioStatusIcon = document.getElementById('bio-status-icon'); 
 
     let currentUserId = null;
     let transacoes = [];        
@@ -466,7 +487,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================================
-    // FUNÇÕES DE BIOMETRIA (WEBAUTHN) - CORRIGIDO PARA VERCEL
+    // FUNÇÕES DE BIOMETRIA
     // ==========================================================
     
     async function verificarStatusBiometria() {
@@ -499,27 +520,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
-            // --- CORREÇÃO VERCEL: Detecta domínio automaticamente ---
             const currentDomain = window.location.hostname;
+            const userIdBuffer = Uint8Array.from(currentUserId || "user_id", c => c.charCodeAt(0));
 
             const publicKey = {
                 challenge: challenge,
-                rp: { 
-                    name: "Vesto App",
-                    id: currentDomain // Força o ID correto para produção
-                },
+                rp: { name: "Vesto App", id: currentDomain },
                 user: {
-                    id: Uint8Array.from(currentUserId, c => c.charCodeAt(0)),
+                    id: userIdBuffer,
                     name: "usuario@vesto",
                     displayName: "Usuário Vesto"
                 },
-                // Suporte ampliado de algoritmos (ES256 e RS256)
-                pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }], 
+                pubKeyCredParams: [
+                    { type: "public-key", alg: -7 },
+                    { type: "public-key", alg: -257 }
+                ],
                 authenticatorSelection: { 
                     authenticatorAttachment: "platform", 
-                    userVerification: "required" 
+                    userVerification: "required"
                 },
-                timeout: 60000
+                timeout: 60000,
+                attestation: "none"
             };
 
             const credential = await navigator.credentials.create({ publicKey });
@@ -529,12 +550,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('vesto_bio_id', credentialId);
                 localStorage.setItem('vesto_bio_enabled', 'true');
                 verificarStatusBiometria();
-                showToast('Biometria Digital ativada!', 'success'); // <-- MUDANÇA AQUI
+                showToast('Face ID / Digital ativado!', 'success');
             }
         } catch (e) {
             console.error("Erro biometria:", e);
-            // Mostra o erro real para facilitar debug no celular
-            showToast(`Erro: ${e.name} - Tente limpar o cache.`);
+            showToast(`Erro ao ativar: ${e.message || e.name}`);
         }
     }
 
@@ -572,6 +592,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
+            if (e.name !== 'NotAllowedError') {
+                 showToast("Falha na leitura biométrica.");
+            }
         }
     }
 
@@ -1495,7 +1518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             newsCard.innerHTML = `
                 <div class="flex items-start gap-3">
                     <img src="${faviconUrl}" alt="Logo ${sourceName}" 
-                         class="w-12 h-12 rounded-lg object-contain p-1.5 flex-shrink-0 bg-gray-700"
+                         class="w-10 h-10 rounded-lg object-contain p-1.5 flex-shrink-0 bg-gray-700"
                          onerror="this.style.backgroundColor='#4b5563'; this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';" 
                     />
                     <div class="flex-1 min-w-0">

@@ -60,8 +60,8 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
-    // ATUALIZADO PARA GEMINI 3 PRO PREVIEW
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${NEWS_GEMINI_API_KEY}`;
+    // ATUALIZADO: Usando o alias genérico para a versão 2.5 Flash
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
         const { todayString } = request.body;
@@ -80,7 +80,8 @@ export default async function handler(request, response) {
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
-        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") { // Corrigido typo MAX_TOKSENS para MAX_TOKENS por segurança
+        // CORREÇÃO: Typo corrigido de 'MAX_TOKSENS' para 'MAX_TOKENS'
+        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
              if (candidate?.finishReason) {
                  throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
              }

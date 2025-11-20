@@ -12,6 +12,12 @@ function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
     const message = error.message;
 
+    // --- TRADUÇÃO DE ERRO DE LOGIN ---
+    if (message.includes("Invalid login credentials")) {
+         return "E-mail ou senha incorretos.";
+    }
+    // --------------------------------
+
     if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
          return "Este e-mail já está cadastrado. Tente fazer login.";
     }

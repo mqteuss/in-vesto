@@ -1,6 +1,6 @@
-// sw.js (Atualizado para v5 - Correção de Cache de Dados de Usuário)
+// sw.js (Atualizado para v6 - Força atualização de CSS da Navbar)
 
-const CACHE_NAME = 'vesto-cache-v5'; // MUDANÇA IMPORTANTE: v4 -> v5
+const CACHE_NAME = 'vesto-cache-v6'; // MUDANÇA: v5 -> v6
 
 // Arquivos que são o "shell" do app e mudam com frequência
 const APP_SHELL_FILES_NETWORK_FIRST = [
@@ -22,7 +22,7 @@ const APP_SHELL_FILES_CACHE_FIRST = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('[SW] Instalando v5...'); 
+  console.log('[SW] Instalando v6...'); 
   self.skipWaiting(); // Força a ativação imediata do novo SW
 
   event.waitUntil(
@@ -50,7 +50,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('[SW] Ativando v5...');
+  console.log('[SW] Ativando v6...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -66,7 +66,6 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
   // 1. IGNORAR API E SUPABASE (Sempre Rede)
-  // Isso garante que dados do usuário nunca sejam cacheados pelo SW
   if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
     event.respondWith(fetch(event.request));
     return;

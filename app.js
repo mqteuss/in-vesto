@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const signupError = document.getElementById('signup-error');
     const signupSuccess = document.getElementById('signup-success'); 
     
-    // Recover Form (NOVO)
+    // Recover Form
     const recoverForm = document.getElementById('recover-form');
     const recoverEmailInput = document.getElementById('recover-email');
     const recoverSubmitBtn = document.getElementById('recover-submit-btn');
@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
     
-    // New Password Modal (NOVO)
+    // New Password Modal
     const newPasswordModal = document.getElementById('new-password-modal');
     const newPasswordForm = document.getElementById('new-password-form');
     const newPasswordInput = document.getElementById('new-password-input');
@@ -687,7 +687,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
             
             if (isFII(symbol)) {
-                 await vestoDB.delete('apiCache', 'cache_grafico_historico');
+                // MUDANÇA: Adicionando ID do usuário na remoção do cache
+                 const userKey = currentUserId ? `_${currentUserId}` : '';
+                 await vestoDB.delete('apiCache', `cache_grafico_historico${userKey}`);
             }
 
         } catch (e) {
@@ -1748,7 +1750,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
         
-        const cacheKey = 'cache_grafico_historico';
+        // MUDANÇA: Adicionando ID do usuário na chave de cache
+        const cacheKey = `cache_grafico_historico_${currentUserId}`;
         
         if (force) {
             await vestoDB.delete('apiCache', cacheKey);
@@ -2201,6 +2204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 precoData = data.results?.[0];
                 
+                // Salva cache curto para detalhe também (15min ou 12h dependendo do mercado)
                 const isAberto = isB3Open();
                 const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
                 
@@ -2888,6 +2892,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         logoutBtn.addEventListener('click', () => {
             showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
+                
+                // LIMPEZA CRÍTICA DE DADOS AO SAIR
+                try {
+                    await vestoDB.clear('apiCache'); // Limpa cache de API/Gráficos
+                    sessionStorage.clear(); // Limpa sessão do navegador
+                } catch (e) {
+                    console.error("Erro ao limpar dados locais:", e);
+                }
+                
                 sessionStorage.setItem('vesto_just_logged_out', 'true');
                 await supabaseDB.signOut();
                 window.location.reload();

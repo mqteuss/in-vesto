@@ -12,16 +12,13 @@ function handleSupabaseError(error, context) {
     console.error(`Erro no Supabase (${context}):`, error);
     const message = error.message;
 
-    // --- TRADUÇÃO DE ERRO DE LOGIN ---
     if (message.includes("Invalid login credentials")) {
          return "E-mail ou senha incorretos.";
     }
-    // --------------------------------
-
     if (message.includes("User already registered") || message.includes("duplicate key value violates unique constraint")) {
          return "Este e-mail já está cadastrado. Tente fazer login.";
     }
-    if (error.code === '42501') { // RLS policy violation
+    if (error.code === '42501') { 
         return "Erro de permissão. Contate o suporte.";
     }
     if (message.includes("fetch")) {
@@ -44,12 +41,10 @@ function handleSupabaseError(error, context) {
  */
 export async function initialize() {
     try {
-        const response = await fetch('/api/get-keys');
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || "Não foi possível carregar as chaves do servidor.");
-        }
-        const { supabaseUrl, supabaseKey } = await response.json();
+        // --- CORREÇÃO DE PERFORMANCE: CHAVES HARDCODED ---
+        // Removemos o fetch('/api/get-keys') para iniciar instantaneamente.
+        const supabaseUrl = "https://ybmkhxacxkijvxvepjkj.supabase.co";
+        const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlibWtoeGFjeGtpanZ4dmVwamtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzMTgwMjgsImV4cCI6MjA3ODg5NDAyOH0.ORllatX680hzWfnm3ymELFG18zvtfJjSJ3iQ4_eDsOg";
 
         supabaseClient = createClient(supabaseUrl, supabaseKey, {
             auth: {
@@ -92,17 +87,13 @@ export async function signUp(email, password) {
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
         if (error) throw error;
         
-        // Se a confirmação de e-mail estiver LIGADA (padrão do Supabase)
         if (data.session === null && data.user) {
-            return "success"; // Sucesso, mas precisa confirmar e-mail
+            return "success"; 
         }
-        
-        // Se a confirmação de e-mail estiver DESLIGADA
         if (data.session) {
-             return "success_signed_in"; // Sucesso e já logado
+             return "success_signed_in"; 
         }
-
-        return "success"; // Fallback para sucesso
+        return "success"; 
         
     } catch (error) {
         return handleSupabaseError(error, "signUp");
@@ -167,7 +158,7 @@ export async function savePatrimonioSnapshot(snapshot) {
     if (error) throw new Error(handleSupabaseError(error, "savePatrimonioSnapshot"));
 }
 
-// --- AppState --- (Tabela 'appstate')
+// --- AppState ---
 export async function getAppState(key) {
     const { data, error } = await supabaseClient
         .from('appstate') 
@@ -188,7 +179,7 @@ export async function saveAppState(key, value_json) {
     if (error) throw new Error(handleSupabaseError(error, "saveAppState"));
 }
 
-// --- Proventos Conhecidos --- (Tabela 'proventosconhecidos', Coluna 'paymentdate')
+// --- Proventos Conhecidos ---
 export async function getProventosConhecidos() {
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
@@ -242,7 +233,7 @@ export async function deleteProventosDoAtivo(symbol) {
     if (error) throw new Error(handleSupabaseError(error, "deleteProventosDoAtivo"));
 }
 
-// --- Watchlist --- (Tabela 'watchlist', Coluna 'addedat')
+// --- Watchlist ---
 export async function getWatchlist() {
     const { data, error } = await supabaseClient
         .from('watchlist')
@@ -283,19 +274,13 @@ export async function deleteWatchlist(symbol) {
     if (error) throw new Error(handleSupabaseError(error, "deleteWatchlist"));
 }
 
-// ===================================================================
-// RECUPERAÇÃO DE SENHA
-// ===================================================================
-
-// 1. Envia o e-mail de recuperação
+// --- RECUPERAÇÃO DE SENHA ---
 export async function sendPasswordResetEmail(email) {
-    // O redirectTo garante que o usuário volte para a URL correta do seu site
     const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin 
     });
     
     if (error) {
-        // Tratamento para evitar spam/muitas tentativas
         if (error.message.includes("Rate limit") || error.status === 429) {
             return "Muitas tentativas. Aguarde 60 segundos antes de tentar novamente.";
         }
@@ -304,7 +289,6 @@ export async function sendPasswordResetEmail(email) {
     return "success";
 }
 
-// 2. Atualiza a senha (usado após o usuário clicar no link do e-mail e o Supabase logá-lo)
 export async function updateUserPassword(newPassword) {
     const { error } = await supabaseClient.auth.updateUser({ 
         password: newPassword 

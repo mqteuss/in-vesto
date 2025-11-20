@@ -1518,7 +1518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             newsCard.innerHTML = `
                 <div class="flex items-start gap-3">
                     <img src="${faviconUrl}" alt="Logo ${sourceName}" 
-                         class="w-10 h-10 rounded-lg object-contain p-1.5 flex-shrink-0 bg-gray-700"
+                         class="w-12 h-12 rounded-lg object-contain p-1.5 flex-shrink-0 bg-gray-700"
                          onerror="this.style.backgroundColor='#4b5563'; this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';" 
                     />
                     <div class="flex-1 min-w-0">

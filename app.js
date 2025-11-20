@@ -307,15 +307,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const authContainer = document.getElementById('auth-container');
     const authLoading = document.getElementById('auth-loading');
-    
-    // Login Form
     const loginForm = document.getElementById('login-form');
     const loginEmailInput = document.getElementById('login-email');
     const loginPasswordInput = document.getElementById('login-password');
     const loginSubmitBtn = document.getElementById('login-submit-btn');
     const loginError = document.getElementById('login-error');
-    
-    // Signup Form
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
@@ -323,27 +319,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const signupSubmitBtn = document.getElementById('signup-submit-btn');
     const signupError = document.getElementById('signup-error');
     const signupSuccess = document.getElementById('signup-success'); 
-    
-    // Recover Form
-    const recoverForm = document.getElementById('recover-form');
-    const recoverEmailInput = document.getElementById('recover-email');
-    const recoverSubmitBtn = document.getElementById('recover-submit-btn');
-    const recoverError = document.getElementById('recover-error');
-    const recoverMessage = document.getElementById('recover-message');
-    const showRecoverBtn = document.getElementById('show-recover-btn');
-    const backToLoginBtn = document.getElementById('back-to-login-btn');
-    
-    // Navigation Buttons
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
-    
-    // New Password Modal
-    const newPasswordModal = document.getElementById('new-password-modal');
-    const newPasswordForm = document.getElementById('new-password-form');
-    const newPasswordInput = document.getElementById('new-password-input');
-    const newPasswordBtn = document.getElementById('new-password-btn');
-
-    // App Core
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
@@ -417,11 +394,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
     const watchlistStatusEl = document.getElementById('watchlist-status');
     
+    // --- VARIÁVEIS BIOMETRIA (NOVAS) ---
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
-    const bioStatusIcon = document.getElementById('bio-status-icon'); 
+    const iconBioOff = document.getElementById('icon-bio-off');
+    const iconBioOn = document.getElementById('icon-bio-on');
 
     let currentUserId = null;
     let transacoes = [];        
@@ -487,7 +466,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================================
-    // FUNÇÕES DE BIOMETRIA
+    // FUNÇÕES DE BIOMETRIA (WEBAUTHN) - CORRIGIDO PARA VERCEL
     // ==========================================================
     
     async function verificarStatusBiometria() {
@@ -520,27 +499,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
+            // --- CORREÇÃO VERCEL: Detecta domínio automaticamente ---
             const currentDomain = window.location.hostname;
-            const userIdBuffer = Uint8Array.from(currentUserId || "user_id", c => c.charCodeAt(0));
 
             const publicKey = {
                 challenge: challenge,
-                rp: { name: "Vesto App", id: currentDomain },
+                rp: { 
+                    name: "Vesto App",
+                    id: currentDomain // Força o ID correto para produção
+                },
                 user: {
-                    id: userIdBuffer,
+                    id: Uint8Array.from(currentUserId, c => c.charCodeAt(0)),
                     name: "usuario@vesto",
                     displayName: "Usuário Vesto"
                 },
-                pubKeyCredParams: [
-                    { type: "public-key", alg: -7 },
-                    { type: "public-key", alg: -257 }
-                ],
+                // Suporte ampliado de algoritmos (ES256 e RS256)
+                pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }], 
                 authenticatorSelection: { 
                     authenticatorAttachment: "platform", 
-                    userVerification: "required"
+                    userVerification: "required" 
                 },
-                timeout: 60000,
-                attestation: "none"
+                timeout: 60000
             };
 
             const credential = await navigator.credentials.create({ publicKey });
@@ -550,11 +529,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('vesto_bio_id', credentialId);
                 localStorage.setItem('vesto_bio_enabled', 'true');
                 verificarStatusBiometria();
-                showToast('Face ID / Digital ativado!', 'success');
+                showToast('Biometria Digital ativada!', 'success'); // <-- MUDANÇA AQUI
             }
         } catch (e) {
             console.error("Erro biometria:", e);
-            showToast(`Erro ao ativar: ${e.message || e.name}`);
+            // Mostra o erro real para facilitar debug no celular
+            showToast(`Erro: ${e.name} - Tente limpar o cache.`);
         }
     }
 
@@ -592,9 +572,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
-            if (e.name !== 'NotAllowedError') {
-                 showToast("Falha na leitura biométrica.");
-            }
         }
     }
 

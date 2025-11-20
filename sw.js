@@ -1,6 +1,6 @@
-// sw.js (Atualizado para v4 para forçar a limpeza do cache antigo)
+// sw.js (Atualizado para v5 - Correção de Cache de Dados de Usuário)
 
-const CACHE_NAME = 'vesto-cache-v4'; // MUDANÇA IMPORTANTE: v3 -> v4
+const CACHE_NAME = 'vesto-cache-v5'; // MUDANÇA IMPORTANTE: v4 -> v5
 
 // Arquivos que são o "shell" do app e mudam com frequência
 const APP_SHELL_FILES_NETWORK_FIRST = [
@@ -22,13 +22,12 @@ const APP_SHELL_FILES_CACHE_FIRST = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('[SW] Instalando v4...'); // Log atualizado
+  console.log('[SW] Instalando v5...'); 
+  self.skipWaiting(); // Força a ativação imediata do novo SW
 
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[SW] Armazenando App Shell (Cache-First) no cache');
-
         // Cache dos arquivos de CDN (no-cors)
         const cdnCachePromise = APP_SHELL_FILES_CACHE_FIRST.filter(url => url.startsWith('http'))
           .map(url => {
@@ -38,31 +37,26 @@ self.addEventListener('install', event => {
               .catch(err => console.warn(`[SW] Falha ao armazenar CDN: ${url}`, err));
           });
 
-        // Cache dos arquivos locais (ícones, manifest)
+        // Cache dos arquivos locais
         const localCachePromise = cache.addAll(
           APP_SHELL_FILES_CACHE_FIRST.filter(url => !url.startsWith('http'))
         );
 
         return Promise.all([...cdnCachePromise, localCachePromise]);
       })
-      // Adiciona os arquivos principais (Network-First) ao cache também para garantir disponibilidade inicial
       .then(() => caches.open(CACHE_NAME))
       .then(cache => cache.addAll(APP_SHELL_FILES_NETWORK_FIRST))
-      .catch(err => console.error("[SW] Falha ao armazenar App Shell (Network-First)", err))
   );
 });
 
 self.addEventListener('activate', event => {
-  console.log('[SW] Ativando v4...');
+  console.log('[SW] Ativando v5...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames
-          .filter(name => name !== CACHE_NAME) // Deleta todos os caches antigos (v1, v2, v3)
-          .map(name => {
-            console.log('[SW] Deletando cache antigo:', name);
-            return caches.delete(name);
-          })
+          .filter(name => name !== CACHE_NAME) // Limpa caches antigos
+          .map(name => caches.delete(name))
       );
     }).then(() => self.clients.claim())
   );
@@ -71,8 +65,9 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. Ignora API (sempre rede)
-  if (url.pathname.startsWith('/api/')) {
+  // 1. IGNORAR API E SUPABASE (Sempre Rede)
+  // Isso garante que dados do usuário nunca sejam cacheados pelo SW
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
     event.respondWith(fetch(event.request));
     return;
   }
@@ -83,57 +78,32 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 3. Estratégia "Network-First" para o App Shell principal
+  // 3. Estratégia "Network-First" para o App Shell
   if (APP_SHELL_FILES_NETWORK_FIRST.includes(url.pathname)) {
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
-          // Resposta da rede foi boa, atualiza o cache
           if (networkResponse.ok) {
-            // CORREÇÃO: Clonar IMEDIATAMENTE, antes de qualquer operação async
             const responseClone = networkResponse.clone();
-            
             caches.open(CACHE_NAME).then(cache => {
               cache.put(event.request, responseClone);
             });
           }
           return networkResponse;
         })
-        .catch(err => {
-          // Rede falhou (offline), tenta pegar do cache
-          console.log(`[SW] Rede falhou para ${url.pathname}, tentando cache...`);
-          return caches.match(event.request)
-            .then(cachedResponse => {
-              if (cachedResponse) {
-                return cachedResponse;
-              }
-              // Se não há cache, retorna uma resposta de erro amigável (FALLBACK)
-              console.error(`[SW] Falha crítica: Sem rede e sem cache para ${url.pathname}`);
-              return new Response('Offline: Recurso não disponível. Verifique sua conexão.', {
-                status: 503,
-                statusText: 'Service Unavailable',
-                headers: new Headers({ 'Content-Type': 'text/plain' })
-              });
-            });
-        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // 4. Estratégia "Cache-First" para o resto (ícones, CDNs, etc)
+  // 4. Estratégia "Cache-First" para estáticos
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
-        // Encontrou no cache, retorna
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        // Não encontrou, busca na rede e armazena
+        if (cachedResponse) return cachedResponse;
         return fetch(event.request).then(networkResponse => {
           if (networkResponse.ok) {
-            // CORREÇÃO: Clonar IMEDIATAMENTE aqui também
             const responseClone = networkResponse.clone();
-            
             caches.open(CACHE_NAME).then(cache => {
               cache.put(event.request, responseClone);
             });
@@ -146,7 +116,6 @@ self.addEventListener('fetch', event => {
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'SKIP_WAITING') {
-    console.log('[SW] Recebeu ordem para SKIP_WAITING');
     self.skipWaiting();
   }
 });

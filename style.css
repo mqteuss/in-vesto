@@ -54,7 +54,7 @@ body::-webkit-scrollbar {
 
 @keyframes gentleFloat {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); } /* Ajustado para a nova altura */
+    50% { transform: translateY(-3px); }
 }
 
 /* --- BARRA DE NAVEGAÇÃO (Compacta e Ajustada) --- */
@@ -67,15 +67,15 @@ body::-webkit-scrollbar {
     position: fixed;
     bottom: 1.5rem;
     
-    /* Centralização na Tela */
-    left: 0;
-    right: 0;
-    margin-left: auto;
-    margin-right: auto;
+    /* --- CENTRALIZAÇÃO ROBUSTA --- */
+    /* Removemos left:0/right:0 e usamos transform para centralizar */
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
     
     /* --- DIMENSÕES NOVAS (Ajustado para 340px) --- */
-    width: 90%;
-    max-width: 340px; /* <-- ALTERADO AQUI */
+    width: 90%;          /* Responsivo em telas muito pequenas */
+    max-width: 340px;    /* Limite fixo de 340px */
     height: 3.7rem;   
     
     z-index: 50;
@@ -112,7 +112,6 @@ body::-webkit-scrollbar {
 
 .tab-button.active {
     color: #c084fc;
-    /* Com 3.7rem de altura, podemos subir 3px sem sair da borda */
     transform: translateY(-3px); 
 }
 
@@ -131,7 +130,6 @@ body::-webkit-scrollbar {
     left: 50%;
     transform: translate(-50%, -50%);
     
-    /* Ajustado proporcionalmente para a altura 3.7rem */
     width: 36px; 
     height: 36px;
     

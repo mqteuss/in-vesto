@@ -73,10 +73,10 @@ body::-webkit-scrollbar {
     margin-left: auto;
     margin-right: auto;
     
-    /* --- DIMENSÕES NOVAS --- */
+    /* --- DIMENSÕES NOVAS (Ajustado para 340px) --- */
     width: 90%;
-    max-width: 280px; /* Reduzido para ser bem mais compacto horizontalmente */
-    height: 3.7rem;   /* Aumentado levemente na vertical conforme pedido */
+    max-width: 340px; /* <-- ALTERADO AQUI */
+    height: 3.7rem;   
     
     z-index: 50;
     border-radius: 9999px;

@@ -137,7 +137,6 @@ function criarCardElemento(ativo, dados) {
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
-    // --- AQUI ESTÁ O AJUSTE DE TAMANHO DOS ÍCONES (w-14 h-14) ---
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -308,11 +307,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const authContainer = document.getElementById('auth-container');
     const authLoading = document.getElementById('auth-loading');
+    
+    // Login Form
     const loginForm = document.getElementById('login-form');
     const loginEmailInput = document.getElementById('login-email');
     const loginPasswordInput = document.getElementById('login-password');
     const loginSubmitBtn = document.getElementById('login-submit-btn');
     const loginError = document.getElementById('login-error');
+    
+    // Signup Form
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
@@ -320,8 +323,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const signupSubmitBtn = document.getElementById('signup-submit-btn');
     const signupError = document.getElementById('signup-error');
     const signupSuccess = document.getElementById('signup-success'); 
+    
+    // Recover Form (NOVO)
+    const recoverForm = document.getElementById('recover-form');
+    const recoverEmailInput = document.getElementById('recover-email');
+    const recoverSubmitBtn = document.getElementById('recover-submit-btn');
+    const recoverError = document.getElementById('recover-error');
+    const recoverMessage = document.getElementById('recover-message');
+    const showRecoverBtn = document.getElementById('show-recover-btn');
+    const backToLoginBtn = document.getElementById('back-to-login-btn');
+    
+    // Navigation Buttons
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
+    
+    // New Password Modal (NOVO)
+    const newPasswordModal = document.getElementById('new-password-modal');
+    const newPasswordForm = document.getElementById('new-password-form');
+    const newPasswordInput = document.getElementById('new-password-input');
+    const newPasswordBtn = document.getElementById('new-password-btn');
+
+    // App Core
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
@@ -2630,11 +2652,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             authLoading.classList.remove('hidden');
             loginForm.classList.add('hidden');
             signupForm.classList.add('hidden');
+            recoverForm.classList.add('hidden'); // Esconde recuperar
         } else {
             authLoading.classList.add('hidden');
-            loginForm.classList.remove('hidden');
-            signupForm.classList.add('hidden'); 
-            signupSuccess.classList.add('hidden'); 
+            // Por padrão mostra login, mas pode ser alterado pelos listeners
         }
     }
     
@@ -2689,6 +2710,90 @@ document.addEventListener('DOMContentLoaded', async () => {
             return; 
         }
         
+        // LOGICA DE UI PARA RECUPERAÇÃO
+        if (showRecoverBtn) {
+            showRecoverBtn.addEventListener('click', () => {
+                loginForm.classList.add('hidden');
+                signupForm.classList.add('hidden');
+                recoverForm.classList.remove('hidden');
+                recoverError.classList.add('hidden');
+                recoverMessage.classList.add('hidden');
+            });
+        }
+        
+        if (backToLoginBtn) {
+            backToLoginBtn.addEventListener('click', () => {
+                recoverForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+            });
+        }
+
+        if (recoverForm) {
+            recoverForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = recoverEmailInput.value;
+                recoverError.classList.add('hidden');
+                recoverMessage.classList.add('hidden');
+                
+                recoverSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
+                recoverSubmitBtn.disabled = true;
+
+                const result = await supabaseDB.sendPasswordResetEmail(email);
+
+                if (result === 'success') {
+                    recoverMessage.classList.remove('hidden');
+                    recoverForm.reset();
+                } else {
+                    recoverError.textContent = result;
+                    recoverError.classList.remove('hidden');
+                }
+                
+                recoverSubmitBtn.innerHTML = 'Enviar Link';
+                recoverSubmitBtn.disabled = false;
+            });
+        }
+        
+        // =========================================================
+        // LOGICA PARA DETECTAR LINK DE RECUPERAÇÃO NA URL
+        // =========================================================
+        if (window.location.hash && window.location.hash.includes('type=recovery')) {
+             console.log("Modo de recuperação de senha detectado via URL Hash");
+             // Mostra modal imediatamente
+             newPasswordModal.classList.add('visible');
+             document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
+        }
+        
+        // Salvar Nova Senha
+        if (newPasswordForm) {
+            newPasswordForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const newPass = newPasswordInput.value;
+
+                if (newPass.length < 6) {
+                    showToast("A senha deve ter no mínimo 6 caracteres.");
+                    return;
+                }
+
+                newPasswordBtn.innerHTML = '<span class="loader-sm"></span>';
+                newPasswordBtn.disabled = true;
+
+                try {
+                    await supabaseDB.updateUserPassword(newPass);
+                    showToast("Senha atualizada com sucesso!", "success");
+                    
+                    setTimeout(() => {
+                        newPasswordModal.classList.remove('visible');
+                        window.location.href = "/"; // Limpa hash e vai pra home
+                    }, 1500);
+
+                } catch (error) {
+                    showToast("Erro ao atualizar senha: " + error.message);
+                    newPasswordBtn.innerHTML = 'Salvar Nova Senha';
+                    newPasswordBtn.disabled = false;
+                }
+            });
+        }
+
         showAuthLoading(true);
 
         let session;
@@ -2762,6 +2867,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         showSignupBtn.addEventListener('click', () => {
             loginForm.classList.add('hidden');
             signupForm.classList.remove('hidden');
+            recoverForm.classList.add('hidden'); // Garante que recover suma
             loginError.classList.add('hidden');
             
             signupError.classList.add('hidden'); 
@@ -2775,14 +2881,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         showLoginBtn.addEventListener('click', () => {
             signupForm.classList.add('hidden');
+            recoverForm.classList.add('hidden');
             loginForm.classList.remove('hidden');
             signupError.classList.add('hidden');
         });
         
-        // LOGICA DE LOGOUT CORRIGIDA PARA NÃO PEDIR BIOMETRIA
         logoutBtn.addEventListener('click', () => {
             showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
-                // AVISAMOS QUE O LOGOUT FOI PROPOSITAL
                 sessionStorage.setItem('vesto_just_logged_out', 'true');
                 await supabaseDB.signOut();
                 window.location.reload();
@@ -2815,9 +2920,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
             
-            // Se entrou com sucesso, removemos a flag de logout para que o próximo refresh bloqueie
-            sessionStorage.removeItem('vesto_just_logged_out');
-            
             await verificarStatusBiometria();
             
             mudarAba('tab-dashboard'); 
@@ -2825,6 +2927,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 
+            
+            // Garante que, se não estiver logado, mostre o formulário correto (login padrão)
+            if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) {
+                loginForm.classList.remove('hidden');
+            }
             showAuthLoading(false);                 
         }
     }

@@ -20,7 +20,6 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 function getGeminiPayload(todayString) {
 
-    // O systemPrompt continua o mesmo, servindo como reforço para o conteúdo
     const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 10 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **nesta semana** (data de hoje: ${todayString}).
 
 REGRAS:
@@ -39,13 +38,13 @@ EXEMPLO DE RESPOSTA JSON:
         contents: [{ parts: [{ text: userQuery }] }],
         tools: [{ "google_search": {} }],
         
-        // --- NOVO: Configuração Avançada de Geração ---
+        // --- CONFIGURAÇÃO (Sem Thinking) ---
         generationConfig: {
             temperature: 0.1,
-            // 1. Força a resposta a ser estritamente JSON
+            // Mantemos isso para garantir que não venha texto "sujo" fora do JSON
             responseMimeType: "application/json",
             
-            // 2. Schema: Define a estrutura exata dos dados (Blindagem contra erros)
+            // Mantemos o Schema para garantir que os campos title, summary, etc. existam
             responseSchema: {
                 type: "ARRAY",
                 items: {
@@ -63,15 +62,10 @@ EXEMPLO DE RESPOSTA JSON:
                     },
                     required: ["title", "summary", "sourceName", "sourceHostname", "publicationDate", "relatedTickers"]
                 }
-            },
-
-            // 3. Thinking: Habilita o raciocínio, mas esconde o texto final para não quebrar o JSON
-            thinkingConfig: {
-                includeThoughts: false, 
-                thinkingBudget: 1024 // Orçamento de tokens para pensar (ajuste conforme necessário)
             }
+            // REMOVIDO: thinkingConfig
         },
-        // ----------------------------------------------
+        // -----------------------------------
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
     };
@@ -87,7 +81,7 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
-    // Mantendo a URL v1beta para garantir acesso aos recursos novos (Schema/Thinking)
+    // Mantemos a URL v1beta e o modelo 2.5-flash (é mais rápido e inteligente que o 1.5)
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
@@ -118,14 +112,12 @@ export default async function handler(request, response) {
 
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
-        // Limpeza básica (o responseMimeType já deve garantir JSON limpo, mas isso é uma segurança extra)
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         
         let parsedJson;
         try {
              parsedJson = JSON.parse(jsonText);
         } catch (e) {
-             // Fallback para tentar encontrar array dentro do texto se algo estranho acontecer
              const jsonMatch = jsonText.match(/\[.*\]/s);
              if (jsonMatch) {
                  parsedJson = JSON.parse(jsonMatch[0]);
@@ -135,7 +127,6 @@ export default async function handler(request, response) {
         }
 
         if (!Array.isArray(parsedJson)) {
-            // Se o schema falhar e retornar um objeto único em vez de array, envolvemos num array
             parsedJson = [parsedJson]; 
         }
 

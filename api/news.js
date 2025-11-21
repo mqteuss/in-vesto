@@ -21,7 +21,7 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 function getGeminiPayload(todayString) {
 
     // Prompt otimizado e direto
-    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
+    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) APENAS DESTA SEMANA (${todayString}).
 Fontes: Principais portais financeiros do Brasil.
 Output: APENAS um array JSON. Sem markdown. Sem intro.
 

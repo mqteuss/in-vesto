@@ -45,7 +45,7 @@ export default async function handler(request, response) {
   `;
 
   const payload = {
-    contents: [{ parts: [{ text: `Encontre 8 notícias recentes de FIIs (${todayString})` }] }],
+    contents: [{ parts: [{ text: `Encontre 10 notícias recentes de FIIs (${todayString})` }] }],
     tools: [{ google_search: {} }], 
     generationConfig: {
       temperature: 0.1,

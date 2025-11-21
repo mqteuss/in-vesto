@@ -2,7 +2,6 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
             const response = await fetch(url, options);
-            // 429 = Too Many Requests, 5xx = Server Error
             if (response.status === 429 || response.status >= 500) {
                 throw new Error(`API Error: ${response.status} ${response.statusText}`);
             }
@@ -20,36 +19,43 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 function getGeminiPayload(todayString) {
-    // Otimização: Prompt direto e curto para processamento rápido.
-    const systemPrompt = `Data de hoje: ${todayString}.
-Tarefa: Buscar 10 notícias recentes (desta semana) sobre FIIs (Fundos Imobiliários) no Brasil.
-Fontes aceitas: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times, Brazil Journal.
-Saída: Retorne APENAS um array JSON.
-Formato do objeto:
-{
-  "title": "Título curto",
-  "summary": "Resumo conciso de 2 frases.",
-  "sourceName": "Nome da Fonte",
-  "sourceHostname": "dominio.com.br",
-  "publicationDate": "YYYY-MM-DD",
-  "relatedTickers": ["TICK11"] (ou [] se nenhum)
-}`;
+    // Prompt reforçado para evitar "conversa" já que não temos o JSON Mode
+    const systemPrompt = `Você é um motor de busca de notícias financeiras focado em velocidade e precisão JSON.
+Data de referência: ${todayString}.
 
-    const userQuery = `Liste as 10 notícias mais relevantes da semana sobre FIIs em JSON.`;
+TAREFA:
+1. Busque as 10 notícias mais importantes desta semana sobre Fundos Imobiliários (FIIs) no Brasil.
+2. Fontes confiáveis: InfoMoney, Fiis.com.br, Brazil Journal, Money Times, Suno.
+3. IMPORTANTE: Sua resposta deve ser ESTRITAMENTE um Array JSON válido.
+4. NÃO escreva introduções como "Aqui está o JSON". Comece com '[' e termine com ']'.
+5. Se não encontrar 10, envie as que encontrar.
+
+SCHEMA DO JSON (Array de Objetos):
+[
+  {
+    "title": "Título da notícia",
+    "summary": "Resumo curto de 2 frases.",
+    "sourceName": "Fonte (ex: InfoMoney)",
+    "sourceHostname": "infomoney.com.br",
+    "publicationDate": "YYYY-MM-DD",
+    "relatedTickers": ["HGLG11", "MXRF11"] (Array vazio [] se nenhum ticker for citado)
+  }
+]`;
+
+    const userQuery = `Retorne o JSON com as notícias da semana (${todayString}).`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }], // Necessário para notícias recentes
+        tools: [{ "google_search": {} }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
         generationConfig: {
-            temperature: 0.1, // Baixa temperatura = resposta mais rápida e direta
-            response_mime_type: "application/json" // Força resposta JSON pura (MUITO mais rápido)
+            temperature: 0.1, // Baixa temperatura reduz a chance de alucinação de texto extra
+            // response_mime_type REMOVIDO
         }
     };
 }
 
 export default async function handler(request, response) {
-    // Aceitar OPTIONS para CORS (se necessário) ou apenas POST
     if (request.method === 'OPTIONS') {
         return response.status(200).end();
     }
@@ -62,7 +68,7 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada." });
     }
 
-    // MODELO ATUALIZADO: gemini-2.5-flash
+    // Mantendo o modelo rápido
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
@@ -82,32 +88,29 @@ export default async function handler(request, response) {
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
-        // Verificação de segurança básica
-        if (candidate?.finishReason && candidate?.finishReason !== "STOP") {
-             // Se não for STOP, pode ter truncado ou bloqueado, mas vamos tentar processar se houver texto.
-             console.warn(`Aviso de API: Finish Reason ${candidate.finishReason}`);
-        }
-
         if (!text) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
-        // OTIMIZAÇÃO: Como usamos response_mime_type: "application/json", 
-        // o texto já vem limpo, sem Markdown (```json). Basta parsear.
+        // TRATAMENTO DE TEXTO (Essencial sem JSON Mode)
+        // Remove blocos de código markdown e espaços extras
+        let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        // Tenta encontrar o array JSON dentro do texto caso o modelo tenha falado algo antes
+        const jsonMatch = cleanText.match(/\[[\s\S]*\]/);
+        
         let parsedJson;
         try {
-            parsedJson = JSON.parse(text);
+            if (jsonMatch) {
+                parsedJson = JSON.parse(jsonMatch[0]);
+            } else {
+                parsedJson = JSON.parse(cleanText);
+            }
         } catch (e) {
-            // Fallback caso o modelo alucine e coloque markdown mesmo assim (raro com JSON mode)
-            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            parsedJson = JSON.parse(cleanText);
-        }
-
-        if (!Array.isArray(parsedJson)) {
-            // Se a API retornar um objeto único em vez de array, encapsula.
-            parsedJson = [parsedJson]; 
+            console.warn("Falha ao parsear JSON, texto bruto:", text);
+            throw new Error("O modelo retornou um formato inválido. Tente novamente.");
         }
 
         return response.status(200).json({ json: parsedJson });

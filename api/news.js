@@ -55,7 +55,7 @@ export default async function handler(request, response) {
     contents: [{ parts: [{ text: `Encontre 8 notícias detalhadas de FIIs da semana de ${todayString}` }] }],
     tools: [{ google_search: {} }], 
     generationConfig: {
-      temperature: 0.3, // Um pouco mais criativo para permitir textos mais longos
+      temperature: 0.1, // Um pouco mais criativo para permitir textos mais longos
       responseMimeType: "application/json",
       responseSchema: NEWS_SCHEMA
     },

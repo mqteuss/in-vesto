@@ -47,7 +47,7 @@ Seja extremamente rápido e direto.`;
             // --- OTIMIZAÇÃO DE VELOCIDADE EXTREMA ---
             thinkingConfig: {
                 includeThoughts: false, 
-                thinkingBudget: 256    // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
+                thinkingBudget: 512    // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
             }
         },
 

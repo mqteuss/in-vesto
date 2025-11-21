@@ -18,7 +18,8 @@ const APP_SHELL_FILES_CACHE_FIRST = [
   'icons/icon-192x192.png',
   'icons/icon-512x512.png',
   'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js'
+'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
+'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
 self.addEventListener('install', event => {

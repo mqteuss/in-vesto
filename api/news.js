@@ -27,7 +27,7 @@ Output: APENAS um array JSON. Sem markdown. Sem intro.
 
 CAMPOS JSON OBRIGATÓRIOS:
 - "title": Título.
-- "summary": Resumo (3 frases ligeiramente maior).
+- "summary": Resumo (3 frases, ligeiramente maior).
 - "sourceName": Portal.
 - "sourceHostname": Domínio (ex: site.com.br).
 - "publicationDate": YYYY-MM-DD.

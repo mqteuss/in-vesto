@@ -19,44 +19,46 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 function getGeminiPayload(todayString) {
-    // 1. CÁLCULO DE DATA (Filtro de 7 dias atrás)
-    // Se hoje é 2025-11-21, startDate será 2025-11-14
+    // 1. CÁLCULO DE DATA (Filtro de 7 dias)
+    // Se hoje é 2025-11-21, ele define a data de corte para 2025-11-14
     const today = new Date(todayString);
     const lastWeek = new Date(today);
     lastWeek.setDate(today.getDate() - 7);
-    const startDate = lastWeek.toISOString().split('T')[0]; // Formato YYYY-MM-DD para o Google
+    
+    // Formata para YYYY-MM-DD para o Google Search entender
+    const startDate = lastWeek.toISOString().split('T')[0]; 
 
-    // --- PROMPT AJUSTADO PARA 25 NOTÍCIAS E FILTRO RIGOROSO ---
-    const systemPrompt = `Tarefa: Atuar como um agregador de notícias financeiras em tempo real.
-Objetivo: Listar as 25 notícias mais recentes e relevantes de FIIs (Fundos Imobiliários) publicadas ESTRITAMENTE entre ${startDate} e ${todayString}.
-Fontes: Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal, Money Times, Valor Investe.
+    // --- PROMPT REFINADO ---
+    const systemPrompt = `Tarefa: Atuar como um jornalista financeiro sênior. Listar as 15 notícias mais relevantes de FIIs (Fundos Imobiliários) publicadas entre ${startDate} e ${todayString}.
+Fontes: Portais confiáveis (Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal, Money Times).
 Output: APENAS um array JSON válido.
 
-REGRAS DE FILTRAGEM (CRÍTICO):
-1. QUANTIDADE: Busque exatamente 25 notícias distintas.
-2. DATA: IGNORE qualquer notícia publicada antes de ${startDate}. Se a notícia for do dia 01, 05 ou 10 (e a data de corte for 14), NÃO inclua.
-3. TEMA: Foque em Fatos Relevantes, Dividendos, Emissões e Relatórios Gerenciais.
+REGRAS DE CONTEÚDO:
+1. DATA: Ignore qualquer notícia anterior a ${startDate}. Foque no que aconteceu nesta semana.
+2. TÍTULO: Deve ser curto (Máx 60 chars) e impactante. NUNCA coloque a data ou o nome do site no título.
+3. RESUMO: Deve ser denso e informativo (3 a 5 frases). É OBRIGATÓRIO citar valores (R$), dividend yields (%), datas de pagamento ou detalhes da transação. O leitor deve entender a notícia completa apenas lendo o resumo.
+4. TICKERS: Identifique corretamente os fundos citados.
 
 CAMPOS JSON OBRIGATÓRIOS:
-- "title": Título curto (Máx 60 caracteres). NÃO coloque a data nem o nome do site no título.
-- "summary": Resumo jornalístico detalhado (3 a 4 frases). OBRIGATÓRIO incluir números (R$, %, Datas) para dar densidade ao texto.
-- "sourceName": Nome do Portal.
-- "sourceHostname": Domínio (ex: suno.com.br).
-- "publicationDate": A data real da notícia (YYYY-MM-DD). Deve ser >= ${startDate}.
-- "relatedTickers": Array com os tickers (ex: ["HGLG11"]).
+- "title": String (Manchete limpa).
+- "summary": String (Texto jornalístico detalhado).
+- "sourceName": String (Portal).
+- "sourceHostname": String (Domínio).
+- "publicationDate": String (YYYY-MM-DD, deve ser >= ${startDate}).
+- "relatedTickers": Array de Strings.
 
-Seja rápido e rigoroso com a data.`;
+Seja rápido e preciso.`;
 
     // --- QUERY COM OPERADOR DE TEMPO ---
-    // O operador "after:" força o Google a ignorar resultados velhos
-    const userQuery = `25 notícias recentes de FIIs (Fundos Imobiliários) after:${startDate} até ${todayString}. JSON array.`;
+    // O "after:" força o Google a ignorar resultados velhos
+    const userQuery = `Principais notícias de Fundos Imobiliários (FIIs) after:${startDate} até ${todayString}. JSON array completo.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }], // Busca ativa obrigatória
+        tools: [{ "google_search": {} }], // Ferramenta de busca ativa
 
         generationConfig: {
-            temperature: 0.1, // Baixa criatividade para garantir respeito às datas e formato
+            temperature: 0.1, // Baixa temperatura para seguir as regras estritamente
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -101,15 +103,17 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
+        // Cache de 6 horas para economizar requisições
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
-        // Limpeza robusta de Markdown
+        // Limpeza do Markdown para evitar erros de JSON
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         let parsedJson;
         try {
              parsedJson = JSON.parse(jsonText);
         } catch (e) {
+             // Tentativa de recuperação se houver texto antes/depois do JSON
              const jsonMatch = jsonText.match(/\[.*\]/s);
              if (jsonMatch) {
                  try {

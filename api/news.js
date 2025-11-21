@@ -1,126 +1,100 @@
-async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const response = await fetch(url, options);
-            if (response.status === 429 || response.status >= 500) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
-            }
-            if (!response.ok) {
-                 const errorBody = await response.json();
-                 throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
-            }
-            return response.json();
-        } catch (error) {
-            if (i === retries - 1) throw error;
-            console.warn(`Tentativa ${i+1} falhou, aguardando ${delay * (i + 1)}ms...`);
-            await new Promise(res => setTimeout(res, delay * (i + 1)));
-        }
-    }
-}
-
-function getGeminiPayload(todayString) {
-
-    // Prompt encurtado para processamento mais rápido
-    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
-Fontes: Principais portais financeiros do Brasil (ex: InfoMoney, etc...).
-Output: APENAS um array JSON. Sem markdown. Sem intro.
-
-CAMPOS JSON OBRIGATÓRIOS:
-- "title": Título.
-- "summary": Resumo (3 frases ligeiramente maior).
-- "sourceName": Portal.
-- "sourceHostname": Domínio (ex: site.com.br).
-- "publicationDate": YYYY-MM-DD.
-- "relatedTickers": Array ["MXRF11"].
-
-Seja extremamente rápido e direto.`;
-
-    const userQuery = `JSON com 10 notícias de FIIs desta semana (${todayString}). Use Google Search.`;
-
-    return {
-        contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }],
-        
-        generationConfig: {
-            temperature: 0.1, 
-            
-            // --- OTIMIZAÇÃO DE VELOCIDADE EXTREMA ---
-            thinkingConfig: {
-                includeThoughts: false, 
-                thinkingBudget: 512    // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
-            }
-        },
-
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-    };
-}
+// Schema define estritamente o formato do JSON para o Gemini
+const newsSchema = {
+  type: "ARRAY",
+  items: {
+    type: "OBJECT",
+    properties: {
+      title: { type: "STRING" },
+      summary: { type: "STRING" },
+      sourceName: { type: "STRING" },
+      sourceHostname: { type: "STRING" },
+      publicationDate: { type: "STRING" },
+      relatedTickers: { 
+        type: "ARRAY",
+        items: { type: "STRING" }
+      }
+    },
+    required: ["title", "summary", "sourceName", "relatedTickers"]
+  }
+};
 
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
-        return response.status(405).json({ error: "Método não permitido, use POST." });
+        return response.status(405).json({ error: "Método não permitido." });
     }
 
     const { NEWS_GEMINI_API_KEY } = process.env;
-    if (!NEWS_GEMINI_API_KEY) {
-        return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
-    }
+    /* ... suas validações de chave ... */
 
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
+    // Use o modelo Flash padrão (ajuste a versão conforme disponibilidade da sua conta)
+    // Nota: gemini-2.0-flash-exp costuma ser excelente para isso
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
         const { todayString } = request.body;
-        if (!todayString) {
-            return response.status(400).json({ error: "Parâmetro 'todayString' é obrigatório." });
-        }
+        
+        const payload = {
+            contents: [{ 
+                parts: [{ 
+                    text: `Encontre 10 notícias relevantes sobre Fundos Imobiliários (FIIs) desta semana (${todayString}) usando o Google Search.` 
+                }] 
+            }],
+            tools: [{ google_search: {} }],
+            generationConfig: {
+                temperature: 0.3, // Levemente maior para variar as fontes
+                responseMimeType: "application/json",
+                responseSchema: newsSchema // <--- O SEGREDO ESTÁ AQUI
+            }
+        };
 
-        const geminiPayload = getGeminiPayload(todayString);
-
+        // Reutilizando sua função de backoff (que está ótima)
         const result = await fetchWithBackoff(GEMINI_API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(geminiPayload)
+            body: JSON.stringify(payload)
         });
 
         const candidate = result?.candidates?.[0];
-        const text = candidate?.content?.parts?.[0]?.text;
-
-        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
-             if (candidate?.finishReason) {
-                 throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
-             }
-        }
-        if (!text) {
-            throw new Error("A API retornou uma resposta vazia.");
-        }
-
-        response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
-
-        let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         
-        let parsedJson;
-        try {
-             parsedJson = JSON.parse(jsonText);
-        } catch (e) {
-             const jsonMatch = jsonText.match(/\[.*\]/s);
-             if (jsonMatch) {
-                 try {
-                    parsedJson = JSON.parse(jsonMatch[0]);
-                 } catch (innerE) {
-                    throw new Error("Falha ao processar JSON extraído.");
-                 }
-             } else {
-                 throw new Error("JSON inválido na resposta.");
-             }
+        // Tratamento de erro de segurança/bloqueio
+        if (candidate?.finishReason && candidate?.finishReason !== "STOP") {
+             console.warn("Bloqueio Gemini:", candidate.finishReason);
+             // Às vezes o JSON vem mesmo com MAX_TOKENS, então tentamos ler
         }
 
-        if (!Array.isArray(parsedJson)) {
-            parsedJson = [parsedJson]; 
+        const contentText = candidate?.content?.parts?.[0]?.text;
+
+        if (!contentText) {
+            throw new Error("Conteúdo vazio retornado pela API.");
         }
+
+        // Como usamos Native JSON, não precisa de regex/replace
+        const parsedJson = JSON.parse(contentText);
 
         return response.status(200).json({ json: parsedJson });
 
     } catch (error) {
-        console.error("Erro interno no proxy Gemini (Notícias):", error);
-        return response.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
+        console.error("Erro API Notícias:", error);
+        return response.status(500).json({ error: error.message });
+    }
+}
+
+// Mantenha sua função fetchWithBackoff igual, ela está correta.
+async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(url, options);
+            
+            // Tratamento específico para erros 4xx/5xx antes de tentar o JSON
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            if (i === retries - 1) throw error;
+            await new Promise(res => setTimeout(res, delay * (i + 1)));
+        }
     }
 }

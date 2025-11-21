@@ -1,4 +1,4 @@
-async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
+Async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
             const response = await fetch(url, options);
@@ -42,8 +42,13 @@ Seja extremamente rápido e direto.`;
         tools: [{ "google_search": {} }],
 
         generationConfig: {
-            temperature: 0.1
-            // thinkingConfig removido para evitar erros e latência no modelo Flash
+            temperature: 0.1, 
+
+            // --- OTIMIZAÇÃO DE VELOCIDADE EXTREMA ---
+            thinkingConfig: {
+                includeThoughts: false, 
+                thinkingBudget: 512   // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
+            }
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -60,7 +65,6 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
-    // Mantido gemini-2.5-flash conforme solicitado
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {

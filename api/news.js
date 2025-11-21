@@ -1,4 +1,4 @@
-Async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
+async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
             const response = await fetch(url, options);
@@ -20,37 +20,32 @@ Async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 function getGeminiPayload(todayString) {
 
-    // Prompt encurtado para processamento mais rápido
-    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
-Fontes: Principais portais financeiros do Brasil.
-Output: APENAS um array JSON. Sem markdown. Sem intro.
+    const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 10 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **nesta semana** (data de hoje: ${todayString}).
 
-CAMPOS JSON OBRIGATÓRIOS:
-- "title": Título.
-- "summary": Resumo (3 frases ligeiramente maior).
-- "sourceName": Portal.
-- "sourceHostname": Domínio (ex: site.com.br).
-- "publicationDate": YYYY-MM-DD.
-- "relatedTickers": Array ["MXRF11"].
+REGRAS:
+1.  Encontre artigos de portais de notícias conhecidos (ex: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times).
+2.  Responda APENAS com um array JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
+3.  Cada objeto no array deve conter 6 campos:
+    - "title": O título exato ou ligeiramente abreviado da notícia.
+    - "summary": Um resumo da notícia com 4 frases (ligeiramente maior).
+    - "sourceName": O nome do portal (ex: "InfoMoney").
+    - "sourceHostname": O domínio raiz da fonte (ex: "infomoney.com.br"). ESTE CAMPO É OBRIGATÓRIO.
+    - "publicationDate": A data da publicação no formato YYYY-MM-DD.
+    - "relatedTickers": Um array de strings com os tickers de FIIs (ex: "MXRF11", "HGLG11") mencionados no título ou resumo. Se nenhum for mencionado, retorne um array vazio [].
 
-Seja extremamente rápido e direto.`;
+EXEMPLO DE RESPOSTA JSON:
+[
+  {"title": "IFIX atinge nova máxima: O que esperar?", "summary": "O IFIX atiu nova máxima histórica nesta semana. Analistas debatem se o movimento é sustentável ou se uma correção está próxima, de olho na Selic.", "sourceName": "InfoMoney", "sourceHostname": "infomoney.com.br", "publicationDate": "2025-11-06", "relatedTickers": []},
+  {"title": "HGLG11 e CPTS11 anunciam aquisições", "summary": "O fundo HGLG11 investiu R$ 63 milhões em galpões. Já o CPTS11 anunciou uma nova emissão.", "sourceName": "Money Times", "sourceHostname": "moneytimes.com.br", "publicationDate": "2025-11-05", "relatedTickers": ["HGLG11", "CPTS11"]}
+]
 
-    const userQuery = `JSON com 10 notícias de FIIs desta semana (${todayString}). Use Google Search.`;
+IMPORTANTE: Sua resposta DEVE começar com '[' e terminar com ']'. Nenhuma outra palavra, frase ou formatação é permitida antes ou depois do array JSON.`;
+
+    const userQuery = `Gere um array JSON com os 10 resumos de notícias mais recentes (desta semana, ${todayString}) sobre FIIs. Inclua "title", "summary", "sourceName", "sourceHostname", "publicationDate" (YYYY-MM-DD) e "relatedTickers" (array de FIIs mencionados).`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }],
-
-        generationConfig: {
-            temperature: 0.1, 
-
-            // --- OTIMIZAÇÃO DE VELOCIDADE EXTREMA ---
-            thinkingConfig: {
-                includeThoughts: false, 
-                thinkingBudget: 512    // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
-            }
-        },
-
+        tools: [{ "google_search": {} }], 
         systemInstruction: { parts: [{ text: systemPrompt }] },
     };
 }
@@ -65,7 +60,7 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
         const { todayString } = request.body;
@@ -84,7 +79,7 @@ export default async function handler(request, response) {
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
-        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
+        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKSENS") {
              if (candidate?.finishReason) {
                  throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
              }
@@ -96,25 +91,27 @@ export default async function handler(request, response) {
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const jsonMatch = jsonText.match(/\[.*\]/s);
 
         let parsedJson;
-        try {
-             parsedJson = JSON.parse(jsonText);
-        } catch (e) {
-             const jsonMatch = jsonText.match(/\[.*\]/s);
-             if (jsonMatch) {
-                 try {
-                    parsedJson = JSON.parse(jsonMatch[0]);
-                 } catch (innerE) {
-                    throw new Error("Falha ao processar JSON extraído.");
-                 }
-             } else {
-                 throw new Error("JSON inválido na resposta.");
-             }
-        }
 
-        if (!Array.isArray(parsedJson)) {
-            parsedJson = [parsedJson]; 
+        if (jsonMatch && jsonMatch[0]) {
+            try {
+                parsedJson = JSON.parse(jsonMatch[0]);
+            } catch (e) {
+                console.error("Erro ao fazer parse do JSON encontrado (match):", e.message);
+                throw new Error(`Erro interno ao processar JSON: ${e.message}`);
+            }
+        } else {
+            try {
+                 parsedJson = JSON.parse(jsonText);
+                 if (!Array.isArray(parsedJson)) {
+                     throw new Error("API retornou um JSON válido, mas não um array.");
+                 }
+            } catch (e) {
+                console.warn("[Alerta API News] A API retornou texto em vez de JSON:", jsonText);
+                throw new Error(`A API de notícias retornou texto inesperado: ${jsonText.substring(0, 50)}...`);
+            }
         }
 
         return response.status(200).json({ json: parsedJson });

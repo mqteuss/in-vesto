@@ -1,4 +1,4 @@
-// Configuração: Schema simplificado para processamento ultra-rápido
+// Definição do Schema (Mantido para garantir JSON)
 const NEWS_SCHEMA = {
   type: "ARRAY",
   items: {
@@ -16,16 +16,13 @@ const NEWS_SCHEMA = {
 };
 
 export default async function handler(request, response) {
-  // 1. Garante método POST
   if (request.method !== 'POST') {
     return response.status(405).json({ error: "Método inválido. Use POST." });
   }
 
-  // 2. Verifica a Chave de API
   const { NEWS_GEMINI_API_KEY } = process.env;
   if (!NEWS_GEMINI_API_KEY) {
-    console.error("ERRO FATAL: NEWS_GEMINI_API_KEY não encontrada.");
-    return response.status(500).json({ error: "Configuração de servidor inválida (API Key ausente)." });
+    return response.status(500).json({ error: "API Key ausente." });
   }
 
   const { todayString } = request.body;
@@ -33,22 +30,27 @@ export default async function handler(request, response) {
     return response.status(400).json({ error: "Data obrigatória." });
   }
 
-  // 3. CONFIGURAÇÃO DE ALTA VELOCIDADE
-  // Usamos o 'gemini-1.5-flash-8b', que é a versão mais rápida e leve do Google atualmente.
-  const GEN_AI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${NEWS_GEMINI_API_KEY}`;
+  // --- CORREÇÃO FINAL BASEADA NAS SUAS IMAGENS ---
+  // 1. MODELO: 'gemini-2.0-flash'. 
+  //    Motivo: Sua imagem mostra que o 2.5 está lotado (12/10) e o 1.5 sumiu.
+  //    O 2.0 está livre (2/15) e suporta as ferramentas novas.
+  const MODEL_VERSION = "gemini-2.0-flash"; 
+  
+  // 2. URL: Mantemos v1beta que é o padrão para a série 2.0/2.5
+  const GEN_AI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_VERSION}:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
   const systemPrompt = `
     Analista FIIs. Data: ${todayString}.
-    Tarefa: 5 notícias urgentes de FIIs da semana.
-    Regra: Use 'google_search'. Resumos curtos com valores. Fatos reais apenas.
+    Tarefa: 5 notícias urgentes de FIIs.
+    Regra: Use 'google_search' obrigatóriamente.
   `;
 
   const payload = {
-    contents: [{ parts: [{ text: `5 notícias recentes de FIIs (${todayString})` }] }],
-    tools: [{ google_search: {} }], // Busca ativa
+    contents: [{ parts: [{ text: `Encontre 5 notícias recentes de FIIs (${todayString})` }] }],
+    // A ferramenta de busca é suportada nativamente no 2.0 Flash
+    tools: [{ google_search: {} }], 
     generationConfig: {
       temperature: 0.2,
-      maxOutputTokens: 2000,
       responseMimeType: "application/json",
       responseSchema: NEWS_SCHEMA
     },
@@ -56,9 +58,9 @@ export default async function handler(request, response) {
   };
 
   try {
-    // 4. Controle de Timeout Rigoroso (9 segundos para não estourar o limite da Vercel)
+    // Timeout de 9.5s para não travar a Vercel (Limite de 10s)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 9500);
 
     const fetchResponse = await fetch(GEN_AI_URL, {
       method: 'POST',
@@ -69,42 +71,42 @@ export default async function handler(request, response) {
 
     clearTimeout(timeoutId);
 
-    // 5. Tratamento de Erro Detalhado (para você ver o motivo real no frontend)
     if (!fetchResponse.ok) {
       const errorText = await fetchResponse.text();
       let errorMessage = errorText;
       try {
         const errorJson = JSON.parse(errorText);
         errorMessage = errorJson.error?.message || errorText;
-      } catch (e) {} // Falha silenciosa no parse
+      } catch (e) {}
+
+      // Se der erro 429 (Too Many Requests), avisamos especificamente
+      if (fetchResponse.status === 429) {
+        throw new Error(`Cota excedida no modelo ${MODEL_VERSION}. Tente novamente em alguns segundos.`);
+      }
       
-      console.error("Erro Gemini API:", errorMessage);
-      throw new Error(`Gemini recusou: ${errorMessage}`);
+      throw new Error(`Gemini Error (${fetchResponse.status}): ${errorMessage}`);
     }
 
     const data = await fetchResponse.json();
     const rawJSON = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!rawJSON) {
-      throw new Error("IA respondeu vazio (possível filtro de segurança).");
+      throw new Error("IA respondeu sem conteúdo (filtro ou erro interno).");
     }
 
     const parsedNews = JSON.parse(rawJSON);
 
-    // Cache curto (30 min)
     response.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=600');
     return response.status(200).json({ json: parsedNews });
 
   } catch (error) {
-    console.error("FALHA NO HANDLER:", error);
+    console.error("ERRO API:", error.message);
     
-    // Mensagem de erro amigável dependendo do caso
     let userMessage = error.message;
     if (error.name === 'AbortError') {
-      userMessage = "Tempo limite excedido (Google demorou mais de 9s). Tente novamente.";
+      userMessage = "O Google demorou muito para responder (Timeout). Tente atualizar novamente.";
     }
 
-    // Retorna o erro no campo 'error' para aparecer no seu Toast vermelho
     return response.status(500).json({ error: userMessage });
   }
 }

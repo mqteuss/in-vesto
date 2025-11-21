@@ -1,4 +1,4 @@
-// Configuração: Schema mantido (JSON estruturado)
+// Configuração: Schema mantido
 const NEWS_SCHEMA = {
   type: "ARRAY",
   items: {
@@ -30,22 +30,22 @@ export default async function handler(request, response) {
     return response.status(400).json({ error: "Data obrigatória." });
   }
 
-  // --- CONFIGURAÇÃO OTIMIZADA ---
-  // Modelo: gemini-2.0-flash (Rápido e com cota disponível, conforme seu print)
+  // --- CONFIGURAÇÃO DE SEGURANÇA ---
+  // Modelo: gemini-2.0-flash (Rápido e Disponível)
   const MODEL_VERSION = "gemini-2.0-flash"; 
   const GEN_AI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_VERSION}:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
-  // --- AJUSTE DE QUANTIDADE ---
-  // Aumentamos de 5 para 12.
-  // O prompt foi otimizado para ser direto e não gastar tempo "pensando".
+  // --- AJUSTE FINAL: 8 NOTÍCIAS ---
+  // 12 estoura o tempo limite de 10s da Vercel. 
+  // 8 é o limite seguro para processar dentro de 9.5 segundos.
   const systemPrompt = `
     Analista FIIs. Data: ${todayString}.
-    Tarefa: Listar entre 10 a 12 notícias relevantes de FIIs da semana.
-    Regra: Use 'google_search'. Priorize fatos relevantes (Dividendos, Emissões, Vacância, Vendas) sobre opinião.
+    Tarefa: Listar 8 notícias relevantes de FIIs.
+    Regra: Use 'google_search'. Seja sucinto e direto.
   `;
 
   const payload = {
-    contents: [{ parts: [{ text: `Encontre 12 notícias recentes de FIIs (${todayString})` }] }],
+    contents: [{ parts: [{ text: `Encontre 8 notícias recentes de FIIs (${todayString})` }] }],
     tools: [{ google_search: {} }], 
     generationConfig: {
       temperature: 0.2,
@@ -56,8 +56,7 @@ export default async function handler(request, response) {
   };
 
   try {
-    // Timeout mantido em 9.5s para proteger contra o erro 504 da Vercel.
-    // O gemini-2.0-flash costuma ser capaz de gerar 12 itens nesse tempo.
+    // Timeout de 9.5s (O limite da Vercel Free é 10s cravados)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 9500);
 
@@ -78,8 +77,9 @@ export default async function handler(request, response) {
         errorMessage = errorJson.error?.message || errorText;
       } catch (e) {}
 
+      // Se der erro 429 (Too Many Requests)
       if (fetchResponse.status === 429) {
-        throw new Error(`Muitas requisições. Aguarde um momento.`);
+        throw new Error(`Muitas requisições ao Google. Tente em instantes.`);
       }
       
       throw new Error(`Erro Gemini (${fetchResponse.status}): ${errorMessage}`);
@@ -94,7 +94,6 @@ export default async function handler(request, response) {
 
     const parsedNews = JSON.parse(rawJSON);
 
-    // Cache de 30 minutos para economizar sua cota
     response.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=600');
     return response.status(200).json({ json: parsedNews });
 
@@ -102,9 +101,9 @@ export default async function handler(request, response) {
     console.error("ERRO API:", error.message);
     
     let userMessage = error.message;
+    // Mensagem amigável para o Timeout
     if (error.name === 'AbortError') {
-      // Se cair aqui, é porque 12 notícias pesou demais para 10 segundos.
-      userMessage = "A busca demorou muito. Tente novamente para recarregar.";
+      userMessage = "A busca demorou muito (limite do servidor). Tente atualizar.";
     }
 
     return response.status(500).json({ error: userMessage });

@@ -20,14 +20,14 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 function getGeminiPayload(todayString) {
 
-    // Prompt otimizado e direto
-    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) APENAS DESTA SEMANA (${todayString}).
-Fontes: Principais portais financeiros do Brasil, exceto o portal "Genial Analisa". 
+    // Prompt encurtado para processamento mais rápido
+    const systemPrompt = `Tarefa: Listar 15 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
+Fontes: Principais portais financeiros do Brasil.
 Output: APENAS um array JSON. Sem markdown. Sem intro.
 
 CAMPOS JSON OBRIGATÓRIOS:
 - "title": Título.
-- "summary": Resumo (3 frases, ligeiramente maior).
+- "summary": Resumo (3 frases ligeiramente maior).
 - "sourceName": Portal.
 - "sourceHostname": Domínio (ex: site.com.br).
 - "publicationDate": YYYY-MM-DD.
@@ -35,15 +35,20 @@ CAMPOS JSON OBRIGATÓRIOS:
 
 Seja extremamente rápido e direto.`;
 
-    const userQuery = `JSON com 10 notícias de FIIs desta semana (${todayString}). Use Google Search.`;
+    const userQuery = `JSON com 15 notícias de FIIs desta semana (${todayString}). Use Google Search.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
         tools: [{ "google_search": {} }],
 
         generationConfig: {
-            temperature: 0.1,
-            // Removed: thinkingConfig (Agora o modelo responde imediatamente após a busca)
+            temperature: 0.1, 
+
+            // --- OTIMIZAÇÃO DE VELOCIDADE EXTREMA ---
+            thinkingConfig: {
+                includeThoughts: false, 
+                thinkingBudget: 512    // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
+            }
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -60,7 +65,6 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
-    // Mantemos a URL v1beta e o modelo 2.5-flash
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {

@@ -20,35 +20,32 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 function getGeminiPayload(todayString) {
 
-    // Prompt encurtado para processamento mais rápido
+    // --- MELHORIAS NO PROMPT ---
+    // 1. Título: Limitado a 60 chars e PROIBIDO conter datas ou nome do site.
+    // 2. Data: Instrução para extrair a data real para o campo 'publicationDate'.
     const systemPrompt = `Tarefa: Listar 15 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
-Fontes: Principais portais financeiros do Brasil.
-Output: APENAS um array JSON. Sem markdown. Sem intro.
+Fontes: Principais portais financeiros do Brasil (Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal).
+Output: APENAS um array JSON válido. Sem markdown. Sem intro.
 
 CAMPOS JSON OBRIGATÓRIOS:
-- "title": Título.
-- "summary": Resumo (3 frases ligeiramente maior).
-- "sourceName": Portal.
-- "sourceHostname": Domínio (ex: site.com.br).
-- "publicationDate": YYYY-MM-DD.
-- "relatedTickers": Array ["MXRF11"].
+- "title": Título curto e limpo (Máximo 60 caracteres). REGRA CRÍTICA: NÃO escreva a data (ex: 21/11) e NÃO escreva o nome do site dentro do título.
+- "summary": Resumo muito conciso (Máximo 2 frases).
+- "sourceName": Nome do Portal (ex: Suno Notícias).
+- "sourceHostname": Domínio (ex: suno.com.br).
+- "publicationDate": A data real da publicação da notícia (Formato YYYY-MM-DD).
+- "relatedTickers": Array com os tickers citados (ex: ["MXRF11"]).
 
-Seja extremamente rápido e direto.`;
+Seja extremamente rápido, verídico e obedeça ao formato JSON.`;
 
-    const userQuery = `JSON com 15 notícias de FIIs desta semana (${todayString}). Use Google Search.`;
+    const userQuery = `JSON com 15 notícias de FIIs desta semana (${todayString}). Use Google Search para dados reais.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }],
+        tools: [{ "google_search": {} }], // Garante que as datas sejam reais e atuais
 
         generationConfig: {
-            temperature: 0.1, 
-
-            // --- OTIMIZAÇÃO DE VELOCIDADE EXTREMA ---
-            thinkingConfig: {
-                includeThoughts: false, 
-                thinkingBudget: 512    // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
-            }
+            temperature: 0.1, // Baixa criatividade para seguir regras de formatação estritamente
+            // thinkingConfig removido para evitar latência desnecessária em formatação JSON
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -93,14 +90,17 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
+        // Cache agressivo (6 horas) pois notícias não mudam a cada segundo
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
+        // Limpeza do Markdown antes do parse
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         let parsedJson;
         try {
              parsedJson = JSON.parse(jsonText);
         } catch (e) {
+             // Fallback: Tenta extrair array se houver texto em volta
              const jsonMatch = jsonText.match(/\[.*\]/s);
              if (jsonMatch) {
                  try {

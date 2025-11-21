@@ -20,15 +20,17 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     try {
       const response = await fetch(url, options);
       
-      // Lida com Rate Limiting (429) ou erros de servidor (5xx)
-      if (response.status === 429 || response.status >= 500) {
-        const text = await response.text();
-        throw new Error(`Gemini API Error (${response.status}): ${text}`);
-      }
-
+      // Se o modelo não existir (404) ou erro de servidor (5xx)
       if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
+        const errorText = await response.text();
+        // Tenta parsear erro JSON, se falhar usa o texto puro
+        let errorMsg = errorText;
+        try {
+            const errorJson = JSON.parse(errorText);
+            errorMsg = errorJson.error?.message || errorText;
+        } catch(e) {}
+        
+        throw new Error(`Gemini API Error (${response.status}): ${errorMsg}`);
       }
 
       return await response.json();
@@ -61,9 +63,10 @@ export default async function handler(request, response) {
     return response.status(400).json({ error: "Parâmetro 'todayString' é obrigatório." });
   }
 
-  // --- CONFIGURAÇÃO DO MODELO EXATA ---
-  // Configurado explicitamente para 'gemini-2.5-flash' conforme solicitado
-  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
+  // --- CORREÇÃO DO MODELO ---
+  // 'gemini-2.5-flash' NÃO EXISTE.
+  // Usando 'gemini-1.5-flash' que é a versão estável oficial atual.
+  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
   const systemPrompt = `
     Você é um analista financeiro sênior especializado em Fundos Imobiliários (FIIs).
@@ -106,16 +109,16 @@ export default async function handler(request, response) {
     const rawJSON = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!rawJSON) {
-      throw new Error("Gemini retornou resposta vazia (sem candidatos).");
+      console.error("Resposta completa do Gemini:", JSON.stringify(data, null, 2));
+      throw new Error("Gemini retornou resposta válida, mas sem texto gerado.");
     }
 
     let parsedNews;
     try {
-        // O Gemini agora retorna apenas o JSON puro, sem markdown, graças ao responseMimeType
         parsedNews = JSON.parse(rawJSON);
     } catch (e) {
         console.error("Erro de Parse JSON:", rawJSON);
-        throw new Error("Falha ao processar a resposta do Gemini.");
+        throw new Error("Falha ao processar a resposta JSON do Gemini.");
     }
 
     // Cache no Vercel (6 horas de cache compartilhado, 5 min de stale)
@@ -125,6 +128,7 @@ export default async function handler(request, response) {
 
   } catch (error) {
     console.error("Erro na API de Notícias:", error);
+    // Retorna o detalhe do erro para ajudar no debug do console do navegador
     return response.status(500).json({ 
       error: "Erro ao buscar notícias.", 
       details: error.message 

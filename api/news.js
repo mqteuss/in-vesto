@@ -49,7 +49,7 @@ IMPORTANTE: Sua resposta DEVE começar com '[' e terminar com ']'. Nenhuma outra
         tools: [{ "google_search": {} }],
         // Adicionado generationConfig para controlar a temperatura
         generationConfig: {
-            temperature: 0.2
+            temperature: 0.1
         },
         systemInstruction: { parts: [{ text: systemPrompt }] },
     };

@@ -20,7 +20,7 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 function getGeminiPayload(todayString) {
 
-    // Prompt encurtado para processamento mais rápido
+    // Prompt otimizado e direto
     const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
 Fontes: Principais portais financeiros do Brasil.
 Output: APENAS um array JSON. Sem markdown. Sem intro.
@@ -40,15 +40,10 @@ Seja extremamente rápido e direto.`;
     return {
         contents: [{ parts: [{ text: userQuery }] }],
         tools: [{ "google_search": {} }],
-        
+
         generationConfig: {
-            temperature: 0.1, 
-            
-            // --- OTIMIZAÇÃO DE VELOCIDADE EXTREMA ---
-            thinkingConfig: {
-                includeThoughts: false, 
-                thinkingBudget: 512    // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
-            }
+            temperature: 0.1,
+            // Removed: thinkingConfig (Agora o modelo responde imediatamente após a busca)
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -65,6 +60,7 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
+    // Mantemos a URL v1beta e o modelo 2.5-flash
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
@@ -96,7 +92,7 @@ export default async function handler(request, response) {
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        
+
         let parsedJson;
         try {
              parsedJson = JSON.parse(jsonText);

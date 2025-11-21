@@ -1,124 +1,133 @@
+// Definição do Schema: Obriga o Gemini a devolver JSON perfeito e estruturado.
+const NEWS_SCHEMA = {
+  type: "ARRAY",
+  items: {
+    type: "OBJECT",
+    properties: {
+      title: { type: "STRING", description: "Título curto e direto (sem data/fonte), máx 60 chars." },
+      summary: { type: "STRING", description: "Resumo denso (3-5 frases) com valores (R$), Yield (%) e impacto para o investidor." },
+      sourceName: { type: "STRING", description: "Nome do portal (ex: InfoMoney)." },
+      sourceHostname: { type: "STRING", description: "Domínio da fonte (ex: infomoney.com.br)." },
+      publicationDate: { type: "STRING", description: "Data formato YYYY-MM-DD." },
+      relatedTickers: { type: "ARRAY", items: { type: "STRING" }, description: "Lista de tickers (ex: MXRF11)." }
+    },
+    required: ["title", "summary", "sourceName", "publicationDate", "relatedTickers"]
+  }
+};
+
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const response = await fetch(url, options);
-            if (response.status === 429 || response.status >= 500) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
-            }
-            if (!response.ok) {
-                 const errorBody = await response.json();
-                 throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
-            }
-            return response.json();
-        } catch (error) {
-            if (i === retries - 1) throw error;
-            console.warn(`Tentativa ${i+1} falhou, aguardando ${delay * (i + 1)}ms...`);
-            await new Promise(res => setTimeout(res, delay * (i + 1)));
-        }
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Lida com Rate Limiting (429) ou erros de servidor (5xx)
+      if (response.status === 429 || response.status >= 500) {
+        const text = await response.text();
+        throw new Error(`Gemini API Error (${response.status}): ${text}`);
+      }
+
+      if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      // Se for a última tentativa, lança o erro
+      if (i === retries - 1) throw error;
+      
+      console.warn(`[Tentativa ${i + 1}/${retries}] Falha: ${error.message}. Aguardando...`);
+      // Backoff exponencial (1s, 2s, 4s...)
+      await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
     }
-}
-
-function getGeminiPayload(todayString) {
-
-    // --- AJUSTE PARA CONTEÚDO MAIS DENSO ---
-    // 1. Title: Mantido curto e limpo (sem datas repetidas).
-    // 2. Summary: Agora exigimos "Resumo Jornalístico" com valores e detalhes.
-    
-    const systemPrompt = `Tarefa: Listar 15 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
-Fontes: Principais portais financeiros do Brasil (Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal, Money Times).
-Output: APENAS um array JSON válido. Sem markdown.
-
-CAMPOS JSON OBRIGATÓRIOS:
-- "title": Título curto e direto (Máximo 60 caracteres). REGRA CRÍTICA: NÃO coloque a data (ex: 21/11) e NÃO coloque o nome do site no título.
-- "summary": Resumo jornalístico detalhado (Entre 3 a 5 frases). É OBRIGATÓRIO incluir dados numéricos quando houver (Valores em R$, Dividend Yield em %, Datas de Pagamento). O texto deve ser denso e explicar o impacto da notícia para o investidor. Evite resumos vazios de uma linha.
-- "sourceName": Nome do Portal.
-- "sourceHostname": Domínio (ex: suno.com.br).
-- "publicationDate": A data real da notícia (Formato YYYY-MM-DD).
-- "relatedTickers": Array com os tickers citados (ex: ["MXRF11"]).
-
-Seja rápido, mas traga conteúdo rico nos resumos.`;
-
-    const userQuery = `JSON com 15 notícias de FIIs desta semana (${todayString}). Resumos detalhados com números e valores.`;
-
-    return {
-        contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }], // Busca ativa para garantir dados reais (valores e datas)
-
-        generationConfig: {
-            temperature: 0.1, // Baixa temperatura para fidelidade aos dados
-        },
-
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-    };
+  }
 }
 
 export default async function handler(request, response) {
-    if (request.method !== 'POST') {
-        return response.status(405).json({ error: "Método não permitido, use POST." });
+  // Garante que só aceita POST
+  if (request.method !== 'POST') {
+    return response.status(405).json({ error: "Method Not Allowed. Use POST." });
+  }
+
+  const { NEWS_GEMINI_API_KEY } = process.env;
+  if (!NEWS_GEMINI_API_KEY) {
+    console.error("Erro Crítico: NEWS_GEMINI_API_KEY não definida.");
+    return response.status(500).json({ error: "Server Configuration Error" });
+  }
+
+  // Validação de entrada
+  const { todayString } = request.body;
+  if (!todayString) {
+    return response.status(400).json({ error: "Parâmetro 'todayString' é obrigatório." });
+  }
+
+  // --- CONFIGURAÇÃO DO MODELO EXATA ---
+  // Configurado explicitamente para 'gemini-2.5-flash' conforme solicitado
+  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
+
+  const systemPrompt = `
+    Você é um analista financeiro sênior especializado em Fundos Imobiliários (FIIs).
+    DATA DE HOJE: ${todayString}.
+    
+    TAREFA:
+    Pesquise e liste as 15 notícias mais impactantes sobre FIIs da semana atual.
+    
+    DIRETRIZES:
+    1. Use a ferramenta 'google_search' para encontrar fatos recentes, dividendos e emissões.
+    2. Resumos devem ser JORNALÍSTICOS e DENSOS. Use números (R$, %, Datas) obrigatoriamente.
+    3. Ignore notícias especulativas sem fonte.
+    4. Foque em fatos: "Fundo X anuncia dividendos de R$ 1,20", "Fundo Y compra imóvel por R$ 50mi".
+  `;
+
+  const payload = {
+    contents: [{ parts: [{ text: `Encontre 15 notícias de FIIs da semana de ${todayString} com valores detalhados.` }] }],
+    
+    // Ferramenta de busca ativa
+    tools: [{ google_search: {} }], 
+    
+    generationConfig: {
+      temperature: 0.3, // Foco em precisão
+      responseMimeType: "application/json", // Garante o retorno JSON nativo
+      responseSchema: NEWS_SCHEMA // Validação da estrutura definida no topo
+    },
+    
+    systemInstruction: { parts: [{ text: systemPrompt }] }
+  };
+
+  try {
+    // Chamada à API com retries automáticos
+    const data = await fetchWithBackoff(GEMINI_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    // Extração segura sem regex (formato nativo JSON)
+    const rawJSON = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawJSON) {
+      throw new Error("Gemini retornou resposta vazia (sem candidatos).");
     }
 
-    const { NEWS_GEMINI_API_KEY } = process.env;
-    if (!NEWS_GEMINI_API_KEY) {
-        return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
-    }
-
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
-
+    let parsedNews;
     try {
-        const { todayString } = request.body;
-        if (!todayString) {
-            return response.status(400).json({ error: "Parâmetro 'todayString' é obrigatório." });
-        }
-
-        const geminiPayload = getGeminiPayload(todayString);
-
-        const result = await fetchWithBackoff(GEMINI_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(geminiPayload)
-        });
-
-        const candidate = result?.candidates?.[0];
-        const text = candidate?.content?.parts?.[0]?.text;
-
-        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
-             if (candidate?.finishReason) {
-                 throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
-             }
-        }
-        if (!text) {
-            throw new Error("A API retornou uma resposta vazia.");
-        }
-
-        response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
-
-        // Limpeza robusta de Markdown
-        let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-        let parsedJson;
-        try {
-             parsedJson = JSON.parse(jsonText);
-        } catch (e) {
-             const jsonMatch = jsonText.match(/\[.*\]/s);
-             if (jsonMatch) {
-                 try {
-                    parsedJson = JSON.parse(jsonMatch[0]);
-                 } catch (innerE) {
-                    throw new Error("Falha ao processar JSON extraído.");
-                 }
-             } else {
-                 throw new Error("JSON inválido na resposta.");
-             }
-        }
-
-        if (!Array.isArray(parsedJson)) {
-            parsedJson = [parsedJson]; 
-        }
-
-        return response.status(200).json({ json: parsedJson });
-
-    } catch (error) {
-        console.error("Erro interno no proxy Gemini (Notícias):", error);
-        return response.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
+        // O Gemini agora retorna apenas o JSON puro, sem markdown, graças ao responseMimeType
+        parsedNews = JSON.parse(rawJSON);
+    } catch (e) {
+        console.error("Erro de Parse JSON:", rawJSON);
+        throw new Error("Falha ao processar a resposta do Gemini.");
     }
+
+    // Cache no Vercel (6 horas de cache compartilhado, 5 min de stale)
+    response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=300');
+    
+    return response.status(200).json({ json: parsedNews });
+
+  } catch (error) {
+    console.error("Erro na API de Notícias:", error);
+    return response.status(500).json({ 
+      error: "Erro ao buscar notícias.", 
+      details: error.message 
+    });
+  }
 }

@@ -20,40 +20,34 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 function getGeminiPayload(todayString) {
 
-    const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 10 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **nesta semana** (data de hoje: ${todayString}).
+    // Prompt encurtado para processamento mais rápido
+    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
+Fontes: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times.
+Output: APENAS um array JSON. Sem markdown. Sem intro.
 
-REGRAS:
-1.  Encontre artigos de portais de notícias conhecidos (ex: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times).
-2.  Responda APENAS com um array JSON válido. Não inclua \`\`\`json ou qualquer outro texto antes ou depois.
-3.  Use as ferramentas de busca para garantir que as datas sejam desta semana.
-4.  Seja breve no seu processo de pensamento para responder rápido.
+CAMPOS JSON OBRIGATÓRIOS:
+- "title": Título.
+- "summary": Resumo (2 frases).
+- "sourceName": Portal.
+- "sourceHostname": Domínio (ex: site.com.br).
+- "publicationDate": YYYY-MM-DD.
+- "relatedTickers": Array ["MXRF11"].
 
-ESTRUTURA OBRIGATÓRIA DOS OBJETOS NO ARRAY:
-    - "title": Título da notícia.
-    - "summary": Resumo com 3 frases.
-    - "sourceName": Nome do portal.
-    - "sourceHostname": Domínio (ex: infomoney.com.br).
-    - "publicationDate": YYYY-MM-DD.
-    - "relatedTickers": Array de strings (ex: ["MXRF11"]).
+Seja extremamente rápido e direto.`;
 
-EXEMPLO:
-[
-  {"title": "IFIX sobe hoje", "summary": "Resumo...", "sourceName": "InfoMoney", "sourceHostname": "infomoney.com.br", "publicationDate": "2025-11-06", "relatedTickers": ["MXRF11"]}
-]`;
-
-    const userQuery = `Gere um array JSON com os 10 resumos de notícias mais recentes (desta semana, ${todayString}) sobre FIIs. Siga estritamente o formato JSON solicitado.`;
+    const userQuery = `JSON com 10 notícias de FIIs desta semana (${todayString}). Use Google Search.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
         tools: [{ "google_search": {} }],
         
         generationConfig: {
-            temperature: 0.2, // Baixa temperatura para precisão
+            temperature: 0.1, 
             
-            // --- CONFIGURAÇÃO DE PENSAMENTO RÁPIDO ---
+            // --- OTIMIZAÇÃO DE VELOCIDADE EXTREMA ---
             thinkingConfig: {
-                includeThoughts: false, // Esconde o pensamento para não quebrar o JSON
-                thinkingBudget: 1024    // 1024 tokens é um orçamento baixo/médio, forçando um pensamento rápido (5-10s)
+                includeThoughts: false, 
+                thinkingBudget: 512    // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
             }
         },
 
@@ -71,7 +65,6 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
-    // Mantendo a versão 2.5 Flash que suporta Thinking
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
@@ -102,24 +95,21 @@ export default async function handler(request, response) {
 
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
-        // Limpeza robusta (essencial já que removemos o responseMimeType)
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
         
         let parsedJson;
         try {
-             // Tenta parse direto
              parsedJson = JSON.parse(jsonText);
         } catch (e) {
-             // Fallback: Tenta encontrar o array [ ... ] dentro do texto
              const jsonMatch = jsonText.match(/\[.*\]/s);
              if (jsonMatch) {
                  try {
                     parsedJson = JSON.parse(jsonMatch[0]);
                  } catch (innerE) {
-                    throw new Error("Falha ao processar o JSON extraído.");
+                    throw new Error("Falha ao processar JSON extraído.");
                  }
              } else {
-                 throw new Error("A resposta da IA não contém um JSON válido.");
+                 throw new Error("JSON inválido na resposta.");
              }
         }
 

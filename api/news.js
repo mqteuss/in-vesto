@@ -19,46 +19,33 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 function getGeminiPayload(todayString) {
-    // 1. CÁLCULO DE DATA (Filtro de 7 dias)
-    // Se hoje é 2025-11-21, ele define a data de corte para 2025-11-14
-    const today = new Date(todayString);
-    const lastWeek = new Date(today);
-    lastWeek.setDate(today.getDate() - 7);
+
+    // --- AJUSTE PARA CONTEÚDO MAIS DENSO ---
+    // 1. Title: Mantido curto e limpo (sem datas repetidas).
+    // 2. Summary: Agora exigimos "Resumo Jornalístico" com valores e detalhes.
     
-    // Formata para YYYY-MM-DD para o Google Search entender
-    const startDate = lastWeek.toISOString().split('T')[0]; 
-
-    // --- PROMPT REFINADO ---
-    const systemPrompt = `Tarefa: Atuar como um jornalista financeiro sênior. Listar as 15 notícias mais relevantes de FIIs (Fundos Imobiliários) publicadas entre ${startDate} e ${todayString}.
-Fontes: Portais confiáveis (Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal, Money Times).
-Output: APENAS um array JSON válido.
-
-REGRAS DE CONTEÚDO:
-1. DATA: Ignore qualquer notícia anterior a ${startDate}. Foque no que aconteceu nesta semana.
-2. TÍTULO: Deve ser curto (Máx 60 chars) e impactante. NUNCA coloque a data ou o nome do site no título.
-3. RESUMO: Deve ser denso e informativo (3 a 5 frases). É OBRIGATÓRIO citar valores (R$), dividend yields (%), datas de pagamento ou detalhes da transação. O leitor deve entender a notícia completa apenas lendo o resumo.
-4. TICKERS: Identifique corretamente os fundos citados.
+    const systemPrompt = `Tarefa: Listar 15 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
+Fontes: Principais portais financeiros do Brasil (Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal, Money Times).
+Output: APENAS um array JSON válido. Sem markdown.
 
 CAMPOS JSON OBRIGATÓRIOS:
-- "title": String (Manchete limpa).
-- "summary": String (Texto jornalístico detalhado).
-- "sourceName": String (Portal).
-- "sourceHostname": String (Domínio).
-- "publicationDate": String (YYYY-MM-DD, deve ser >= ${startDate}).
-- "relatedTickers": Array de Strings.
+- "title": Título curto e direto (Máximo 60 caracteres). REGRA CRÍTICA: NÃO coloque a data (ex: 21/11) e NÃO coloque o nome do site no título.
+- "summary": Resumo jornalístico detalhado (Entre 3 a 5 frases). É OBRIGATÓRIO incluir dados numéricos quando houver (Valores em R$, Dividend Yield em %, Datas de Pagamento). O texto deve ser denso e explicar o impacto da notícia para o investidor. Evite resumos vazios de uma linha.
+- "sourceName": Nome do Portal.
+- "sourceHostname": Domínio (ex: suno.com.br).
+- "publicationDate": A data real da notícia (Formato YYYY-MM-DD).
+- "relatedTickers": Array com os tickers citados (ex: ["MXRF11"]).
 
-Seja rápido e preciso.`;
+Seja rápido, mas traga conteúdo rico nos resumos.`;
 
-    // --- QUERY COM OPERADOR DE TEMPO ---
-    // O "after:" força o Google a ignorar resultados velhos
-    const userQuery = `Principais notícias de Fundos Imobiliários (FIIs) after:${startDate} até ${todayString}. JSON array completo.`;
+    const userQuery = `JSON com 15 notícias de FIIs desta semana (${todayString}). Resumos detalhados com números e valores.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }], // Ferramenta de busca ativa
+        tools: [{ "google_search": {} }], // Busca ativa para garantir dados reais (valores e datas)
 
         generationConfig: {
-            temperature: 0.1, // Baixa temperatura para seguir as regras estritamente
+            temperature: 0.1, // Baixa temperatura para fidelidade aos dados
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -103,17 +90,15 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
-        // Cache de 6 horas para economizar requisições
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
-        // Limpeza do Markdown para evitar erros de JSON
+        // Limpeza robusta de Markdown
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         let parsedJson;
         try {
              parsedJson = JSON.parse(jsonText);
         } catch (e) {
-             // Tentativa de recuperação se houver texto antes/depois do JSON
              const jsonMatch = jsonText.match(/\[.*\]/s);
              if (jsonMatch) {
                  try {

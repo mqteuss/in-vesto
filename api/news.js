@@ -19,30 +19,35 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 function getGeminiPayload(todayString) {
-
-    const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 10 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **nesta semana** (data de hoje: ${todayString}).
+    const systemPrompt = `Você é um editor de notícias financeiras. 
+TAREFA: Encontrar as 10 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **nesta semana** (data de hoje: ${todayString}).
 
 REGRAS:
-1.  Encontre artigos de portais de notícias conhecidos (ex: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times).
-2.  Responda APENAS com um array JSON válido, respeitando o esquema solicitado.
-3.  Cada objeto no array deve conter 6 campos:
-    - "title": O título exato ou ligeiramente abreviado da notícia.
-    - "summary": Um resumo da notícia com 4 frases (ligeiramente maior).
-    - "sourceName": O nome do portal (ex: "InfoMoney").
-    - "sourceHostname": O domínio raiz da fonte (ex: "infomoney.com.br"). ESTE CAMPO É OBRIGATÓRIO.
-    - "publicationDate": A data da publicação no formato YYYY-MM-DD.
-    - "relatedTickers": Um array de strings com os tickers de FIIs (ex: "MXRF11", "HGLG11") mencionados no título ou resumo. Se nenhum for mencionado, retorne um array vazio [].
-`;
+1. Busque em portais confiáveis (InfoMoney, Fiis.com.br, etc).
+2. Sua saída deve conter APENAS o array JSON final. Se você precisar processar informações (pensamento), não exiba isso no output final, ou garanta que o JSON esteja claramente separado.
+3. Estrutura do JSON (Array de Objetos):
+    - "title": Título.
+    - "summary": Resumo (4 frases).
+    - "sourceName": Nome da fonte.
+    - "sourceHostname": Domínio (ex: infomoney.com.br).
+    - "publicationDate": YYYY-MM-DD.
+    - "relatedTickers": Array ["MXRF11", "HGLG11"].
 
-    const userQuery = `Gere um array JSON com os 10 resumos de notícias mais recentes (desta semana, ${todayString}) sobre FIIs. Inclua "title", "summary", "sourceName", "sourceHostname", "publicationDate" (YYYY-MM-DD) e "relatedTickers" (array de FIIs mencionados).`;
+IMPORTANTE: Comece a resposta final com '[' e termine com ']'.`;
+
+    const userQuery = `Array JSON com 10 notícias recentes de FIIs (Semana ${todayString}).`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
         tools: [{ "google_search": {} }], 
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        // ADIÇÃO DO PASSO 2: JSON Mode Ativado
+        // CONFIGURAÇÃO GEMINI 3 PRO - MODO RÁPIDO
         generationConfig: { 
-            responseMimeType: "application/json" 
+            // Configuração baseada na sua observação da doc (Thinking Level: Low)
+            // Nota: A chave exata pode variar (thinking, thinking_config, reasoning), 
+            // usamos 'thinking' conforme o padrão comum para esse parâmetro.
+            thinking: "LOW", 
+            temperature: 0.1 // Reduz criatividade para focar em dados e velocidade
         }
     };
 }
@@ -54,11 +59,11 @@ export default async function handler(request, response) {
 
     const { NEWS_GEMINI_API_KEY } = process.env;
     if (!NEWS_GEMINI_API_KEY) {
-        return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
+        return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada." });
     }
 
-    // Versão mantida conforme sua solicitação
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${NEWS_GEMINI_API_KEY}`;
+    // URL DO GEMINI 3 PRO PREVIEW
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
         const { todayString } = request.body;
@@ -77,7 +82,7 @@ export default async function handler(request, response) {
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
-        // CORREÇÃO DO TYPO: MAX_TOKENS
+        // Verifica se parou por MAX_TOKENS (comum em respostas longas) ou STOP normal
         if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
              if (candidate?.finishReason) {
                  throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
@@ -89,31 +94,43 @@ export default async function handler(request, response) {
 
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
+        // --- EXTRAÇÃO ROBUSTA DE JSON (Necessária para modelos Thinking) ---
+        // Mesmo com 'Thinking: LOW', o modelo pode soltar algum texto antes.
+        // Esta lógica ignora tudo que não for o array JSON.
+        
+        let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        // Encontra o primeiro '[' e o último ']'
+        const jsonMatch = cleanText.match(/\[[\s\S]*\]/); 
+        
+        if (jsonMatch) {
+            cleanText = jsonMatch[0];
+        }
+
         let parsedJson;
-
         try {
-            // Com o JSON Mode, a API deve retornar JSON puro.
-            // No entanto, mantemos uma limpeza básica por segurança caso o modelo ainda inclua formatação markdown.
-            const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
             parsedJson = JSON.parse(cleanText);
-
-            if (!Array.isArray(parsedJson)) {
-                 // Caso o modelo retorne um objeto { "news": [...] } em vez de direto o array
-                 if (parsedJson.news && Array.isArray(parsedJson.news)) {
-                     parsedJson = parsedJson.news;
-                 } else {
-                     throw new Error("O JSON retornado não é um array como esperado.");
-                 }
-            }
         } catch (e) {
-            console.warn("[Alerta API News] Falha ao processar JSON:", text);
-            throw new Error(`A API retornou dados inválidos: ${e.message}`);
+            console.error("Erro Parse JSON:", e.message);
+            // Log do texto para debug caso o modelo esteja "conversando" demais
+            console.warn("Texto recebido da API:", text.substring(0, 200) + "..."); 
+            throw new Error(`Falha ao processar o JSON retornado pelo Gemini 3.`);
+        }
+
+        if (!Array.isArray(parsedJson)) {
+            // Fallback caso o modelo retorne dentro de um objeto { "news": [...] }
+            if (parsedJson.news && Array.isArray(parsedJson.news)) {
+                parsedJson = parsedJson.news;
+            } else {
+                throw new Error("A API retornou JSON válido, mas não é um array de notícias.");
+            }
         }
 
         return response.status(200).json({ json: parsedJson });
 
     } catch (error) {
         console.error("Erro interno no proxy Gemini (Notícias):", error);
-        return response.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
+        // Se der erro 400, pode ser que o parâmetro 'thinking' ainda não esteja habilitado na sua chave
+        return response.status(500).json({ error: `Erro: ${error.message}` });
     }
 }

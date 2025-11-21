@@ -20,32 +20,32 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 function getGeminiPayload(todayString) {
 
-    // --- MELHORIAS NO PROMPT ---
-    // 1. Título: Limitado a 60 chars e PROIBIDO conter datas ou nome do site.
-    // 2. Data: Instrução para extrair a data real para o campo 'publicationDate'.
+    // --- AJUSTE PARA CONTEÚDO MAIS DENSO ---
+    // 1. Title: Mantido curto e limpo (sem datas repetidas).
+    // 2. Summary: Agora exigimos "Resumo Jornalístico" com valores e detalhes.
+    
     const systemPrompt = `Tarefa: Listar 15 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
-Fontes: Principais portais financeiros do Brasil (Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal).
-Output: APENAS um array JSON válido. Sem markdown. Sem intro.
+Fontes: Principais portais financeiros do Brasil (Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal, Money Times).
+Output: APENAS um array JSON válido. Sem markdown.
 
 CAMPOS JSON OBRIGATÓRIOS:
-- "title": Título curto e limpo (Máximo 60 caracteres). REGRA CRÍTICA: NÃO escreva a data (ex: 21/11) e NÃO escreva o nome do site dentro do título.
-- "summary": Resumo muito conciso (Máximo 3 frases).
-- "sourceName": Nome do Portal (ex: Suno Notícias).
+- "title": Título curto e direto (Máximo 60 caracteres). REGRA CRÍTICA: NÃO coloque a data (ex: 21/11) e NÃO coloque o nome do site no título.
+- "summary": Resumo jornalístico detalhado (Entre 3 a 5 frases). É OBRIGATÓRIO incluir dados numéricos quando houver (Valores em R$, Dividend Yield em %, Datas de Pagamento). O texto deve ser denso e explicar o impacto da notícia para o investidor. Evite resumos vazios de uma linha.
+- "sourceName": Nome do Portal.
 - "sourceHostname": Domínio (ex: suno.com.br).
-- "publicationDate": A data real da publicação da notícia (Formato YYYY-MM-DD).
+- "publicationDate": A data real da notícia (Formato YYYY-MM-DD).
 - "relatedTickers": Array com os tickers citados (ex: ["MXRF11"]).
 
-Seja extremamente rápido, verídico e obedeça ao formato JSON.`;
+Seja rápido, mas traga conteúdo rico nos resumos.`;
 
-    const userQuery = `JSON com 15 notícias de FIIs desta semana (${todayString}). Use Google Search para dados reais.`;
+    const userQuery = `JSON com 15 notícias de FIIs desta semana (${todayString}). Resumos detalhados com números e valores.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }], // Garante que as datas sejam reais e atuais
+        tools: [{ "google_search": {} }], // Busca ativa para garantir dados reais (valores e datas)
 
         generationConfig: {
-            temperature: 0.1, // Baixa criatividade para seguir regras de formatação estritamente
-            // thinkingConfig removido para evitar latência desnecessária em formatação JSON
+            temperature: 0.1, // Baixa temperatura para fidelidade aos dados
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -90,17 +90,15 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
-        // Cache agressivo (6 horas) pois notícias não mudam a cada segundo
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
-        // Limpeza do Markdown antes do parse
+        // Limpeza robusta de Markdown
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         let parsedJson;
         try {
              parsedJson = JSON.parse(jsonText);
         } catch (e) {
-             // Fallback: Tenta extrair array se houver texto em volta
              const jsonMatch = jsonText.match(/\[.*\]/s);
              if (jsonMatch) {
                  try {

@@ -22,12 +22,12 @@ function getGeminiPayload(todayString) {
 
     // Prompt encurtado para processamento mais rápido
     const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
-Fontes: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times.
+Fontes: Principais portais financeiros do Brasil.
 Output: APENAS um array JSON. Sem markdown. Sem intro.
 
 CAMPOS JSON OBRIGATÓRIOS:
 - "title": Título.
-- "summary": Resumo (2 frases).
+- "summary": Resumo (3 frases ligeiramente maior).
 - "sourceName": Portal.
 - "sourceHostname": Domínio (ex: site.com.br).
 - "publicationDate": YYYY-MM-DD.

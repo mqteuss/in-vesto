@@ -29,7 +29,7 @@ Output: APENAS um array JSON válido. Sem markdown. Sem intro.
 
 CAMPOS JSON OBRIGATÓRIOS:
 - "title": Título curto e limpo (Máximo 60 caracteres). REGRA CRÍTICA: NÃO escreva a data (ex: 21/11) e NÃO escreva o nome do site dentro do título.
-- "summary": Resumo muito conciso (Máximo 2 frases).
+- "summary": Resumo muito conciso (Máximo 3 frases).
 - "sourceName": Nome do Portal (ex: Suno Notícias).
 - "sourceHostname": Domínio (ex: suno.com.br).
 - "publicationDate": A data real da publicação da notícia (Formato YYYY-MM-DD).

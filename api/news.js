@@ -19,33 +19,44 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 function getGeminiPayload(todayString) {
+    // 1. CÁLCULO DE DATA (Filtro de 7 dias atrás)
+    // Se hoje é 2025-11-21, startDate será 2025-11-14
+    const today = new Date(todayString);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(today.getDate() - 7);
+    const startDate = lastWeek.toISOString().split('T')[0]; // Formato YYYY-MM-DD para o Google
 
-    // --- AJUSTE PARA CONTEÚDO MAIS DENSO ---
-    // 1. Title: Mantido curto e limpo (sem datas repetidas).
-    // 2. Summary: Agora exigimos "Resumo Jornalístico" com valores e detalhes.
-    
-    const systemPrompt = `Tarefa: Listar 15 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
-Fontes: Principais portais financeiros do Brasil (Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal, Money Times).
-Output: APENAS um array JSON válido. Sem markdown.
+    // --- PROMPT AJUSTADO PARA 25 NOTÍCIAS E FILTRO RIGOROSO ---
+    const systemPrompt = `Tarefa: Atuar como um agregador de notícias financeiras em tempo real.
+Objetivo: Listar as 25 notícias mais recentes e relevantes de FIIs (Fundos Imobiliários) publicadas ESTRITAMENTE entre ${startDate} e ${todayString}.
+Fontes: Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal, Money Times, Valor Investe.
+Output: APENAS um array JSON válido.
+
+REGRAS DE FILTRAGEM (CRÍTICO):
+1. QUANTIDADE: Busque exatamente 25 notícias distintas.
+2. DATA: IGNORE qualquer notícia publicada antes de ${startDate}. Se a notícia for do dia 01, 05 ou 10 (e a data de corte for 14), NÃO inclua.
+3. TEMA: Foque em Fatos Relevantes, Dividendos, Emissões e Relatórios Gerenciais.
 
 CAMPOS JSON OBRIGATÓRIOS:
-- "title": Título curto e direto (Máximo 60 caracteres). REGRA CRÍTICA: NÃO coloque a data (ex: 21/11) e NÃO coloque o nome do site no título.
-- "summary": Resumo jornalístico detalhado (Entre 3 a 5 frases). É OBRIGATÓRIO incluir dados numéricos quando houver (Valores em R$, Dividend Yield em %, Datas de Pagamento). O texto deve ser denso e explicar o impacto da notícia para o investidor. Evite resumos vazios de uma linha.
+- "title": Título curto (Máx 60 caracteres). NÃO coloque a data nem o nome do site no título.
+- "summary": Resumo jornalístico detalhado (3 a 4 frases). OBRIGATÓRIO incluir números (R$, %, Datas) para dar densidade ao texto.
 - "sourceName": Nome do Portal.
 - "sourceHostname": Domínio (ex: suno.com.br).
-- "publicationDate": A data real da notícia (Formato YYYY-MM-DD).
-- "relatedTickers": Array com os tickers citados (ex: ["MXRF11"]).
+- "publicationDate": A data real da notícia (YYYY-MM-DD). Deve ser >= ${startDate}.
+- "relatedTickers": Array com os tickers (ex: ["HGLG11"]).
 
-Seja rápido, mas traga conteúdo rico nos resumos.`;
+Seja rápido e rigoroso com a data.`;
 
-    const userQuery = `JSON com 15 notícias de FIIs desta semana (${todayString}). Resumos detalhados com números e valores.`;
+    // --- QUERY COM OPERADOR DE TEMPO ---
+    // O operador "after:" força o Google a ignorar resultados velhos
+    const userQuery = `25 notícias recentes de FIIs (Fundos Imobiliários) after:${startDate} até ${todayString}. JSON array.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }], // Busca ativa para garantir dados reais (valores e datas)
+        tools: [{ "google_search": {} }], // Busca ativa obrigatória
 
         generationConfig: {
-            temperature: 0.1, // Baixa temperatura para fidelidade aos dados
+            temperature: 0.1, // Baixa criatividade para garantir respeito às datas e formato
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },

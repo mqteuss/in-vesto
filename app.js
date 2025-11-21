@@ -89,7 +89,7 @@ function isB3Open() {
 const REFRESH_INTERVAL = 900000; 
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; 
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; 
-const CACHE_NOTICIAS = 1000 * 60 * 60 * 1; 
+const CACHE_NOTICIAS = 1000 * 60 * 60 * 6; // ALTERADO: 6 Horas
 const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
 
@@ -1606,7 +1606,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchBFF(url, options = {}) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); 
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // ALTERADO: 60 segundos
             
             const response = await fetch(url, { ...options, signal: controller.signal });
             clearTimeout(timeoutId); 
@@ -1618,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return response.json();
         } catch (error) {
             if (error.name === 'AbortError') {
-                console.error(`Erro ao chamar o BFF ${url}:`, "Timeout de 30s excedido");
+                console.error(`Erro ao chamar o BFF ${url}:`, "Timeout de 60s excedido");
                 throw new Error("O servidor demorou muito para responder.");
             }
             console.error(`Erro ao chamar o BFF ${url}:`, error);

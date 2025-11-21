@@ -40,7 +40,7 @@ export default async function handler(request, response) {
   // 8 é o limite seguro para processar dentro de 9.5 segundos.
   const systemPrompt = `
     Analista FIIs. Data: ${todayString}.
-    Tarefa: Listar 8 notícias relevantes de FIIs.
+    Tarefa: Listar 10 notícias relevantes de FIIs.
     Regra: Use 'google_search'. Seja sucinto e direto.
   `;
 

@@ -20,37 +20,59 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 function getGeminiPayload(todayString) {
 
-    // Corrigido erro de grafia no exemplo ("atiu" -> "atingiu")
+    // O systemPrompt continua o mesmo, servindo como reforço para o conteúdo
     const systemPrompt = `Você é um editor de notícias financeiras. Sua tarefa é encontrar as 10 notícias mais recentes e relevantes sobre FIIs (Fundos Imobiliários) no Brasil, publicadas **nesta semana** (data de hoje: ${todayString}).
 
 REGRAS:
 1.  Encontre artigos de portais de notícias conhecidos (ex: InfoMoney, Fiis.com.br, Seu Dinheiro, Money Times).
-2.  Responda APENAS com um array JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
-3.  Cada objeto no array deve conter 6 campos:
-    - "title": O título exato ou ligeiramente abreviado da notícia.
-    - "summary": Um resumo da notícia com 3 frases (ligeiramente maior).
-    - "sourceName": O nome do portal (ex: "InfoMoney").
-    - "sourceHostname": O domínio raiz da fonte (ex: "infomoney.com.br"). ESTE CAMPO É OBRIGATÓRIO.
-    - "publicationDate": A data da publicação no formato YYYY-MM-DD.
-    - "relatedTickers": Um array de strings com os tickers de FIIs (ex: "MXRF11", "HGLG11") mencionados no título ou resumo. Se nenhum for mencionado, retorne um array vazio [].
+2.  Responda APENAS com um array JSON válido.
+3.  Use as ferramentas de busca para garantir que as datas sejam desta semana.
 
 EXEMPLO DE RESPOSTA JSON:
 [
-  {"title": "IFIX atinge nova máxima: O que esperar?", "summary": "O IFIX atingiu nova máxima histórica nesta semana. Analistas debatem se o movimento é sustentável ou se uma correção está próxima, de olho na Selic.", "sourceName": "InfoMoney", "sourceHostname": "infomoney.com.br", "publicationDate": "2025-11-06", "relatedTickers": []},
-  {"title": "HGLG11 e CPTS11 anunciam aquisições", "summary": "O fundo HGLG11 investiu R$ 63 milhões em galpões. Já o CPTS11 anunciou uma nova emissão.", "sourceName": "Money Times", "sourceHostname": "moneytimes.com.br", "publicationDate": "2025-11-05", "relatedTickers": ["HGLG11", "CPTS11"]}
-]
-
-IMPORTANTE: Sua resposta DEVE começar com '[' e terminar com ']'. Nenhuma outra palavra, frase ou formatação é permitida antes ou depois do array JSON.`;
+  {"title": "IFIX atinge nova máxima", "summary": "Resumo aqui...", "sourceName": "InfoMoney", "sourceHostname": "infomoney.com.br", "publicationDate": "2025-11-06", "relatedTickers": []}
+]`;
 
     const userQuery = `Gere um array JSON com os 10 resumos de notícias mais recentes (desta semana, ${todayString}) sobre FIIs. Inclua "title", "summary", "sourceName", "sourceHostname", "publicationDate" (YYYY-MM-DD) e "relatedTickers" (array de FIIs mencionados).`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
         tools: [{ "google_search": {} }],
-        // Adicionado generationConfig para controlar a temperatura
+        
+        // --- NOVO: Configuração Avançada de Geração ---
         generationConfig: {
-            temperature: 0.1
+            temperature: 0.1,
+            // 1. Força a resposta a ser estritamente JSON
+            responseMimeType: "application/json",
+            
+            // 2. Schema: Define a estrutura exata dos dados (Blindagem contra erros)
+            responseSchema: {
+                type: "ARRAY",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        title: { type: "STRING" },
+                        summary: { type: "STRING" },
+                        sourceName: { type: "STRING" },
+                        sourceHostname: { type: "STRING" },
+                        publicationDate: { type: "STRING" },
+                        relatedTickers: { 
+                            type: "ARRAY", 
+                            items: { type: "STRING" } 
+                        }
+                    },
+                    required: ["title", "summary", "sourceName", "sourceHostname", "publicationDate", "relatedTickers"]
+                }
+            },
+
+            // 3. Thinking: Habilita o raciocínio, mas esconde o texto final para não quebrar o JSON
+            thinkingConfig: {
+                includeThoughts: false, 
+                thinkingBudget: 1024 // Orçamento de tokens para pensar (ajuste conforme necessário)
+            }
         },
+        // ----------------------------------------------
+
         systemInstruction: { parts: [{ text: systemPrompt }] },
     };
 }
@@ -65,7 +87,7 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
-    // Modelo atualizado conforme solicitado (gemini-2.5-flash)
+    // Mantendo a URL v1beta para garantir acesso aos recursos novos (Schema/Thinking)
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
@@ -85,7 +107,6 @@ export default async function handler(request, response) {
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
-        // Corrigido erro de grafia: MAX_TOKSENS -> MAX_TOKENS
         if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
              if (candidate?.finishReason) {
                  throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
@@ -97,28 +118,25 @@ export default async function handler(request, response) {
 
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
+        // Limpeza básica (o responseMimeType já deve garantir JSON limpo, mas isso é uma segurança extra)
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const jsonMatch = jsonText.match(/\[.*\]/s);
-
+        
         let parsedJson;
+        try {
+             parsedJson = JSON.parse(jsonText);
+        } catch (e) {
+             // Fallback para tentar encontrar array dentro do texto se algo estranho acontecer
+             const jsonMatch = jsonText.match(/\[.*\]/s);
+             if (jsonMatch) {
+                 parsedJson = JSON.parse(jsonMatch[0]);
+             } else {
+                 throw new Error("Falha ao processar JSON da resposta.");
+             }
+        }
 
-        if (jsonMatch && jsonMatch[0]) {
-            try {
-                parsedJson = JSON.parse(jsonMatch[0]);
-            } catch (e) {
-                console.error("Erro ao fazer parse do JSON encontrado (match):", e.message);
-                throw new Error(`Erro interno ao processar JSON: ${e.message}`);
-            }
-        } else {
-            try {
-                 parsedJson = JSON.parse(jsonText);
-                 if (!Array.isArray(parsedJson)) {
-                     throw new Error("API retornou um JSON válido, mas não um array.");
-                 }
-            } catch (e) {
-                console.warn("[Alerta API News] A API retornou texto em vez de JSON:", jsonText);
-                throw new Error(`A API de notícias retornou texto inesperado: ${jsonText.substring(0, 50)}...`);
-            }
+        if (!Array.isArray(parsedJson)) {
+            // Se o schema falhar e retornar um objeto único em vez de array, envolvemos num array
+            parsedJson = [parsedJson]; 
         }
 
         return response.status(200).json({ json: parsedJson });

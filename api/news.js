@@ -19,44 +19,46 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 function getGeminiPayload(todayString) {
-    // 1. CALCULAR DATA DE CORTE (7 DIAS ATRÁS)
-    // Se todayString for "2025-11-21", startDate será "2025-11-14"
+    // 1. CÁLCULO DE DATA (Filtro de 7 dias)
+    // Se hoje é 2025-11-21, ele define a data de corte para 2025-11-14
     const today = new Date(todayString);
     const lastWeek = new Date(today);
     lastWeek.setDate(today.getDate() - 7);
-    const startDate = lastWeek.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    
+    // Formata para YYYY-MM-DD para o Google Search entender
+    const startDate = lastWeek.toISOString().split('T')[0]; 
 
-    // --- PROMPT BLINDADO CONTRA NOTÍCIAS VELHAS ---
-    // Adicionei a instrução explícita "IGNORAR notícias anteriores a..."
-    const systemPrompt = `Tarefa: Listar 15 notícias de FIIs publicadas ESTRITAMENTE entre ${startDate} e ${todayString}.
-Fontes: Portais financeiros do Brasil.
-Output: APENAS um array JSON.
+    // --- PROMPT REFINADO ---
+    const systemPrompt = `Tarefa: Atuar como um jornalista financeiro sênior. Listar as 15 notícias mais relevantes de FIIs (Fundos Imobiliários) publicadas entre ${startDate} e ${todayString}.
+Fontes: Portais confiáveis (Suno, Funds Explorer, InfoMoney, FIIs.com.br, Brazil Journal, Money Times).
+Output: APENAS um array JSON válido.
 
-REGRAS DE FILTRAGEM (CRÍTICO):
-1. IGNORE qualquer notícia publicada antes de ${startDate}.
-2. Se a notícia for sobre "Carteiras recomendadas de Novembro" publicada no dia 01 ou 04, IGNORE. Quero apenas fatos ocorridos na última semana.
-3. Priorize fatos relevantes: Dividendos anunciados, Venda de imóveis, Emissões.
+REGRAS DE CONTEÚDO:
+1. DATA: Ignore qualquer notícia anterior a ${startDate}. Foque no que aconteceu nesta semana.
+2. TÍTULO: Deve ser curto (Máx 60 chars) e impactante. NUNCA coloque a data ou o nome do site no título.
+3. RESUMO: Deve ser denso e informativo (3 a 5 frases). É OBRIGATÓRIO citar valores (R$), dividend yields (%), datas de pagamento ou detalhes da transação. O leitor deve entender a notícia completa apenas lendo o resumo.
+4. TICKERS: Identifique corretamente os fundos citados.
 
-CAMPOS JSON:
-- "title": Título curto (Máx 60 chars). SEM datas, SEM nome do site.
-- "summary": Resumo denso e jornalístico (3 a 5 frases). OBRIGATÓRIO conter valores (R$), taxas (%) e datas específicas.
-- "sourceName": Nome do Portal.
-- "sourceHostname": Domínio.
-- "publicationDate": Data real (YYYY-MM-DD). Deve ser >= ${startDate}.
-- "relatedTickers": Array ["MXRF11"].
+CAMPOS JSON OBRIGATÓRIOS:
+- "title": String (Manchete limpa).
+- "summary": String (Texto jornalístico detalhado).
+- "sourceName": String (Portal).
+- "sourceHostname": String (Domínio).
+- "publicationDate": String (YYYY-MM-DD, deve ser >= ${startDate}).
+- "relatedTickers": Array de Strings.
 
-Seja rápido.`;
+Seja rápido e preciso.`;
 
-    // --- QUERY COM OPERADOR DE BUSCA ---
-    // O operador "after:" força o Google a filtrar os resultados
-    const userQuery = `Notícias de Fundos Imobiliários (FIIs) after:${startDate} até ${todayString}. JSON array.`;
+    // --- QUERY COM OPERADOR DE TEMPO ---
+    // O "after:" força o Google a ignorar resultados velhos
+    const userQuery = `Principais notícias de Fundos Imobiliários (FIIs) after:${startDate} até ${todayString}. JSON array completo.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }], 
+        tools: [{ "google_search": {} }], // Ferramenta de busca ativa
 
         generationConfig: {
-            temperature: 0.1, 
+            temperature: 0.1, // Baixa temperatura para seguir as regras estritamente
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -101,14 +103,17 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
+        // Cache de 6 horas para economizar requisições
         response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
+        // Limpeza do Markdown para evitar erros de JSON
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         let parsedJson;
         try {
              parsedJson = JSON.parse(jsonText);
         } catch (e) {
+             // Tentativa de recuperação se houver texto antes/depois do JSON
              const jsonMatch = jsonText.match(/\[.*\]/s);
              if (jsonMatch) {
                  try {

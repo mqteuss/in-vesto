@@ -6,7 +6,8 @@
   "dependencies": {
     "@vercel/kv": "^2.0.0",
     "uuid": "^10.0.0",
-    "@supabase/supabase-js": "^2.43.5"
+    "@supabase/supabase-js": "^2.43.5",
+    "rss-parser": "^3.13.0"
   },
   "engines": {
     "node": "22.x"

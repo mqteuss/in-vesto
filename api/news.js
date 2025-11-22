@@ -28,13 +28,13 @@ export default async function handler(request, response) {
   const GEN_AI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_VERSION}:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
   const systemPrompt = `
-    Analista FIIs. Data: ${todayString}.
-    Tarefa: 8 notícias relevantes de FIIs (Fundos Imobiliários).
-    Regra: Use 'google_search'. Resumos detalhados com números.
-  `;
+    Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
+    Fontes: Principais portais financeiros do Brasil.
+    Seja extremamente rápido e direto.
+     `;
 
   const payload = {
-    contents: [{ parts: [{ text: `Encontre 8 notícias recentes de FIIs (${todayString})` }] }],
+    contents: [{ parts: [{ text: `Encontre 10 notícias recentes de FIIs (${todayString})` }] }],
     tools: [{ google_search: {} }], 
     generationConfig: {
       temperature: 0.3,

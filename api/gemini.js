@@ -1,161 +1,146 @@
-// Schema 1: Histórico Individual (Para o gráfico de barras do modal de detalhes)
-const HISTORICO_INDIVIDUAL_SCHEMA = {
-  type: "ARRAY",
-  items: {
-    type: "OBJECT",
-    properties: {
-      mes: { type: "STRING", description: "Mês/Ano formato MM/AA (ex: 11/25)" },
-      valor: { type: "NUMBER", description: "Valor pago por cota em Reais (ex: 0.10)" }
-    },
-    required: ["mes", "valor"]
-  }
-};
+// api/gemini.js
+// Esta é uma Vercel Serverless Function.
+// Ela atua como um proxy seguro para a API Google Gemini.
 
-// Schema 2: Proventos Futuros (Para a previsão de ganhos)
-const PROVENTOS_FUTUROS_SCHEMA = {
-  type: "ARRAY",
-  items: {
-    type: "OBJECT",
-    properties: {
-      symbol: { type: "STRING" },
-      paymentDate: { type: "STRING", description: "Formato YYYY-MM-DD" },
-      value: { type: "NUMBER", description: "Valor do provento por cota" }
-    },
-    required: ["symbol", "paymentDate", "value"]
-  }
-};
-
-// Schema 3: Lista Bruta de Pagamentos (Para o histórico consolidado do portfólio)
-const LISTA_PAGAMENTOS_SCHEMA = {
-  type: "ARRAY",
-  items: {
-    type: "OBJECT",
-    properties: {
-      ticker: { type: "STRING" },
-      dataPagamento: { type: "STRING", description: "YYYY-MM-DD" },
-      valor: { type: "NUMBER" }
-    },
-    required: ["ticker", "dataPagamento", "valor"]
-  }
-};
-
-export default async function handler(request, response) {
-  if (request.method !== 'POST') return response.status(405).json({ error: "Use POST" });
-
-  // OBS: Aqui estou usando a mesma variável que usamos no news.js
-  // Se no seu env for GEMINI_API_KEY, ajuste aqui.
-  const API_KEY = process.env.NEWS_GEMINI_API_KEY || process.env.GEMINI_API_KEY; 
-  
-  if (!API_KEY) return response.status(500).json({ error: "API Key ausente" });
-
-  const { mode, payload } = request.body;
-  
-  // VENCEDOR: Gemini 2.0 Flash (Suporta Search + JSON Nativo e tem cota livre)
-  const MODEL = "gemini-2.0-flash";
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
-
-  let systemPrompt = "";
-  let userPrompt = "";
-  let schema = null;
-
-  if (mode === 'historico_12m') {
-    schema = HISTORICO_INDIVIDUAL_SCHEMA;
-    systemPrompt = `
-      Analista de FIIs. Data Hoje: ${payload.todayString}.
-      Tarefa: Pesquise o histórico de dividendos PAGOS pelo fundo ${payload.ticker} nos últimos 12 meses.
-      Retorne apenas Mês/Ano (MM/AA) e Valor.
-      Ordene do mais recente para o mais antigo.
-    `;
-    userPrompt = `Histórico de dividendos do ${payload.ticker} (últimos 12 meses).`;
-
-  } else if (mode === 'proventos_carteira') {
-    schema = PROVENTOS_FUTUROS_SCHEMA;
-    const lista = payload.fiiList.join(", ");
-    systemPrompt = `
-      Analista FIIs. Data Hoje: ${payload.todayString}.
-      Tarefa: Pesquise se há dividendos ANUNCIADOS (Data Com já passou) com pagamento futuro ou muito recente (neste mês) para estes fundos: ${lista}.
-      Retorne apenas os confirmados OFICIALMENTE. Se não houver previsão, não invente.
-    `;
-    userPrompt = `Próximos dividendos para: ${lista}`;
-
-  } else if (mode === 'historico_portfolio') {
-    schema = LISTA_PAGAMENTOS_SCHEMA;
-    const lista = payload.fiiList.join(", ");
-    systemPrompt = `
-      Analista FIIs. Data Hoje: ${payload.todayString}.
-      Tarefa: Pesquise os dividendos PAGOS por estes fundos nos últimos 6 meses: ${lista}.
-      Liste cada pagamento individualmente com data exata e valor.
-    `;
-    userPrompt = `Histórico de pagamentos dos últimos 6 meses para: ${lista}`;
-  } else {
-    return response.status(400).json({ error: "Modo inválido" });
-  }
-
-  const apiPayload = {
-    contents: [{ parts: [{ text: userPrompt }] }],
-    tools: [{ google_search: {} }], 
-    generationConfig: {
-      temperature: 0.1, 
-      responseMimeType: "application/json",
-      responseSchema: schema
-    },
-    systemInstruction: { parts: [{ text: systemPrompt }] }
-  };
-
-  try {
-    const fetchResponse = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(apiPayload)
-    });
-
-    if (!fetchResponse.ok) {
-        const txt = await fetchResponse.text();
-        throw new Error(`Erro Gemini (${fetchResponse.status}): ${txt}`);
-    }
-
-    const data = await fetchResponse.json();
-    const rawJSON = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    
-    if (!rawJSON) throw new Error("IA não retornou dados.");
-
-    let resultData = JSON.parse(rawJSON);
-
-    // Adapta o formato para o modo portfolio (Array de Objetos por Mês)
-    if (mode === 'historico_portfolio') {
-        const agrupadoPorMes = {};
-        resultData.forEach(item => {
-            if (!item.dataPagamento) return;
-            const parts = item.dataPagamento.split('-'); // [YYYY, MM, DD]
-            if(parts.length < 3) return;
-            
-            const anoCurto = parts[0].slice(2); 
-            const mesChave = `${parts[1]}/${anoCurto}`; 
-
-            if (!agrupadoPorMes[mesChave]) {
-                agrupadoPorMes[mesChave] = { mes: mesChave };
+// Função de retry (backoff) para o servidor
+async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(url, options);
+            if (response.status === 429 || response.status >= 500) {
+                throw new Error(`API Error: ${response.status} ${response.statusText}`);
             }
-            agrupadoPorMes[mesChave][item.ticker] = item.valor;
-        });
+            if (!response.ok) {
+                 const errorBody = await response.json();
+                 throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
+            }
+            return response.json();
+        } catch (error) {
+            if (i === retries - 1) throw error;
+            console.warn(`Tentativa ${i+1} falhou, aguardando ${delay * (i + 1)}ms...`);
+            await new Promise(res => setTimeout(res, delay * (i + 1)));
+        }
+    }
+}
+
+// Constrói o payload para a API Gemini
+function getGeminiPayload(mode, payload) {
+    const { ticker, todayString, fiiList } = payload;
+    let systemPrompt = '';
+    let userQuery = '';
+
+    switch (mode) {
         
-        // Retorna apenas a lista de meses, ordenada se necessário
-        resultData = Object.values(agrupadoPorMes);
-    }
-    
-    // Para manter compatibilidade com seu frontend que espera { json: [...] }
-    if (mode === 'historico_12m' || mode === 'proventos_carteira' || mode === 'historico_portfolio') {
-         // O frontend antigo pode estar esperando um objeto { json: [...] } ou array direto.
-         // Seu código original retornava { json: parsedJson }. Vamos manter.
-         return response.status(200).json({ json: resultData });
+        case 'historico_12m':
+            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua única tarefa é encontrar o histórico de proventos (dividendos) dos *últimos 12 meses* para o FII solicitado. Use a busca na web para garantir que a informação seja a mais recente (data de hoje: ${todayString}).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução ou markdown.\nOrdene a resposta do mais recente para o mais antigo (até 12 itens).\n\n- O mês deve estar no formato "MM/AA" (ex: "10/25").\n- O valor deve ser um número (ex: 0.10).\n\nExemplo de Resposta:\n[\n  {"mes": "10/25", "valor": 0.10},\n  {"mes": "09/25", "valor": 0.10}\n]\n\nSe não encontrar dados, retorne um array JSON vazio: []`;
+            userQuery = `Gere o histórico de proventos JSON (últimos 12 meses) para o FII ${ticker}.`;
+            break;
+
+        case 'proventos_carteira':
+            // **** ALTERAÇÃO AQUI ****
+            systemPrompt = `Você é um assistente financeiro focado em FIIs (Fundos Imobiliários) brasileiros. Sua tarefa é encontrar o valor e a data do provento (dividendo) mais recente **OFICIALMENTE ANUNCIADO** para uma lista de FIIs.
+Sua busca deve focar APENAS em proventos cujo pagamento está agendado para **hoje (${todayString})** ou para uma **data futura**.
+
+TAREFA CRÍTICA / ALERTA:
+1.  Busque ativamente por "fatos relevantes" ou "comunicados ao mercado" recentes (de hoje, ${todayString}) que possam ter *alterado* ou *corrigido* a data de pagamento anunciada.
+2.  Se um provento futuro (com pagamento hoje ou depois) **NÃO FOI OFICIALMENTE ANUNCIADO** (via fato relevante ou comunicado), **NÃO ADIVINHE**, não projete, e não use datas de meses passados como base.
+3.  Nestes casos (sem anúncio oficial futuro), a resposta DEVE ser 'value' como 0 e 'paymentDate' como null.
+
+IMPORTANTE: A data 'paymentDate' DEVE estar no formato AAAA-MM-DD (ex: 2025-11-07).
+
+Responda APENAS com um array JSON válido, sem nenhum outro texto, introdução, markdown (\`\`\`) ou formatação.
+
+Exemplo de resposta (se hoje for 07/11/2025 e GARE11 tem um anúncio oficial de pagamento para hoje, mas HGLG11 não tem anúncio futuro):
+[
+  {"symbol": "MXRF11", "value": 0.10, "paymentDate": "2025-11-15"},
+  {"symbol": "GARE11", "value": 0.08, "paymentDate": "2025-11-07"},
+  {"symbol": "HGLG11", "value": 0, "paymentDate": null} 
+]`;
+            // **** FIM DA ALTERAÇÃO ****
+            
+            userQuery = `Encontre o provento mais recente **oficialmente anunciado** (incluindo pagamentos de hoje, ${todayString}, e futuros) para os FIIs: ${fiiList.join(', ')}. Verifique ativamente por fatos relevantes ou comunicados recentes que possam ter *corrigido* a data de pagamento. Não adivinhe pagamentos futuros que não foram anunciados.`;
+            break;
+
+        case 'historico_portfolio':
+            systemPrompt = `Você é um assistente financeiro. Sua tarefa é encontrar o histórico de proventos (dividendos) *por cota* dos últimos 6 meses *completos*.\n\nNÃO inclua o mês atual (data de hoje: ${todayString}).\n\nResponda APENAS com um array JSON válido, sem nenhum outro texto, introdução ou markdown.\nOrdene a resposta do mês mais antigo para o mais recente.\n\n- O mês deve estar no formato "MM/AA" (ex: "10/25").\n- Se um FII não pagou em um mês, retorne 0 para ele.\n\nExemplo de Resposta (se hoje for Nov/2025):\n[\n  {"mes": "05/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "06/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "07/25", "MXRF11": 0.10, "GARE11": 0.08},\n  {"mes": "08/25", "MXRF11": 0.10, "GARE11": 0},\n  {"mes": "09/25", "MXRF11": 0.11, "GARE11": 0.09},\n  {"mes": "10/25", "MXRF11": 0.11, "GARE11": 0.09}\n]`;
+            userQuery = `Gere o histórico de proventos por cota dos últimos 6 meses completos (não inclua o mês atual) para: ${fiiList.join(', ')}.`;
+            break;
+
+        default:
+            throw new Error("Modo de API Gemini inválido.");
     }
 
-    // Cache
-    response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=3600');
-    return response.status(200).json(resultData);
+    return {
+        contents: [{ parts: [{ text: userQuery }] }],
+        tools: [{ "google_search": {} }], 
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+    };
+}
 
-  } catch (error) {
-    console.error("ERRO GEMINI API:", error.message);
-    // Retorna array vazio encapsulado em json para não quebrar o frontend
-    return response.status(200).json({ json: [] }); 
-  }
+// Handler principal da Vercel Serverless Function
+export default async function handler(request, response) {
+    if (request.method !== 'POST') {
+        return response.status(405).json({ error: "Método não permitido, use POST." });
+    }
+
+    const { GEMINI_API_KEY } = process.env;
+    if (!GEMINI_API_KEY) {
+        return response.status(500).json({ error: "Chave da API Gemini não configurada no servidor." });
+    }
+
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+
+    try {
+        const { mode, payload } = request.body;
+        const geminiPayload = getGeminiPayload(mode, payload);
+
+        const result = await fetchWithBackoff(GEMINI_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(geminiPayload)
+        });
+
+        const candidate = result?.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+
+        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") { // Corrigido MAX_TOKSENS -> MAX_TOKENS
+             if (candidate?.finishReason) {
+                 throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
+             }
+        }
+        if (!text) {
+            throw new Error("A API retornou uma resposta vazia.");
+        }
+
+        // Cache de 24 horas (86400 segundos)
+        response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); 
+
+        if (mode === 'proventos_carteira' || mode === 'historico_portfolio' || mode === 'historico_12m') {
+            try {
+                let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                const jsonMatch = jsonText.match(/\[.*\]/s); // Tenta encontrar um array [ ... ]
+                
+                if (jsonMatch && jsonMatch[0]) {
+                    jsonText = jsonMatch[0];
+                }
+                
+                const parsedJson = JSON.parse(jsonText);
+                
+                if (Array.isArray(parsedJson)) {
+                    return response.status(200).json({ json: parsedJson });
+                } else {
+                    throw new Error("API retornou um JSON válido, mas não um array.");
+                }
+            } catch (e) {
+                console.warn(`[Alerta API Gemini] A API retornou texto inválido ("${text}") em vez de JSON. Retornando array vazio. Erro: ${e.message}`);
+                return response.status(200).json({ json: [] }); 
+            }
+        } else {
+            return response.status(200).json({ text: text.replace(/\*/g, '') });
+        }
+
+    } catch (error) {
+        console.error("Erro interno no proxy Gemini:", error);
+        return response.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
+    }
 }

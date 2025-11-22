@@ -29,7 +29,7 @@ export default async function handler(request, response) {
 
   const systemPrompt = `
     Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
-    Fontes: Principais portais financeiros do Brasil.
+    FONTES: PRINCIPAIS PORTAIS FINANCEIROS DO BRASIL.
     Seja extremamente rápido e direto.
     
     REGRAS:

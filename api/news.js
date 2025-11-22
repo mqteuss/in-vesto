@@ -20,14 +20,13 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 
 function getGeminiPayload(todayString) {
     // MODIFICAÇÃO AQUI: Adicionado campo "url" e instrução de veracidade
-    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
+    const systemPrompt = `Tarefa: Listar 9 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
 Fontes: Principais portais financeiros do Brasil.
-ALERTA CRÍTICO: Não Busque no portal "Genial Analisa". 
 Output: APENAS um array JSON. Sem markdown. Sem intro.
 
 CAMPOS JSON OBRIGATÓRIOS:
 - "title": Título.
-- "summary": Resumo (3 frases ligeiramente maior).
+- "summary": Resumo (2 frases ligeiramente maior).
 - "sourceName": Portal.
 - "sourceHostname": Domínio (ex: site.com.br).
 - "url": URL direta e VÁLIDA para a matéria encontrada.
@@ -36,7 +35,7 @@ CAMPOS JSON OBRIGATÓRIOS:
 
 Seja EXTREMAMENTE rápido e direto. Use os links fornecidos pela ferramenta de busca.`;
 
-    const userQuery = `JSON com 10 notícias de FIIs desta semana (${todayString}). Use Google Search. Retorne as URLs exatas.`;
+    const userQuery = `JSON com 9 notícias de FIIs desta semana (${todayString}). Use Google Search. Retorne as URLs exatas.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],

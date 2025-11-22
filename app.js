@@ -3,10 +3,6 @@ import * as supabaseDB from './supabase.js';
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
-// ==================================================================
-// FUNÇÕES UTILITÁRIAS GERAIS
-// ==================================================================
-
 function bufferToBase64(buffer) {
     return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
@@ -83,13 +79,10 @@ function isB3Open() {
     return false;
 }
 
-// ==================================================================
-// CONSTANTES DE CACHE
-// ==================================================================
 const REFRESH_INTERVAL = 900000; 
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; 
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; 
-const CACHE_NOTICIAS = 1000 * 60 * 60 * 6; // ALTERADO: 6 Horas
+const CACHE_NOTICIAS = 1000 * 60 * 60 * 6; 
 const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
 
@@ -308,14 +301,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const authContainer = document.getElementById('auth-container');
     const authLoading = document.getElementById('auth-loading');
     
-    // Login Form
     const loginForm = document.getElementById('login-form');
     const loginEmailInput = document.getElementById('login-email');
     const loginPasswordInput = document.getElementById('login-password');
     const loginSubmitBtn = document.getElementById('login-submit-btn');
     const loginError = document.getElementById('login-error');
     
-    // Signup Form
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
@@ -324,7 +315,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const signupError = document.getElementById('signup-error');
     const signupSuccess = document.getElementById('signup-success'); 
     
-    // Recover Form
     const recoverForm = document.getElementById('recover-form');
     const recoverEmailInput = document.getElementById('recover-email');
     const recoverSubmitBtn = document.getElementById('recover-submit-btn');
@@ -333,17 +323,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const showRecoverBtn = document.getElementById('show-recover-btn');
     const backToLoginBtn = document.getElementById('back-to-login-btn');
     
-    // Navigation Buttons
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
     
-    // New Password Modal
     const newPasswordModal = document.getElementById('new-password-modal');
     const newPasswordForm = document.getElementById('new-password-form');
     const newPasswordInput = document.getElementById('new-password-input');
     const newPasswordBtn = document.getElementById('new-password-btn');
 
-    // App Core
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
@@ -486,14 +473,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
 
-    // ==========================================================
-    // FUNÇÕES DE BIOMETRIA
-    // ==========================================================
-    
     async function verificarStatusBiometria() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
         
-        // Ícone fica Verde se Ativo, Vermelho se Desativado
         if (bioStatusIcon) {
             if (bioEnabled) {
                 bioStatusIcon.classList.remove('text-gray-500', 'text-red-500');
@@ -605,7 +587,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('Biometria desativada.');
     }
 
-    // Event Listeners Biometria
     if (toggleBioBtn) {
         toggleBioBtn.addEventListener('click', () => {
             const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
@@ -632,8 +613,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ==========================================================
-    
     function showUpdateBar() {
         updateNotification.classList.remove('hidden');
         setTimeout(() => {
@@ -687,7 +666,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
             
             if (isFII(symbol)) {
-                // MUDANÇA: Adicionando ID do usuário na remoção do cache
                  const userKey = currentUserId ? `_${currentUserId}` : '';
                  await vestoDB.delete('apiCache', `cache_grafico_historico${userKey}`);
             }
@@ -1591,7 +1569,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const articles = response.json;
             
             if (articles && Array.isArray(articles) && articles.length > 0) {
-                // USA CACHE CURTO (1h) PARA NOTÍCIAS
                 await setCache(cacheKey, articles, CACHE_NOTICIAS);
             } else {
                 console.warn("API de notícias retornou vazio ou inválido.");
@@ -1606,7 +1583,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchBFF(url, options = {}) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000); // ALTERADO: 60 segundos
+            const timeoutId = setTimeout(() => controller.abort(), 60000); 
             
             const response = await fetch(url, { ...options, signal: controller.signal });
             clearTimeout(timeoutId); 
@@ -1629,7 +1606,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function buscarPrecosCarteira(force = false) { 
         if (carteiraCalculada.length === 0) return [];
         
-        // LOGICA DE CACHE INTELIGENTE
         const mercadoAberto = isB3Open();
         const duracaoCachePreco = mercadoAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
 
@@ -1640,7 +1616,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             if (!force) {
-                // Aqui o getCache já verifica a duração salva
                 const precoCache = await getCache(cacheKey);
                 if (precoCache) return precoCache;
             }
@@ -1651,7 +1626,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (result && !result.error) {
                     if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                    // Salva com a duração calculada acima
                     await setCache(cacheKey, result, duracaoCachePreco); 
                     return result;
                 } else {
@@ -1750,7 +1724,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
         
-        // MUDANÇA: Adicionando ID do usuário na chave de cache
         const cacheKey = `cache_grafico_historico_${currentUserId}`;
         
         if (force) {
@@ -2204,7 +2177,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 precoData = data.results?.[0];
                 
-                // Salva cache curto para detalhe também (15min ou 12h dependendo do mercado)
                 const isAberto = isB3Open();
                 const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
                 
@@ -2656,10 +2628,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             authLoading.classList.remove('hidden');
             loginForm.classList.add('hidden');
             signupForm.classList.add('hidden');
-            recoverForm.classList.add('hidden'); // Esconde recuperar
+            recoverForm.classList.add('hidden'); 
         } else {
             authLoading.classList.add('hidden');
-            // Por padrão mostra login, mas pode ser alterado pelos listeners
         }
     }
     
@@ -2714,7 +2685,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return; 
         }
         
-        // LOGICA DE UI PARA RECUPERAÇÃO
         if (showRecoverBtn) {
             showRecoverBtn.addEventListener('click', () => {
                 loginForm.classList.add('hidden');
@@ -2757,17 +2727,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
-        // =========================================================
-        // LOGICA PARA DETECTAR LINK DE RECUPERAÇÃO NA URL
-        // =========================================================
         if (window.location.hash && window.location.hash.includes('type=recovery')) {
              console.log("Modo de recuperação de senha detectado via URL Hash");
-             // Mostra modal imediatamente
              newPasswordModal.classList.add('visible');
              document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
         }
         
-        // Salvar Nova Senha
         if (newPasswordForm) {
             newPasswordForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -2787,7 +2752,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     setTimeout(() => {
                         newPasswordModal.classList.remove('visible');
-                        window.location.href = "/"; // Limpa hash e vai pra home
+                        window.location.href = "/"; 
                     }, 1500);
 
                 } catch (error) {
@@ -2871,7 +2836,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         showSignupBtn.addEventListener('click', () => {
             loginForm.classList.add('hidden');
             signupForm.classList.remove('hidden');
-            recoverForm.classList.add('hidden'); // Garante que recover suma
+            recoverForm.classList.add('hidden'); 
             loginError.classList.add('hidden');
             
             signupError.classList.add('hidden'); 
@@ -2893,10 +2858,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         logoutBtn.addEventListener('click', () => {
             showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
                 
-                // LIMPEZA CRÍTICA DE DADOS AO SAIR
                 try {
-                    await vestoDB.clear('apiCache'); // Limpa cache de API/Gráficos
-                    sessionStorage.clear(); // Limpa sessão do navegador
+                    await vestoDB.clear('apiCache'); 
+                    sessionStorage.clear(); 
                 } catch (e) {
                     console.error("Erro ao limpar dados locais:", e);
                 }
@@ -2941,7 +2905,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 
             
-            // Garante que, se não estiver logado, mostre o formulário correto (login padrão)
             if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) {
                 loginForm.classList.remove('hidden');
             }

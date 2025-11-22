@@ -31,6 +31,11 @@ export default async function handler(request, response) {
     Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
     Fontes: Principais portais financeiros do Brasil.
     Seja extremamente rápido e direto.
+    
+    REGRAS:
+    1. Ignore blogs pessoais ou sites desconhecidos.
+    2. Resumos devem ser detalhados (3-4 frases) contendo valores (R$), Cap Rate, Vacância ou Dividendos.
+    3. Use a ferramenta 'google_search' para validar os dados.
      `;
 
   const payload = {

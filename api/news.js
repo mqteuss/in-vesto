@@ -19,28 +19,29 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 function getGeminiPayload(todayString) {
-    // MODIFICAÇÃO NO PROMPT: Ênfase em URLs completas e proibição de abreviações.
-    const systemPrompt = `Tarefa: Listar 9 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
+    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
 Fontes: Principais portais financeiros do Brasil.
 ALERTA CRÍTICO: Não Busque no portal "Genial Analisa". 
 
 Output: APENAS um array JSON válido. 
 - NÃO use markdown. 
 - NÃO coloque texto antes ou depois do JSON.
-- NÃO abrevie URLs (ex: não use '...'). As URLs devem ser funcionais.
+- NÃO abrevie URLs.
 
 CAMPOS JSON OBRIGATÓRIOS:
 - "title": Título.
-- "summary": Resumo (2 frases).
+- "summary": Resumo (3 frases).
 - "sourceName": Portal.
 - "sourceHostname": Domínio (ex: site.com.br).
-- "url": URL COMPLETA e EXATA da notícia (incluindo https://).
+- "url": URL COMPLETA e EXATA da notícia.
+- "imageUrl": URL da imagem de capa/destaque (retorne null se não encontrar).
 - "publicationDate": YYYY-MM-DD.
 - "relatedTickers": Array ["MXRF11"].
 
 Seja preciso.`;
 
-    const userQuery = `JSON com 9 notícias de FIIs desta semana (${todayString}). Use Google Search para pegar os links reais.`;
+    // Adicionamos o pedido explícito por imagens na query do usuário também
+    const userQuery = `JSON com 10 notícias de FIIs desta semana (${todayString}). Tente incluir a URL da imagem de capa (imageUrl) encontrada na busca.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
@@ -62,8 +63,6 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
-    // OBS: Verifique se o modelo 'gemini-2.5-flash' existe na sua conta. 
-    // O padrão estável atual é 'gemini-1.5-flash'. Se der erro, troque para 1.5.
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
@@ -87,19 +86,13 @@ export default async function handler(request, response) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
-        // --- MODIFICAÇÃO CRÍTICA AQUI ---
-        // Em vez de "limpar" o texto, nós EXTRAÍMOS apenas o JSON.
-        // Isso evita que regex de replace quebre links ou caracteres especiais.
         let jsonString = text;
-        
-        // 1. Tenta encontrar o primeiro '[' e o último ']'
         const firstBracket = text.indexOf('[');
         const lastBracket = text.lastIndexOf(']');
 
         if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
             jsonString = text.substring(firstBracket, lastBracket + 1);
         } else {
-            // Fallback: se não achar array, tenta limpar markdown como antes, mas com cuidado
             jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
         }
 
@@ -107,8 +100,6 @@ export default async function handler(request, response) {
         try {
              parsedJson = JSON.parse(jsonString);
         } catch (e) {
-             console.error("Falha no parse inicial, tentando limpar caracteres ocultos...", e);
-             // Tenta uma limpeza secundária para caracteres de controle que as vezes vem da IA
              try {
                 const sanitized = jsonString.replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); 
                 parsedJson = JSON.parse(sanitized);
@@ -122,11 +113,13 @@ export default async function handler(request, response) {
             parsedJson = [parsedJson]; 
         }
 
-        // Validação extra de URLs antes de enviar
         parsedJson = parsedJson.map(item => {
-            // Se a URL vier sem protocolo, adiciona https://
             if (item.url && !item.url.startsWith('http')) {
                 item.url = `https://${item.url}`;
+            }
+            // Validação básica de imagem
+            if (item.imageUrl && !item.imageUrl.startsWith('http')) {
+                item.imageUrl = null;
             }
             return item;
         });

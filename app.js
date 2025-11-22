@@ -923,6 +923,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     }
+
     function calcularCarteira() {
         const ativosMap = new Map();
         const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1458,7 +1459,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        // Ordena por data (mais recente primeiro)
         articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
         
         const fragment = document.createDocumentFragment();
@@ -1466,11 +1466,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         articles.forEach((article, index) => {
             const sourceName = article.sourceName || 'Fonte';
             const sourceHostname = article.sourceHostname || 'google.com'; 
-            const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
+            const publicationDate = article.publicationDate ? formatDate(article.publicationDate) : 'Data indisponível';
             const drawerId = `news-drawer-${index}`;
             const faviconUrl = `https://www.google.com/s2/favicons?domain=${sourceHostname}&sz=32`;
             
-            // RSS do Google não traz tickers relacionados, mas mantemos a lógica caso venha no futuro
             let tagsHtml = '';
             if (article.relatedTickers && article.relatedTickers.length > 0) {
                 const tags = article.relatedTickers.map(ticker => `
@@ -1489,9 +1488,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <p class="news-card-summary">
                     ${article.summary || 'Resumo da notícia não disponível.'}
                 </p>
-                <div class="mt-3">
-                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-sm text-purple-400 hover:text-purple-300 underline">Ler notícia completa</a>
-                </div>
                 ${tagsHtml}
             `;
 
@@ -1504,7 +1500,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                          onerror="this.style.backgroundColor='#4b5563'; this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';" 
                     />
                     <div class="flex-1 min-w-0">
-                        <h4 class="font-semibold text-white line-clamp-2">${article.title || 'Título indisponível'}</h4>
+                        <h4 class="font-semibold text-white">${article.title || 'Título indisponível'}</h4>
                         <span class="text-sm text-gray-400">${sourceName} &bull; ${publicationDate}</span>
                     </div>
                     <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700 flex-shrink-0 ml-2" 
@@ -1562,19 +1558,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchAndCacheNoticiasBFF_NetworkOnly() {
         const cacheKey = 'noticias_json_v4';
         
-        // Se for fetch network only, limpa o cache anterior para garantir dados novos
         await vestoDB.delete('apiCache', cacheKey);
         
         try {
-            // ALTERAÇÃO: Mudamos para GET e removemos o body, pois o endpoint RSS não precisa de payload
             const response = await fetchBFF('/api/news', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ todayString: todayString }) 
             });
-            
-            // O backend agora retorna a lista diretamente, sem encapsular em { json: ... }
-            // Se o fetchBFF já faz response.json(), então 'response' é o array.
-            const articles = response; 
+            const articles = response.json;
             
             if (articles && Array.isArray(articles) && articles.length > 0) {
                 await setCache(cacheKey, articles, CACHE_NOTICIAS);
@@ -1597,7 +1589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             clearTimeout(timeoutId); 
 
             if (!response.ok) {
-                const errorBody = await response.json().catch(() => ({}));
+                const errorBody = await response.json();
                 throw new Error(errorBody.error || `Erro do servidor: ${response.statusText}`);
             }
             return response.json();

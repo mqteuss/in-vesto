@@ -4,7 +4,7 @@ const NEWS_SCHEMA = {
     type: "OBJECT",
     properties: {
       title: { type: "STRING", description: "Título curto sem data." },
-      summary: { type: "STRING", description: "Resumo detalhado (3-4 frases) com valores (R$) e impacto." },
+      summary: { type: "STRING", description: "Resumo detalhado (3 frases e ligeraiamente maior) com valores (R$) e impacto." },
       sourceName: { type: "STRING" },
       sourceHostname: { type: "STRING" },
       publicationDate: { type: "STRING", description: "YYYY-MM-DD" },
@@ -34,7 +34,7 @@ export default async function handler(request, response) {
     
     REGRAS:
     1. Ignore blogs pessoais ou sites desconhecidos.
-    2. Resumos devem ser detalhados (3-4 frases) contendo valores (R$), Cap Rate, Vacância ou Dividendos.
+    2. Resumos devem ser detalhados (3 frases e ligeraiamente maior) contendo valores (R$), Cap Rate, Vacância ou Dividendos.
     3. Use a ferramenta 'google_search' para validar os dados.
      `;
 

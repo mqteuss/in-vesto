@@ -16,7 +16,6 @@ body::-webkit-scrollbar {
     display: none;
 }
 
-/* --- CARDS INVISÍVEIS --- */
 .card-bg {
     background-color: #000000;
     border: 1px solid #2C2C2E;
@@ -57,7 +56,6 @@ body::-webkit-scrollbar {
     50% { transform: translateY(-3px); }
 }
 
-/* --- BARRA DE NAVEGAÇÃO (Compacta e Ajustada) --- */
 .bottom-nav {
     background-color: rgba(28, 28, 30, 0.85);
     backdrop-filter: blur(20px);
@@ -67,21 +65,17 @@ body::-webkit-scrollbar {
     position: fixed;
     bottom: 1.5rem;
     
-    /* --- CENTRALIZAÇÃO ROBUSTA --- */
-    /* Removemos left:0/right:0 e usamos transform para centralizar */
     left: 50%;
     transform: translateX(-50%);
     margin: 0;
     
-    /* --- DIMENSÕES NOVAS (Ajustado para 340px) --- */
-    width: 90%;          /* Responsivo em telas muito pequenas */
-    max-width: 340px;    /* Limite fixo de 340px */
+    width: 90%;          
+    max-width: 340px;    
     height: 3.7rem;   
     
     z-index: 50;
     border-radius: 9999px;
 
-    /* Organização dos ícones */
     display: flex;               
     justify-content: space-evenly; 
     align-items: center;        
@@ -89,7 +83,6 @@ body::-webkit-scrollbar {
     box-sizing: border-box;
 }
 
-/* --- BOTÕES INDIVIDUAIS --- */
 .tab-button {
     color: #6b7280; 
     transition: all 0.3s ease-in-out;
@@ -160,10 +153,6 @@ input[type=number] {
     -moz-appearance: textfield; 
 }
 
-/* ==================================================================
-   LOADER FINANCEIRO
-   ================================================================== */
-
 .loader {
     position: relative;
     width: 10px;
@@ -232,8 +221,6 @@ input[type=number] {
     100% { transform: scaleY(1); opacity: 1; }
 }
 
-/* ================================================================== */
-
 .scrollable-content {
       max-height: 40vh; 
       overflow-y: auto;
@@ -255,7 +242,6 @@ input[type=number] {
 .custom-modal { display: none; }
 .custom-modal.visible { display: flex; }
 
-/* POPUP CENTRAL (ALERTAS) */
 .custom-modal.visible .modal-content {
     background-color: #000000;
     border: 1px solid #2C2C2E;
@@ -275,7 +261,6 @@ input[type=number] {
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
-/* INPUTS */
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
 #add-ativo-modal input[type="number"],
@@ -309,12 +294,10 @@ input[type=number] {
     pointer-events: auto;
 }
 
-/* MODAL DE DETALHES (SLIDE UP) */
 .page-content {
     transition: transform 0.4s ease-in-out;
     transform: translateY(100%);
     
-    /* Fundo preto e borda no topo */
     background-color: #000000;
     border-top: 1px solid #2C2C2E;
     
@@ -520,7 +503,6 @@ button:active,
     color: #d1d5db;
 }
 
-/* --- CORREÇÃO: REMOVER FUNDO BRANCO DO AUTOCOMPLETE --- */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 

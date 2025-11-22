@@ -1168,7 +1168,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
@@ -1484,11 +1483,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tagsHtml = `<div class="mt-3 flex flex-wrap items-center">${tags}</div>`;
             }
             
+            let linkHtml = '';
+            if (article.url) {
+                linkHtml = `
+                <a href="${article.url}" target="_blank" rel="noopener noreferrer" 
+                   class="mt-4 block w-full text-center py-2 px-4 bg-purple-900/50 hover:bg-purple-900/80 text-purple-200 text-sm font-medium rounded-lg transition-colors border border-purple-900">
+                   Ler matéria completa em ${sourceName}
+                </a>`;
+            }
+            
             const drawerContentHtml = `
                 <p class="news-card-summary">
                     ${article.summary || 'Resumo da notícia não disponível.'}
                 </p>
                 ${tagsHtml}
+                ${linkHtml}
             `;
 
             const newsCard = document.createElement('div');

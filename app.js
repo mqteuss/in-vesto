@@ -1167,6 +1167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         }
+    }
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
@@ -1490,24 +1491,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                    Ler matéria completa em ${sourceName}
                 </a>`;
             }
-
-            // INICIO DA ALTERAÇÃO PARA IMAGEM
-            let imageHtml = '';
-            if (article.imageUrl) {
-                imageHtml = `
-                    <div class="mb-3 rounded-lg overflow-hidden border border-gray-700">
-                        <img src="${article.imageUrl}" 
-                             alt="Imagem da notícia" 
-                             class="w-full h-40 object-cover"
-                             onerror="this.parentElement.style.display='none';"
-                        />
-                    </div>
-                `;
-            }
-            // FIM DA ALTERAÇÃO
             
             const drawerContentHtml = `
-                ${imageHtml}
                 <p class="news-card-summary">
                     ${article.summary || 'Resumo da notícia não disponível.'}
                 </p>

@@ -1,16 +1,14 @@
 // api/gemini.js
 // Vercel Serverless Function - Proxy Otimizado para Google Gemini
+// Estratégia unificada com a API de Notícias
 
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
             const response = await fetch(url, options);
-            
-            // Lida com Rate Limits (429) e Erros de Servidor (500+)
             if (response.status === 429 || response.status >= 500) {
                 throw new Error(`API Error: ${response.status} ${response.statusText}`);
             }
-            
             if (!response.ok) {
                  const errorBody = await response.json();
                  throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
@@ -29,41 +27,32 @@ function getGeminiPayload(mode, payload) {
     let systemPrompt = '';
     let userQuery = '';
 
-    // Instrução base para todos os modos
-    const baseInstruction = `Você é um especialista em FIIs (Fundos Imobiliários). Data de hoje: ${todayString}. Use a Google Search para dados atualizados.`;
+    // Estratégia de prompt rápido e direto
+    const baseInstruction = `Data de hoje: ${todayString}. Use Google Search. Output: APENAS JSON.`;
 
     switch (mode) {
         case 'historico_12m':
-            systemPrompt = `${baseInstruction}
-Tarefa: Obter histórico de proventos dos últimos 12 meses do FII ${ticker}.
-Output: Array JSON ordenado do mais recente para o antigo.
-Formato: [{"mes": "MM/AA", "valor": 0.00}]
-Se vazio: []`;
-            userQuery = `Histórico de proventos (últimos 12 meses) para ${ticker}.`;
+            systemPrompt = `Tarefa: Histórico de proventos (últimos 12 meses) do FII ${ticker}.
+${baseInstruction}
+Output: Array JSON [{"mes": "MM/AA", "valor": 0.00}] ordenado do mais recente para o antigo.`;
+            userQuery = `JSON histórico 12 meses para ${ticker}.`;
             break;
 
         case 'proventos_carteira':
-            systemPrompt = `${baseInstruction}
-Tarefa: Encontrar o provento mais recente OFICIALMENTE ANUNCIADO (pagamento hoje ou futuro) para a lista de FIIs.
-Regras Críticas:
-1. Verifique Fatos Relevantes de hoje (${todayString}) para correções de data.
-2. Se um provento futuro NÃO foi anunciado oficialmente, retorne valor 0 e data null. NÃO projete.
-3. Data no formato AAAA-MM-DD.
-
-Formato de Output:
-[
-  {"symbol": "TICKER11", "value": 0.00, "paymentDate": "YYYY-MM-DD" (ou null)}
-]`;
-            userQuery = `Proventos oficiais (hoje ou futuros) para: ${fiiList.join(', ')}. Verifique comunicados oficiais.`;
+            systemPrompt = `Tarefa: Encontrar o provento mais recente OFICIALMENTE ANUNCIADO (hoje ou futuro) para a lista de FIIs.
+${baseInstruction}
+Regras:
+1. Verifique fatos relevantes de hoje (${todayString}).
+2. Se não houver anúncio oficial futuro, retorne value: 0 e paymentDate: null.
+3. Formato: [{"symbol": "ABCD11", "value": 0.00, "paymentDate": "YYYY-MM-DD" (ou null)}]`;
+            userQuery = `JSON proventos oficiais (hoje/futuro) para: ${fiiList.join(', ')}.`;
             break;
 
         case 'historico_portfolio':
-            systemPrompt = `${baseInstruction}
-Tarefa: Histórico de proventos por cota dos últimos 6 meses completos (EXCLUINDO o mês atual).
-Output: Array JSON ordenado do mais antigo para o recente.
-Se um FII não pagou, valor é 0.
-Formato: [{"mes": "MM/AA", "TICKER11": 0.10, "TICKER22": 0.00}]`;
-            userQuery = `Histórico 6 meses passados (sem mês atual) para: ${fiiList.join(', ')}.`;
+            systemPrompt = `Tarefa: Histórico de proventos por cota dos últimos 6 meses completos (EXCLUINDO o mês atual).
+${baseInstruction}
+Output: Array JSON [{"mes": "MM/AA", "FII11": 0.10, "FII22": 0.00}] ordenado do antigo para o recente.`;
+            userQuery = `JSON histórico 6 meses passados (sem mês atual) para: ${fiiList.join(', ')}.`;
             break;
 
         default:
@@ -72,36 +61,36 @@ Formato: [{"mes": "MM/AA", "TICKER11": 0.10, "TICKER22": 0.00}]`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }], 
-        
-        // OTIMIZAÇÃO: Configuração de Geração
+        tools: [{ "google_search": {} }],
+
         generationConfig: {
-            temperature: 0.1, // Baixa criatividade, foco em dados
-            responseMimeType: "application/json" // FORÇA resposta JSON válida
+            temperature: 0.1,
+            // Sem responseMimeType: "application/json" conforme solicitado
+            // Sem thinkingConfig
         },
-        
+
         systemInstruction: { parts: [{ text: systemPrompt }] },
     };
 }
 
 export default async function handler(request, response) {
     if (request.method !== 'POST') {
-        return response.status(405).json({ error: "Use POST." });
+        return response.status(405).json({ error: "Método não permitido, use POST." });
     }
 
     const { GEMINI_API_KEY } = process.env;
     if (!GEMINI_API_KEY) {
-        return response.status(500).json({ error: "API Key não configurada." });
+        return response.status(500).json({ error: "Chave GEMINI_API_KEY não configurada no servidor." });
     }
 
-    // URL do modelo (mantido o 2.5 conforme seu código original, mas funciona bem com 1.5-flash também)
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+    // Mantendo consistência de modelo com seu exemplo (ajuste se necessário para 1.5-flash)
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     try {
         const { mode, payload } = request.body;
         
         if (!payload || !payload.todayString) {
-             return response.status(400).json({ error: "Payload incompleto (missing todayString)." });
+            return response.status(400).json({ error: "Parâmetro 'todayString' é obrigatório." });
         }
 
         const geminiPayload = getGeminiPayload(mode, payload);
@@ -110,40 +99,53 @@ export default async function handler(request, response) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(geminiPayload)
-        });
+        }, 3, 1000);
 
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
+        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
+             if (candidate?.finishReason) {
+                 throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
+             }
+        }
         if (!text) {
-            // Verifica se foi bloqueado por segurança
-            if (candidate?.finishReason && candidate.finishReason !== "STOP") {
-                throw new Error(`Bloqueio API: ${candidate.finishReason}`);
-            }
-            throw new Error("API retornou resposta vazia.");
+            throw new Error("A API retornou uma resposta vazia.");
         }
 
-        // OTIMIZAÇÃO: Cache agressivo para leitura (24h)
-        response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); 
+        response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate');
 
-        // OTIMIZAÇÃO: Parsing direto.
-        // Como usamos responseMimeType: "application/json", não precisamos de regex complexo.
+        // Mesma estratégia de limpeza da API news
+        let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        let parsedJson;
         try {
-            const parsedJson = JSON.parse(text);
-            
-            // Garante que seja sempre um array, mesmo que a API devolva um objeto único
-            const finalJson = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
-            
-            return response.status(200).json({ json: finalJson });
-            
-        } catch (parseError) {
-            console.error("Erro de Parse JSON (mesmo com JSON mode):", text);
-            // Fallback de segurança: retorna array vazio em vez de erro 500 para não quebrar o front
-            return response.status(200).json({ json: [] });
+             parsedJson = JSON.parse(jsonText);
+        } catch (e) {
+             const jsonMatch = jsonText.match(/\[.*\]/s);
+             if (jsonMatch) {
+                 try {
+                    parsedJson = JSON.parse(jsonMatch[0]);
+                 } catch (innerE) {
+                    // Retorna array vazio em caso de falha grave de parse para não quebrar o app
+                    console.warn("Falha ao processar JSON extraído, retornando vazio.");
+                    return response.status(200).json({ json: [] });
+                 }
+             } else {
+                 // Retorna array vazio se não encontrar JSON
+                 console.warn("JSON inválido na resposta, retornando vazio.");
+                 return response.status(200).json({ json: [] });
+             }
         }
+
+        if (!Array.isArray(parsedJson)) {
+            parsedJson = [parsedJson]; 
+        }
+
+        return response.status(200).json({ json: parsedJson });
 
     } catch (error) {
-        console.error("Erro handler Gemini:", error);
-        return response.status(500).json({ error: error.message });
+        console.error("Erro interno no proxy Gemini:", error);
+        return response.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
 }

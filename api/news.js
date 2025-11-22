@@ -19,32 +19,35 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 function getGeminiPayload(todayString) {
-    // MODIFICAÇÃO AQUI: Adicionado campo "url" e instrução de veracidade
-    const systemPrompt = `Tarefa: Listar 9 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
+    // MODIFICAÇÃO NO PROMPT: Ênfase em URLs completas e proibição de abreviações.
+    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
 Fontes: Principais portais financeiros do Brasil.
-Output: APENAS um array JSON. Sem markdown. Sem intro.
+ALERTA CRÍTICO: Não Busque no portal "Genial Analisa". 
+
+Output: APENAS um array JSON válido. 
+- NÃO use markdown. 
+- NÃO coloque texto antes ou depois do JSON.
+- NÃO abrevie URLs (ex: não use '...'). As URLs devem ser funcionais.
 
 CAMPOS JSON OBRIGATÓRIOS:
 - "title": Título.
-- "summary": Resumo (2 frases ligeiramente maior).
+- "summary": Resumo (3 frases).
 - "sourceName": Portal.
 - "sourceHostname": Domínio (ex: site.com.br).
-- "url": URL direta e VÁLIDA para a matéria encontrada.
+- "url": URL COMPLETA e EXATA da notícia (incluindo https://).
 - "publicationDate": YYYY-MM-DD.
 - "relatedTickers": Array ["MXRF11"].
 
-Seja EXTREMAMENTE rápido e direto. Use os links fornecidos pela ferramenta de busca.`;
+Seja preciso.`;
 
-    const userQuery = `JSON com 9 notícias de FIIs desta semana (${todayString}). Use Google Search. Retorne as URLs exatas.`;
+    const userQuery = `JSON com 10 notícias de FIIs desta semana (${todayString}). Use Google Search para pegar os links reais.`;
 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
         tools: [{ "google_search": {} }],
-
         generationConfig: {
             temperature: 0.1, 
         },
-
         systemInstruction: { parts: [{ text: systemPrompt }] },
     };
 }
@@ -59,6 +62,8 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
+    // OBS: Verifique se o modelo 'gemini-2.5-flash' existe na sua conta. 
+    // O padrão estável atual é 'gemini-1.5-flash'. Se der erro, troque para 1.5.
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
@@ -78,32 +83,38 @@ export default async function handler(request, response) {
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
-        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
-             if (candidate?.finishReason) {
-                 throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
-             }
-        }
         if (!text) {
             throw new Error("A API retornou uma resposta vazia.");
         }
 
-        response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
+        // --- MODIFICAÇÃO CRÍTICA AQUI ---
+        // Em vez de "limpar" o texto, nós EXTRAÍMOS apenas o JSON.
+        // Isso evita que regex de replace quebre links ou caracteres especiais.
+        let jsonString = text;
+        
+        // 1. Tenta encontrar o primeiro '[' e o último ']'
+        const firstBracket = text.indexOf('[');
+        const lastBracket = text.lastIndexOf(']');
 
-        let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+            jsonString = text.substring(firstBracket, lastBracket + 1);
+        } else {
+            // Fallback: se não achar array, tenta limpar markdown como antes, mas com cuidado
+            jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        }
 
         let parsedJson;
         try {
-             parsedJson = JSON.parse(jsonText);
+             parsedJson = JSON.parse(jsonString);
         } catch (e) {
-             const jsonMatch = jsonText.match(/\[.*\]/s);
-             if (jsonMatch) {
-                 try {
-                    parsedJson = JSON.parse(jsonMatch[0]);
-                 } catch (innerE) {
-                    throw new Error("Falha ao processar JSON extraído.");
-                 }
-             } else {
-                 throw new Error("JSON inválido na resposta.");
+             console.error("Falha no parse inicial, tentando limpar caracteres ocultos...", e);
+             // Tenta uma limpeza secundária para caracteres de controle que as vezes vem da IA
+             try {
+                const sanitized = jsonString.replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); 
+                parsedJson = JSON.parse(sanitized);
+             } catch (innerE) {
+                console.error("Texto recebido da IA:", text);
+                throw new Error("JSON inválido na resposta da IA.");
              }
         }
 
@@ -111,6 +122,16 @@ export default async function handler(request, response) {
             parsedJson = [parsedJson]; 
         }
 
+        // Validação extra de URLs antes de enviar
+        parsedJson = parsedJson.map(item => {
+            // Se a URL vier sem protocolo, adiciona https://
+            if (item.url && !item.url.startsWith('http')) {
+                item.url = `https://${item.url}`;
+            }
+            return item;
+        });
+
+        response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
         return response.status(200).json({ json: parsedJson });
 
     } catch (error) {

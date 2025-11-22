@@ -43,12 +43,7 @@ Seja extremamente rápido e direto.`;
 
         generationConfig: {
             temperature: 0.1, 
-
-            // --- OTIMIZAÇÃO DE VELOCIDADE EXTREMA ---
-            thinkingConfig: {
-                includeThoughts: false, 
-                thinkingBudget: 512    // Reduzido para 512. Força o modelo a "pensar menos" e agir mais rápido.
-            }
+            // thinkingConfig foi removido conforme solicitado
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -65,6 +60,8 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
     }
 
+    // Nota: Verifique se o modelo 'gemini-2.5-flash' está correto para sua chave. 
+    // Geralmente os modelos atuais são 'gemini-2.0-flash' ou 'gemini-1.5-flash'.
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
 
     try {
@@ -79,7 +76,7 @@ export default async function handler(request, response) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(geminiPayload)
-        });
+        }, 3, 1000); // Passando explicitamente retries e delay se necessário
 
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;

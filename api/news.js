@@ -32,7 +32,7 @@ CAMPOS JSON OBRIGATÓRIOS:
 - "publicationDate": YYYY-MM-DD.
 - "relatedTickers": Array ["MXRF11"].
 
-Seja extremamente rápido e direto.`;
+Seja EXTREMAMENTE rápido e direto.`;
 
     const userQuery = `JSON com 10 notícias de FIIs desta semana (${todayString}). Use Google Search.`;
 

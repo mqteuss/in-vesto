@@ -37,7 +37,7 @@ export default async function handler(request, response) {
     contents: [{ parts: [{ text: `Encontre 8 notícias recentes de FIIs (${todayString})` }] }],
     tools: [{ google_search: {} }], 
     generationConfig: {
-      temperature: 0.2,
+      temperature: 0.3,
       responseMimeType: "application/json", // O 2.0 SUPORTA ISSO COM TOOLS
       responseSchema: NEWS_SCHEMA
     },

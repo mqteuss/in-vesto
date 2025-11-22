@@ -1,8 +1,5 @@
-// sw.js (Atualizado para v6 - Força atualização de CSS da Navbar)
+const CACHE_NAME = 'vesto-cache-v6';
 
-const CACHE_NAME = 'vesto-cache-v6'; // MUDANÇA: v5 -> v6
-
-// Arquivos que são o "shell" do app e mudam com frequência
 const APP_SHELL_FILES_NETWORK_FIRST = [
   '/',
   'logo-vesto.png', 
@@ -12,7 +9,6 @@ const APP_SHELL_FILES_NETWORK_FIRST = [
   'style.css'
 ];
 
-// Arquivos que raramente mudam (ícones, CDNs, etc)
 const APP_SHELL_FILES_CACHE_FIRST = [
   'manifest.json',
   'icons/icon-192x192.png',
@@ -23,13 +19,11 @@ const APP_SHELL_FILES_CACHE_FIRST = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('[SW] Instalando v6...'); 
-  self.skipWaiting(); // Força a ativação imediata do novo SW
+  self.skipWaiting();
 
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        // Cache dos arquivos de CDN (no-cors)
         const cdnCachePromise = APP_SHELL_FILES_CACHE_FIRST.filter(url => url.startsWith('http'))
           .map(url => {
             const request = new Request(url, { mode: 'no-cors' });
@@ -38,7 +32,6 @@ self.addEventListener('install', event => {
               .catch(err => console.warn(`[SW] Falha ao armazenar CDN: ${url}`, err));
           });
 
-        // Cache dos arquivos locais
         const localCachePromise = cache.addAll(
           APP_SHELL_FILES_CACHE_FIRST.filter(url => !url.startsWith('http'))
         );
@@ -51,12 +44,11 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('[SW] Ativando v6...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames
-          .filter(name => name !== CACHE_NAME) // Limpa caches antigos
+          .filter(name => name !== CACHE_NAME)
           .map(name => caches.delete(name))
       );
     }).then(() => self.clients.claim())
@@ -66,19 +58,16 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. IGNORAR API E SUPABASE (Sempre Rede)
   if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // 2. Ignora requisições não-GET
   if (event.request.method !== 'GET') {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // 3. Estratégia "Network-First" para o App Shell
   if (APP_SHELL_FILES_NETWORK_FIRST.includes(url.pathname)) {
     event.respondWith(
       fetch(event.request)
@@ -96,7 +85,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 4. Estratégia "Cache-First" para estáticos
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {

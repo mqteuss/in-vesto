@@ -1,119 +1,71 @@
-async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const response = await fetch(url, options);
-            if (response.status === 429 || response.status >= 500) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
-            }
-            if (!response.ok) {
-                 const errorBody = await response.json();
-                 throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
-            }
-            return response.json();
-        } catch (error) {
-            if (i === retries - 1) throw error;
-            console.warn(`Tentativa ${i+1} falhou, aguardando ${delay * (i + 1)}ms...`);
-            await new Promise(res => setTimeout(res, delay * (i + 1)));
-        }
-    }
-}
-
-function getGeminiPayload(todayString) {
-    const systemPrompt = `Tarefa: Listar 10 notícias recentes de FIIs (Fundos Imobiliários) desta semana (${todayString}).
-Fontes: Principais portais financeiros do Brasil.
-ALERTA CRÍTICO: Não Busque no portal "Genial Analisa". 
-Output: APENAS um array JSON. Sem markdown. Sem intro.
-
-CAMPOS JSON OBRIGATÓRIOS:
-- "title": Título.
-- "summary": Resumo (3 frases ligeiramente maior).
-- "sourceName": Portal.
-- "sourceHostname": Domínio (ex: site.com.br).
-- "publicationDate": YYYY-MM-DD.
-- "relatedTickers": Array ["MXRF11"].
-
-Seja EXTREMAMENTE rápido e direto.`;
-
-    const userQuery = `JSON com 10 notícias de FIIs desta semana (${todayString}). Use Google Search.`;
-
-    return {
-        contents: [{ parts: [{ text: userQuery }] }],
-        tools: [{ "google_search": {} }],
-
-        generationConfig: {
-            temperature: 0.1, 
-        },
-
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-    };
-}
+import Parser from 'rss-parser';
 
 export default async function handler(request, response) {
-    if (request.method !== 'POST') {
-        return response.status(405).json({ error: "Método não permitido, use POST." });
+    // 1. Configuração de CORS (Segurança e Acesso)
+    response.setHeader('Access-Control-Allow-Credentials', true);
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+    response.setHeader(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    );
+
+    // Responde imediatamente ao "pre-flight" do navegador
+    if (request.method === 'OPTIONS') {
+        return response.status(200).end();
     }
 
-    const { NEWS_GEMINI_API_KEY } = process.env;
-    if (!NEWS_GEMINI_API_KEY) {
-        return response.status(500).json({ error: "Chave NEWS_GEMINI_API_KEY não configurada no servidor." });
-    }
-
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${NEWS_GEMINI_API_KEY}`;
+    const parser = new Parser();
 
     try {
-        const { todayString } = request.body;
-        if (!todayString) {
-            return response.status(400).json({ error: "Parâmetro 'todayString' é obrigatório." });
-        }
+        // 2. Captura o termo de busca (opcional)
+        // Se o frontend mandar ?q=MXRF11, busca específico. Se não, busca geral.
+        const { q } = request.query;
+        const queryTerm = q || 'FII OR Fundos Imobiliários OR IFIX';
+        
+        // Codifica para URL (ex: espaço vira %20)
+        const encodedQuery = encodeURIComponent(queryTerm);
+        
+        // URL oficial do RSS do Google News (Brasil)
+        const feedUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+        
+        const feed = await parser.parseURL(feedUrl);
 
-        const geminiPayload = getGeminiPayload(todayString);
+        // 3. Formatação dos dados para o Frontend
+        const articles = feed.items.map((item) => {
+            // Remove o " - Nome da Fonte" do final do título para ficar limpo
+            const sourcePattern = / - (.*?)$/;
+            const sourceMatch = item.title.match(sourcePattern);
+            const sourceName = sourceMatch ? sourceMatch[1] : 'Google News';
+            const cleanTitle = item.title.replace(sourcePattern, '');
 
-        const result = await fetchWithBackoff(GEMINI_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(geminiPayload)
-        }, 3, 1000);
+            // Tenta extrair o domínio para o ícone (favicon)
+            let hostname = 'google.com';
+            try {
+                const urlObj = new URL(item.link);
+                hostname = urlObj.hostname;
+            } catch (e) {}
 
-        const candidate = result?.candidates?.[0];
-        const text = candidate?.content?.parts?.[0]?.text;
+            return {
+                title: cleanTitle,
+                link: item.link,
+                publicationDate: item.pubDate, // Mantendo compatibilidade com seu app.js
+                sourceName: sourceName,
+                sourceHostname: hostname,
+                summary: item.contentSnippet || '',
+                relatedTickers: [] // RSS não tem tickers, enviamos vazio
+            };
+        });
 
-        if (candidate?.finishReason !== "STOP" && candidate?.finishReason !== "MAX_TOKENS") {
-             if (candidate?.finishReason) {
-                 throw new Error(`A resposta foi bloqueada. Razão: ${candidate.finishReason}`);
-             }
-        }
-        if (!text) {
-            throw new Error("A API retornou uma resposta vazia.");
-        }
+        // 4. Configuração de Cache (Vercel Edge Network)
+        // s-maxage=3600 -> Cache dura 1 hora (3600 segundos)
+        // stale-while-revalidate=1800 -> Serve conteúdo antigo por mais 30min se cair a conexão
+        response.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=1800');
 
-        response.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
-
-        let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-        let parsedJson;
-        try {
-             parsedJson = JSON.parse(jsonText);
-        } catch (e) {
-             const jsonMatch = jsonText.match(/\[.*\]/s);
-             if (jsonMatch) {
-                 try {
-                    parsedJson = JSON.parse(jsonMatch[0]);
-                 } catch (innerE) {
-                    throw new Error("Falha ao processar JSON extraído.");
-                 }
-             } else {
-                 throw new Error("JSON inválido na resposta.");
-             }
-        }
-
-        if (!Array.isArray(parsedJson)) {
-            parsedJson = [parsedJson]; 
-        }
-
-        return response.status(200).json({ json: parsedJson });
+        return response.status(200).json(articles);
 
     } catch (error) {
-        console.error("Erro interno no proxy Gemini (Notícias):", error);
-        return response.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
+        console.error('Erro API News:', error);
+        return response.status(500).json({ error: 'Erro ao buscar notícias.' });
     }
 }

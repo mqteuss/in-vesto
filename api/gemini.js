@@ -1,7 +1,3 @@
-// api/gemini.js
-// Vercel Serverless Function - Proxy Otimizado para Google Gemini
-// Estratégia unificada com a API de Notícias
-
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -27,7 +23,6 @@ function getGeminiPayload(mode, payload) {
     let systemPrompt = '';
     let userQuery = '';
 
-    // Estratégia de prompt rápido e direto
     const baseInstruction = `Data de hoje: ${todayString}. Use Google Search. Output: APENAS JSON.`;
 
     switch (mode) {
@@ -65,8 +60,6 @@ Output: Array JSON [{"mes": "MM/AA", "FII11": 0.10, "FII22": 0.00}] ordenado do 
 
         generationConfig: {
             temperature: 0.1,
-            // Sem responseMimeType: "application/json" conforme solicitado
-            // Sem thinkingConfig
         },
 
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -83,7 +76,6 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "Chave GEMINI_API_KEY não configurada no servidor." });
     }
 
-    // Mantendo consistência de modelo com seu exemplo (ajuste se necessário para 1.5-flash)
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     try {
@@ -115,7 +107,6 @@ export default async function handler(request, response) {
 
         response.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate');
 
-        // Mesma estratégia de limpeza da API news
         let jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         let parsedJson;
@@ -127,12 +118,10 @@ export default async function handler(request, response) {
                  try {
                     parsedJson = JSON.parse(jsonMatch[0]);
                  } catch (innerE) {
-                    // Retorna array vazio em caso de falha grave de parse para não quebrar o app
                     console.warn("Falha ao processar JSON extraído, retornando vazio.");
                     return response.status(200).json({ json: [] });
                  }
              } else {
-                 // Retorna array vazio se não encontrar JSON
                  console.warn("JSON inválido na resposta, retornando vazio.");
                  return response.status(200).json({ json: [] });
              }

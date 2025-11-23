@@ -1022,13 +1022,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
             const drawerId = `news-drawer-${index}`;
             
-            // Lógica para detectar tickers (ex: MXRF11)
             const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             
             let tickersHtml = '';
             if (foundTickers.length > 0) {
-                tickersHtml = '<div class="mt-2 flex flex-wrap">';
+                tickersHtml = '<div class="mb-3 flex flex-wrap gap-2">';
                 foundTickers.forEach(ticker => {
                     tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
                 });
@@ -1036,6 +1035,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const drawerContentHtml = `
+                ${tickersHtml}
                 <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
                     ${article.summary ? article.summary : 'Resumo não disponível.'}
                 </div>
@@ -1047,7 +1047,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
 
             const newsCard = document.createElement('div');
-            // Adicionado classe "news-card-interactive" e evento para abrir
             newsCard.className = 'card-bg rounded-2xl p-4 space-y-3 news-card-interactive'; 
             newsCard.setAttribute('data-action', 'toggle-news');
             newsCard.setAttribute('data-target', drawerId);
@@ -1061,7 +1060,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     />
                     <div class="flex-1 min-w-0">
                         <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
-                        ${tickersHtml}
                         <div class="flex items-center gap-2 mt-1.5">
                             <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
                             <span class="text-[10px] text-gray-600">•</span>

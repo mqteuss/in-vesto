@@ -1027,20 +1027,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             let tickersHtml = '';
             if (foundTickers.length > 0) {
-                tickersHtml = '<div class="mb-3 flex flex-wrap gap-2">';
                 foundTickers.forEach(ticker => {
                     tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
                 });
-                tickersHtml += '</div>';
             }
 
             const drawerContentHtml = `
-                ${tickersHtml}
                 <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
                     ${article.summary ? article.summary : 'Resumo não disponível.'}
                 </div>
-                <div class="flex justify-end">
-                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors">
+                <div class="flex justify-between items-end pt-2 border-t border-gray-800">
+                    <div class="flex flex-wrap gap-2">
+                        ${tickersHtml}
+                    </div>
+                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex-shrink-0">
                         Ler notícia completa
                     </a>
                 </div>
@@ -1074,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 
                 <div id="${drawerId}" class="card-drawer pointer-events-auto">
-                    <div class="drawer-content pt-3 border-t border-gray-800 mt-2">
+                    <div class="drawer-content pt-3 mt-2">
                         ${drawerContentHtml}
                     </div>
                 </div>
@@ -2551,7 +2551,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 1. Verifica se clicou num Ticker (Etiqueta)
         const tickerTag = e.target.closest('.news-ticker-tag');
         if (tickerTag) {
-            e.stopPropagation(); // Impede que o card expanda
+            e.stopPropagation(); // Impede que o card expanda/feche
             const symbol = tickerTag.dataset.symbol;
             if (symbol) {
                 showDetalhesModal(symbol);
@@ -2562,10 +2562,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 2. Verifica se clicou num Link real (<a>)
         if (e.target.closest('a')) {
             // Deixa o navegador abrir o link normalmente
+            e.stopPropagation(); // Importante para não fechar o drawer ao clicar no link
             return; 
         }
 
-        // 3. Verifica se clicou no Card Interativo
+        // 3. Verifica se clicou no Card Interativo (para abrir/fechar)
         const card = e.target.closest('.news-card-interactive');
         if (card) {
             const targetId = card.dataset.target;

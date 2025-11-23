@@ -14,8 +14,7 @@ export default async function handler(request, response) {
         return response.status(200).end();
     }
 
-    // 2. Configura o Parser para extrair a URL original da fonte
-    // Isso é crucial para pegar o favicon correto, pois o item.link é um redirecionamento do Google.
+    // Configuração do Parser
     const parser = new Parser({
         customFields: {
             item: [['source', 'sourceData', { keepArray: false }]],
@@ -25,15 +24,68 @@ export default async function handler(request, response) {
     try {
         const { q } = request.query;
         
-        // Termo padrão focado estritamente em FIIs
+        // Termo de busca e Filtro de 30 dias (when:30d)
         const baseQuery = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
-        
-        // 3. Adiciona "when:30d" para filtrar apenas os últimos 30 dias
-        // O operador "+" concatena a string de busca na URL
         const encodedQuery = encodeURIComponent(baseQuery) + '+when:30d';
         
         const feedUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
         
+        const feed = await parser.parseURL(feedUrl);
+
+        const articles = feed.items.map((item) => {
+            // Limpeza do título (com segurança para evitar crash se title for nulo)
+            const sourcePattern = / - (.*?)$/;
+            const sourceMatch = item.title ? item.title.match(sourcePattern) : null;
+            
+            // Segurança: Se item.sourceData não existir, usa fallback
+            let sourceName = 'Google News';
+            if (sourceMatch) {
+                sourceName = sourceMatch[1];
+            } else if (item.sourceData && item.sourceData.content) {
+                sourceName = item.sourceData.content;
+            } else if (item.sourceData && item.sourceData._) {
+                sourceName = item.sourceData._;
+            }
+
+            const cleanTitle = item.title ? item.title.replace(sourcePattern, '') : 'Sem título';
+
+            // Lógica BLINDADA de Extração do Domínio
+            let domain = 'google.com';
+            
+            // AQUI ESTA A CORREÇÃO PRINCIPAL DO ERRO 500:
+            // Verificamos se sourceData existe ANTES de tentar ler a URL
+            if (item.sourceData && item.sourceData['$'] && item.sourceData['$'].url) {
+                try {
+                    const sourceUrlObj = new URL(item.sourceData['$'].url);
+                    domain = sourceUrlObj.hostname;
+                } catch (e) {
+                    // Se a URL for inválida, mantém google.com e segue a vida
+                }
+            }
+
+            // Gera favicon
+            const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+
+            return {
+                title: cleanTitle,
+                link: item.link,
+                publicationDate: item.pubDate,
+                sourceName: sourceName,
+                sourceHostname: domain,
+                favicon: faviconUrl,
+                summary: item.contentSnippet || '',
+            };
+        });
+
+        response.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=1800');
+        return response.status(200).json(articles);
+
+    } catch (error) {
+        console.error('CRITICAL ERROR API NEWS:', error);
+        // Retorna o erro detalhado para ajudar no debug se acontecer de novo
+        return response.status(500).json({ error: 'Erro interno ao buscar notícias.', details: error.message });
+    }
+}
         const feed = await parser.parseURL(feedUrl);
 
         const articles = feed.items.map((item) => {

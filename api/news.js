@@ -19,9 +19,24 @@ export default async function handler(request, response) {
         },
     });
 
-    // --- MAPA DE FONTES CONHECIDAS (A Mágica acontece aqui) ---
-    // Isso força o nome bonito e o domínio correto para o favicon
+    // --- MAPA DE FONTES CONHECIDAS ---
+    // Adicionei os novos sites solicitados aqui
     const knownSources = {
+        // Fontes solicitadas recentemente
+        'xp investimentos': { name: 'XP Investimentos', domain: 'xpi.com.br' },
+        'xp': { name: 'XP Investimentos', domain: 'xpi.com.br' }, // Caso venha só "XP"
+        'investalk': { name: 'InvesTalk', domain: 'investalk.bb.com.br' },
+        'investidor10': { name: 'Investidor10', domain: 'investidor10.com.br' },
+        'investidor 10': { name: 'Investidor10', domain: 'investidor10.com.br' },
+        'riconnect': { name: 'Riconnect', domain: 'riconnect.rico.com.vc' },
+        'rico': { name: 'Rico', domain: 'rico.com.vc' },
+        'e-investidor': { name: 'E-Investidor', domain: 'einvestidor.estadao.com.br' },
+        'estadão e-investidor': { name: 'E-Investidor', domain: 'einvestidor.estadao.com.br' },
+        'genial analisa': { name: 'Genial Analisa', domain: 'analisa.genialinvestimentos.com.br' },
+        'genial': { name: 'Genial Investimentos', domain: 'genialinvestimentos.com.br' },
+        'fiis': { name: 'FIIs.com.br', domain: 'fiis.com.br' }, // Mapeando "FIIs" para o site principal
+
+        // Fontes anteriores
         'infomoney': { name: 'InfoMoney', domain: 'infomoney.com.br' },
         'suno': { name: 'Suno Notícias', domain: 'suno.com.br' },
         'suno.com.br': { name: 'Suno Notícias', domain: 'suno.com.br' },
@@ -51,14 +66,15 @@ export default async function handler(request, response) {
     try {
         const { q } = request.query;
         const baseQuery = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
-        const encodedQuery = encodeURIComponent(baseQuery) + '+when:30d';
+        
+        // ALTERAÇÃO: Mudado de 30d para 7d (1 semana)
+        const encodedQuery = encodeURIComponent(baseQuery) + '+when:7d';
         
         const feedUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
         
         const feed = await parser.parseURL(feedUrl);
 
         const articles = feed.items.map((item) => {
-            // 1. Tenta extrair o nome da fonte do Título (padrão: "Título - Fonte")
             const sourcePattern = / - (.*?)$/;
             const sourceMatch = item.title ? item.title.match(sourcePattern) : null;
             
@@ -71,32 +87,24 @@ export default async function handler(request, response) {
                 rawSourceName = item.sourceData._;
             }
 
-            // Remove o nome da fonte do título para não ficar duplicado
             const cleanTitle = item.title ? item.title.replace(sourcePattern, '') : 'Sem título';
 
-            // 2. Lógica Inteligente de Domínio e Nome
             let finalSourceName = rawSourceName;
-            let finalDomain = 'google.com'; // Fallback inicial
+            let finalDomain = 'google.com';
 
-            // Normaliza para buscar no dicionário (lowercase)
             const key = rawSourceName.toLowerCase().trim();
             
-            // Verifica se conhecemos essa fonte
             let known = knownSources[key];
             
-            // Se não achou exato, tenta ver se a chave está contida (ex: "InfoMoney inves.." -> "InfoMoney")
             if (!known) {
                 const foundKey = Object.keys(knownSources).find(k => key.includes(k));
                 if (foundKey) known = knownSources[foundKey];
             }
 
             if (known) {
-                // CASO 1: Fonte Conhecida (Usa nossos dados limpos)
                 finalSourceName = known.name;
                 finalDomain = known.domain;
             } else {
-                // CASO 2: Fonte Desconhecida (Tenta extrair do XML ou mantém o nome original)
-                // Tenta pegar URL do XML se existir
                 if (item.sourceData && item.sourceData['$'] && item.sourceData['$'].url) {
                     try {
                         const urlObj = new URL(item.sourceData['$'].url);
@@ -104,13 +112,11 @@ export default async function handler(request, response) {
                     } catch (e) {}
                 }
                 
-                // Se o nome parecer um site (tem .com ou .br), usa ele como domínio também
                 if (finalSourceName.includes('.com') || finalSourceName.includes('.br')) {
                     finalDomain = finalSourceName; 
                 }
             }
 
-            // Gera favicon usando a API do Google com o domínio correto
             const faviconUrl = `https://www.google.com/s2/favicons?domain=${finalDomain}&sz=64`;
 
             return {

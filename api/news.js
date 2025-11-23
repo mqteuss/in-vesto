@@ -1,7 +1,7 @@
 import Parser from 'rss-parser';
 
 export default async function handler(request, response) {
-    // 1. Configuração de CORS e Headers
+    // 1. Configuração de CORS e Headers Otimizados
     response.setHeader('Access-Control-Allow-Credentials', true);
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -10,120 +10,116 @@ export default async function handler(request, response) {
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
 
+    // Cache na borda (Vercel) por 15 min (900s), stale por 1 hora.
+    // Notícias não mudam a cada segundo, isso economiza recursos.
+    response.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
+
     if (request.method === 'OPTIONS') {
         return response.status(200).end();
     }
 
     const parser = new Parser({
         customFields: {
-            item: [['source', 'sourceData', { keepArray: false }]],
+            // Tenta pegar a tag <source> que o Google News fornece
+            item: [['source', 'sourceObj']], 
         },
     });
 
-    // 2. LISTA BRANCA ATUALIZADA (10 Sites)
-    // Apenas notícias destes domínios serão exibidas.
+    // 2. LISTA BRANCA (Mapeamento Normalizado)
+    // Chaves em minúsculo para facilitar o match
     const knownSources = {
-        // 1. Clube FII
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
-
-        // 2. Funds Explorer
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
-        'fundsexplorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
-
-        // 3. Status Invest
         'status invest': { name: 'Status Invest', domain: 'statusinvest.com.br' },
-        'statusinvest': { name: 'Status Invest', domain: 'statusinvest.com.br' },
-
-        // 4. FIIs.com.br
         'fiis.com.br': { name: 'FIIs.com.br', domain: 'fiis.com.br' },
-        'fiis': { name: 'FIIs.com.br', domain: 'fiis.com.br' }, 
-
-        // 5. Suno Notícias
-        'suno': { name: 'Suno Notícias', domain: 'suno.com.br' },
-        'suno notícias': { name: 'Suno Notícias', domain: 'suno.com.br' },
-
-        // 6. Investidor10
+        'suno': { name: 'Suno Notícias', domain: 'suno.com.br' }, // "Suno" pega "Suno Notícias" via includes
         'investidor10': { name: 'Investidor10', domain: 'investidor10.com.br' },
-        'investidor 10': { name: 'Investidor10', domain: 'investidor10.com.br' },
-
-        // 7. Money Times
         'money times': { name: 'Money Times', domain: 'moneytimes.com.br' },
-        'moneytimes': { name: 'Money Times', domain: 'moneytimes.com.br' },
-
-        // 8. InfoMoney
         'infomoney': { name: 'InfoMoney', domain: 'infomoney.com.br' },
-
-        // 9. Investing.com
         'investing.com': { name: 'Investing.com', domain: 'br.investing.com' },
-        'investing': { name: 'Investing.com', domain: 'br.investing.com' },
-
-        // 10. Mais Retorno
         'mais retorno': { name: 'Mais Retorno', domain: 'maisretorno.com' },
-        'maisretorno': { name: 'Mais Retorno', domain: 'maisretorno.com' }
+        // Adicionei Valor e Exame pois são relevantes para FIIs frequentemente
+        'valor investe': { name: 'Valor Investe', domain: 'valorinveste.globo.com' },
+        'exame': { name: 'Exame', domain: 'exame.com' }
     };
 
     try {
         const { q } = request.query;
-        const baseQuery = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
-
-        // Filtro de tempo: Últimos 7 dias
-        const encodedQuery = encodeURIComponent(baseQuery) + '+when:7d';
-
-        const feedUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+        // Query base refinada para evitar ruído
+        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
+        
+        // Constrói a query completa antes de encodar
+        const fullQuery = `${queryTerm} when:7d`; 
+        const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 
         const feed = await parser.parseURL(feedUrl);
 
-        const articles = feed.items.map((item) => {
-            const sourcePattern = / - (.*?)$/;
-            const sourceMatch = item.title ? item.title.match(sourcePattern) : null;
+        // Set para deduplicação de títulos exatos
+        const seenTitles = new Set();
 
-            let rawSourceName = 'Google News';
-            if (sourceMatch) {
-                rawSourceName = sourceMatch[1];
-            } else if (item.sourceData && item.sourceData.content) {
-                rawSourceName = item.sourceData.content;
-            } else if (item.sourceData && item.sourceData._) {
-                rawSourceName = item.sourceData._;
+        const articles = feed.items.map((item) => {
+            // --- LÓGICA DE EXTRAÇÃO DE FONTE MELHORADA ---
+            let rawSourceName = '';
+            let cleanTitle = item.title || 'Sem título';
+
+            // 1. Tenta pegar da tag <source> do XML (Mais confiável)
+            if (item.sourceObj && item.sourceObj._) {
+                rawSourceName = item.sourceObj._;
+            } 
+            // 2. Fallback: Regex no título (Padrão: "Título da Notícia - Nome da Fonte")
+            else {
+                const sourcePattern = / - ([^-]+)$/; // Pega o último texto após um hífen
+                const match = item.title.match(sourcePattern);
+                if (match) {
+                    rawSourceName = match[1];
+                }
             }
 
-            const cleanTitle = item.title ? item.title.replace(sourcePattern, '') : 'Sem título';
+            // Limpa o título removendo o nome da fonte no final
+            if (rawSourceName) {
+                cleanTitle = cleanTitle.replace(` - ${rawSourceName}`, '').trim();
+            }
 
-            // Normalização para busca na lista
-            const key = rawSourceName.toLowerCase().trim();
+            // --- FILTRAGEM (Whitelist) ---
+            const keyToCheck = rawSourceName.toLowerCase().trim();
+            let known = null;
 
-            let known = knownSources[key];
-
-            // Busca por aproximação
-            if (!known) {
-                const foundKey = Object.keys(knownSources).find(k => key.includes(k));
+            // 1. Busca exata
+            if (knownSources[keyToCheck]) {
+                known = knownSources[keyToCheck];
+            } 
+            // 2. Busca por "includes" (Ex: "Suno Notícias" contém "suno")
+            else {
+                const foundKey = Object.keys(knownSources).find(k => keyToCheck.includes(k));
                 if (foundKey) known = knownSources[foundKey];
             }
 
-            // --- FILTRO DE SEGURANÇA ---
-            // Se a fonte não for uma das 10 permitidas, descarta.
-            if (!known) {
-                return null;
-            }
+            if (!known) return null; // Descarta fontes desconhecidas
 
-            const faviconUrl = `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`;
+            // --- DEDUPLICAÇÃO ---
+            if (seenTitles.has(cleanTitle)) return null;
+            seenTitles.add(cleanTitle);
 
             return {
                 title: cleanTitle,
                 link: item.link,
-                publicationDate: item.pubDate,
+                publicationDate: item.pubDate, // Importante manter formato original para ordenação
                 sourceName: known.name,
                 sourceHostname: known.domain,
-                favicon: faviconUrl,
+                // Usa o domínio da whitelist para garantir favicon correto
+                favicon: `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`,
                 summary: item.contentSnippet || '',
             };
         })
-        .filter(item => item !== null); // Remove notícias de fontes não autorizadas
+        .filter(item => item !== null) // Remove nulos (fontes bloqueadas ou duplicatas)
+        .sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate)); // Ordenação Forçada: Mais recente primeiro
 
-        response.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=1800');
         return response.status(200).json(articles);
 
     } catch (error) {
         console.error('CRITICAL ERROR API NEWS:', error);
-        return response.status(500).json({ error: 'Erro interno ao buscar notícias.', details: error.message });
+        // Retorna array vazio em vez de erro 500 para não quebrar o frontend, 
+        // mas loga o erro no servidor.
+        return response.status(200).json([]); 
     }
 }

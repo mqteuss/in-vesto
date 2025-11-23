@@ -82,8 +82,7 @@ function isB3Open() {
 const REFRESH_INTERVAL = 900000; 
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; 
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; 
-// ATUALIZADO: Cache de notícias para 3 horas
-const CACHE_NOTICIAS = 1000 * 60 * 60 * 3; 
+const CACHE_NOTICIAS = 1000 * 60 * 60 * 6; 
 const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
 
@@ -299,7 +298,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
     
-    // --- DOM Elements ---
     const authContainer = document.getElementById('auth-container');
     const authLoading = document.getElementById('auth-loading');
     
@@ -328,19 +326,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
     
-    // Configurações e Segurança
     const newPasswordModal = document.getElementById('new-password-modal');
     const newPasswordForm = document.getElementById('new-password-form');
     const newPasswordInput = document.getElementById('new-password-input');
     const newPasswordBtn = document.getElementById('new-password-btn');
-    const newPasswordCancelBtn = document.getElementById('new-password-cancel-btn');
-    
-    const configBioBtn = document.getElementById('config-bio-btn');
-    const configBioKnob = document.getElementById('config-bio-knob');
-    const configChangePasswordBtn = document.getElementById('config-change-password-btn');
-    const configLogoutBtn = document.getElementById('config-logout-btn');
 
     const appWrapper = document.getElementById('app-wrapper');
+    const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
 
     const refreshButton = document.getElementById('refresh-button');
@@ -351,13 +343,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const toastMessageElement = document.getElementById('toast-message');
     const toastIconError = document.getElementById('toast-icon-error');
     const toastIconSuccess = document.getElementById('toast-icon-success');
-    
-    // Notícias
     const fiiNewsList = document.getElementById('fii-news-list');
     const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
     const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
-    
-    // Dashboard
     const dashboardStatus = document.getElementById('dashboard-status');
     const dashboardLoading = document.getElementById('dashboard-loading');
     const dashboardMensagem = document.getElementById('dashboard-mensagem');
@@ -371,17 +359,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCarteiraCusto = document.getElementById('total-carteira-custo');
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
     const totalCaixaValor = document.getElementById('total-caixa-valor');
-    const totalProventosEl = document.getElementById('total-proventos');
-
-    // Carteira
     const listaCarteira = document.getElementById('lista-carteira');
     const carteiraStatus = document.getElementById('carteira-status');
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
-    const watchlistListaEl = document.getElementById('watchlist-lista'); 
-    const watchlistStatusEl = document.getElementById('watchlist-status');
-
-    // Detalhes
+    const totalProventosEl = document.getElementById('total-proventos');
     const detalhesPageModal = document.getElementById('detalhes-page-modal');
     const detalhesPageContent = document.getElementById('tab-detalhes');
     const detalhesVoltarBtn = document.getElementById('detalhes-voltar-btn');
@@ -394,15 +376,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
     const periodoSelectorGroup = document.getElementById('periodo-selector-group'); 
     const detalhesAiProvento = document.getElementById('detalhes-ai-provento'); 
-    const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn'); 
-    const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
-    const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
-
-    // Histórico
     const listaHistorico = document.getElementById('lista-historico');
     const historicoStatus = document.getElementById('historico-status');
-    
-    // Modais
     const customModal = document.getElementById('custom-modal');
     const customModalContent = document.getElementById('custom-modal-content');
     const customModalTitle = document.getElementById('custom-modal-title');
@@ -421,14 +396,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const precoMedioInput = document.getElementById('preco-medio-input'); 
     const dateInput = document.getElementById('date-input');
     const addButton = document.getElementById('add-button');
-    
-    // Outros
     const updateNotification = document.getElementById('update-notification');
     const updateButton = document.getElementById('update-button');
+    const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn'); 
+    const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
+    const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
+    const watchlistListaEl = document.getElementById('watchlist-lista'); 
+    const watchlistStatusEl = document.getElementById('watchlist-status');
+    
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
-    
+    const toggleBioBtn = document.getElementById('toggle-bio-btn');
+    const bioStatusIcon = document.getElementById('bio-status-icon'); 
+
     let currentUserId = null;
     let transacoes = [];        
     let carteiraCalculada = []; 
@@ -492,25 +473,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
 
-    // --- Lógica de Biometria Atualizada ---
-
-    function verificarStatusBiometria() {
+    async function verificarStatusBiometria() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
         
-        if (configBioKnob) {
+        if (bioStatusIcon) {
             if (bioEnabled) {
-                // Ativado: cor roxa, posição direita
-                configBioBtn.classList.remove('bg-gray-700');
-                configBioBtn.classList.add('bg-purple-600');
-                configBioKnob.classList.remove('translate-x-1');
-                configBioKnob.classList.add('translate-x-6');
+                bioStatusIcon.classList.remove('text-gray-500', 'text-red-500');
+                bioStatusIcon.classList.add('text-green-500');
             } else {
-                // Desativado: cor cinza, posição esquerda
-                configBioBtn.classList.remove('bg-purple-600');
-                configBioBtn.classList.add('bg-gray-700');
-                configBioKnob.classList.remove('translate-x-6');
-                configBioKnob.classList.add('translate-x-1');
+                bioStatusIcon.classList.remove('text-green-500', 'text-gray-500');
+                bioStatusIcon.classList.add('text-red-500');
             }
+        }
+
+        if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => autenticarBiometria(), 500);
         }
     }
 
@@ -554,7 +532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('vesto_bio_id', credentialId);
                 localStorage.setItem('vesto_bio_enabled', 'true');
                 verificarStatusBiometria();
-                showToast('Biometria ativada!', 'success');
+                showToast('Face ID / Digital ativado!', 'success');
             }
         } catch (e) {
             console.error("Erro biometria:", e);
@@ -562,19 +540,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Função genérica para pedir autenticação
-    async function autenticarBiometria(actionCallback) {
-        if (!window.PublicKeyCredential) {
-            // Se não suporta, prossegue (ou poderia bloquear)
-            if (actionCallback) actionCallback();
-            return;
-        }
-
+    async function autenticarBiometria() {
+        if (!window.PublicKeyCredential) return;
         const savedCredId = localStorage.getItem('vesto_bio_id');
         
         if (!savedCredId) {
-            // Se não tem credencial salva, considera "autenticado" se o objetivo não era desbloquear
-            if (actionCallback) actionCallback();
+            console.warn("Nenhuma credencial salva encontrada.");
+            desativarBiometria();
             return;
         }
 
@@ -596,18 +568,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const assertion = await navigator.credentials.get({ publicKey });
 
             if (assertion) {
-                // Sucesso na leitura
-                if (!biometricLockScreen.classList.contains('hidden')) {
-                    // Se estava na tela de bloqueio, libera
-                    biometricLockScreen.classList.add('hidden');
-                    document.body.style.overflow = '';
-                    showToast('Acesso liberado!', 'success');
-                }
-                
-                // Se foi passado um callback para ação protegida, executa
-                if (actionCallback && typeof actionCallback === 'function') {
-                    actionCallback();
-                }
+                biometricLockScreen.classList.add('hidden');
+                document.body.style.overflow = '';
+                showToast('Acesso liberado!', 'success');
             }
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
@@ -624,18 +587,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('Biometria desativada.');
     }
 
-    // Wrapper para proteger ações
-    function executarComBiometria(callback) {
-        const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
-        if (isEnabled) {
-            autenticarBiometria(callback);
-        } else {
-            // Se não tem bio ativada, executa direto
-            callback();
-        }
+    if (toggleBioBtn) {
+        toggleBioBtn.addEventListener('click', () => {
+            const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
+            if (isEnabled) {
+                showModal("Desativar Biometria?", "Deseja remover o bloqueio por Face ID/Digital?", () => {
+                    desativarBiometria();
+                });
+            } else {
+                showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => {
+                    ativarBiometria();
+                });
+            }
+        });
     }
-} 
-    // ... (Continuação do código anterior dentro do DOMContentLoaded)
+
+    if (btnDesbloquear) {
+        btnDesbloquear.addEventListener('click', autenticarBiometria);
+    }
+    
+    if (btnSairLock) {
+        btnSairLock.addEventListener('click', async () => {
+            await supabaseDB.signOut();
+            window.location.reload();
+        });
+    }
 
     function showUpdateBar() {
         updateNotification.classList.remove('hidden');
@@ -1424,7 +1400,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
-        renderizarWatchlist(); // Garante que a lista de favoritos (watchlist) seja renderizada na aba carteira
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
         const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p]));
@@ -2135,8 +2110,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (isFavorite) {
                         setTimeout(() => {
                              showModal(
-                                'Manter nos Favoritos?',
-                                `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua lista de favoritos?`,
+                                'Manter na Watchlist?',
+                                `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua watchlist?`,
                                 () => {} 
                             );
                         }, 300); 
@@ -2521,52 +2496,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
     
-    // Listeners da Aba Configurações (NOVOS)
-    if (configBioBtn) {
-        configBioBtn.addEventListener('click', () => {
-            const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
-            if (isEnabled) {
-                // Para desativar, requer confirmação biométrica
-                autenticarBiometria(() => {
-                     showModal("Desativar Biometria?", "Deseja remover a proteção biométrica do app?", () => {
-                        desativarBiometria();
-                    });
-                });
-            } else {
-                // Para ativar, basta prosseguir
-                showModal("Ativar Biometria?", "Use sua digital para proteger o app.", () => {
-                    ativarBiometria();
-                });
-            }
-        });
-    }
-
-    if (configChangePasswordBtn) {
-        configChangePasswordBtn.addEventListener('click', () => {
-            executarComBiometria(() => {
-                 newPasswordModal.classList.add('visible');
-                 document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
-            });
-        });
-    }
-
-    if (configLogoutBtn) {
-        configLogoutBtn.addEventListener('click', () => {
-            showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
-                try {
-                    await vestoDB.clear('apiCache'); 
-                    sessionStorage.clear(); 
-                } catch (e) {
-                    console.error("Erro ao limpar dados locais:", e);
-                }
-                
-                sessionStorage.setItem('vesto_just_logged_out', 'true');
-                await supabaseDB.signOut();
-                window.location.reload();
-            });
-        });
-    }
-
     customModalCancel.addEventListener('click', hideModal);
     customModalOk.addEventListener('click', () => {
         if (typeof onConfirmCallback === 'function') {
@@ -2619,19 +2548,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- NOVO LISTENER DE NOTÍCIAS ---
     fiiNewsList.addEventListener('click', (e) => {
+        // 1. Verifica se clicou num Ticker (Etiqueta)
         const tickerTag = e.target.closest('.news-ticker-tag');
         if (tickerTag) {
-            e.stopPropagation(); 
+            e.stopPropagation(); // Impede que o card expanda/feche
             const symbol = tickerTag.dataset.symbol;
             if (symbol) {
                 showDetalhesModal(symbol);
             }
             return;
         }
+
+        // 2. Verifica se clicou num Link real (<a>)
         if (e.target.closest('a')) {
-            e.stopPropagation(); 
+            // Deixa o navegador abrir o link normalmente
+            e.stopPropagation(); // Importante para não fechar o drawer ao clicar no link
             return; 
         }
+
+        // 3. Verifica se clicou no Card Interativo (para abrir/fechar)
         const card = e.target.closest('.news-card-interactive');
         if (card) {
             const targetId = card.dataset.target;
@@ -2810,6 +2745,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         if (window.location.hash && window.location.hash.includes('type=recovery')) {
+             console.log("Modo de recuperação de senha detectado via URL Hash");
              newPasswordModal.classList.add('visible');
              document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
         }
@@ -2841,12 +2777,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     newPasswordBtn.innerHTML = 'Salvar Nova Senha';
                     newPasswordBtn.disabled = false;
                 }
-            });
-        }
-        
-        if (newPasswordCancelBtn) {
-            newPasswordCancelBtn.addEventListener('click', () => {
-                 newPasswordModal.classList.remove('visible');
             });
         }
 
@@ -2942,6 +2872,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupError.classList.add('hidden');
         });
         
+        logoutBtn.addEventListener('click', () => {
+            showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
+                
+                try {
+                    await vestoDB.clear('apiCache'); 
+                    sessionStorage.clear(); 
+                } catch (e) {
+                    console.error("Erro ao limpar dados locais:", e);
+                }
+                
+                sessionStorage.setItem('vesto_just_logged_out', 'true');
+                await supabaseDB.signOut();
+                window.location.reload();
+            });
+        });
 
         passwordToggleButtons.forEach(button => {
             button.addEventListener('click', () => {
@@ -2971,17 +2916,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             await verificarStatusBiometria();
             
-            if (btnDesbloquear) {
-                btnDesbloquear.addEventListener('click', () => autenticarBiometria());
-            }
-            
-            if (btnSairLock) {
-                btnSairLock.addEventListener('click', async () => {
-                    await supabaseDB.signOut();
-                    window.location.reload();
-                });
-            }
-
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
         } else {

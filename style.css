@@ -74,8 +74,8 @@ body::-webkit-scrollbar {
     transform: translateX(-50%);
     margin: 0;
     
-    width: 95%;          
-    max-width: 390px;    
+    width: 90%;          
+    max-width: 340px;    
     height: 3.7rem;   
     
     z-index: 50;
@@ -522,6 +522,5 @@ input:-webkit-autofill:active{
 /* Interatividade do Card de Notícias */
 .news-card-interactive {
     cursor: pointer;
+    /* Removido o hover background-color para evitar o "cinza" */
 }
-
-} 

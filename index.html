@@ -19,16 +19,20 @@
 <body class="antialiased">
 
     <div id="biometric-lock-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 hidden">
+            
         <div class="relative mb-8 group cursor-pointer" id="btn-desbloquear">
             <div class="absolute inset-0 bg-purple-500/20 rounded-full blur-xl group-hover:bg-purple-500/30 transition-all duration-500"></div>
+            
             <div class="relative bg-gray-800 p-6 rounded-full border border-purple-500/30 shadow-2xl group-active:scale-95 transition-transform duration-200">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-purple-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.486 5.33" />
                   </svg>
             </div>
         </div>
+
         <h2 class="text-2xl font-bold text-white mb-2">Vesto Bloqueado</h2>
-        <p class="text-gray-400 text-center mb-8 max-w-xs">Toque no ícone acima para liberar o acesso via biometria.</p>
+        <p class="text-gray-400 text-center mb-8 max-w-xs">Toque na digital acima ou aguarde a verificação biométrica para acessar.</p>
+        
         <button id="btn-sair-lock" class="mt-4 text-sm text-gray-500 hover:text-red-400 transition-colors border border-gray-800 px-4 py-2 rounded-full hover:bg-gray-800 hover:border-red-900/30">
             Sair da conta
         </button>
@@ -38,6 +42,7 @@
         try {
             const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
             const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
+
             if (bioEnabled && !justLoggedOut) {
                 document.getElementById('biometric-lock-screen').classList.remove('hidden');
             }
@@ -49,67 +54,177 @@
         
         <form id="login-form" class="card-bg p-6 rounded-2xl space-y-4">
             <h2 class="text-xl font-semibold text-white text-center mb-4">Login</h2>
+            
             <div id="login-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-lg"></div>
             
-            <input type="email" id="login-email" placeholder="Email" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-white">
+            <input 
+                type="email" 
+                id="login-email" 
+                placeholder="Email" 
+                required
+                class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-white"
+            >
             
             <div class="relative">
-                <input type="password" id="login-password" placeholder="Senha" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white">
+                <input 
+                    type="password" 
+                    id="login-password" 
+                    placeholder="Senha" 
+                    required
+                    class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white"
+                >
                 <button type="button" class="password-toggle" data-target="login-password">
-                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    </svg>
                 </button>
             </div>
             
             <div class="flex justify-end">
-                <button type="button" id="show-recover-btn" class="text-xs text-purple-400 hover:text-purple-300 transition-colors focus:outline-none">Esqueci minha senha</button>
+                <button type="button" id="show-recover-btn" class="text-xs text-purple-400 hover:text-purple-300 transition-colors focus:outline-none">
+                    Esqueci minha senha
+                </button>
             </div>
-            <button id="login-submit-btn" type="submit" class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Entrar</button>
-            <p class="text-sm text-center text-gray-400 pt-2">Não tem uma conta? <button type="button" id="show-signup-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">Cadastre-se</button></p>
+
+            <button 
+                id="login-submit-btn"
+                type="submit"
+                class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
+            >
+                Entrar
+            </button>
+            
+            <p class="text-sm text-center text-gray-400 pt-2">
+                Não tem uma conta?
+                <button type="button" id="show-signup-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">
+                    Cadastre-se
+                </button>
+            </p>
         </form>
 
         <form id="signup-form" class="card-bg p-6 rounded-2xl space-y-4 hidden">
             <h2 class="text-xl font-semibold text-white text-center mb-4">Criar Conta</h2>
+
             <div id="signup-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-lg"></div>
-            <div id="signup-success" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/50 rounded-lg"><p class="font-semibold">Sucesso!</p><p class="mt-1">Link enviado. Verifique seu e-mail.</p></div>
+
+            <div id="signup-success" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/50 rounded-lg">
+                <p class="font-semibold">Sucesso!</p>
+                <p class="mt-1">Enviamos um link de confirmação para o seu e-mail. Por favor, verifique sua caixa de entrada (e spam) para ativar sua conta.</p>
+            </div>
+
+            <input 
+                type="email" 
+                id="signup-email" 
+                placeholder="Email" 
+                required
+                class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-white"
+            >
             
-            <input type="email" id="signup-email" placeholder="Email" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-white">
             <div class="relative">
-                <input type="password" id="signup-password" placeholder="Senha (mín. 6 caracteres)" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white">
+                <input 
+                    type="password" 
+                    id="signup-password" 
+                    placeholder="Senha (mín. 6 caracteres)" 
+                    required
+                    class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white"
+                >
                 <button type="button" class="password-toggle" data-target="signup-password">
-                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    </svg>
                 </button>
             </div>
+            
             <div class="relative">
-                <input type="password" id="signup-confirm-password" placeholder="Confirme sua senha" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white">
+                <input 
+                    type="password" 
+                    id="signup-confirm-password" 
+                    placeholder="Confirme sua senha" 
+                    required
+                    class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white"
+                >
                 <button type="button" class="password-toggle" data-target="signup-confirm-password">
-                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    </svg>
                 </button>
             </div>
-            <button id="signup-submit-btn" type="submit" class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Criar conta</button>
-            <p class="text-sm text-center text-gray-400 pt-2">Já tem uma conta? <button type="button" id="show-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">Entrar</button></p>
+            
+            <button 
+                id="signup-submit-btn"
+                type="submit"
+                class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
+            >
+                Criar conta
+            </button>
+            
+            <p class="text-sm text-center text-gray-400 pt-2">
+                Já tem uma conta?
+                <button type="button" id="show-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">
+                    Entrar
+                </button>
+            </p>
         </form>
 
         <form id="recover-form" class="card-bg p-6 rounded-2xl space-y-4 hidden">
             <h2 class="text-xl font-semibold text-white text-center mb-2">Recuperar Senha</h2>
-            <p class="text-sm text-gray-400 text-center mb-4">Digite seu e-mail para receber o link.</p>
-            <div id="recover-message" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/50 rounded-lg">E-mail enviado!</div>
+            <p class="text-sm text-gray-400 text-center mb-4">Digite seu e-mail para receber o link de redefinição.</p>
+
+            <div id="recover-message" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/50 rounded-lg">
+                E-mail enviado! Verifique sua caixa de entrada e spam.
+            </div>
             <div id="recover-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-lg"></div>
-            <input type="email" id="recover-email" placeholder="Seu e-mail cadastrado" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-white">
-            <button id="recover-submit-btn" type="submit" class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Enviar Link</button>
-            <p class="text-sm text-center text-gray-400 pt-2">Lembrou a senha? <button type="button" id="back-to-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">Voltar para Login</button></p>
+
+            <input 
+                type="email" 
+                id="recover-email" 
+                placeholder="Seu e-mail cadastrado" 
+                required
+                class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-white"
+            >
+            
+            <button 
+                id="recover-submit-btn"
+                type="submit"
+                class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
+            >
+                Enviar Link
+            </button>
+            
+            <p class="text-sm text-center text-gray-400 pt-2">
+                Lembrou a senha?
+                <button type="button" id="back-to-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">
+                    Voltar para Login
+                </button>
+            </p>
         </form>
         
         <div id="auth-loading" class="text-center text-gray-500 mt-12 hidden">
-             <div class="flex justify-center items-center py-4"><span class="loader"></span></div>
+             <div class="flex justify-center items-center py-4">
+                <span class="loader"></span>
+             </div>
              <p>A conectar...</p>
         </div>
-        <footer class="mt-12 text-center"><p class="text-xs text-gray-600">&copy; 2025 Vesto. Todos os direitos reservados.</p></footer>
+
+        <footer class="mt-12 text-center">
+            <p class="text-xs text-gray-600">&copy; 2025 Vesto. Todos os direitos reservados.</p>
+        </footer>
     </div>
 
     <div id="app-wrapper" class="hidden">
+
         <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
 
             <div id="tab-dashboard" class="tab-content active p-4">
@@ -155,41 +270,72 @@
                     <div class="card-bg p-4 rounded-2xl">
                         <div class="flex justify-between items-center">
                             <h3 class="text-lg font-semibold text-white ml-2">Evolução do Patrimônio</h3>
-                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="patrimonio-chart-drawer">
-                                <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="patrimonio-chart-drawer" title="Mostrar menos">
+                                <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
                             </button>
                         </div>
                         <div id="patrimonio-chart-drawer" class="card-drawer open">
-                            <div id="patrimonio-container" class="drawer-content relative h-64 pt-4"><canvas id="patrimonio-chart"></canvas></div>
+                            <div id="patrimonio-container" class="drawer-content relative h-64 pt-4">
+                                <canvas id="patrimonio-chart"></canvas>
+                            </div>
                         </div>
                     </div>
                     <div class="card-bg p-4 rounded-2xl">
                         <div class="flex justify-between items-center">
                             <h3 class="text-lg font-semibold text-white ml-2">Alocação</h3>
-                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="alocacao-chart-drawer">
-                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="alocacao-chart-drawer" title="Mostrar mais">
+                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
                             </button>
                         </div>
                         <div id="alocacao-chart-drawer" class="card-drawer">
-                            <div id="grafico-container" class="drawer-content relative h-64 pt-4"><canvas id="alocacao-chart"></canvas></div>
+                            <div id="grafico-container" class="drawer-content relative h-64 pt-4">
+                                <canvas id="alocacao-chart"></canvas>
+                            </div>
                         </div>
                     </div>
                     <div class="card-bg p-4 rounded-2xl">
                         <div class="flex justify-between items-center">
                             <h3 class="text-lg font-semibold text-white ml-2">Proventos Recebidos</h3>
-                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="proventos-chart-drawer">
-                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="proventos-chart-drawer" title="Mostrar mais">
+                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
                             </button>
                         </div>
                         <div id="proventos-chart-drawer" class="card-drawer">
-                            <div id="historico-grafico-container" class="drawer-content relative h-64 pt-4"><canvas id="historico-proventos-chart"></canvas></div>
+                            <div id="historico-grafico-container" class="drawer-content relative h-64 pt-4">
+                                <canvas id="historico-proventos-chart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div> 
 
+                <div class="card-bg p-4 rounded-2xl mt-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-white ml-2">Watchlist</h3>
+                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="watchlist-drawer" title="Mostrar mais">
+                            <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="watchlist-drawer" class="card-drawer open">
+                        <div class="drawer-content pt-4 space-y-3">
+                            <div id="watchlist-lista" class="space-y-3"></div>
+                            <p id="watchlist-status" class="text-gray-500 text-center py-4 hidden">Sua watchlist está vazia.</p>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="dashboard-status" class="text-center text-gray-500 mt-12 hidden">
                     <p id="dashboard-mensagem">A carregar dados...</p>
-                     <div id="dashboard-loading" class="flex justify-center items-center py-4"><span class="loader"></span></div>
+                     <div id="dashboard-loading" class="flex justify-center items-center py-4">
+                        <span class="loader"></span>
+                     </div>
                 </div>
             </div>
 
@@ -198,8 +344,23 @@
                     <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Carteira</h1>
                     
                     <div class="flex items-center gap-2">
-                        <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Atualizar dados">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path></svg>
+                        
+                        <button id="toggle-bio-btn" class="p-2 rounded-lg transition-all duration-200 hover:bg-gray-800" title="Ativar/Desativar Face ID">
+                            <svg id="bio-status-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.486 5.33" />
+                            </svg>
+                        </button>
+
+                        <button id="logout-btn" class="p-2 text-gray-500 hover:text-red-500 rounded-lg transition-all duration-200 hover:bg-gray-800" title="Sair">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                        
+                        <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar dados">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                                <path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -211,50 +372,81 @@
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-gray-700 flex-shrink-0"></div>
-                                <div class="space-y-2"><div class="h-6 w-24 bg-gray-700 rounded-md"></div><div class="h-4 w-16 bg-gray-700 rounded-md"></div></div>
+                                <div class="space-y-2">
+                                    <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
+                                    <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
+                                </div>
                             </div>
-                            <div class="text-right flex-shrink-0 ml-2 space-y-2"><div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div><div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div></div>
+                            <div class="text-right flex-shrink-0 ml-2 space-y-2">
+                                <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
+                                <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
+                            </div>
                         </div>
-                        <div class="flex justify-center mt-2 border-t border-gray-800 pt-2"><div class="w-6 h-6 bg-gray-700 rounded-full"></div></div>
+                        <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
+                            <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
+                        </div>
+                    </div>
+                    <div class="card-bg p-4 rounded-2xl animate-shimmer-parent">
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-gray-700 flex-shrink-0"></div>
+                                <div class="space-y-2">
+                                    <div class="h-6 w-24 bg-gray-700 rounded-md"></div>
+                                    <div class="h-4 w-16 bg-gray-700 rounded-md"></div>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0 ml-2 space-y-2">
+                                <div class="h-6 w-16 bg-gray-700 rounded-md ml-auto"></div>
+                                <div class="h-6 w-20 bg-gray-700 rounded-md ml-auto"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
+                            <div class="w-6 h-6 bg-gray-700 rounded-full"></div>
+                        </div>
                     </div>
                 </div>
                 
                 <div id="carteira-status" class="text-center text-gray-500 mt-12 hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25-2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0m-9-6.75h.008v.008H12v-.008Z" />
+                    </svg>
                     <p id="carteira-mensagem" class="text-lg mt-4 font-semibold text-gray-200">A sua carteira está vazia.</p>
-                    <button id="empty-state-add-btn" class="mt-6 py-2 px-5 accent-bg text-white font-semibold rounded-lg shadow-md transition-transform active:scale-95 hover:bg-violet-600">Adicionar primeiro ativo</button>
-                </div>
-
-                <div class="card-bg p-4 rounded-2xl mt-8">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" /></svg>
-                            <h3 class="text-lg font-semibold text-white">Favoritos</h3>
-                        </div>
-                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="watchlist-drawer" title="Expandir">
-                            <svg class="card-arrow-icon w-6 h-6 open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
-                        </button>
-                    </div>
-                    <div id="watchlist-drawer" class="card-drawer open">
-                        <div class="drawer-content pt-4 space-y-3">
-                            <div id="watchlist-lista" class="space-y-3"></div>
-                            <p id="watchlist-status" class="text-gray-500 text-center py-4 hidden">Sua lista de favoritos está vazia.</p>
-                        </div>
-                    </div>
+                    <button id="empty-state-add-btn" class="mt-6 py-2 px-5 accent-bg text-white font-semibold rounded-lg shadow-md transition-transform active:scale-95 hover:bg-violet-600">
+                        Adicionar primeiro ativo
+                    </button>
                 </div>
             </div>
 
             <div id="tab-noticias" class="tab-content p-4">
                 <div class="flex justify-between items-center mb-6">
                     <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Notícias</h1>
-                    <button id="refresh-noticias-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Atualizar notícias">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path></svg>
+                    <button id="refresh-noticias-button" class="p-2 text-gray-500 hover:text-white rounded-lg transition-all duration-200 hover:bg-gray-800" title="Limpar cache e atualizar notícias">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                            <path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path>
+                        </svg>
                     </button>
                 </div>
                 <div id="fii-news-skeleton" class="space-y-4 animate-shimmer-parent hidden">
                     <div class="card-bg rounded-2xl p-4">
-                        <div class="flex items-start gap-3"><div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div><div class="flex-1 space-y-2 pt-1"><div class="h-4 bg-gray-700 rounded-md w-full"></div><div class="h-3 bg-gray-700 rounded-md w-1/4"></div></div></div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                            <div class="flex-1 space-y-2 pt-1">
+                                <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                                <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
+                            </div>
+                            <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
+                        </div>
                     </div>
+                    <div class="card-bg rounded-2xl p-4">
+                         <div class="flex items-start gap-3">
+                             <div class="w-10 h-10 bg-gray-700 rounded-lg flex-shrink-0"></div>
+                             <div class="flex-1 space-y-2 pt-1">
+                                 <div class="h-4 bg-gray-700 rounded-md w-full"></div>
+                                 <div class="h-3 bg-gray-700 rounded-md w-1/4"></div>
+                             </div>
+                             <div class="w-6 h-6 bg-gray-700 rounded-full flex-shrink-0 ml-2"></div>
+                         </div>
+                     </div>
                 </div>
                 <div id="fii-news-list" class="space-y-4"></div>
                 <p id="fii-news-mensagem" class="text-gray-500 text-center hidden p-4"></p>
@@ -266,105 +458,66 @@
                 </div>
                 <div id="lista-historico" class="space-y-3"></div>
                 <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+                    </svg>
                     <p id="historico-mensagem" class="text-lg mt-4 font-semibold text-gray-200">Nenhuma transação encontrada.</p>
+                    <p class="text-sm text-gray-400 mt-1">Seu histórico de compras aparecerá aqui.</p>
                 </div>
             </div>
-
-            <div id="tab-configuracoes" class="tab-content p-4">
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Config</h1>
-                </div>
-
-                <div class="space-y-4">
-                    <div class="card-bg p-4 rounded-2xl flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-gray-800 rounded-lg text-purple-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.486 5.33" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-white">Biometria</h3>
-                                <p class="text-xs text-gray-500">Proteger acesso ao app</p>
-                            </div>
-                        </div>
-                        <button id="config-bio-btn" class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-700 transition-colors focus:outline-none">
-                            <span class="sr-only">Ativar Biometria</span>
-                            <span id="config-bio-knob" class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
-                        </button>
-                    </div>
-
-                    <button id="config-change-password-btn" class="w-full card-bg p-4 rounded-2xl flex items-center justify-between hover:bg-gray-900 transition-colors text-left">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-gray-800 rounded-lg text-blue-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-white">Alterar Senha</h3>
-                                <p class="text-xs text-gray-500">Redefinir sua senha de acesso</p>
-                            </div>
-                        </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-
-                    <button id="config-logout-btn" class="w-full card-bg p-4 rounded-2xl flex items-center justify-between hover:bg-red-900/10 transition-colors text-left group">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-gray-800 rounded-lg text-red-500 group-hover:bg-red-900/30">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-white group-hover:text-red-400">Sair</h3>
-                                <p class="text-xs text-gray-500 group-hover:text-red-300">Desconectar da sua conta</p>
-                            </div>
-                        </div>
-                    </button>
-                    
-                    <div class="text-center pt-8">
-                         <p class="text-xs text-gray-600">Vesto App v2.1.0</p>
-                    </div>
-                </div>
-            </div>
-
         </div>
 
         <div id="update-notification" class="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md hidden" style="opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease;">
             <div class="card-bg rounded-xl p-4 shadow-2xl flex items-center justify-between gap-3">
                 <span class="text-sm font-medium text-gray-100">Uma nova versão está disponível!</span>
-                <button id="update-button" class="py-2 px-4 accent-bg text-white rounded-lg transition-colors text-sm font-semibold">Atualizar</button>
+                <button id="update-button" class="py-2 px-4 accent-bg text-white rounded-lg transition-colors text-sm font-semibold">
+                    Atualizar
+                </button>
             </div>
         </div>
 
         <button id="show-add-modal-btn" class="fixed bottom-24 right-5 z-40 accent-bg text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 hover:bg-violet-600" title="Adicionar Ativo">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
         </button>
 
         <nav class="fixed z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
             <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
-                <div class="tab-button-icon-wrapper"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg></div>
-                <span class="text-[10px] mt-1 font-medium">Dash</span>
+                <div class="tab-button-icon-wrapper"> 
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                    </svg>
+                </div>
+                <span class="text-xs mt-1 font-medium">Dashboard</span>
             </button>
+
             <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-carteira" title="Carteira">
-                <div class="tab-button-icon-wrapper"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg></div>
-                <span class="text-[10px] mt-1 font-medium">Carteira</span>
+                <div class="tab-button-icon-wrapper"> 
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
+                    </svg>
+                </div>
+                <span class="text-xs mt-1 font-medium">Carteira</span>
             </button>
+
             <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-noticias" title="Notícias">
-                <div class="tab-button-icon-wrapper"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path></svg></div>
-                <span class="text-[10px] mt-1 font-medium">Notícias</span>
+                <div class="tab-button-icon-wrapper"> 
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path>
+                    </svg>
+                </div>
+                <span class="text-xs mt-1 font-medium">Notícias</span>
             </button>
+
             <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-historico" title="Histórico">
-                <div class="tab-button-icon-wrapper"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 12h10"></path><path d="M7 6h10"></path><path d="M7 18h10"></path></svg></div>
-                <span class="text-[10px] mt-1 font-medium">Histórico</span>
-            </button>
-            <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-configuracoes" title="Configurações">
-                <div class="tab-button-icon-wrapper"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
-                <span class="text-[10px] mt-1 font-medium">Config</span>
+                <div class="tab-button-icon-wrapper"> 
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 3v18h18"></path><path d="M7 12h10"></path><path d="M7 6h10"></path><path d="M7 18h10"></path>
+                    </svg>
+                </div>
+                <span class="text-xs mt-1 font-medium">Histórico</span>
             </button>
         </nav>
         
@@ -382,19 +535,50 @@
         <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-start justify-center p-4 pt-16 bg-black bg-opacity-70 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">
             <div id="add-ativo-modal-content" class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
                 <h3 id="add-modal-title" class="text-xl font-semibold text-white mb-5 text-center">Adicionar Compra</h3>
+
                 <form id="add-ativo-form">
                     <input type="hidden" id="transacao-id-input">
+                    
                     <div class="space-y-4">
-                        <input type="text" id="ticker-input" placeholder="Ativo (ex: MXRF11)" class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors">
-                        <input type="date" id="date-input" placeholder="Data da Compra" class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors" style="color-scheme: dark;">
+                        <input 
+                            type="text" 
+                            id="ticker-input" 
+                            placeholder="Ativo (ex: MXRF11)" 
+                            class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
+                        >
+                        <input 
+                            type="date" 
+                            id="date-input" 
+                            placeholder="Data da Compra"
+                            class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 transition-colors"
+                            style="color-scheme: dark;"
+                        >
+
                         <div class="flex gap-3">
-                            <input type="number" id="quantity-input" placeholder="Qtd." class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-center">
-                            <input type="number" id="preco-medio-input" placeholder="Preço (R$)" step="0.01" class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-center">
+                            <input
+                                type="number"
+                                id="quantity-input"
+                                placeholder="Qtd."
+                                class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-center"
+                            >
+                            <input
+                                type="number"
+                                id="preco-medio-input"
+                                placeholder="Preço (R$)"
+                                step="0.01"
+                                class="w-1/2 p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-center"
+                            >
                         </div>
                     </div>
                     <div class="flex justify-end gap-3 mt-6">
                         <button id="add-ativo-cancel-btn" type="button" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
-                        <button id="add-button" type="submit" class="py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Adicionar</button>
+                        <button 
+                            id="add-button" 
+                            type="submit"
+                            class="py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105"
+                        >
+                            Adicionar
+                        </button>
                     </div>
                 </form>
             </div>
@@ -402,37 +586,64 @@
 
         <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
             <div id="tab-detalhes" class="page-content w-full h-[90vh] rounded-t-2xl shadow-2xl">
+
                 <div class="flex justify-between items-center p-4 border-b border-gray-800 sticky top-0 bg-neutral-950/80 backdrop-blur-md rounded-t-2xl z-10">
                     <div id="detalhes-titulo" class="flex-1 min-w-0">
                         <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
                          <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
                     </div>
+                    
                     <button id="detalhes-favorito-btn" class="p-2 ml-3 text-gray-500 hover:text-yellow-400 rounded-full transition-colors flex-shrink-0" title="Adicionar aos favoritos">
-                        <svg id="detalhes-favorito-icon-empty" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" /></svg>
-                        <svg id="detalhes-favorito-icon-filled" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" /></svg>
+                        <svg id="detalhes-favorito-icon-empty" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" />
+                        </svg>
+                        <svg id="detalhes-favorito-icon-filled" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" />
+                        </svg>
                     </button>
                     <button id="detalhes-voltar-btn" class="p-2 ml-3 text-gray-400 hover:text-white rounded-full transition-colors flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </div>
+
                 <div id="detalhes-conteudo-scroll" class="overflow-y-auto h-[calc(90vh-65px)] p-4">
                     <div id="detalhes-conteudo" class="space-y-5">
-                         <div id="detalhes-loading" class="hidden flex justify-center items-center py-4"><span class="loader"></span></div>
+                         <div id="detalhes-loading" class="hidden flex justify-center items-center py-4">
+                            <span class="loader"></span>
+                         </div>
                          <p id="detalhes-mensagem" class="text-center text-gray-500 py-8">Clique em "Detalhes" num ativo da sua carteira para ver as informações aqui.</p>
+
                          <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
+
                          <div id="detalhes-historico-container" class="hidden">
+
                             <h4 class="text-base font-semibold text-white">Histórico de Proventos</h4>
                             <div id="periodo-selector-group" class="mt-2 grid grid-cols-4 gap-2">
-                                <button class="periodo-selector-btn active" data-meses="3">3M</button><button class="periodo-selector-btn" data-meses="6">6M</button><button class="periodo-selector-btn" data-meses="9">9M</button><button class="periodo-selector-btn" data-meses="12">12M</button>
+                                <button class="periodo-selector-btn active" data-meses="3">3M</button>
+                                <button class="periodo-selector-btn" data-meses="6">6M</button>
+                                <button class="periodo-selector-btn" data-meses="9">9M</button>
+                                <button class="periodo-selector-btn" data-meses="12">12M</button>
                             </div>
-                            <div id="detalhes-ai-provento" class="mt-4"><div class="relative h-48 w-full"><canvas id="detalhes-proventos-chart"></canvas></div></div>
+                            
+                            <div id="detalhes-ai-provento" class="mt-4">
+                                <div class="relative h-48 w-full">
+                                    <canvas id="detalhes-proventos-chart"></canvas>
+                                </div>
+                            </div>
+                            
                          </div>
+                         
                          <div id="detalhes-transacoes-container" class="hidden">
                             <h4 class="text-base font-semibold text-white">Seu Histórico neste Ativo</h4>
-                            <div id="detalhes-lista-transacoes" class="mt-3 space-y-2"></div>
-                            <p id="detalhes-transacoes-vazio" class="text-sm text-gray-500 text-center p-4 hidden">Você (ainda) não possui transações para este ativo.</p>
+                            <div id="detalhes-lista-transacoes" class="mt-3 space-y-2">
+                                </div>
+                            <p id="detalhes-transacoes-vazio" class="text-sm text-gray-500 text-center p-4 hidden">
+                                Você (ainda) não possui transações para este ativo.
+                            </p>
                          </div>
-                    </div>
+                         </div>
                 </div>
             </div>
         </div>
@@ -440,27 +651,50 @@
         <div id="new-password-modal" class="custom-modal fixed inset-0 z-[70] items-center justify-center p-4 bg-black bg-opacity-80 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="modal-content card-bg rounded-2xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">
                 <h3 class="text-xl font-semibold text-white text-center mb-4">Definir Nova Senha</h3>
-                <p class="text-sm text-gray-400 text-center mb-6">Digite sua nova senha abaixo.</p>
+                <p class="text-sm text-gray-400 text-center mb-6">Sua conta foi verificada. Digite sua nova senha abaixo.</p>
+                
                 <form id="new-password-form" class="space-y-4">
                     <div class="relative">
-                        <input type="password" id="new-password-input" placeholder="Nova senha (mín. 6 caracteres)" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-white pr-10">
+                        <input 
+                            type="password" 
+                            id="new-password-input" 
+                            placeholder="Nova senha (mín. 6 caracteres)" 
+                            required
+                            class="w-full p-3 bg-gray-900 border border-gray-800 rounded-lg focus:outline-none focus:border-purple-400 text-white pr-10"
+                        >
                          <button type="button" class="password-toggle" data-target="new-password-input">
-                            <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                            <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                            <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            </svg>
+                            <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            </svg>
                         </button>
                     </div>
-                    <div class="flex justify-end gap-3 mt-4">
-                        <button type="button" id="new-password-cancel-btn" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">Cancelar</button>
-                        <button type="submit" id="new-password-btn" class="py-2 px-4 accent-bg text-white font-semibold rounded-lg shadow-md">Salvar</button>
-                    </div>
+                    <button 
+                        type="submit" 
+                        id="new-password-btn"
+                        class="w-full py-3 accent-bg text-white font-semibold rounded-lg shadow-md"
+                    >
+                        Salvar Nova Senha
+                    </button>
                 </form>
             </div>
         </div>
 
         <div id="toast-container" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-sm p-4 z-[999] pointer-events-none">
-            <div id="toast-notification" class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl text-white font-medium">
-                <svg id="toast-icon-error" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                <svg id="toast-icon-success" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke-currentColor="stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div id="toast-notification" 
+                 class="flex items-center gap-3 w-full p-3 rounded-xl shadow-2xl text-white font-medium">
+                
+                <svg id="toast-icon-error" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                
+                <svg id="toast-icon-success" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke-currentColor="stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+
                 <span id="toast-message" class="flex-1">Erro ao processar.</span>
             </div>
         </div>

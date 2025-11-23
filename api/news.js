@@ -1,6 +1,7 @@
 import Parser from 'rss-parser';
 
 export default async function handler(request, response) {
+    // 1. Configuração de CORS e Headers
     response.setHeader('Access-Control-Allow-Credentials', true);
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -19,55 +20,50 @@ export default async function handler(request, response) {
         },
     });
 
-    // --- MAPA DE FONTES CONHECIDAS ---
-    // Adicionei os novos sites solicitados aqui
+    // 2. LISTA BRANCA ESTRITA (WHITELIST)
+    // Apenas estes 9 sites serão aceitos.
     const knownSources = {
-        // Fontes solicitadas recentemente
-        'xp investimentos': { name: 'XP Investimentos', domain: 'xpi.com.br' },
-        'xp': { name: 'XP Investimentos', domain: 'xpi.com.br' }, // Caso venha só "XP"
-        'investalk': { name: 'InvesTalk', domain: 'investalk.bb.com.br' },
+        // 1. Clube FII
+        'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
+        
+        // 2. Funds Explorer
+        'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
+        'fundsexplorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
+        
+        // 3. FIIs.com.br
+        'fiis.com.br': { name: 'FIIs.com.br', domain: 'fiis.com.br' },
+        'fiis': { name: 'FIIs.com.br', domain: 'fiis.com.br' }, 
+        
+        // 4. Status Invest
+        'status invest': { name: 'Status Invest', domain: 'statusinvest.com.br' },
+        'statusinvest': { name: 'Status Invest', domain: 'statusinvest.com.br' },
+        
+        // 5. Suno Notícias
+        'suno': { name: 'Suno Notícias', domain: 'suno.com.br' },
+        'suno notícias': { name: 'Suno Notícias', domain: 'suno.com.br' },
+        'suno.com.br': { name: 'Suno Notícias', domain: 'suno.com.br' },
+        
+        // 6. Money Times
+        'money times': { name: 'Money Times', domain: 'moneytimes.com.br' },
+        'moneytimes': { name: 'Money Times', domain: 'moneytimes.com.br' },
+        
+        // 7. InfoMoney
+        'infomoney': { name: 'InfoMoney', domain: 'infomoney.com.br' },
+        
+        // 8. Investidor10
         'investidor10': { name: 'Investidor10', domain: 'investidor10.com.br' },
         'investidor 10': { name: 'Investidor10', domain: 'investidor10.com.br' },
-        'riconnect': { name: 'Riconnect', domain: 'riconnect.rico.com.vc' },
-        'rico': { name: 'Rico', domain: 'rico.com.vc' },
-        'e-investidor': { name: 'E-Investidor', domain: 'einvestidor.estadao.com.br' },
-        'estadão e-investidor': { name: 'E-Investidor', domain: 'einvestidor.estadao.com.br' },
-        'genial analisa': { name: 'Genial Analisa', domain: 'analisa.genialinvestimentos.com.br' },
-        'genial': { name: 'Genial Investimentos', domain: 'genialinvestimentos.com.br' },
-        'fiis': { name: 'FIIs.com.br', domain: 'fiis.com.br' }, // Mapeando "FIIs" para o site principal
-
-        // Fontes anteriores
-        'infomoney': { name: 'InfoMoney', domain: 'infomoney.com.br' },
-        'suno': { name: 'Suno Notícias', domain: 'suno.com.br' },
-        'suno.com.br': { name: 'Suno Notícias', domain: 'suno.com.br' },
+        
+        // 9. Brazil Journal
         'brazil journal': { name: 'Brazil Journal', domain: 'braziljournal.com' },
-        'valor econômico': { name: 'Valor Econômico', domain: 'valor.globo.com' },
-        'valor': { name: 'Valor Econômico', domain: 'valor.globo.com' },
-        'exame': { name: 'Exame', domain: 'exame.com' },
-        'money times': { name: 'Money Times', domain: 'moneytimes.com.br' },
-        'fiis.com.br': { name: 'FIIs.com.br', domain: 'fiis.com.br' },
-        'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
-        'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
-        'seu dinheiro': { name: 'Seu Dinheiro', domain: 'seudinheiro.com' },
-        'terra': { name: 'Terra', domain: 'terra.com.br' },
-        'uol': { name: 'UOL', domain: 'uol.com.br' },
-        'folha': { name: 'Folha de S.Paulo', domain: 'folha.uol.com.br' },
-        'folha de s.paulo': { name: 'Folha de S.Paulo', domain: 'folha.uol.com.br' },
-        'estadao': { name: 'Estadão', domain: 'estadao.com.br' },
-        'invest news': { name: 'InvestNews', domain: 'investnews.com.br' },
-        'b3': { name: 'B3', domain: 'b3.com.br' },
-        'inteligência financeira': { name: 'Inteligência Financeira', domain: 'inteligenciafinanceira.com.br' },
-        'bora investir': { name: 'Bora Investir', domain: 'borainvestir.b3.com.br' },
-        'martinelli.adv.br': { name: 'Martinelli Advogados', domain: 'martinelli.adv.br' },
-        'neo feed': { name: 'NeoFeed', domain: 'neofeed.com.br' },
-        'bp money': { name: 'BP Money', domain: 'bpmoney.com.br' }
+        'braziljournal': { name: 'Brazil Journal', domain: 'braziljournal.com' }
     };
 
     try {
         const { q } = request.query;
         const baseQuery = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
         
-        // ALTERAÇÃO: Mudado de 30d para 7d (1 semana)
+        // Mantendo o filtro de 7 dias (1 semana)
         const encodedQuery = encodeURIComponent(baseQuery) + '+when:7d';
         
         const feedUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
@@ -89,46 +85,36 @@ export default async function handler(request, response) {
 
             const cleanTitle = item.title ? item.title.replace(sourcePattern, '') : 'Sem título';
 
-            let finalSourceName = rawSourceName;
-            let finalDomain = 'google.com';
-
+            // Normalização para busca
             const key = rawSourceName.toLowerCase().trim();
             
             let known = knownSources[key];
             
+            // Busca por aproximação (ex: "InfoMoney Mercados" -> acha "infomoney")
             if (!known) {
                 const foundKey = Object.keys(knownSources).find(k => key.includes(k));
                 if (foundKey) known = knownSources[foundKey];
             }
 
-            if (known) {
-                finalSourceName = known.name;
-                finalDomain = known.domain;
-            } else {
-                if (item.sourceData && item.sourceData['$'] && item.sourceData['$'].url) {
-                    try {
-                        const urlObj = new URL(item.sourceData['$'].url);
-                        finalDomain = urlObj.hostname;
-                    } catch (e) {}
-                }
-                
-                if (finalSourceName.includes('.com') || finalSourceName.includes('.br')) {
-                    finalDomain = finalSourceName; 
-                }
+            // --- FILTRO RIGOROSO ---
+            // Se não estiver na lista acima, descarta.
+            if (!known) {
+                return null;
             }
 
-            const faviconUrl = `https://www.google.com/s2/favicons?domain=${finalDomain}&sz=64`;
+            const faviconUrl = `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`;
 
             return {
                 title: cleanTitle,
                 link: item.link,
                 publicationDate: item.pubDate,
-                sourceName: finalSourceName,
-                sourceHostname: finalDomain,
+                sourceName: known.name,
+                sourceHostname: known.domain,
                 favicon: faviconUrl,
                 summary: item.contentSnippet || '',
             };
-        });
+        })
+        .filter(item => item !== null); // Remove os nulos (sites indesejados)
 
         response.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=1800');
         return response.status(200).json(articles);

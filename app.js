@@ -950,6 +950,142 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dataCompra: a.dataCompra
             }));
     }
+    
+    function renderizarHistorico() {
+        listaHistorico.innerHTML = '';
+        if (transacoes.length === 0) {
+            historicoStatus.classList.remove('hidden');
+            return;
+        }
+        
+        historicoStatus.classList.add('hidden');
+        const fragment = document.createDocumentFragment();
+
+        [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+            const card = document.createElement('div');
+            card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
+            const cor = 'text-green-500';
+            const sinal = '+';
+            const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            
+            card.innerHTML = `
+                <div class="flex items-center gap-3">
+                    ${icone}
+                    <div>
+                        <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
+                        <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
+                        <p class="text-sm text-gray-400">${formatBRL(t.price)}</p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button class="p-1 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                              <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button class="p-1 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            fragment.appendChild(card);
+        });
+        listaHistorico.appendChild(fragment);
+    }
+
+    function renderizarNoticias(articles) { 
+        fiiNewsSkeleton.classList.add('hidden');
+        fiiNewsList.innerHTML = ''; 
+        fiiNewsMensagem.classList.add('hidden');
+
+        if (!articles || articles.length === 0) {
+            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada nos últimos 30 dias.';
+            fiiNewsMensagem.classList.remove('hidden');
+            return;
+        }
+        
+        articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+        
+        const fragment = document.createDocumentFragment();
+
+        articles.forEach((article, index) => {
+            const sourceName = article.sourceName || 'Fonte';
+            const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+            const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
+            const drawerId = `news-drawer-${index}`;
+            
+            // Lógica para detectar tickers (ex: MXRF11)
+            const tickerRegex = /[A-Z]{4}11/g;
+            const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
+            
+            let tickersHtml = '';
+            if (foundTickers.length > 0) {
+                tickersHtml = '<div class="mt-2 flex flex-wrap">';
+                foundTickers.forEach(ticker => {
+                    tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                });
+                tickersHtml += '</div>';
+            }
+
+            const drawerContentHtml = `
+                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
+                    ${article.summary ? article.summary : 'Resumo não disponível.'}
+                </div>
+                <div class="flex justify-end">
+                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors">
+                        Ler notícia completa
+                    </a>
+                </div>
+            `;
+
+            const newsCard = document.createElement('div');
+            // Adicionado classe "news-card-interactive" e evento para abrir
+            newsCard.className = 'card-bg rounded-2xl p-4 space-y-3 news-card-interactive'; 
+            newsCard.setAttribute('data-action', 'toggle-news');
+            newsCard.setAttribute('data-target', drawerId);
+
+            newsCard.innerHTML = `
+                <div class="flex items-start gap-3 pointer-events-none">
+                    <img src="${faviconUrl}" alt="${sourceName}" 
+                         class="w-9 h-9 rounded bg-gray-800 object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
+                         loading="lazy"
+                         onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
+                    />
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
+                        ${tickersHtml}
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
+                            <span class="text-[10px] text-gray-600">•</span>
+                            <span class="text-xs text-gray-500">${publicationDate}</span>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 -mr-2 -mt-2">
+                        <svg class="card-arrow-icon w-5 h-5 text-gray-500 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </div>
+                </div>
+                
+                <div id="${drawerId}" class="card-drawer pointer-events-auto">
+                    <div class="drawer-content pt-3 border-t border-gray-800 mt-2">
+                        ${drawerContentHtml}
+                    </div>
+                </div>
+            `;
+            fragment.appendChild(newsCard);
+        });
+        fiiNewsList.appendChild(fragment);
+    }
+    // --- FUNÇÕES DE GRÁFICOS ---
 
     function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
@@ -1397,130 +1533,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
     
-    function renderizarHistorico() {
-        listaHistorico.innerHTML = '';
-        if (transacoes.length === 0) {
-            historicoStatus.classList.remove('hidden');
-            return;
-        }
-        
-        historicoStatus.classList.add('hidden');
-        const fragment = document.createDocumentFragment();
-
-        [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
-            const card = document.createElement('div');
-            card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
-            const cor = 'text-green-500';
-            const sinal = '+';
-            const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-            
-            card.innerHTML = `
-                <div class="flex items-center gap-3">
-                    ${icone}
-                    <div>
-                        <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
-                        <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="text-right">
-                        <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                        <p class="text-sm text-gray-400">${formatBRL(t.price)}</p>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button class="p-1 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                              <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                        <button class="p-1 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            `;
-            fragment.appendChild(card);
-        });
-        listaHistorico.appendChild(fragment);
-    }
-    function renderizarNoticias(articles) { 
-        fiiNewsSkeleton.classList.add('hidden');
-        fiiNewsList.innerHTML = ''; 
-        fiiNewsMensagem.classList.add('hidden');
-
-        if (!articles || articles.length === 0) {
-            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada nos últimos 30 dias.';
-            fiiNewsMensagem.classList.remove('hidden');
-            return;
-        }
-        
-        // Ordena por data (mais recente primeiro)
-        articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
-        
-        const fragment = document.createDocumentFragment();
-
-        articles.forEach((article, index) => {
-            const sourceName = article.sourceName || 'Fonte';
-            // O backend agora envia o favicon pronto. Usamos ele.
-            // Se não vier (backup), tentamos gerar com o hostname.
-            const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
-            
-            const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
-            const drawerId = `news-drawer-${index}`;
-            
-            // Renderização do Resumo na Gaveta
-            const drawerContentHtml = `
-                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
-                    ${article.summary ? article.summary : 'Resumo não disponível.'}
-                </div>
-                <div class="flex justify-end">
-                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 uppercase tracking-wide border border-purple-900 bg-purple-900/20 px-3 py-1.5 rounded-md transition-colors">
-                        Ler notícia completa
-                    </a>
-                </div>
-            `;
-
-            const newsCard = document.createElement('div');
-            newsCard.className = 'card-bg rounded-2xl p-4 space-y-3'; 
-            newsCard.innerHTML = `
-                <div class="flex items-start gap-3">
-                    <img src="${faviconUrl}" alt="${sourceName}" 
-                         class="w-9 h-9 rounded bg-gray-800 object-contain p-0.5 shadow-sm border border-gray-700"
-                         loading="lazy"
-                         onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
-                    />
-                    <div class="flex-1 min-w-0">
-                        <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
-                        <div class="flex items-center gap-2 mt-1.5">
-                            <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
-                            <span class="text-[10px] text-gray-600">•</span>
-                            <span class="text-xs text-gray-500">${publicationDate}</span>
-                        </div>
-                    </div>
-                    <button class="p-2 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700 flex-shrink-0 -mr-2 -mt-2" 
-                            data-action="toggle-news" data-target="${drawerId}" title="Expandir Resumo">
-                        <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                        </svg>
-                    </button>
-                </div>
-                
-                <div id="${drawerId}" class="card-drawer">
-                    <div class="drawer-content pt-3 border-t border-gray-800 mt-2">
-                        ${drawerContentHtml}
-                    </div>
-                </div>
-            `;
-            fragment.appendChild(newsCard);
-        });
-        fiiNewsList.appendChild(fragment);
-    }
+    // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
 
     async function handleAtualizarNoticias(force = false) {
-        const cacheKey = 'noticias_json_v5_filtered'; // Atualizei a chave para forçar refresh nos users antigos
+        const cacheKey = 'noticias_json_v5_filtered';
         
         if (!force) {
             const cache = await getCache(cacheKey);
@@ -1553,7 +1569,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey) {
-        // Se for fetch network only, limpa o cache anterior para garantir dados novos
         await vestoDB.delete('apiCache', cacheKey);
         
         try {
@@ -1561,14 +1576,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
-            // O novo news.js retorna o array diretamente
             const articles = response; 
             
             if (articles && Array.isArray(articles) && articles.length > 0) {
                 await setCache(cacheKey, articles, CACHE_NOTICIAS);
-            } else {
-                console.warn("API de notícias retornou vazio ou inválido.");
             }
             return articles;
         } catch (error) {
@@ -1592,7 +1603,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return response.json();
         } catch (error) {
             if (error.name === 'AbortError') {
-                console.error(`Erro ao chamar o BFF ${url}:`, "Timeout de 60s excedido");
                 throw new Error("O servidor demorou muito para responder.");
             }
             console.error(`Erro ao chamar o BFF ${url}:`, error);
@@ -1720,7 +1730,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
         const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
-        
         const cacheKey = `cache_grafico_historico_${currentUserId}`;
         
         if (force) {
@@ -1891,6 +1900,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // --- MANIPULADORES DE EVENTOS ---
+
     async function handleToggleFavorito() {
         const symbol = detalhesFavoritoBtn.dataset.symbol;
         if (!symbol) return;
@@ -1948,7 +1959,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
 
             if (!ativoExistente && isFII(ticker)) {
-                console.log("[Caixa] Novo FII detectado. Resetando saldoCaixa e mesesProcessados.");
                 saldoCaixa = 0;
                 await salvarCaixa();
                 mesesProcessados = [];
@@ -1963,7 +1973,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                          throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
                      }
                 } catch (error) {
-                     console.error(`Erro ao verificar ativo ${tickerParaApi}:`, error);
                      showToast("Ativo não encontrado."); 
                      tickerInput.value = '';
                      tickerInput.placeholder = "Ativo não encontrado";
@@ -2539,22 +2548,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         touchMoveY = 0;
     });
 
+    // --- NOVO LISTENER DE NOTÍCIAS ---
     fiiNewsList.addEventListener('click', (e) => {
-        const button = e.target.closest('button');
-        if (!button) return;
-        const action = button.dataset.action;
-
-        if (action === 'toggle-news') {
-            const targetId = button.dataset.target;
-            const drawer = document.getElementById(targetId);
-            const icon = button.querySelector('.card-arrow-icon');
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        } else if (action === 'view-ticker') {
-            const symbol = button.dataset.symbol;
+        // 1. Verifica se clicou num Ticker (Etiqueta)
+        const tickerTag = e.target.closest('.news-ticker-tag');
+        if (tickerTag) {
+            e.stopPropagation(); // Impede que o card expanda
+            const symbol = tickerTag.dataset.symbol;
             if (symbol) {
                 showDetalhesModal(symbol);
             }
+            return;
+        }
+
+        // 2. Verifica se clicou num Link real (<a>)
+        if (e.target.closest('a')) {
+            // Deixa o navegador abrir o link normalmente
+            return; 
+        }
+
+        // 3. Verifica se clicou no Card Interativo
+        const card = e.target.closest('.news-card-interactive');
+        if (card) {
+            const targetId = card.dataset.target;
+            const drawer = document.getElementById(targetId);
+            const icon = card.querySelector('.card-arrow-icon');
+            
+            drawer?.classList.toggle('open');
+            icon?.classList.toggle('open');
         }
     });
     

@@ -20,8 +20,8 @@ export default async function handler(request, response) {
         },
     });
 
-    // 2. LISTA BRANCA ESTRITA (WHITELIST)
-    // Apenas estes 9 sites serão aceitos.
+    // 2. LISTA BRANCA ATUALIZADA (10 Sites)
+    // Apenas notícias destes domínios serão exibidas.
     const knownSources = {
         // 1. Clube FII
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
@@ -30,40 +30,43 @@ export default async function handler(request, response) {
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
         'fundsexplorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
         
-        // 3. FIIs.com.br
-        'fiis.com.br': { name: 'FIIs.com.br', domain: 'fiis.com.br' },
-        'fiis': { name: 'FIIs.com.br', domain: 'fiis.com.br' }, 
-        
-        // 4. Status Invest
+        // 3. Status Invest
         'status invest': { name: 'Status Invest', domain: 'statusinvest.com.br' },
         'statusinvest': { name: 'Status Invest', domain: 'statusinvest.com.br' },
+        
+        // 4. FIIs.com.br
+        'fiis.com.br': { name: 'FIIs.com.br', domain: 'fiis.com.br' },
+        'fiis': { name: 'FIIs.com.br', domain: 'fiis.com.br' }, 
         
         // 5. Suno Notícias
         'suno': { name: 'Suno Notícias', domain: 'suno.com.br' },
         'suno notícias': { name: 'Suno Notícias', domain: 'suno.com.br' },
-        'suno.com.br': { name: 'Suno Notícias', domain: 'suno.com.br' },
         
-        // 6. Money Times
-        'money times': { name: 'Money Times', domain: 'moneytimes.com.br' },
-        'moneytimes': { name: 'Money Times', domain: 'moneytimes.com.br' },
-        
-        // 7. InfoMoney
-        'infomoney': { name: 'InfoMoney', domain: 'infomoney.com.br' },
-        
-        // 8. Investidor10
+        // 6. Investidor10
         'investidor10': { name: 'Investidor10', domain: 'investidor10.com.br' },
         'investidor 10': { name: 'Investidor10', domain: 'investidor10.com.br' },
         
-        // 9. Brazil Journal
-        'brazil journal': { name: 'Brazil Journal', domain: 'braziljournal.com' },
-        'braziljournal': { name: 'Brazil Journal', domain: 'braziljournal.com' }
+        // 7. Money Times
+        'money times': { name: 'Money Times', domain: 'moneytimes.com.br' },
+        'moneytimes': { name: 'Money Times', domain: 'moneytimes.com.br' },
+        
+        // 8. InfoMoney
+        'infomoney': { name: 'InfoMoney', domain: 'infomoney.com.br' },
+        
+        // 9. Investing.com
+        'investing.com': { name: 'Investing.com', domain: 'br.investing.com' },
+        'investing': { name: 'Investing.com', domain: 'br.investing.com' },
+
+        // 10. Mais Retorno
+        'mais retorno': { name: 'Mais Retorno', domain: 'maisretorno.com' },
+        'maisretorno': { name: 'Mais Retorno', domain: 'maisretorno.com' }
     };
 
     try {
         const { q } = request.query;
         const baseQuery = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
         
-        // Mantendo o filtro de 7 dias (1 semana)
+        // Filtro de tempo: Últimos 7 dias
         const encodedQuery = encodeURIComponent(baseQuery) + '+when:7d';
         
         const feedUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
@@ -85,19 +88,19 @@ export default async function handler(request, response) {
 
             const cleanTitle = item.title ? item.title.replace(sourcePattern, '') : 'Sem título';
 
-            // Normalização para busca
+            // Normalização para busca na lista
             const key = rawSourceName.toLowerCase().trim();
             
             let known = knownSources[key];
             
-            // Busca por aproximação (ex: "InfoMoney Mercados" -> acha "infomoney")
+            // Busca por aproximação
             if (!known) {
                 const foundKey = Object.keys(knownSources).find(k => key.includes(k));
                 if (foundKey) known = knownSources[foundKey];
             }
 
-            // --- FILTRO RIGOROSO ---
-            // Se não estiver na lista acima, descarta.
+            // --- FILTRO DE SEGURANÇA ---
+            // Se a fonte não for uma das 10 permitidas, descarta.
             if (!known) {
                 return null;
             }
@@ -114,7 +117,7 @@ export default async function handler(request, response) {
                 summary: item.contentSnippet || '',
             };
         })
-        .filter(item => item !== null); // Remove os nulos (sites indesejados)
+        .filter(item => item !== null); // Remove notícias de fontes não autorizadas
 
         response.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=1800');
         return response.status(200).json(articles);

@@ -5,8 +5,6 @@ body {
     color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-smoothing: grayscale;
-    /* Evita highlight azul ao tocar em elementos no mobile */
-    -webkit-tap-highlight-color: transparent; 
 }
 
 html, body {
@@ -21,16 +19,6 @@ body::-webkit-scrollbar {
 .card-bg {
     background-color: #000000;
     border: 1px solid #2C2C2E;
-}
-
-/* Estilo específico para cards de notícia serem clicáveis */
-#fii-news-list .card-bg {
-    cursor: pointer;
-    transition: transform 0.1s ease-out, background-color 0.2s ease;
-}
-#fii-news-list .card-bg:active {
-    transform: scale(0.98);
-    background-color: #0f0f10;
 }
 
 .accent-bg {
@@ -381,28 +369,28 @@ select {
   40%, 60% { transform: translateX(2%) translateY(1rem); }
 }
 
-/* ESTILOS NOVOS: TICKERS */
+.news-card-summary {
+    line-height: 1.6;
+    color: #d1d5db;
+}
 .news-ticker-tag {
-    display: inline-flex;
-    align-items: center;
-    background-color: rgba(124, 58, 237, 0.15); /* Roxo bem suave */
-    color: #c084fc;
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 4px 10px;
+    display: inline-block;
+    background-color: #374151;
+    color: #d1d5db;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 10px;
     border-radius: 9999px;
-    border: 1px solid rgba(124, 58, 237, 0.3);
     margin-right: 6px;
-    margin-bottom: 0;
+    margin-bottom: 6px;
     transition: all 0.2s ease;
     cursor: pointer;
-    z-index: 10; /* Garante que fique acima do card clicável */
+    z-index: 10;
     position: relative;
 }
 .news-ticker-tag:hover {
     background-color: #7c3aed;
     color: #FFF;
-    border-color: #7c3aed;
 }
 
 .periodo-selector-btn {
@@ -524,4 +512,13 @@ input:-webkit-autofill:active{
     -webkit-box-shadow: 0 0 0 30px #1C1C1E inset !important;
     -webkit-text-fill-color: white !important;
     transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Interatividade do Card de Notícias */
+.news-card-interactive {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.news-card-interactive:hover {
+    background-color: #161618;
 }

@@ -7,6 +7,11 @@ body {
     -moz-osx-smoothing: grayscale;
 }
 
+/* Remove o quadrado cinza de seleção em mobile */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
 html, body {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -385,7 +390,7 @@ select {
     margin-bottom: 6px;
     transition: all 0.2s ease;
     cursor: pointer;
-    z-index: 10;
+    z-index: 20; /* Aumentado para garantir clique */
     position: relative;
 }
 .news-ticker-tag:hover {
@@ -517,8 +522,5 @@ input:-webkit-autofill:active{
 /* Interatividade do Card de Notícias */
 .news-card-interactive {
     cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-.news-card-interactive:hover {
-    background-color: #161618;
+    /* Removido o hover background-color para evitar o "cinza" */
 }

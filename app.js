@@ -1446,14 +1446,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         listaHistorico.appendChild(fragment);
     }
-
     function renderizarNoticias(articles) { 
         fiiNewsSkeleton.classList.add('hidden');
         fiiNewsList.innerHTML = ''; 
         fiiNewsMensagem.classList.add('hidden');
 
         if (!articles || articles.length === 0) {
-            fiiNewsMensagem.textContent = 'Nenhuma notícia encontrada.';
+            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada nos últimos 30 dias.';
             fiiNewsMensagem.classList.remove('hidden');
             return;
         }
@@ -1465,58 +1464,52 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         articles.forEach((article, index) => {
             const sourceName = article.sourceName || 'Fonte';
-            const sourceHostname = article.sourceHostname || 'google.com'; 
+            // O backend agora envia o favicon pronto. Usamos ele.
+            // Se não vier (backup), tentamos gerar com o hostname.
+            const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+            
             const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
             const drawerId = `news-drawer-${index}`;
-            const faviconUrl = `https://www.google.com/s2/favicons?domain=${sourceHostname}&sz=32`;
             
-            // RSS do Google não traz tickers relacionados, mas mantemos a lógica caso venha no futuro
-            let tagsHtml = '';
-            if (article.relatedTickers && article.relatedTickers.length > 0) {
-                const tags = article.relatedTickers.map(ticker => `
-                    <button 
-                        class="news-ticker-tag"
-                        data-action="view-ticker"
-                        data-symbol="${ticker}"
-                    >
-                        ${ticker}
-                    </button>
-                `).join('');
-                tagsHtml = `<div class="mt-3 flex flex-wrap items-center">${tags}</div>`;
-            }
-            
+            // Renderização do Resumo na Gaveta
             const drawerContentHtml = `
-                <p class="news-card-summary">
-                    ${article.summary || 'Resumo da notícia não disponível.'}
-                </p>
-                <div class="mt-3">
-                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-sm text-purple-400 hover:text-purple-300 underline">Ler notícia completa</a>
+                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
+                    ${article.summary ? article.summary : 'Resumo não disponível.'}
                 </div>
-                ${tagsHtml}
+                <div class="flex justify-end">
+                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 uppercase tracking-wide border border-purple-900 bg-purple-900/20 px-3 py-1.5 rounded-md transition-colors">
+                        Ler notícia completa
+                    </a>
+                </div>
             `;
 
             const newsCard = document.createElement('div');
             newsCard.className = 'card-bg rounded-2xl p-4 space-y-3'; 
             newsCard.innerHTML = `
                 <div class="flex items-start gap-3">
-                    <img src="${faviconUrl}" alt="Logo ${sourceName}" 
-                         class="w-10 h-10 rounded-lg object-contain p-1.5 flex-shrink-0 bg-gray-700"
-                         onerror="this.style.backgroundColor='#4b5563'; this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';" 
+                    <img src="${faviconUrl}" alt="${sourceName}" 
+                         class="w-9 h-9 rounded bg-gray-800 object-contain p-0.5 shadow-sm border border-gray-700"
+                         loading="lazy"
+                         onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                     />
                     <div class="flex-1 min-w-0">
-                        <h4 class="font-semibold text-white line-clamp-2">${article.title || 'Título indisponível'}</h4>
-                        <span class="text-sm text-gray-400">${sourceName} &bull; ${publicationDate}</span>
+                        <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
+                            <span class="text-[10px] text-gray-600">•</span>
+                            <span class="text-xs text-gray-500">${publicationDate}</span>
+                        </div>
                     </div>
-                    <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700 flex-shrink-0 ml-2" 
-                            data-action="toggle-news" data-target="${drawerId}" title="Ler mais">
-                        <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <button class="p-2 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700 flex-shrink-0 -mr-2 -mt-2" 
+                            data-action="toggle-news" data-target="${drawerId}" title="Expandir Resumo">
+                        <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                         </svg>
                     </button>
                 </div>
                 
                 <div id="${drawerId}" class="card-drawer">
-                    <div class="drawer-content pt-3 border-t border-gray-800">
+                    <div class="drawer-content pt-3 border-t border-gray-800 mt-2">
                         ${drawerContentHtml}
                     </div>
                 </div>
@@ -1527,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleAtualizarNoticias(force = false) {
-        const cacheKey = 'noticias_json_v4';
+        const cacheKey = 'noticias_json_v5_filtered'; // Atualizei a chave para forçar refresh nos users antigos
         
         if (!force) {
             const cache = await getCache(cacheKey);
@@ -1547,33 +1540,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const articles = await fetchAndCacheNoticiasBFF_NetworkOnly();
+            const articles = await fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey);
             renderizarNoticias(articles);
         } catch (e) {
             console.error("Erro ao buscar notícias (função separada):", e);
             fiiNewsSkeleton.classList.add('hidden');
-            fiiNewsMensagem.textContent = 'Erro ao carregar notícias.';
+            fiiNewsMensagem.textContent = 'Erro ao carregar notícias. Tente novamente.';
             fiiNewsMensagem.classList.remove('hidden');
         } finally {
             refreshIcon.classList.remove('spin-animation');
         }
     }
 
-    async function fetchAndCacheNoticiasBFF_NetworkOnly() {
-        const cacheKey = 'noticias_json_v4';
-        
+    async function fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey) {
         // Se for fetch network only, limpa o cache anterior para garantir dados novos
         await vestoDB.delete('apiCache', cacheKey);
         
         try {
-            // ALTERAÇÃO: Mudamos para GET e removemos o body, pois o endpoint RSS não precisa de payload
             const response = await fetchBFF('/api/news', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
             
-            // O backend agora retorna a lista diretamente, sem encapsular em { json: ... }
-            // Se o fetchBFF já faz response.json(), então 'response' é o array.
+            // O novo news.js retorna o array diretamente
             const articles = response; 
             
             if (articles && Array.isArray(articles) && articles.length > 0) {

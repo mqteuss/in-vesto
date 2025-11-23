@@ -20,44 +20,24 @@ export default async function handler(request, response) {
         },
     });
 
-    // 2. LISTA BRANCA ATUALIZADA (10 Sites)
-    // Apenas notícias destes domínios serão exibidas.
+    // 2. LISTA BRANCA (10 Sites)
     const knownSources = {
-        // 1. Clube FII
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
-        
-        // 2. Funds Explorer
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
         'fundsexplorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
-        
-        // 3. Status Invest
         'status invest': { name: 'Status Invest', domain: 'statusinvest.com.br' },
         'statusinvest': { name: 'Status Invest', domain: 'statusinvest.com.br' },
-        
-        // 4. FIIs.com.br
         'fiis.com.br': { name: 'FIIs.com.br', domain: 'fiis.com.br' },
         'fiis': { name: 'FIIs.com.br', domain: 'fiis.com.br' }, 
-        
-        // 5. Suno Notícias
         'suno': { name: 'Suno Notícias', domain: 'suno.com.br' },
         'suno notícias': { name: 'Suno Notícias', domain: 'suno.com.br' },
-        
-        // 6. Investidor10
         'investidor10': { name: 'Investidor10', domain: 'investidor10.com.br' },
         'investidor 10': { name: 'Investidor10', domain: 'investidor10.com.br' },
-        
-        // 7. Money Times
         'money times': { name: 'Money Times', domain: 'moneytimes.com.br' },
         'moneytimes': { name: 'Money Times', domain: 'moneytimes.com.br' },
-        
-        // 8. InfoMoney
         'infomoney': { name: 'InfoMoney', domain: 'infomoney.com.br' },
-        
-        // 9. Investing.com
         'investing.com': { name: 'Investing.com', domain: 'br.investing.com' },
         'investing': { name: 'Investing.com', domain: 'br.investing.com' },
-
-        // 10. Mais Retorno
         'mais retorno': { name: 'Mais Retorno', domain: 'maisretorno.com' },
         'maisretorno': { name: 'Mais Retorno', domain: 'maisretorno.com' }
     };
@@ -90,20 +70,24 @@ export default async function handler(request, response) {
 
             // Normalização para busca na lista
             const key = rawSourceName.toLowerCase().trim();
-            
             let known = knownSources[key];
             
-            // Busca por aproximação
             if (!known) {
                 const foundKey = Object.keys(knownSources).find(k => key.includes(k));
                 if (foundKey) known = knownSources[foundKey];
             }
 
-            // --- FILTRO DE SEGURANÇA ---
-            // Se a fonte não for uma das 10 permitidas, descarta.
+            // Filtro de Segurança
             if (!known) {
                 return null;
             }
+
+            // --- EXTRAÇÃO DE TICKERS ---
+            // Procura por padrões de 4 letras maiúsculas seguidas de "11" (ex: MXRF11)
+            const tickerRegex = /\b[A-Z]{4}11\b/g;
+            const textToScan = `${cleanTitle} ${item.contentSnippet || ''}`;
+            // Remove duplicatas usando Set
+            const foundTickers = [...new Set(textToScan.match(tickerRegex) || [])];
 
             const faviconUrl = `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`;
 
@@ -115,10 +99,12 @@ export default async function handler(request, response) {
                 sourceHostname: known.domain,
                 favicon: faviconUrl,
                 summary: item.contentSnippet || '',
+                tickers: foundTickers // Novo campo enviado para o frontend
             };
         })
-        .filter(item => item !== null); // Remove notícias de fontes não autorizadas
+        .filter(item => item !== null);
 
+        // Cache de 1 hora (3600s)
         response.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=1800');
         return response.status(200).json(articles);
 

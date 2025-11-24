@@ -83,8 +83,7 @@ function isB3Open() {
 const REFRESH_INTERVAL = 900000; 
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; 
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; 
-// ATUALIZADO: Cache de notícias para 3 horas
-const CACHE_NOTICIAS = 1000 * 60 * 60 * 3; 
+const CACHE_NOTICIAS = 1000 * 60 * 60 * 3; // 3 Horas
 const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
 
@@ -344,7 +343,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const openChangePasswordBtn = document.getElementById('open-change-password-btn');
     const closeChangePasswordBtn = document.getElementById('close-change-password-btn');
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
-    const bioToggleKnob = document.getElementById('bio-toggle-knob'); // Novo seletor
+    const bioToggleKnob = document.getElementById('bio-toggle-knob'); 
     const bioStatusIcon = document.getElementById('bio-status-icon');
 
     const appWrapper = document.getElementById('app-wrapper');
@@ -493,11 +492,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Atualiza a UI do botão de toggle e ícones na aba Ajustes
         if (toggleBioBtn && bioToggleKnob) {
              if (bioEnabled) {
-                 toggleBioBtn.classList.replace('bg-gray-700', 'bg-green-500');
-                 bioToggleKnob.classList.replace('translate-x-1', 'translate-x-6');
+                 toggleBioBtn.classList.remove('bg-gray-700');
+                 toggleBioBtn.classList.add('bg-green-500');
+                 bioToggleKnob.classList.remove('translate-x-1');
+                 bioToggleKnob.classList.add('translate-x-6');
              } else {
-                 toggleBioBtn.classList.replace('bg-green-500', 'bg-gray-700');
-                 bioToggleKnob.classList.replace('translate-x-6', 'translate-x-1');
+                 toggleBioBtn.classList.remove('bg-green-500');
+                 toggleBioBtn.classList.add('bg-gray-700');
+                 bioToggleKnob.classList.remove('translate-x-6');
+                 bioToggleKnob.classList.add('translate-x-1');
              }
         }
 
@@ -507,7 +510,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bioStatusIcon.classList.add('text-green-500');
             } else {
                 bioStatusIcon.classList.remove('text-green-500', 'text-gray-500');
-                bioStatusIcon.classList.add('text-red-500'); // Ou deixar gray se preferir neutro quando desligado
+                bioStatusIcon.classList.add('text-red-500');
             }
         }
 
@@ -805,7 +808,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             limparDetalhes(); 
         }, 400); 
     }
-    // ... (Continuação do código anterior)
+    // ... (Continuação do código da Parte 1)
 
     async function carregarTransacoes() {
         transacoes = await supabaseDB.getTransacoes();
@@ -855,22 +858,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderizarWatchlist() {
+        if (!watchlistListaEl) return;
         watchlistListaEl.innerHTML = ''; 
 
         if (watchlist.length === 0) {
-            watchlistStatusEl.classList.remove('hidden');
+            if(watchlistStatusEl) watchlistStatusEl.classList.remove('hidden');
             return;
         }
         
-        watchlistStatusEl.classList.add('hidden');
+        if(watchlistStatusEl) watchlistStatusEl.classList.add('hidden');
         
         watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
         const fragment = document.createDocumentFragment();
         watchlist.forEach(item => {
             const symbol = item.symbol;
-            // Busca dados de preço em cache se existirem para mostrar variação rápida (opcional)
-            // Por enquanto mantemos simples conforme solicitado
             const el = document.createElement('div');
             el.className = 'flex justify-between items-center p-3 bg-gray-800 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-colors';
             el.innerHTML = `
@@ -1105,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         fiiNewsList.appendChild(fragment);
     }
     
-    // --- FUNÇÕES DE GRÁFICOS (Alocação, Histórico, Proventos) mantidas do original ---
+    // --- FUNÇÕES DE GRÁFICOS ---
     function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;
@@ -1591,7 +1593,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         await vestoDB.delete('apiCache', cacheKey);
         
         try {
-            const response = await fetchBFF('/api/news', {
+            // ATUALIZADO: Adicionado timestamp para evitar cache do navegador/CDN
+            const url = `/api/news?t=${Date.now()}`;
+            const response = await fetchBFF(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -2166,25 +2170,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         changePasswordSubmitBtn.disabled = true;
         
         try {
-            // Obter e-mail da sessão atual para reautenticação
             const session = await supabaseDB.initialize();
             if (!session || !session.user || !session.user.email) {
                  throw new Error("Erro de sessão. Faça login novamente.");
             }
             const userEmail = session.user.email;
 
-            // 1. Tenta "logar" novamente com a senha atual para confirmar identidade
             const signInError = await supabaseDB.signIn(userEmail, currentPassword);
             
             if (signInError) {
-                // Se der erro no login, a senha atual está errada
                 showToast("Senha atual incorreta.");
             } else {
-                // 2. Se logou, atualiza para a nova senha
                 await supabaseDB.updateUserPassword(newPassword);
                 showToast("Senha alterada com sucesso!", 'success');
                 
-                // Fecha modal e limpa form
                 setTimeout(() => {
                     changePasswordModal.classList.remove('visible');
                     changePasswordForm.reset();
@@ -3052,4 +3051,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     await init();
 });
-

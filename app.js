@@ -94,7 +94,7 @@ function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, bgPL, dadoProvento, proventoReceber // Adicionado proventoReceber
+        corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
     let plTagHtml = '';
@@ -107,7 +107,6 @@ function criarCardElemento(ativo, dados) {
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
-            // Lógica de exibição de elegibilidade
             let valorTexto = '';
             if (proventoReceber > 0) {
                  valorTexto = `<span class="text-base font-semibold accent-text">+${formatBRL(proventoReceber)}</span>`;
@@ -120,22 +119,22 @@ function criarCardElemento(ativo, dados) {
             proventoHtml = `
             <div class="mt-3 space-y-2 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500">Valor p/ Cota</span>
-                    <span class="text-xs text-gray-400">${formatBRL(dadoProvento.value)}</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Valor p/ Cota</span>
+                    <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-500">Sua Previsão</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Sua Previsão</span>
                     ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
-                    <span class="text-xs text-gray-500" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
                     <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
             <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
-                <span class="text-sm text-gray-500">Provento</span>
+                <span class="text-xs text-gray-500 uppercase tracking-wide">Provento</span>
                 <span class="text-sm font-medium text-gray-400">Sem anúncio futuro.</span>
             </div>`;
         }
@@ -145,10 +144,11 @@ function criarCardElemento(ativo, dados) {
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
+    // ALTERAÇÃO: Fundo do ícone para bg-[#1C1C1E]
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
-                <div class="w-14 h-14 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
+                <div class="w-14 h-14 rounded-full bg-[#1C1C1E] border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
                     <span class="text-xs font-bold text-purple-400 tracking-tight leading-none">${ativo.symbol}</span>
                 </div>
                 <div>
@@ -172,15 +172,15 @@ function criarCardElemento(ativo, dados) {
         <div id="drawer-${ativo.symbol}" class="card-drawer">
             <div class="drawer-content space-y-3 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-500">Posição</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Posição</span>
                     <span data-field="posicao-valor" class="text-base font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span data-field="pm-label" class="text-sm text-gray-500">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
+                    <span data-field="pm-label" class="text-xs text-gray-500 uppercase tracking-wide">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
                     <span data-field="custo-valor" class="text-base font-semibold text-white">${formatBRL(custoTotal)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-500">L/P</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">L/P</span>
                     <span data-field="pl-valor" class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
                 </div>
                 <div data-field="provento-container">${proventoHtml}</div> 
@@ -242,22 +242,22 @@ function atualizarCardElemento(card, ativo, dados) {
             proventoHtml = `
             <div class="mt-3 space-y-2 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500">Valor p/ Cota</span>
-                    <span class="text-xs text-gray-400">${formatBRL(dadoProvento.value)}</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Valor p/ Cota</span>
+                    <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-500">Sua Previsão</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Sua Previsão</span>
                     ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
-                    <span class="text-xs text-gray-500" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
                     <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
             <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
-                <span class="text-sm text-gray-500">Provento</span>
+                <span class="text-xs text-gray-500 uppercase tracking-wide">Provento</span>
                 <span class="text-sm font-medium text-gray-400">Sem anúncio futuro.</span>
             </div>`;
         }
@@ -897,10 +897,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         watchlist.forEach(item => {
             const symbol = item.symbol;
             const el = document.createElement('div');
-            el.className = 'flex justify-between items-center p-3 bg-gray-800 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-colors';
+            // ALTERAÇÃO: Card com bg-black e borda #2C2C2E
+            el.className = 'flex justify-between items-center p-3 bg-black rounded-lg border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
+            // ALTERAÇÃO: Ícone com bg-[#1C1C1E]
             el.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-[10px] font-bold text-purple-400">
+                    <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center text-[10px] font-bold text-purple-400">
                         ${symbol.substring(0, 4)}
                     </div>
                     <span class="font-semibold text-white">${symbol}</span>
@@ -999,7 +1001,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dataCompra: a.dataCompra
             }));
     }
-    
     function renderizarHistorico() {
         listaHistorico.innerHTML = '';
         if (transacoes.length === 0) {
@@ -1100,10 +1101,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             newsCard.setAttribute('data-action', 'toggle-news');
             newsCard.setAttribute('data-target', drawerId);
 
+            // Ajuste: bg-[#1C1C1E] no ícone da notícia
             newsCard.innerHTML = `
                 <div class="flex items-start gap-3 pointer-events-none">
                     <img src="${faviconUrl}" alt="${sourceName}" 
-                         class="w-9 h-9 rounded bg-gray-800 object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
+                         class="w-9 h-9 rounded bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
                          loading="lazy"
                          onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                     />

@@ -83,7 +83,7 @@ function isB3Open() {
 const REFRESH_INTERVAL = 900000; 
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; 
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; 
-const CACHE_NOTICIAS = 1000 * 60 * 60 * 3; // 3 Horas
+const CACHE_NOTICIAS = 1000 * 60 * 15; // Atualizado para 15 Minutos
 const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
 

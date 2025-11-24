@@ -83,7 +83,7 @@ function isB3Open() {
 const REFRESH_INTERVAL = 900000; 
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 15; 
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; 
-const CACHE_NOTICIAS = 1000 * 60 * 15; // Atualizado para 15 Minutos
+const CACHE_NOTICIAS = 1000 * 60 * 15; 
 const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
 
@@ -94,7 +94,7 @@ function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, bgPL, dadoProvento
+        corPL, bgPL, dadoProvento, proventoReceber // Adicionado proventoReceber
     } = dados;
 
     let plTagHtml = '';
@@ -107,22 +107,36 @@ function criarCardElemento(ativo, dados) {
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
+            // Lógica de exibição de elegibilidade
+            let valorTexto = '';
+            if (proventoReceber > 0) {
+                 valorTexto = `<span class="text-base font-semibold accent-text">+${formatBRL(proventoReceber)}</span>`;
+            } else {
+                 valorTexto = `<span class="text-xs font-medium text-orange-400 bg-orange-900/30 px-2 py-1 rounded">Sem direito</span>`;
+            }
+            
+            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
+
             proventoHtml = `
-            <div class="mt-3 space-y-1">
+            <div class="mt-3 space-y-2 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-500">Provento</span>
-                    <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
+                    <span class="text-xs text-gray-500">Valor p/ Cota</span>
+                    <span class="text-xs text-gray-400">${formatBRL(dadoProvento.value)}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Sua Previsão</span>
+                    ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
-                    <span class="text-sm text-gray-500">Pagamento</span>
-                    <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
+                    <span class="text-xs text-gray-500" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
-            <div class="flex justify-between items-center mt-3">
+            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
                 <span class="text-sm text-gray-500">Provento</span>
-                <span class="text-sm font-medium text-gray-400">Sem provento futuro.</span>
+                <span class="text-sm font-medium text-gray-400">Sem anúncio futuro.</span>
             </div>`;
         }
     }
@@ -188,7 +202,7 @@ function atualizarCardElemento(card, ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, bgPL, dadoProvento
+        corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
     card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
@@ -216,22 +230,35 @@ function atualizarCardElemento(card, ativo, dados) {
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
+            let valorTexto = '';
+            if (proventoReceber > 0) {
+                 valorTexto = `<span class="text-base font-semibold accent-text">+${formatBRL(proventoReceber)}</span>`;
+            } else {
+                 valorTexto = `<span class="text-xs font-medium text-orange-400 bg-orange-900/30 px-2 py-1 rounded">Sem direito</span>`;
+            }
+
+            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
+            
             proventoHtml = `
-            <div class="mt-3 space-y-1">
+            <div class="mt-3 space-y-2 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-500">Provento</span>
-                    <span class="text-base font-semibold accent-text">${formatBRL(dadoProvento.value)}</span>
+                    <span class="text-xs text-gray-500">Valor p/ Cota</span>
+                    <span class="text-xs text-gray-400">${formatBRL(dadoProvento.value)}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-500">Sua Previsão</span>
+                    ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
-                    <span class="text-sm text-gray-500">Pagamento</span>
-                    <span class="text-sm font-medium text-gray-400">${formatDate(dadoProvento.paymentDate)}</span>
+                    <span class="text-xs text-gray-500" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
-            <div class="flex justify-between items-center mt-3">
+            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
                 <span class="text-sm text-gray-500">Provento</span>
-                <span class="text-sm font-medium text-gray-400">Sem provento futuro.</span>
+                <span class="text-sm font-medium text-gray-400">Sem anúncio futuro.</span>
             </div>`;
         }
         card.querySelector('[data-field="provento-container"]').innerHTML = proventoHtml;
@@ -333,7 +360,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const newPasswordInput = document.getElementById('new-password-input');
     const newPasswordBtn = document.getElementById('new-password-btn');
 
-    // -- Novos Seletores para Configuração e Alteração de Senha --
     const changePasswordModal = document.getElementById('change-password-modal');
     const changePasswordForm = document.getElementById('change-password-form');
     const currentPasswordInput = document.getElementById('current-password-input');
@@ -615,8 +641,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         verificarStatusBiometria();
         showToast('Biometria desativada.');
     }
-
-    // Toggle Bio Listener será adicionado na Parte 2 (listeners)
 
     if (btnDesbloquear) {
         btnDesbloquear.addEventListener('click', autenticarBiometria);
@@ -923,6 +947,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
                 if (!isNaN(dataPagamento) && dataPagamento < hoje) {
+                    // Nota: Para dividendos PASSADOS PAGOS, assumimos que se a pessoa tinha o ativo, já recebeu.
+                    // O controle fino de Data Com é mais crítico para o FUTURO/Previsão.
+                    // Se quiser aplicar rigorosamente aqui também, precisaria da Data Com histórica.
                     const quantity = carteiraMap.get(provento.symbol) || 0;
                     if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) {
                         const valorRecebido = provento.value * quantity;
@@ -1105,7 +1132,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         fiiNewsList.appendChild(fragment);
     }
-    
     // --- FUNÇÕES DE GRÁFICOS ---
     function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
@@ -1420,6 +1446,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // --- NOVA FUNÇÃO PARA CALCULAR QUANTIDADE NA DATA COM ---
+    function getQuantidadeNaData(symbol, dataLimiteStr) {
+        if (!dataLimiteStr) return 0;
+        
+        // Cria uma data limite setada para o fim do dia da Data Com (23:59:59)
+        // Isso garante que compras feitas no dia da Data Com sejam incluídas
+        const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
+
+        return transacoes.reduce((total, t) => {
+            if (t.symbol === symbol && t.type === 'buy') {
+                const dataTransacao = new Date(t.date);
+                // Se a transação ocorreu antes ou na Data Com, ela conta
+                if (dataTransacao <= dataLimite) {
+                    return total + t.quantity;
+                }
+            }
+            return total;
+        }, 0);
+    }
+
     async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
@@ -1488,6 +1534,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; bgPL = 'bg-green-900/50'; }
             else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; bgPL = 'bg-red-900/50'; }
 
+            // --- CÁLCULO DE PROVENTO A RECEBER CORRIGIDO ---
+            let proventoReceber = 0;
+            if (dadoProvento && dadoProvento.value > 0) {
+                 // Usa Data Com se disponível, senão usa a data de pagamento como fallback (menos preciso)
+                 const dataReferencia = dadoProvento.dataCom || dadoProvento.paymentDate;
+                 const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
+                 proventoReceber = qtdElegivel * dadoProvento.value;
+            }
+
             const dadosRender = {
                 dadoPreco,
                 precoFormatado,
@@ -1499,7 +1554,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 lucroPrejuizoPercent,
                 corPL,
                 bgPL,
-                dadoProvento
+                dadoProvento,
+                proventoReceber // Passa o valor calculado para o card
             };
 
             totalValorCarteira += totalPosicao;
@@ -1542,14 +1598,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderizarProventos() {
         let totalEstimado = 0;
-        const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
         
         proventosAtuais.forEach(provento => {
-            const quantity = carteiraMap.get(provento.symbol) || 0;
-            if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) { 
-                totalEstimado += (quantity * provento.value);
+            if (provento && typeof provento.value === 'number' && provento.value > 0) {
+                 const dataReferencia = provento.dataCom || provento.paymentDate;
+                 const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+                 
+                 if (qtdElegivel > 0) {
+                     totalEstimado += (qtdElegivel * provento.value);
+                 }
             }
         });
+        
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
     // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
@@ -1745,7 +1805,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return processarProventosIA(proventosPool); 
     }
 
-    // --- FUNÇÃO CORRIGIDA ---
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };

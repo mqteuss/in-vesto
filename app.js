@@ -808,7 +808,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             limparDetalhes(); 
         }, 400); 
     }
-    // ... (Continuação do código da Parte 1)
 
     async function carregarTransacoes() {
         transacoes = await supabaseDB.getTransacoes();
@@ -1553,7 +1552,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
-    
     // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
 
     async function handleAtualizarNoticias(force = false) {
@@ -1593,7 +1591,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await vestoDB.delete('apiCache', cacheKey);
         
         try {
-            // ATUALIZADO: Adicionado timestamp para evitar cache do navegador/CDN
             const url = `/api/news?t=${Date.now()}`;
             const response = await fetchBFF(url, {
                 method: 'GET',
@@ -1748,6 +1745,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return processarProventosIA(proventosPool); 
     }
 
+    // --- FUNÇÃO CORRIGIDA ---
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
@@ -1775,11 +1773,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!aiData || aiData.length === 0) return { labels: [], data: [] };
 
-        const carteiraMap = new Map(fiiNaCarteira.map(a => [a.symbol, { 
-            quantity: a.quantity, 
-            inicioMesCompra: new Date(new Date(a.dataCompra).setDate(1)).setHours(0, 0, 0, 0)
-        }]));
-        
         let precisaSalvarCaixa = false;
         let precisaSalvarHistorico = false;
         
@@ -1793,28 +1786,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const labels = aiData.map(d => d.mes);
+        
         const data = aiData.map(mesData => {
             let totalMes = 0;
-            const dataDoMes = parseMesAno(mesData.mes); 
+            const dataDoMesRef = parseMesAno(mesData.mes); 
             
-            if (!dataDoMes) return 0;
-            const timeDoMes = dataDoMes.getTime();
+            if (!dataDoMesRef) return 0;
+            
+            // Define o limite: mês seguinte ao mês do provento
+            const proximoMesRef = new Date(dataDoMesRef);
+            proximoMesRef.setMonth(proximoMesRef.getMonth() + 1);
 
             fiiSymbols.forEach(symbol => {
-                const ativo = carteiraMap.get(symbol);
-                if (!ativo) return; 
-
-                const quantity = ativo.quantity;
-                const inicioMesCompraTime = ativo.inicioMesCompra;
                 const valorPorCota = mesData[symbol] || 0;
                 
-                if (timeDoMes >= inicioMesCompraTime) {
-                     totalMes += (valorPorCota * quantity);
+                if (valorPorCota > 0) {
+                    // Soma apenas transações feitas ANTES do mês seguinte ao pagamento
+                    const qtdNoMes = transacoes.reduce((acc, t) => {
+                        if (t.symbol === symbol && t.type === 'buy') {
+                            const dataTransacao = new Date(t.date);
+                            if (dataTransacao < proximoMesRef) {
+                                return acc + t.quantity;
+                            }
+                        }
+                        return acc;
+                    }, 0);
+
+                    if (qtdNoMes > 0) {
+                        totalMes += (valorPorCota * qtdNoMes);
+                    }
                 }
             });
             
-            const mesHistorico = dataDoMes.getMonth(); 
-            const anoHistorico = dataDoMes.getFullYear();
+            const mesHistorico = dataDoMesRef.getMonth(); 
+            const anoHistorico = dataDoMesRef.getFullYear();
 
             const isPastMonth = anoHistorico < anoAtual || (anoHistorico === anoAtual && mesHistorico < mesAtual);
             const isNotProcessed = !mesesProcessados.includes(mesData.mes);

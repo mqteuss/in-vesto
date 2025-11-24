@@ -9,23 +9,15 @@ export default async function handler(request, response) {
         'Access-Control-Allow-Headers',
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
-
-    // Cache na borda (Vercel) por 15 min (900s).
-    // stale-while-revalidate reduzido para 60s para evitar entregar dados muito velhos.
     response.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=60');
-
     if (request.method === 'OPTIONS') {
         return response.status(200).end();
     }
-
     const parser = new Parser({
         customFields: {
-            // Tenta pegar a tag <source> que o Google News fornece
             item: [['source', 'sourceObj']], 
         },
     });
-
-    // 2. LISTA BRANCA (Mapeamento Normalizado)
     const knownSources = {
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
@@ -40,28 +32,19 @@ export default async function handler(request, response) {
         'valor investe': { name: 'Valor Investe', domain: 'valorinveste.globo.com' },
         'exame': { name: 'Exame', domain: 'exame.com' }
     };
-
     try {
         const { q } = request.query;
         const queryTerm = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
-        
         const fullQuery = `${queryTerm} when:7d`; 
         const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-
         const feed = await parser.parseURL(feedUrl);
-
-        // Set para deduplicação de títulos exatos
         const seenTitles = new Set();
-
         const articles = feed.items.map((item) => {
             let rawSourceName = '';
             let cleanTitle = item.title || 'Sem título';
-
-            // 1. Tenta pegar da tag <source>
             if (item.sourceObj && item.sourceObj._) {
                 rawSourceName = item.sourceObj._;
-            } 
-            // 2. Fallback: Regex no título
+            }
             else {
                 const sourcePattern = / - ([^-]+)$/; 
                 const match = item.title.match(sourcePattern);
@@ -69,29 +52,20 @@ export default async function handler(request, response) {
                     rawSourceName = match[1];
                 }
             }
-
-            // Limpa o título
             if (rawSourceName) {
                 cleanTitle = cleanTitle.replace(` - ${rawSourceName}`, '').trim();
             }
-
-            // --- FILTRAGEM (Whitelist) ---
             const keyToCheck = rawSourceName.toLowerCase().trim();
             let known = null;
-
             if (knownSources[keyToCheck]) {
                 known = knownSources[keyToCheck];
             } else {
                 const foundKey = Object.keys(knownSources).find(k => keyToCheck.includes(k));
                 if (foundKey) known = knownSources[foundKey];
             }
-
             if (!known) return null; 
-
-            // --- DEDUPLICAÇÃO ---
             if (seenTitles.has(cleanTitle)) return null;
             seenTitles.add(cleanTitle);
-
             return {
                 title: cleanTitle,
                 link: item.link,

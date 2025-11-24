@@ -60,7 +60,7 @@ export default async function handler(request, response) {
         // CORREÇÃO: "when:7d" pode ser muito restritivo se houver poucas notícias na semana.
         // O Google RSS prioriza relevância, então removemos o "when:" estrito ou aumentamos o range se necessário.
         // Vamos manter, mas saiba que se ninguém postar sobre FIIs, virá vazio.
-        const fullQuery = `${queryTerm} when:14d`; 
+        const fullQuery = `${queryTerm} when:7d`; 
         
         const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 

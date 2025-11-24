@@ -181,7 +181,8 @@ export async function getProventosConhecidos() {
     if (data) {
         return data.map(item => ({
             ...item,
-            paymentDate: item.paymentdate 
+            paymentDate: item.paymentdate,
+            dataCom: item.datacom // <--- ADICIONADO: Recupera a Data Com do banco
         }));
     }
     return [];
@@ -197,7 +198,8 @@ export async function addProventoConhecido(provento) {
         symbol: provento.symbol,
         value: provento.value,
         processado: provento.processado,
-        paymentdate: provento.paymentDate
+        paymentdate: provento.paymentDate,
+        datacom: provento.dataCom // <--- ADICIONADO: Salva a Data Com no banco
     };
 
     const { error } = await supabaseClient

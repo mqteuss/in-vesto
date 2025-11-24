@@ -30,7 +30,7 @@ function handleSupabaseError(error, context) {
 }
 
 export async function initialize() {
-    // Evita recriar o cliente se ele já existir (importante para a troca de senha)
+    // Evita recriar o cliente se ele já existir (CRUCIAL para a troca de senha)
     if (supabaseClient) {
         const { data } = await supabaseClient.auth.getSession();
         return data.session;

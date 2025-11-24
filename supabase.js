@@ -30,6 +30,12 @@ function handleSupabaseError(error, context) {
 }
 
 export async function initialize() {
+    // Evita recriar o cliente se ele já existir (importante para a troca de senha)
+    if (supabaseClient) {
+        const { data } = await supabaseClient.auth.getSession();
+        return data.session;
+    }
+
     try {
         const supabaseUrl = "https://ybmkhxacxkijvxvepjkj.supabase.co";
         const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlibWtoeGFjeGtpanZ4dmVwamtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzMTgwMjgsImV4cCI6MjA3ODg5NDAyOH0.ORllatX680hzWfnm3ymELFG18zvtfJjSJ3iQ4_eDsOg";

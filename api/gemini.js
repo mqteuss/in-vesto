@@ -1,3 +1,4 @@
+// gemini.js
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -34,13 +35,15 @@ Output: Array JSON [{"mes": "MM/AA", "valor": 0.00}] ordenado do mais recente pa
             break;
 
         case 'proventos_carteira':
+            // --- CORREÇÃO AQUI: Adicionado campo dataCom ---
             systemPrompt = `Tarefa: Encontrar o provento mais recente OFICIALMENTE ANUNCIADO (hoje ou futuro) para a lista de FIIs.
 ${baseInstruction}
 Regras:
 1. Verifique fatos relevantes de hoje (${todayString}).
-2. Se não houver anúncio oficial futuro, retorne value: 0 e paymentDate: null.
-3. Formato: [{"symbol": "ABCD11", "value": 0.00, "paymentDate": "YYYY-MM-DD" (ou null)}]`;
-            userQuery = `JSON proventos oficiais (hoje/futuro) para: ${fiiList.join(', ')}.`;
+2. Identifique a 'Data Com' (data base/record date).
+3. Se não houver anúncio oficial futuro, retorne value: 0 e paymentDate: null.
+4. Formato: [{"symbol": "ABCD11", "value": 0.00, "paymentDate": "YYYY-MM-DD", "dataCom": "YYYY-MM-DD"}]`;
+            userQuery = `JSON proventos oficiais (hoje/futuro) com Data Com para: ${fiiList.join(', ')}.`;
             break;
 
         case 'historico_portfolio':
@@ -57,11 +60,7 @@ Output: Array JSON [{"mes": "MM/AA", "FII11": 0.10, "FII22": 0.00}] ordenado do 
     return {
         contents: [{ parts: [{ text: userQuery }] }],
         tools: [{ "google_search": {} }],
-
-        generationConfig: {
-            temperature: 0.1,
-        },
-
+        generationConfig: { temperature: 0.1 },
         systemInstruction: { parts: [{ text: systemPrompt }] },
     };
 }
@@ -80,7 +79,7 @@ export default async function handler(request, response) {
 
     try {
         const { mode, payload } = request.body;
-        
+
         if (!payload || !payload.todayString) {
             return response.status(400).json({ error: "Parâmetro 'todayString' é obrigatório." });
         }

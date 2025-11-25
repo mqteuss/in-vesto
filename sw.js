@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesto-cache-v7';
+const CACHE_NAME = 'vesto-cache-v8'; // Incrementei a versão para forçar atualização
 
 const APP_SHELL_FILES_NETWORK_FIRST = [
   '/',
@@ -20,45 +20,43 @@ const APP_SHELL_FILES_CACHE_FIRST = [
 
 self.addEventListener('install', event => {
   self.skipWaiting();
-
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        const cdnCachePromise = APP_SHELL_FILES_CACHE_FIRST.filter(url => url.startsWith('http'))
-          .map(url => {
+    caches.open(CACHE_NAME).then(cache => {
+      // Tenta cachear arquivos da CDN (modo no-cors para evitar erros opacos)
+      const cdnPromise = Promise.all(
+        APP_SHELL_FILES_CACHE_FIRST.filter(url => url.startsWith('http')).map(url => {
             const request = new Request(url, { mode: 'no-cors' });
-            return fetch(request)
-              .then(response => cache.put(request, response))
-              .catch(err => console.warn(`[SW] Falha ao armazenar CDN: ${url}`, err));
-          });
+            return fetch(request).then(response => cache.put(request, response)).catch(() => {});
+        })
+      );
+      
+      // Cacheia arquivos locais
+      const localPromise = cache.addAll(
+        APP_SHELL_FILES_CACHE_FIRST.filter(url => !url.startsWith('http'))
+      );
 
-        const localCachePromise = cache.addAll(
-          APP_SHELL_FILES_CACHE_FIRST.filter(url => !url.startsWith('http'))
-        );
-
-        return Promise.all([...cdnCachePromise, localCachePromise]);
-      })
-      .then(() => caches.open(CACHE_NAME))
-      .then(cache => cache.addAll(APP_SHELL_FILES_NETWORK_FIRST))
+      return Promise.all([cdnPromise, localPromise]);
+    }).then(() => caches.open(CACHE_NAME)).then(cache => {
+        return cache.addAll(APP_SHELL_FILES_NETWORK_FIRST);
+    })
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames
-          .filter(name => name !== CACHE_NAME)
-          .map(name => caches.delete(name))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then(cacheNames => Promise.all(
+      cacheNames.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))
+    )).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Exceções para API e Supabase (sempre network)
+  // CORREÇÃO PRINCIPAL: Ignora requests que não sejam HTTP/HTTPS (ex: chrome-extension://)
+  if (!url.protocol.startsWith('http')) return;
+
+  // Ignora chamadas de API e Supabase (sempre online)
   if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
     event.respondWith(fetch(event.request));
     return;
@@ -70,16 +68,14 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Network First para arquivos críticos do App Shell (garante atualização rápida)
+  // Estratégia Network First para arquivos vitais
   if (APP_SHELL_FILES_NETWORK_FIRST.includes(url.pathname)) {
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
           if (networkResponse.ok) {
             const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseClone);
-            });
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
           }
           return networkResponse;
         })
@@ -88,21 +84,18 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache First para estáticos (CDN, Imagens, Manifest)
+  // Estratégia Cache First para estáticos
   event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        if (cachedResponse) return cachedResponse;
-        return fetch(event.request).then(networkResponse => {
-          if (networkResponse.ok) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return networkResponse;
-        });
-      })
+    caches.match(event.request).then(cachedResponse => {
+      if (cachedResponse) return cachedResponse;
+      return fetch(event.request).then(networkResponse => {
+        if (networkResponse.ok) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+        }
+        return networkResponse;
+      });
+    })
   );
 });
 

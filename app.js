@@ -1833,13 +1833,14 @@ async function buscarHistoricoProventosAgregado(force = false) {
             await vestoDB.delete('apiCache', cacheKey);
         }
         
-        let scraperData = await getCache(cacheKey);
+        let rawDividends = await getCache(cacheKey);
 
-        if (!scraperData) {
+        if (!rawDividends) {
             try {
-                scraperData = await callScraperHistoricoPortfolioAPI(fiiSymbols);
-                if (scraperData && scraperData.length > 0) {
-                    await setCache(cacheKey, scraperData, CACHE_IA_HISTORICO);
+                // Agora recebe a lista bruta: [{ symbol, dataCom, paymentDate, value }, ...]
+                rawDividends = await callScraperHistoricoPortfolioAPI(fiiSymbols);
+                if (rawDividends && rawDividends.length > 0) {
+                    await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
                 }
             } catch (e) {
                 console.error("Erro ao buscar histórico agregado:", e);
@@ -1847,38 +1848,37 @@ async function buscarHistoricoProventosAgregado(force = false) {
             }
         }
 
-        if (!scraperData || scraperData.length === 0) return { labels: [], data: [] };
+        if (!rawDividends || rawDividends.length === 0) return { labels: [], data: [] };
 
-        const labels = scraperData.map(d => d.mes);
-        
-        const data = scraperData.map(mesData => {
-            let totalMes = 0;
-            const dataDoMesRef = parseMesAno(mesData.mes); // Ex: retorna Date objeto de 01/11/2025
+        // 1. Agrupamento Manual por Mês de Competência (Data Com)
+        const aggregator = {};
+
+        rawDividends.forEach(item => {
+            // A REGRA DE OURO: Prioriza Data Com para definir onde a barra aparece
+            const dataReferencia = item.dataCom || item.paymentDate;
             
-            if (!dataDoMesRef) return 0;
-            
-            // LÓGICA CORRIGIDA PARA O GRÁFICO:
-            // O Scraper retorna o mês de PAGAMENTO (ex: 11/25).
-            // Para calcular a quantidade, assumimos como regra segura o dia 1º do mês do pagamento
-            // ou o último dia do mês anterior. 
-            // Usar o dia 1º do mês de referência do pagamento exclui compras feitas no dia 24 ou 25 daquele mês.
-            const dataLimiteParaCalculo = dataDoMesRef.toISOString().split('T')[0]; // "2025-11-01"
+            if (dataReferencia) {
+                const [ano, mes] = dataReferencia.split('-'); // Formato YYYY-MM-DD
+                const chaveMes = `${mes}/${ano.substring(2)}`; // Formato MM/AA (ex: 10/25)
 
-            fiiSymbols.forEach(symbol => {
-                const valorPorCota = mesData[symbol] || 0;
-                
-                if (valorPorCota > 0) {
-                    // Usa a função auxiliar para ver quantas cotas existiam no dia 1º do mês do pagamento
-                    const qtdNaEpoca = getQuantidadeNaData(symbol, dataLimiteParaCalculo);
+                // 2. Cálculo Preciso: Quantas cotas eu tinha EXATAMENTE nesse dia?
+                const qtdNaData = getQuantidadeNaData(item.symbol, dataReferencia);
 
-                    if (qtdNaEpoca > 0) {
-                        totalMes += (valorPorCota * qtdNaEpoca);
-                    }
+                if (qtdNaData > 0) {
+                    if (!aggregator[chaveMes]) aggregator[chaveMes] = 0;
+                    aggregator[chaveMes] += (item.value * qtdNaData);
                 }
-            });
-            
-            return totalMes;
+            }
         });
+
+        // 3. Ordenação Cronológica das Barras
+        const labels = Object.keys(aggregator).sort((a, b) => {
+            const [mesA, anoA] = a.split('/');
+            const [mesB, anoB] = b.split('/');
+            return new Date(`20${anoA}-${mesA}-01`) - new Date(`20${anoB}-${mesB}-01`);
+        });
+
+        const data = labels.map(label => aggregator[label]);
 
         return { labels, data };
     }

@@ -144,7 +144,6 @@ function criarCardElemento(ativo, dados) {
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
-    // ALTERAÇÃO: Fundo do ícone para bg-[#1C1C1E]
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -515,7 +514,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function verificarStatusBiometria() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
         
-        // Atualiza a UI do botão de toggle e ícones na aba Ajustes
         if (toggleBioBtn && bioToggleKnob) {
              if (bioEnabled) {
                  toggleBioBtn.classList.remove('bg-gray-700');
@@ -540,7 +538,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Lógica de bloqueio
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
             document.body.style.overflow = 'hidden';
             setTimeout(() => autenticarBiometria(), 500);
@@ -897,9 +894,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         watchlist.forEach(item => {
             const symbol = item.symbol;
             const el = document.createElement('div');
-            // ALTERAÇÃO: Card com bg-black e borda #2C2C2E
             el.className = 'flex justify-between items-center p-3 bg-black rounded-lg border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
-            // ALTERAÇÃO: Ícone com bg-[#1C1C1E]
             el.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center text-[10px] font-bold text-purple-400">
@@ -948,10 +943,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const parts = provento.paymentDate.split('-');
                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
-                if (!isNaN(dataPagamento) && dataPagamento < hoje) {
-                    // Nota: Para dividendos PASSADOS PAGOS, assumimos que se a pessoa tinha o ativo, já recebeu.
-                    // O controle fino de Data Com é mais crítico para o FUTURO/Previsão.
-                    // Se quiser aplicar rigorosamente aqui também, precisaria da Data Com histórica.
+                if (!isNaN(dataPagamento) && dataPagamento <= hoje) { // ALTERAÇÃO: < para <=
                     const quantity = carteiraMap.get(provento.symbol) || 0;
                     if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) {
                         const valorRecebido = provento.value * quantity;
@@ -1101,7 +1093,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             newsCard.setAttribute('data-action', 'toggle-news');
             newsCard.setAttribute('data-target', drawerId);
 
-            // Ajuste: bg-[#1C1C1E] no ícone da notícia
             newsCard.innerHTML = `
                 <div class="flex items-start gap-3 pointer-events-none">
                     <img src="${faviconUrl}" alt="${sourceName}" 
@@ -1448,18 +1439,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- NOVA FUNÇÃO PARA CALCULAR QUANTIDADE NA DATA COM ---
     function getQuantidadeNaData(symbol, dataLimiteStr) {
         if (!dataLimiteStr) return 0;
         
-        // Cria uma data limite setada para o fim do dia da Data Com (23:59:59)
-        // Isso garante que compras feitas no dia da Data Com sejam incluídas
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
 
         return transacoes.reduce((total, t) => {
             if (t.symbol === symbol && t.type === 'buy') {
                 const dataTransacao = new Date(t.date);
-                // Se a transação ocorreu antes ou na Data Com, ela conta
                 if (dataTransacao <= dataLimite) {
                     return total + t.quantity;
                 }
@@ -1536,10 +1523,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; bgPL = 'bg-green-900/50'; }
             else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; bgPL = 'bg-red-900/50'; }
 
-            // --- CÁLCULO DE PROVENTO A RECEBER CORRIGIDO ---
             let proventoReceber = 0;
             if (dadoProvento && dadoProvento.value > 0) {
-                 // Usa Data Com se disponível, senão usa a data de pagamento como fallback (menos preciso)
                  const dataReferencia = dadoProvento.dataCom || dadoProvento.paymentDate;
                  const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
                  proventoReceber = qtdElegivel * dadoProvento.value;
@@ -1557,7 +1542,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 corPL,
                 bgPL,
                 dadoProvento,
-                proventoReceber // Passa o valor calculado para o card
+                proventoReceber 
             };
 
             totalValorCarteira += totalPosicao;

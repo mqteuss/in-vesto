@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesto-cache-v7';
+const CACHE_NAME = 'vesto-cache-v6';
 
 const APP_SHELL_FILES_NETWORK_FIRST = [
   '/',
@@ -14,8 +14,8 @@ const APP_SHELL_FILES_CACHE_FIRST = [
   'icons/icon-192x192.png',
   'icons/icon-512x512.png',
   'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
+'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
 self.addEventListener('install', event => {
@@ -58,19 +58,16 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Exceções para API e Supabase (sempre network)
   if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Apenas GET é cacheado
   if (event.request.method !== 'GET') {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Network First para arquivos críticos do App Shell (garante atualização rápida)
   if (APP_SHELL_FILES_NETWORK_FIRST.includes(url.pathname)) {
     event.respondWith(
       fetch(event.request)
@@ -88,7 +85,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache First para estáticos (CDN, Imagens, Manifest)
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {

@@ -937,54 +937,63 @@ async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         
-        let precisaSalvarCaixa = false;
-        let proventosParaSalvar = [];
+        // CORREÇÃO CRÍTICA:
+        // Não usamos mais '+=' no saldoCaixa existente.
+        // Criamos uma variável zerada para recalcular o TOTAL HISTÓRICO correto com a nova lógica.
+        let novoSaldoCalculado = 0; 
+        let proventosParaMarcarComoProcessado = [];
 
-        // Itera sobre proventos conhecidos (vindos do banco ou scraper)
+        // Itera sobre TODOS os proventos conhecidos
         for (const provento of proventosConhecidos) {
-            // Verifica se tem data de pagamento, valor válido e se ainda não foi processado
-            if (provento.paymentDate && !provento.processado && provento.value > 0) {
+            // Verifica se é um provento válido (tem data e valor)
+            if (provento.paymentDate && provento.value > 0) {
                 const parts = provento.paymentDate.split('-');
                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
-                // Se a data de pagamento já passou (ou é hoje)
+                // Se a data de pagamento já passou ou é hoje
                 if (!isNaN(dataPagamento) && dataPagamento <= hoje) {
                     
-                    // LÓGICA CORRIGIDA:
-                    // Usa a Data Com se existir, senão usa a data de pagamento como fallback.
-                    // Isso impede que compras feitas DEPOIS da data de corte entrem no cálculo.
+                    // APLICA A REGRA DA DATA COM (Correta)
                     const dataReferencia = provento.dataCom || provento.paymentDate;
                     
-                    // Calcula quantas cotas o usuário tinha EXATAMENTE naquela data
+                    // Verifica quantas cotas você tinha na data de corte
                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
                     if (qtdElegivel > 0) {
                         const valorRecebido = provento.value * qtdElegivel;
-                        saldoCaixa += valorRecebido;
-                        precisaSalvarCaixa = true;
                         
-                        console.log(`Provento Processado: ${provento.symbol} | Data Ref: ${dataReferencia} | Qtd: ${qtdElegivel} | Valor: ${formatBRL(valorRecebido)}`);
+                        // Soma ao saldo temporário
+                        novoSaldoCalculado += valorRecebido;
                     }
                     
-                    // Marca como processado para não somar de novo, mesmo que a qtd fosse 0
-                    provento.processado = true;
-                    proventosParaSalvar.push(provento);
+                    // Se ainda não estava marcado como processado no banco, marcamos para atualizar depois
+                    // (Apenas para controle, pois o cálculo agora é sempre total)
+                    if (!provento.processado) {
+                        provento.processado = true;
+                        proventosParaMarcarComoProcessado.push(provento);
+                    }
                 }
             }
         }
 
-        if (precisaSalvarCaixa) {
-            await salvarCaixa();
-            // Atualiza visualmente o valor do caixa na hora
-            if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
-        }
+        // ATUALIZAÇÃO FINAL
+        // Substitui o saldo global pelo novo valor recalculado (Exato)
+        saldoCaixa = novoSaldoCalculado;
         
-        if (proventosParaSalvar.length > 0) {
-            // Atualiza no banco de dados em lote (ou um a um)
-            for (const provento of proventosParaSalvar) {
+        // Salva o valor correto no banco de dados
+        await salvarCaixa();
+        
+        // Atualiza a interface
+        if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+        
+        // Atualiza o status 'processado' no banco para evitar reprocessamentos desnecessários em outras lógicas
+        if (proventosParaMarcarComoProcessado.length > 0) {
+            for (const provento of proventosParaMarcarComoProcessado) {
                 await supabaseDB.updateProventoProcessado(provento.id);
             }
         }
+        
+        console.log("Saldo de proventos recalculado:", formatBRL(saldoCaixa));
     }
     function calcularCarteira() {
         const ativosMap = new Map();

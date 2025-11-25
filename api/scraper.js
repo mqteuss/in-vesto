@@ -44,7 +44,6 @@ async function scrapeAsset(ticker) {
         const $ = cheerio.load(html);
         const dividendos = [];
 
-        // Seletor ajustado para capturar a tabela corretamente
         $('#table-dividends-history tbody tr').each((i, el) => {
             const cols = $(el).find('td');
             if (cols.length >= 4) {
@@ -68,9 +67,7 @@ async function scrapeAsset(ticker) {
     }
 }
 
-// Exportação no formato CommonJS (compatível com seu package.json)
 module.exports = async function handler(req, res) {
-    // Cabeçalhos CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
@@ -98,7 +95,6 @@ module.exports = async function handler(req, res) {
 
             const promises = fiiList.map(async (ticker) => {
                 const history = await scrapeAsset(ticker);
-                // Encontra o mais recente com data de pagamento válida
                 const latest = history.find(h => h.paymentDate && h.value > 0);
                 if (latest) {
                     return {
@@ -133,27 +129,28 @@ module.exports = async function handler(req, res) {
             const { fiiList } = payload || {};
             if (!fiiList) return res.json({ json: [] });
 
-            const aggregator = {};
+            // MUDANÇA: Não agrupa mais. Retorna a lista bruta de todos os proventos recentes.
+            // O frontend decidirá como agrupar (Data Com vs Data Pagamento).
+            let allDividends = [];
+
             const promises = fiiList.map(async (ticker) => {
                 const history = await scrapeAsset(ticker);
-                history.slice(0, 12).forEach(h => {
-                    if (!h.paymentDate) return;
-                    const [ano, mes] = h.paymentDate.split('-');
-                    const mesAno = `${mes}/${ano.substring(2)}`;
-                    if (!aggregator[mesAno]) aggregator[mesAno] = { mes: mesAno };
-                    aggregator[mesAno][ticker.toUpperCase()] = h.value;
+                // Pega os últimos 24 registros para garantir histórico suficiente
+                history.slice(0, 24).forEach(h => {
+                    if (h.value > 0) {
+                        allDividends.push({
+                            symbol: ticker.toUpperCase(),
+                            dataCom: h.dataCom,
+                            paymentDate: h.paymentDate,
+                            value: h.value
+                        });
+                    }
                 });
             });
 
             await Promise.all(promises);
             
-            const result = Object.values(aggregator).sort((a, b) => {
-                const [mesA, anoA] = a.mes.split('/');
-                const [mesB, anoB] = b.mes.split('/');
-                return new Date(`20${anoA}-${mesA}-01`) - new Date(`20${anoB}-${mesB}-01`);
-            });
-
-            return res.status(200).json({ json: result });
+            return res.status(200).json({ json: allDividends });
         }
 
         return res.status(400).json({ error: "Modo desconhecido" });

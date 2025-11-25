@@ -1,5 +1,5 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+const axios = require('axios');
+const cheerio = require('cheerio');
 
 // Configuração do cliente HTTP
 const client = axios.create({
@@ -7,7 +7,7 @@ const client = axios.create({
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
     },
-    timeout: 9000 // Aumentado levemente
+    timeout: 9000
 });
 
 function parseDate(dateStr) {
@@ -36,7 +36,7 @@ async function scrapeAsset(ticker) {
                 url = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
                 response = await client.get(url);
             } else {
-                throw e; // Repassa erro para ser pego pelo catch externo
+                throw e; 
             }
         }
 
@@ -44,6 +44,7 @@ async function scrapeAsset(ticker) {
         const $ = cheerio.load(html);
         const dividendos = [];
 
+        // Seletor ajustado para capturar a tabela corretamente
         $('#table-dividends-history tbody tr').each((i, el) => {
             const cols = $(el).find('td');
             if (cols.length >= 4) {
@@ -63,11 +64,12 @@ async function scrapeAsset(ticker) {
         return dividendos;
     } catch (error) {
         console.warn(`[Scraper] Falha ao ler ${ticker}: ${error.message}`);
-        return []; // Retorna vazio para não quebrar o Promise.all
+        return []; 
     }
 }
 
-export default async function handler(req, res) {
+// Exportação no formato CommonJS (compatível com seu package.json)
+module.exports = async function handler(req, res) {
     // Cabeçalhos CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -84,7 +86,6 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Validação básica do corpo
         if (!req.body || !req.body.mode) {
              throw new Error("Payload inválido: 'mode' é obrigatório.");
         }
@@ -95,9 +96,9 @@ export default async function handler(req, res) {
             const { fiiList } = payload || {};
             if (!fiiList || !Array.isArray(fiiList)) return res.json({ json: [] });
 
-            // Processamento paralelo
             const promises = fiiList.map(async (ticker) => {
                 const history = await scrapeAsset(ticker);
+                // Encontra o mais recente com data de pagamento válida
                 const latest = history.find(h => h.paymentDate && h.value > 0);
                 if (latest) {
                     return {
@@ -146,7 +147,6 @@ export default async function handler(req, res) {
 
             await Promise.all(promises);
             
-            // Ordenação
             const result = Object.values(aggregator).sort((a, b) => {
                 const [mesA, anoA] = a.mes.split('/');
                 const [mesB, anoB] = b.mes.split('/');
@@ -159,11 +159,10 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Modo desconhecido" });
 
     } catch (error) {
-        // Agora o erro real será retornado para o console do navegador
         console.error("CRITICAL SCRAPER ERROR:", error);
         return res.status(500).json({ 
             error: `Erro no servidor: ${error.message}`,
             stack: error.stack 
         });
     }
-}
+};

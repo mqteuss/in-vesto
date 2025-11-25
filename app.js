@@ -18,15 +18,12 @@ const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';
     try {
         const date = new Date(dateString);
-        // Ajuste para evitar problemas de fuso horário com datas YYYY-MM-DD simples
-        if (dateString.length === 10) {
-            date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
-        }
-        
         const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
         if (includeTime) {
             options.hour = '2-digit';
             options.minute = '2-digit';
+        } else {
+             options.timeZone = 'UTC'; 
         }
         return date.toLocaleDateString('pt-BR', options);
     } catch (e) { return dateString; }
@@ -35,9 +32,9 @@ const formatDate = (dateString, includeTime = false) => {
 const formatDateToInput = (dateString) => {
     try {
         const date = new Date(dateString);
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
+        const year = date.getUTCFullYear();
+        const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+        const day = date.getUTCDate().toString().padStart(2, '0');
         return `${year}-${month}-${day}`;
     } catch (e) {
         console.error("Erro ao formatar data para input:", e);
@@ -138,7 +135,7 @@ function criarCardElemento(ativo, dados) {
             proventoHtml = `
             <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
                 <span class="text-xs text-gray-500 uppercase tracking-wide">Provento</span>
-                <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
+                <span class="text-sm font-medium text-gray-400">Sem anúncio futuro.</span>
             </div>`;
         }
     }
@@ -147,6 +144,7 @@ function criarCardElemento(ativo, dados) {
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
+    // ALTERAÇÃO: Fundo do ícone para bg-[#1C1C1E]
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -260,7 +258,7 @@ function atualizarCardElemento(card, ativo, dados) {
             proventoHtml = `
             <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
                 <span class="text-xs text-gray-500 uppercase tracking-wide">Provento</span>
-                <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
+                <span class="text-sm font-medium text-gray-400">Sem anúncio futuro.</span>
             </div>`;
         }
         card.querySelector('[data-field="provento-container"]').innerHTML = proventoHtml;
@@ -517,6 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function verificarStatusBiometria() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
         
+        // Atualiza a UI do botão de toggle e ícones na aba Ajustes
         if (toggleBioBtn && bioToggleKnob) {
              if (bioEnabled) {
                  toggleBioBtn.classList.remove('bg-gray-700');
@@ -541,6 +540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        // Lógica de bloqueio
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
             document.body.style.overflow = 'hidden';
             setTimeout(() => autenticarBiometria(), 500);
@@ -897,7 +897,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         watchlist.forEach(item => {
             const symbol = item.symbol;
             const el = document.createElement('div');
+            // ALTERAÇÃO: Card com bg-black e borda #2C2C2E
             el.className = 'flex justify-between items-center p-3 bg-black rounded-lg border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
+            // ALTERAÇÃO: Ícone com bg-[#1C1C1E]
             el.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center text-[10px] font-bold text-purple-400">
@@ -947,6 +949,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
                 if (!isNaN(dataPagamento) && dataPagamento < hoje) {
+                    // Nota: Para dividendos PASSADOS PAGOS, assumimos que se a pessoa tinha o ativo, já recebeu.
+                    // O controle fino de Data Com é mais crítico para o FUTURO/Previsão.
+                    // Se quiser aplicar rigorosamente aqui também, precisaria da Data Com histórica.
                     const quantity = carteiraMap.get(provento.symbol) || 0;
                     if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) {
                         const valorRecebido = provento.value * quantity;
@@ -1024,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="flex items-center gap-4">
                     <div class="text-right">
                         <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                        <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
+                        <p class="text-sm text-gray-400">${formatBRL(t.price)}</p>
                     </div>
                     <div class="flex flex-col gap-2">
                         <button class="p-1 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
@@ -1096,6 +1101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             newsCard.setAttribute('data-action', 'toggle-news');
             newsCard.setAttribute('data-target', drawerId);
 
+            // Ajuste: bg-[#1C1C1E] no ícone da notícia
             newsCard.innerHTML = `
                 <div class="flex items-start gap-3 pointer-events-none">
                     <img src="${faviconUrl}" alt="${sourceName}" 
@@ -1442,14 +1448,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    // --- NOVA FUNÇÃO PARA CALCULAR QUANTIDADE NA DATA COM ---
     function getQuantidadeNaData(symbol, dataLimiteStr) {
         if (!dataLimiteStr) return 0;
         
+        // Cria uma data limite setada para o fim do dia da Data Com (23:59:59)
+        // Isso garante que compras feitas no dia da Data Com sejam incluídas
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
 
         return transacoes.reduce((total, t) => {
             if (t.symbol === symbol && t.type === 'buy') {
                 const dataTransacao = new Date(t.date);
+                // Se a transação ocorreu antes ou na Data Com, ela conta
                 if (dataTransacao <= dataLimite) {
                     return total + t.quantity;
                 }
@@ -1526,8 +1536,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; bgPL = 'bg-green-900/50'; }
             else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; bgPL = 'bg-red-900/50'; }
 
+            // --- CÁLCULO DE PROVENTO A RECEBER CORRIGIDO ---
             let proventoReceber = 0;
             if (dadoProvento && dadoProvento.value > 0) {
+                 // Usa Data Com se disponível, senão usa a data de pagamento como fallback (menos preciso)
                  const dataReferencia = dadoProvento.dataCom || dadoProvento.paymentDate;
                  const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
                  proventoReceber = qtdElegivel * dadoProvento.value;
@@ -1545,7 +1557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 corPL,
                 bgPL,
                 dadoProvento,
-                proventoReceber
+                proventoReceber // Passa o valor calculado para o card
             };
 
             totalValorCarteira += totalPosicao;
@@ -1717,22 +1729,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         return resultados.filter(p => p !== null);
     }
 
-    function processarProventosScraper(proventosScraper = []) {
+    function processarProventosIA(proventosDaIA = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
-        return proventosScraper
-            .map(provento => {
-                const ativoCarteira = carteiraCalculada.find(a => a.symbol === provento.symbol);
+        return proventosDaIA
+            .map(proventoIA => {
+                const ativoCarteira = carteiraCalculada.find(a => a.symbol === proventoIA.symbol);
                 if (!ativoCarteira) return null;
                 
-                if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
-                    const parts = provento.paymentDate.split('-');
+                if (proventoIA.paymentDate && typeof proventoIA.value === 'number' && proventoIA.value > 0 && dateRegex.test(proventoIA.paymentDate)) {
+                    const parts = proventoIA.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                     
                     if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
-                        return provento;
+                        return proventoIA;
                     }
                 }
                 return null; 
@@ -1767,8 +1779,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (fiisParaBuscar.length > 0) {
             try {
-                // SUBSTITUIÇÃO: Chamada ao Scraper em vez do Gemini
-                const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
+                const novosProventos = await callGeminiProventosCarteiraAPI(fiisParaBuscar, todayString);
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
                     for (const provento of novosProventos) {
@@ -1789,11 +1800,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
             } catch (error) {
-                console.error("Erro ao buscar novos proventos com Scraper:", error);
+                console.error("Erro ao buscar novos proventos com IA:", error);
             }
         }
         
-        return processarProventosScraper(proventosPool); 
+        return processarProventosIA(proventosPool); 
     }
 
     async function buscarHistoricoProventosAgregado(force = false) {
@@ -1807,14 +1818,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             await vestoDB.delete('apiCache', cacheKey);
         }
         
-        let scraperData = await getCache(cacheKey);
+        let aiData = await getCache(cacheKey);
 
-        if (!scraperData) {
+        if (!aiData) {
             try {
-                // SUBSTITUIÇÃO: Chamada ao Scraper
-                scraperData = await callScraperHistoricoPortfolioAPI(fiiSymbols);
-                if (scraperData && scraperData.length > 0) {
-                    await setCache(cacheKey, scraperData, CACHE_IA_HISTORICO);
+                aiData = await callGeminiHistoricoPortfolioAPI(fiiSymbols, todayString);
+                if (aiData && aiData.length > 0) {
+                    await setCache(cacheKey, aiData, CACHE_IA_HISTORICO);
                 }
             } catch (e) {
                 console.error("Erro ao buscar histórico agregado:", e);
@@ -1822,7 +1832,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        if (!scraperData || scraperData.length === 0) return { labels: [], data: [] };
+        if (!aiData || aiData.length === 0) return { labels: [], data: [] };
 
         let precisaSalvarCaixa = false;
         let precisaSalvarHistorico = false;
@@ -1836,14 +1846,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             mesesProcessados = [];
         }
 
-        const labels = scraperData.map(d => d.mes);
+        const labels = aiData.map(d => d.mes);
         
-        const data = scraperData.map(mesData => {
+        const data = aiData.map(mesData => {
             let totalMes = 0;
             const dataDoMesRef = parseMesAno(mesData.mes); 
             
             if (!dataDoMesRef) return 0;
             
+            // Define o limite: mês seguinte ao mês do provento
             const proximoMesRef = new Date(dataDoMesRef);
             proximoMesRef.setMonth(proximoMesRef.getMonth() + 1);
 
@@ -1851,6 +1862,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const valorPorCota = mesData[symbol] || 0;
                 
                 if (valorPorCota > 0) {
+                    // Soma apenas transações feitas ANTES do mês seguinte ao pagamento
                     const qtdNoMes = transacoes.reduce((acc, t) => {
                         if (t.symbol === symbol && t.type === 'buy') {
                             const dataTransacao = new Date(t.date);
@@ -1914,7 +1926,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (!force) {
-            const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
+            const proventosFuturosCache = processarProventosIA(proventosConhecidos);
             if (proventosFuturosCache.length > 0) {
                 proventosAtuais = proventosFuturosCache;
                 renderizarProventos();
@@ -2321,12 +2333,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        let promessaScraper = null;
+        let promessaAi = null;
         
         if (isFII(symbol)) {
             detalhesHistoricoContainer.classList.remove('hidden'); 
-            // SUBSTITUIÇÃO: Fetch Scraper
-            promessaScraper = fetchHistoricoScraper(symbol); 
+            promessaAi = fetchHistoricoIA(symbol); 
         }
         
         detalhesLoading.classList.add('hidden');
@@ -2453,8 +2464,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.classList.remove('hidden');
     }
     
-    // RENOMEADO: fetchHistoricoIA -> fetchHistoricoScraper
-    async function fetchHistoricoScraper(symbol) {
+    async function fetchHistoricoIA(symbol) {
         detalhesAiProvento.innerHTML = `
             <div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48">
                 <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
@@ -2465,25 +2475,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         try {
             const cacheKey = `hist_ia_${symbol}_12`;
-            let scraperResultJSON = await getCache(cacheKey);
+            let aiResultJSON = await getCache(cacheKey);
 
-            if (!scraperResultJSON) {
-                // SUBSTITUIÇÃO: callScraperHistoricoAPI
-                scraperResultJSON = await callScraperHistoricoAPI(symbol); 
+            if (!aiResultJSON) {
+                aiResultJSON = await callGeminiHistoricoAPI(symbol, todayString); 
                 
-                if (scraperResultJSON && Array.isArray(scraperResultJSON)) {
-                    await setCache(cacheKey, scraperResultJSON, CACHE_IA_HISTORICO);
+                if (aiResultJSON && Array.isArray(aiResultJSON)) {
+                    await setCache(cacheKey, aiResultJSON, CACHE_IA_HISTORICO);
                 } else {
-                    scraperResultJSON = [];
+                    aiResultJSON = [];
                 }
             }
 
-            currentDetalhesHistoricoJSON = scraperResultJSON;
+            currentDetalhesHistoricoJSON = aiResultJSON;
             
             renderHistoricoIADetalhes(3);
 
         } catch (e) {
-            showToast("Erro na consulta de dados."); 
+            showToast("Erro na consulta IA."); 
             detalhesAiProvento.innerHTML = `
                 <div class="border border-red-700 bg-red-900/50 p-4 rounded-lg flex items-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -2540,6 +2549,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
         
+        // Exibe botão de adicionar apenas na aba Carteira
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     
@@ -2609,6 +2619,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon?.classList.toggle('open');
     });
 
+    // Listener para o Drawer de Favoritos (Watchlist)
     const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
     if (watchlistToggleBtn) {
         watchlistToggleBtn.addEventListener('click', (e) => {
@@ -2678,6 +2689,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         touchMoveY = 0;
     });
 
+    // Listener de Notícias
     fiiNewsList.addEventListener('click', (e) => {
         const tickerTag = e.target.closest('.news-ticker-tag');
         if (tickerTag) {
@@ -2705,6 +2717,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
 
+    // Listener de clique nos itens da Watchlist (para abrir detalhes)
     if (watchlistListaEl) {
         watchlistListaEl.addEventListener('click', (e) => {
             const target = e.target.closest('button');
@@ -2736,6 +2749,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Listeners da Aba CONFIGURAÇÕES ---
 
+    // 1. Toggle Biometria
     if (toggleBioBtn) {
         toggleBioBtn.addEventListener('click', () => {
             const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
@@ -2751,6 +2765,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // 2. Alterar Senha
     if (openChangePasswordBtn) {
         openChangePasswordBtn.addEventListener('click', () => {
             changePasswordModal.classList.add('visible');
@@ -2775,6 +2790,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         changePasswordForm.addEventListener('submit', handleAlterarSenha);
     }
 
+    // 3. Logout (Agora na aba Config)
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
@@ -2791,14 +2807,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- NOVAS FUNÇÕES SCRAPER ---
-
-    async function callScraperHistoricoAPI(ticker) { 
+    async function callGeminiHistoricoAPI(ticker, todayString) { 
         const body = { 
             mode: 'historico_12m', 
-            payload: { ticker } 
+            payload: { ticker, todayString } 
         };
-        const response = await fetchBFF('/api/scraper', {
+        const response = await fetchBFF('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -2806,9 +2820,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         return response.json; 
     }
     
-    async function callScraperProventosCarteiraAPI(fiiList) {
-        const body = { mode: 'proventos_carteira', payload: { fiiList } };
-        const response = await fetchBFF('/api/scraper', {
+    async function callGeminiProventosCarteiraAPI(fiiList, todayString) {
+        const body = { mode: 'proventos_carteira', payload: { fiiList, todayString } };
+        const response = await fetchBFF('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -2816,9 +2830,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         return response.json; 
     }
     
-    async function callScraperHistoricoPortfolioAPI(fiiList) {
-         const body = { mode: 'historico_portfolio', payload: { fiiList } };
-         const response = await fetchBFF('/api/scraper', {
+    async function callGeminiHistoricoPortfolioAPI(fiiList, todayString) {
+         const body = { mode: 'historico_portfolio', payload: { fiiList, todayString } };
+         const response = await fetchBFF('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -3058,6 +3072,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             signupError.classList.add('hidden');
         });
         
+        // Listener de Logout (Já tratado no handler acima)
+
         passwordToggleButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const targetId = button.dataset.target;

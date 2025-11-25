@@ -933,37 +933,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
 
-    async function processarDividendosPagos() {
+async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         
-        const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
         let precisaSalvarCaixa = false;
         let proventosParaSalvar = [];
 
-        proventosConhecidos.forEach(provento => {
-            if (provento.paymentDate && !provento.processado) {
+        // Itera sobre proventos conhecidos (vindos do banco ou scraper)
+        for (const provento of proventosConhecidos) {
+            // Verifica se tem data de pagamento, valor válido e se ainda não foi processado
+            if (provento.paymentDate && !provento.processado && provento.value > 0) {
                 const parts = provento.paymentDate.split('-');
                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
-                if (!isNaN(dataPagamento) && dataPagamento < hoje) {
-                    const quantity = carteiraMap.get(provento.symbol) || 0;
-                    if (quantity > 0 && typeof provento.value === 'number' && provento.value > 0) {
-                        const valorRecebido = provento.value * quantity;
+                // Se a data de pagamento já passou (ou é hoje)
+                if (!isNaN(dataPagamento) && dataPagamento <= hoje) {
+                    
+                    // LÓGICA CORRIGIDA:
+                    // Usa a Data Com se existir, senão usa a data de pagamento como fallback.
+                    // Isso impede que compras feitas DEPOIS da data de corte entrem no cálculo.
+                    const dataReferencia = provento.dataCom || provento.paymentDate;
+                    
+                    // Calcula quantas cotas o usuário tinha EXATAMENTE naquela data
+                    const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+
+                    if (qtdElegivel > 0) {
+                        const valorRecebido = provento.value * qtdElegivel;
                         saldoCaixa += valorRecebido;
                         precisaSalvarCaixa = true;
+                        
+                        console.log(`Provento Processado: ${provento.symbol} | Data Ref: ${dataReferencia} | Qtd: ${qtdElegivel} | Valor: ${formatBRL(valorRecebido)}`);
                     }
                     
+                    // Marca como processado para não somar de novo, mesmo que a qtd fosse 0
                     provento.processado = true;
                     proventosParaSalvar.push(provento);
                 }
             }
-        });
+        }
 
         if (precisaSalvarCaixa) {
             await salvarCaixa();
+            // Atualiza visualmente o valor do caixa na hora
+            if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
         }
+        
         if (proventosParaSalvar.length > 0) {
+            // Atualiza no banco de dados em lote (ou um a um)
             for (const provento of proventosParaSalvar) {
                 await supabaseDB.updateProventoProcessado(provento.id);
             }
@@ -1796,7 +1813,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return processarProventosScraper(proventosPool); 
     }
 
-    async function buscarHistoricoProventosAgregado(force = false) {
+async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
@@ -1811,7 +1828,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!scraperData) {
             try {
-                // SUBSTITUIÇÃO: Chamada ao Scraper
                 scraperData = await callScraperHistoricoPortfolioAPI(fiiSymbols);
                 if (scraperData && scraperData.length > 0) {
                     await setCache(cacheKey, scraperData, CACHE_IA_HISTORICO);
@@ -1824,72 +1840,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!scraperData || scraperData.length === 0) return { labels: [], data: [] };
 
-        let precisaSalvarCaixa = false;
-        let precisaSalvarHistorico = false;
-        
-        const dataAtual = new Date();
-        const mesAtual = dataAtual.getMonth(); 
-        const anoAtual = dataAtual.getFullYear();
-        
-        if (force) {
-            saldoCaixa = 0;
-            mesesProcessados = [];
-        }
-
         const labels = scraperData.map(d => d.mes);
         
         const data = scraperData.map(mesData => {
             let totalMes = 0;
-            const dataDoMesRef = parseMesAno(mesData.mes); 
+            const dataDoMesRef = parseMesAno(mesData.mes); // Ex: retorna Date objeto de 01/11/2025
             
             if (!dataDoMesRef) return 0;
             
-            const proximoMesRef = new Date(dataDoMesRef);
-            proximoMesRef.setMonth(proximoMesRef.getMonth() + 1);
+            // LÓGICA CORRIGIDA PARA O GRÁFICO:
+            // O Scraper retorna o mês de PAGAMENTO (ex: 11/25).
+            // Para calcular a quantidade, assumimos como regra segura o dia 1º do mês do pagamento
+            // ou o último dia do mês anterior. 
+            // Usar o dia 1º do mês de referência do pagamento exclui compras feitas no dia 24 ou 25 daquele mês.
+            const dataLimiteParaCalculo = dataDoMesRef.toISOString().split('T')[0]; // "2025-11-01"
 
             fiiSymbols.forEach(symbol => {
                 const valorPorCota = mesData[symbol] || 0;
                 
                 if (valorPorCota > 0) {
-                    const qtdNoMes = transacoes.reduce((acc, t) => {
-                        if (t.symbol === symbol && t.type === 'buy') {
-                            const dataTransacao = new Date(t.date);
-                            if (dataTransacao < proximoMesRef) {
-                                return acc + t.quantity;
-                            }
-                        }
-                        return acc;
-                    }, 0);
+                    // Usa a função auxiliar para ver quantas cotas existiam no dia 1º do mês do pagamento
+                    const qtdNaEpoca = getQuantidadeNaData(symbol, dataLimiteParaCalculo);
 
-                    if (qtdNoMes > 0) {
-                        totalMes += (valorPorCota * qtdNoMes);
+                    if (qtdNaEpoca > 0) {
+                        totalMes += (valorPorCota * qtdNaEpoca);
                     }
                 }
             });
             
-            const mesHistorico = dataDoMesRef.getMonth(); 
-            const anoHistorico = dataDoMesRef.getFullYear();
-
-            const isPastMonth = anoHistorico < anoAtual || (anoHistorico === anoAtual && mesHistorico < mesAtual);
-            const isNotProcessed = !mesesProcessados.includes(mesData.mes);
-            
-            if (isPastMonth && isNotProcessed && totalMes > 0) {
-                saldoCaixa += totalMes;
-                mesesProcessados.push(mesData.mes); 
-                precisaSalvarCaixa = true;
-                precisaSalvarHistorico = true;
-            }
-            
             return totalMes;
         });
-
-        if (precisaSalvarCaixa) {
-            await salvarCaixa();
-            totalCaixaValor.textContent = formatBRL(saldoCaixa);
-        }
-        if (precisaSalvarHistorico) {
-            await salvarHistoricoProcessado();
-        }
 
         return { labels, data };
     }

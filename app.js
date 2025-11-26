@@ -1612,28 +1612,16 @@ async function processarDividendosPagos() {
         renderizarGraficoPatrimonio(); 
     }
 
-function renderizarProventos() {
+    function renderizarProventos() {
         let totalEstimado = 0;
-        
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
         
         proventosAtuais.forEach(provento => {
             if (provento && typeof provento.value === 'number' && provento.value > 0) {
                  const dataReferencia = provento.dataCom || provento.paymentDate;
+                 const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
                  
-                 const parts = provento.paymentDate.split('-');
-                 const dataPag = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-                 
-                 // SÓ MOSTRA SE FOR FUTURO (> HOJE)
-                 // Como SNAG11 é dia 25 e hoje é 26, ele NÃO entra aqui.
-                 // Mas como foi salvo na função acima, ele entrará no CAIXA.
-                 if (dataPag > hoje) {
-                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-                     
-                     if (qtdElegivel > 0) {
-                         totalEstimado += (qtdElegivel * provento.value);
-                     }
+                 if (qtdElegivel > 0) {
+                     totalEstimado += (qtdElegivel * provento.value);
                  }
             }
         });
@@ -1758,13 +1746,15 @@ function renderizarProventos() {
 function processarProventosScraper(proventosScraper = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         
-        // CORREÇÃO: Janela de Recuperação de 45 dias
-        // Permite que o sistema "veja" pagamentos que ocorreram recentemente
-        // mas que talvez ainda não tenham sido registrados no caixa.
-        const dataLimitePassado = new Date(hoje);
+        // Define um limite de retrovisor: aceita pagamentos de até 45 dias atrás
+        // Isso permite que o sistema "pegue" pagamentos que aconteceram recentemente
+        // mas que ainda não foram salvos no banco.
+        const dataLimitePassado = new Date();
         dataLimitePassado.setDate(hoje.getDate() - 45);
+        dataLimitePassado.setHours(0, 0, 0, 0);
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
         return proventosScraper
             .map(provento => {
@@ -1773,10 +1763,10 @@ function processarProventosScraper(proventosScraper = []) {
                 
                 if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
                     const parts = provento.paymentDate.split('-');
-                    // parseInt garante que o dia 25 seja lido como 25, sem bugs de fuso horário
-                    const dataPagamento = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])); 
+                    const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                     
-                    // A LÓGICA: Aceita se for Futuro OU se for Passado Recente
+                    // LÓGICA CORRIGIDA:
+                    // Aceita se for futuro OU se for recente (maior que dataLimitePassado)
                     if (!isNaN(dataPagamento) && dataPagamento >= dataLimitePassado) {
                         return provento;
                     }
@@ -1786,7 +1776,7 @@ function processarProventosScraper(proventosScraper = []) {
             .filter(p => p !== null);
     }
 
-async function buscarProventosFuturos(force = false) {
+    async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
             .map(a => a.symbol);
@@ -1796,11 +1786,11 @@ async function buscarProventosFuturos(force = false) {
         let proventosPool = [];
         let fiisParaBuscar = [];
 
-        // 1. Verifica Cache Primeiro
         for (const symbol of fiiNaCarteira) {
             const cacheKey = `provento_ia_${symbol}`;
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
+                await removerProventosConhecidos(symbol);
             }
             
             const proventoCache = await getCache(cacheKey);
@@ -1811,9 +1801,9 @@ async function buscarProventosFuturos(force = false) {
             }
         }
         
-        // 2. Busca na API o que faltou
         if (fiisParaBuscar.length > 0) {
             try {
+                // SUBSTITUIÇÃO: Chamada ao Scraper em vez do Gemini
                 const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
@@ -1822,6 +1812,15 @@ async function buscarProventosFuturos(force = false) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_PROVENTOS); 
                             proventosPool.push(provento);
+
+                            const idUnico = provento.symbol + '_' + provento.paymentDate;
+                            const existe = proventosConhecidos.some(p => p.id === idUnico);
+                            
+                            if (!existe) {
+                                const novoProvento = { ...provento, processado: false, id: idUnico };
+                                await supabaseDB.addProventoConhecido(novoProvento);
+                                proventosConhecidos.push(novoProvento);
+                            }
                         }
                     }
                 }
@@ -1830,31 +1829,7 @@ async function buscarProventosFuturos(force = false) {
             }
         }
         
-        // 3. Processa e Salva no Banco de "Conhecidos" com SEGURANÇA DE ID
-        const proventosValidos = processarProventosScraper(proventosPool);
-        
-        for (const provento of proventosValidos) {
-            // CRIAÇÃO DO ID ÚNICO: Ativo + Data (ex: SNAG11_2025-11-25)
-            const idUnico = provento.symbol + '_' + provento.paymentDate;
-            
-            // VERIFICAÇÃO: Esse ID já existe na minha lista de caixa?
-            const index = proventosConhecidos.findIndex(p => p.id === idUnico);
-            
-            if (index === -1) {
-                // Se NÃO existe (é o caso do seu SNAG11 agora), adiciona!
-                const novoProvento = { ...provento, processado: false, id: idUnico };
-                await supabaseDB.addProventoConhecido(novoProvento);
-                proventosConhecidos.push(novoProvento);
-            } else {
-                // Se JÁ existe, apenas atualiza o valor se necessário (NÃO DUPLICA)
-                if (proventosConhecidos[index].value !== provento.value) {
-                     proventosConhecidos[index].value = provento.value;
-                     // Opcional: Salvar no DB aqui se quiser persistência estrita de valor alterado
-                }
-            }
-        }
-        
-        return proventosValidos; 
+        return processarProventosScraper(proventosPool); 
     }
 
 async function buscarHistoricoProventosAgregado(force = false) {

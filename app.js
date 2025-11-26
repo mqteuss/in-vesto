@@ -2470,19 +2470,15 @@ async function handleMostrarDetalhes(symbol) {
                 </div>
                 <div class="col-span-2 bg-gray-800 p-4 rounded-xl">
                     <span class="text-xs text-gray-500">Valor de Mercado</span>
-                    <p id="detalhes-mercado-valor" class="text-lg font-semibold text-white">
-                        ${precoData.marketCap ? formatNumber(precoData.marketCap) : 'Carregando...'}
-                    </p>
+                    <p class="text-lg font-semibold text-white">${formatNumber(precoData.marketCap)}</p>
                 </div>
             `;
 
-            // 3. Busca Fundamentos Assincronamente (P/VP, DY e Valor de Mercado)
+            // 3. Busca Fundamentos Assincronamente (P/VP e DY)
             callScraperFundamentosAPI(symbol).then(fundamentos => {
-                const dados = fundamentos || { pvp: '-', dy: '-', valMercado: '-' };
-                
-                // Atualiza P/VP e DY
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
+                    const dados = fundamentos || { pvp: '-', dy: '-' };
                     area.innerHTML = `
                         <div class="bg-gray-800 p-3 rounded-xl text-center">
                             <span class="text-xs text-gray-500">P/VP</span>
@@ -2494,23 +2490,13 @@ async function handleMostrarDetalhes(symbol) {
                         </div>
                     `;
                 }
-
-                // Atualiza Valor de Mercado (Se o scraper trouxe algo válido)
-                if (dados.valMercado && dados.valMercado !== 'N/A' && dados.valMercado !== '-') {
-                    const elMercado = document.getElementById('detalhes-mercado-valor');
-                    if (elMercado) {
-                        elMercado.textContent = dados.valMercado;
-                        elMercado.classList.add('text-purple-100'); 
-                    }
-                }
-
             }).catch(e => {
                 console.error("Erro ao carregar fundamentos", e);
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
                     area.innerHTML = `
                         <div class="bg-gray-800 p-3 rounded-xl text-center col-span-2">
-                            <span class="text-xs text-red-500">Indisponível</span>
+                            <span class="text-xs text-red-500">Erro ao carregar indicadores</span>
                         </div>
                     `;
                 }

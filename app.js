@@ -1625,9 +1625,9 @@ function renderizarProventos() {
                  const parts = provento.paymentDate.split('-');
                  const dataPag = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
                  
-                 // Lógica Estrita: Só mostra aqui se for ESTRITAMENTE MAIOR que hoje.
-                 // O SNAG11 (dia 25) é MENOR que hoje (dia 26), então não entra aqui.
-                 // Mas como ele foi salvo em 'proventosConhecidos' pela função acima, ele entrará no CAIXA.
+                 // SÓ MOSTRA SE FOR FUTURO (> HOJE)
+                 // Como SNAG11 é dia 25 e hoje é 26, ele NÃO entra aqui.
+                 // Mas como foi salvo na função acima, ele entrará no CAIXA.
                  if (dataPag > hoje) {
                      const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
                      
@@ -1761,7 +1761,8 @@ function processarProventosScraper(proventosScraper = []) {
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         
         // CORREÇÃO: Janela de Recuperação de 45 dias
-        // Isso pega o SNAG11 que pagou ontem (dia 25) e garante que ele não seja ignorado
+        // Permite que o sistema "veja" pagamentos que ocorreram recentemente
+        // mas que talvez ainda não tenham sido registrados no caixa.
         const dataLimitePassado = new Date(hoje);
         dataLimitePassado.setDate(hoje.getDate() - 45);
 
@@ -1772,10 +1773,10 @@ function processarProventosScraper(proventosScraper = []) {
                 
                 if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
                     const parts = provento.paymentDate.split('-');
-                    // Uso de parseInt para evitar bugs de fuso horário (ex: dia 25 virar 24)
+                    // parseInt garante que o dia 25 seja lido como 25, sem bugs de fuso horário
                     const dataPagamento = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])); 
                     
-                    // Aceita se for Futuro OU se for Passado Recente
+                    // A LÓGICA: Aceita se for Futuro OU se for Passado Recente
                     if (!isNaN(dataPagamento) && dataPagamento >= dataLimitePassado) {
                         return provento;
                     }
@@ -1829,25 +1830,26 @@ async function buscarProventosFuturos(force = false) {
             }
         }
         
-        // 3. Processa e Salva no Banco de "Conhecidos"
-        // Aqui o SNAG11 de ontem será aceito pelo filtro
+        // 3. Processa e Salva no Banco de "Conhecidos" com SEGURANÇA DE ID
         const proventosValidos = processarProventosScraper(proventosPool);
         
         for (const provento of proventosValidos) {
+            // CRIAÇÃO DO ID ÚNICO: Ativo + Data (ex: SNAG11_2025-11-25)
             const idUnico = provento.symbol + '_' + provento.paymentDate;
             
-            // Verifica se esse pagamento já está no nosso "banco de caixa"
+            // VERIFICAÇÃO: Esse ID já existe na minha lista de caixa?
             const index = proventosConhecidos.findIndex(p => p.id === idUnico);
             
             if (index === -1) {
-                // Se não estava (ex: é a primeira vez que vemos esse pagamento de ontem), adiciona!
+                // Se NÃO existe (é o caso do seu SNAG11 agora), adiciona!
                 const novoProvento = { ...provento, processado: false, id: idUnico };
                 await supabaseDB.addProventoConhecido(novoProvento);
                 proventosConhecidos.push(novoProvento);
             } else {
-                // Atualiza valor se mudou
+                // Se JÁ existe, apenas atualiza o valor se necessário (NÃO DUPLICA)
                 if (proventosConhecidos[index].value !== provento.value) {
                      proventosConhecidos[index].value = provento.value;
+                     // Opcional: Salvar no DB aqui se quiser persistência estrita de valor alterado
                 }
             }
         }

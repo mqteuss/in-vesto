@@ -1753,10 +1753,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return resultados.filter(p => p !== null);
     }
 
-    function processarProventosScraper(proventosScraper = []) {
+function processarProventosScraper(proventosScraper = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        
+        // DEFINE UMA MARGEM DE SEGURANÇA (ex: 30 dias atrás)
+        // Isso permite capturar dividendos que foram pagos recentemente mas o app não viu
+        const dataLimitePassado = new Date(hoje);
+        dataLimitePassado.setDate(hoje.getDate() - 30);
 
         return proventosScraper
             .map(provento => {
@@ -1767,7 +1772,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const parts = provento.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                     
-                    if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
+                    // CORREÇÃO: Aceita se for Futuro OU se for recente (maior que 30 dias atrás)
+                    if (!isNaN(dataPagamento) && dataPagamento >= dataLimitePassado) {
                         return provento;
                     }
                 }
@@ -3094,3 +3100,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     await init();
 });
+

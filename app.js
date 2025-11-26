@@ -2424,6 +2424,9 @@ async function handleMostrarDetalhes(symbol) {
             }
 
             // HTML Principal
+// ... dentro de handleMostrarDetalhes, onde define detalhesPreco.innerHTML ...
+
+            // HTML Principal
             detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
@@ -2468,17 +2471,22 @@ async function handleMostrarDetalhes(symbol) {
                     <span class="text-xs text-gray-500">Mín. 52 Semanas</span>
                     <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekLow)}</p>
                 </div>
+                
                 <div class="col-span-2 bg-gray-800 p-4 rounded-xl">
                     <span class="text-xs text-gray-500">Valor de Mercado</span>
-                    <p class="text-lg font-semibold text-white">${formatNumber(precoData.marketCap)}</p>
+                    <p id="detalhes-mercado-valor" class="text-lg font-semibold text-white">
+                        ${precoData.marketCap ? formatNumber(precoData.marketCap) : 'Carregando...'}
+                    </p>
                 </div>
             `;
 
-            // 3. Busca Fundamentos Assincronamente (P/VP e DY)
+            // 3. Busca Fundamentos Assincronamente (P/VP, DY e Valor de Mercado)
             callScraperFundamentosAPI(symbol).then(fundamentos => {
+                const dados = fundamentos || { pvp: '-', dy: '-', valMercado: '-' };
+                
+                // Atualiza P/VP e DY
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
-                    const dados = fundamentos || { pvp: '-', dy: '-' };
                     area.innerHTML = `
                         <div class="bg-gray-800 p-3 rounded-xl text-center">
                             <span class="text-xs text-gray-500">P/VP</span>
@@ -2490,21 +2498,32 @@ async function handleMostrarDetalhes(symbol) {
                         </div>
                     `;
                 }
+
+                // Atualiza Valor de Mercado (Se o scraper trouxe algo válido)
+                if (dados.valMercado && dados.valMercado !== 'N/A' && dados.valMercado !== '-') {
+                    const elMercado = document.getElementById('detalhes-mercado-valor');
+                    if (elMercado) {
+                        elMercado.textContent = dados.valMercado;
+                        // Adiciona cor roxa suave para indicar que foi atualizado
+                        elMercado.classList.add('text-purple-100'); 
+                    }
+                }
+
             }).catch(e => {
                 console.error("Erro ao carregar fundamentos", e);
+                // Tratamento de erro visual para os cards de fundamentos
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
                     area.innerHTML = `
                         <div class="bg-gray-800 p-3 rounded-xl text-center col-span-2">
-                            <span class="text-xs text-red-500">Erro ao carregar indicadores</span>
+                            <span class="text-xs text-red-500">Indisponível</span>
                         </div>
                     `;
                 }
+                // Valor de Mercado mantemos o da Brapi ou "N/A" se deu erro
             });
 
-        } else {
-            detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
-        }
+// ... restante da função ...
         
         renderizarTransacoesDetalhes(symbol);
         atualizarIconeFavorito(symbol);

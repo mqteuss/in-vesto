@@ -110,16 +110,28 @@ function criarCardElemento(ativo, dados) {
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
+            
+            // LÓGICA VISUAL: Verifica se já foi pago para mudar o texto
+            const parts = dadoProvento.paymentDate.split('-');
+            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            
+            const foiPago = dataPag <= hoje;
+            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
+            // Se já foi pago, deixa o texto cinza (discreto). Se é futuro, deixa colorido (destaque).
+            const valorClass = foiPago ? "text-gray-400" : "accent-text";
+            const sinal = foiPago ? "" : "+"; // Remove o '+' se já foi pago
+
             let valorTexto = '';
             if (proventoReceber > 0) {
-                 valorTexto = `<span class="text-sm font-semibold accent-text">+${formatBRL(proventoReceber)}</span>`;
+                 valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
             } else {
                  valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded">Sem direito</span>`;
             }
             
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
 
-            // AJUSTE 2: Remoção de uppercase, redução de margins e tracking
             proventoHtml = `
             <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
@@ -127,7 +139,7 @@ function criarCardElemento(ativo, dados) {
                     <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 font-medium">Sua Previsão</span>
+                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
                     ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
@@ -233,9 +245,21 @@ function atualizarCardElemento(card, ativo, dados) {
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
+            
+            // LÓGICA VISUAL: Igual à função de criar
+            const parts = dadoProvento.paymentDate.split('-');
+            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            
+            const foiPago = dataPag <= hoje;
+            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
+            const valorClass = foiPago ? "text-gray-400" : "accent-text";
+            const sinal = foiPago ? "" : "+";
+
             let valorTexto = '';
             if (proventoReceber > 0) {
-                 valorTexto = `<span class="text-sm font-semibold accent-text">+${formatBRL(proventoReceber)}</span>`;
+                 valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
             } else {
                  valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded">Sem direito</span>`;
             }
@@ -249,7 +273,7 @@ function atualizarCardElemento(card, ativo, dados) {
                     <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 font-medium">Sua Previsão</span>
+                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
                     ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
@@ -267,7 +291,6 @@ function atualizarCardElemento(card, ativo, dados) {
         card.querySelector('[data-field="provento-container"]').innerHTML = proventoHtml;
     }
 }
-
 document.addEventListener('DOMContentLoaded', async () => {
     
     const vestoDB = {

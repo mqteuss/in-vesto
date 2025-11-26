@@ -1622,16 +1622,27 @@ function renderizarGraficoAlocacao(dadosGrafico) {
         renderizarGraficoPatrimonio(); 
     }
 
-    function renderizarProventos() {
+function renderizarProventos() {
         let totalEstimado = 0;
+        
+        // Define "hoje" zerando as horas para comparação justa
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
         
         proventosAtuais.forEach(provento => {
             if (provento && typeof provento.value === 'number' && provento.value > 0) {
-                 const dataReferencia = provento.dataCom || provento.paymentDate;
-                 const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-                 
-                 if (qtdElegivel > 0) {
-                     totalEstimado += (qtdElegivel * provento.value);
+                 // Analisa a data do pagamento
+                 const parts = provento.paymentDate.split('-');
+                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
+
+                 // TRAVA VISUAL: Só soma no card "Próx. Proventos" se a data for FUTURA (maior que hoje)
+                 if (dataPagamento > hoje) {
+                     const dataReferencia = provento.dataCom || provento.paymentDate;
+                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+                     
+                     if (qtdElegivel > 0) {
+                         totalEstimado += (qtdElegivel * provento.value);
+                     }
                  }
             }
         });

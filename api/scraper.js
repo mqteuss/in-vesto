@@ -24,6 +24,59 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
+// --- NOVA FUNÇÃO PARA INDICADORES ---
+async function scrapeFundamentos(ticker) {
+    try {
+        let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
+        let response;
+        
+        try {
+            response = await client.get(url);
+        } catch (e) {
+            if (e.response && e.response.status === 404) {
+                url = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
+                response = await client.get(url);
+            } else {
+                throw e; 
+            }
+        }
+
+        const html = response.data;
+        const $ = cheerio.load(html);
+        
+        // Seletores baseados nas classes do Investidor10
+        // DY costuma estar em ._card.dy ou .wc_yield
+        // P/VP costuma estar em ._card.vp ou .wc_vp
+        
+        let dy = 'N/A';
+        let pvp = 'N/A';
+
+        // Tenta buscar DY
+        const dyEl = $('._card.dy ._card-body span').first();
+        if (dyEl.length) dy = dyEl.text().trim();
+        
+        // Tenta buscar P/VP
+        const pvpEl = $('._card.vp ._card-body span').first();
+        if (pvpEl.length) pvp = pvpEl.text().trim();
+
+        // Fallback genérico caso mudem as classes
+        if (dy === 'N/A') {
+             // Tenta achar pelo título
+             $('.cell .name').each((i, el) => {
+                 if ($(el).text().includes('Dividend Yield')) {
+                     dy = $(el).parent().find('.value').text().trim();
+                 }
+             });
+        }
+
+        return { dy, pvp };
+
+    } catch (error) {
+        console.warn(`[Scraper] Falha ao ler fundamentos de ${ticker}: ${error.message}`);
+        return { dy: '-', pvp: '-' }; 
+    }
+}
+
 async function scrapeAsset(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -89,13 +142,21 @@ module.exports = async function handler(req, res) {
 
         const { mode, payload } = req.body;
 
-if (mode === 'proventos_carteira') {
+        // --- NOVO MODO: FUNDAMENTOS (P/VP e DY) ---
+        if (mode === 'fundamentos') {
+            const { ticker } = payload || {};
+            if (!ticker) return res.json({ json: { dy: '-', pvp: '-' } });
+            
+            const dados = await scrapeFundamentos(ticker);
+            return res.status(200).json({ json: dados });
+        }
+
+        if (mode === 'proventos_carteira') {
             const { fiiList } = payload || {};
             if (!fiiList || !Array.isArray(fiiList)) return res.json({ json: [] });
 
             const promises = fiiList.map(async (ticker) => {
                 const history = await scrapeAsset(ticker);
-                // PEGA OS 3 ÚLTIMOS PAGAMENTOS (para garantir que não perdemos o de ontem)
                 const recents = history
                     .filter(h => h.paymentDate && h.value > 0)
                     .slice(0, 3); 
@@ -112,7 +173,6 @@ if (mode === 'proventos_carteira') {
             });
 
             const data = await Promise.all(promises);
-            // O resultado será um array de arrays, precisamos usar flat()
             return res.status(200).json({ json: data.filter(d => d !== null).flat() });
         }
 
@@ -134,13 +194,9 @@ if (mode === 'proventos_carteira') {
             const { fiiList } = payload || {};
             if (!fiiList) return res.json({ json: [] });
 
-            // MUDANÇA: Não agrupa mais. Retorna a lista bruta de todos os proventos recentes.
-            // O frontend decidirá como agrupar (Data Com vs Data Pagamento).
             let allDividends = [];
-
             const promises = fiiList.map(async (ticker) => {
                 const history = await scrapeAsset(ticker);
-                // Pega os últimos 24 registros para garantir histórico suficiente
                 history.slice(0, 24).forEach(h => {
                     if (h.value > 0) {
                         allDividends.push({
@@ -154,7 +210,6 @@ if (mode === 'proventos_carteira') {
             });
 
             await Promise.all(promises);
-            
             return res.status(200).json({ json: allDividends });
         }
 

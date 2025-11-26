@@ -1612,16 +1612,28 @@ async function processarDividendosPagos() {
         renderizarGraficoPatrimonio(); 
     }
 
-    function renderizarProventos() {
+function renderizarProventos() {
         let totalEstimado = 0;
+        
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
         
         proventosAtuais.forEach(provento => {
             if (provento && typeof provento.value === 'number' && provento.value > 0) {
                  const dataReferencia = provento.dataCom || provento.paymentDate;
-                 const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
                  
-                 if (qtdElegivel > 0) {
-                     totalEstimado += (qtdElegivel * provento.value);
+                 const parts = provento.paymentDate.split('-');
+                 const dataPag = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                 
+                 // Lógica Estrita: Só mostra aqui se for ESTRITAMENTE MAIOR que hoje.
+                 // O SNAG11 (dia 25) é MENOR que hoje (dia 26), então não entra aqui.
+                 // Mas como ele foi salvo em 'proventosConhecidos' pela função acima, ele entrará no CAIXA.
+                 if (dataPag > hoje) {
+                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+                     
+                     if (qtdElegivel > 0) {
+                         totalEstimado += (qtdElegivel * provento.value);
+                     }
                  }
             }
         });
@@ -1743,10 +1755,15 @@ async function processarDividendosPagos() {
         return resultados.filter(p => p !== null);
     }
 
-    function processarProventosScraper(proventosScraper = []) {
+function processarProventosScraper(proventosScraper = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        
+        // CORREÇÃO: Janela de Recuperação de 45 dias
+        // Isso pega o SNAG11 que pagou ontem (dia 25) e garante que ele não seja ignorado
+        const dataLimitePassado = new Date(hoje);
+        dataLimitePassado.setDate(hoje.getDate() - 45);
 
         return proventosScraper
             .map(provento => {
@@ -1755,9 +1772,11 @@ async function processarDividendosPagos() {
                 
                 if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
                     const parts = provento.paymentDate.split('-');
-                    const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
+                    // Uso de parseInt para evitar bugs de fuso horário (ex: dia 25 virar 24)
+                    const dataPagamento = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])); 
                     
-                    if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
+                    // Aceita se for Futuro OU se for Passado Recente
+                    if (!isNaN(dataPagamento) && dataPagamento >= dataLimitePassado) {
                         return provento;
                     }
                 }
@@ -1766,7 +1785,7 @@ async function processarDividendosPagos() {
             .filter(p => p !== null);
     }
 
-    async function buscarProventosFuturos(force = false) {
+async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
             .map(a => a.symbol);
@@ -1776,11 +1795,11 @@ async function processarDividendosPagos() {
         let proventosPool = [];
         let fiisParaBuscar = [];
 
+        // 1. Verifica Cache Primeiro
         for (const symbol of fiiNaCarteira) {
             const cacheKey = `provento_ia_${symbol}`;
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
-                await removerProventosConhecidos(symbol);
             }
             
             const proventoCache = await getCache(cacheKey);
@@ -1791,9 +1810,9 @@ async function processarDividendosPagos() {
             }
         }
         
+        // 2. Busca na API o que faltou
         if (fiisParaBuscar.length > 0) {
             try {
-                // SUBSTITUIÇÃO: Chamada ao Scraper em vez do Gemini
                 const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
@@ -1802,15 +1821,6 @@ async function processarDividendosPagos() {
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_PROVENTOS); 
                             proventosPool.push(provento);
-
-                            const idUnico = provento.symbol + '_' + provento.paymentDate;
-                            const existe = proventosConhecidos.some(p => p.id === idUnico);
-                            
-                            if (!existe) {
-                                const novoProvento = { ...provento, processado: false, id: idUnico };
-                                await supabaseDB.addProventoConhecido(novoProvento);
-                                proventosConhecidos.push(novoProvento);
-                            }
                         }
                     }
                 }
@@ -1819,7 +1829,30 @@ async function processarDividendosPagos() {
             }
         }
         
-        return processarProventosScraper(proventosPool); 
+        // 3. Processa e Salva no Banco de "Conhecidos"
+        // Aqui o SNAG11 de ontem será aceito pelo filtro
+        const proventosValidos = processarProventosScraper(proventosPool);
+        
+        for (const provento of proventosValidos) {
+            const idUnico = provento.symbol + '_' + provento.paymentDate;
+            
+            // Verifica se esse pagamento já está no nosso "banco de caixa"
+            const index = proventosConhecidos.findIndex(p => p.id === idUnico);
+            
+            if (index === -1) {
+                // Se não estava (ex: é a primeira vez que vemos esse pagamento de ontem), adiciona!
+                const novoProvento = { ...provento, processado: false, id: idUnico };
+                await supabaseDB.addProventoConhecido(novoProvento);
+                proventosConhecidos.push(novoProvento);
+            } else {
+                // Atualiza valor se mudou
+                if (proventosConhecidos[index].value !== provento.value) {
+                     proventosConhecidos[index].value = provento.value;
+                }
+            }
+        }
+        
+        return proventosValidos; 
     }
 
 async function buscarHistoricoProventosAgregado(force = false) {

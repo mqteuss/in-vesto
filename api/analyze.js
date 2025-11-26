@@ -1,7 +1,7 @@
-import axios from 'axios';
+const axios = require('axios');
 
-export default async function handler(req, res) {
-    // Configuração de CORS para permitir chamadas do seu front
+module.exports = async (req, res) => {
+    // 1. Configuração de CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -10,22 +10,24 @@ export default async function handler(req, res) {
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
 
+    // 2. Responder imediatamente a preflight requests (OPTIONS)
     if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
+        return res.status(200).end();
     }
 
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    const { carteira, totalPatrimonio, perfil } = req.body;
-
+    // 3. Verificação da API Key
     if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ error: 'GEMINI_API_KEY não configurada no servidor.' });
+        console.error("ERRO: GEMINI_API_KEY não encontrada nas variáveis de ambiente.");
+        return res.status(500).json({ error: 'Configuração de servidor ausente (API KEY).' });
     }
 
-    // Construção do Prompt Otimizado para Finanças
+    const { carteira, totalPatrimonio } = req.body;
+
+    // Prompt
     const prompt = `
     Atue como um Consultor Financeiro Sênior especialista no mercado brasileiro (B3).
     Analise a seguinte carteira de investimentos:
@@ -36,16 +38,16 @@ export default async function handler(req, res) {
 
     TAREFAS:
     1. Analise a diversificação atual (Setores, Papel vs Tijolo se houver FIIs).
-    2. Identifique riscos potenciais (ex: concentração excessiva em um ativo).
+    2. Identifique riscos potenciais.
     3. Dê uma nota de 0 a 10 para a saúde da carteira.
-    4. Sugira 1 melhoria prática e direta.
+    4. Sugira 1 melhoria prática.
 
-    FORMATO DE RESPOSTA (Markdown):
-    Use negrito para destacar valores e ativos. Seja direto, empático e profissional.
-    Não use introduções genéricas. Vá direto ao ponto.
+    FORMATO: Markdown, direto e profissional.
     `;
 
     try {
+        // 4. Chamada à API
+        // Nota: Se o modelo 'gemini-2.5-flash' falhar, tente mudar para 'gemini-1.5-flash'
         const response = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
             {
@@ -65,13 +67,20 @@ export default async function handler(req, res) {
         const aiText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!aiText) {
+            console.error("ERRO: Resposta da IA veio vazia.", JSON.stringify(response.data));
             throw new Error('Sem resposta da IA');
         }
 
         return res.status(200).json({ result: aiText });
 
     } catch (error) {
-        console.error('Erro Gemini API:', error.response?.data || error.message);
-        return res.status(500).json({ error: 'Erro ao processar análise de IA.' });
+        // Log detalhado para você ver no painel da Vercel
+        const erroDetalhe = error.response?.data || error.message;
+        console.error('ERRO CRÍTICO NA API DO GEMINI:', JSON.stringify(erroDetalhe, null, 2));
+        
+        return res.status(500).json({ 
+            error: 'Erro ao processar análise.',
+            details: erroDetalhe // Envia o detalhe para o front (apenas para debug)
+        });
     }
-}
+};

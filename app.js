@@ -2424,10 +2424,7 @@ async function handleMostrarDetalhes(symbol) {
             }
 
             // HTML Principal
-// ... dentro de handleMostrarDetalhes, onde define detalhesPreco.innerHTML ...
-
-            // HTML Principal
-            detalhesPreco.innerHTML = `
+detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
                     <div class="flex justify-center items-end gap-3">
@@ -2520,10 +2517,6 @@ async function handleMostrarDetalhes(symbol) {
                         </div>
                     `;
                 }
-                // Valor de Mercado mantemos o da Brapi ou "N/A" se deu erro
-            });
-
-// ... restante da função ...
         
         renderizarTransacoesDetalhes(symbol);
         atualizarIconeFavorito(symbol);

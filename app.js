@@ -18,9 +18,11 @@ const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';
     try {
         const date = new Date(dateString);
+        // Ajuste para evitar problemas de fuso horário com datas YYYY-MM-DD simples
         if (dateString.length === 10) {
             date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
         }
+        
         const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
         if (includeTime) {
             options.hour = '2-digit';
@@ -117,26 +119,25 @@ function criarCardElemento(ativo, dados) {
             
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
 
-            // AJUSTE VISUAL: Espaçamento reduzido e removido uppercase
             proventoHtml = `
-            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
+            <div class="mt-3 space-y-2 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500">Valor p/ Cota</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Valor p/ Cota</span>
                     <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500">Sua Previsão</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Sua Previsão</span>
                     ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
-                    <span class="text-xs text-gray-500" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
                     <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
-            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
-                <span class="text-xs text-gray-500">Provento</span>
+            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
+                <span class="text-xs text-gray-500 uppercase tracking-wide">Provento</span>
                 <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
             </div>`;
         }
@@ -146,7 +147,6 @@ function criarCardElemento(ativo, dados) {
     card.className = 'card-bg p-4 rounded-2xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
-    // AJUSTE VISUAL: Drawer com space-y-1.5 (era 3) e labels sem uppercase
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -172,17 +172,17 @@ function criarCardElemento(ativo, dados) {
             </button>
         </div>
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-            <div class="drawer-content space-y-1.5 pt-2">
+            <div class="drawer-content space-y-3 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500">Posição</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Posição</span>
                     <span data-field="posicao-valor" class="text-base font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span data-field="pm-label" class="text-xs text-gray-500">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
+                    <span data-field="pm-label" class="text-xs text-gray-500 uppercase tracking-wide">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
                     <span data-field="custo-valor" class="text-base font-semibold text-white">${formatBRL(custoTotal)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500">L/P</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">L/P</span>
                     <span data-field="pl-valor" class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
                 </div>
                 <div data-field="provento-container">${proventoHtml}</div> 
@@ -241,26 +241,25 @@ function atualizarCardElemento(card, ativo, dados) {
 
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
             
-            // AJUSTE VISUAL: Atualização dinâmica também com novo espaçamento e sem uppercase
             proventoHtml = `
-            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
+            <div class="mt-3 space-y-2 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500">Valor p/ Cota</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Valor p/ Cota</span>
                     <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500">Sua Previsão</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide">Sua Previsão</span>
                     ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
-                    <span class="text-xs text-gray-500" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
                     <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
-            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
-                <span class="text-xs text-gray-500">Provento</span>
+            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
+                <span class="text-xs text-gray-500 uppercase tracking-wide">Provento</span>
                 <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
             </div>`;
         }
@@ -934,27 +933,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
 
-    async function processarDividendosPagos() {
+async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         
+        // CORREÇÃO CRÍTICA:
+        // Não usamos mais '+=' no saldoCaixa existente.
+        // Criamos uma variável zerada para recalcular o TOTAL HISTÓRICO correto com a nova lógica.
         let novoSaldoCalculado = 0; 
         let proventosParaMarcarComoProcessado = [];
 
+        // Itera sobre TODOS os proventos conhecidos
         for (const provento of proventosConhecidos) {
+            // Verifica se é um provento válido (tem data e valor)
             if (provento.paymentDate && provento.value > 0) {
                 const parts = provento.paymentDate.split('-');
                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
+                // Se a data de pagamento já passou ou é hoje
                 if (!isNaN(dataPagamento) && dataPagamento <= hoje) {
+                    
+                    // APLICA A REGRA DA DATA COM (Correta)
                     const dataReferencia = provento.dataCom || provento.paymentDate;
+                    
+                    // Verifica quantas cotas você tinha na data de corte
                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
                     if (qtdElegivel > 0) {
                         const valorRecebido = provento.value * qtdElegivel;
+                        
+                        // Soma ao saldo temporário
                         novoSaldoCalculado += valorRecebido;
                     }
                     
+                    // Se ainda não estava marcado como processado no banco, marcamos para atualizar depois
+                    // (Apenas para controle, pois o cálculo agora é sempre total)
                     if (!provento.processado) {
                         provento.processado = true;
                         proventosParaMarcarComoProcessado.push(provento);
@@ -963,10 +976,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        // ATUALIZAÇÃO FINAL
+        // Substitui o saldo global pelo novo valor recalculado (Exato)
         saldoCaixa = novoSaldoCalculado;
+        
+        // Salva o valor correto no banco de dados
         await salvarCaixa();
+        
+        // Atualiza a interface
         if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
         
+        // Atualiza o status 'processado' no banco para evitar reprocessamentos desnecessários em outras lógicas
         if (proventosParaMarcarComoProcessado.length > 0) {
             for (const provento of proventosParaMarcarComoProcessado) {
                 await supabaseDB.updateProventoProcessado(provento.id);
@@ -975,7 +995,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         console.log("Saldo de proventos recalculado:", formatBRL(saldoCaixa));
     }
-
     function calcularCarteira() {
         const ativosMap = new Map();
         const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1167,46 +1186,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             alocacaoChartInstance = new Chart(ctx, {
                 type: 'doughnut',
-                data: { 
-                    labels: labels, 
-                    datasets: [{ 
-                        data: data, 
-                        backgroundColor: colors, 
-                        // AJUSTE VISUAL: Borda preta grossa para separar as fatias
-                        borderWidth: 4,
-                        borderColor: '#000000',
-                        hoverBorderColor: '#000000'
-                    }] 
-                },
+                data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, }] },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    cutout: '60%', // Rosca um pouco mais fina para elegância
                     plugins: {
-                        legend: { 
-                            display: true, 
-                            position: 'bottom', 
-                            labels: { 
-                                color: '#9ca3af', // Cinza mais suave
-                                boxWidth: 10, 
-                                padding: 15,
-                                usePointStyle: true, // Bolinhas em vez de quadrados na legenda
-                                font: { size: 11 }
-                            } 
-                        },
+                        legend: { display: true, position: 'bottom', labels: { color: '#f3f4f6', boxWidth: 12, padding: 15, } },
                         tooltip: {
-                            backgroundColor: 'rgba(28, 28, 30, 0.95)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            padding: 12,
-                            cornerRadius: 8,
-                            displayColors: true,
                             callbacks: {
                                 label: function(context) {
                                     const label = context.label || '';
                                     const value = context.parsed || 0;
                                     const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
                                     const percent = ((value / total) * 100).toFixed(2);
-                                    return ` ${label}: ${formatBRL(value)} (${percent}%)`;
+                                    return `${label}: ${formatBRL(value)} (${percent}%)`;
                                 }
                             }
                         }
@@ -1260,8 +1252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         hoverBackgroundColor: hoverGradient,
                         borderColor: 'rgba(192, 132, 252, 0.3)', 
                         borderWidth: 1,
-                        borderRadius: 4,
-                        barPercentage: 0.6 // Barras um pouco mais finas
+                        borderRadius: 5 
                     }]
                 },
                 options: {
@@ -1269,11 +1260,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(28, 28, 30, 0.95)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            padding: 12,
-                            cornerRadius: 8,
+                            backgroundColor: '#1A1A1A',
+                            titleColor: '#f3f4f6',
+                            bodyColor: '#f3f4f6',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            padding: 10,
                             displayColors: false, 
                             callbacks: {
                                 title: (context) => `Mês: ${context[0].label}`, 
@@ -1284,13 +1276,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: { color: '#2A2A2A', drawBorder: false }, 
+                            grid: { color: '#2A2A2A' }, 
                             ticks: { display: false }
                         },
-                        x: { 
-                            grid: { display: false, drawBorder: false },
-                            ticks: { color: '#6b7280', font: { size: 10 } }
-                        }
+                        x: { grid: { display: false } }
                     }
                 }
             });
@@ -1346,8 +1335,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(28, 28, 30, 0.95)',
-                            borderColor: '#333',
+                            backgroundColor: '#1A1A1A',
+                            borderColor: '#2A2A2A',
                             borderWidth: 1,
                             padding: 10,
                             displayColors: false, 
@@ -1360,7 +1349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: { color: '#2A2A2A', drawBorder: false }, 
+                            grid: { color: '#2A2A2A' }, 
                             ticks: { 
                                 display: true,
                                 color: '#6b7280',
@@ -1371,7 +1360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             }
                         },
                         x: { 
-                            grid: { display: false, drawBorder: false },
+                            grid: { display: false },
                             ticks: {
                                 color: '#9ca3af',
                                 font: { size: 10 }
@@ -1410,6 +1399,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = data;
+            
+            patrimonioChartInstance.data.datasets[0].backgroundColor = gradient;
+            patrimonioChartInstance.data.datasets[0].borderColor = '#c084fc';
+            patrimonioChartInstance.data.datasets[0].pointBackgroundColor = '#c084fc';
+            
+            patrimonioChartInstance.data.datasets[0].pointRadius = 3;
+            patrimonioChartInstance.data.datasets[0].pointHitRadius = 15;
+            patrimonioChartInstance.data.datasets[0].pointHoverRadius = 5;
+            
             patrimonioChartInstance.update();
         } else {
             patrimonioChartInstance = new Chart(ctx, {
@@ -1422,33 +1420,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                         fill: true,
                         backgroundColor: gradient,
                         borderColor: '#c084fc', 
-                        tension: 0.3, // Curva mais suave
-                        pointRadius: 0, // Remove bolinhas (aparecem no hover)
-                        pointHitRadius: 20,
-                        pointHoverRadius: 4,
-                        pointHoverBackgroundColor: '#fff',
-                        borderWidth: 2
+                        tension: 0.1,
+                        pointRadius: 3, 
+                        pointBackgroundColor: '#c084fc', 
+                        pointHitRadius: 15, 
+                        pointHoverRadius: 5 
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(28, 28, 30, 0.95)',
-                            padding: 10,
-                            displayColors: false,
                             callbacks: {
-                                label: (context) => `${formatBRL(context.parsed.y)}`
+                                label: (context) => `Patrimônio: ${formatBRL(context.parsed.y)}`
                             }
                         }
                     },
                     scales: {
-                        y: { beginAtZero: false, ticks: { display: false }, grid: { display: false } },
+                        y: { beginAtZero: false, ticks: { display: false }, grid: { color: '#2A2A2A' } },
                         x: { ticks: { display: false }, grid: { display: false } }
                     }
                 }
@@ -1622,39 +1612,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarGraficoPatrimonio(); 
     }
 
-function renderizarProventos() {
-    let totalEstimado = 0;
-    
-    // Define "Hoje" zerando as horas para comparar apenas as datas
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    
-    proventosAtuais.forEach(provento => {
-        if (provento && typeof provento.value === 'number' && provento.value > 0) {
-             const dataReferencia = provento.dataCom || provento.paymentDate;
-             
-             const parts = provento.paymentDate.split('-');
-             // AJUSTE DE SEGURANÇA: Usar parseInt para garantir números inteiros
-             const dataPag = new Date(
-                 parseInt(parts[0]), 
-                 parseInt(parts[1]) - 1, 
-                 parseInt(parts[2])
-             );
-             
-             // Se dataPag for > hoje (AMANHÃ ou depois), mostra.
-             // Se for HOJE ou ONTEM, a função 'processarDividendosPagos' vai jogar no caixa.
-             if (dataPag > hoje) {
+    function renderizarProventos() {
+        let totalEstimado = 0;
+        
+        proventosAtuais.forEach(provento => {
+            if (provento && typeof provento.value === 'number' && provento.value > 0) {
+                 const dataReferencia = provento.dataCom || provento.paymentDate;
                  const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
                  
                  if (qtdElegivel > 0) {
                      totalEstimado += (qtdElegivel * provento.value);
                  }
-             }
-        }
-    });
-    
-    totalProventosEl.textContent = formatBRL(totalEstimado);
-}
+            }
+        });
+        
+        totalProventosEl.textContent = formatBRL(totalEstimado);
+    }
     // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
 
     async function handleAtualizarNoticias(force = false) {
@@ -1770,15 +1743,10 @@ function renderizarProventos() {
         return resultados.filter(p => p !== null);
     }
 
-function processarProventosScraper(proventosScraper = []) {
+    function processarProventosScraper(proventosScraper = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        
-        // DEFINE UMA MARGEM DE SEGURANÇA (ex: 30 dias atrás)
-        // Isso permite capturar dividendos que foram pagos recentemente mas o app não viu
-        const dataLimitePassado = new Date(hoje);
-        dataLimitePassado.setDate(hoje.getDate() - 7);
 
         return proventosScraper
             .map(provento => {
@@ -1789,8 +1757,7 @@ function processarProventosScraper(proventosScraper = []) {
                     const parts = provento.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                     
-                    // CORREÇÃO: Aceita se for Futuro OU se for recente (maior que 30 dias atrás)
-                    if (!isNaN(dataPagamento) && dataPagamento >= dataLimitePassado) {
+                    if (!isNaN(dataPagamento) && dataPagamento >= hoje) {
                         return provento;
                     }
                 }
@@ -1826,6 +1793,7 @@ function processarProventosScraper(proventosScraper = []) {
         
         if (fiisParaBuscar.length > 0) {
             try {
+                // SUBSTITUIÇÃO: Chamada ao Scraper em vez do Gemini
                 const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
@@ -1854,7 +1822,7 @@ function processarProventosScraper(proventosScraper = []) {
         return processarProventosScraper(proventosPool); 
     }
 
-    async function buscarHistoricoProventosAgregado(force = false) {
+async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
@@ -1869,6 +1837,7 @@ function processarProventosScraper(proventosScraper = []) {
 
         if (!rawDividends) {
             try {
+                // Agora recebe a lista bruta: [{ symbol, dataCom, paymentDate, value }, ...]
                 rawDividends = await callScraperHistoricoPortfolioAPI(fiiSymbols);
                 if (rawDividends && rawDividends.length > 0) {
                     await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
@@ -1881,15 +1850,18 @@ function processarProventosScraper(proventosScraper = []) {
 
         if (!rawDividends || rawDividends.length === 0) return { labels: [], data: [] };
 
+        // 1. Agrupamento Manual por Mês de Competência (Data Com)
         const aggregator = {};
 
         rawDividends.forEach(item => {
+            // A REGRA DE OURO: Prioriza Data Com para definir onde a barra aparece
             const dataReferencia = item.dataCom || item.paymentDate;
             
             if (dataReferencia) {
-                const [ano, mes] = dataReferencia.split('-'); 
-                const chaveMes = `${mes}/${ano.substring(2)}`; 
+                const [ano, mes] = dataReferencia.split('-'); // Formato YYYY-MM-DD
+                const chaveMes = `${mes}/${ano.substring(2)}`; // Formato MM/AA (ex: 10/25)
 
+                // 2. Cálculo Preciso: Quantas cotas eu tinha EXATAMENTE nesse dia?
                 const qtdNaData = getQuantidadeNaData(item.symbol, dataReferencia);
 
                 if (qtdNaData > 0) {
@@ -1899,6 +1871,7 @@ function processarProventosScraper(proventosScraper = []) {
             }
         });
 
+        // 3. Ordenação Cronológica das Barras
         const labels = Object.keys(aggregator).sort((a, b) => {
             const [mesA, anoA] = a.split('/');
             const [mesB, anoB] = b.split('/');
@@ -1910,15 +1883,12 @@ function processarProventosScraper(proventosScraper = []) {
         return { labels, data };
     }
     
-async function atualizarTodosDados(force = false) { 
+     async function atualizarTodosDados(force = false) { 
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
         
         calcularCarteira();
-        
-        // 1. Processa o que já sabemos (cache local)
         await processarDividendosPagos(); 
-        
         renderizarHistorico();
         renderizarGraficoPatrimonio(); 
         
@@ -1932,7 +1902,6 @@ async function atualizarTodosDados(force = false) {
             refreshIcon.classList.add('spin-animation');
         }
 
-        // Se não for forçado, tenta usar o que tem no scraper pra renderizar rápido
         if (!force) {
             const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
             if (proventosFuturosCache.length > 0) {
@@ -1968,18 +1937,9 @@ async function atualizarTodosDados(force = false) {
             if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
 
-        // --- CORREÇÃO AQUI ---
         promessaProventos.then(async proventosFuturos => {
             proventosAtuais = proventosFuturos; 
-            
-            // FIX CRÍTICO: Agora que temos dados novos da API, recalculamos o CAIXA imediatamente.
-            // Isso garante que se um provento "venceu" hoje e a API acabou de contar,
-            // ele sai da lista de 'Futuros' e entra no saldo de 'Caixa' agora mesmo.
-            await processarDividendosPagos();
-
             renderizarProventos(); 
-            
-            // Re-renderiza a carteira para atualizar badges de proventos nos cards
             if (precosAtuais.length > 0) { 
                 await renderizarCarteira(); 
             }
@@ -3130,4 +3090,3 @@ async function atualizarTodosDados(force = false) {
     
     await init();
 });
-

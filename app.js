@@ -1761,7 +1761,7 @@ function processarProventosScraper(proventosScraper = []) {
         // DEFINE UMA MARGEM DE SEGURANÇA (ex: 30 dias atrás)
         // Isso permite capturar dividendos que foram pagos recentemente mas o app não viu
         const dataLimitePassado = new Date(hoje);
-        dataLimitePassado.setDate(hoje.getDate() - 30);
+        dataLimitePassado.setDate(hoje.getDate() - 7);
 
         return proventosScraper
             .map(provento => {

@@ -112,32 +112,33 @@ function criarCardElemento(ativo, dados) {
         if (dadoProvento && dadoProvento.value > 0) {
             let valorTexto = '';
             if (proventoReceber > 0) {
-                 valorTexto = `<span class="text-base font-semibold accent-text">+${formatBRL(proventoReceber)}</span>`;
+                 valorTexto = `<span class="text-sm font-semibold accent-text">+${formatBRL(proventoReceber)}</span>`;
             } else {
-                 valorTexto = `<span class="text-xs font-medium text-orange-400 bg-orange-900/30 px-2 py-1 rounded">Sem direito</span>`;
+                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded">Sem direito</span>`;
             }
             
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
 
+            // AJUSTE 2: Remoção de uppercase, redução de margins e tracking
             proventoHtml = `
-            <div class="mt-3 space-y-2 border-t border-gray-800 pt-2">
+            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">Valor p/ Cota</span>
+                    <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
                     <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">Sua Previsão</span>
+                    <span class="text-xs text-gray-500 font-medium">Sua Previsão</span>
                     ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
-                    <span class="text-xs text-gray-500 uppercase tracking-wide" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-500 font-medium" title="Data limite para compra">Data Com: ${dataComTexto}</span>
                     <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
-            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
-                <span class="text-xs text-gray-500 uppercase tracking-wide">Provento</span>
+            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
+                <span class="text-xs text-gray-500 font-medium">Provento</span>
                 <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
             </div>`;
         }
@@ -150,40 +151,40 @@ function criarCardElemento(ativo, dados) {
     card.innerHTML = `
         <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
-                <div class="w-14 h-14 rounded-full bg-[#1C1C1E] border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
+                <div class="w-12 h-12 rounded-full bg-[#1C1C1E] border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
                     <span class="text-xs font-bold text-purple-400 tracking-tight leading-none">${ativo.symbol}</span>
                 </div>
                 <div>
-                    <h2 class="text-xl font-bold text-white">${ativo.symbol}</h2>
-                    <p class="text-sm text-gray-500 mb-1" data-field="cota-qtd">${ativo.quantity} cota(s)</p>
-                    <div data-field="pl-tag">${plTagHtml}</div>
+                    <h2 class="text-lg font-bold text-white leading-tight">${ativo.symbol}</h2>
+                    <p class="text-xs text-gray-500" data-field="cota-qtd">${ativo.quantity} cota(s)</p>
+                    <div class="mt-1" data-field="pl-tag">${plTagHtml}</div>
                 </div>
             </div>
             <div class="text-right flex-shrink-0 ml-2">
-                <span data-field="variacao-valor" class="${corVariacao} font-semibold text-lg">${dadoPreco ? variacaoFormatada : '...'}</span>
-                <p data-field="preco-valor" class="text-gray-100 text-lg">${precoFormatado}</p>
+                <span data-field="variacao-valor" class="${corVariacao} font-semibold text-base block">${dadoPreco ? variacaoFormatada : '...'}</span>
+                <p data-field="preco-valor" class="text-gray-200 text-base font-medium">${precoFormatado}</p>
             </div>
         </div>
-        <div class="flex justify-center mt-2 border-t border-gray-800 pt-2">
-            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-symbol="${ativo.symbol}" data-action="toggle" title="Mostrar mais">
-                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+        <div class="flex justify-center mt-1 pt-1">
+            <button class="p-1 text-gray-600 hover:text-white transition-colors rounded-full hover:bg-gray-800" data-symbol="${ativo.symbol}" data-action="toggle" title="Mostrar mais">
+                <svg class="card-arrow-icon w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>
             </button>
         </div>
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-            <div class="drawer-content space-y-3 pt-2">
+            <div class="drawer-content space-y-2 pt-1">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">Posição</span>
-                    <span data-field="posicao-valor" class="text-base font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
+                    <span class="text-xs text-gray-500 font-medium">Posição</span>
+                    <span data-field="posicao-valor" class="text-sm font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span data-field="pm-label" class="text-xs text-gray-500 uppercase tracking-wide">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
-                    <span data-field="custo-valor" class="text-base font-semibold text-white">${formatBRL(custoTotal)}</span>
+                    <span data-field="pm-label" class="text-xs text-gray-500 font-medium">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
+                    <span data-field="custo-valor" class="text-sm font-semibold text-white">${formatBRL(custoTotal)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">L/P</span>
-                    <span data-field="pl-valor" class="text-base font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
+                    <span class="text-xs text-gray-500 font-medium">L/P</span>
+                    <span data-field="pl-valor" class="text-sm font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
                 </div>
                 <div data-field="provento-container">${proventoHtml}</div> 
                 <div class="flex justify-end gap-3 pt-2">
@@ -215,11 +216,11 @@ function atualizarCardElemento(card, ativo, dados) {
 
     const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
     variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-    variacaoEl.className = `${corVariacao} font-semibold text-lg`; 
+    variacaoEl.className = `${corVariacao} font-semibold text-base block`; 
 
     const plValorEl = card.querySelector('[data-field="pl-valor"]');
     plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...';
-    plValorEl.className = `text-base font-semibold ${corPL}`; 
+    plValorEl.className = `text-sm font-semibold ${corPL}`; 
 
     let plTagHtml = '';
     if (dadoPreco) {
@@ -234,32 +235,32 @@ function atualizarCardElemento(card, ativo, dados) {
         if (dadoProvento && dadoProvento.value > 0) {
             let valorTexto = '';
             if (proventoReceber > 0) {
-                 valorTexto = `<span class="text-base font-semibold accent-text">+${formatBRL(proventoReceber)}</span>`;
+                 valorTexto = `<span class="text-sm font-semibold accent-text">+${formatBRL(proventoReceber)}</span>`;
             } else {
-                 valorTexto = `<span class="text-xs font-medium text-orange-400 bg-orange-900/30 px-2 py-1 rounded">Sem direito</span>`;
+                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded">Sem direito</span>`;
             }
 
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
             
             proventoHtml = `
-            <div class="mt-3 space-y-2 border-t border-gray-800 pt-2">
+            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">Valor p/ Cota</span>
+                    <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
                     <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">Sua Previsão</span>
+                    <span class="text-xs text-gray-500 font-medium">Sua Previsão</span>
                     ${valorTexto}
                 </div>
                 <div class="flex justify-between items-center"> 
-                    <span class="text-xs text-gray-500 uppercase tracking-wide" title="Você precisa ter comprado até esta data">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-500 font-medium" title="Data limite para compra">Data Com: ${dataComTexto}</span>
                     <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
-            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-800">
-                <span class="text-xs text-gray-500 uppercase tracking-wide">Provento</span>
+            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
+                <span class="text-xs text-gray-500 font-medium">Provento</span>
                 <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
             </div>`;
         }
@@ -1155,7 +1156,7 @@ async function processarDividendosPagos() {
         fiiNewsList.appendChild(fragment);
     }
     // --- FUNÇÕES DE GRÁFICOS ---
-    function renderizarGraficoAlocacao(dadosGrafico) {
+function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1186,7 +1187,16 @@ async function processarDividendosPagos() {
         } else {
             alocacaoChartInstance = new Chart(ctx, {
                 type: 'doughnut',
-                data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, }] },
+                data: { 
+                    labels: labels, 
+                    datasets: [{ 
+                        data: data, 
+                        backgroundColor: colors, 
+                        // AJUSTE 1: Separação preta entre as fatias
+                        borderWidth: 2, 
+                        borderColor: '#000000' 
+                    }] 
+                },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {

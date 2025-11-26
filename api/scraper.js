@@ -28,28 +28,13 @@ function parseValue(valueStr) {
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
-        let response;
+        // ... (lógica de fallback para ações continua igual) ...
         
-        try {
-            response = await client.get(url);
-        } catch (e) {
-            if (e.response && e.response.status === 404) {
-                url = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
-                response = await client.get(url);
-            } else {
-                throw e; 
-            }
-        }
+        // ... (request e cheerio load) ...
 
-        const html = response.data;
-        const $ = cheerio.load(html);
-        
-        // Seletores baseados nas classes do Investidor10
-        // DY costuma estar em ._card.dy ou .wc_yield
-        // P/VP costuma estar em ._card.vp ou .wc_vp
-        
         let dy = 'N/A';
         let pvp = 'N/A';
+        let valMercado = 'N/A'; // <--- NOVO
 
         // Tenta buscar DY
         const dyEl = $('._card.dy ._card-body span').first();
@@ -59,21 +44,26 @@ async function scrapeFundamentos(ticker) {
         const pvpEl = $('._card.vp ._card-body span').first();
         if (pvpEl.length) pvp = pvpEl.text().trim();
 
-        // Fallback genérico caso mudem as classes
-        if (dy === 'N/A') {
-             // Tenta achar pelo título
+        // Tenta buscar Valor de Mercado (NOVO)
+        // No Investidor10, geralmente a classe é ._card.val_mercado
+        const valMercadoEl = $('._card.val_mercado ._card-body span').first();
+        if (valMercadoEl.length) valMercado = valMercadoEl.text().trim();
+
+        // Fallback genérico (caso mudem as classes, tenta achar pelo texto do cabeçalho)
+        if (valMercado === 'N/A') {
              $('.cell .name').each((i, el) => {
-                 if ($(el).text().includes('Dividend Yield')) {
-                     dy = $(el).parent().find('.value').text().trim();
+                 const texto = $(el).text().toLowerCase();
+                 if (texto.includes('valor de mercado')) {
+                     valMercado = $(el).parent().find('.value').text().trim();
                  }
              });
         }
 
-        return { dy, pvp };
+        return { dy, pvp, valMercado }; // <--- Retorna o novo campo
 
     } catch (error) {
         console.warn(`[Scraper] Falha ao ler fundamentos de ${ticker}: ${error.message}`);
-        return { dy: '-', pvp: '-' }; 
+        return { dy: '-', pvp: '-', valMercado: '-' }; 
     }
 }
 

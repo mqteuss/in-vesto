@@ -89,26 +89,31 @@ module.exports = async function handler(req, res) {
 
         const { mode, payload } = req.body;
 
-        if (mode === 'proventos_carteira') {
+if (mode === 'proventos_carteira') {
             const { fiiList } = payload || {};
             if (!fiiList || !Array.isArray(fiiList)) return res.json({ json: [] });
 
             const promises = fiiList.map(async (ticker) => {
                 const history = await scrapeAsset(ticker);
-                const latest = history.find(h => h.paymentDate && h.value > 0);
-                if (latest) {
-                    return {
+                // PEGA OS 3 ÚLTIMOS PAGAMENTOS (para garantir que não perdemos o de ontem)
+                const recents = history
+                    .filter(h => h.paymentDate && h.value > 0)
+                    .slice(0, 3); 
+                
+                if (recents.length > 0) {
+                    return recents.map(r => ({
                         symbol: ticker.toUpperCase(),
-                        value: latest.value,
-                        paymentDate: latest.paymentDate,
-                        dataCom: latest.dataCom
-                    };
+                        value: r.value,
+                        paymentDate: r.paymentDate,
+                        dataCom: r.dataCom
+                    }));
                 }
                 return null;
             });
 
             const data = await Promise.all(promises);
-            return res.status(200).json({ json: data.filter(d => d !== null) });
+            // O resultado será um array de arrays, precisamos usar flat()
+            return res.status(200).json({ json: data.filter(d => d !== null).flat() });
         }
 
         if (mode === 'historico_12m') {

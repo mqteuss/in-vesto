@@ -2424,7 +2424,7 @@ async function handleMostrarDetalhes(symbol) {
             }
 
             // HTML Principal
-detalhesPreco.innerHTML = `
+            detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
                     <div class="flex justify-center items-end gap-3">
@@ -2468,7 +2468,6 @@ detalhesPreco.innerHTML = `
                     <span class="text-xs text-gray-500">Mín. 52 Semanas</span>
                     <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekLow)}</p>
                 </div>
-                
                 <div class="col-span-2 bg-gray-800 p-4 rounded-xl">
                     <span class="text-xs text-gray-500">Valor de Mercado</span>
                     <p id="detalhes-mercado-valor" class="text-lg font-semibold text-white">
@@ -2501,14 +2500,12 @@ detalhesPreco.innerHTML = `
                     const elMercado = document.getElementById('detalhes-mercado-valor');
                     if (elMercado) {
                         elMercado.textContent = dados.valMercado;
-                        // Adiciona cor roxa suave para indicar que foi atualizado
                         elMercado.classList.add('text-purple-100'); 
                     }
                 }
 
             }).catch(e => {
                 console.error("Erro ao carregar fundamentos", e);
-                // Tratamento de erro visual para os cards de fundamentos
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
                     area.innerHTML = `
@@ -2517,6 +2514,11 @@ detalhesPreco.innerHTML = `
                         </div>
                     `;
                 }
+            });
+
+        } else {
+            detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
+        }
         
         renderizarTransacoesDetalhes(symbol);
         atualizarIconeFavorito(symbol);

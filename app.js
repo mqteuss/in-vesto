@@ -1622,16 +1622,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarGraficoPatrimonio(); 
     }
 
-    function renderizarProventos() {
+function renderizarProventos() {
         let totalEstimado = 0;
+        
+        // Define "Hoje" zerando as horas para comparar apenas as datas
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
         
         proventosAtuais.forEach(provento => {
             if (provento && typeof provento.value === 'number' && provento.value > 0) {
                  const dataReferencia = provento.dataCom || provento.paymentDate;
-                 const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
                  
-                 if (qtdElegivel > 0) {
-                     totalEstimado += (qtdElegivel * provento.value);
+                 const parts = provento.paymentDate.split('-');
+                 const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+                 
+                 // LÓGICA PERFEITA:
+                 // Se dataPag for > hoje (ou seja, AMANHÃ ou depois), mostra em "Próx. Proventos".
+                 // Se dataPag for == hoje ou < hoje (ontem), ele é ignorado aqui 
+                 // (porque a outra função 'processarDividendosPagos' já colocou ele no Caixa).
+                 if (dataPag > hoje) {
+                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+                     
+                     if (qtdElegivel > 0) {
+                         totalEstimado += (qtdElegivel * provento.value);
+                     }
                  }
             }
         });

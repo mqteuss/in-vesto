@@ -1852,6 +1852,19 @@ function processarProventosScraper(proventosScraper = []) {
         
         return processarProventosScraper(proventosPool); 
     }
+	
+	async function callScraperFundamentosAPI(ticker) {
+        const body = { 
+            mode: 'fundamentos', 
+            payload: { ticker } 
+        };
+        const response = await fetchBFF('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return response.json;
+    }
 
 async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
@@ -2304,7 +2317,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
         });
     }
     
-    async function handleMostrarDetalhes(symbol) {
+async function handleMostrarDetalhes(symbol) {
         detalhesMensagem.classList.add('hidden');
         detalhesLoading.classList.remove('hidden');
         detalhesPreco.innerHTML = '';
@@ -2321,6 +2334,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
             btn.classList.toggle('active', btn.dataset.meses === '3'); 
         });
         
+        // 1. Busca Preço (BFF/Brapi)
         const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
         let precoData = await getCache(cacheKeyPreco);
@@ -2341,19 +2355,20 @@ async function buscarHistoricoProventosAgregado(force = false) {
             }
         }
 
-        let promessaScraper = null;
-        
+        // 2. Busca Histórico (Scraper) - Assíncrono para renderizar gráfico depois
         if (isFII(symbol)) {
             detalhesHistoricoContainer.classList.remove('hidden'); 
-            // SUBSTITUIÇÃO: Fetch Scraper
-            promessaScraper = fetchHistoricoScraper(symbol); 
+            fetchHistoricoScraper(symbol); // Dispara sem await para não travar UI
         }
         
         detalhesLoading.classList.add('hidden');
 
+        // Renderiza HTML Base
         if (precoData) {
             detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
             const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
+            
+            // Dados de Posição do Usuário
             const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
             let plHtml = '';
             
@@ -2378,6 +2393,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
                 `;
             }
 
+            // HTML Principal
             detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
@@ -2386,7 +2402,20 @@ async function buscarHistoricoProventosAgregado(force = false) {
                         <span class="text-xl font-semibold ${variacaoCor}">${formatPercent(precoData.regularMarketChangePercent)}</span>
                     </div>
                 </div>
+                
                 ${plHtml}
+
+                <div class="col-span-2 grid grid-cols-2 gap-3" id="detalhes-fundamentos-area">
+                    <div class="bg-gray-800 p-3 rounded-xl text-center animate-pulse">
+                        <span class="text-xs text-gray-500">P/VP</span>
+                        <p class="text-base font-semibold text-gray-400">...</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-xl text-center animate-pulse">
+                        <span class="text-xs text-gray-500">DY (12m)</span>
+                        <p class="text-base font-semibold text-gray-400">...</p>
+                    </div>
+                </div>
+
                 <div class="col-span-2 grid grid-cols-3 gap-3">
                     <div class="bg-gray-800 p-3 rounded-xl text-center">
                         <span class="text-xs text-gray-500">Abertura</span>
@@ -2414,12 +2443,40 @@ async function buscarHistoricoProventosAgregado(force = false) {
                     <p class="text-lg font-semibold text-white">${formatNumber(precoData.marketCap)}</p>
                 </div>
             `;
+
+            // 3. Busca Fundamentos Assincronamente (P/VP e DY)
+            callScraperFundamentosAPI(symbol).then(fundamentos => {
+                const area = document.getElementById('detalhes-fundamentos-area');
+                if (area) {
+                    const dados = fundamentos || { pvp: '-', dy: '-' };
+                    area.innerHTML = `
+                        <div class="bg-gray-800 p-3 rounded-xl text-center">
+                            <span class="text-xs text-gray-500">P/VP</span>
+                            <p class="text-base font-semibold text-white">${dados.pvp || '-'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-3 rounded-xl text-center">
+                            <span class="text-xs text-gray-500">DY (12m)</span>
+                            <p class="text-base font-semibold text-purple-400">${dados.dy || '-'}</p>
+                        </div>
+                    `;
+                }
+            }).catch(e => {
+                console.error("Erro ao carregar fundamentos", e);
+                const area = document.getElementById('detalhes-fundamentos-area');
+                if (area) {
+                    area.innerHTML = `
+                        <div class="bg-gray-800 p-3 rounded-xl text-center col-span-2">
+                            <span class="text-xs text-red-500">Erro ao carregar indicadores</span>
+                        </div>
+                    `;
+                }
+            });
+
         } else {
             detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
         }
         
         renderizarTransacoesDetalhes(symbol);
-        
         atualizarIconeFavorito(symbol);
     }
     

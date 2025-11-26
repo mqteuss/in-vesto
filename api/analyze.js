@@ -46,6 +46,7 @@ export default async function handler(req, res) {
     }
 
     // URL do modelo específico que você usava no arquivo antigo
+    // Se este modelo específico falhar (404), mude para 'gemini-1.5-flash'
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
 
     try {

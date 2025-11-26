@@ -1,7 +1,6 @@
 // api/analyze.js
-// Estrutura idêntica ao gemini.js funcional
+// Agora com GOOGLE SEARCH ativado para dados em tempo real
 
-// Função de retry (backoff) igual à do seu sistema atual
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -23,55 +22,61 @@ async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
 }
 
 export default async function handler(request, response) {
-    // Tratamento simples de método, igual ao gemini.js
-    if (request.method === 'OPTIONS') {
-        return response.status(200).end();
-    }
-    
-    if (request.method !== 'POST') {
-        return response.status(405).json({ error: "Método não permitido, use POST." });
-    }
+    if (request.method === 'OPTIONS') return response.status(200).end();
+    if (request.method !== 'POST') return response.status(405).json({ error: "Use POST." });
 
     const { GEMINI_API_KEY } = process.env;
     if (!GEMINI_API_KEY) {
         console.error("ERRO: GEMINI_API_KEY ausente.");
-        return response.status(500).json({ error: "Configuração de servidor inválida (API Key)." });
+        return response.status(500).json({ error: "API Key não configurada." });
     }
 
-    // Usando o mesmo modelo e versão que funciona no seu gemini.js
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
 
     try {
         const { carteira, totalPatrimonio } = request.body;
 
-        // Preparação do Prompt
-        const systemPrompt = `Você é um Consultor Financeiro Sênior especialista no mercado brasileiro (B3).
-        Seu objetivo é analisar a carteira do usuário e fornecer insights práticos.
-        Seja direto, técnico mas acessível. Use Markdown para formatar (negrito, listas).
-        Não use introduções genéricas.`;
+        // Prompt Atualizado para tirar proveito da Busca
+        const systemPrompt = `
+        Você é um Consultor Financeiro Sênior (B3/Brasil) com acesso a dados em tempo real.
+        
+        DIRETRIZES:
+        1. **Use o Google Search** para verificar a Taxa Selic atual e o cenário de inflação (IPCA) antes de opinar.
+        2. **Contexto**: O usuário é pequeno investidor. Seja incentivador se o patrimônio for baixo (< R$ 2k).
+        3. **Verificação**: Se houver algum FII na lista com "Fato Relevante" negativo recente (últimos 30 dias), alerte no item 'Riscos'.
+        4. **Formato**: Markdown, curto e direto para celular.
+        `;
 
         const userQuery = `
-        Analise minha carteira atual:
+        Analise esta carteira de FIIs/Ações:
         - Patrimônio Total: ${totalPatrimonio}
         - Ativos: ${JSON.stringify(carteira)}
 
-        Gere um relatório curto com estes 4 pontos exatos:
-        1. **Diversificação**: Breve análise da distribuição (Setores, Papel vs Tijolo).
-        2. **Riscos**: Pontos de atenção ou concentração.
-        3. **Nota (0-10)**: Avaliação da saúde da carteira.
-        4. **Sugestão**: Uma ação prática recomendada (manter, comprar, estudar algo).
+        Gere o relatório:
+        ### 1. Raio-X e Cenário 🔎
+        (Analise a carteira frente à Selic/Inflação atuais. Cite os setores).
+
+        ### 2. Pontos de Atenção ⚠️
+        (Riscos de concentração ou notícias recentes negativas dos ativos listados).
+
+        ### 3. Veredito (Nota 0-10) ⭐
+        (Nota baseada em diversificação e qualidade).
+
+        ### 4. Próximo Passo 🚀
+        (Sugestão prática de aporte considerando o cenário econômico atual).
         `;
 
         const geminiPayload = {
             contents: [{ parts: [{ text: userQuery }] }],
             systemInstruction: { parts: [{ text: systemPrompt }] },
+            // AQUI ESTÁ A MÁGICA: Adicionamos a ferramenta de busca
+            tools: [{ google_search: {} }],
             generationConfig: {
-                temperature: 0.7,
+                temperature: 0.5, // Reduzi um pouco para ele não alucinar dados
                 maxOutputTokens: 1000
             }
         };
 
-        // Chamada à API do Google
         const result = await fetchWithBackoff(GEMINI_API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -81,19 +86,12 @@ export default async function handler(request, response) {
         const candidate = result?.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
 
-        if (!text) {
-            throw new Error("A IA não retornou texto válido.");
-        }
+        if (!text) throw new Error("A IA não retornou texto válido.");
 
-        // Retorna o resultado formatado
         return response.status(200).json({ result: text });
 
     } catch (error) {
         console.error("Erro no Analyze Handler:", error);
-        // Retorna o erro detalhado para o frontend ver o que houve
-        return response.status(500).json({ 
-            error: `Erro interno: ${error.message}`,
-            details: error.toString()
-        });
+        return response.status(500).json({ error: `Erro interno: ${error.message}` });
     }
 }

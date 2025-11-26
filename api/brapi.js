@@ -30,7 +30,7 @@ export default async function handler(request, response) {
 
         const data = await apiResponse.json();
 
-        response.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate');
+        response.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
 
         return response.status(200).json(data);
 

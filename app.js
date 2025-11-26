@@ -18,7 +18,6 @@ const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';
     try {
         const date = new Date(dateString);
-        // Ajuste para evitar problemas de fuso horário com datas YYYY-MM-DD simples
         if (dateString.length === 10) {
             date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
         }
@@ -110,8 +109,6 @@ function criarCardElemento(ativo, dados) {
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
-            
-            // LÓGICA VISUAL: Verifica se já foi pago para mudar o texto
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             const hoje = new Date();
@@ -119,9 +116,8 @@ function criarCardElemento(ativo, dados) {
             
             const foiPago = dataPag <= hoje;
             const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
-            // Se já foi pago, deixa o texto cinza (discreto). Se é futuro, deixa colorido (destaque).
             const valorClass = foiPago ? "text-gray-400" : "accent-text";
-            const sinal = foiPago ? "" : "+"; // Remove o '+' se já foi pago
+            const sinal = foiPago ? "" : "+";
 
             let valorTexto = '';
             if (proventoReceber > 0) {
@@ -245,8 +241,6 @@ function atualizarCardElemento(card, ativo, dados) {
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
-            
-            // LÓGICA VISUAL: Igual à função de criar
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             const hoje = new Date();
@@ -476,6 +470,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
     
+    // --- NOVOS SELETORES IA ---
+    const btnIaAnalise = document.getElementById('btn-ia-analise');
+    const aiModal = document.getElementById('ai-modal');
+    const closeAiModal = document.getElementById('close-ai-modal');
+    const aiContent = document.getElementById('ai-content');
+    const aiLoading = document.getElementById('ai-loading');
+
     let currentUserId = null;
     let transacoes = [];        
     let carteiraCalculada = []; 
@@ -748,8 +749,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error(`Erro ao remover proventos conhecidos do DB para ${symbol}:`, e);
         }
     }
-    
-    async function getCache(key) {
+async function getCache(key) {
         try {
             const cacheItem = await vestoDB.get('apiCache', key);
             if (!cacheItem) return null;
@@ -858,6 +858,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 400); 
     }
 
+    // --- NOVA FUNÇÃO: HANDLER DE IA ---
+    async function handleAnaliseIA() {
+        if (!carteiraCalculada || carteiraCalculada.length === 0) {
+            showToast("Adicione ativos antes de pedir uma análise.");
+            return;
+        }
+
+        // 1. Abre o Modal e mostra Loading
+        aiModal.classList.add('visible');
+        aiModal.querySelector('.modal-content').classList.remove('modal-out');
+        aiContent.classList.add('hidden');
+        aiLoading.classList.remove('hidden');
+
+        // 2. Prepara os dados (Payload)
+        // Calcula patrimônio total atual (soma das posições + caixa)
+        const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
+        let valorTotalAtivos = 0;
+        
+        const carteiraParaEnvio = carteiraCalculada.map(ativo => {
+            const dadosPreco = precosMap.get(ativo.symbol);
+            const precoAtual = dadosPreco ? dadosPreco.regularMarketPrice : ativo.precoMedio;
+            const total = precoAtual * ativo.quantity;
+            valorTotalAtivos += total;
+
+            return {
+                ticker: ativo.symbol,
+                qtd: ativo.quantity,
+                pm: ativo.precoMedio,
+                atual: precoAtual,
+                total: total,
+                tipo: isFII(ativo.symbol) ? 'FII' : 'Ação'
+            };
+        });
+
+        const totalPatrimonio = valorTotalAtivos + saldoCaixa;
+
+        try {
+            // 3. Chama a API Serverless
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    carteira: carteiraParaEnvio,
+                    totalPatrimonio: formatBRL(totalPatrimonio),
+                    perfil: "Investidor focado em dividendos e longo prazo"
+                })
+            });
+
+            if (!response.ok) throw new Error('Falha na comunicação com a IA');
+
+            const data = await response.json();
+            
+            // 4. Renderiza o Markdown (usando a lib 'marked' adicionada no HTML)
+            if (data.result && window.marked) {
+                aiContent.innerHTML = marked.parse(data.result);
+            } else {
+                aiContent.textContent = data.result || "Sem resposta.";
+            }
+
+            aiLoading.classList.add('hidden');
+            aiContent.classList.remove('hidden');
+
+        } catch (error) {
+            console.error("Erro IA:", error);
+            aiLoading.classList.add('hidden');
+            aiContent.classList.remove('hidden');
+            aiContent.innerHTML = `<p class="text-red-400 text-center">Ocorreu um erro ao analisar sua carteira.<br><span class="text-xs text-gray-500">${error.message}</span></p>`;
+        }
+    }
+
     async function carregarTransacoes() {
         transacoes = await supabaseDB.getTransacoes();
     }
@@ -961,38 +1031,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
-        
-        // CORREÇÃO CRÍTICA:
-        // Não usamos mais '+=' no saldoCaixa existente.
-        // Criamos uma variável zerada para recalcular o TOTAL HISTÓRICO correto com a nova lógica.
         let novoSaldoCalculado = 0; 
         let proventosParaMarcarComoProcessado = [];
 
-        // Itera sobre TODOS os proventos conhecidos
         for (const provento of proventosConhecidos) {
-            // Verifica se é um provento válido (tem data e valor)
             if (provento.paymentDate && provento.value > 0) {
                 const parts = provento.paymentDate.split('-');
                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
-                // Se a data de pagamento já passou ou é hoje
                 if (!isNaN(dataPagamento) && dataPagamento <= hoje) {
-                    
-                    // APLICA A REGRA DA DATA COM (Correta)
                     const dataReferencia = provento.dataCom || provento.paymentDate;
-                    
-                    // Verifica quantas cotas você tinha na data de corte
                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
                     if (qtdElegivel > 0) {
                         const valorRecebido = provento.value * qtdElegivel;
-                        
-                        // Soma ao saldo temporário
                         novoSaldoCalculado += valorRecebido;
                     }
                     
-                    // Se ainda não estava marcado como processado no banco, marcamos para atualizar depois
-                    // (Apenas para controle, pois o cálculo agora é sempre total)
                     if (!provento.processado) {
                         provento.processado = true;
                         proventosParaMarcarComoProcessado.push(provento);
@@ -1000,25 +1055,16 @@ async function processarDividendosPagos() {
                 }
             }
         }
-
-        // ATUALIZAÇÃO FINAL
-        // Substitui o saldo global pelo novo valor recalculado (Exato)
         saldoCaixa = novoSaldoCalculado;
-        
-        // Salva o valor correto no banco de dados
         await salvarCaixa();
         
-        // Atualiza a interface
         if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
         
-        // Atualiza o status 'processado' no banco para evitar reprocessamentos desnecessários em outras lógicas
         if (proventosParaMarcarComoProcessado.length > 0) {
             for (const provento of proventosParaMarcarComoProcessado) {
                 await supabaseDB.updateProventoProcessado(provento.id);
             }
         }
-        
-        console.log("Saldo de proventos recalculado:", formatBRL(saldoCaixa));
     }
     function calcularCarteira() {
         const ativosMap = new Map();
@@ -1179,7 +1225,6 @@ async function processarDividendosPagos() {
         });
         fiiNewsList.appendChild(fragment);
     }
-    // --- FUNÇÕES DE GRÁFICOS ---
 function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;
@@ -1216,7 +1261,6 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                     datasets: [{ 
                         data: data, 
                         backgroundColor: colors, 
-                        // AJUSTE 1: Separação preta entre as fatias
                         borderWidth: 2, 
                         borderColor: '#000000' 
                     }] 
@@ -1522,14 +1566,10 @@ async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-        
-        // CORREÇÃO: Ordena por data (Antigo -> Novo)
-        // Isso garante que o Map mantenha sempre a ÚLTIMA data da lista (a mais recente ou futura)
         const proventosOrdenados = [...proventosAtuais].sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
         const proventosMap = new Map(proventosOrdenados.map(p => [p.symbol, p]));
         
         const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
-        // ... (resto da função continua igual)
 
         let totalValorCarteira = 0;
         let totalCustoCarteira = 0;
@@ -1654,18 +1694,14 @@ async function renderizarCarteira() {
 
 function renderizarProventos() {
         let totalEstimado = 0;
-        
-        // Define "hoje" zerando as horas para comparação justa
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         
         proventosAtuais.forEach(provento => {
             if (provento && typeof provento.value === 'number' && provento.value > 0) {
-                 // Analisa a data do pagamento
                  const parts = provento.paymentDate.split('-');
                  const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
-                 // TRAVA VISUAL: Só soma no card "Próx. Proventos" se a data for FUTURA (maior que hoje)
                  if (dataPagamento > hoje) {
                      const dataReferencia = provento.dataCom || provento.paymentDate;
                      const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
@@ -1676,7 +1712,6 @@ function renderizarProventos() {
                  }
             }
         });
-        
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
     // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
@@ -1797,10 +1832,6 @@ function renderizarProventos() {
 function processarProventosScraper(proventosScraper = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
-        
-        // Define um limite de retrovisor: aceita pagamentos de até 45 dias atrás
-        // Isso permite que o sistema "pegue" pagamentos que aconteceram recentemente
-        // mas que ainda não foram salvos no banco.
         const dataLimitePassado = new Date();
         dataLimitePassado.setDate(hoje.getDate() - 45);
         dataLimitePassado.setHours(0, 0, 0, 0);
@@ -1816,8 +1847,6 @@ function processarProventosScraper(proventosScraper = []) {
                     const parts = provento.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
                     
-                    // LÓGICA CORRIGIDA:
-                    // Aceita se for futuro OU se for recente (maior que dataLimitePassado)
                     if (!isNaN(dataPagamento) && dataPagamento >= dataLimitePassado) {
                         return provento;
                     }
@@ -1854,7 +1883,6 @@ function processarProventosScraper(proventosScraper = []) {
         
         if (fiisParaBuscar.length > 0) {
             try {
-                // SUBSTITUIÇÃO: Chamada ao Scraper em vez do Gemini
                 const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
@@ -1911,7 +1939,6 @@ async function buscarHistoricoProventosAgregado(force = false) {
 
         if (!rawDividends) {
             try {
-                // Agora recebe a lista bruta: [{ symbol, dataCom, paymentDate, value }, ...]
                 rawDividends = await callScraperHistoricoPortfolioAPI(fiiSymbols);
                 if (rawDividends && rawDividends.length > 0) {
                     await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
@@ -1924,18 +1951,14 @@ async function buscarHistoricoProventosAgregado(force = false) {
 
         if (!rawDividends || rawDividends.length === 0) return { labels: [], data: [] };
 
-        // 1. Agrupamento Manual por Mês de Competência (Data Com)
         const aggregator = {};
 
         rawDividends.forEach(item => {
-            // A REGRA DE OURO: Prioriza Data Com para definir onde a barra aparece
             const dataReferencia = item.dataCom || item.paymentDate;
             
             if (dataReferencia) {
-                const [ano, mes] = dataReferencia.split('-'); // Formato YYYY-MM-DD
-                const chaveMes = `${mes}/${ano.substring(2)}`; // Formato MM/AA (ex: 10/25)
-
-                // 2. Cálculo Preciso: Quantas cotas eu tinha EXATAMENTE nesse dia?
+                const [ano, mes] = dataReferencia.split('-'); 
+                const chaveMes = `${mes}/${ano.substring(2)}`; 
                 const qtdNaData = getQuantidadeNaData(item.symbol, dataReferencia);
 
                 if (qtdNaData > 0) {
@@ -1945,7 +1968,6 @@ async function buscarHistoricoProventosAgregado(force = false) {
             }
         });
 
-        // 3. Ordenação Cronológica das Barras
         const labels = Object.keys(aggregator).sort((a, b) => {
             const [mesA, anoA] = a.split('/');
             const [mesB, anoB] = b.split('/');
@@ -2364,7 +2386,6 @@ async function handleMostrarDetalhes(symbol) {
             btn.classList.toggle('active', btn.dataset.meses === '3'); 
         });
         
-        // 1. Busca Preço (BFF/Brapi)
         const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
         let precoData = await getCache(cacheKeyPreco);
@@ -2385,20 +2406,17 @@ async function handleMostrarDetalhes(symbol) {
             }
         }
 
-        // 2. Busca Histórico (Scraper) - Assíncrono para renderizar gráfico depois
         if (isFII(symbol)) {
             detalhesHistoricoContainer.classList.remove('hidden'); 
-            fetchHistoricoScraper(symbol); // Dispara sem await para não travar UI
+            fetchHistoricoScraper(symbol); 
         }
         
         detalhesLoading.classList.add('hidden');
 
-        // Renderiza HTML Base
         if (precoData) {
             detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
             const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
             
-            // Dados de Posição do Usuário
             const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
             let plHtml = '';
             
@@ -2423,7 +2441,6 @@ async function handleMostrarDetalhes(symbol) {
                 `;
             }
 
-            // HTML Principal
             detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
@@ -2474,7 +2491,6 @@ async function handleMostrarDetalhes(symbol) {
                 </div>
             `;
 
-            // 3. Busca Fundamentos Assincronamente (P/VP e DY)
             callScraperFundamentosAPI(symbol).then(fundamentos => {
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
@@ -2560,7 +2576,6 @@ async function handleMostrarDetalhes(symbol) {
         container.classList.remove('hidden');
     }
     
-    // RENOMEADO: fetchHistoricoIA -> fetchHistoricoScraper
     async function fetchHistoricoScraper(symbol) {
         detalhesAiProvento.innerHTML = `
             <div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48">
@@ -2575,7 +2590,6 @@ async function handleMostrarDetalhes(symbol) {
             let scraperResultJSON = await getCache(cacheKey);
 
             if (!scraperResultJSON) {
-                // SUBSTITUIÇÃO: callScraperHistoricoAPI
                 scraperResultJSON = await callScraperHistoricoAPI(symbol); 
                 
                 if (scraperResultJSON && Array.isArray(scraperResultJSON)) {
@@ -2735,6 +2749,28 @@ async function handleMostrarDetalhes(symbol) {
         });
     });
     
+    // EVENTOS DO NOVO MODAL DE IA
+    if (btnIaAnalise) {
+        btnIaAnalise.addEventListener('click', handleAnaliseIA);
+    }
+    
+    if (closeAiModal) {
+        closeAiModal.addEventListener('click', () => {
+            aiModal.classList.remove('visible');
+            aiContent.innerHTML = ''; 
+        });
+    }
+
+    // Fecha o modal se clicar fora (backdrop)
+    if (aiModal) {
+        aiModal.addEventListener('click', (e) => {
+            if (e.target === aiModal) {
+                aiModal.classList.remove('visible');
+                aiContent.innerHTML = '';
+            }
+        });
+    }
+
     customModalCancel.addEventListener('click', hideModal);
     customModalOk.addEventListener('click', () => {
         if (typeof onConfirmCallback === 'function') {

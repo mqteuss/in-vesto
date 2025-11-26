@@ -1623,35 +1623,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 function renderizarProventos() {
-        let totalEstimado = 0;
-        
-        // Define "Hoje" zerando as horas para comparar apenas as datas
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        
-        proventosAtuais.forEach(provento => {
-            if (provento && typeof provento.value === 'number' && provento.value > 0) {
-                 const dataReferencia = provento.dataCom || provento.paymentDate;
+    let totalEstimado = 0;
+    
+    // Define "Hoje" zerando as horas para comparar apenas as datas
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    proventosAtuais.forEach(provento => {
+        if (provento && typeof provento.value === 'number' && provento.value > 0) {
+             const dataReferencia = provento.dataCom || provento.paymentDate;
+             
+             const parts = provento.paymentDate.split('-');
+             // AJUSTE DE SEGURANÇA: Usar parseInt para garantir números inteiros
+             const dataPag = new Date(
+                 parseInt(parts[0]), 
+                 parseInt(parts[1]) - 1, 
+                 parseInt(parts[2])
+             );
+             
+             // Se dataPag for > hoje (AMANHÃ ou depois), mostra.
+             // Se for HOJE ou ONTEM, a função 'processarDividendosPagos' vai jogar no caixa.
+             if (dataPag > hoje) {
+                 const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
                  
-                 const parts = provento.paymentDate.split('-');
-                 const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-                 
-                 // LÓGICA PERFEITA:
-                 // Se dataPag for > hoje (ou seja, AMANHÃ ou depois), mostra em "Próx. Proventos".
-                 // Se dataPag for == hoje ou < hoje (ontem), ele é ignorado aqui 
-                 // (porque a outra função 'processarDividendosPagos' já colocou ele no Caixa).
-                 if (dataPag > hoje) {
-                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-                     
-                     if (qtdElegivel > 0) {
-                         totalEstimado += (qtdElegivel * provento.value);
-                     }
+                 if (qtdElegivel > 0) {
+                     totalEstimado += (qtdElegivel * provento.value);
                  }
-            }
-        });
-        
-        totalProventosEl.textContent = formatBRL(totalEstimado);
-    }
+             }
+        }
+    });
+    
+    totalProventosEl.textContent = formatBRL(totalEstimado);
+}
     // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
 
     async function handleAtualizarNoticias(force = false) {
@@ -1907,12 +1910,15 @@ function processarProventosScraper(proventosScraper = []) {
         return { labels, data };
     }
     
-     async function atualizarTodosDados(force = false) { 
+async function atualizarTodosDados(force = false) { 
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
         
         calcularCarteira();
+        
+        // 1. Processa o que já sabemos (cache local)
         await processarDividendosPagos(); 
+        
         renderizarHistorico();
         renderizarGraficoPatrimonio(); 
         
@@ -1926,6 +1932,7 @@ function processarProventosScraper(proventosScraper = []) {
             refreshIcon.classList.add('spin-animation');
         }
 
+        // Se não for forçado, tenta usar o que tem no scraper pra renderizar rápido
         if (!force) {
             const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
             if (proventosFuturosCache.length > 0) {
@@ -1961,9 +1968,18 @@ function processarProventosScraper(proventosScraper = []) {
             if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
 
+        // --- CORREÇÃO AQUI ---
         promessaProventos.then(async proventosFuturos => {
             proventosAtuais = proventosFuturos; 
+            
+            // FIX CRÍTICO: Agora que temos dados novos da API, recalculamos o CAIXA imediatamente.
+            // Isso garante que se um provento "venceu" hoje e a API acabou de contar,
+            // ele sai da lista de 'Futuros' e entra no saldo de 'Caixa' agora mesmo.
+            await processarDividendosPagos();
+
             renderizarProventos(); 
+            
+            // Re-renderiza a carteira para atualizar badges de proventos nos cards
             if (precosAtuais.length > 0) { 
                 await renderizarCarteira(); 
             }

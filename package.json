@@ -4,6 +4,7 @@
   "description": "BFF para o app Vesto com Scraper",
   "private": true,
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@vercel/kv": "^2.0.0",
     "uuid": "^10.0.0",
     "@supabase/supabase-js": "^2.43.5",

@@ -1494,12 +1494,18 @@ function renderizarGraficoAlocacao(dadosGrafico) {
         }, 0);
     }
 
-    async function renderizarCarteira() {
+async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-        const proventosMap = new Map(proventosAtuais.map(p => [p.symbol, p]));
+        
+        // CORREÇÃO: Ordena por data (Antigo -> Novo)
+        // Isso garante que o Map mantenha sempre a ÚLTIMA data da lista (a mais recente ou futura)
+        const proventosOrdenados = [...proventosAtuais].sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+        const proventosMap = new Map(proventosOrdenados.map(p => [p.symbol, p]));
+        
         const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
+        // ... (resto da função continua igual)
 
         let totalValorCarteira = 0;
         let totalCustoCarteira = 0;

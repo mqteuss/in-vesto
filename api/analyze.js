@@ -1,27 +1,9 @@
 // api/analyze.js
-// Otimizado para CONSISTÊNCIA, VELOCIDADE e VISUAL LIMPO (Sem emojis)
-
-async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const response = await fetch(url, options);
-            if (response.status === 429 || response.status >= 500) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
-            }
-            if (!response.ok) {
-                 const errorBody = await response.json().catch(() => ({}));
-                 throw new Error(errorBody.error?.message || `API Error: ${response.statusText}`);
-            }
-            return response.json();
-        } catch (error) {
-            if (i === retries - 1) throw error;
-            console.warn(`Tentativa ${i+1} falhou, aguardando ${delay * (i + 1)}ms...`);
-            await new Promise(res => setTimeout(res, delay * (i + 1)));
-        }
-    }
-}
+// Implementação via SDK Oficial do Google (Modelo Gemini 2.5 Flash Estável)
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(request, response) {
+    // Tratamento de CORS/Métodos
     if (request.method === 'OPTIONS') return response.status(200).end();
     if (request.method !== 'POST') return response.status(405).json({ error: "Use POST." });
 
@@ -31,12 +13,12 @@ export default async function handler(request, response) {
         return response.status(500).json({ error: "API Key não configurada." });
     }
 
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
-
     try {
         const { carteira, totalPatrimonio } = request.body;
 
-        // Prompt ajustado: Sem emojis, tom sóbrio e profissional.
+        // Inicializa o SDK
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
         const systemPrompt = `
         Você é um Consultor Financeiro Sênior (B3/Brasil) Conservador e Consistente.
         
@@ -48,6 +30,13 @@ export default async function handler(request, response) {
 
         Analise de forma crítica. Se a carteira for pequena (< R$ 2k), o foco deve ser o aporte regular, não a diversificação complexa.
         `;
+
+        // Configuração do Modelo: Usando a versão estável "gemini-2.5-flash"
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash", 
+            systemInstruction: systemPrompt,
+            tools: [{ googleSearch: {} }], // Ferramenta de Grounding ativada
+        });
 
         const userQuery = `
         Analise esta carteira B3:
@@ -68,33 +57,31 @@ export default async function handler(request, response) {
         (Uma ação lógica: "Aportar em Tijolo", "Aumentar Caixa", "Manter estratégia").
         `;
 
-        const geminiPayload = {
-            contents: [{ parts: [{ text: userQuery }] }],
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            tools: [{ google_search: {} }],
-            generationConfig: {
-                temperature: 0.2, // Mantido baixo para garantir consistência
-                maxOutputTokens: 1500,
-                topP: 0.8,
-                topK: 40
-            }
+        const generationConfig = {
+            temperature: 0.2, // Mantido baixo para consistência
+            maxOutputTokens: 1500,
+            topP: 0.8,
+            topK: 40
         };
 
-        const result = await fetchWithBackoff(GEMINI_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(geminiPayload)
+        // Chamada à API
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: userQuery }] }],
+            generationConfig
         });
 
-        const candidate = result?.candidates?.[0];
-        const text = candidate?.content?.parts?.[0]?.text;
+        const responseData = await result.response;
+        const text = responseData.text();
 
         if (!text) throw new Error("A IA não retornou texto válido.");
 
         return response.status(200).json({ result: text });
 
     } catch (error) {
-        console.error("Erro no Analyze Handler:", error);
-        return response.status(500).json({ error: `Erro interno: ${error.message}` });
+        console.error("Erro no Analyze Handler (SDK):", error);
+        
+        // Tratamento básico de erro para retorno ao cliente
+        const errorMessage = error.message || "Erro desconhecido ao processar análise.";
+        return response.status(500).json({ error: errorMessage });
     }
 }

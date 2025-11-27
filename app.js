@@ -1,5 +1,15 @@
 import * as supabaseDB from './supabase.js';
 
+// --- LÓGICA DE INSTALAÇÃO PWA (NOVO) ---
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    console.log('Instalação disponível');
+});
+// ---------------------------------------
+
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
@@ -476,6 +486,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeAiModal = document.getElementById('close-ai-modal');
     const aiContent = document.getElementById('ai-content');
     const aiLoading = document.getElementById('ai-loading');
+
+    // --- SELETORES PWA (NOVO) ---
+    const installSection = document.getElementById('install-section');
+    const installBtn = document.getElementById('install-app-btn');
+
+    // --- LÓGICA DE INSTALAÇÃO DO PWA ---
+    function verificarStatusInstalacao() {
+        if (deferredPrompt) {
+            installSection.classList.remove('hidden');
+        }
+    }
+    
+    verificarStatusInstalacao();
+
+    window.addEventListener('beforeinstallprompt', () => {
+        verificarStatusInstalacao();
+    });
+
+    window.addEventListener('appinstalled', () => {
+        installSection.classList.add('hidden');
+        deferredPrompt = null;
+        showToast('App instalado com sucesso!', 'success');
+    });
+
+    if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            deferredPrompt = null;
+            if (outcome === 'accepted') {
+                installSection.classList.add('hidden');
+            }
+        });
+    }
+    // -----------------------------------
 
     let currentUserId = null;
     let transacoes = [];        
@@ -1561,7 +1608,6 @@ function renderizarGraficoAlocacao(dadosGrafico) {
             return total;
         }, 0);
     }
-
 async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 

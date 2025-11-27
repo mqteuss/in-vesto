@@ -1,75 +1,87 @@
 // api/analyze.js
+// Implementação via SDK Oficial do Google (Modelo Gemini 2.5 Flash Estável)
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export default async function handler(req, res) {
-    if (req.method === "OPTIONS") return res.status(200).end();
-    if (req.method !== "POST") return res.status(405).json({ error: "Use POST." });
+export default async function handler(request, response) {
+    // Tratamento de CORS/Métodos
+    if (request.method === 'OPTIONS') return response.status(200).end();
+    if (request.method !== 'POST') return response.status(405).json({ error: "Use POST." });
 
     const { GEMINI_API_KEY } = process.env;
-    if (!GEMINI_API_KEY) return res.status(500).json({ error: "API Key ausente." });
+    if (!GEMINI_API_KEY) {
+        console.error("ERRO: GEMINI_API_KEY ausente.");
+        return response.status(500).json({ error: "API Key não configurada." });
+    }
 
     try {
-        const { carteira, totalPatrimonio } = req.body;
+        const { carteira, totalPatrimonio } = request.body;
 
+        // Inicializa o SDK
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-        // System direto e minimalista
         const systemPrompt = `
-        Você é um consultor financeiro brasileiro conservador.
-        Responda sempre em Markdown.
-        Seja direto, com frases curtas e objetivas.
-        Não enrole. Não conte história. Não use parágrafos longos.
-        Use apenas fatos relevantes.
-        Utilize Google Search para SELIC/IPCA antes de analisar.
-        Sempre siga exatamente o formato solicitado.
+        Você é um Consultor Financeiro Sênior (B3/Brasil) Conservador e Consistente.
+        
+        SUA PERSONALIDADE:
+        1. **Filosofia**: Priorize a proteção de patrimônio e dividendos constantes. Evite riscos excessivos.
+        2. **Consistência**: Diante dos mesmos dados, mantenha a mesma recomendação técnica.
+        3. **Brevidade**: Use frases curtas e listas (bullet points).
+        4. **Realidade**: Use o Google Search para validar SELIC e IPCA atuais antes de opinar.
+
+        Analise de forma crítica. Se a carteira for pequena (< R$ 2k), o foco deve ser o aporte regular, não a diversificação complexa.
         `;
 
+        // Configuração do Modelo: Usando a versão estável "gemini-2.5-flash"
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.5-flash", 
             systemInstruction: systemPrompt,
-            tools: [{ googleSearch: {} }]
+            tools: [{ googleSearch: {} }], // Ferramenta de Grounding ativada
         });
 
         const userQuery = `
         Analise esta carteira B3:
-        Patrimônio: ${totalPatrimonio}
-        Ativos: ${JSON.stringify(carteira)}
+        - Patrimônio: ${totalPatrimonio}
+        - Ativos: ${JSON.stringify(carteira)}
 
-        Gere exatamente este formato:
-
+        Gere este relatório Markdown exato:
         ### 1. Cenário Macro (Google)
-        - SELIC hoje
-        - IPCA hoje
-        - Impacto em 1 frase
+        (Cite SELIC/IPCA hoje e em 1 frase diga como isso impacta essa carteira).
 
         ### 2. Riscos Reais
-        - Pontos objetivos (concentração, qualidade dos FIIs, liquidez)
-        - Se não houver riscos relevantes, diga: "Nenhum risco relevante."
+        (Seja direto: Há concentração? Algum ativo problemático? Se não, afirme que a carteira está segura).
 
-        ### 3. Veredito
-        Nota (0-10)
+        ### 3. Veredito (0-10)
+        (Dê uma nota justa baseada na qualidade dos ativos).
 
-        ### 4. Próximo Passo
-        Uma frase direta.
+        ### 4. Próximo Passo Sugerido
+        (Uma ação lógica: "Aportar em Tijolo", "Aumentar Caixa", "Manter estratégia").
         `;
 
+        const generationConfig = {
+            temperature: 0.1, // Mantido baixo para consistência
+            maxOutputTokens: 1250,
+            topP: 0.8,
+            topK: 40
+        };
+
+        // Chamada à API
         const result = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: userQuery }] }],
-            generationConfig: {
-                temperature: 0.05,
-                maxOutputTokens: 600,
-                topP: 0.8,
-                topK: 40
-            }
+            generationConfig
         });
 
-        const text = result.response.text();
-        if (!text) throw new Error("Retorno vazio.");
+        const responseData = await result.response;
+        const text = responseData.text();
 
-        return res.status(200).json({ result: text });
+        if (!text) throw new Error("A IA não retornou texto válido.");
 
-    } catch (err) {
-        console.error("Analyze API error:", err);
-        return res.status(500).json({ error: err.message || "Erro interno." });
+        return response.status(200).json({ result: text });
+
+    } catch (error) {
+        console.error("Erro no Analyze Handler (SDK):", error);
+
+        // Tratamento básico de erro para retorno ao cliente
+        const errorMessage = error.message || "Erro desconhecido ao processar análise.";
+        return response.status(500).json({ error: errorMessage });
     }
 }

@@ -535,11 +535,8 @@ body.privacy-mode .money-value,
 body.privacy-mode [data-field="posicao-valor"],
 body.privacy-mode [data-field="custo-valor"],
 body.privacy-mode [data-field="pl-valor"] {
-    color: transparent !important;
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    /* Método Filter Blur (mais robusto) */
+    filter: blur(7px) !important;
     user-select: none;
-    /* Correção para elementos com gradiente (bg-clip-text) */
-    background-image: none !important;
-    -webkit-background-clip: initial !important;
-    background-clip: initial !important;
+    pointer-events: none;
 }

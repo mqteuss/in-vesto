@@ -73,8 +73,8 @@ export default async function handler(request, response) {
             systemInstruction: { parts: [{ text: systemPrompt }] },
             tools: [{ google_search: {} }],
             generationConfig: {
-                temperature: 0.1, // Mantido baixo para garantir consistência
-                maxOutputTokens: 1000,
+                temperature: 0.2, // Mantido baixo para garantir consistência
+                maxOutputTokens: 1500,
                 topP: 0.8,
                 topK: 40
             }

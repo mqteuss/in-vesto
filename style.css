@@ -522,5 +522,20 @@ input:-webkit-autofill:active{
 /* Interatividade do Card de Notícias */
 .news-card-interactive {
     cursor: pointer;
-    /* Removido o hover background-color para evitar o "cinza" */
+}
+
+/* Modo Privacidade */
+body.privacy-mode [data-privacy="true"],
+body.privacy-mode #total-carteira-valor,
+body.privacy-mode #total-caixa-valor,
+body.privacy-mode #total-proventos,
+body.privacy-mode #total-carteira-custo,
+body.privacy-mode #total-carteira-pl,
+body.privacy-mode .money-value,
+body.privacy-mode [data-field="posicao-valor"],
+body.privacy-mode [data-field="custo-valor"],
+body.privacy-mode [data-field="pl-valor"] {
+    color: transparent !important;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    user-select: none;
 }

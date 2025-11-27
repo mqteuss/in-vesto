@@ -180,7 +180,7 @@ function criarCardElemento(ativo, dados) {
             </div>
             <div class="text-right flex-shrink-0 ml-2">
                 <span data-field="variacao-valor" class="${corVariacao} font-semibold text-base block">${dadoPreco ? variacaoFormatada : '...'}</span>
-                <p data-field="preco-valor" class="text-gray-200 text-base font-medium">${precoFormatado}</p>
+                <p data-field="preco-valor" class="text-gray-200 text-base font-medium money-value">${precoFormatado}</p>
             </div>
         </div>
         <div class="flex justify-center mt-1 pt-1">
@@ -480,6 +480,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
     
+    // --- NOVOS SELETORES (CONFIG) ---
+    const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
+    const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
+    const clearCacheBtn = document.getElementById('clear-cache-btn');
+
     // --- NOVOS SELETORES IA ---
     const btnIaAnalise = document.getElementById('btn-ia-analise');
     const aiModal = document.getElementById('ai-modal');
@@ -1570,7 +1576,6 @@ function renderizarGraficoAlocacao(dadosGrafico) {
             });
         }
     }
-    
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
         const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
@@ -2937,6 +2942,89 @@ async function handleMostrarDetalhes(symbol) {
                     ativarBiometria();
                 });
             }
+        });
+    }
+
+    // --- LÓGICA MODO PRIVACIDADE ---
+    function updatePrivacyUI() {
+        const isPrivacyOn = localStorage.getItem('vesto_privacy_mode') === 'true';
+        if (isPrivacyOn) {
+            document.body.classList.add('privacy-mode');
+            togglePrivacyBtn.classList.remove('bg-gray-700');
+            togglePrivacyBtn.classList.add('bg-purple-600');
+            privacyToggleKnob.classList.remove('translate-x-1');
+            privacyToggleKnob.classList.add('translate-x-6');
+        } else {
+            document.body.classList.remove('privacy-mode');
+            togglePrivacyBtn.classList.remove('bg-purple-600');
+            togglePrivacyBtn.classList.add('bg-gray-700');
+            privacyToggleKnob.classList.remove('translate-x-6');
+            privacyToggleKnob.classList.add('translate-x-1');
+        }
+    }
+
+    if (togglePrivacyBtn) {
+        updatePrivacyUI();
+        
+        togglePrivacyBtn.addEventListener('click', () => {
+            const current = localStorage.getItem('vesto_privacy_mode') === 'true';
+            localStorage.setItem('vesto_privacy_mode', !current);
+            updatePrivacyUI();
+            showToast(!current ? "Modo Privacidade Ativado" : "Modo Privacidade Desativado", "success");
+        });
+    }
+
+    // --- LÓGICA EXPORTAR CSV ---
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', () => {
+            if (!transacoes || transacoes.length === 0) {
+                showToast("Sem dados para exportar.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Data,Ativo,Tipo,Quantidade,Preco,ID\n"; 
+
+            transacoes.forEach(t => {
+                const dataFmt = t.date.split('T')[0];
+                const row = `${dataFmt},${t.symbol},${t.type},${t.quantity},${t.price},${t.id}`;
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `vesto_export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            
+            link.click();
+            document.body.removeChild(link);
+            showToast("Download iniciado!", "success");
+        });
+    }
+
+    // --- LÓGICA LIMPAR CACHE ---
+    if (clearCacheBtn) {
+        clearCacheBtn.addEventListener('click', () => {
+            showModal(
+                "Limpar Cache?", 
+                "Isso pode corrigir erros de visualização, mas o carregamento inicial será mais lento na próxima vez.", 
+                async () => {
+                    try {
+                        await vestoDB.clear('apiCache');
+                        if ('serviceWorker' in navigator) {
+                            const registrations = await navigator.serviceWorker.getRegistrations();
+                            for(let registration of registrations) {
+                                await registration.unregister();
+                            }
+                        }
+                        window.location.reload();
+                    } catch (e) {
+                        console.error(e);
+                        showToast("Erro ao limpar cache.");
+                    }
+                }
+            );
         });
     }
 

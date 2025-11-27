@@ -1,5 +1,5 @@
 // api/analyze.js
-// Agora com GOOGLE SEARCH ativado para dados em tempo real
+// Otimizado para CONSISTÊNCIA, VELOCIDADE e VISUAL LIMPO (Sem emojis)
 
 async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
     for (let i = 0; i < retries; i++) {
@@ -36,44 +36,47 @@ export default async function handler(request, response) {
     try {
         const { carteira, totalPatrimonio } = request.body;
 
-        // Prompt Atualizado para tirar proveito da Busca
+        // Prompt ajustado: Sem emojis, tom sóbrio e profissional.
         const systemPrompt = `
-        Você é um Consultor Financeiro Sênior (B3/Brasil) com acesso a dados em tempo real.
+        Você é um Consultor Financeiro Sênior (B3/Brasil) Conservador e Consistente.
         
-        DIRETRIZES:
-        1. **Use o Google Search** para verificar a Taxa Selic atual e o cenário de inflação (IPCA) antes de opinar.
-        2. **Contexto**: O usuário é pequeno investidor. Seja incentivador se o patrimônio for baixo (< R$ 2k).
-        3. **Verificação**: Se houver algum FII na lista com "Fato Relevante" negativo recente (últimos 30 dias), alerte no item 'Riscos'.
-        4. **Formato**: Markdown, curto e direto para celular.
+        SUA PERSONALIDADE:
+        1. **Filosofia**: Priorize a proteção de patrimônio e dividendos constantes. Evite riscos excessivos.
+        2. **Consistência**: Diante dos mesmos dados, mantenha a mesma recomendação técnica.
+        3. **Brevidade**: Use frases curtas e listas (bullet points).
+        4. **Realidade**: Use o Google Search para validar SELIC e IPCA atuais antes de opinar.
+
+        Analise de forma crítica. Se a carteira for pequena (< R$ 2k), o foco deve ser o aporte regular, não a diversificação complexa.
         `;
 
         const userQuery = `
-        Analise esta carteira de FIIs/Ações:
-        - Patrimônio Total: ${totalPatrimonio}
+        Analise esta carteira B3:
+        - Patrimônio: ${totalPatrimonio}
         - Ativos: ${JSON.stringify(carteira)}
 
-        Gere o relatório:
-        ### 1. Raio-X e Cenário 🔎
-        (Analise a carteira frente à Selic/Inflação atuais. Cite os setores).
+        Gere este relatório Markdown exato:
+        ### 1. Cenário Macro (Google)
+        (Cite SELIC/IPCA hoje e em 1 frase diga como isso impacta essa carteira).
 
-        ### 2. Pontos de Atenção ⚠️
-        (Riscos de concentração ou notícias recentes negativas dos ativos listados).
+        ### 2. Riscos Reais
+        (Seja direto: Há concentração? Algum ativo problemático? Se não, afirme que a carteira está segura).
 
-        ### 3. Veredito (Nota 0-10) ⭐
-        (Nota baseada em diversificação e qualidade).
+        ### 3. Veredito (0-10)
+        (Dê uma nota justa baseada na qualidade dos ativos).
 
-        ### 4. Próximo Passo 🚀
-        (Sugestão prática de aporte considerando o cenário econômico atual).
+        ### 4. Próximo Passo Sugerido
+        (Uma ação lógica: "Aportar em Tijolo", "Aumentar Caixa", "Manter estratégia").
         `;
 
         const geminiPayload = {
             contents: [{ parts: [{ text: userQuery }] }],
             systemInstruction: { parts: [{ text: systemPrompt }] },
-            // AQUI ESTÁ A MÁGICA: Adicionamos a ferramenta de busca
             tools: [{ google_search: {} }],
             generationConfig: {
-                temperature: 1.0, // Reduzi um pouco para ele não alucinar dados
-                maxOutputTokens: 3500
+                temperature: 0.1, // Mantido baixo para garantir consistência
+                maxOutputTokens: 1000,
+                topP: 0.8,
+                topK: 40
             }
         };
 

@@ -58,8 +58,8 @@ export default async function handler(request, response) {
         `;
 
         const generationConfig = {
-            temperature: 0.2, // Mantido baixo para consistência
-            maxOutputTokens: 1500,
+            temperature: 0.1, // Mantido baixo para consistência
+            maxOutputTokens: 1250,
             topP: 0.8,
             topK: 40
         };

@@ -1,18 +1,21 @@
-const CACHE_NAME = 'vesto-cache-v8'; // Incrementei a versão para forçar atualização
+const CACHE_NAME = 'vesto-cache-v9'; // Atualizei para v9 para forçar a renovação
 
+// Arquivos vitais que tentam a REDE primeiro (para garantir atualização)
+// IMPORTANTE: Todos devem começar com '/' para bater com url.pathname
 const APP_SHELL_FILES_NETWORK_FIRST = [
   '/',
-  'logo-vesto.png', 
-  'index.html',
-  'app.js',
-  'supabase.js',
-  'style.css'
+  '/logo-vesto.png', 
+  '/index.html',
+  '/app.js',
+  '/supabase.js',
+  '/style.css'
 ];
 
+// Arquivos estáticos ou externos que preferem o CACHE (carregamento rápido)
 const APP_SHELL_FILES_CACHE_FIRST = [
-  'manifest.json',
-  'icons/icon-192x192.png',
-  'icons/icon-512x512.png',
+  '/manifest.json',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
@@ -29,14 +32,15 @@ self.addEventListener('install', event => {
             return fetch(request).then(response => cache.put(request, response)).catch(() => {});
         })
       );
-      
-      // Cacheia arquivos locais
+
+      // Cacheia arquivos locais estáticos
       const localPromise = cache.addAll(
         APP_SHELL_FILES_CACHE_FIRST.filter(url => !url.startsWith('http'))
       );
 
       return Promise.all([cdnPromise, localPromise]);
     }).then(() => caches.open(CACHE_NAME)).then(cache => {
+        // Cacheia os arquivos vitais inicialmente
         return cache.addAll(APP_SHELL_FILES_NETWORK_FIRST);
     })
   );
@@ -53,7 +57,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // CORREÇÃO PRINCIPAL: Ignora requests que não sejam HTTP/HTTPS (ex: chrome-extension://)
+  // Ignora requests que não sejam HTTP/HTTPS (ex: chrome-extension://)
   if (!url.protocol.startsWith('http')) return;
 
   // Ignora chamadas de API e Supabase (sempre online)
@@ -69,6 +73,7 @@ self.addEventListener('fetch', event => {
   }
 
   // Estratégia Network First para arquivos vitais
+  // A comparação agora funcionará corretamente por causa das barras '/'
   if (APP_SHELL_FILES_NETWORK_FIRST.includes(url.pathname)) {
     event.respondWith(
       fetch(event.request)

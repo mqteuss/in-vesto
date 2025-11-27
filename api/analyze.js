@@ -72,8 +72,8 @@ export default async function handler(request, response) {
             // AQUI ESTÁ A MÁGICA: Adicionamos a ferramenta de busca
             tools: [{ google_search: {} }],
             generationConfig: {
-                temperature: 0.5, // Reduzi um pouco para ele não alucinar dados
-                maxOutputTokens: 1000
+                temperature: 1.0, // Reduzi um pouco para ele não alucinar dados
+                maxOutputTokens: 3500
             }
         };
 

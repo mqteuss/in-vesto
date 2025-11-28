@@ -1,6 +1,6 @@
 import * as supabaseDB from './supabase.js';
 
-// --- LÓGICA DE INSTALAÇÃO PWA ---
+// --- LÓGICA DE INSTALAÇÃO PWA (NOVO) ---
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -485,8 +485,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
-    const toggleThemeBtn = document.getElementById('toggle-theme-btn'); // NOVO
-    const themeToggleKnob = document.getElementById('theme-toggle-knob'); // NOVO
 
     // --- NOVOS SELETORES IA ---
     const btnIaAnalise = document.getElementById('btn-ia-analise');
@@ -913,40 +911,21 @@ async function getCache(key) {
         }, 400); 
     }
 
-    // --- LÓGICA DO TEMA (UI) ---
-    function updateThemeUI() {
-        const isLightMode = localStorage.getItem('vesto_theme_mode') === 'light';
-        
-        if (isLightMode) {
-            document.body.classList.add('light-mode');
-            if(toggleThemeBtn && themeToggleKnob) {
-                toggleThemeBtn.classList.remove('bg-purple-600');
-                toggleThemeBtn.classList.add('bg-gray-400');
-                themeToggleKnob.classList.remove('translate-x-6');
-                themeToggleKnob.classList.add('translate-x-1');
-            }
-        } else {
-            document.body.classList.remove('light-mode');
-            if(toggleThemeBtn && themeToggleKnob) {
-                toggleThemeBtn.classList.remove('bg-gray-400');
-                toggleThemeBtn.classList.add('bg-purple-600');
-                themeToggleKnob.classList.remove('translate-x-1');
-                themeToggleKnob.classList.add('translate-x-6');
-            }
-        }
-    }
-    // --- HANDLER DE IA ---
+    // --- NOVA FUNÇÃO: HANDLER DE IA ---
     async function handleAnaliseIA() {
         if (!carteiraCalculada || carteiraCalculada.length === 0) {
             showToast("Adicione ativos antes de pedir uma análise.");
             return;
         }
 
+        // 1. Abre o Modal e mostra Loading
         aiModal.classList.add('visible');
         aiModal.querySelector('.modal-content').classList.remove('modal-out');
         aiContent.classList.add('hidden');
         aiLoading.classList.remove('hidden');
 
+        // 2. Prepara os dados (Payload)
+        // Calcula patrimônio total atual (soma das posições + caixa)
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
         let valorTotalAtivos = 0;
         
@@ -969,6 +948,7 @@ async function getCache(key) {
         const totalPatrimonio = valorTotalAtivos + saldoCaixa;
 
         try {
+            // 3. Chama a API Serverless
             const response = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -983,6 +963,7 @@ async function getCache(key) {
 
             const data = await response.json();
             
+            // 4. Renderiza o Markdown (usando a lib 'marked' adicionada no HTML)
             if (data.result && window.marked) {
                 aiContent.innerHTML = marked.parse(data.result);
             } else {
@@ -1100,7 +1081,7 @@ async function getCache(key) {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
 
-    async function processarDividendosPagos() {
+async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         let novoSaldoCalculado = 0; 
@@ -1138,7 +1119,6 @@ async function getCache(key) {
             }
         }
     }
-
     function calcularCarteira() {
         const ativosMap = new Map();
         const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1166,7 +1146,6 @@ async function getCache(key) {
                 dataCompra: a.dataCompra
             }));
     }
-
     function renderizarHistorico() {
         listaHistorico.innerHTML = '';
         if (transacoes.length === 0) {
@@ -1217,7 +1196,89 @@ async function getCache(key) {
         listaHistorico.appendChild(fragment);
     }
 
-    function renderizarGraficoAlocacao(dadosGrafico) {
+    function renderizarNoticias(articles) { 
+        fiiNewsSkeleton.classList.add('hidden');
+        fiiNewsList.innerHTML = ''; 
+        fiiNewsMensagem.classList.add('hidden');
+
+        if (!articles || articles.length === 0) {
+            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada nos últimos 30 dias.';
+            fiiNewsMensagem.classList.remove('hidden');
+            return;
+        }
+        
+        articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+        
+        const fragment = document.createDocumentFragment();
+
+        articles.forEach((article, index) => {
+            const sourceName = article.sourceName || 'Fonte';
+            const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+            const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
+            const drawerId = `news-drawer-${index}`;
+            
+            const tickerRegex = /[A-Z]{4}11/g;
+            const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
+            
+            let tickersHtml = '';
+            if (foundTickers.length > 0) {
+                foundTickers.forEach(ticker => {
+                    tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                });
+            }
+
+            const drawerContentHtml = `
+                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
+                    ${article.summary ? article.summary : 'Resumo não disponível.'}
+                </div>
+                <div class="flex justify-between items-end pt-2 border-t border-gray-800">
+                    <div class="flex flex-wrap gap-2">
+                        ${tickersHtml}
+                    </div>
+                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex-shrink-0">
+                        Ler notícia completa
+                    </a>
+                </div>
+            `;
+
+            const newsCard = document.createElement('div');
+            newsCard.className = 'card-bg rounded-2xl p-4 space-y-3 news-card-interactive'; 
+            newsCard.setAttribute('data-action', 'toggle-news');
+            newsCard.setAttribute('data-target', drawerId);
+
+            newsCard.innerHTML = `
+                <div class="flex items-start gap-3 pointer-events-none">
+                    <img src="${faviconUrl}" alt="${sourceName}" 
+                         class="w-9 h-9 rounded bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
+                         loading="lazy"
+                         onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
+                    />
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
+                            <span class="text-[10px] text-gray-600">•</span>
+                            <span class="text-xs text-gray-500">${publicationDate}</span>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 -mr-2 -mt-2">
+                        <svg class="card-arrow-icon w-5 h-5 text-gray-500 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </div>
+                </div>
+                
+                <div id="${drawerId}" class="card-drawer pointer-events-auto">
+                    <div class="drawer-content pt-3 mt-2">
+                        ${drawerContentHtml}
+                    </div>
+                </div>
+            `;
+            fragment.appendChild(newsCard);
+        });
+        fiiNewsList.appendChild(fragment);
+    }
+function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1515,7 +1576,6 @@ async function getCache(key) {
             });
         }
     }
-    
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
         const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
@@ -1553,7 +1613,6 @@ async function getCache(key) {
             return total;
         }, 0);
     }
-
 async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
@@ -2915,19 +2974,6 @@ async function handleMostrarDetalhes(symbol) {
         });
     }
 
-    // --- LÓGICA MODO TEMA (EVENTO) ---
-    if (toggleThemeBtn) {
-        // Inicializa estado visual
-        updateThemeUI();
-
-        toggleThemeBtn.addEventListener('click', () => {
-            const isLight = localStorage.getItem('vesto_theme_mode') === 'light';
-            localStorage.setItem('vesto_theme_mode', isLight ? 'dark' : 'light');
-            updateThemeUI();
-            showToast(isLight ? "Tema Escuro Ativado" : "Tema Claro Ativado", "success");
-        });
-    }
-
     // --- LÓGICA EXPORTAR CSV ---
     if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', () => {
@@ -3119,9 +3165,6 @@ async function handleMostrarDetalhes(symbol) {
             return; 
         }
         
-        // Garante que o tema correto seja aplicado ao iniciar
-        updateThemeUI();
-
         if (showRecoverBtn) {
             showRecoverBtn.addEventListener('click', () => {
                 loginForm.classList.add('hidden');

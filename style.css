@@ -5,6 +5,7 @@ body {
     color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-smoothing: grayscale;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Remove o quadrado cinza de seleção em mobile */
@@ -24,6 +25,7 @@ body::-webkit-scrollbar {
 .card-bg {
     background-color: #000000;
     border: 1px solid #2C2C2E;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .accent-bg {
@@ -86,6 +88,7 @@ body::-webkit-scrollbar {
     align-items: center;        
     padding: 0 0.25rem;
     box-sizing: border-box;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .tab-button {
@@ -250,7 +253,10 @@ input[type=number] {
 .custom-modal.visible .modal-content {
     background-color: #000000;
     border: 1px solid #2C2C2E;
+    /* UPDATE: Formato Cápsula (super arredondado) */
+    border-radius: 2.5rem; 
     animation: modalIn 0.2s ease-out forwards;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .modal-content.modal-out {
@@ -300,7 +306,7 @@ input[type=number] {
 }
 
 .page-content {
-    transition: transform 0.4s ease-in-out;
+    transition: transform 0.4s ease-in-out, background-color 0.3s ease;
     transform: translateY(100%);
     
     background-color: #000000;
@@ -535,8 +541,89 @@ body.privacy-mode .money-value,
 body.privacy-mode [data-field="posicao-valor"],
 body.privacy-mode [data-field="custo-valor"],
 body.privacy-mode [data-field="pl-valor"] {
-    /* Método Filter Blur (mais robusto) */
     filter: blur(7px) !important;
     user-select: none;
     pointer-events: none;
+}
+
+
+/* --- LIGHT MODE OVERRIDES --- */
+body.light-mode {
+    background-color: #F2F2F7; /* iOS Light Gray background */
+    color: #1C1C1E;
+}
+
+body.light-mode .card-bg,
+body.light-mode .custom-modal.visible .modal-content,
+body.light-mode .page-content {
+    background-color: #FFFFFF;
+    border-color: #E5E5EA;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+body.light-mode .bottom-nav {
+    background-color: rgba(255, 255, 255, 0.85);
+    border-color: #E5E5EA;
+}
+
+body.light-mode input[type="text"],
+body.light-mode input[type="date"],
+body.light-mode input[type="number"],
+body.light-mode input[type="email"],
+body.light-mode input[type="password"] {
+    background-color: #FFFFFF;
+    border-color: #D1D5DB;
+    color: #1C1C1E;
+}
+
+body.light-mode input[type="text"]:focus,
+body.light-mode input[type="date"]:focus,
+body.light-mode input[type="number"]:focus,
+body.light-mode input[type="email"]:focus,
+body.light-mode input[type="password"]:focus {
+    border-color: #c084fc;
+    background-color: #FFFFFF;
+}
+
+/* Ajustes de texto para o fundo claro */
+body.light-mode .text-white { color: #1C1C1E !important; }
+body.light-mode .text-gray-200 { color: #374151 !important; }
+body.light-mode .text-gray-300 { color: #4B5563 !important; }
+body.light-mode .text-gray-400 { color: #6B7280 !important; }
+body.light-mode .text-gray-500 { color: #6B7280 !important; }
+
+/* Ajustes de containers internos (ex: detalhes, icones) */
+body.light-mode .bg-gray-800 { background-color: #F3F4F6; } /* Cinza muito claro */
+body.light-mode .bg-gray-900 { background-color: #FFFFFF; }
+body.light-mode .bg-black { background-color: #F9FAFB; border: 1px solid #E5E7EB; }
+
+body.light-mode .border-gray-800 { border-color: #E5E5EA; }
+body.light-mode .border-gray-700 { border-color: #D1D5DB; }
+
+/* Ajuste do Drawer */
+body.light-mode .card-drawer .drawer-content {
+    border-top-color: #F3F4F6;
+}
+
+/* Ajuste nos inputs do modal de autenticação para light mode */
+body.light-mode #auth-container input {
+    background-color: #FFFFFF;
+    color: #1C1C1E;
+    border-color: #D1D5DB;
+}
+body.light-mode input:-webkit-autofill,
+body.light-mode input:-webkit-autofill:hover, 
+body.light-mode input:-webkit-autofill:focus, 
+body.light-mode input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #FFFFFF inset !important;
+    -webkit-text-fill-color: #000 !important;
+}
+
+/* Ajustes Específicos de Botões no Light Mode */
+body.light-mode .bg-\[\#1C1C1E\] {
+    background-color: #F3F4F6;
+    border: 1px solid #E5E5EA;
+}
+body.light-mode .hover\:bg-gray-800:hover {
+    background-color: #F3F4F6;
 }

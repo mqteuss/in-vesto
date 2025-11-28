@@ -935,7 +935,6 @@ async function getCache(key) {
             }
         }
     }
-} 
     // --- HANDLER DE IA ---
     async function handleAnaliseIA() {
         if (!carteiraCalculada || carteiraCalculada.length === 0) {

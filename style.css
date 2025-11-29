@@ -16,6 +16,7 @@ html, body {
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
+
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
     display: none;
@@ -26,14 +27,14 @@ body::-webkit-scrollbar {
     border: 1px solid #2C2C2E;
 }
 
-/* Alterado para 9999px (Pílula) */
 .accent-bg {
     background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);
     color: #FFF;
-    border-radius: 9999px; 
+    border-radius: 9999px; /* Alterado para formato pílula */
     background-size: 100% auto;
     transition: all 0.3s ease-out;
 }
+
 .accent-bg:hover {
     background-size: 150% auto;
     background-position: right center;
@@ -47,14 +48,17 @@ body::-webkit-scrollbar {
     display: block;
     animation: slideUpIn 0.3s ease-out forwards;
 }
+
 @keyframes slideUpIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
-@keyframes newCardIn {
-     from { opacity: 0; transform: scale(0.95) translateY(10px); }
+
+@keyframes newCardIn { 
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
+
 .card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
 
 @keyframes gentleFloat {
@@ -66,22 +70,17 @@ body::-webkit-scrollbar {
     background-color: rgba(28, 28, 30, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid #2C2C2E;
-    
+    border: 1px solid #2C2C2E;    
     position: fixed;
-    bottom: 1.5rem;
-    
+    bottom: 1.5rem;    
     left: 50%;
     transform: translateX(-50%);
-    margin: 0;
-    
+    margin: 0;    
     width: 90%;          
     max-width: 340px;    
-    height: 3.7rem;   
-    
+    height: 3.7rem;       
     z-index: 50;
     border-radius: 9999px;
-
     display: flex;               
     justify-content: space-evenly; 
     align-items: center;        
@@ -91,15 +90,13 @@ body::-webkit-scrollbar {
 
 .tab-button {
     color: #6b7280; 
-    transition: all 0.3s ease-in-out;
-    
+    transition: all 0.3s ease-in-out;    
     flex: 1;                     
     display: flex;
     flex-direction: column;
     align-items: center;         
     justify-content: center;     
-    height: 100%;                
-    
+    height: 100%;                    
     background: transparent;
     border: none;
     padding: 0;
@@ -114,12 +111,12 @@ body::-webkit-scrollbar {
     transform: translateY(-3px); 
 }
 
-.tab-button.active .tab-button-icon-wrapper {
-      animation: gentleFloat 1.5s ease-in-out infinite;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+.tab-button.active .tab-button-icon-wrapper {  
+    animation: gentleFloat 1.5s ease-in-out infinite;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .tab-button.active .tab-button-icon-wrapper::before {
@@ -127,11 +124,9 @@ body::-webkit-scrollbar {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    
+    transform: translate(-50%, -50%);    
     width: 36px; 
-    height: 36px;
-    
+    height: 36px;    
     background-color: rgba(192, 132, 252, 0.15);
     border-radius: 9999px;
     z-index: -1;
@@ -145,16 +140,18 @@ body::-webkit-scrollbar {
 }
 
 .spin-animation { animation: spin 1s linear infinite; }
+
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
 
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button {
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
     -webkit-appearance: none; 
-    margin: 0;
+    margin: 0; 
 }
+
 input[type=number] { 
     -moz-appearance: textfield; 
 }
@@ -234,13 +231,14 @@ input[type=number] {
       -ms-overflow-style: none;
 }
 .scrollable-content::-webkit-scrollbar { 
-    display: none;
+    display: none; 
 }
 
 #detalhes-conteudo-scroll {
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
+
 #detalhes-conteudo-scroll::-webkit-scrollbar {
     display: none;
 }
@@ -262,12 +260,12 @@ input[type=number] {
     from { opacity: 0; transform: scale(0.95) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
+
 @keyframes modalOut {
     from { opacity: 1; transform: scale(1) translateY(0); }
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
-/* Inputs globais com formato Pílula */
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
 #add-ativo-modal input[type="number"],
@@ -278,7 +276,7 @@ input[type=number] {
     background-color: #1C1C1E; 
     border: 1px solid #2C2C2E;
     color: #ffffff;
-    border-radius: 9999px; /* Pílula */
+    outline: none; /* Garante que não haja outline padrão */
 }
 
 #add-ativo-modal input[type="text"]:focus,
@@ -288,15 +286,7 @@ input[type=number] {
 #auth-container input[type="email"]:focus,
 #auth-container input[type="password"]:focus {
     border-color: #c084fc;
-    box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.3);
-    outline: none;
-}
-
-/* Regra específica para remover borda branca do Search Input */
-#search-ativo-input:focus {
-    outline: none;
-    border-color: transparent;
-    box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.5); /* Anel roxo sutil ao invés de branco */
+    box-shadow: none; /* Removida a sombra/borda branca extra */
 }
 
 .page-modal { 
@@ -305,6 +295,7 @@ input[type=number] {
     transition: opacity 0.4s ease-in-out;
     z-index: 70; 
 }
+
 .page-modal.visible { 
     opacity: 1;
     pointer-events: auto;
@@ -312,11 +303,9 @@ input[type=number] {
 
 .page-content {
     transition: transform 0.4s ease-in-out;
-    transform: translateY(100%);
-    
+    transform: translateY(100%);    
     background-color: #000000;
-    border-top: 1px solid #2C2C2E;
-    
+    border-top: 1px solid #2C2C2E;    
     position: fixed; 
     bottom: 0;
     left: 0;
@@ -325,9 +314,11 @@ input[type=number] {
     max-width: 32rem;
     z-index: 80;
 }
+
 .page-modal.visible .page-content {
     transform: translateY(0);
 }
+
 .page-content.closing { 
     transform: translateY(100%);
 }
@@ -343,21 +334,26 @@ select {
     overflow: hidden;
     transition: max-height 0.4s ease-in-out;
 }
+
 .card-drawer.open {
     max-height: 350px;
 }
+
 .card-drawer .drawer-content {
     opacity: 0;
     transform: translateY(-5px);
     transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s;
 }
+
 .card-drawer.open .drawer-content {
     opacity: 1;
     transform: translateY(0);
 }
+
 .card-arrow-icon {
     transition: transform 0.4s ease-in-out;
 }
+
 .card-arrow-icon.open {
     transform: rotate(180deg);
 }
@@ -366,7 +362,7 @@ select {
     opacity: 0;
     transform: translateY(-100%);
     transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border-radius: 9999px; /* Pílula */
+    border-radius: 0.75rem;
 }
 
 #toast-notification.toast-visible {
@@ -389,6 +385,7 @@ select {
     line-height: 1.6;
     color: #d1d5db;
 }
+
 .news-ticker-tag {
     display: inline-block;
     background-color: #374151;
@@ -396,14 +393,15 @@ select {
     font-size: 0.75rem;
     font-weight: 500;
     padding: 2px 10px;
-    border-radius: 9999px; /* Pílula */
+    border-radius: 9999px;
     margin-right: 6px;
     margin-bottom: 6px;
     transition: all 0.2s ease;
     cursor: pointer;
-    z-index: 20;
+    z-index: 20; /* Aumentado para garantir clique */
     position: relative;
 }
+
 .news-ticker-tag:hover {
     background-color: #7c3aed;
     color: #FFF;
@@ -416,12 +414,14 @@ select {
     font-weight: 500;
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
-    border-radius: 9999px; /* Pílula */
+    border-radius: 0.5rem;
     transition: all 0.2s ease-in-out;
 }
+
 .periodo-selector-btn:hover {
     background-color: #4b5563;
 }
+
 .periodo-selector-btn.active {
     background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);
     color: #ffffff;
@@ -517,6 +517,7 @@ button:active,
     cursor: pointer;
     transition: color 0.2s ease-in-out;
 }
+
 .password-toggle:hover {
     color: #d1d5db;
 }
@@ -527,7 +528,6 @@ input:-webkit-autofill:focus,
 input:-webkit-autofill:active{
     -webkit-box-shadow: 0 0 0 30px #1C1C1E inset !important;
     -webkit-text-fill-color: white !important;
-    border-radius: 9999px !important;
     transition: background-color 5000s ease-in-out 0s;
 }
 

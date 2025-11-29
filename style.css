@@ -264,6 +264,7 @@ input[type=number] {
 }
 
 /* Estilos de Input atualizados para Formato Pílula e Sem Borda Branca */
+/* Adicionado #carteira-search-input */
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
 #add-ativo-modal input[type="number"],
@@ -272,7 +273,8 @@ input[type=number] {
 #auth-container input[type="password"],
 #new-password-form input,
 #change-password-form input,
-#recover-form input {
+#recover-form input,
+#carteira-search-input {
     transition: all 0.2s ease-in-out;
     background-color: #1C1C1E; 
     border: 1px solid #2C2C2E;
@@ -290,7 +292,8 @@ input[type=number] {
 #auth-container input[type="password"]:focus,
 #new-password-form input:focus,
 #change-password-form input:focus,
-#recover-form input:focus {
+#recover-form input:focus,
+#carteira-search-input:focus {
     border-color: #c084fc;
     /* Removido box-shadow para tirar a "borda brilhante/branca" */
     box-shadow: none;

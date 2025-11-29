@@ -3000,7 +3000,7 @@ async function handleMostrarDetalhes(symbol) {
                 carteiraSearchInput.dispatchEvent(new Event('input'));
             }
         });
-    
+    }
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
         if (!target) return;

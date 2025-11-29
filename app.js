@@ -2977,27 +2977,29 @@ async function handleMostrarDetalhes(symbol) {
         });
 
         // Evento 'keyup': Ao dar ENTER, busca o ativo (mesmo que não esteja na carteira)
+// Evento 'keyup': Ao dar ENTER, busca o ativo e limpa o campo
         carteiraSearchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 const term = carteiraSearchInput.value.trim().toUpperCase();
                 
                 if (!term) return;
                 
-                // Fecha o teclado mobile
+                // Fecha teclado e dá feedback visual
                 carteiraSearchInput.blur(); 
-
-                // Feedback visual rápido
                 showToast(`Buscando ${term}...`, 'success');
 
-                // Abre o modal diretamente. 
-                // A função showDetalhesModal já possui a lógica de:
-                // 1. Verificar cache
-                // 2. Se não tiver, chamar a API Brapi (/api/brapi)
-                // 3. Se o ativo não existir, mostrar erro dentro do modal
+                // Abre o modal de detalhes
                 showDetalhesModal(term);
+
+                // --- NOVO: Limpeza automática ---
+                // 1. Apaga o texto digitado
+                carteiraSearchInput.value = '';
+                
+                // 2. Simula um evento de 'input' para que o filtro da lista
+                // perceba que o texto está vazio e mostre todos os cards novamente
+                carteiraSearchInput.dispatchEvent(new Event('input'));
             }
         });
-    }
     
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');

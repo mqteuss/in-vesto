@@ -493,6 +493,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const aiContent = document.getElementById('ai-content');
     const aiLoading = document.getElementById('ai-loading');
 
+    // --- NOVOS SELETORES PESQUISA ---
+    const searchAtivoInput = document.getElementById('search-ativo-input');
+    const searchAtivoBtn = document.getElementById('search-ativo-btn');
+
     // --- SELETORES PWA (NOVO) ---
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
@@ -3178,6 +3182,44 @@ async function handleMostrarDetalhes(symbol) {
             console.error("Erro ao carregar dados iniciais:", e);
             showToast("Falha ao carregar dados da nuvem.");
         }
+    }
+
+    // --- NOVA LÓGICA DE PESQUISA ---
+    function realizarPesquisa() {
+        const termo = searchAtivoInput.value.trim().toUpperCase();
+        if (termo) {
+            // Remove foco do input para esconder teclado no mobile
+            searchAtivoInput.blur();
+            
+            // Limpa o input
+            searchAtivoInput.value = '';
+            searchAtivoBtn.classList.add('hidden');
+
+            // Chama a função existente que abre o modal de detalhes
+            showDetalhesModal(termo);
+        }
+    }
+
+    if (searchAtivoInput) {
+        // Evento ao pressionar Enter
+        searchAtivoInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                realizarPesquisa();
+            }
+        });
+
+        // Mostrar/Esconder botão de ação baseado no texto
+        searchAtivoInput.addEventListener('input', (e) => {
+            if (e.target.value.trim().length > 0) {
+                searchAtivoBtn.classList.remove('hidden');
+            } else {
+                searchAtivoBtn.classList.add('hidden');
+            }
+        });
+    }
+
+    if (searchAtivoBtn) {
+        searchAtivoBtn.addEventListener('click', realizarPesquisa);
     }
     
     async function init() {

@@ -163,7 +163,6 @@ function criarCardElemento(ativo, dados) {
     }
 
     const card = document.createElement('div');
-    // ATUALIZADO: rounded-3xl
     card.className = 'card-bg p-4 rounded-3xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
@@ -433,6 +432,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
+    // NOVO SELETOR DA BARRA DE PESQUISA
+    const carteiraSearchInput = document.getElementById('carteira-search-input');
+    
     const carteiraStatus = document.getElementById('carteira-status');
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
@@ -1744,7 +1746,21 @@ async function renderizarCarteira() {
         }
         
         renderizarGraficoAlocacao(dadosGrafico);
-        renderizarGraficoPatrimonio(); 
+        renderizarGraficoPatrimonio();
+        
+        // REAPLICAR FILTRO DE PESQUISA (Se houver algo digitado)
+        if (carteiraSearchInput && carteiraSearchInput.value) {
+            const term = carteiraSearchInput.value.trim().toUpperCase();
+            const cards = listaCarteira.querySelectorAll('.card-bg');
+            cards.forEach(card => {
+                const symbol = card.dataset.symbol;
+                if (symbol && symbol.includes(term)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
     }
 
 function renderizarProventos() {
@@ -2938,6 +2954,42 @@ async function handleMostrarDetalhes(symbol) {
             const target = e.target.closest('button');
             if (target && target.dataset.action === 'details' && target.dataset.symbol) {
                 showDetalhesModal(target.dataset.symbol);
+            }
+        });
+    }
+    
+    // LOGICA DA BARRA DE PESQUISA (NOVO)
+    if (carteiraSearchInput) {
+        carteiraSearchInput.addEventListener('input', (e) => {
+            const term = e.target.value.trim().toUpperCase();
+            const cards = listaCarteira.querySelectorAll('.card-bg');
+            
+            cards.forEach(card => {
+                const symbol = card.dataset.symbol;
+                if (symbol && symbol.includes(term)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        });
+
+        carteiraSearchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                const term = carteiraSearchInput.value.trim().toUpperCase();
+                if (!term) return;
+                
+                // Tenta encontrar match exato ou o primeiro visível
+                const visibleCard = Array.from(listaCarteira.querySelectorAll('.card-bg:not(.hidden)'))
+                    .find(c => c.dataset.symbol === term) || listaCarteira.querySelector('.card-bg:not(.hidden)');
+                
+                if (visibleCard) {
+                    const symbol = visibleCard.dataset.symbol;
+                    showDetalhesModal(symbol);
+                    carteiraSearchInput.blur();
+                } else {
+                    showToast(`Ativo "${term}" não encontrado.`);
+                }
             }
         });
     }

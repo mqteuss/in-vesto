@@ -288,6 +288,14 @@ input[type=number] {
     box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.3);
 }
 
+/* OVERRIDE ESPECÍFICO PARA A BARRA DE PESQUISA (Para remover qualquer borda branca) */
+#search-ativo-input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: transparent !important;
+    ring: 0 !important;
+}
+
 .page-modal { 
     opacity: 0;
     pointer-events: none;
@@ -390,7 +398,7 @@ select {
     margin-bottom: 6px;
     transition: all 0.2s ease;
     cursor: pointer;
-    z-index: 20; /* Aumentado para garantir clique */
+    z-index: 20; 
     position: relative;
 }
 .news-ticker-tag:hover {
@@ -535,7 +543,6 @@ body.privacy-mode .money-value,
 body.privacy-mode [data-field="posicao-valor"],
 body.privacy-mode [data-field="custo-valor"],
 body.privacy-mode [data-field="pl-valor"] {
-    /* Método Filter Blur (mais robusto) */
     filter: blur(7px) !important;
     user-select: none;
     pointer-events: none;

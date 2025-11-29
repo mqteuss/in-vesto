@@ -1,6 +1,6 @@
 import * as supabaseDB from './supabase.js';
 
-// --- LÓGICA DE INSTALAÇÃO PWA ---
+// --- LÓGICA DE INSTALAÇÃO PWA (NOVO) ---
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -8,11 +8,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredPrompt = e;
     console.log('Instalação disponível');
 });
+// ---------------------------------------
 
-// Configuração inicial do Chart.js
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
-Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
 function bufferToBase64(buffer) {
     return btoa(String.fromCharCode(...new Uint8Array(buffer)));
@@ -50,17 +49,35 @@ const formatDateToInput = (dateString) => {
         const day = date.getDate().toString().padStart(2, '0');
         return `${year}-${month}-${day}`;
     } catch (e) {
+        console.error("Erro ao formatar data para input:", e);
         return new Date().toISOString().split('T')[0];
     }
 };
 
 const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
 
+function parseMesAno(mesAnoStr) { 
+    try {
+        const [mesStr, anoStr] = mesAnoStr.split('/');
+        const mes = parseInt(mesStr, 10) - 1; 
+        const ano = parseInt("20" + anoStr, 10); 
+        if (!isNaN(mes) && !isNaN(ano) && mes >= 0 && mes <= 11) {
+            return new Date(ano, mes, 1); 
+        }
+        return null;
+    } catch (e) {
+        console.error("Erro ao analisar data 'MM/AA':", mesAnoStr, e);
+        return null;
+    }
+}
+
 function getSaoPauloDateTime() {
     try {
         const spTimeStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
         const spDate = new Date(spTimeStr);
-        return { dayOfWeek: spDate.getDay(), hour: spDate.getHours() };
+        const dayOfWeek = spDate.getDay(); 
+        const hour = spDate.getHours();
+        return { dayOfWeek, hour };
     } catch (e) {
         const localDate = new Date();
         return { dayOfWeek: localDate.getDay(), hour: localDate.getHours() };
@@ -243,13 +260,16 @@ function atualizarCardElemento(card, ativo, dados) {
             const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
             const valorClass = foiPago ? "text-gray-400" : "accent-text";
             const sinal = foiPago ? "" : "+";
+
             let valorTexto = '';
             if (proventoReceber > 0) {
                  valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
             } else {
                  valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
             }
+
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
+            
             proventoHtml = `
             <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
@@ -294,6 +314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     resolve();
                 };
                 request.onerror = (event) => {
+                    console.error('[IDB Cache] Erro ao abrir DB:', event.target.error);
                     reject(event.target.error);
                 };
             });
@@ -337,14 +358,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     
     // --- SELETORES DO DOM ---
-    // (Seletores antigos mantidos)
     const authContainer = document.getElementById('auth-container');
     const authLoading = document.getElementById('auth-loading');
+    
     const loginForm = document.getElementById('login-form');
     const loginEmailInput = document.getElementById('login-email');
     const loginPasswordInput = document.getElementById('login-password');
     const loginSubmitBtn = document.getElementById('login-submit-btn');
     const loginError = document.getElementById('login-error');
+    
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
@@ -352,6 +374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const signupSubmitBtn = document.getElementById('signup-submit-btn');
     const signupError = document.getElementById('signup-error');
     const signupSuccess = document.getElementById('signup-success'); 
+    
     const recoverForm = document.getElementById('recover-form');
     const recoverEmailInput = document.getElementById('recover-email');
     const recoverSubmitBtn = document.getElementById('recover-submit-btn');
@@ -359,12 +382,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const recoverMessage = document.getElementById('recover-message');
     const showRecoverBtn = document.getElementById('show-recover-btn');
     const backToLoginBtn = document.getElementById('back-to-login-btn');
+    
     const showSignupBtn = document.getElementById('show-signup-btn');
     const showLoginBtn = document.getElementById('show-login-btn');
+    
     const newPasswordModal = document.getElementById('new-password-modal');
     const newPasswordForm = document.getElementById('new-password-form');
     const newPasswordInput = document.getElementById('new-password-input');
     const newPasswordBtn = document.getElementById('new-password-btn');
+
     const changePasswordModal = document.getElementById('change-password-modal');
     const changePasswordForm = document.getElementById('change-password-form');
     const currentPasswordInput = document.getElementById('current-password-input');
@@ -376,9 +402,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
     const bioToggleKnob = document.getElementById('bio-toggle-knob'); 
     const bioStatusIcon = document.getElementById('bio-status-icon');
+
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
+
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -404,7 +432,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
+    // NOVO SELETOR DA BARRA DE PESQUISA
     const carteiraSearchInput = document.getElementById('carteira-search-input');
+    
     const carteiraStatus = document.getElementById('carteira-status');
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
@@ -448,25 +478,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
     const watchlistStatusEl = document.getElementById('watchlist-status');
+    
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
+    
+    // --- NOVOS SELETORES (CONFIG) ---
     const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
     const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
+
+    // --- NOVOS SELETORES IA ---
     const btnIaAnalise = document.getElementById('btn-ia-analise');
     const aiModal = document.getElementById('ai-modal');
     const closeAiModal = document.getElementById('close-ai-modal');
     const aiContent = document.getElementById('ai-content');
     const aiLoading = document.getElementById('ai-loading');
+
+    // --- SELETORES PWA (NOVO) ---
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
+
+    // --- LÓGICA DE INSTALAÇÃO DO PWA ---
+    function verificarStatusInstalacao() {
+        if (deferredPrompt) {
+            installSection.classList.remove('hidden');
+        }
+    }
     
-    // --- NOVOS SELETORES DE TEMA ---
-    const toggleThemeBtn = document.getElementById('toggle-theme-btn');
-    const themeToggleKnob = document.getElementById('theme-toggle-knob');
-    const themeStatusText = document.getElementById('theme-status-text');
+    verificarStatusInstalacao();
+
+    window.addEventListener('beforeinstallprompt', () => {
+        verificarStatusInstalacao();
+    });
+
+    window.addEventListener('appinstalled', () => {
+        installSection.classList.add('hidden');
+        deferredPrompt = null;
+        showToast('App instalado com sucesso!', 'success');
+    });
+
+    if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            deferredPrompt = null;
+            if (outcome === 'accepted') {
+                installSection.classList.add('hidden');
+            }
+        });
+    }
+    // -----------------------------------
 
     let currentUserId = null;
     let transacoes = [];        
@@ -482,6 +547,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let precosAtuais = [];
     let proventosAtuais = [];
     let mesesProcessados = [];
+    const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
     let lastAlocacaoData = null; 
     let lastHistoricoData = null;
     let lastPatrimonioData = null; 
@@ -496,52 +562,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesSymbol = null;
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
-
-    // --- FUNÇÃO PARA ATUALIZAR A UI DO TEMA ---
-    function updateThemeUI() {
-        const currentTheme = localStorage.getItem('vesto_theme') || 'dark';
-        
-        if (currentTheme === 'light') {
-            document.body.classList.add('light-theme');
-            
-            if (themeToggleKnob) {
-                themeToggleKnob.classList.remove('translate-x-1');
-                themeToggleKnob.classList.add('translate-x-6');
-            }
-            if (toggleThemeBtn) {
-                toggleThemeBtn.classList.remove('bg-gray-700');
-                toggleThemeBtn.classList.add('bg-purple-600');
-            }
-            if (themeStatusText) themeStatusText.textContent = 'Claro';
-
-            // Ajusta cores dos gráficos para o tema claro
-            Chart.defaults.color = '#374151'; // cinza escuro
-            Chart.defaults.borderColor = '#d1d5db'; // cinza claro
-            
-        } else {
-            document.body.classList.remove('light-theme');
-            
-            if (themeToggleKnob) {
-                themeToggleKnob.classList.remove('translate-x-6');
-                themeToggleKnob.classList.add('translate-x-1');
-            }
-            if (toggleThemeBtn) {
-                toggleThemeBtn.classList.remove('bg-purple-600');
-                toggleThemeBtn.classList.add('bg-gray-700');
-            }
-            if (themeStatusText) themeStatusText.textContent = 'Escuro';
-
-            // Ajusta cores dos gráficos para o tema escuro
-            Chart.defaults.color = '#9ca3af'; // cinza padrão
-            Chart.defaults.borderColor = '#374151'; // borda padrão
-        }
-
-        // Força atualização dos gráficos se existirem para pegar novas cores
-        if (alocacaoChartInstance) alocacaoChartInstance.update();
-        if (historicoChartInstance) historicoChartInstance.update();
-        if (patrimonioChartInstance) patrimonioChartInstance.update();
-        if (detalhesChartInstance) detalhesChartInstance.update();
-    }
 
     function showToast(message, type = 'error') {
         clearTimeout(toastTimer);
@@ -662,6 +682,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const savedCredId = localStorage.getItem('vesto_bio_id');
         
         if (!savedCredId) {
+            console.warn("Nenhuma credencial salva encontrada.");
             desativarBiometria();
             return;
         }
@@ -689,6 +710,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showToast('Acesso liberado!', 'success');
             }
         } catch (e) {
+            console.warn("Biometria cancelada ou falhou:", e);
             if (e.name !== 'NotAllowedError') {
                  showToast("Falha na leitura biométrica.");
             }
@@ -745,7 +767,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.location.reload();
         });
     }
-	async function setCache(key, data, duration) { 
+    
+    async function setCache(key, data, duration) { 
         const finalDuration = duration || (1000 * 60 * 60); 
         const cacheItem = { key: key, timestamp: Date.now(), data: data, duration: finalDuration };
         try { 
@@ -782,8 +805,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error(`Erro ao remover proventos conhecidos do DB para ${symbol}:`, e);
         }
     }
-
-    async function getCache(key) {
+async function getCache(key) {
         try {
             const cacheItem = await vestoDB.get('apiCache', key);
             if (!cacheItem) return null;
@@ -892,17 +914,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 400); 
     }
 
+    // --- NOVA FUNÇÃO: HANDLER DE IA ---
     async function handleAnaliseIA() {
         if (!carteiraCalculada || carteiraCalculada.length === 0) {
             showToast("Adicione ativos antes de pedir uma análise.");
             return;
         }
 
+        // 1. Abre o Modal e mostra Loading
         aiModal.classList.add('visible');
         aiModal.querySelector('.modal-content').classList.remove('modal-out');
         aiContent.classList.add('hidden');
         aiLoading.classList.remove('hidden');
 
+        // 2. Prepara os dados (Payload)
+        // Calcula patrimônio total atual (soma das posições + caixa)
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
         let valorTotalAtivos = 0;
         
@@ -925,7 +951,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalPatrimonio = valorTotalAtivos + saldoCaixa;
 
         try {
-            const response = await fetchBFF('/api/analyze', {
+            // 3. Chama a API Serverless
+            const response = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -935,8 +962,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })
             });
 
-            const data = response; 
+            if (!response.ok) throw new Error('Falha na comunicação com a IA');
+
+            const data = await response.json();
             
+            // 4. Renderiza o Markdown (usando a lib 'marked' adicionada no HTML)
             if (data.result && window.marked) {
                 aiContent.innerHTML = marked.parse(data.result);
             } else {
@@ -1018,14 +1048,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         watchlist.forEach(item => {
             const symbol = item.symbol;
             const el = document.createElement('div');
+            // ATUALIZADO: rounded-2xl
             el.className = 'flex justify-between items-center p-3 bg-black rounded-2xl border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
-            
-            // Ajuste para tema claro se necessário (mantendo dark mode no elemento específico ou adaptando via CSS)
-            if (document.body.classList.contains('light-theme')) {
-                el.style.backgroundColor = '#ffffff';
-                el.style.borderColor = '#d1d5db';
-            }
-
             el.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center text-[10px] font-bold text-purple-400">
@@ -1044,7 +1068,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function atualizarIconeFavorito(symbol) {
         if (!symbol || !detalhesFavoritoBtn) return;
+
         const isFavorite = watchlist.some(item => item.symbol === symbol);
+        
         detalhesFavoritoIconEmpty.classList.toggle('hidden', isFavorite);
         detalhesFavoritoIconFilled.classList.toggle('hidden', !isFavorite);
         detalhesFavoritoBtn.dataset.symbol = symbol; 
@@ -1059,7 +1085,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
 
-    async function processarDividendosPagos() {
+async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         let novoSaldoCalculado = 0; 
@@ -1097,7 +1123,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     }
-
     function calcularCarteira() {
         const ativosMap = new Map();
         const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1125,7 +1150,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dataCompra: a.dataCompra
             }));
     }
-
     function renderizarHistorico() {
         listaHistorico.innerHTML = '';
         if (transacoes.length === 0) {
@@ -1138,6 +1162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
             const card = document.createElement('div');
+            // ATUALIZADO: rounded-3xl
             card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between';
             const cor = 'text-green-500';
             const sinal = '+';
@@ -1222,6 +1247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
 
             const newsCard = document.createElement('div');
+            // ATUALIZADO: rounded-3xl
             newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive'; 
             newsCard.setAttribute('data-action', 'toggle-news');
             newsCard.setAttribute('data-target', drawerId);
@@ -1258,12 +1284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         fiiNewsList.appendChild(fragment);
     }
-    
-    // As funções de renderização de gráficos permanecem as mesmas, 
-    // mas se adaptarão automaticamente graças ao `updateThemeUI` 
-    // que altera os defaults do Chart.js
-
-    function renderizarGraficoAlocacao(dadosGrafico) {
+	function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1281,7 +1302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = dadosGrafico.map(d => d.totalPosicao);
         const newDataString = JSON.stringify({ labels, data });
 
-        if (newDataString === lastAlocacaoData && alocacaoChartInstance) { return; }
+        if (newDataString === lastAlocacaoData) { return; }
         lastAlocacaoData = newDataString; 
         
         const colors = gerarCores(labels.length);
@@ -1300,13 +1321,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         data: data, 
                         backgroundColor: colors, 
                         borderWidth: 2, 
-                        // Cor da borda agora usa o default, que é alterado pelo tema
+                        borderColor: '#000000' 
                     }] 
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 15 } },
+                        legend: { display: true, position: 'bottom', labels: { color: '#f3f4f6', boxWidth: 12, padding: 15, } },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -1323,14 +1344,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-
+    
     function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const newDataString = JSON.stringify({ labels, data });
 
-        if (newDataString === lastHistoricoData && historicoChartInstance) { return; }
+        if (newDataString === lastHistoricoData) { return; }
         lastHistoricoData = newDataString; 
         
         if (!labels || !data || labels.length === 0) {
@@ -1345,10 +1366,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
         gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
         
+        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
+        
         if (historicoChartInstance) {
             historicoChartInstance.data.labels = labels;
             historicoChartInstance.data.datasets[0].data = data;
             historicoChartInstance.data.datasets[0].backgroundColor = gradient;
+            historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
+            historicoChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)'; 
             historicoChartInstance.update();
         } else {
             historicoChartInstance = new Chart(ctx, {
@@ -1359,6 +1386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         label: 'Total Recebido',
                         data: data,
                         backgroundColor: gradient,
+                        hoverBackgroundColor: hoverGradient,
                         borderColor: 'rgba(192, 132, 252, 0.3)', 
                         borderWidth: 1,
                         borderRadius: 5 
@@ -1366,9 +1394,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1A1A1A',
+                            titleColor: '#f3f4f6',
+                            bodyColor: '#f3f4f6',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false, 
+                            callbacks: {
+                                title: (context) => `Mês: ${context[0].label}`, 
+                                label: (context) => `Total: ${formatBRL(context.parsed.y)}`
+                            }
+                        }
+                    },
                     scales: {
-                        y: { beginAtZero: true, ticks: { display: false } },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#2A2A2A' }, 
+                            ticks: { display: false }
+                        },
                         x: { grid: { display: false } }
                     }
                 }
@@ -1376,56 +1423,92 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // (Funções de renderizarGraficoPatrimonio e renderizarGraficoProventosDetalhes 
-    // seguem a mesma lógica, omitidas aqui para brevidade pois não mudaram a lógica, 
-    // apenas herdam as cores globais)
     function renderizarGraficoProventosDetalhes({ labels, data }) {
-         const canvas = document.getElementById('detalhes-proventos-chart');
-         if (!canvas) return;
-         const ctx = canvas.getContext('2d');
-     
-         if (!labels || !data || labels.length === 0) {
-             if (detalhesChartInstance) {
-                 detalhesChartInstance.destroy();
-                 detalhesChartInstance = null; 
-             }
-             return;
-         }
-         
-         const gradient = ctx.createLinearGradient(0, 0, 0, 192);
-         gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
-         gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
-     
-         if (detalhesChartInstance) {
-             detalhesChartInstance.data.labels = labels;
-             detalhesChartInstance.data.datasets[0].data = data;
-             detalhesChartInstance.update();
-         } else {
-             detalhesChartInstance = new Chart(ctx, {
-                 type: 'bar',
-                 data: {
-                     labels: labels,
-                     datasets: [{
-                         label: 'Recebido',
-                         data: data,
-                         backgroundColor: gradient,
-                         borderColor: 'rgba(192, 132, 252, 0.3)', 
-                         borderWidth: 1,
-                         borderRadius: 4 
-                     }]
-                 },
-                 options: {
-                     responsive: true, maintainAspectRatio: false,
-                     plugins: { legend: { display: false } },
-                     scales: {
-                         y: { beginAtZero: true, ticks: { callback: (val) => formatBRL(val) } },
-                         x: { grid: { display: false } }
-                     }
-                 }
-             });
-         }
+        const canvas = document.getElementById('detalhes-proventos-chart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+    
+        if (!labels || !data || labels.length === 0) {
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null; 
+            }
+            return;
+        }
+    
+        const gradient = ctx.createLinearGradient(0, 0, 0, 192);
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
+        
+        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 192);
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
+    
+        if (detalhesChartInstance) {
+            detalhesChartInstance.data.labels = labels;
+            detalhesChartInstance.data.datasets[0].data = data;
+            detalhesChartInstance.data.datasets[0].backgroundColor = gradient;
+            detalhesChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
+            detalhesChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)';
+            detalhesChartInstance.update();
+        } else {
+            detalhesChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Recebido',
+                        data: data,
+                        backgroundColor: gradient,
+                        hoverBackgroundColor: hoverGradient,
+                        borderColor: 'rgba(192, 132, 252, 0.3)', 
+                        borderWidth: 1,
+                        borderRadius: 4 
+                    }]
+                },
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1A1A1A',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false, 
+                            callbacks: {
+                                title: (context) => `Mês: ${context[0].label}`, 
+                                label: (context) => `Valor: ${formatBRL(context.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#2A2A2A' }, 
+                            ticks: { 
+                                display: true,
+                                color: '#6b7280',
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return formatBRL(value);
+                                }
+                            }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: {
+                                color: '#9ca3af',
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     }
-
+    
     function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
@@ -1435,7 +1518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = patrimonio.map(p => p.value);
         const newDataString = JSON.stringify({ labels, data });
 
-        if (newDataString === lastPatrimonioData && patrimonioChartInstance) { return; }
+        if (newDataString === lastPatrimonioData) { return; }
         lastPatrimonioData = newDataString;
         
         if (labels.length === 0) {
@@ -1453,6 +1536,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = data;
+            
+            patrimonioChartInstance.data.datasets[0].backgroundColor = gradient;
+            patrimonioChartInstance.data.datasets[0].borderColor = '#c084fc';
+            patrimonioChartInstance.data.datasets[0].pointBackgroundColor = '#c084fc';
+            
+            patrimonioChartInstance.data.datasets[0].pointRadius = 3;
+            patrimonioChartInstance.data.datasets[0].pointHitRadius = 15;
+            patrimonioChartInstance.data.datasets[0].pointHoverRadius = 5;
+            
             patrimonioChartInstance.update();
         } else {
             patrimonioChartInstance = new Chart(ctx, {
@@ -1467,20 +1559,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                         borderColor: '#c084fc', 
                         tension: 0.1,
                         pointRadius: 3, 
+                        pointBackgroundColor: '#c084fc', 
+                        pointHitRadius: 15, 
+                        pointHoverRadius: 5 
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Patrimônio: ${formatBRL(context.parsed.y)}`
+                            }
+                        }
+                    },
                     scales: {
-                        y: { beginAtZero: false, ticks: { display: false } },
+                        y: { beginAtZero: false, ticks: { display: false }, grid: { color: '#2A2A2A' } },
                         x: { ticks: { display: false }, grid: { display: false } }
                     }
                 }
             });
         }
     }
-
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
         const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
@@ -1505,17 +1606,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function getQuantidadeNaData(symbol, dataLimiteStr) {
         if (!dataLimiteStr) return 0;
+        
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
+
         return transacoes.reduce((total, t) => {
             if (t.symbol === symbol && t.type === 'buy') {
                 const dataTransacao = new Date(t.date);
-                if (dataTransacao <= dataLimite) return total + t.quantity;
+                if (dataTransacao <= dataLimite) {
+                    return total + t.quantity;
+                }
             }
             return total;
         }, 0);
     }
-
-    async function renderizarCarteira() {
+async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -1644,12 +1748,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderizarGraficoAlocacao(dadosGrafico);
         renderizarGraficoPatrimonio();
         
+        // REAPLICAR FILTRO DE PESQUISA (Se houver algo digitado)
         if (carteiraSearchInput && carteiraSearchInput.value) {
-            carteiraSearchInput.dispatchEvent(new Event('input'));
+            const term = carteiraSearchInput.value.trim().toUpperCase();
+            const cards = listaCarteira.querySelectorAll('.card-bg');
+            cards.forEach(card => {
+                const symbol = card.dataset.symbol;
+                if (symbol && symbol.includes(term)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
         }
     }
 
-    function renderizarProventos() {
+function renderizarProventos() {
         let totalEstimado = 0;
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -1671,7 +1785,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
-    
+    // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
+
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v5_filtered';
         
@@ -1710,8 +1825,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         try {
             const url = `/api/news?t=${Date.now()}`;
-            const response = await fetchBFF(url, { method: 'GET' });
+            const response = await fetchBFF(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
             const articles = response; 
+            
             if (articles && Array.isArray(articles) && articles.length > 0) {
                 await setCache(cacheKey, articles, CACHE_NOTICIAS);
             }
@@ -1726,6 +1845,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000); 
+            
             const response = await fetch(url, { ...options, signal: controller.signal });
             clearTimeout(timeoutId); 
 
@@ -1738,6 +1858,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error.name === 'AbortError') {
                 throw new Error("O servidor demorou muito para responder.");
             }
+            console.error(`Erro ao chamar o BFF ${url}:`, error);
             throw error;
         }
     }
@@ -1771,6 +1892,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return null;
                 }
             } catch (err) {
+                console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
                 return null;
             }
         });
@@ -1778,7 +1900,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return resultados.filter(p => p !== null);
     }
 
-    function processarProventosScraper(proventosScraper = []) {
+function processarProventosScraper(proventosScraper = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
         const dataLimitePassado = new Date();
@@ -1806,7 +1928,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function buscarProventosFuturos(force = false) {
-        const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol);
+        const fiiNaCarteira = carteiraCalculada
+            .filter(a => isFII(a.symbol))
+            .map(a => a.symbol);
+            
         if (fiiNaCarteira.length === 0) return [];
 
         let proventosPool = [];
@@ -1818,6 +1943,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await vestoDB.delete('apiCache', cacheKey);
                 await removerProventosConhecidos(symbol);
             }
+            
             const proventoCache = await getCache(cacheKey);
             if (proventoCache) {
                 proventosPool.push(proventoCache);
@@ -1829,6 +1955,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
+                
                 if (novosProventos && Array.isArray(novosProventos)) {
                     for (const provento of novosProventos) {
                         if (provento && provento.symbol && provento.paymentDate) {
@@ -1838,6 +1965,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
+                            
                             if (!existe) {
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
                                 await supabaseDB.addProventoConhecido(novoProvento);
@@ -1846,13 +1974,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                     }
                 }
-            } catch (error) { console.error(error); }
+            } catch (error) {
+                console.error("Erro ao buscar novos proventos com Scraper:", error);
+            }
         }
+        
         return processarProventosScraper(proventosPool); 
     }
 	
 	async function callScraperFundamentosAPI(ticker) {
-        const body = { mode: 'fundamentos', payload: { ticker } };
+        const body = { 
+            mode: 'fundamentos', 
+            payload: { ticker } 
+        };
         const response = await fetchBFF('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1861,37 +1995,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return response.json;
     }
 
-    async function callScraperHistoricoAPI(ticker) { 
-        const body = { mode: 'historico_12m', payload: { ticker } };
-        const response = await fetchBFF('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        return response.json; 
-    }
-    
-    async function callScraperProventosCarteiraAPI(fiiList) {
-        const body = { mode: 'proventos_carteira', payload: { fiiList } };
-        const response = await fetchBFF('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        return response.json; 
-    }
-    
-    async function callScraperHistoricoPortfolioAPI(fiiList) {
-         const body = { mode: 'historico_portfolio', payload: { fiiList } };
-         const response = await fetchBFF('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        return response.json; 
-    }
-
-    async function buscarHistoricoProventosAgregado(force = false) {
+async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
@@ -1911,6 +2015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
                 }
             } catch (e) {
+                console.error("Erro ao buscar histórico agregado:", e);
                 return { labels: [], data: [] }; 
             }
         }
@@ -1920,12 +2025,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const aggregator = {};
 
         rawDividends.forEach(item => {
+            // CORREÇÃO DE LÓGICA HÍBRIDA:
+            
+            // 1. Para o EIXO X (Visualização): Usamos a Data de Pagamento (Caixa).
+            // Isso garante que o dinheiro apareça no mês que cai na conta (ex: MXRF11 vai para Dezembro).
             const dataVisualizacao = item.paymentDate || item.dataCom;
+            
+            // 2. Para a QUANTIDADE (Cálculo): Usamos a Data Com (Competência).
+            // Isso garante que só contamos as cotas que você tinha no dia do corte (corrige o erro do SNAG11 em Nov).
             const dataDireito = item.dataCom || item.paymentDate;
             
             if (dataVisualizacao) {
                 const [ano, mes] = dataVisualizacao.split('-'); 
                 const chaveMes = `${mes}/${ano.substring(2)}`; 
+                
+                // Verifica quantidade no dia do DIREITO, não do pagamento
                 const qtdNaData = getQuantidadeNaData(item.symbol, dataDireito);
 
                 if (qtdNaData > 0) {
@@ -1942,10 +2056,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         const data = labels.map(label => aggregator[label]);
+
         return { labels, data };
     }
     
-    async function atualizarTodosDados(force = false) { 
+async function atualizarTodosDados(force = false) { 
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
         
@@ -1993,18 +2108,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (precosAtuais.length === 0) { 
                 await renderizarCarteira(); 
             }
+        }).catch(async err => {
+            console.error("Erro ao buscar preços (BFF):", err);
+            showToast("Erro ao buscar preços."); 
+            if (precosAtuais.length === 0) { await renderizarCarteira(); }
         });
 
         promessaProventos.then(async proventosFuturos => {
+            // CORREÇÃO APLICADA:
+            // Usamos proventosConhecidos (que já foi atualizado pela função buscarProventosFuturos)
+            // Isso garante que dados salvos no banco não sejam sobrescritos por um array vazio se a API falhar
             proventosAtuais = processarProventosScraper(proventosConhecidos);
+            
             renderizarProventos(); 
             if (precosAtuais.length > 0) { 
                 await renderizarCarteira(); 
             }
         }).catch(async err => {
+            console.error("Erro ao buscar proventos (BFF):", err);
+            
+            // Fallback: Se der erro na API, tentamos mostrar o que já temos salvo no banco
             if (proventosConhecidos.length > 0) {
                  proventosAtuais = processarProventosScraper(proventosConhecidos);
                  renderizarProventos();
+                 
                  if (precosAtuais.length > 0) {
                      await renderizarCarteira();
                  }
@@ -2016,6 +2143,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         promessaHistorico.then(({ labels, data }) => {
             renderizarGraficoHistorico({ labels, data });
         }).catch(err => {
+            console.error("Erro ao buscar histórico agregado (BFF):", err);
+            showToast("Erro ao buscar histórico."); 
             renderizarGraficoHistorico({ labels: [], data: [] }); 
         });
         
@@ -2029,328 +2158,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // --- MANIPULADORES DE EVENTOS ---
-    // (Demais manipuladores mantidos como estavam)
-    
-    refreshButton.addEventListener('click', async () => { await atualizarTodosDados(true); });
-    refreshNoticiasButton.addEventListener('click', async () => { await handleAtualizarNoticias(true); });
-    showAddModalBtn.addEventListener('click', showAddModal);
-    emptyStateAddBtn.addEventListener('click', showAddModal);
-    addAtivoCancelBtn.addEventListener('click', hideAddModal);
-    addAtivoModal.addEventListener('click', (e) => { if (e.target === addAtivoModal) hideAddModal(); });
-    
-    addAtivoForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        handleSalvarTransacao();
-    });
-    
-    listaCarteira.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
-        const action = target.dataset.action;
-        const symbol = target.dataset.symbol;
 
-        if (action === 'remove') handleRemoverAtivo(symbol);
-        else if (action === 'details') showDetalhesModal(symbol);
-        else if (action === 'toggle') {
-            const drawer = document.getElementById(`drawer-${symbol}`);
-            const icon = target.querySelector('.card-arrow-icon');
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        }
-    });
-    
-    listaHistorico.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
-        const action = target.dataset.action;
-        const id = target.dataset.id;
-        const symbol = target.dataset.symbol;
+    async function handleToggleFavorito() {
+        const symbol = detalhesFavoritoBtn.dataset.symbol;
+        if (!symbol) return;
 
-        if (action === 'edit') handleAbrirModalEdicao(id);
-        else if (action === 'delete') handleExcluirTransacao(id, symbol);
-    });
-    
-    dashboardDrawers.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target || !target.dataset.targetDrawer) return;
-        const drawerId = target.dataset.targetDrawer;
-        const drawer = document.getElementById(drawerId);
-        const icon = target.querySelector('.card-arrow-icon');
-        drawer?.classList.toggle('open');
-        icon?.classList.toggle('open');
-    });
+        const isFavorite = watchlist.some(item => item.symbol === symbol);
 
-    const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
-    if (watchlistToggleBtn) {
-        watchlistToggleBtn.addEventListener('click', (e) => {
-            const target = e.currentTarget; 
-            const drawerId = target.dataset.targetDrawer;
-            const drawer = document.getElementById(drawerId);
-            const icon = target.querySelector('.card-arrow-icon');
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        });
-    }
-
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            mudarAba(button.dataset.tab);
-        });
-    });
-    
-    if (btnIaAnalise) btnIaAnalise.addEventListener('click', handleAnaliseIA);
-    if (closeAiModal) closeAiModal.addEventListener('click', () => { aiModal.classList.remove('visible'); aiContent.innerHTML = ''; });
-    if (aiModal) aiModal.addEventListener('click', (e) => { if (e.target === aiModal) { aiModal.classList.remove('visible'); aiContent.innerHTML = ''; } });
-
-    customModalCancel.addEventListener('click', hideModal);
-    customModalOk.addEventListener('click', () => { if (typeof onConfirmCallback === 'function') onConfirmCallback(); hideModal(); });
-    customModal.addEventListener('click', (e) => { if (e.target === customModal) hideModal(); });
-    
-    detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
-    detalhesPageModal.addEventListener('click', (e) => { if (e.target === detalhesPageModal) hideDetalhesModal(); });
-
-    detalhesPageContent.addEventListener('touchstart', (e) => {
-        if (detalhesConteudoScroll.scrollTop === 0) {
-            touchStartY = e.touches[0].clientY;
-            touchMoveY = touchStartY; 
-            isDraggingDetalhes = true;
-            detalhesPageContent.style.transition = 'none'; 
-        }
-    }, { passive: true }); 
-    
-    detalhesPageContent.addEventListener('touchmove', (e) => {
-        if (!isDraggingDetalhes) return;
-        touchMoveY = e.touches[0].clientY;
-        const diff = touchMoveY - touchStartY;
-        if (diff > 0) { e.preventDefault(); detalhesPageContent.style.transform = `translateY(${diff}px)`; }
-    }, { passive: false }); 
-    
-    detalhesPageContent.addEventListener('touchend', (e) => {
-        if (!isDraggingDetalhes) return;
-        isDraggingDetalhes = false;
-        const diff = touchMoveY - touchStartY;
-        detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
-        if (diff > 100) hideDetalhesModal(); 
-        else detalhesPageContent.style.transform = ''; 
-        touchStartY = 0; touchMoveY = 0;
-    });
-
-    fiiNewsList.addEventListener('click', (e) => {
-        const tickerTag = e.target.closest('.news-ticker-tag');
-        if (tickerTag) {
-            e.stopPropagation(); 
-            const symbol = tickerTag.dataset.symbol;
-            if (symbol) showDetalhesModal(symbol);
-            return;
-        }
-        if (e.target.closest('a')) { e.stopPropagation(); return; }
-        const card = e.target.closest('.news-card-interactive');
-        if (card) {
-            const targetId = card.dataset.target;
-            const drawer = document.getElementById(targetId);
-            const icon = card.querySelector('.card-arrow-icon');
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        }
-    });
-    
-    detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
-
-    if (watchlistListaEl) {
-        watchlistListaEl.addEventListener('click', (e) => {
-            const target = e.target.closest('button');
-            if (target && target.dataset.action === 'details' && target.dataset.symbol) {
-                showDetalhesModal(target.dataset.symbol);
-            }
-        });
-    }
-    
-    if (carteiraSearchInput) {
-        carteiraSearchInput.addEventListener('input', (e) => {
-            const term = e.target.value.trim().toUpperCase();
-            const cards = listaCarteira.querySelectorAll('.card-bg');
-            cards.forEach(card => {
-                const symbol = card.dataset.symbol;
-                if (symbol && symbol.includes(term)) card.classList.remove('hidden');
-                else card.classList.add('hidden');
-            });
-        });
-        carteiraSearchInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') {
-                const term = carteiraSearchInput.value.trim().toUpperCase();
-                if (!term) return;
-                carteiraSearchInput.blur(); 
-                showToast(`Buscando ${term}...`, 'success');
-                showDetalhesModal(term);
-                carteiraSearchInput.value = '';
-                carteiraSearchInput.dispatchEvent(new Event('input'));
-            }
-        });
-    }
-    
-    periodoSelectorGroup.addEventListener('click', (e) => {
-        const target = e.target.closest('.periodo-selector-btn');
-        if (!target) return;
-        const meses = parseInt(target.dataset.meses, 10);
-        if (meses === currentDetalhesMeses) return;
-        currentDetalhesMeses = meses;
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        target.classList.add('active');
-        renderHistoricoIADetalhes(currentDetalhesMeses);
-    });
-
-    if (toggleBioBtn) {
-        toggleBioBtn.addEventListener('click', () => {
-            const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
-            if (isEnabled) {
-                showModal("Desativar Biometria?", "Deseja remover o bloqueio por Face ID/Digital?", () => { desativarBiometria(); });
+        try {
+            if (isFavorite) {
+                await supabaseDB.deleteWatchlist(symbol);
+                watchlist = watchlist.filter(item => item.symbol !== symbol);
+                showToast(`${symbol} removido dos favoritos.`);
             } else {
-                showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => { ativarBiometria(); });
+                const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
+                await supabaseDB.addWatchlist(newItem);
+                watchlist.push(newItem);
+                showToast(`${symbol} adicionado aos favoritos!`, 'success');
             }
-        });
-    }
-
-    if (togglePrivacyBtn) {
-        // Atualiza UI inicial baseado no localStorage
-        const isPrivacyOn = localStorage.getItem('vesto_privacy_mode') === 'true';
-        if (isPrivacyOn) {
-            document.body.classList.add('privacy-mode');
-            togglePrivacyBtn.classList.remove('bg-gray-700');
-            togglePrivacyBtn.classList.add('bg-purple-600');
-            privacyToggleKnob.classList.remove('translate-x-1');
-            privacyToggleKnob.classList.add('translate-x-6');
-        }
-
-        togglePrivacyBtn.addEventListener('click', () => {
-            const current = localStorage.getItem('vesto_privacy_mode') === 'true';
-            localStorage.setItem('vesto_privacy_mode', !current);
             
-            // Re-aplica classes
-            const newState = !current;
-            if (newState) {
-                document.body.classList.add('privacy-mode');
-                togglePrivacyBtn.classList.remove('bg-gray-700');
-                togglePrivacyBtn.classList.add('bg-purple-600');
-                privacyToggleKnob.classList.remove('translate-x-1');
-                privacyToggleKnob.classList.add('translate-x-6');
-                showToast("Modo Privacidade Ativado", "success");
-            } else {
-                document.body.classList.remove('privacy-mode');
-                togglePrivacyBtn.classList.remove('bg-purple-600');
-                togglePrivacyBtn.classList.add('bg-gray-700');
-                privacyToggleKnob.classList.remove('translate-x-6');
-                privacyToggleKnob.classList.add('translate-x-1');
-                showToast("Modo Privacidade Desativado", "success");
-            }
-        });
-    }
-
-    // --- LÓGICA TEMA CLARO/ESCURO (NOVO) ---
-    if (toggleThemeBtn) {
-        toggleThemeBtn.addEventListener('click', () => {
-            const current = localStorage.getItem('vesto_theme') || 'dark';
-            const newTheme = current === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('vesto_theme', newTheme);
-            updateThemeUI();
-        });
-    }
-
-    if (exportCsvBtn) {
-        exportCsvBtn.addEventListener('click', () => {
-            if (!transacoes || transacoes.length === 0) {
-                showToast("Sem dados para exportar.");
-                return;
-            }
-            let csvContent = "data:text/csv;charset=utf-8,Data,Ativo,Tipo,Quantidade,Preco,ID\n"; 
-            transacoes.forEach(t => {
-                const dataFmt = t.date.split('T')[0];
-                const row = `${dataFmt},${t.symbol},${t.type},${t.quantity},${t.price},${t.id}`;
-                csvContent += row + "\n";
-            });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `vesto_export_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showToast("Download iniciado!", "success");
-        });
-    }
-
-    if (clearCacheBtn) {
-        clearCacheBtn.addEventListener('click', () => {
-            showModal("Limpar Cache?", "Isso pode corrigir erros de visualização, mas o carregamento inicial será mais lento na próxima vez.", async () => {
-                try {
-                    await vestoDB.clear('apiCache');
-                    if ('serviceWorker' in navigator) {
-                        const registrations = await navigator.serviceWorker.getRegistrations();
-                        for(let registration of registrations) { await registration.unregister(); }
-                    }
-                    window.location.reload();
-                } catch (e) { console.error(e); showToast("Erro ao limpar cache."); }
-            });
-        });
-    }
-
-    if (openChangePasswordBtn) openChangePasswordBtn.addEventListener('click', () => {
-        changePasswordModal.classList.add('visible');
-        changePasswordModal.querySelector('.modal-content').classList.remove('modal-out');
-        currentPasswordInput.focus();
-    });
-
-    if (closeChangePasswordBtn) closeChangePasswordBtn.addEventListener('click', () => {
-        changePasswordModal.querySelector('.modal-content').classList.add('modal-out');
-        setTimeout(() => { changePasswordModal.classList.remove('visible'); changePasswordForm.reset(); }, 200);
-    });
-    
-    if (changePasswordForm) changePasswordForm.addEventListener('submit', handleAlterarSenha);
-
-    if (logoutBtn) logoutBtn.addEventListener('click', () => {
-        showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
-            try { await vestoDB.clear('apiCache'); sessionStorage.clear(); } catch (e) {}
-            sessionStorage.setItem('vesto_just_logged_out', 'true');
-            await supabaseDB.signOut();
-            window.location.reload();
-        });
-    });
-
-    // Funções de Auth e Init mantidas, apenas chamamos updateThemeUI na inicialização
-    
-    function showAuthLoading(isLoading) {
-        if (isLoading) {
-            authLoading.classList.remove('hidden');
-            loginForm.classList.add('hidden');
-            signupForm.classList.add('hidden');
-            recoverForm.classList.add('hidden'); 
-        } else {
-            authLoading.classList.add('hidden');
+            atualizarIconeFavorito(symbol); 
+            renderizarWatchlist(); 
+        } catch (e) {
+            console.error("Erro ao salvar favorito:", e);
+            showToast("Erro ao salvar favorito.");
         }
     }
-    
-    function showLoginError(message) {
-        loginError.textContent = message;
-        loginError.classList.remove('hidden');
-        loginSubmitBtn.innerHTML = 'Entrar';
-        loginSubmitBtn.disabled = false;
-    }
-
-    function showSignupError(message) {
-        signupError.textContent = message;
-        signupError.classList.remove('hidden');
-        signupSubmitBtn.innerHTML = 'Criar conta';
-        signupSubmitBtn.disabled = false;
-        signupSuccess.classList.add('hidden');
-        signupEmailInput.classList.remove('hidden');
-        signupPasswordInput.parentElement.classList.remove('hidden');
-        signupConfirmPasswordInput.parentElement.classList.remove('hidden');
-        signupSubmitBtn.classList.remove('hidden');
-    }
-
-    // Funções auxiliares handleSalvarTransacao, handleRemoverAtivo, etc... (Omitidas por brevidade pois não mudaram, mas devem estar no arquivo final)
-    // Vou incluir handleSalvarTransacao pois é crítica
     
     async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
@@ -2381,6 +2214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!transacaoID) {
             const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
+
             if (!ativoExistente && isFII(ticker)) {
                 saldoCaixa = 0;
                 await salvarCaixa();
@@ -2392,13 +2226,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
                 try {
                      const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                     if (!quoteData.results || quoteData.results[0].error) throw new Error('Ativo não encontrado');
+                     if (!quoteData.results || quoteData.results[0].error) {
+                         throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
+                     }
                 } catch (error) {
                      showToast("Ativo não encontrado."); 
                      tickerInput.value = '';
                      tickerInput.placeholder = "Ativo não encontrado";
                      tickerInput.classList.add('border-red-500');
-                     setTimeout(() => { tickerInput.placeholder = "Pesquisar ativo"; tickerInput.classList.remove('border-red-500'); }, 2000);
+                     setTimeout(() => { 
+                        // FIX: Placeholder volta para o texto correto
+                        tickerInput.placeholder = "Pesquisar ativo"; 
+                        tickerInput.classList.remove('border-red-500');
+                     }, 2000);
                      addButton.innerHTML = `Adicionar`;
                      addButton.disabled = false;
                      return;
@@ -2409,13 +2249,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dataISO = new Date(dataTransacao + 'T12:00:00').toISOString();
 
         if (transacaoID) {
-            const transacaoAtualizada = { date: dataISO, symbol: ticker, type: 'buy', quantity: novaQuantidade, price: novoPreco };
+            const transacaoAtualizada = {
+                date: dataISO,
+                symbol: ticker,
+                type: 'buy',
+                quantity: novaQuantidade,
+                price: novoPreco
+            };
+            
             await supabaseDB.updateTransacao(transacaoID, transacaoAtualizada);
+            
             const index = transacoes.findIndex(t => t.id === transacaoID);
-            if (index > -1) transacoes[index] = { ...transacoes[index], ...transacaoAtualizada };
+            if (index > -1) {
+                transacoes[index] = { ...transacoes[index], ...transacaoAtualizada };
+            }
             showToast("Transação atualizada!", 'success');
+            
         } else {
-            const novaTransacao = { id: 'tx_' + Date.now(), date: dataISO, symbol: ticker, type: 'buy', quantity: novaQuantidade, price: novoPreco };
+            const novaTransacao = {
+                id: 'tx_' + Date.now(),
+                date: dataISO,
+                symbol: ticker,
+                type: 'buy',
+                quantity: novaQuantidade,
+                price: novoPreco
+            };
+            
             await supabaseDB.addTransacao(novaTransacao);
             transacoes.push(novaTransacao);
             showToast("Ativo adicionado!", 'success');
@@ -2424,32 +2283,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         addButton.innerHTML = `Adicionar`;
         addButton.disabled = false;
         hideAddModal();
+        
         await removerCacheAtivo(ticker); 
         const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
         const forceUpdate = (!ativoExistente && isFII(ticker));
+        
         await atualizarTodosDados(forceUpdate);
     }
-    
+
     function handleRemoverAtivo(symbol) {
-        showModal('Remover Ativo', `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico.`, async () => { 
+        showModal(
+            'Remover Ativo', 
+            `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
+            async () => { 
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
+                
                 await supabaseDB.deleteTransacoesDoAtivo(symbol);
                 await removerCacheAtivo(symbol); 
                 await removerProventosConhecidos(symbol);
+                
                 await supabaseDB.deleteWatchlist(symbol);
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 renderizarWatchlist();
-                saldoCaixa = 0; await salvarCaixa();
-                mesesProcessados = []; await salvarHistoricoProcessado();
+                
+                saldoCaixa = 0;
+                await salvarCaixa();
+                
+                mesesProcessados = [];
+                await salvarHistoricoProcessado();
+                
                 await atualizarTodosDados(true); 
             }
         );
     }
-
+    
     function handleAbrirModalEdicao(id) {
         const tx = transacoes.find(t => t.id === id);
-        if (!tx) { showToast("Erro: Transação não encontrada."); return; }
+        if (!tx) {
+            showToast("Erro: Transação não encontrada.");
+            return;
+        }
+        
         transacaoEmEdicao = tx;
+        
         addModalTitle.textContent = 'Editar Compra';
         transacaoIdInput.value = tx.id;
         tickerInput.value = tx.symbol;
@@ -2458,55 +2334,106 @@ document.addEventListener('DOMContentLoaded', async () => {
         quantityInput.value = tx.quantity;
         precoMedioInput.value = tx.price;
         addButton.textContent = 'Salvar';
+        
         showAddModal();
     }
     
     function handleExcluirTransacao(id, symbol) {
         const tx = transacoes.find(t => t.id === id);
-        if (!tx) { showToast("Erro: Transação não encontrada."); return; }
+        if (!tx) {
+             showToast("Erro: Transação não encontrada.");
+             return;
+        }
+
         const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
-        showModal('Excluir Transação', msg, async () => { 
+        
+        showModal(
+            'Excluir Transação', 
+            msg, 
+            async () => { 
                 await supabaseDB.deleteTransacao(id);
                 transacoes = transacoes.filter(t => t.id !== id);
+                
                 await removerCacheAtivo(symbol);
+                
                 const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
-                saldoCaixa = 0; await salvarCaixa();
-                mesesProcessados = []; await salvarHistoricoProcessado();
+
+                saldoCaixa = 0;
+                await salvarCaixa();
+                mesesProcessados = [];
+                await salvarHistoricoProcessado();
+
                 if (!outrasTransacoes) {
                     await removerProventosConhecidos(symbol);
+                    
                     const isFavorite = watchlist.some(item => item.symbol === symbol);
-                    if (isFavorite) setTimeout(() => { showModal('Manter nos Favoritos?', `${symbol} não está mais na sua carteira. Deseja mantê-lo na lista?`, () => {} ); }, 300); 
+                    if (isFavorite) {
+                        setTimeout(() => {
+                             showModal(
+                                'Manter nos Favoritos?',
+                                `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua lista de favoritos?`,
+                                () => {} 
+                            );
+                        }, 300); 
+                    }
                 }
+                
                 await atualizarTodosDados(true); 
                 showToast("Transação excluída.", 'success');
             }
         );
     }
-
+    
     async function handleAlterarSenha(e) {
         e.preventDefault();
+
         const currentPassword = currentPasswordInput.value;
         const newPassword = changeNewPasswordInput.value;
         const confirmPassword = changeConfirmPasswordInput.value;
-        if (newPassword.length < 6) { showToast("A nova senha deve ter no mínimo 6 caracteres."); return; }
-        if (newPassword !== confirmPassword) { showToast("As senhas não coincidem."); return; }
+        
+        if (newPassword.length < 6) {
+            showToast("A nova senha deve ter no mínimo 6 caracteres.");
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            showToast("As senhas não coincidem.");
+            return;
+        }
         
         changePasswordSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
         changePasswordSubmitBtn.disabled = true;
+        
         try {
             const session = await supabaseDB.initialize();
-            if (!session || !session.user || !session.user.email) throw new Error("Erro de sessão.");
-            const signInError = await supabaseDB.signIn(session.user.email, currentPassword);
-            if (signInError) showToast("Senha atual incorreta.");
-            else {
+            if (!session || !session.user || !session.user.email) {
+                 throw new Error("Erro de sessão. Faça login novamente.");
+            }
+            const userEmail = session.user.email;
+
+            const signInError = await supabaseDB.signIn(userEmail, currentPassword);
+            
+            if (signInError) {
+                showToast("Senha atual incorreta.");
+            } else {
                 await supabaseDB.updateUserPassword(newPassword);
                 showToast("Senha alterada com sucesso!", 'success');
-                setTimeout(() => { changePasswordModal.classList.remove('visible'); changePasswordForm.reset(); }, 1500);
+                
+                setTimeout(() => {
+                    changePasswordModal.classList.remove('visible');
+                    changePasswordForm.reset();
+                }, 1500);
             }
-        } catch (error) { console.error(error); showToast(error.message || "Erro ao alterar senha."); } 
-        finally { changePasswordSubmitBtn.textContent = 'Atualizar Senha'; changePasswordSubmitBtn.disabled = false; }
+
+        } catch (error) {
+            console.error("Erro ao alterar senha:", error);
+            showToast(error.message || "Erro ao alterar senha.");
+        } finally {
+            changePasswordSubmitBtn.textContent = 'Atualizar Senha';
+            changePasswordSubmitBtn.disabled = false;
+        }
     }
-    
+
     function limparDetalhes() {
         detalhesMensagem.classList.remove('hidden');
         detalhesLoading.classList.add('hidden');
@@ -2515,20 +2442,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
+        
         document.getElementById('detalhes-transacoes-container').classList.add('hidden');
         document.getElementById('detalhes-lista-transacoes').innerHTML = '';
         document.getElementById('detalhes-transacoes-vazio').classList.add('hidden');
-        if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; }
+        
+        if (detalhesChartInstance) {
+            detalhesChartInstance.destroy();
+            detalhesChartInstance = null;
+        }
+        
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
         detalhesFavoritoBtn.dataset.symbol = '';
+        
         currentDetalhesSymbol = null;
         currentDetalhesMeses = 3; 
         currentDetalhesHistoricoJSON = null; 
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => { btn.classList.toggle('active', btn.dataset.meses === '3'); });
+        
+        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.meses === '3'); 
+        });
     }
     
-    async function handleMostrarDetalhes(symbol) {
+async function handleMostrarDetalhes(symbol) {
         detalhesMensagem.classList.add('hidden');
         detalhesLoading.classList.remove('hidden');
         detalhesPreco.innerHTML = '';
@@ -2536,10 +2473,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesTituloTexto.textContent = symbol;
         detalhesNomeLongo.textContent = 'A carregar...';
+        
         currentDetalhesSymbol = symbol;
         currentDetalhesMeses = 3; 
         currentDetalhesHistoricoJSON = null; 
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => { btn.classList.toggle('active', btn.dataset.meses === '3'); });
+        
+        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.meses === '3'); 
+        });
         
         const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
@@ -2549,11 +2490,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 precoData = data.results?.[0];
+                
                 const isAberto = isB3Open();
                 const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
+                
                 if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, duracao); 
-                else throw new Error('Ativo não encontrado');
-            } catch (e) { precoData = null; showToast("Erro ao buscar preço."); }
+                else throw new Error(precoData?.error || 'Ativo não encontrado');
+            } catch (e) { 
+                precoData = null; 
+                showToast("Erro ao buscar preço."); 
+            }
         }
 
         if (isFII(symbol)) {
@@ -2566,6 +2512,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (precoData) {
             detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
             const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
+            
             const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
             let plHtml = '';
             
@@ -2590,6 +2537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
             }
 
+            // ATUALIZADO: rounded-3xl
             detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-3xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
@@ -2598,7 +2546,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="text-xl font-semibold ${variacaoCor}">${formatPercent(precoData.regularMarketChangePercent)}</span>
                     </div>
                 </div>
+                
                 ${plHtml}
+
                 <div class="col-span-2 grid grid-cols-2 gap-3" id="detalhes-fundamentos-area">
                     <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
                         <span class="text-xs text-gray-500">P/VP</span>
@@ -2609,6 +2559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                 </div>
+
                 <div class="col-span-2 grid grid-cols-3 gap-3">
                     <div class="bg-gray-800 p-3 rounded-3xl text-center">
                         <span class="text-xs text-gray-500">Abertura</span>
@@ -2623,11 +2574,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p class="text-base font-semibold text-red-500">${formatBRL(precoData.regularMarketDayLow)}</p>
                     </div>
                 </div>
+                <div class="bg-gray-800 p-4 rounded-3xl">
+                    <span class="text-xs text-gray-500">Máx. 52 Semanas</span>
+                    <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekHigh)}</p>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-3xl">
+                    <span class="text-xs text-gray-500">Mín. 52 Semanas</span>
+                    <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekLow)}</p>
+                </div>
+                <div class="col-span-2 bg-gray-800 p-4 rounded-3xl">
+                    <span class="text-xs text-gray-500">Valor de Mercado</span>
+                    <p class="text-lg font-semibold text-white">${formatNumber(precoData.marketCap)}</p>
+                </div>
             `;
+
             callScraperFundamentosAPI(symbol).then(fundamentos => {
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
                     const dados = fundamentos || { pvp: '-', dy: '-' };
+                    // ATUALIZADO: rounded-3xl
                     area.innerHTML = `
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">P/VP</span>
@@ -2639,8 +2604,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     `;
                 }
+            }).catch(e => {
+                console.error("Erro ao carregar fundamentos", e);
+                const area = document.getElementById('detalhes-fundamentos-area');
+                if (area) {
+                    area.innerHTML = `
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center col-span-2">
+                            <span class="text-xs text-red-500">Erro ao carregar indicadores</span>
+                        </div>
+                    `;
+                }
             });
+
+        } else {
+            detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
         }
+        
         renderizarTransacoesDetalhes(symbol);
         atualizarIconeFavorito(symbol);
     }
@@ -2649,8 +2628,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const listaContainer = document.getElementById('detalhes-lista-transacoes');
         const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
         const container = document.getElementById('detalhes-transacoes-container');
+    
         listaContainer.innerHTML = '';
-        const txsDoAtivo = transacoes.filter(t => t.symbol === symbol).sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        const txsDoAtivo = transacoes
+            .filter(t => t.symbol === symbol)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
     
         if (txsDoAtivo.length === 0) {
             vazioMsg.classList.remove('hidden');
@@ -2658,23 +2641,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             vazioMsg.classList.add('hidden');
             listaContainer.classList.remove('hidden');
+            
             const fragment = document.createDocumentFragment();
+
             txsDoAtivo.forEach(t => {
                 const card = document.createElement('div');
+                // ATUALIZADO: rounded-2xl
                 card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between'; 
+                
+                const cor = 'text-green-500';
+                const sinal = '+';
+                
                 card.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <div><p class="text-sm font-semibold text-white">Compra</p><p class="text-xs text-gray-400">${formatDate(t.date)}</p></div>
+                        <div>
+                            <p class="text-sm font-semibold text-white">Compra</p>
+                            <p class="text-xs text-gray-400">${formatDate(t.date)}</p>
+                        </div>
                     </div>
-                    <div class="text-right"><p class="text-sm font-semibold text-green-500">+${t.quantity} Cotas</p><p class="text-xs text-gray-400">${formatBRL(t.price)}</p></div>
+                    <div class="text-right">
+                        <p class="text-sm font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
+                        <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
+                    </div>
                 `;
                 fragment.appendChild(card);
             });
             listaContainer.appendChild(fragment);
         }
+        
         container.classList.remove('hidden');
     }
     
@@ -2686,40 +2683,551 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>
             </div>
         `;
+        
         try {
             const cacheKey = `hist_ia_${symbol}_12`;
             let scraperResultJSON = await getCache(cacheKey);
+
             if (!scraperResultJSON) {
                 scraperResultJSON = await callScraperHistoricoAPI(symbol); 
-                if (scraperResultJSON && Array.isArray(scraperResultJSON)) await setCache(cacheKey, scraperResultJSON, CACHE_IA_HISTORICO);
-                else scraperResultJSON = [];
+                
+                if (scraperResultJSON && Array.isArray(scraperResultJSON)) {
+                    await setCache(cacheKey, scraperResultJSON, CACHE_IA_HISTORICO);
+                } else {
+                    scraperResultJSON = [];
+                }
             }
+
             currentDetalhesHistoricoJSON = scraperResultJSON;
+            
             renderHistoricoIADetalhes(3);
+
         } catch (e) {
-            detalhesAiProvento.innerHTML = `<p class="text-red-400 text-sm p-4">Erro ao carregar histórico.</p>`;
+            showToast("Erro na consulta de dados."); 
+            // ATUALIZADO: rounded-2xl
+            detalhesAiProvento.innerHTML = `
+                <div class="border border-red-700 bg-red-900/50 p-4 rounded-2xl flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                        <h5 class="font-semibold text-red-300">Erro na Consulta</h5>
+                        <p class="text-sm text-red-400">${e.message}</p>
+                    </div>
+                </div>
+            `;
         }
     }
     
     function renderHistoricoIADetalhes(meses) {
-        if (!currentDetalhesHistoricoJSON || currentDetalhesHistoricoJSON.length === 0) {
-            detalhesAiProvento.innerHTML = `<p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-2xl">Histórico não disponível.</p>`;
-            if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; }
+        if (!currentDetalhesHistoricoJSON) {
             return;
         }
-        if (!document.getElementById('detalhes-proventos-chart')) {
-             detalhesAiProvento.innerHTML = `<div class="relative h-48 w-full"><canvas id="detalhes-proventos-chart"></canvas></div>`;
+
+        if (currentDetalhesHistoricoJSON.length === 0) {
+            // ATUALIZADO: rounded-2xl
+            detalhesAiProvento.innerHTML = `
+                <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-2xl">
+                    Não foi possível encontrar o histórico de proventos.
+                </p>
+            `;
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null;
+            }
+            return;
         }
+
+        if (!document.getElementById('detalhes-proventos-chart')) {
+             detalhesAiProvento.innerHTML = `
+                <div class="relative h-48 w-full">
+                    <canvas id="detalhes-proventos-chart"></canvas>
+                </div>
+             `;
+        }
+
         const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
-        renderizarGraficoProventosDetalhes({ labels: dadosFiltrados.map(i => i.mes), data: dadosFiltrados.map(i => i.valor) });
+        
+        const labels = dadosFiltrados.map(item => item.mes);
+        const data = dadosFiltrados.map(item => item.valor);
+
+        renderizarGraficoProventosDetalhes({ labels, data });
     }
     
     function mudarAba(tabId) {
-        tabContents.forEach(content => content.classList.toggle('active', content.id === tabId));
-        tabButtons.forEach(button => button.classList.toggle('active', button.dataset.tab === tabId));
+        tabContents.forEach(content => {
+            content.classList.toggle('active', content.id === tabId);
+        });
+        tabButtons.forEach(button => {
+            button.classList.toggle('active', button.dataset.tab === tabId);
+        });
+        
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     
+    refreshButton.addEventListener('click', async () => {
+        await atualizarTodosDados(true); 
+    });
+    
+    refreshNoticiasButton.addEventListener('click', async () => {
+        await handleAtualizarNoticias(true); 
+    });
+    
+    showAddModalBtn.addEventListener('click', showAddModal);
+    emptyStateAddBtn.addEventListener('click', showAddModal);
+    addAtivoCancelBtn.addEventListener('click', hideAddModal);
+    addAtivoModal.addEventListener('click', (e) => {
+        if (e.target === addAtivoModal) { hideAddModal(); } 
+    });
+    
+    addAtivoForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleSalvarTransacao();
+    });
+    
+    listaCarteira.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+        
+        const action = target.dataset.action;
+        const symbol = target.dataset.symbol;
+
+        if (action === 'remove') {
+            handleRemoverAtivo(symbol);
+        } else if (action === 'details') {
+            showDetalhesModal(symbol);
+        } else if (action === 'toggle') {
+            const drawer = document.getElementById(`drawer-${symbol}`);
+            const icon = target.querySelector('.card-arrow-icon');
+            drawer?.classList.toggle('open');
+            icon?.classList.toggle('open');
+        }
+    });
+    
+    listaHistorico.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+
+        const action = target.dataset.action;
+        const id = target.dataset.id;
+        const symbol = target.dataset.symbol;
+
+        if (action === 'edit') {
+            handleAbrirModalEdicao(id);
+        } else if (action === 'delete') {
+            handleExcluirTransacao(id, symbol);
+        }
+    });
+    
+    dashboardDrawers.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target || !target.dataset.targetDrawer) return;
+        
+        const drawerId = target.dataset.targetDrawer;
+        const drawer = document.getElementById(drawerId);
+        const icon = target.querySelector('.card-arrow-icon');
+        
+        drawer?.classList.toggle('open');
+        icon?.classList.toggle('open');
+    });
+
+    const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
+    if (watchlistToggleBtn) {
+        watchlistToggleBtn.addEventListener('click', (e) => {
+            const target = e.currentTarget; 
+            const drawerId = target.dataset.targetDrawer;
+            const drawer = document.getElementById(drawerId);
+            const icon = target.querySelector('.card-arrow-icon');
+            
+            drawer?.classList.toggle('open');
+            icon?.classList.toggle('open');
+        });
+    }
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            mudarAba(button.dataset.tab);
+        });
+    });
+    
+    // EVENTOS DO NOVO MODAL DE IA
+    if (btnIaAnalise) {
+        btnIaAnalise.addEventListener('click', handleAnaliseIA);
+    }
+    
+    if (closeAiModal) {
+        closeAiModal.addEventListener('click', () => {
+            aiModal.classList.remove('visible');
+            aiContent.innerHTML = ''; 
+        });
+    }
+
+    // Fecha o modal se clicar fora (backdrop)
+    if (aiModal) {
+        aiModal.addEventListener('click', (e) => {
+            if (e.target === aiModal) {
+                aiModal.classList.remove('visible');
+                aiContent.innerHTML = '';
+            }
+        });
+    }
+
+    customModalCancel.addEventListener('click', hideModal);
+    customModalOk.addEventListener('click', () => {
+        if (typeof onConfirmCallback === 'function') {
+            onConfirmCallback(); 
+        }
+        hideModal(); 
+    });
+    customModal.addEventListener('click', (e) => {
+        if (e.target === customModal) { hideModal(); } 
+    });
+    
+    detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
+    detalhesPageModal.addEventListener('click', (e) => {
+        if (e.target === detalhesPageModal) { hideDetalhesModal(); } 
+    });
+
+    detalhesPageContent.addEventListener('touchstart', (e) => {
+        if (detalhesConteudoScroll.scrollTop === 0) {
+            touchStartY = e.touches[0].clientY;
+            touchMoveY = touchStartY; 
+            isDraggingDetalhes = true;
+            detalhesPageContent.style.transition = 'none'; 
+        }
+    }, { passive: true }); 
+    
+    detalhesPageContent.addEventListener('touchmove', (e) => {
+        if (!isDraggingDetalhes) return;
+        touchMoveY = e.touches[0].clientY;
+        const diff = touchMoveY - touchStartY;
+        if (diff > 0) { 
+            e.preventDefault(); 
+            detalhesPageContent.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false }); 
+    
+    detalhesPageContent.addEventListener('touchend', (e) => {
+        if (!isDraggingDetalhes) return;
+        isDraggingDetalhes = false;
+        const diff = touchMoveY - touchStartY;
+        detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
+        
+        if (diff > 100) { 
+            hideDetalhesModal(); 
+        } else {
+            detalhesPageContent.style.transform = ''; 
+        }
+        touchStartY = 0;
+        touchMoveY = 0;
+    });
+
+    fiiNewsList.addEventListener('click', (e) => {
+        const tickerTag = e.target.closest('.news-ticker-tag');
+        if (tickerTag) {
+            e.stopPropagation(); 
+            const symbol = tickerTag.dataset.symbol;
+            if (symbol) {
+                showDetalhesModal(symbol);
+            }
+            return;
+        }
+        if (e.target.closest('a')) {
+            e.stopPropagation(); 
+            return; 
+        }
+        const card = e.target.closest('.news-card-interactive');
+        if (card) {
+            const targetId = card.dataset.target;
+            const drawer = document.getElementById(targetId);
+            const icon = card.querySelector('.card-arrow-icon');
+            
+            drawer?.classList.toggle('open');
+            icon?.classList.toggle('open');
+        }
+    });
+    
+    detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
+
+    if (watchlistListaEl) {
+        watchlistListaEl.addEventListener('click', (e) => {
+            const target = e.target.closest('button');
+            if (target && target.dataset.action === 'details' && target.dataset.symbol) {
+                showDetalhesModal(target.dataset.symbol);
+            }
+        });
+    }
+    
+    // LOGICA DA BARRA DE PESQUISA (NOVO)
+// LOGICA DA BARRA DE PESQUISA (NOVO)
+    if (carteiraSearchInput) {
+        // Evento 'input': Mantém o filtro visual apenas para o que já está na tela (sem requisição)
+        carteiraSearchInput.addEventListener('input', (e) => {
+            const term = e.target.value.trim().toUpperCase();
+            const cards = listaCarteira.querySelectorAll('.card-bg');
+            
+            cards.forEach(card => {
+                const symbol = card.dataset.symbol;
+                if (symbol && symbol.includes(term)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        });
+
+        // Evento 'keyup': Ao dar ENTER, busca o ativo (mesmo que não esteja na carteira)
+// Evento 'keyup': Ao dar ENTER, busca o ativo e limpa o campo
+        carteiraSearchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                const term = carteiraSearchInput.value.trim().toUpperCase();
+                
+                if (!term) return;
+                
+                // Fecha teclado e dá feedback visual
+                carteiraSearchInput.blur(); 
+                showToast(`Buscando ${term}...`, 'success');
+
+                // Abre o modal de detalhes
+                showDetalhesModal(term);
+
+                // --- NOVO: Limpeza automática ---
+                // 1. Apaga o texto digitado
+                carteiraSearchInput.value = '';
+                
+                // 2. Simula um evento de 'input' para que o filtro da lista
+                // perceba que o texto está vazio e mostre todos os cards novamente
+                carteiraSearchInput.dispatchEvent(new Event('input'));
+            }
+        });
+    }
+    periodoSelectorGroup.addEventListener('click', (e) => {
+        const target = e.target.closest('.periodo-selector-btn');
+        if (!target) return;
+
+        const meses = parseInt(target.dataset.meses, 10);
+        
+        if (meses === currentDetalhesMeses) {
+            return;
+        }
+
+        currentDetalhesMeses = meses;
+        
+        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        target.classList.add('active');
+
+        renderHistoricoIADetalhes(currentDetalhesMeses);
+    });
+
+    // --- Listeners da Aba CONFIGURAÇÕES ---
+
+    if (toggleBioBtn) {
+        toggleBioBtn.addEventListener('click', () => {
+            const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
+            if (isEnabled) {
+                showModal("Desativar Biometria?", "Deseja remover o bloqueio por Face ID/Digital?", () => {
+                    desativarBiometria();
+                });
+            } else {
+                showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => {
+                    ativarBiometria();
+                });
+            }
+        });
+    }
+
+    // --- LÓGICA MODO PRIVACIDADE ---
+    function updatePrivacyUI() {
+        const isPrivacyOn = localStorage.getItem('vesto_privacy_mode') === 'true';
+        if (isPrivacyOn) {
+            document.body.classList.add('privacy-mode');
+            togglePrivacyBtn.classList.remove('bg-gray-700');
+            // FIX: Cor roxa para toggle ativo
+            togglePrivacyBtn.classList.add('bg-purple-600');
+            privacyToggleKnob.classList.remove('translate-x-1');
+            privacyToggleKnob.classList.add('translate-x-6');
+        } else {
+            document.body.classList.remove('privacy-mode');
+            togglePrivacyBtn.classList.remove('bg-purple-600');
+            togglePrivacyBtn.classList.add('bg-gray-700');
+            privacyToggleKnob.classList.remove('translate-x-6');
+            privacyToggleKnob.classList.add('translate-x-1');
+        }
+    }
+
+    if (togglePrivacyBtn) {
+        updatePrivacyUI();
+        
+        togglePrivacyBtn.addEventListener('click', () => {
+            const current = localStorage.getItem('vesto_privacy_mode') === 'true';
+            localStorage.setItem('vesto_privacy_mode', !current);
+            updatePrivacyUI();
+            showToast(!current ? "Modo Privacidade Ativado" : "Modo Privacidade Desativado", "success");
+        });
+    }
+
+    // --- LÓGICA EXPORTAR CSV ---
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', () => {
+            if (!transacoes || transacoes.length === 0) {
+                showToast("Sem dados para exportar.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Data,Ativo,Tipo,Quantidade,Preco,ID\n"; 
+
+            transacoes.forEach(t => {
+                const dataFmt = t.date.split('T')[0];
+                const row = `${dataFmt},${t.symbol},${t.type},${t.quantity},${t.price},${t.id}`;
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `vesto_export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            
+            link.click();
+            document.body.removeChild(link);
+            showToast("Download iniciado!", "success");
+        });
+    }
+
+    // --- LÓGICA LIMPAR CACHE ---
+    if (clearCacheBtn) {
+        clearCacheBtn.addEventListener('click', () => {
+            showModal(
+                "Limpar Cache?", 
+                "Isso pode corrigir erros de visualização, mas o carregamento inicial será mais lento na próxima vez.", 
+                async () => {
+                    try {
+                        await vestoDB.clear('apiCache');
+                        if ('serviceWorker' in navigator) {
+                            const registrations = await navigator.serviceWorker.getRegistrations();
+                            for(let registration of registrations) {
+                                await registration.unregister();
+                            }
+                        }
+                        window.location.reload();
+                    } catch (e) {
+                        console.error(e);
+                        showToast("Erro ao limpar cache.");
+                    }
+                }
+            );
+        });
+    }
+
+    if (openChangePasswordBtn) {
+        openChangePasswordBtn.addEventListener('click', () => {
+            changePasswordModal.classList.add('visible');
+            const modalContent = changePasswordModal.querySelector('.modal-content');
+            modalContent.classList.remove('modal-out');
+            currentPasswordInput.focus();
+        });
+    }
+
+    if (closeChangePasswordBtn) {
+        closeChangePasswordBtn.addEventListener('click', () => {
+            const modalContent = changePasswordModal.querySelector('.modal-content');
+            modalContent.classList.add('modal-out');
+            setTimeout(() => {
+                changePasswordModal.classList.remove('visible');
+                changePasswordForm.reset();
+            }, 200);
+        });
+    }
+    
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', handleAlterarSenha);
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
+                try {
+                    await vestoDB.clear('apiCache'); 
+                    sessionStorage.clear(); 
+                } catch (e) {
+                    console.error("Erro ao limpar dados locais:", e);
+                }
+                sessionStorage.setItem('vesto_just_logged_out', 'true');
+                await supabaseDB.signOut();
+                window.location.reload();
+            });
+        });
+    }
+
+    // --- NOVAS FUNÇÕES SCRAPER ---
+
+    async function callScraperHistoricoAPI(ticker) { 
+        const body = { 
+            mode: 'historico_12m', 
+            payload: { ticker } 
+        };
+        const response = await fetchBFF('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return response.json; 
+    }
+    
+    async function callScraperProventosCarteiraAPI(fiiList) {
+        const body = { mode: 'proventos_carteira', payload: { fiiList } };
+        const response = await fetchBFF('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return response.json; 
+    }
+    
+    async function callScraperHistoricoPortfolioAPI(fiiList) {
+         const body = { mode: 'historico_portfolio', payload: { fiiList } };
+         const response = await fetchBFF('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return response.json; 
+    }
+
+    function showAuthLoading(isLoading) {
+        if (isLoading) {
+            authLoading.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            signupForm.classList.add('hidden');
+            recoverForm.classList.add('hidden'); 
+        } else {
+            authLoading.classList.add('hidden');
+        }
+    }
+    
+    function showLoginError(message) {
+        loginError.textContent = message;
+        loginError.classList.remove('hidden');
+        loginSubmitBtn.innerHTML = 'Entrar';
+        loginSubmitBtn.disabled = false;
+    }
+
+    function showSignupError(message) {
+        signupError.textContent = message;
+        signupError.classList.remove('hidden');
+        signupSubmitBtn.innerHTML = 'Criar conta';
+        signupSubmitBtn.disabled = false;
+
+        signupSuccess.classList.add('hidden');
+        signupEmailInput.classList.remove('hidden');
+        signupPasswordInput.parentElement.classList.remove('hidden');
+        signupConfirmPasswordInput.parentElement.classList.remove('hidden');
+        signupSubmitBtn.classList.remove('hidden');
+    }
+
     async function carregarDadosIniciais() {
         try {
             await carregarTransacoes();
@@ -2728,10 +3236,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             await carregarProventosConhecidos();
             await carregarHistoricoProcessado();
             await carregarWatchlist(); 
+            
             renderizarWatchlist(); 
+            
             atualizarTodosDados(false); 
             handleAtualizarNoticias(false); 
+            
             setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
+
         } catch (e) {
             console.error("Erro ao carregar dados iniciais:", e);
             showToast("Falha ao carregar dados da nuvem.");
@@ -2739,61 +3251,202 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function init() {
-        try { await vestoDB.init(); } catch (e) { console.error(e); showToast("Erro crítico DB."); return; }
+        try {
+            await vestoDB.init();
+        } catch (e) {
+            console.error("[IDB Cache] Falha fatal ao inicializar o DB.", e);
+            showToast("Erro crítico: Banco de dados local não pôde ser carregado."); 
+            return; 
+        }
         
-        // Carrega o tema salvo ao iniciar
-        updateThemeUI();
+        if (showRecoverBtn) {
+            showRecoverBtn.addEventListener('click', () => {
+                loginForm.classList.add('hidden');
+                signupForm.classList.add('hidden');
+                recoverForm.classList.remove('hidden');
+                recoverError.classList.add('hidden');
+                recoverMessage.classList.add('hidden');
+            });
+        }
         
-        if (showRecoverBtn) showRecoverBtn.addEventListener('click', () => { loginForm.classList.add('hidden'); signupForm.classList.add('hidden'); recoverForm.classList.remove('hidden'); recoverError.classList.add('hidden'); recoverMessage.classList.add('hidden'); });
-        if (backToLoginBtn) backToLoginBtn.addEventListener('click', () => { recoverForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
-        if (recoverForm) recoverForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = recoverEmailInput.value;
-            recoverSubmitBtn.innerHTML = '<span class="loader-sm"></span>'; recoverSubmitBtn.disabled = true;
-            const result = await supabaseDB.sendPasswordResetEmail(email);
-            if (result === 'success') { recoverMessage.classList.remove('hidden'); recoverForm.reset(); } 
-            else { recoverError.textContent = result; recoverError.classList.remove('hidden'); }
-            recoverSubmitBtn.innerHTML = 'Enviar Link'; recoverSubmitBtn.disabled = false;
-        });
+        if (backToLoginBtn) {
+            backToLoginBtn.addEventListener('click', () => {
+                recoverForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+            });
+        }
+
+        if (recoverForm) {
+            recoverForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = recoverEmailInput.value;
+                recoverError.classList.add('hidden');
+                recoverMessage.classList.add('hidden');
+                
+                recoverSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
+                recoverSubmitBtn.disabled = true;
+
+                const result = await supabaseDB.sendPasswordResetEmail(email);
+
+                if (result === 'success') {
+                    recoverMessage.classList.remove('hidden');
+                    recoverForm.reset();
+                } else {
+                    recoverError.textContent = result;
+                    recoverError.classList.remove('hidden');
+                }
+                
+                recoverSubmitBtn.innerHTML = 'Enviar Link';
+                recoverSubmitBtn.disabled = false;
+            });
+        }
         
-        if (window.location.hash && window.location.hash.includes('type=recovery')) { newPasswordModal.classList.add('visible'); document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out'); }
-        if (newPasswordForm) newPasswordForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const newPass = newPasswordInput.value;
-            if (newPass.length < 6) { showToast("Mínimo 6 caracteres."); return; }
-            newPasswordBtn.innerHTML = '<span class="loader-sm"></span>'; newPasswordBtn.disabled = true;
-            try { await supabaseDB.updateUserPassword(newPass); showToast("Senha atualizada!", "success"); setTimeout(() => { newPasswordModal.classList.remove('visible'); window.location.href = "/"; }, 1500); } 
-            catch (error) { showToast("Erro: " + error.message); newPasswordBtn.innerHTML = 'Salvar Nova Senha'; newPasswordBtn.disabled = false; }
-        });
+        if (window.location.hash && window.location.hash.includes('type=recovery')) {
+             console.log("Modo de recuperação de senha detectado via URL Hash");
+             newPasswordModal.classList.add('visible');
+             document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
+        }
+        
+        if (newPasswordForm) {
+            newPasswordForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const newPass = newPasswordInput.value;
+
+                if (newPass.length < 6) {
+                    showToast("A senha deve ter no mínimo 6 caracteres.");
+                    return;
+                }
+
+                newPasswordBtn.innerHTML = '<span class="loader-sm"></span>';
+                newPasswordBtn.disabled = true;
+
+                try {
+                    await supabaseDB.updateUserPassword(newPass);
+                    showToast("Senha atualizada com sucesso!", "success");
+                    
+                    setTimeout(() => {
+                        newPasswordModal.classList.remove('visible');
+                        window.location.href = "/"; 
+                    }, 1500);
+
+                } catch (error) {
+                    showToast("Erro ao atualizar senha: " + error.message);
+                    newPasswordBtn.innerHTML = 'Salvar Nova Senha';
+                    newPasswordBtn.disabled = false;
+                }
+            });
+        }
 
         showAuthLoading(true);
+
         let session;
-        try { session = await supabaseDB.initialize(); } 
-        catch (e) { showAuthLoading(false); showLoginError("Erro ao conectar."); return; }
+        try {
+            session = await supabaseDB.initialize();
+        } catch (e) {
+            console.error("Erro na inicialização:", e);
+            showAuthLoading(false);
+            showLoginError("Erro ao conectar com o servidor. Tente novamente.");
+            return; 
+        }
         
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>'; loginSubmitBtn.disabled = true;
-            const error = await supabaseDB.signIn(loginEmailInput.value, loginPasswordInput.value);
-            if (error) showLoginError(error); else window.location.reload();
+            loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
+            loginSubmitBtn.disabled = true;
+            loginError.classList.add('hidden');
+
+            const email = loginEmailInput.value;
+            const password = loginPasswordInput.value;
+            const error = await supabaseDB.signIn(email, password);
+            
+            if (error) {
+                showLoginError(error);
+            } else {
+                window.location.reload();
+            }
         });
 
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (signupPasswordInput.value !== signupConfirmPasswordInput.value) { showSignupError("Senhas não coincidem."); return; }
-            signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>'; signupSubmitBtn.disabled = true;
-            const result = await supabaseDB.signUp(signupEmailInput.value, signupPasswordInput.value);
-            if (result === 'success') { signupSuccess.classList.remove('hidden'); signupForm.reset(); signupSubmitBtn.innerHTML = 'Criar conta'; signupSubmitBtn.disabled = false; } 
-            else showSignupError(result);
+            
+            const email = signupEmailInput.value;
+            const password = signupPasswordInput.value;
+            const confirmPassword = signupConfirmPasswordInput.value;
+
+            signupError.classList.add('hidden');
+            signupSuccess.classList.add('hidden'); 
+            
+            if (password !== confirmPassword) {
+                showSignupError("As senhas não coincidem.");
+                return;
+            }
+            if (password.length < 6) {
+                showSignupError("A senha deve ter no mínimo 6 caracteres.");
+                return;
+            }
+            
+            signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
+            signupSubmitBtn.disabled = true;
+
+            const result = await supabaseDB.signUp(email, password);
+            
+            if (result === 'success') {
+                signupEmailInput.classList.add('hidden');
+                signupPasswordInput.parentElement.classList.add('hidden');
+                signupConfirmPasswordInput.parentElement.classList.add('hidden');
+                signupSubmitBtn.classList.add('hidden');
+                
+                signupSuccess.classList.remove('hidden');
+
+                signupForm.reset();
+                signupSubmitBtn.innerHTML = 'Criar conta';
+                signupSubmitBtn.disabled = false;
+
+            } else {
+                showSignupError(result);
+            }
         });
 
-        showSignupBtn.addEventListener('click', () => { loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); });
-        showLoginBtn.addEventListener('click', () => { signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
+        showSignupBtn.addEventListener('click', () => {
+            loginForm.classList.add('hidden');
+            signupForm.classList.remove('hidden');
+            recoverForm.classList.add('hidden'); 
+            loginError.classList.add('hidden');
+            
+            signupError.classList.add('hidden'); 
+            signupSuccess.classList.add('hidden'); 
+            
+            signupEmailInput.classList.remove('hidden');
+            signupPasswordInput.parentElement.classList.remove('hidden');
+            signupConfirmPasswordInput.parentElement.classList.remove('hidden');
+            signupSubmitBtn.classList.remove('hidden');
+        });
+
+        showLoginBtn.addEventListener('click', () => {
+            signupForm.classList.add('hidden');
+            recoverForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            signupError.classList.add('hidden');
+        });
+        
         passwordToggleButtons.forEach(button => {
             button.addEventListener('click', () => {
-                const input = document.getElementById(button.dataset.target);
-                if (input.type === 'password') { input.type = 'text'; button.querySelector('.eye-icon-open').classList.add('hidden'); button.querySelector('.eye-icon-closed').classList.remove('hidden'); }
-                else { input.type = 'password'; button.querySelector('.eye-icon-open').classList.remove('hidden'); button.querySelector('.eye-icon-closed').classList.add('hidden'); }
+                const targetId = button.dataset.target;
+                const targetInput = document.getElementById(targetId);
+                if (!targetInput) return;
+
+                const eyeOpen = button.querySelector('.eye-icon-open');
+                const eyeClosed = button.querySelector('.eye-icon-closed');
+
+                if (targetInput.type === 'password') {
+                    targetInput.type = 'text';
+                    eyeOpen.classList.add('hidden');
+                    eyeClosed.classList.remove('hidden');
+                } else {
+                    targetInput.type = 'password';
+                    eyeOpen.classList.remove('hidden');
+                    eyeClosed.classList.add('hidden');
+                }
             });
         });
 
@@ -2801,13 +3454,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
+            
             await verificarStatusBiometria();
+            
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
         } else {
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 
-            if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) loginForm.classList.remove('hidden');
+            
+            if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) {
+                loginForm.classList.remove('hidden');
+            }
             showAuthLoading(false);                 
         }
     }

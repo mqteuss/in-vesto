@@ -259,6 +259,25 @@
                     </div>
                 </div>
 
+                <div class="relative mb-6 group z-10">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-500 group-focus-within:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                        </svg>
+                    </div>
+                    <input type="text" id="search-ativo-input" 
+                        class="block w-full py-3.5 pl-12 pr-4 text-sm text-white bg-[#1C1C1E] border border-transparent rounded-full shadow-lg focus:ring-2 focus:ring-purple-500/50 focus:bg-[#2C2C2E] placeholder-gray-500 transition-all duration-300 ease-out" 
+                        placeholder="Pesquisar ativo (ex: VALE3, MXRF11)..." autocomplete="off">
+                    
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-2">
+                        <button id="search-ativo-btn" class="p-2 text-gray-500 hover:text-white rounded-full hover:bg-gray-700/50 transition-colors hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
                 <div id="lista-carteira" class="space-y-4"></div>
                 
                 <div id="skeleton-lista-carteira" class="space-y-4">

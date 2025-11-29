@@ -2030,7 +2030,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
         return { labels, data };
     }
     
-     async function atualizarTodosDados(force = false) { 
+async function atualizarTodosDados(force = false) { 
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
         
@@ -2085,15 +2085,29 @@ async function buscarHistoricoProventosAgregado(force = false) {
         });
 
         promessaProventos.then(async proventosFuturos => {
-            proventosAtuais = proventosFuturos; 
+            // CORREÇÃO APLICADA:
+            // Usamos proventosConhecidos (que já foi atualizado pela função buscarProventosFuturos)
+            // Isso garante que dados salvos no banco não sejam sobrescritos por um array vazio se a API falhar
+            proventosAtuais = processarProventosScraper(proventosConhecidos);
+            
             renderizarProventos(); 
             if (precosAtuais.length > 0) { 
                 await renderizarCarteira(); 
             }
-        }).catch(err => {
+        }).catch(async err => {
             console.error("Erro ao buscar proventos (BFF):", err);
-            showToast("Erro ao buscar proventos."); 
-            if (proventosAtuais.length === 0) { totalProventosEl.textContent = "Erro"; }
+            
+            // Fallback: Se der erro na API, tentamos mostrar o que já temos salvo no banco
+            if (proventosConhecidos.length > 0) {
+                 proventosAtuais = processarProventosScraper(proventosConhecidos);
+                 renderizarProventos();
+                 
+                 if (precosAtuais.length > 0) {
+                     await renderizarCarteira();
+                 }
+            } else if (proventosAtuais.length === 0) { 
+                 totalProventosEl.textContent = "Erro"; 
+            }
         });
         
         promessaHistorico.then(({ labels, data }) => {

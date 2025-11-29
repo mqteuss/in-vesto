@@ -26,10 +26,11 @@ body::-webkit-scrollbar {
     border: 1px solid #2C2C2E;
 }
 
+/* Alterado para 9999px (Pílula) */
 .accent-bg {
     background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);
     color: #FFF;
-    border-radius: 9999px; /* Formato Pílula */
+    border-radius: 9999px; 
     background-size: 100% auto;
     transition: all 0.3s ease-out;
 }
@@ -266,6 +267,7 @@ input[type=number] {
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
+/* Inputs globais com formato Pílula */
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
 #add-ativo-modal input[type="number"],
@@ -276,6 +278,7 @@ input[type=number] {
     background-color: #1C1C1E; 
     border: 1px solid #2C2C2E;
     color: #ffffff;
+    border-radius: 9999px; /* Pílula */
 }
 
 #add-ativo-modal input[type="text"]:focus,
@@ -286,6 +289,14 @@ input[type=number] {
 #auth-container input[type="password"]:focus {
     border-color: #c084fc;
     box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.3);
+    outline: none;
+}
+
+/* Regra específica para remover borda branca do Search Input */
+#search-ativo-input:focus {
+    outline: none;
+    border-color: transparent;
+    box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.5); /* Anel roxo sutil ao invés de branco */
 }
 
 .page-modal { 
@@ -355,7 +366,7 @@ select {
     opacity: 0;
     transform: translateY(-100%);
     transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border-radius: 9999px; /* Formato Pílula */
+    border-radius: 9999px; /* Pílula */
 }
 
 #toast-notification.toast-visible {
@@ -385,12 +396,12 @@ select {
     font-size: 0.75rem;
     font-weight: 500;
     padding: 2px 10px;
-    border-radius: 9999px;
+    border-radius: 9999px; /* Pílula */
     margin-right: 6px;
     margin-bottom: 6px;
     transition: all 0.2s ease;
     cursor: pointer;
-    z-index: 20; /* Aumentado para garantir clique */
+    z-index: 20;
     position: relative;
 }
 .news-ticker-tag:hover {
@@ -405,7 +416,7 @@ select {
     font-weight: 500;
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
-    border-radius: 9999px; /* Formato Pílula */
+    border-radius: 9999px; /* Pílula */
     transition: all 0.2s ease-in-out;
 }
 .periodo-selector-btn:hover {
@@ -516,6 +527,7 @@ input:-webkit-autofill:focus,
 input:-webkit-autofill:active{
     -webkit-box-shadow: 0 0 0 30px #1C1C1E inset !important;
     -webkit-text-fill-color: white !important;
+    border-radius: 9999px !important;
     transition: background-color 5000s ease-in-out 0s;
 }
 

@@ -133,7 +133,7 @@ function criarCardElemento(ativo, dados) {
             if (proventoReceber > 0) {
                  valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
             } else {
-                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded">Sem direito</span>`;
+                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
             }
             
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
@@ -163,7 +163,8 @@ function criarCardElemento(ativo, dados) {
     }
 
     const card = document.createElement('div');
-    card.className = 'card-bg p-4 rounded-2xl card-animate-in';
+    // ATUALIZADO: rounded-3xl
+    card.className = 'card-bg p-4 rounded-3xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
     card.innerHTML = `
@@ -265,7 +266,7 @@ function atualizarCardElemento(card, ativo, dados) {
             if (proventoReceber > 0) {
                  valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
             } else {
-                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded">Sem direito</span>`;
+                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
             }
 
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
@@ -483,8 +484,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- NOVOS SELETORES (CONFIG) ---
     const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
     const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
-    const privacyIconOpen = document.getElementById('privacy-icon-open'); 
-    const privacyIconClosed = document.getElementById('privacy-icon-closed'); 
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
 
@@ -495,9 +494,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const aiContent = document.getElementById('ai-content');
     const aiLoading = document.getElementById('ai-loading');
 
-    // --- NOVOS SELETORES PESQUISA ---
-    const searchAtivoInput = document.getElementById('search-ativo-input');
-    const searchAtivoBtn = document.getElementById('search-ativo-btn');
+    // --- SELETORES PWA (NOVO) ---
+    const installSection = document.getElementById('install-section');
+    const installBtn = document.getElementById('install-app-btn');
 
     // --- LÓGICA DE INSTALAÇÃO DO PWA ---
     function verificarStatusInstalacao() {
@@ -600,25 +599,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (toggleBioBtn && bioToggleKnob) {
              if (bioEnabled) {
-                 // Botão (Trilho) continua escuro (bg-gray-700) - Regra do usuário
-                 // Animação do Knob para a direita
+                 toggleBioBtn.classList.remove('bg-gray-700');
+                 toggleBioBtn.classList.add('bg-purple-600');
                  bioToggleKnob.classList.remove('translate-x-1');
                  bioToggleKnob.classList.add('translate-x-6');
              } else {
-                 // Animação do Knob para a esquerda
+                 toggleBioBtn.classList.remove('bg-purple-600');
+                 toggleBioBtn.classList.add('bg-gray-700');
                  bioToggleKnob.classList.remove('translate-x-6');
                  bioToggleKnob.classList.add('translate-x-1');
              }
         }
 
         if (bioStatusIcon) {
-            // Imersão: Ícone muda de cor (Verde quando ativo, Cinza quando inativo)
             if (bioEnabled) {
                 bioStatusIcon.classList.remove('text-gray-500', 'text-red-500');
                 bioStatusIcon.classList.add('text-green-500');
             } else {
-                bioStatusIcon.classList.remove('text-green-500', 'text-red-500');
-                bioStatusIcon.classList.add('text-gray-500');
+                bioStatusIcon.classList.remove('text-green-500', 'text-gray-500');
+                bioStatusIcon.classList.add('text-red-500');
             }
         }
 
@@ -627,6 +626,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => autenticarBiometria(), 500);
         }
     }
+
     async function ativarBiometria() {
         if (!window.PublicKeyCredential) {
             showToast('Seu dispositivo não suporta biometria.');
@@ -1046,7 +1046,8 @@ async function getCache(key) {
         watchlist.forEach(item => {
             const symbol = item.symbol;
             const el = document.createElement('div');
-            el.className = 'flex justify-between items-center p-3 bg-black rounded-xl border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
+            // ATUALIZADO: rounded-2xl
+            el.className = 'flex justify-between items-center p-3 bg-black rounded-2xl border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
             el.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center text-[10px] font-bold text-purple-400">
@@ -1159,6 +1160,7 @@ async function processarDividendosPagos() {
 
         [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
             const card = document.createElement('div');
+            // ATUALIZADO: rounded-3xl
             card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between';
             const cor = 'text-green-500';
             const sinal = '+';
@@ -1243,6 +1245,7 @@ async function processarDividendosPagos() {
             `;
 
             const newsCard = document.createElement('div');
+            // ATUALIZADO: rounded-3xl
             newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive'; 
             newsCard.setAttribute('data-action', 'toggle-news');
             newsCard.setAttribute('data-target', drawerId);
@@ -1250,7 +1253,7 @@ async function processarDividendosPagos() {
             newsCard.innerHTML = `
                 <div class="flex items-start gap-3 pointer-events-none">
                     <img src="${faviconUrl}" alt="${sourceName}" 
-                         class="w-9 h-9 rounded bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
+                         class="w-9 h-9 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
                          loading="lazy"
                          onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                     />
@@ -1279,7 +1282,7 @@ async function processarDividendosPagos() {
         });
         fiiNewsList.appendChild(fragment);
     }
-function renderizarGraficoAlocacao(dadosGrafico) {
+	function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -2216,7 +2219,8 @@ async function atualizarTodosDados(force = false) {
                      tickerInput.placeholder = "Ativo não encontrado";
                      tickerInput.classList.add('border-red-500');
                      setTimeout(() => { 
-                        tickerInput.placeholder = "Ativo (ex: MXRF11)"; 
+                        // FIX: Placeholder volta para o texto correto
+                        tickerInput.placeholder = "Pesquisar ativo"; 
                         tickerInput.classList.remove('border-red-500');
                      }, 2000);
                      addButton.innerHTML = `Adicionar`;
@@ -2506,19 +2510,20 @@ async function handleMostrarDetalhes(symbol) {
                 else if (lucroPrejuizo < 0) corPL = 'text-red-500';
                 
                 plHtml = `
-                    <div class="bg-gray-800 p-4 rounded-xl">
+                    <div class="bg-gray-800 p-4 rounded-3xl">
                         <span class="text-xs text-gray-500">Sua Posição</span>
                         <p class="text-lg font-semibold text-white">${formatBRL(totalPosicao)}</p>
                     </div>
-                    <div class="bg-gray-800 p-4 rounded-xl">
+                    <div class="bg-gray-800 p-4 rounded-3xl">
                         <span class="text-xs text-gray-500">Seu L/P</span>
                         <p class="text-lg font-semibold ${corPL}">${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)</p>
                     </div>
                 `;
             }
 
+            // ATUALIZADO: rounded-3xl
             detalhesPreco.innerHTML = `
-                <div class="col-span-2 bg-gray-800 p-4 rounded-xl text-center mb-1">
+                <div class="col-span-2 bg-gray-800 p-4 rounded-3xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
                     <div class="flex justify-center items-end gap-3">
                         <h2 class="text-4xl font-bold text-white">${formatBRL(precoData.regularMarketPrice)}</h2>
@@ -2529,39 +2534,39 @@ async function handleMostrarDetalhes(symbol) {
                 ${plHtml}
 
                 <div class="col-span-2 grid grid-cols-2 gap-3" id="detalhes-fundamentos-area">
-                    <div class="bg-gray-800 p-3 rounded-xl text-center animate-pulse">
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
                         <span class="text-xs text-gray-500">P/VP</span>
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
-                    <div class="bg-gray-800 p-3 rounded-xl text-center animate-pulse">
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
                         <span class="text-xs text-gray-500">DY (12m)</span>
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                 </div>
 
                 <div class="col-span-2 grid grid-cols-3 gap-3">
-                    <div class="bg-gray-800 p-3 rounded-xl text-center">
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center">
                         <span class="text-xs text-gray-500">Abertura</span>
                         <p class="text-base font-semibold text-white">${formatBRL(precoData.regularMarketOpen)}</p>
                     </div>
-                    <div class="bg-gray-800 p-3 rounded-xl text-center">
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center">
                         <span class="text-xs text-gray-500">Máx. Dia</span>
                         <p class="text-base font-semibold text-green-500">${formatBRL(precoData.regularMarketDayHigh)}</p>
                     </div>
-                    <div class="bg-gray-800 p-3 rounded-xl text-center">
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center">
                         <span class="text-xs text-gray-500">Mín. Dia</span>
                         <p class="text-base font-semibold text-red-500">${formatBRL(precoData.regularMarketDayLow)}</p>
                     </div>
                 </div>
-                <div class="bg-gray-800 p-4 rounded-xl">
+                <div class="bg-gray-800 p-4 rounded-3xl">
                     <span class="text-xs text-gray-500">Máx. 52 Semanas</span>
                     <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekHigh)}</p>
                 </div>
-                <div class="bg-gray-800 p-4 rounded-xl">
+                <div class="bg-gray-800 p-4 rounded-3xl">
                     <span class="text-xs text-gray-500">Mín. 52 Semanas</span>
                     <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekLow)}</p>
                 </div>
-                <div class="col-span-2 bg-gray-800 p-4 rounded-xl">
+                <div class="col-span-2 bg-gray-800 p-4 rounded-3xl">
                     <span class="text-xs text-gray-500">Valor de Mercado</span>
                     <p class="text-lg font-semibold text-white">${formatNumber(precoData.marketCap)}</p>
                 </div>
@@ -2571,12 +2576,13 @@ async function handleMostrarDetalhes(symbol) {
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
                     const dados = fundamentos || { pvp: '-', dy: '-' };
+                    // ATUALIZADO: rounded-3xl
                     area.innerHTML = `
-                        <div class="bg-gray-800 p-3 rounded-xl text-center">
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">P/VP</span>
                             <p class="text-base font-semibold text-white">${dados.pvp || '-'}</p>
                         </div>
-                        <div class="bg-gray-800 p-3 rounded-xl text-center">
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">DY (12m)</span>
                             <p class="text-base font-semibold text-purple-400">${dados.dy || '-'}</p>
                         </div>
@@ -2587,7 +2593,7 @@ async function handleMostrarDetalhes(symbol) {
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
                     area.innerHTML = `
-                        <div class="bg-gray-800 p-3 rounded-xl text-center col-span-2">
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center col-span-2">
                             <span class="text-xs text-red-500">Erro ao carregar indicadores</span>
                         </div>
                     `;
@@ -2624,6 +2630,7 @@ async function handleMostrarDetalhes(symbol) {
 
             txsDoAtivo.forEach(t => {
                 const card = document.createElement('div');
+                // ATUALIZADO: rounded-2xl
                 card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between'; 
                 
                 const cor = 'text-green-500';
@@ -2681,8 +2688,9 @@ async function handleMostrarDetalhes(symbol) {
 
         } catch (e) {
             showToast("Erro na consulta de dados."); 
+            // ATUALIZADO: rounded-2xl
             detalhesAiProvento.innerHTML = `
-                <div class="border border-red-700 bg-red-900/50 p-4 rounded-lg flex items-center gap-3">
+                <div class="border border-red-700 bg-red-900/50 p-4 rounded-2xl flex items-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -2701,8 +2709,9 @@ async function handleMostrarDetalhes(symbol) {
         }
 
         if (currentDetalhesHistoricoJSON.length === 0) {
+            // ATUALIZADO: rounded-2xl
             detalhesAiProvento.innerHTML = `
-                <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-lg">
+                <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-2xl">
                     Não foi possível encontrar o histórico de proventos.
                 </p>
             `;
@@ -2973,46 +2982,19 @@ async function handleMostrarDetalhes(symbol) {
     // --- LÓGICA MODO PRIVACIDADE ---
     function updatePrivacyUI() {
         const isPrivacyOn = localStorage.getItem('vesto_privacy_mode') === 'true';
-        
-        // Controle dos Ícones de Olho (Imersivo)
-        if (privacyIconOpen && privacyIconClosed) {
-            if (isPrivacyOn) {
-                // Modo Privacidade ATIVO: Olho Fechado VISÍVEL
-                privacyIconOpen.classList.add('hidden');
-                privacyIconClosed.classList.remove('hidden');
-                // Opcional: Mudar cor para roxo quando ativo
-                privacyIconClosed.classList.remove('text-gray-400');
-                privacyIconClosed.classList.add('text-purple-400');
-            } else {
-                // Modo Privacidade INATIVO: Olho Aberto VISÍVEL
-                privacyIconOpen.classList.remove('hidden');
-                privacyIconClosed.classList.add('hidden');
-                // Cor padrão cinza
-                privacyIconOpen.classList.add('text-gray-400');
-                privacyIconOpen.classList.remove('text-purple-400');
-            }
-        }
-
-        // Controle do Botão Toggle (Trilho e Bolinha)
-        if (togglePrivacyBtn && privacyToggleKnob) {
-            if (isPrivacyOn) {
-                // ATIVO: Bolinha para direita
-                privacyToggleKnob.classList.remove('translate-x-1');
-                privacyToggleKnob.classList.add('translate-x-6');
-                // Fundo do botão (Trilho) mantido escuro (regra do usuário)
-                // togglePrivacyBtn.classList.add('bg-gray-700'); 
-            } else {
-                // INATIVO: Bolinha para esquerda
-                privacyToggleKnob.classList.remove('translate-x-6');
-                privacyToggleKnob.classList.add('translate-x-1');
-            }
-        }
-
-        // Aplica o filtro de Blur no corpo da página
         if (isPrivacyOn) {
             document.body.classList.add('privacy-mode');
+            togglePrivacyBtn.classList.remove('bg-gray-700');
+            // FIX: Cor roxa para toggle ativo
+            togglePrivacyBtn.classList.add('bg-purple-600');
+            privacyToggleKnob.classList.remove('translate-x-1');
+            privacyToggleKnob.classList.add('translate-x-6');
         } else {
             document.body.classList.remove('privacy-mode');
+            togglePrivacyBtn.classList.remove('bg-purple-600');
+            togglePrivacyBtn.classList.add('bg-gray-700');
+            privacyToggleKnob.classList.remove('translate-x-6');
+            privacyToggleKnob.classList.add('translate-x-1');
         }
     }
 
@@ -3207,44 +3189,6 @@ async function handleMostrarDetalhes(symbol) {
             console.error("Erro ao carregar dados iniciais:", e);
             showToast("Falha ao carregar dados da nuvem.");
         }
-    }
-
-    // --- NOVA LÓGICA DE PESQUISA ---
-    function realizarPesquisa() {
-        const termo = searchAtivoInput.value.trim().toUpperCase();
-        if (termo) {
-            // Remove foco do input para esconder teclado no mobile
-            searchAtivoInput.blur();
-            
-            // Limpa o input
-            searchAtivoInput.value = '';
-            searchAtivoBtn.classList.add('hidden');
-
-            // Chama a função existente que abre o modal de detalhes
-            showDetalhesModal(termo);
-        }
-    }
-
-    if (searchAtivoInput) {
-        // Evento ao pressionar Enter
-        searchAtivoInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                realizarPesquisa();
-            }
-        });
-
-        // Mostrar/Esconder botão de ação baseado no texto
-        searchAtivoInput.addEventListener('input', (e) => {
-            if (e.target.value.trim().length > 0) {
-                searchAtivoBtn.classList.remove('hidden');
-            } else {
-                searchAtivoBtn.classList.add('hidden');
-            }
-        });
-    }
-
-    if (searchAtivoBtn) {
-        searchAtivoBtn.addEventListener('click', realizarPesquisa);
     }
     
     async function init() {

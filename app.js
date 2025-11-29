@@ -2005,11 +2005,22 @@ async function buscarHistoricoProventosAgregado(force = false) {
         const aggregator = {};
 
         rawDividends.forEach(item => {
-const dataReferencia = item.paymentDate || item.dataCom;            
-            if (dataReferencia) {
-                const [ano, mes] = dataReferencia.split('-'); 
+            // CORREÇÃO DE LÓGICA HÍBRIDA:
+            
+            // 1. Para o EIXO X (Visualização): Usamos a Data de Pagamento (Caixa).
+            // Isso garante que o dinheiro apareça no mês que cai na conta (ex: MXRF11 vai para Dezembro).
+            const dataVisualizacao = item.paymentDate || item.dataCom;
+            
+            // 2. Para a QUANTIDADE (Cálculo): Usamos a Data Com (Competência).
+            // Isso garante que só contamos as cotas que você tinha no dia do corte (corrige o erro do SNAG11 em Nov).
+            const dataDireito = item.dataCom || item.paymentDate;
+            
+            if (dataVisualizacao) {
+                const [ano, mes] = dataVisualizacao.split('-'); 
                 const chaveMes = `${mes}/${ano.substring(2)}`; 
-                const qtdNaData = getQuantidadeNaData(item.symbol, dataReferencia);
+                
+                // Verifica quantidade no dia do DIREITO, não do pagamento
+                const qtdNaData = getQuantidadeNaData(item.symbol, dataDireito);
 
                 if (qtdNaData > 0) {
                     if (!aggregator[chaveMes]) aggregator[chaveMes] = 0;

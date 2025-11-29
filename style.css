@@ -25,12 +25,15 @@ body::-webkit-scrollbar {
 .card-bg {
     background-color: #000000;
     border: 1px solid #2C2C2E;
+    /* Alterado para formato mais arredondado (Cards internos) */
+    border-radius: 1.5rem; 
 }
 
 .accent-bg {
     background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);
     color: #FFF;
-    border-radius: 9999px; /* Alterado para formato pílula */
+    /* Alterado para formato Pílula */
+    border-radius: 9999px;
     background-size: 100% auto;
     transition: all 0.3s ease-out;
 }
@@ -112,11 +115,11 @@ body::-webkit-scrollbar {
 }
 
 .tab-button.active .tab-button-icon-wrapper {  
-    animation: gentleFloat 1.5s ease-in-out infinite;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+      animation: gentleFloat 1.5s ease-in-out infinite;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 }
 
 .tab-button.active .tab-button-icon-wrapper::before {
@@ -151,7 +154,6 @@ input[type=number]::-webkit-outer-spin-button {
     -webkit-appearance: none; 
     margin: 0; 
 }
-
 input[type=number] { 
     -moz-appearance: textfield; 
 }
@@ -165,7 +167,6 @@ input[type=number] {
     animation-delay: 0.25s;
     margin: 0 auto;
 }
-
 .loader::before,
 .loader::after {
     content: '';
@@ -175,12 +176,10 @@ input[type=number] {
     background: #c084fc;
     animation: finance-bars 0.5s infinite linear;
 }
-
 .loader::before {
     left: -15px;
     animation-delay: 0s;
 }
-
 .loader::after {
     right: -15px;
     animation-delay: 0.5s;
@@ -197,7 +196,6 @@ input[type=number] {
     margin: 0 6px;
     vertical-align: middle;
 }
-
 .loader-sm::before,
 .loader-sm::after {
     content: '';
@@ -207,12 +205,10 @@ input[type=number] {
     background: #ffffff;
     animation: finance-bars 0.5s infinite linear;
 }
-
 .loader-sm::before {
     left: -6px;
     animation-delay: 0s;
 }
-
 .loader-sm::after {
     right: -6px;
     animation-delay: 0.5s;
@@ -224,21 +220,20 @@ input[type=number] {
     100% { transform: scaleY(1); opacity: 1; }
 }
 
-.scrollable-content {
-      max-height: 40vh; 
-      overflow-y: auto;
-      scrollbar-width: none;
+.scrollable-content {  
+      max-height: 40vh;   
+      overflow-y: auto;  
+      scrollbar-width: none;  
       -ms-overflow-style: none;
 }
 .scrollable-content::-webkit-scrollbar { 
-    display: none; 
+     display: none;
 }
 
 #detalhes-conteudo-scroll {
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
-
 #detalhes-conteudo-scroll::-webkit-scrollbar {
     display: none;
 }
@@ -250,6 +245,8 @@ input[type=number] {
     background-color: #000000;
     border: 1px solid #2C2C2E;
     animation: modalIn 0.2s ease-out forwards;
+    /* Modal Card também arredondado */
+    border-radius: 1.5rem;
 }
 
 .modal-content.modal-out {
@@ -266,17 +263,23 @@ input[type=number] {
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
+/* Estilos de Input atualizados para Formato Pílula e Sem Borda Branca */
 #add-ativo-modal input[type="text"],
 #add-ativo-modal input[type="date"],
 #add-ativo-modal input[type="number"],
 #auth-container input[type="text"],
 #auth-container input[type="email"],
-#auth-container input[type="password"] {
+#auth-container input[type="password"],
+#new-password-form input,
+#change-password-form input,
+#recover-form input {
     transition: all 0.2s ease-in-out;
     background-color: #1C1C1E; 
     border: 1px solid #2C2C2E;
     color: #ffffff;
-    outline: none; /* Garante que não haja outline padrão */
+    /* Alterado para Pílula */
+    border-radius: 9999px;
+    outline: none; /* Remove contorno padrão do navegador */
 }
 
 #add-ativo-modal input[type="text"]:focus,
@@ -284,9 +287,14 @@ input[type=number] {
 #add-ativo-modal input[type="number"]:focus,
 #auth-container input[type="text"]:focus,
 #auth-container input[type="email"]:focus,
-#auth-container input[type="password"]:focus {
+#auth-container input[type="password"]:focus,
+#new-password-form input:focus,
+#change-password-form input:focus,
+#recover-form input:focus {
     border-color: #c084fc;
-    box-shadow: none; /* Removida a sombra/borda branca extra */
+    /* Removido box-shadow para tirar a "borda brilhante/branca" */
+    box-shadow: none;
+    outline: none;
 }
 
 .page-modal { 
@@ -327,6 +335,7 @@ select {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
+    border-radius: 9999px; /* Pílula para selects também */
 }
 
 .card-drawer {
@@ -334,17 +343,14 @@ select {
     overflow: hidden;
     transition: max-height 0.4s ease-in-out;
 }
-
 .card-drawer.open {
     max-height: 350px;
 }
-
 .card-drawer .drawer-content {
     opacity: 0;
     transform: translateY(-5px);
     transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s;
 }
-
 .card-drawer.open .drawer-content {
     opacity: 1;
     transform: translateY(0);
@@ -353,7 +359,6 @@ select {
 .card-arrow-icon {
     transition: transform 0.4s ease-in-out;
 }
-
 .card-arrow-icon.open {
     transform: rotate(180deg);
 }
@@ -362,9 +367,9 @@ select {
     opacity: 0;
     transform: translateY(-100%);
     transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border-radius: 0.75rem;
+    /* Toast arredondado */
+    border-radius: 1.5rem;
 }
-
 #toast-notification.toast-visible {
     opacity: 1;
     transform: translateY(1rem);
@@ -398,7 +403,7 @@ select {
     margin-bottom: 6px;
     transition: all 0.2s ease;
     cursor: pointer;
-    z-index: 20; /* Aumentado para garantir clique */
+    z-index: 20; 
     position: relative;
 }
 
@@ -414,7 +419,8 @@ select {
     font-weight: 500;
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
-    border-radius: 0.5rem;
+    /* Botões seletores em Pílula */
+    border-radius: 9999px;
     transition: all 0.2s ease-in-out;
 }
 
@@ -449,19 +455,14 @@ button:active,
 }
 
 @keyframes shimmer {
-    0% {
-        transform: translateX(-100%);
-    }
-    100% {
-        transform: translateX(100%);
-    }
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 .animate-shimmer {
     position: relative;
     overflow: hidden;
 }
-
 .animate-shimmer::before {
     content: '';
     position: absolute;
@@ -483,7 +484,6 @@ button:active,
     position: relative;
     overflow: hidden;
 }
-
 .animate-shimmer-parent .bg-gray-700::before {
     content: '';
     position: absolute;
@@ -517,21 +517,21 @@ button:active,
     cursor: pointer;
     transition: color 0.2s ease-in-out;
 }
-
 .password-toggle:hover {
     color: #d1d5db;
 }
 
+/* Autofill Fix para manter tema escuro */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
-input:-webkit-autofill:active{
+input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 30px #1C1C1E inset !important;
     -webkit-text-fill-color: white !important;
+    border-radius: 9999px !important;
     transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Interatividade do Card de Notícias */
 .news-card-interactive {
     cursor: pointer;
 }
@@ -547,7 +547,6 @@ body.privacy-mode .money-value,
 body.privacy-mode [data-field="posicao-valor"],
 body.privacy-mode [data-field="custo-valor"],
 body.privacy-mode [data-field="pl-valor"] {
-    /* Método Filter Blur (mais robusto) */
     filter: blur(7px) !important;
     user-select: none;
     pointer-events: none;

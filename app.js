@@ -1,6 +1,6 @@
 import * as supabaseDB from './supabase.js';
 
-// --- LÓGICA DE INSTALAÇÃO PWA ---
+// --- LÓGICA DE INSTALAÇÃO PWA (NOVO) ---
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -206,10 +206,10 @@ function criarCardElemento(ativo, dados) {
                 </div>
                 <div data-field="provento-container">${proventoHtml}</div> 
                 <div class="flex justify-end gap-3 pt-2">
-                    <button class="py-1 px-3 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">
+                    <button class="py-1 px-3 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="details">
                         Detalhes
                     </button>
-                    <button class="py-1 px-3 text-xs font-medium text-red-400 bg-red-900/50 hover:bg-red-900/80 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
+                    <button class="py-1 px-3 text-xs font-medium text-red-400 bg-red-900/50 hover:bg-red-900/80 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
                         Remover
                     </button>
                 </div>
@@ -399,13 +399,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const changePasswordSubmitBtn = document.getElementById('change-password-submit-btn');
     const openChangePasswordBtn = document.getElementById('open-change-password-btn');
     const closeChangePasswordBtn = document.getElementById('close-change-password-btn');
-    
-    // Seletores Biometria
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
     const bioToggleKnob = document.getElementById('bio-toggle-knob'); 
-    const bioIconOff = document.getElementById('bio-icon-off');
-    const bioIconOn = document.getElementById('bio-icon-on');
-    const bioIconContainer = document.getElementById('bio-icon-container');
+    const bioStatusIcon = document.getElementById('bio-status-icon');
 
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
@@ -487,10 +483,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- NOVOS SELETORES (CONFIG) ---
     const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
     const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
-    const privacyIconOff = document.getElementById('privacy-icon-off');
-    const privacyIconOn = document.getElementById('privacy-icon-on');
-    const privacyIconContainer = document.getElementById('privacy-icon-container');
-    
+    const privacyIconOpen = document.getElementById('privacy-icon-open'); 
+    const privacyIconClosed = document.getElementById('privacy-icon-closed'); 
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
 
@@ -504,10 +498,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- NOVOS SELETORES PESQUISA ---
     const searchAtivoInput = document.getElementById('search-ativo-input');
     const searchAtivoBtn = document.getElementById('search-ativo-btn');
-
-    // --- SELETORES PWA (NOVO) ---
-    const installSection = document.getElementById('install-section');
-    const installBtn = document.getElementById('install-app-btn');
 
     // --- LÓGICA DE INSTALAÇÃO DO PWA ---
     function verificarStatusInstalacao() {
@@ -610,32 +600,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (toggleBioBtn && bioToggleKnob) {
              if (bioEnabled) {
-                 toggleBioBtn.classList.remove('bg-gray-700');
-                 toggleBioBtn.classList.add('bg-green-500');
+                 // Botão (Trilho) continua escuro (bg-gray-700) - Regra do usuário
+                 // Animação do Knob para a direita
                  bioToggleKnob.classList.remove('translate-x-1');
                  bioToggleKnob.classList.add('translate-x-6');
-                 
-                 // Ícones Biometria
-                 if(bioIconOff) bioIconOff.classList.add('hidden');
-                 if(bioIconOn) bioIconOn.classList.remove('hidden');
-                 if(bioIconContainer) {
-                     bioIconContainer.classList.remove('text-gray-400');
-                     bioIconContainer.classList.add('text-green-400');
-                 }
              } else {
-                 toggleBioBtn.classList.remove('bg-green-500');
-                 toggleBioBtn.classList.add('bg-gray-700');
+                 // Animação do Knob para a esquerda
                  bioToggleKnob.classList.remove('translate-x-6');
                  bioToggleKnob.classList.add('translate-x-1');
-
-                 // Ícones Biometria
-                 if(bioIconOff) bioIconOff.classList.remove('hidden');
-                 if(bioIconOn) bioIconOn.classList.add('hidden');
-                 if(bioIconContainer) {
-                     bioIconContainer.classList.remove('text-green-400');
-                     bioIconContainer.classList.add('text-gray-400');
-                 }
              }
+        }
+
+        if (bioStatusIcon) {
+            // Imersão: Ícone muda de cor (Verde quando ativo, Cinza quando inativo)
+            if (bioEnabled) {
+                bioStatusIcon.classList.remove('text-gray-500', 'text-red-500');
+                bioStatusIcon.classList.add('text-green-500');
+            } else {
+                bioStatusIcon.classList.remove('text-green-500', 'text-red-500');
+                bioStatusIcon.classList.add('text-gray-500');
+            }
         }
 
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
@@ -643,7 +627,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(() => autenticarBiometria(), 500);
         }
     }
-
     async function ativarBiometria() {
         if (!window.PublicKeyCredential) {
             showToast('Seu dispositivo não suporta biometria.');
@@ -1063,7 +1046,7 @@ async function getCache(key) {
         watchlist.forEach(item => {
             const symbol = item.symbol;
             const el = document.createElement('div');
-            el.className = 'flex justify-between items-center p-3 bg-black rounded-lg border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
+            el.className = 'flex justify-between items-center p-3 bg-black rounded-xl border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
             el.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center text-[10px] font-bold text-purple-400">
@@ -1071,7 +1054,7 @@ async function getCache(key) {
                     </div>
                     <span class="font-semibold text-white">${symbol}</span>
                 </div>
-                <button class="py-1 px-3 text-xs font-medium text-purple-300 bg-purple-900/50 hover:bg-purple-900/80 rounded-md transition-colors" data-symbol="${symbol}" data-action="details">
+                <button class="py-1 px-3 text-xs font-medium text-purple-300 bg-purple-900/50 hover:bg-purple-900/80 rounded-full transition-colors" data-symbol="${symbol}" data-action="details">
                     Ver
                 </button>
             `;
@@ -1176,7 +1159,7 @@ async function processarDividendosPagos() {
 
         [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
             const card = document.createElement('div');
-            card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between';
+            card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between';
             const cor = 'text-green-500';
             const sinal = '+';
             const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
@@ -1213,6 +1196,7 @@ async function processarDividendosPagos() {
         });
         listaHistorico.appendChild(fragment);
     }
+
     function renderizarNoticias(articles) { 
         fiiNewsSkeleton.classList.add('hidden');
         fiiNewsList.innerHTML = ''; 
@@ -1259,7 +1243,7 @@ async function processarDividendosPagos() {
             `;
 
             const newsCard = document.createElement('div');
-            newsCard.className = 'card-bg rounded-2xl p-4 space-y-3 news-card-interactive'; 
+            newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive'; 
             newsCard.setAttribute('data-action', 'toggle-news');
             newsCard.setAttribute('data-target', drawerId);
 
@@ -2640,7 +2624,7 @@ async function handleMostrarDetalhes(symbol) {
 
             txsDoAtivo.forEach(t => {
                 const card = document.createElement('div');
-                card.className = 'card-bg p-3 rounded-lg flex items-center justify-between'; 
+                card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between'; 
                 
                 const cor = 'text-green-500';
                 const sinal = '+';
@@ -2990,35 +2974,45 @@ async function handleMostrarDetalhes(symbol) {
     function updatePrivacyUI() {
         const isPrivacyOn = localStorage.getItem('vesto_privacy_mode') === 'true';
         
-        // Button & Body State
+        // Controle dos Ícones de Olho (Imersivo)
+        if (privacyIconOpen && privacyIconClosed) {
+            if (isPrivacyOn) {
+                // Modo Privacidade ATIVO: Olho Fechado VISÍVEL
+                privacyIconOpen.classList.add('hidden');
+                privacyIconClosed.classList.remove('hidden');
+                // Opcional: Mudar cor para roxo quando ativo
+                privacyIconClosed.classList.remove('text-gray-400');
+                privacyIconClosed.classList.add('text-purple-400');
+            } else {
+                // Modo Privacidade INATIVO: Olho Aberto VISÍVEL
+                privacyIconOpen.classList.remove('hidden');
+                privacyIconClosed.classList.add('hidden');
+                // Cor padrão cinza
+                privacyIconOpen.classList.add('text-gray-400');
+                privacyIconOpen.classList.remove('text-purple-400');
+            }
+        }
+
+        // Controle do Botão Toggle (Trilho e Bolinha)
+        if (togglePrivacyBtn && privacyToggleKnob) {
+            if (isPrivacyOn) {
+                // ATIVO: Bolinha para direita
+                privacyToggleKnob.classList.remove('translate-x-1');
+                privacyToggleKnob.classList.add('translate-x-6');
+                // Fundo do botão (Trilho) mantido escuro (regra do usuário)
+                // togglePrivacyBtn.classList.add('bg-gray-700'); 
+            } else {
+                // INATIVO: Bolinha para esquerda
+                privacyToggleKnob.classList.remove('translate-x-6');
+                privacyToggleKnob.classList.add('translate-x-1');
+            }
+        }
+
+        // Aplica o filtro de Blur no corpo da página
         if (isPrivacyOn) {
             document.body.classList.add('privacy-mode');
-            togglePrivacyBtn.classList.remove('bg-gray-700');
-            togglePrivacyBtn.classList.add('bg-purple-600');
-            privacyToggleKnob.classList.remove('translate-x-1');
-            privacyToggleKnob.classList.add('translate-x-6');
-            
-            // Icons
-            if(privacyIconOff) privacyIconOff.classList.add('hidden');
-            if(privacyIconOn) privacyIconOn.classList.remove('hidden');
-            if(privacyIconContainer) {
-                privacyIconContainer.classList.remove('text-gray-400');
-                privacyIconContainer.classList.add('text-purple-400');
-            }
         } else {
             document.body.classList.remove('privacy-mode');
-            togglePrivacyBtn.classList.remove('bg-purple-600');
-            togglePrivacyBtn.classList.add('bg-gray-700');
-            privacyToggleKnob.classList.remove('translate-x-6');
-            privacyToggleKnob.classList.add('translate-x-1');
-            
-            // Icons
-            if(privacyIconOff) privacyIconOff.classList.remove('hidden');
-            if(privacyIconOn) privacyIconOn.classList.add('hidden');
-            if(privacyIconContainer) {
-                privacyIconContainer.classList.remove('text-purple-400');
-                privacyIconContainer.classList.add('text-gray-400');
-            }
         }
     }
 

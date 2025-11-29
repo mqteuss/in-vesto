@@ -1,6 +1,6 @@
 import * as supabaseDB from './supabase.js';
 
-// --- LÓGICA DE INSTALAÇÃO PWA (NOVO) ---
+// --- LÓGICA DE INSTALAÇÃO PWA ---
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -399,9 +399,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const changePasswordSubmitBtn = document.getElementById('change-password-submit-btn');
     const openChangePasswordBtn = document.getElementById('open-change-password-btn');
     const closeChangePasswordBtn = document.getElementById('close-change-password-btn');
+    
+    // Seletores Biometria
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
     const bioToggleKnob = document.getElementById('bio-toggle-knob'); 
-    const bioStatusIcon = document.getElementById('bio-status-icon');
+    const bioIconOff = document.getElementById('bio-icon-off');
+    const bioIconOn = document.getElementById('bio-icon-on');
+    const bioIconContainer = document.getElementById('bio-icon-container');
 
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
@@ -483,6 +487,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- NOVOS SELETORES (CONFIG) ---
     const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
     const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
+    const privacyIconOff = document.getElementById('privacy-icon-off');
+    const privacyIconOn = document.getElementById('privacy-icon-on');
+    const privacyIconContainer = document.getElementById('privacy-icon-container');
+    
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
 
@@ -606,22 +614,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                  toggleBioBtn.classList.add('bg-green-500');
                  bioToggleKnob.classList.remove('translate-x-1');
                  bioToggleKnob.classList.add('translate-x-6');
+                 
+                 // Ícones Biometria
+                 if(bioIconOff) bioIconOff.classList.add('hidden');
+                 if(bioIconOn) bioIconOn.classList.remove('hidden');
+                 if(bioIconContainer) {
+                     bioIconContainer.classList.remove('text-gray-400');
+                     bioIconContainer.classList.add('text-green-400');
+                 }
              } else {
                  toggleBioBtn.classList.remove('bg-green-500');
                  toggleBioBtn.classList.add('bg-gray-700');
                  bioToggleKnob.classList.remove('translate-x-6');
                  bioToggleKnob.classList.add('translate-x-1');
-             }
-        }
 
-        if (bioStatusIcon) {
-            if (bioEnabled) {
-                bioStatusIcon.classList.remove('text-gray-500', 'text-red-500');
-                bioStatusIcon.classList.add('text-green-500');
-            } else {
-                bioStatusIcon.classList.remove('text-green-500', 'text-gray-500');
-                bioStatusIcon.classList.add('text-red-500');
-            }
+                 // Ícones Biometria
+                 if(bioIconOff) bioIconOff.classList.remove('hidden');
+                 if(bioIconOn) bioIconOn.classList.add('hidden');
+                 if(bioIconContainer) {
+                     bioIconContainer.classList.remove('text-green-400');
+                     bioIconContainer.classList.add('text-gray-400');
+                 }
+             }
         }
 
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
@@ -1199,7 +1213,6 @@ async function processarDividendosPagos() {
         });
         listaHistorico.appendChild(fragment);
     }
-
     function renderizarNoticias(articles) { 
         fiiNewsSkeleton.classList.add('hidden');
         fiiNewsList.innerHTML = ''; 
@@ -2976,18 +2989,36 @@ async function handleMostrarDetalhes(symbol) {
     // --- LÓGICA MODO PRIVACIDADE ---
     function updatePrivacyUI() {
         const isPrivacyOn = localStorage.getItem('vesto_privacy_mode') === 'true';
+        
+        // Button & Body State
         if (isPrivacyOn) {
             document.body.classList.add('privacy-mode');
             togglePrivacyBtn.classList.remove('bg-gray-700');
             togglePrivacyBtn.classList.add('bg-purple-600');
             privacyToggleKnob.classList.remove('translate-x-1');
             privacyToggleKnob.classList.add('translate-x-6');
+            
+            // Icons
+            if(privacyIconOff) privacyIconOff.classList.add('hidden');
+            if(privacyIconOn) privacyIconOn.classList.remove('hidden');
+            if(privacyIconContainer) {
+                privacyIconContainer.classList.remove('text-gray-400');
+                privacyIconContainer.classList.add('text-purple-400');
+            }
         } else {
             document.body.classList.remove('privacy-mode');
             togglePrivacyBtn.classList.remove('bg-purple-600');
             togglePrivacyBtn.classList.add('bg-gray-700');
             privacyToggleKnob.classList.remove('translate-x-6');
             privacyToggleKnob.classList.add('translate-x-1');
+            
+            // Icons
+            if(privacyIconOff) privacyIconOff.classList.remove('hidden');
+            if(privacyIconOn) privacyIconOn.classList.add('hidden');
+            if(privacyIconContainer) {
+                privacyIconContainer.classList.remove('text-purple-400');
+                privacyIconContainer.classList.add('text-gray-400');
+            }
         }
     }
 

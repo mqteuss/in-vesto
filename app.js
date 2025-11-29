@@ -2005,8 +2005,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
         const aggregator = {};
 
         rawDividends.forEach(item => {
-            const dataReferencia = item.dataCom || item.paymentDate;
-            
+const dataReferencia = item.paymentDate || item.dataCom;            
             if (dataReferencia) {
                 const [ano, mes] = dataReferencia.split('-'); 
                 const chaveMes = `${mes}/${ano.substring(2)}`; 

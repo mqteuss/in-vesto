@@ -2959,7 +2959,9 @@ async function handleMostrarDetalhes(symbol) {
     }
     
     // LOGICA DA BARRA DE PESQUISA (NOVO)
+// LOGICA DA BARRA DE PESQUISA (NOVO)
     if (carteiraSearchInput) {
+        // Evento 'input': Mantém o filtro visual apenas para o que já está na tela (sem requisição)
         carteiraSearchInput.addEventListener('input', (e) => {
             const term = e.target.value.trim().toUpperCase();
             const cards = listaCarteira.querySelectorAll('.card-bg');
@@ -2974,22 +2976,25 @@ async function handleMostrarDetalhes(symbol) {
             });
         });
 
+        // Evento 'keyup': Ao dar ENTER, busca o ativo (mesmo que não esteja na carteira)
         carteiraSearchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 const term = carteiraSearchInput.value.trim().toUpperCase();
+                
                 if (!term) return;
                 
-                // Tenta encontrar match exato ou o primeiro visível
-                const visibleCard = Array.from(listaCarteira.querySelectorAll('.card-bg:not(.hidden)'))
-                    .find(c => c.dataset.symbol === term) || listaCarteira.querySelector('.card-bg:not(.hidden)');
-                
-                if (visibleCard) {
-                    const symbol = visibleCard.dataset.symbol;
-                    showDetalhesModal(symbol);
-                    carteiraSearchInput.blur();
-                } else {
-                    showToast(`Ativo "${term}" não encontrado.`);
-                }
+                // Fecha o teclado mobile
+                carteiraSearchInput.blur(); 
+
+                // Feedback visual rápido
+                showToast(`Buscando ${term}...`, 'success');
+
+                // Abre o modal diretamente. 
+                // A função showDetalhesModal já possui a lógica de:
+                // 1. Verificar cache
+                // 2. Se não tiver, chamar a API Brapi (/api/brapi)
+                // 3. Se o ativo não existir, mostrar erro dentro do modal
+                showDetalhesModal(term);
             }
         });
     }

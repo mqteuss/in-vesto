@@ -24,12 +24,12 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
-// --- NOVA FUNÇÃO PARA INDICADORES ---
+// --- FUNÇÃO PARA INDICADORES EXPANDIDA ---
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         let response;
-        
+
         try {
             response = await client.get(url);
         } catch (e) {
@@ -43,37 +43,58 @@ async function scrapeFundamentos(ticker) {
 
         const html = response.data;
         const $ = cheerio.load(html);
-        
-        // Seletores baseados nas classes do Investidor10
-        // DY costuma estar em ._card.dy ou .wc_yield
-        // P/VP costuma estar em ._card.vp ou .wc_vp
-        
+
         let dy = 'N/A';
         let pvp = 'N/A';
+        let segmento = 'N/A';
+        let vacancia = 'N/A';
+        let val_patrimonial = 'N/A';
+        let liquidez = 'N/A';
 
         // Tenta buscar DY
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dy = dyEl.text().trim();
-        
+
         // Tenta buscar P/VP
         const pvpEl = $('._card.vp ._card-body span').first();
         if (pvpEl.length) pvp = pvpEl.text().trim();
+        
+        // Tenta buscar Segmento
+        const segEl = $('._card.segment ._card-body span').first();
+        if (segEl.length) segmento = segEl.text().trim();
 
-        // Fallback genérico caso mudem as classes
-        if (dy === 'N/A') {
-             // Tenta achar pelo título
-             $('.cell .name').each((i, el) => {
-                 if ($(el).text().includes('Dividend Yield')) {
-                     dy = $(el).parent().find('.value').text().trim();
-                 }
+        // Tenta buscar Vacância
+        const vacEl = $('._card.vacancy ._card-body span').first();
+        if (vacEl.length) vacancia = vacEl.text().trim();
+
+        // Tenta buscar Valor Patrimonial por Cota
+        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
+        if (valPatEl.length) val_patrimonial = valPatEl.text().trim();
+
+        // Tenta buscar Liquidez Diária
+        const liqEl = $('._card.liquidity ._card-body span').first();
+        if (liqEl.length) liquidez = liqEl.text().trim();
+
+        // Fallback genérico (varre os cards de tabela caso o layout mude ou seja Ação)
+        if (dy === 'N/A' || pvp === 'N/A') {
+             $('.cell').each((i, el) => {
+                 const title = $(el).find('.name').text().trim();
+                 const val = $(el).find('.value').text().trim();
+
+                 if (title.includes('Dividend Yield')) dy = val;
+                 if (title.includes('P/VP')) pvp = val;
+                 if (title.includes('Segmento')) segmento = val;
+                 if (title.includes('Vacância')) vacancia = val;
+                 if (title.includes('Patrimonial')) val_patrimonial = val;
+                 if (title.includes('Liquidez')) liquidez = val;
              });
         }
 
-        return { dy, pvp };
+        return { dy, pvp, segmento, vacancia, val_patrimonial, liquidez };
 
     } catch (error) {
         console.warn(`[Scraper] Falha ao ler fundamentos de ${ticker}: ${error.message}`);
-        return { dy: '-', pvp: '-' }; 
+        return { dy: '-', pvp: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-' }; 
     }
 }
 
@@ -81,7 +102,7 @@ async function scrapeAsset(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         let response;
-        
+
         try {
             response = await client.get(url);
         } catch (e) {
@@ -142,11 +163,11 @@ module.exports = async function handler(req, res) {
 
         const { mode, payload } = req.body;
 
-        // --- NOVO MODO: FUNDAMENTOS (P/VP e DY) ---
+        // --- MODO FUNDAMENTOS EXPANDIDO ---
         if (mode === 'fundamentos') {
             const { ticker } = payload || {};
-            if (!ticker) return res.json({ json: { dy: '-', pvp: '-' } });
-            
+            if (!ticker) return res.json({ json: { dy: '-', pvp: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-' } });
+
             const dados = await scrapeFundamentos(ticker);
             return res.status(200).json({ json: dados });
         }
@@ -160,7 +181,7 @@ module.exports = async function handler(req, res) {
                 const recents = history
                     .filter(h => h.paymentDate && h.value > 0)
                     .slice(0, 3); 
-                
+
                 if (recents.length > 0) {
                     return recents.map(r => ({
                         symbol: ticker.toUpperCase(),

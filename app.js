@@ -3014,6 +3014,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 carteiraSearchInput.dispatchEvent(new Event('input'));
             }
         });
+    }
     
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
@@ -3479,5 +3480,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             showAuthLoading(false);                 
         }
     }
+    
     await init();
 });

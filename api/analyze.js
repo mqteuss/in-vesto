@@ -1,5 +1,5 @@
 // api/analyze.js
-// Implementação via SDK Oficial do Google
+// Implementação via SDK Oficial do Google (Modelo Gemini 2.5 Flash)
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(request, response) {
@@ -28,17 +28,17 @@ export default async function handler(request, response) {
         
         MANDAMENTOS:
         1. Use a tool 'googleSearch' OBRIGATORIAMENTE para buscar: SELIC Meta atual e IPCA acumulado 12 meses.
-        2. Sua filosofia: Foco na sustentabilidade dos dividendos (Yield) e qualidade dos imóveis/crédito.
-        3. Se patrimônio < R$ 2.000,00: Ignore diversificação complexa. O conselho deve ser "Aporte constante para atingir o 'Número Mágico' (Cotas gerando nova cota)".
-        4. Terminologia: Use termos do nicho (Tijolo, Papel, High Yield, High Grade, Vacância, P/VP).
-        5. Estilo: Direto, técnico e educativo.
+        2. Sua filosofia: Foco na sustentabilidade dos dividendos (Yield), qualidade dos imóveis/crédito e preço justo (P/VP e Cap Rate).
+        3. Se o patrimônio total for < R$ 2.000,00: Ignore diversificação complexa. O conselho deve ser focado em "Aporte constante para atingir o 'Número Mágico' (quando os dividendos compram uma nova cota sozinhos)".
+        4. Terminologia: Use termos do nicho (Tijolo, Papel, High Yield, High Grade, Vacância, P/VP, Data Com).
+        5. Estilo: Direto, técnico e educativo. Use Markdown.
         `;
 
-        // Configuração do Modelo
+        // Configuração do Modelo com Grounding (Google Search)
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash", 
             systemInstruction: systemPrompt,
-            tools: [{ googleSearch: {} }], // Ferramenta de Grounding ativada
+            tools: [{ googleSearch: {} }], // Ferramenta de busca ativada
         });
 
         // User Query: Focada em dinâmica de FIIs
@@ -48,22 +48,22 @@ export default async function handler(request, response) {
         Patrimônio: ${totalPatrimonio}
         Ativos: ${JSON.stringify(carteira)}
 
-        Gere o relatório neste formato exato:
+        Gere o relatório neste formato exato (Markdown):
 
         ### 1. Cenário Macro (Google)
-        - Dados: SELIC e IPCA encontrados.
-        - Impacto: Com essa SELIC, o cenário favorece FIIs de Papel (indexados ao CDI) ou Tijolo (valorização potencial)? Responda em 1 frase.
+        - **Dados:** (Cite a SELIC e o IPCA encontrados).
+        - **Impacto:** Com essa SELIC, o cenário atual favorece mais FIIs de Papel (indexados ao CDI) ou Tijolo (potencial de valorização com queda de juros)? Responda em 1 frase.
 
         ### 2. Raio-X da Carteira
         - Analise a exposição setorial (Logística, Shopping, Papel/Recebíveis, Agro).
         - Há concentração perigosa em um único fundo ou gestora?
-        - (Se patrimônio < 2k: "Fase de Acumulação: Foco total em aumentar número de cotas.")
+        - (Se patrimônio < 2k: Reforce a importância de atingir o "Número Mágico" nos ativos mais baratos).
 
-        ### 3. Nota (0-10)
+        ### 3. Veredito (Nota 0-10)
 
         ### 4. Próximo Movimento
-        - Escolha APENAS 1: Aportar em Tijolo (Desconto) / Aportar em Papel (Renda) / Aumentar Caixa / Manter.
-        - Justificativa relâmpago (máx 10 palavras).
+        - Escolha APENAS 1 ação lógica: "Aportar em Tijolo (Desconto)", "Aportar em Papel (Renda)", "Aumentar Caixa" ou "Manter".
+        - Justificativa relâmpago (máx 15 palavras).
         `;
 
         const generationConfig = {

@@ -1,6 +1,6 @@
 import * as supabaseDB from './supabase.js';
 
-// --- LÓGICA DE INSTALAÇÃO PWA (NOVO) ---
+// --- LÓGICA DE INSTALAÇÃO PWA ---
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -10,6 +10,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 // ---------------------------------------
 
+// Configuração Inicial de Gráficos (Será sobrescrita pela função de tema)
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
@@ -66,7 +67,6 @@ function parseMesAno(mesAnoStr) {
         }
         return null;
     } catch (e) {
-        console.error("Erro ao analisar data 'MM/AA':", mesAnoStr, e);
         return null;
     }
 }
@@ -399,9 +399,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const changePasswordSubmitBtn = document.getElementById('change-password-submit-btn');
     const openChangePasswordBtn = document.getElementById('open-change-password-btn');
     const closeChangePasswordBtn = document.getElementById('close-change-password-btn');
+    
+    // Configs - Biometria
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
     const bioToggleKnob = document.getElementById('bio-toggle-knob'); 
     const bioStatusIcon = document.getElementById('bio-status-icon');
+    
+    // Configs - Tema (NOVO)
+    const toggleThemeBtn = document.getElementById('toggle-theme-btn');
+    const themeToggleKnob = document.getElementById('theme-toggle-knob');
+
+    // Configs - Privacidade (NOVO)
+    const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
+    const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
+    const clearCacheBtn = document.getElementById('clear-cache-btn');
 
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
@@ -432,7 +444,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
-    // NOVO SELETOR DA BARRA DE PESQUISA
     const carteiraSearchInput = document.getElementById('carteira-search-input');
     
     const carteiraStatus = document.getElementById('carteira-status');
@@ -483,20 +494,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
     
-    // --- NOVOS SELETORES (CONFIG) ---
-    const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
-    const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
-    const exportCsvBtn = document.getElementById('export-csv-btn');
-    const clearCacheBtn = document.getElementById('clear-cache-btn');
-
-    // --- NOVOS SELETORES IA ---
     const btnIaAnalise = document.getElementById('btn-ia-analise');
     const aiModal = document.getElementById('ai-modal');
     const closeAiModal = document.getElementById('close-ai-modal');
     const aiContent = document.getElementById('ai-content');
     const aiLoading = document.getElementById('ai-loading');
 
-    // --- SELETORES PWA (NOVO) ---
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
 
@@ -531,7 +534,58 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
-    // -----------------------------------
+
+    // --- LÓGICA DE TEMA (CLARO / ESCURO) ---
+    function updateThemeUI() {
+        const isLight = localStorage.getItem('vesto_theme') === 'light';
+        const metaTheme = document.querySelector('meta[name="theme-color"]');
+        
+        if (isLight) {
+            document.body.classList.add('light-mode');
+            if (toggleThemeBtn && themeToggleKnob) {
+                toggleThemeBtn.classList.remove('bg-gray-700');
+                toggleThemeBtn.classList.add('bg-purple-600');
+                themeToggleKnob.classList.remove('translate-x-1');
+                themeToggleKnob.classList.add('translate-x-6');
+            }
+            if (metaTheme) metaTheme.setAttribute('content', '#f9fafb');
+            
+            // Atualiza cores padrão do Chart.js para Tema Claro
+            Chart.defaults.color = '#374151'; 
+            Chart.defaults.borderColor = '#e5e7eb';
+        } else {
+            document.body.classList.remove('light-mode');
+            if (toggleThemeBtn && themeToggleKnob) {
+                toggleThemeBtn.classList.remove('bg-purple-600');
+                toggleThemeBtn.classList.add('bg-gray-700');
+                themeToggleKnob.classList.remove('translate-x-6');
+                themeToggleKnob.classList.add('translate-x-1');
+            }
+            if (metaTheme) metaTheme.setAttribute('content', '#000000');
+            
+            // Atualiza cores padrão do Chart.js para Tema Escuro
+            Chart.defaults.color = '#9ca3af'; 
+            Chart.defaults.borderColor = '#374151';
+        }
+    }
+
+    // Inicializa o tema imediatamente
+    updateThemeUI();
+
+    if (toggleThemeBtn) {
+        toggleThemeBtn.addEventListener('click', () => {
+            const current = localStorage.getItem('vesto_theme') === 'light';
+            localStorage.setItem('vesto_theme', current ? 'dark' : 'light');
+            updateThemeUI();
+            
+            // Força atualização dos gráficos se existirem
+            // (As variáveis são globais no escopo do DOMContentLoaded, definidas na Parte 2)
+            if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) alocacaoChartInstance.update();
+            if (typeof patrimonioChartInstance !== 'undefined' && patrimonioChartInstance) patrimonioChartInstance.update();
+            if (typeof historicoChartInstance !== 'undefined' && historicoChartInstance) historicoChartInstance.update();
+            if (typeof detalhesChartInstance !== 'undefined' && detalhesChartInstance) detalhesChartInstance.update();
+        });
+    }
 
     let currentUserId = null;
     let transacoes = [];        
@@ -805,7 +859,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error(`Erro ao remover proventos conhecidos do DB para ${symbol}:`, e);
         }
     }
-async function getCache(key) {
+
+    async function getCache(key) {
         try {
             const cacheItem = await vestoDB.get('apiCache', key);
             if (!cacheItem) return null;
@@ -913,8 +968,7 @@ async function getCache(key) {
             limparDetalhes(); 
         }, 400); 
     }
-
-    // --- NOVA FUNÇÃO: HANDLER DE IA ---
+// --- FUNÇÃO: HANDLER DE IA ---
     async function handleAnaliseIA() {
         if (!carteiraCalculada || carteiraCalculada.length === 0) {
             showToast("Adicione ativos antes de pedir uma análise.");
@@ -928,7 +982,6 @@ async function getCache(key) {
         aiLoading.classList.remove('hidden');
 
         // 2. Prepara os dados (Payload)
-        // Calcula patrimônio total atual (soma das posições + caixa)
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
         let valorTotalAtivos = 0;
         
@@ -966,7 +1019,7 @@ async function getCache(key) {
 
             const data = await response.json();
             
-            // 4. Renderiza o Markdown (usando a lib 'marked' adicionada no HTML)
+            // 4. Renderiza o Markdown
             if (data.result && window.marked) {
                 aiContent.innerHTML = marked.parse(data.result);
             } else {
@@ -1048,7 +1101,6 @@ async function getCache(key) {
         watchlist.forEach(item => {
             const symbol = item.symbol;
             const el = document.createElement('div');
-            // ATUALIZADO: rounded-2xl
             el.className = 'flex justify-between items-center p-3 bg-black rounded-2xl border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
             el.innerHTML = `
                 <div class="flex items-center gap-3">
@@ -1085,7 +1137,7 @@ async function getCache(key) {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
 
-async function processarDividendosPagos() {
+    async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         let novoSaldoCalculado = 0; 
@@ -1123,6 +1175,7 @@ async function processarDividendosPagos() {
             }
         }
     }
+
     function calcularCarteira() {
         const ativosMap = new Map();
         const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1150,6 +1203,7 @@ async function processarDividendosPagos() {
                 dataCompra: a.dataCompra
             }));
     }
+
     function renderizarHistorico() {
         listaHistorico.innerHTML = '';
         if (transacoes.length === 0) {
@@ -1162,7 +1216,6 @@ async function processarDividendosPagos() {
 
         [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
             const card = document.createElement('div');
-            // ATUALIZADO: rounded-3xl
             card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between';
             const cor = 'text-green-500';
             const sinal = '+';
@@ -1247,7 +1300,6 @@ async function processarDividendosPagos() {
             `;
 
             const newsCard = document.createElement('div');
-            // ATUALIZADO: rounded-3xl
             newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive'; 
             newsCard.setAttribute('data-action', 'toggle-news');
             newsCard.setAttribute('data-target', drawerId);
@@ -1284,7 +1336,8 @@ async function processarDividendosPagos() {
         });
         fiiNewsList.appendChild(fragment);
     }
-	function renderizarGraficoAlocacao(dadosGrafico) {
+
+    function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1321,13 +1374,13 @@ async function processarDividendosPagos() {
                         data: data, 
                         backgroundColor: colors, 
                         borderWidth: 2, 
-                        borderColor: '#000000' 
+                        borderColor: Chart.defaults.borderColor 
                     }] 
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: true, position: 'bottom', labels: { color: '#f3f4f6', boxWidth: 12, padding: 15, } },
+                        legend: { display: true, position: 'bottom', labels: { color: Chart.defaults.color, boxWidth: 12, padding: 15, } },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -1375,7 +1428,6 @@ async function processarDividendosPagos() {
             historicoChartInstance.data.datasets[0].data = data;
             historicoChartInstance.data.datasets[0].backgroundColor = gradient;
             historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            historicoChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)'; 
             historicoChartInstance.update();
         } else {
             historicoChartInstance = new Chart(ctx, {
@@ -1449,7 +1501,6 @@ async function processarDividendosPagos() {
             detalhesChartInstance.data.datasets[0].data = data;
             detalhesChartInstance.data.datasets[0].backgroundColor = gradient;
             detalhesChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            detalhesChartInstance.data.datasets[0].borderColor = 'rgba(192, 132, 252, 0.3)';
             detalhesChartInstance.update();
         } else {
             detalhesChartInstance = new Chart(ctx, {
@@ -1489,7 +1540,7 @@ async function processarDividendosPagos() {
                             grid: { color: '#2A2A2A' }, 
                             ticks: { 
                                 display: true,
-                                color: '#6b7280',
+                                color: Chart.defaults.color,
                                 font: { size: 10 },
                                 callback: function(value) {
                                     return formatBRL(value);
@@ -1499,7 +1550,7 @@ async function processarDividendosPagos() {
                         x: { 
                             grid: { display: false },
                             ticks: {
-                                color: '#9ca3af',
+                                color: Chart.defaults.color,
                                 font: { size: 10 }
                             }
                         }
@@ -1536,15 +1587,7 @@ async function processarDividendosPagos() {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = data;
-            
             patrimonioChartInstance.data.datasets[0].backgroundColor = gradient;
-            patrimonioChartInstance.data.datasets[0].borderColor = '#c084fc';
-            patrimonioChartInstance.data.datasets[0].pointBackgroundColor = '#c084fc';
-            
-            patrimonioChartInstance.data.datasets[0].pointRadius = 3;
-            patrimonioChartInstance.data.datasets[0].pointHitRadius = 15;
-            patrimonioChartInstance.data.datasets[0].pointHoverRadius = 5;
-            
             patrimonioChartInstance.update();
         } else {
             patrimonioChartInstance = new Chart(ctx, {
@@ -1582,6 +1625,7 @@ async function processarDividendosPagos() {
             });
         }
     }
+
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
         const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
@@ -1619,7 +1663,8 @@ async function processarDividendosPagos() {
             return total;
         }, 0);
     }
-async function renderizarCarteira() {
+
+    async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -1748,7 +1793,7 @@ async function renderizarCarteira() {
         renderizarGraficoAlocacao(dadosGrafico);
         renderizarGraficoPatrimonio();
         
-        // REAPLICAR FILTRO DE PESQUISA (Se houver algo digitado)
+        // REAPLICAR FILTRO DE PESQUISA
         if (carteiraSearchInput && carteiraSearchInput.value) {
             const term = carteiraSearchInput.value.trim().toUpperCase();
             const cards = listaCarteira.querySelectorAll('.card-bg');
@@ -1763,7 +1808,7 @@ async function renderizarCarteira() {
         }
     }
 
-function renderizarProventos() {
+    function renderizarProventos() {
         let totalEstimado = 0;
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -1785,6 +1830,7 @@ function renderizarProventos() {
         });
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
+    
     // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
 
     async function handleAtualizarNoticias(force = false) {
@@ -1900,7 +1946,7 @@ function renderizarProventos() {
         return resultados.filter(p => p !== null);
     }
 
-function processarProventosScraper(proventosScraper = []) {
+    function processarProventosScraper(proventosScraper = []) {
         const hoje = new Date(); 
         hoje.setHours(0, 0, 0, 0);
         const dataLimitePassado = new Date();
@@ -1995,7 +2041,7 @@ function processarProventosScraper(proventosScraper = []) {
         return response.json;
     }
 
-async function buscarHistoricoProventosAgregado(force = false) {
+    async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
@@ -2025,21 +2071,13 @@ async function buscarHistoricoProventosAgregado(force = false) {
         const aggregator = {};
 
         rawDividends.forEach(item => {
-            // CORREÇÃO DE LÓGICA HÍBRIDA:
-            
-            // 1. Para o EIXO X (Visualização): Usamos a Data de Pagamento (Caixa).
-            // Isso garante que o dinheiro apareça no mês que cai na conta (ex: MXRF11 vai para Dezembro).
             const dataVisualizacao = item.paymentDate || item.dataCom;
-            
-            // 2. Para a QUANTIDADE (Cálculo): Usamos a Data Com (Competência).
-            // Isso garante que só contamos as cotas que você tinha no dia do corte (corrige o erro do SNAG11 em Nov).
             const dataDireito = item.dataCom || item.paymentDate;
             
             if (dataVisualizacao) {
                 const [ano, mes] = dataVisualizacao.split('-'); 
                 const chaveMes = `${mes}/${ano.substring(2)}`; 
                 
-                // Verifica quantidade no dia do DIREITO, não do pagamento
                 const qtdNaData = getQuantidadeNaData(item.symbol, dataDireito);
 
                 if (qtdNaData > 0) {
@@ -2060,7 +2098,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
         return { labels, data };
     }
     
-async function atualizarTodosDados(force = false) { 
+    async function atualizarTodosDados(force = false) { 
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
         
@@ -2115,9 +2153,6 @@ async function atualizarTodosDados(force = false) {
         });
 
         promessaProventos.then(async proventosFuturos => {
-            // CORREÇÃO APLICADA:
-            // Usamos proventosConhecidos (que já foi atualizado pela função buscarProventosFuturos)
-            // Isso garante que dados salvos no banco não sejam sobrescritos por um array vazio se a API falhar
             proventosAtuais = processarProventosScraper(proventosConhecidos);
             
             renderizarProventos(); 
@@ -2127,7 +2162,6 @@ async function atualizarTodosDados(force = false) {
         }).catch(async err => {
             console.error("Erro ao buscar proventos (BFF):", err);
             
-            // Fallback: Se der erro na API, tentamos mostrar o que já temos salvo no banco
             if (proventosConhecidos.length > 0) {
                  proventosAtuais = processarProventosScraper(proventosConhecidos);
                  renderizarProventos();
@@ -2235,7 +2269,6 @@ async function atualizarTodosDados(force = false) {
                      tickerInput.placeholder = "Ativo não encontrado";
                      tickerInput.classList.add('border-red-500');
                      setTimeout(() => { 
-                        // FIX: Placeholder volta para o texto correto
                         tickerInput.placeholder = "Pesquisar ativo"; 
                         tickerInput.classList.remove('border-red-500');
                      }, 2000);
@@ -2465,7 +2498,7 @@ async function atualizarTodosDados(force = false) {
         });
     }
     
-async function handleMostrarDetalhes(symbol) {
+    async function handleMostrarDetalhes(symbol) {
         detalhesMensagem.classList.add('hidden');
         detalhesLoading.classList.remove('hidden');
         detalhesPreco.innerHTML = '';
@@ -2537,7 +2570,6 @@ async function handleMostrarDetalhes(symbol) {
                 `;
             }
 
-            // ATUALIZADO: rounded-3xl
             detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-3xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
@@ -2592,7 +2624,6 @@ async function handleMostrarDetalhes(symbol) {
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
                     const dados = fundamentos || { pvp: '-', dy: '-' };
-                    // ATUALIZADO: rounded-3xl
                     area.innerHTML = `
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">P/VP</span>
@@ -2646,7 +2677,6 @@ async function handleMostrarDetalhes(symbol) {
 
             txsDoAtivo.forEach(t => {
                 const card = document.createElement('div');
-                // ATUALIZADO: rounded-2xl
                 card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between'; 
                 
                 const cor = 'text-green-500';
@@ -2704,7 +2734,6 @@ async function handleMostrarDetalhes(symbol) {
 
         } catch (e) {
             showToast("Erro na consulta de dados."); 
-            // ATUALIZADO: rounded-2xl
             detalhesAiProvento.innerHTML = `
                 <div class="border border-red-700 bg-red-900/50 p-4 rounded-2xl flex items-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -2725,7 +2754,6 @@ async function handleMostrarDetalhes(symbol) {
         }
 
         if (currentDetalhesHistoricoJSON.length === 0) {
-            // ATUALIZADO: rounded-2xl
             detalhesAiProvento.innerHTML = `
                 <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-2xl">
                     Não foi possível encontrar o histórico de proventos.
@@ -2850,7 +2878,6 @@ async function handleMostrarDetalhes(symbol) {
         });
     });
     
-    // EVENTOS DO NOVO MODAL DE IA
     if (btnIaAnalise) {
         btnIaAnalise.addEventListener('click', handleAnaliseIA);
     }
@@ -2862,7 +2889,6 @@ async function handleMostrarDetalhes(symbol) {
         });
     }
 
-    // Fecha o modal se clicar fora (backdrop)
     if (aiModal) {
         aiModal.addEventListener('click', (e) => {
             if (e.target === aiModal) {
@@ -2958,10 +2984,7 @@ async function handleMostrarDetalhes(symbol) {
         });
     }
     
-    // LOGICA DA BARRA DE PESQUISA (NOVO)
-// LOGICA DA BARRA DE PESQUISA (NOVO)
     if (carteiraSearchInput) {
-        // Evento 'input': Mantém o filtro visual apenas para o que já está na tela (sem requisição)
         carteiraSearchInput.addEventListener('input', (e) => {
             const term = e.target.value.trim().toUpperCase();
             const cards = listaCarteira.querySelectorAll('.card-bg');
@@ -2976,31 +2999,22 @@ async function handleMostrarDetalhes(symbol) {
             });
         });
 
-        // Evento 'keyup': Ao dar ENTER, busca o ativo (mesmo que não esteja na carteira)
-// Evento 'keyup': Ao dar ENTER, busca o ativo e limpa o campo
         carteiraSearchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 const term = carteiraSearchInput.value.trim().toUpperCase();
                 
                 if (!term) return;
                 
-                // Fecha teclado e dá feedback visual
                 carteiraSearchInput.blur(); 
                 showToast(`Buscando ${term}...`, 'success');
 
-                // Abre o modal de detalhes
                 showDetalhesModal(term);
 
-                // --- NOVO: Limpeza automática ---
-                // 1. Apaga o texto digitado
                 carteiraSearchInput.value = '';
-                
-                // 2. Simula um evento de 'input' para que o filtro da lista
-                // perceba que o texto está vazio e mostre todos os cards novamente
                 carteiraSearchInput.dispatchEvent(new Event('input'));
             }
         });
-    }
+    
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
         if (!target) return;
@@ -3020,8 +3034,6 @@ async function handleMostrarDetalhes(symbol) {
 
         renderHistoricoIADetalhes(currentDetalhesMeses);
     });
-
-    // --- Listeners da Aba CONFIGURAÇÕES ---
 
     if (toggleBioBtn) {
         toggleBioBtn.addEventListener('click', () => {
@@ -3044,7 +3056,6 @@ async function handleMostrarDetalhes(symbol) {
         if (isPrivacyOn) {
             document.body.classList.add('privacy-mode');
             togglePrivacyBtn.classList.remove('bg-gray-700');
-            // FIX: Cor roxa para toggle ativo
             togglePrivacyBtn.classList.add('bg-purple-600');
             privacyToggleKnob.classList.remove('translate-x-1');
             privacyToggleKnob.classList.add('translate-x-6');
@@ -3097,7 +3108,6 @@ async function handleMostrarDetalhes(symbol) {
         });
     }
 
-    // --- LÓGICA LIMPAR CACHE ---
     if (clearCacheBtn) {
         clearCacheBtn.addEventListener('click', () => {
             showModal(
@@ -3469,6 +3479,6 @@ async function handleMostrarDetalhes(symbol) {
             showAuthLoading(false);                 
         }
     }
-    
+    }
     await init();
 });

@@ -1625,7 +1625,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-
     function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
         const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
@@ -2570,6 +2569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
             }
 
+            // ATUALIZADO: Grid com 6 Skeletons para os novos dados
             detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-3xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
@@ -2583,11 +2583,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 <div class="col-span-2 grid grid-cols-2 gap-3" id="detalhes-fundamentos-area">
                     <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
+                        <span class="text-xs text-gray-500">Segmento</span>
+                        <p class="text-base font-semibold text-gray-400">...</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
+                        <span class="text-xs text-gray-500">Vacância</span>
+                        <p class="text-base font-semibold text-gray-400">...</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
                         <span class="text-xs text-gray-500">P/VP</span>
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                     <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
                         <span class="text-xs text-gray-500">DY (12m)</span>
+                        <p class="text-base font-semibold text-gray-400">...</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
+                        <span class="text-xs text-gray-500">V. Patrimonial</span>
+                        <p class="text-base font-semibold text-gray-400">...</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
+                        <span class="text-xs text-gray-500">Liquidez</span>
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                 </div>
@@ -2620,11 +2636,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
 
+            // ATUALIZADO: Renderização dos novos campos
             callScraperFundamentosAPI(symbol).then(fundamentos => {
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
-                    const dados = fundamentos || { pvp: '-', dy: '-' };
+                    const dados = fundamentos || { pvp: '-', dy: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-' };
                     area.innerHTML = `
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
+                            <span class="text-xs text-gray-500">Segmento</span>
+                            <p class="text-sm font-semibold text-white truncate" title="${dados.segmento}">${dados.segmento || '-'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
+                            <span class="text-xs text-gray-500">Vacância</span>
+                            <p class="text-base font-semibold text-white">${dados.vacancia || '-'}</p>
+                        </div>
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">P/VP</span>
                             <p class="text-base font-semibold text-white">${dados.pvp || '-'}</p>
@@ -2632,6 +2657,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">DY (12m)</span>
                             <p class="text-base font-semibold text-purple-400">${dados.dy || '-'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
+                            <span class="text-xs text-gray-500">V. Patrimonial</span>
+                            <p class="text-base font-semibold text-white">${dados.val_patrimonial || '-'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
+                            <span class="text-xs text-gray-500">Liquidez Diária</span>
+                            <p class="text-sm font-semibold text-white truncate" title="${dados.liquidez}">${dados.liquidez || '-'}</p>
                         </div>
                     `;
                 }

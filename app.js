@@ -968,7 +968,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             limparDetalhes(); 
         }, 400); 
     }
-// --- FUNÇÃO: HANDLER DE IA ---
+	// --- FUNÇÃO: HANDLER DE IA ---
     async function handleAnaliseIA() {
         if (!carteiraCalculada || carteiraCalculada.length === 0) {
             showToast("Adicione ativos antes de pedir uma análise.");

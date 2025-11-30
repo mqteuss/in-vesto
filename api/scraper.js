@@ -24,7 +24,7 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
-// --- FUNÇÃO PARA INDICADORES EXPANDIDA ---
+// --- FUNÇÃO PARA INDICADORES (CORRIGIDA E ROBUSTA) ---
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -51,42 +51,39 @@ async function scrapeFundamentos(ticker) {
         let val_patrimonial = 'N/A';
         let liquidez = 'N/A';
 
-        // Tenta buscar DY
-        const dyEl = $('._card.dy ._card-body span').first();
-        if (dyEl.length) dy = dyEl.text().trim();
-
-        // Tenta buscar P/VP
-        const pvpEl = $('._card.vp ._card-body span').first();
-        if (pvpEl.length) pvp = pvpEl.text().trim();
+        // MÉTODO NOVO: Varredura por texto (Muito mais seguro)
+        // O site usa cards com classe ._card
+        // Dentro tem ._card-header (título) e ._card-body (valor)
         
-        // Tenta buscar Segmento
-        const segEl = $('._card.segment ._card-body span').first();
-        if (segEl.length) segmento = segEl.text().trim();
+        $('._card').each((i, el) => {
+            const titulo = $(el).find('._card-header span').text().trim().toLowerCase();
+            const valor = $(el).find('._card-body span').text().trim();
 
-        // Tenta buscar Vacância
-        const vacEl = $('._card.vacancy ._card-body span').first();
-        if (vacEl.length) vacancia = vacEl.text().trim();
+            if (valor) {
+                if (titulo.includes('dividend yield')) dy = valor;
+                else if (titulo.includes('p/vp')) pvp = valor;
+                else if (titulo.includes('segmento')) segmento = valor;
+                else if (titulo.includes('vacância')) vacancia = valor;
+                else if (titulo.includes('patrimonial') && titulo.includes('cota')) val_patrimonial = valor;
+                else if (titulo.includes('liquidez')) liquidez = valor;
+            }
+        });
 
-        // Tenta buscar Valor Patrimonial por Cota
-        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
-        if (valPatEl.length) val_patrimonial = valPatEl.text().trim();
-
-        // Tenta buscar Liquidez Diária
-        const liqEl = $('._card.liquidity ._card-body span').first();
-        if (liqEl.length) liquidez = liqEl.text().trim();
-
-        // Fallback genérico (varre os cards de tabela caso o layout mude ou seja Ação)
+        // Fallback: Se ainda estiver N/A, tenta buscar nas tabelas de celular (classe .cell)
+        // Útil para ações ou layouts antigos
         if (dy === 'N/A' || pvp === 'N/A') {
              $('.cell').each((i, el) => {
-                 const title = $(el).find('.name').text().trim();
-                 const val = $(el).find('.value').text().trim();
+                 const titulo = $(el).find('.name').text().trim().toLowerCase();
+                 const valor = $(el).find('.value').text().trim();
 
-                 if (title.includes('Dividend Yield')) dy = val;
-                 if (title.includes('P/VP')) pvp = val;
-                 if (title.includes('Segmento')) segmento = val;
-                 if (title.includes('Vacância')) vacancia = val;
-                 if (title.includes('Patrimonial')) val_patrimonial = val;
-                 if (title.includes('Liquidez')) liquidez = val;
+                 if (valor) {
+                    if (titulo.includes('dividend yield')) dy = valor;
+                    if (titulo.includes('p/vp')) pvp = valor;
+                    if (titulo.includes('segmento')) segmento = valor;
+                    if (titulo.includes('vacância')) vacancia = valor;
+                    if (titulo.includes('patrimonial')) val_patrimonial = valor;
+                    if (titulo.includes('liquidez')) liquidez = valor;
+                 }
              });
         }
 
@@ -163,7 +160,7 @@ module.exports = async function handler(req, res) {
 
         const { mode, payload } = req.body;
 
-        // --- MODO FUNDAMENTOS EXPANDIDO ---
+        // --- MODO FUNDAMENTOS ---
         if (mode === 'fundamentos') {
             const { ticker } = payload || {};
             if (!ticker) return res.json({ json: { dy: '-', pvp: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-' } });

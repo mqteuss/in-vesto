@@ -24,7 +24,7 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
-// --- FUNÇÃO DE SCRAPING DE FUNDAMENTOS (HÍBRIDA) ---
+// --- FUNÇÃO DE SCRAPING DE FUNDAMENTOS (VERSÃO CORRIGIDA) ---
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -44,7 +44,7 @@ async function scrapeFundamentos(ticker) {
         const html = response.data;
         const $ = cheerio.load(html);
 
-        // Inicializa variáveis
+        // Inicializa variáveis com N/A
         let dy = 'N/A';
         let pvp = 'N/A';
         let segmento = 'N/A';
@@ -52,49 +52,55 @@ async function scrapeFundamentos(ticker) {
         let val_patrimonial = 'N/A';
         let liquidez = 'N/A';
 
-        // 1. LÓGICA ANTIGA (PRIORITÁRIA PARA DY E P/VP)
-        // O site usa classes específicas como .dy e .vp nos cards principais
+        // 1. TENTATIVA DIRETA (Melhor para DY e P/VP)
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dy = dyEl.text().trim();
 
         const pvpEl = $('._card.vp ._card-body span').first();
         if (pvpEl.length) pvp = pvpEl.text().trim();
 
-        // 2. LÓGICA NOVA (VARREDURA GERAL)
-        // Serve para pegar Segmento, Vacância, Liquidez e agir como Fallback para DY
+        const liqEl = $('._card.liquidity ._card-body span').first();
+        if (liqEl.length) liquidez = liqEl.text().trim();
+        
+        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
+        if (valPatEl.length) val_patrimonial = valPatEl.text().trim();
+
+        // 2. VARREDURA DE CARDS (Cards genéricos)
         $('._card').each((i, el) => {
             const titulo = $(el).find('._card-header span').text().trim().toLowerCase();
             const valor = $(el).find('._card-body span').text().trim();
 
             if (valor) {
-                // Só preenche DY se a lógica antiga falhou
                 if (dy === 'N/A' && titulo.includes('dividend yield')) dy = valor;
                 if (pvp === 'N/A' && titulo.includes('p/vp')) pvp = valor;
+                if (liquidez === 'N/A' && titulo.includes('liquidez')) liquidez = valor;
                 
-                // Novos campos
-                if (titulo.includes('segmento')) segmento = valor;
-                else if (titulo.includes('vacância')) vacancia = valor;
-                else if (titulo.includes('patrimonial') && titulo.includes('cota')) val_patrimonial = valor;
-                else if (titulo.includes('liquidez')) liquidez = valor;
+                // Segmento e Vacância as vezes aparecem em cards
+                if (segmento === 'N/A' && titulo.includes('segmento')) segmento = valor;
+                if (vacancia === 'N/A' && titulo.includes('vacância')) vacancia = valor;
+                if (val_patrimonial === 'N/A' && titulo.includes('patrimonial') && titulo.includes('cota')) val_patrimonial = valor;
             }
         });
 
-        // 3. FALLBACK PARA TABELAS ANTIGAS (EX: AÇÕES)
-        if (dy === 'N/A' || pvp === 'N/A') {
-             $('.cell').each((i, el) => {
-                 const titulo = $(el).find('.name').text().trim().toLowerCase();
-                 const valor = $(el).find('.value').text().trim();
+        // 3. VARREDURA DE TABELAS (.cell) - OBRIGATÓRIA PARA SEGMENTO/VACÂNCIA
+        // Removemos o "if" que impedia isso de rodar se o DY já tivesse sido achado.
+        $('.cell').each((i, el) => {
+             const titulo = $(el).find('.name').text().trim().toLowerCase();
+             const valor = $(el).find('.value').text().trim();
 
-                 if (valor) {
-                    if (titulo.includes('dividend yield')) dy = valor;
-                    if (titulo.includes('p/vp')) pvp = valor;
-                    if (titulo.includes('segmento')) segmento = valor;
-                    if (titulo.includes('vacância')) vacancia = valor;
-                    if (titulo.includes('patrimonial')) val_patrimonial = valor;
-                    if (titulo.includes('liquidez')) liquidez = valor;
-                 }
-             });
-        }
+             if (valor) {
+                if (dy === 'N/A' && titulo.includes('dividend yield')) dy = valor;
+                if (pvp === 'N/A' && titulo.includes('p/vp')) pvp = valor;
+                if (liquidez === 'N/A' && titulo.includes('liquidez')) liquidez = valor;
+                
+                // Prioridade aqui para preencher o que falta
+                if (segmento === 'N/A' && titulo.includes('segmento')) segmento = valor;
+                if (vacancia === 'N/A' && titulo.includes('vacância')) vacancia = valor;
+                
+                // Checagem extra para VP
+                if (val_patrimonial === 'N/A' && (titulo.includes('patrimonial') && titulo.includes('cota'))) val_patrimonial = valor;
+             }
+         });
 
         return { dy, pvp, segmento, vacancia, val_patrimonial, liquidez };
 

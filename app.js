@@ -3479,6 +3479,5 @@ document.addEventListener('DOMContentLoaded', async () => {
             showAuthLoading(false);                 
         }
     }
-    }
     await init();
 });

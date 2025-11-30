@@ -22,53 +22,52 @@ export default async function handler(request, response) {
         // Inicializa o SDK
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-        // System Prompt: Persona e Regras de Conduta
+        // System Prompt: Persona Especialista em FIIs
         const systemPrompt = `
-        Você é um Consultor Financeiro Sênior (CVM, Brasil), conservador e técnico.
+        Você é um Analista de Investimentos Especialista em Fundos Imobiliários (FIIs) e Renda Passiva.
         
         MANDAMENTOS:
-        1. Use a tool 'googleSearch' OBRIGATORIAMENTE para buscar a SELIC atual (Meta) e o IPCA acumulado (12 meses).
-        2. Seja direto, objetivo e profissional.
-        3. Não invente dados. Se a busca falhar, informe que o dado está indisponível.
-        4. Se o patrimônio for < R$ 2.000,00, a análise deve focar quase exclusivamente no hábito de aportar e não na diversificação.
-        5. Estilo: Frases curtas, análise séria, Markdown limpo.
+        1. Use a tool 'googleSearch' OBRIGATORIAMENTE para buscar: SELIC Meta atual e IPCA acumulado 12 meses.
+        2. Sua filosofia: Foco na sustentabilidade dos dividendos (Yield) e qualidade dos imóveis/crédito.
+        3. Se patrimônio < R$ 2.000,00: Ignore diversificação complexa. O conselho deve ser "Aporte constante para atingir o 'Número Mágico' (Cotas gerando nova cota)".
+        4. Terminologia: Use termos do nicho (Tijolo, Papel, High Yield, High Grade, Vacância, P/VP).
+        5. Estilo: Direto, técnico e educativo.
         `;
 
         // Configuração do Modelo
-        // Nota: Certifique-se que o modelo "gemini-2.5-flash" está disponível na sua conta. 
-        // Caso contrário, use "gemini-1.5-flash".
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash", 
             systemInstruction: systemPrompt,
             tools: [{ googleSearch: {} }], // Ferramenta de Grounding ativada
         });
 
-        // User Query: Dados Específicos e Estrutura de Saída
+        // User Query: Focada em dinâmica de FIIs
         const userQuery = `
-        Analise minha carteira (Data: ${dataAtual})
+        Analise minha carteira de FIIs (Data: ${dataAtual})
 
         Patrimônio: ${totalPatrimonio}
         Ativos: ${JSON.stringify(carteira)}
 
-        Sua tarefa é executar a busca e gerar o relatório no formato abaixo:
+        Gere o relatório neste formato exato:
 
-        ### 1. Macro (Google)
-        - SELIC e IPCA reais encontrados via busca.
-        - Em 1 frase: cenário favorece RF pós, prefixada, IPCA+ ou FIIs?
+        ### 1. Cenário Macro (Google)
+        - Dados: SELIC e IPCA encontrados.
+        - Impacto: Com essa SELIC, o cenário favorece FIIs de Papel (indexados ao CDI) ou Tijolo (valorização potencial)? Responda em 1 frase.
 
-        ### 2. Riscos
-        - Analise concentração, qualidade e liquidez.
-        - Nota: Se patrimônio < 2k, classifique o risco geral como "Baixo/Irrelevante" (fase de acumulação).
+        ### 2. Raio-X da Carteira
+        - Analise a exposição setorial (Logística, Shopping, Papel/Recebíveis, Agro).
+        - Há concentração perigosa em um único fundo ou gestora?
+        - (Se patrimônio < 2k: "Fase de Acumulação: Foco total em aumentar número de cotas.")
 
         ### 3. Nota (0-10)
 
-        ### 4. Próximo Passo
-        - Escolha APENAS 1 ação: aportar RF / aumentar caixa / FIIs de papel / balancear / manter.
-        - Explique em 1 frase curta.
+        ### 4. Próximo Movimento
+        - Escolha APENAS 1: Aportar em Tijolo (Desconto) / Aportar em Papel (Renda) / Aumentar Caixa / Manter.
+        - Justificativa relâmpago (máx 10 palavras).
         `;
 
         const generationConfig = {
-            temperature: 0.1, // Baixo para máxima precisão técnica
+            temperature: 0.1, // Baixo para consistência técnica
             maxOutputTokens: 1000,
         };
 
@@ -88,7 +87,6 @@ export default async function handler(request, response) {
     } catch (error) {
         console.error("Erro no Analyze Handler (SDK):", error);
 
-        // Tratamento básico de erro para retorno ao cliente
         const errorMessage = error.message || "Erro desconhecido ao processar análise.";
         return response.status(500).json({ error: errorMessage });
     }

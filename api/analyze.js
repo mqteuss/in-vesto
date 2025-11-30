@@ -1,5 +1,5 @@
 // api/analyze.js
-// Implementação via SDK Oficial do Google (Modelo Gemini 2.5 Flash Estável)
+// Implementação via SDK Oficial do Google
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(request, response) {
@@ -15,102 +15,61 @@ export default async function handler(request, response) {
 
     try {
         const { carteira, totalPatrimonio } = request.body;
-
-        // Data atual para contexto do prompt
+        
+        // Data atual formatada para o prompt
         const dataAtual = new Date().toLocaleDateString('pt-BR');
 
         // Inicializa o SDK
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-        // --- NOVO SYSTEM PROMPT (Profissional / CVM) ---
+        // System Prompt: Persona e Regras de Conduta
         const systemPrompt = `
-        Você é um Consultor de Investimentos Sênior (perfil CVM, Brasil), especialista em carteiras B3, com foco em proteção de patrimônio, consistência e dividendos estáveis. 
+        Você é um Consultor Financeiro Sênior (CVM, Brasil), conservador e técnico.
         
-        Regras fundamentais: 
-        - Sua análise deve ser sempre técnica, séria e objetiva. 
-        - Use a ferramenta Google Search OBRIGATORIAMENTE para consultar: 
-          • Taxa SELIC meta vigente hoje. 
-          • IPCA acumulado dos últimos 12 meses. 
-        - Todas as conclusões devem partir dos dados reais encontrados. 
-        - Não invente valores. Se a busca não retornar algo, diga claramente. 
-        - Responda sempre em português claro, em formato profissional. 
-        
-        Personalidade: 
-        - Conservador, prudente e orientado a risco. 
-        - Prefere segurança, renda fixa forte e carteiras equilibradas. 
-        - Evita recomendações agressivas. 
-        - Sempre considera liquidez, concentração, correlação e risco setorial. 
-        - Se o patrimônio for baixo (< R$ 2.000): 
-          • Não critique diversificação limitada. 
-          • Reforce o hábito de aporte mensal. 
-        
-        Estilo de resposta: 
-        - Estruturado. 
-        - Raciocínio financeiro direto. 
-        - Markdown limpo. 
-        - Sem enrolação.
+        MANDAMENTOS:
+        1. Use a tool 'googleSearch' OBRIGATORIAMENTE para buscar a SELIC atual (Meta) e o IPCA acumulado (12 meses).
+        2. Seja direto, objetivo e profissional.
+        3. Não invente dados. Se a busca falhar, informe que o dado está indisponível.
+        4. Se o patrimônio for < R$ 2.000,00, a análise deve focar quase exclusivamente no hábito de aportar e não na diversificação.
+        5. Estilo: Frases curtas, análise séria, Markdown limpo.
         `;
 
-        // Configuração do Modelo: Usando a versão estável "gemini-2.5-flash"
+        // Configuração do Modelo
+        // Nota: Certifique-se que o modelo "gemini-2.5-flash" está disponível na sua conta. 
+        // Caso contrário, use "gemini-1.5-flash".
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash", 
             systemInstruction: systemPrompt,
             tools: [{ googleSearch: {} }], // Ferramenta de Grounding ativada
         });
 
-        // --- NOVO USER QUERY ---
+        // User Query: Dados Específicos e Estrutura de Saída
         const userQuery = `
-        Analise esta carteira com base no cenário econômico ATUAL do Brasil (Data: ${dataAtual}).
-        Patrimônio total: ${totalPatrimonio}
+        Analise minha carteira (Data: ${dataAtual})
+
+        Patrimônio: ${totalPatrimonio}
         Ativos: ${JSON.stringify(carteira)}
 
-        Use Google Search para obter:
-        - SELIC atual
-        - IPCA acumulado 12 meses
+        Sua tarefa é executar a busca e gerar o relatório no formato abaixo:
 
-        Agora gere o relatório em Markdown no formato EXATO abaixo:
-        ---
-        ### **1. Cenário Macroeconômico (dados via Google)**
-        - Informe a SELIC e o IPCA reais.
-        - Em 1 frase, diga se o cenário favorece:
-          • renda fixa pós
-          • renda fixa prefixada
-          • IPCA+
-          • FIIs
-        ---
-        ### **2. Diagnóstico Técnico da Carteira**
-        Avalie com profundidade:
-        - Exposição por classe (FIIs, ações, renda fixa etc.)
-        - Concentração perigosa
-        - Qualidade média dos ativos
-        - Risco x retorno no cenário atual
-        - Liquidez
-        - Adequação ao patrimônio informado
-        ---
-        ### **3. Nota Final (0 a 10)**
-        Critérios:
-        - Diversificação
-        - Qualidade dos ativos
-        - Adequação ao cenário macro
-        - Risco x retorno
-        ---
-        ### **4. Próximo Passo Único Recomendado**
-        Escolha apenas um:
-        - "Aportar em renda fixa"
-        - "Aumentar caixa"
-        - "Aumentar FIIs de papel"
-        - "Balancear setores"
-        - "Reduzir exposição"
-        - "Manter estratégia"
-        Explique em 1 frase por que essa é a melhor ação HOJE.
-        ---
+        ### 1. Macro (Google)
+        - SELIC e IPCA reais encontrados via busca.
+        - Em 1 frase: cenário favorece RF pós, prefixada, IPCA+ ou FIIs?
+
+        ### 2. Riscos
+        - Analise concentração, qualidade e liquidez.
+        - Nota: Se patrimônio < 2k, classifique o risco geral como "Baixo/Irrelevante" (fase de acumulação).
+
+        ### 3. Nota (0-10)
+
+        ### 4. Próximo Passo
+        - Escolha APENAS 1 ação: aportar RF / aumentar caixa / FIIs de papel / balancear / manter.
+        - Explique em 1 frase curta.
         `;
 
         const generationConfig = {
-            temperature: 0.1, // Baixo para manter o perfil sério/técnico
-            maxOutputTokens: 1500, // Aumentado levemente para comportar a análise mais densa
-            topP: 0.8,
-            topK: 40
+            temperature: 0.1, // Baixo para máxima precisão técnica
+            maxOutputTokens: 1000,
         };
 
         // Chamada à API

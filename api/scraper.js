@@ -24,7 +24,7 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
-// --- FUNÇÃO PARA INDICADORES (CORRIGIDA E ROBUSTA) ---
+// --- FUNÇÃO PARA INDICADORES (CORRIGIDA - LÊ TODOS OS CAMPOS) ---
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -51,9 +51,9 @@ async function scrapeFundamentos(ticker) {
         let val_patrimonial = 'N/A';
         let liquidez = 'N/A';
 
-        // MÉTODO NOVO: Varredura por texto (Muito mais seguro)
-        // O site usa cards com classe ._card
-        // Dentro tem ._card-header (título) e ._card-body (valor)
+        // --- AQUI ESTÁ A CORREÇÃO PRINCIPAL ---
+        // Em vez de procurar classes específicas (.dy, .vp), 
+        // nós varremos TODOS os cards e lemos o TÍTULO deles.
         
         $('._card').each((i, el) => {
             const titulo = $(el).find('._card-header span').text().trim().toLowerCase();
@@ -64,13 +64,14 @@ async function scrapeFundamentos(ticker) {
                 else if (titulo.includes('p/vp')) pvp = valor;
                 else if (titulo.includes('segmento')) segmento = valor;
                 else if (titulo.includes('vacância')) vacancia = valor;
+                // Filtro extra para garantir que é o VP por cota e não o total
                 else if (titulo.includes('patrimonial') && titulo.includes('cota')) val_patrimonial = valor;
                 else if (titulo.includes('liquidez')) liquidez = valor;
             }
         });
 
-        // Fallback: Se ainda estiver N/A, tenta buscar nas tabelas de celular (classe .cell)
-        // Útil para ações ou layouts antigos
+        // Fallback: Se ainda estiver N/A, tenta buscar nas tabelas antigas (classe .cell)
+        // Isso ajuda caso o ativo seja uma Ação ou tenha layout antigo
         if (dy === 'N/A' || pvp === 'N/A') {
              $('.cell').each((i, el) => {
                  const titulo = $(el).find('.name').text().trim().toLowerCase();

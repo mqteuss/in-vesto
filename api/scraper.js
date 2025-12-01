@@ -60,13 +60,16 @@ async function scrapeFundamentos(ticker) {
             val_mercado: 'N/A',
             patrimonio_liquido: 'N/A',
             variacao_12m: 'N/A',
-            ultimo_rendimento: 'N/A'
+            ultimo_rendimento: 'N/A',
+            cnpj: 'N/A',           // NOVO
+            num_cotistas: 'N/A',   // NOVO
+            tipo_gestao: 'N/A'     // NOVO
         };
         
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // 1. SELETORES DIRETOS (Prioridade)
+        // 1. MÉTODO ANTIGO (CLÁSSICO) - PRIORIDADE
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
 
@@ -82,7 +85,7 @@ async function scrapeFundamentos(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // Função auxiliar para processar pares Chave/Valor
+        // 2. VARREDURA (LOOP)
         const processPair = (tituloRaw, valorRaw) => {
             const titulo = normalize(tituloRaw);
             const valor = valorRaw.trim();
@@ -92,49 +95,34 @@ async function scrapeFundamentos(ticker) {
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
-            if (dados.vp_cota === 'N/A' && titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = valor;
-
+            
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
-            
-            // Lógica melhorada para Patrimônio Líquido (Total)
-            if (dados.patrimonio_liquido === 'N/A') {
-                if (titulo.includes('patrimonio liquido') || (titulo.includes('valor patrimonial') && !titulo.includes('cota'))) {
-                    dados.patrimonio_liquido = valor;
-                }
-            }
 
-            // Captura Cotas para cálculo
-            if (titulo.includes('cotas') && (titulo.includes('num') || titulo.includes('qtd') || titulo.includes('total') || titulo.includes('emitidas'))) {
+            // NOVOS CAMPOS
+            if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
+            if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
+            if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
+
+            if (titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = valor;
+            else if ((titulo.includes('patrimonio') || titulo.includes('patrimonial')) && !titulo.includes('cota')) dados.patrimonio_liquido = valor;
+
+            if (titulo.includes('cotas') && (titulo.includes('num') || titulo.includes('qtd') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
             }
         };
 
-        // 2. VARREDURA DE CARDS (.card)
-        $('._card').each((i, el) => {
-            processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text());
-        });
-
-        // 3. VARREDURA DE LISTAS (.cell)
-        $('.cell').each((i, el) => {
-            processPair($(el).find('.name').text(), $(el).find('.value').text());
-        });
-
-        // 4. NOVA VARREDURA: TABELAS GENÉRICAS (tr/td)
-        // Muitos dados como "Num Cotas" e "Patrimônio Líquido" ficam em tabelas na parte inferior
+        $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
+        $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         $('table tbody tr').each((i, row) => {
             const cols = $(row).find('td');
-            if (cols.length >= 2) { // Garante que tem chave e valor
-                const titulo = $(cols[0]).text();
-                const valor = $(cols[1]).text();
-                processPair(titulo, valor);
-            }
+            if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // 5. CÁLCULO DE FALLBACK (Valor de Mercado)
+        // 3. CÁLCULO DE FALLBACK (Valor de Mercado)
         if ((dados.val_mercado === 'N/A' || dados.val_mercado === '-') && cotacao_atual > 0 && num_cotas > 0) {
             const mercadoCalc = cotacao_atual * num_cotas;
             if (mercadoCalc > 1000000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
@@ -149,7 +137,8 @@ async function scrapeFundamentos(ticker) {
         return { 
             dy: '-', pvp: '-', segmento: '-', vacancia: '-', 
             vp_cota: '-', liquidez: '-', val_mercado: '-', 
-            ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-'
+            ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-',
+            cnpj: '-', num_cotistas: '-', tipo_gestao: '-'
         }; 
     }
 }

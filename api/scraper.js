@@ -23,6 +23,17 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
+// Converte string com "Milhões/Bilhões" para número real
+function parseExtendedValue(str) {
+    if (!str) return 0;
+    const val = parseValue(str);
+    const lower = str.toLowerCase();
+    if (lower.includes('bilh')) return val * 1000000000;
+    if (lower.includes('milh')) return val * 1000000;
+    if (lower.includes('mil')) return val * 1000;
+    return val;
+}
+
 function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -61,9 +72,9 @@ async function scrapeFundamentos(ticker) {
             patrimonio_liquido: 'N/A',
             variacao_12m: 'N/A',
             ultimo_rendimento: 'N/A',
-            cnpj: 'N/A',           // NOVO
-            num_cotistas: 'N/A',   // NOVO
-            tipo_gestao: 'N/A'     // NOVO
+            cnpj: 'N/A',
+            num_cotistas: 'N/A',
+            tipo_gestao: 'N/A'
         };
         
         let cotacao_atual = 0;
@@ -85,7 +96,7 @@ async function scrapeFundamentos(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // 2. VARREDURA (LOOP)
+        // 2. VARREDURA INTELIGENTE
         const processPair = (tituloRaw, valorRaw) => {
             const titulo = normalize(tituloRaw);
             const valor = valorRaw.trim();
@@ -95,22 +106,32 @@ async function scrapeFundamentos(ticker) {
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
-            
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
-
-            // NOVOS CAMPOS
             if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
             if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
             if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
 
-            if (titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = valor;
-            else if ((titulo.includes('patrimonio') || titulo.includes('patrimonial')) && !titulo.includes('cota')) dados.patrimonio_liquido = valor;
+            // HEURÍSTICA DE PATRIMÔNIO (Resolve a confusão entre VP e VP/Cota)
+            if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
+                const valorNumerico = parseValue(valor);
+                const textoLower = valor.toLowerCase();
 
-            if (titulo.includes('cotas') && (titulo.includes('num') || titulo.includes('qtd') || titulo.includes('total'))) {
+                // Se tem "milhões", "bilhões" ou é um número muito grande (> 10.000), é o TOTAL
+                if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
+                    if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
+                } 
+                // Se é um número pequeno (ex: 10,34 ou 100,50), é por COTA
+                else {
+                    if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
+                }
+            }
+
+            // Captura Cotas
+            if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
             }
         };
@@ -122,12 +143,29 @@ async function scrapeFundamentos(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // 3. CÁLCULO DE FALLBACK (Valor de Mercado)
-        if ((dados.val_mercado === 'N/A' || dados.val_mercado === '-') && cotacao_atual > 0 && num_cotas > 0) {
-            const mercadoCalc = cotacao_atual * num_cotas;
-            if (mercadoCalc > 1000000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
-            else if (mercadoCalc > 1000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000).toFixed(2)} Milhões`;
-            else dados.val_mercado = formatCurrency(mercadoCalc);
+        // 3. CÁLCULOS DE FALLBACK PARA "VALOR DE MERCADO"
+        if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
+            let mercadoCalc = 0;
+
+            // Estratégia A: Preço * Cotas
+            if (cotacao_atual > 0 && num_cotas > 0) {
+                mercadoCalc = cotacao_atual * num_cotas;
+            } 
+            // Estratégia B: Matemágica (Patrimônio Total * P/VP) -> Salva o SNAG11
+            else if (dados.patrimonio_liquido !== 'N/A' && dados.pvp !== 'N/A') {
+                const plValue = parseExtendedValue(dados.patrimonio_liquido);
+                const pvpValue = parseValue(dados.pvp);
+                if (plValue > 0 && pvpValue > 0) {
+                    mercadoCalc = plValue * pvpValue;
+                }
+            }
+
+            // Formata o valor calculado
+            if (mercadoCalc > 0) {
+                if (mercadoCalc > 1000000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
+                else if (mercadoCalc > 1000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000).toFixed(2)} Milhões`;
+                else dados.val_mercado = formatCurrency(mercadoCalc);
+            }
         }
 
         return dados;

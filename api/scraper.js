@@ -24,7 +24,11 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
-// --- FUNÇÃO DE SCRAPING DE FUNDAMENTOS ---
+function formatCurrency(value) {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+// --- FUNÇÃO DE SCRAPING DE FUNDAMENTOS (ATUALIZADA) ---
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -49,25 +53,21 @@ async function scrapeFundamentos(ticker) {
         let pvp = 'N/A';
         let segmento = 'N/A';
         let vacancia = 'N/A';
-        let val_patrimonial = 'N/A';
+        let vp_cota = 'N/A';          // VP por Cota
         let liquidez = 'N/A';
-        let val_mercado = 'N/A';       // NOVO
-        let ultimo_rendimento = 'N/A'; // NOVO
-
-        // 1. TENTATIVA DIRETA (Seletores específicos que funcionam bem)
-        const dyEl = $('._card.dy ._card-body span').first();
-        if (dyEl.length) dy = dyEl.text().trim();
-
-        const pvpEl = $('._card.vp ._card-body span').first();
-        if (pvpEl.length) pvp = pvpEl.text().trim();
-
-        const liqEl = $('._card.liquidity ._card-body span').first();
-        if (liqEl.length) liquidez = liqEl.text().trim();
+        let val_mercado = 'N/A';
+        let patrimonio_liquido = 'N/A'; // Novo: Patrimônio Total
+        let variacao_12m = 'N/A';       // Novo: Variação 12M
+        let ultimo_rendimento = 'N/A';
         
-        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
-        if (valPatEl.length) val_patrimonial = valPatEl.text().trim();
+        let cotacao_atual = 0;
+        let num_cotas = 0;
 
-        // 2. VARREDURA DE CARDS (Genérica)
+        // 1. Busca Cotação Atual
+        const cotacaoEl = $('._card.cotacao ._card-body span').first();
+        if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
+
+        // 2. Varredura de Cards
         $('._card').each((i, el) => {
             const titulo = $(el).find('._card-header span').text().trim().toLowerCase();
             const valor = $(el).find('._card-body span').text().trim();
@@ -76,18 +76,19 @@ async function scrapeFundamentos(ticker) {
                 if (dy === 'N/A' && titulo.includes('dividend yield')) dy = valor;
                 if (pvp === 'N/A' && titulo.includes('p/vp')) pvp = valor;
                 if (liquidez === 'N/A' && titulo.includes('liquidez')) liquidez = valor;
-                
                 if (segmento === 'N/A' && titulo.includes('segmento')) segmento = valor;
                 if (vacancia === 'N/A' && titulo.includes('vacância')) vacancia = valor;
-                if (val_patrimonial === 'N/A' && titulo.includes('patrimonial') && titulo.includes('cota')) val_patrimonial = valor;
-                
-                // Novos Campos
                 if (val_mercado === 'N/A' && titulo.includes('valor de mercado')) val_mercado = valor;
                 if (ultimo_rendimento === 'N/A' && titulo.includes('último rendimento')) ultimo_rendimento = valor;
+                if (variacao_12m === 'N/A' && titulo.includes('variação') && titulo.includes('12m')) variacao_12m = valor;
+
+                // Diferenciação entre VP por Cota e Patrimônio Líquido Total
+                if (titulo.includes('patrimonial') && titulo.includes('cota')) vp_cota = valor;
+                else if (titulo.includes('patrimônio líquido')) patrimonio_liquido = valor;
             }
         });
 
-        // 3. VARREDURA DE TABELAS (Fallback)
+        // 3. Varredura de Tabelas (.cell) - Fallback e Num Cotas
         $('.cell').each((i, el) => {
              const titulo = $(el).find('.name').text().trim().toLowerCase();
              const valor = $(el).find('.value').text().trim();
@@ -96,28 +97,41 @@ async function scrapeFundamentos(ticker) {
                 if (dy === 'N/A' && titulo.includes('dividend yield')) dy = valor;
                 if (pvp === 'N/A' && titulo.includes('p/vp')) pvp = valor;
                 if (liquidez === 'N/A' && titulo.includes('liquidez')) liquidez = valor;
-                
                 if (segmento === 'N/A' && titulo.includes('segmento')) segmento = valor;
                 if (vacancia === 'N/A' && titulo.includes('vacância')) vacancia = valor;
-                if (val_patrimonial === 'N/A' && (titulo.includes('patrimonial') && titulo.includes('cota'))) val_patrimonial = valor;
-                
-                // Novos Campos
                 if (val_mercado === 'N/A' && titulo.includes('valor de mercado')) val_mercado = valor;
                 if (ultimo_rendimento === 'N/A' && titulo.includes('último rendimento')) ultimo_rendimento = valor;
+                if (variacao_12m === 'N/A' && titulo.includes('variação') && titulo.includes('12m')) variacao_12m = valor;
+
+                if (vp_cota === 'N/A' && (titulo.includes('patrimonial') && titulo.includes('cota'))) vp_cota = valor;
+                else if (patrimonio_liquido === 'N/A' && titulo.includes('patrimônio líquido')) patrimonio_liquido = valor;
+                
+                if (titulo.includes('cotas') && titulo.includes('núm')) {
+                    num_cotas = parseValue(valor);
+                }
              }
          });
 
-        return { dy, pvp, segmento, vacancia, val_patrimonial, liquidez, val_mercado, ultimo_rendimento };
+        // 4. Cálculos de Fallback
+        if ((val_mercado === 'N/A' || val_mercado === '-') && cotacao_atual > 0 && num_cotas > 0) {
+            const mercadoCalc = cotacao_atual * num_cotas;
+            if (mercadoCalc > 1000000000) val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
+            else if (mercadoCalc > 1000000) val_mercado = `R$ ${(mercadoCalc / 1000000).toFixed(2)} Milhões`;
+            else val_mercado = formatCurrency(mercadoCalc);
+        }
+
+        return { dy, pvp, segmento, vacancia, vp_cota, liquidez, val_mercado, ultimo_rendimento, patrimonio_liquido, variacao_12m };
 
     } catch (error) {
         console.warn(`[Scraper] Falha ao ler fundamentos de ${ticker}: ${error.message}`);
         return { 
             dy: '-', pvp: '-', segmento: '-', vacancia: '-', 
-            val_patrimonial: '-', liquidez: '-', val_mercado: '-', ultimo_rendimento: '-' 
+            vp_cota: '-', liquidez: '-', val_mercado: '-', ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-'
         }; 
     }
 }
 
+// --- 2. FUNÇÃO ASSET (ESTRATÉGIA CLÁSSICA) ---
 async function scrapeAsset(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -138,6 +152,7 @@ async function scrapeAsset(ticker) {
         const $ = cheerio.load(html);
         const dividendos = [];
 
+        // Mantendo o seletor clássico que você confirmou que funciona
         $('#table-dividends-history tbody tr').each((i, el) => {
             const cols = $(el).find('td');
             if (cols.length >= 4) {
@@ -156,7 +171,7 @@ async function scrapeAsset(ticker) {
         });
         return dividendos;
     } catch (error) {
-        console.warn(`[Scraper] Falha ao ler ${ticker}: ${error.message}`);
+        console.warn(`[Scraper] Falha ao ler histórico de ${ticker}: ${error.message}`);
         return []; 
     }
 }
@@ -185,7 +200,7 @@ module.exports = async function handler(req, res) {
 
         if (mode === 'fundamentos') {
             const { ticker } = payload || {};
-            if (!ticker) return res.json({ json: { dy: '-', pvp: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-', val_mercado: '-', ultimo_rendimento: '-' } });
+            if (!ticker) return res.json({ json: {} }); // Retorno vazio seguro
 
             const dados = await scrapeFundamentos(ticker);
             return res.status(200).json({ json: dados });

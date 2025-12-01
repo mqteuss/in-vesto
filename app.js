@@ -2569,8 +2569,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
             }
 
-            // Define um valor inicial para o Market Cap vindo da API
-            const marketCapDisplay = precoData.marketCap ? formatNumber(precoData.marketCap) : 'N/A';
+            // Inicializa com "..." para evitar N/A
+            const marketCapDisplay = '...';
 
             // HTML atualizado com ID para o valor de mercado e a estrutura de grid
             detalhesPreco.innerHTML = `
@@ -2602,11 +2602,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                     <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">V. Patrimonial</span>
+                        <span class="text-xs text-gray-500">VP por Cota</span>
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                     <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
                         <span class="text-xs text-gray-500">Liquidez</span>
+                        <p class="text-base font-semibold text-gray-400">...</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
+                        <span class="text-xs text-gray-500">Patr. Líquido</span>
+                        <p class="text-base font-semibold text-gray-400">...</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
+                        <span class="text-xs text-gray-500">Var. 12M</span>
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                 </div>
@@ -2643,19 +2651,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             callScraperFundamentosAPI(symbol).then(fundamentos => {
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
-                    const dados = fundamentos || { pvp: '-', dy: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-', val_mercado: '-', ultimo_rendimento: '-' };
+                    const dados = fundamentos || { 
+                        pvp: '-', dy: '-', segmento: '-', vacancia: '-', 
+                        vp_cota: '-', liquidez: '-', val_mercado: '-', 
+                        ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-' 
+                    };
                     
-                    // Atualiza o Valor de Mercado se a API falhou
+                    // Preenche o Valor de Mercado (prioridade Scraper)
                     const valMercadoEl = document.getElementById('detalhes-valor-mercado');
-                    if (valMercadoEl && (valMercadoEl.innerText === 'N/A' || valMercadoEl.innerText === '0')) {
+                    if (valMercadoEl) {
                          valMercadoEl.textContent = dados.val_mercado || 'N/A';
                     }
 
-                    // Renderiza o grid de fundamentos (Incluindo Último Rendimento no lugar de V. Patrimonial duplicado ou em novo slot)
-                    // Aqui optei por substituir V. Patrimonial por cota (que já está na lista) ou manter.
-                    // Vamos manter o layout pedido, mas troquei "V. Patrimonial" por "Últ. Rendimento" no grid para não ficar redundante se você preferir,
-                    // OU mantemos o VP por cota e adicionamos o Último Rendimento. Vou adicionar um 7º item para garantir.
-                    
+                    // Define cor da variação
+                    const corVar12m = dados.variacao_12m.includes('-') ? 'text-red-500' : 'text-green-500';
+
                     area.innerHTML = `
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">Segmento</span>
@@ -2674,12 +2684,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p class="text-base font-semibold text-purple-400">${dados.dy || '-'}</p>
                         </div>
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                            <span class="text-xs text-gray-500">V. Patrimonial</span>
-                            <p class="text-base font-semibold text-white">${dados.val_patrimonial || '-'}</p>
+                            <span class="text-xs text-gray-500">VP por Cota</span>
+                            <p class="text-base font-semibold text-white">${dados.vp_cota || '-'}</p>
                         </div>
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">Liquidez Diária</span>
                             <p class="text-sm font-semibold text-white truncate" title="${dados.liquidez}">${dados.liquidez || '-'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
+                            <span class="text-xs text-gray-500">Patr. Líquido</span>
+                            <p class="text-sm font-semibold text-white truncate" title="${dados.patrimonio_liquido}">${dados.patrimonio_liquido || '-'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
+                            <span class="text-xs text-gray-500">Var. 12M</span>
+                            <p class="text-base font-semibold ${corVar12m}">${dados.variacao_12m || '-'}</p>
                         </div>
                         <div class="bg-gray-800 p-3 rounded-3xl text-center col-span-2 mt-1 border border-purple-500/30">
                             <span class="text-xs text-gray-500">Último Rendimento</span>

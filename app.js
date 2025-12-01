@@ -2569,7 +2569,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
             }
 
-            // ATUALIZADO: Grid com 6 Skeletons para os novos dados
+            // Define um valor inicial para o Market Cap vindo da API
+            const marketCapDisplay = precoData.marketCap ? formatNumber(precoData.marketCap) : 'N/A';
+
+            // HTML atualizado com ID para o valor de mercado e a estrutura de grid
             detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-3xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
@@ -2632,15 +2635,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div class="col-span-2 bg-gray-800 p-4 rounded-3xl">
                     <span class="text-xs text-gray-500">Valor de Mercado</span>
-                    <p class="text-lg font-semibold text-white">${formatNumber(precoData.marketCap)}</p>
+                    <p id="detalhes-valor-mercado" class="text-lg font-semibold text-white">${marketCapDisplay}</p>
                 </div>
             `;
 
-            // ATUALIZADO: Renderização dos novos campos
+            // Lógica para preencher os fundamentos E corrigir o Valor de Mercado se necessário
             callScraperFundamentosAPI(symbol).then(fundamentos => {
                 const area = document.getElementById('detalhes-fundamentos-area');
                 if (area) {
-                    const dados = fundamentos || { pvp: '-', dy: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-' };
+                    const dados = fundamentos || { pvp: '-', dy: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-', val_mercado: '-', ultimo_rendimento: '-' };
+                    
+                    // Atualiza o Valor de Mercado se a API falhou
+                    const valMercadoEl = document.getElementById('detalhes-valor-mercado');
+                    if (valMercadoEl && (valMercadoEl.innerText === 'N/A' || valMercadoEl.innerText === '0')) {
+                         valMercadoEl.textContent = dados.val_mercado || 'N/A';
+                    }
+
+                    // Renderiza o grid de fundamentos (Incluindo Último Rendimento no lugar de V. Patrimonial duplicado ou em novo slot)
+                    // Aqui optei por substituir V. Patrimonial por cota (que já está na lista) ou manter.
+                    // Vamos manter o layout pedido, mas troquei "V. Patrimonial" por "Últ. Rendimento" no grid para não ficar redundante se você preferir,
+                    // OU mantemos o VP por cota e adicionamos o Último Rendimento. Vou adicionar um 7º item para garantir.
+                    
                     area.innerHTML = `
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">Segmento</span>
@@ -2665,6 +2680,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
                             <span class="text-xs text-gray-500">Liquidez Diária</span>
                             <p class="text-sm font-semibold text-white truncate" title="${dados.liquidez}">${dados.liquidez || '-'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-3 rounded-3xl text-center col-span-2 mt-1 border border-purple-500/30">
+                            <span class="text-xs text-gray-500">Último Rendimento</span>
+                            <p class="text-base font-bold text-green-400">${dados.ultimo_rendimento || '-'}</p>
                         </div>
                     `;
                 }

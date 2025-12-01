@@ -19,7 +19,6 @@ function parseDate(dateStr) {
 function parseValue(valueStr) {
     if (!valueStr) return 0;
     try {
-        // Remove R$, pontos e espaços, troca vírgula por ponto
         return parseFloat(valueStr.replace(/[^0-9,-]+/g, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
@@ -28,13 +27,12 @@ function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// Função mágica para ignorar acentos e maiúsculas (Normalização)
 function normalize(str) {
     if (!str) return '';
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
-// --- SCRAPER DE FUNDAMENTOS (AGORA COM NORMALIZAÇÃO) ---
+// --- SCRAPER DE FUNDAMENTOS ---
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -52,6 +50,7 @@ async function scrapeFundamentos(ticker) {
         const html = response.data;
         const $ = cheerio.load(html);
 
+        // Objeto de dados inicializado
         let dados = {
             dy: 'N/A',
             pvp: 'N/A',
@@ -68,14 +67,26 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // 1. Busca Cotação
+        // --- 1. MÉTODO ANTIGO (CLÁSSICO) - PRIORIDADE PARA DY E P/VP ---
+        // Isso garante que o DY funcione como antes
+        const dyEl = $('._card.dy ._card-body span').first();
+        if (dyEl.length) dados.dy = dyEl.text().trim();
+
+        const pvpEl = $('._card.vp ._card-body span').first();
+        if (pvpEl.length) dados.pvp = pvpEl.text().trim();
+
+        const liqEl = $('._card.liquidity ._card-body span').first();
+        if (liqEl.length) dados.liquidez = liqEl.text().trim();
+
+        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
+        if (valPatEl.length) dados.vp_cota = valPatEl.text().trim(); // Geralmente é o VP/Cota
+
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // 2. Função auxiliar de varredura
+        // --- 2. MÉTODO NOVO (VARREDURA) - PREENCHE O RESTO ---
         const scanElements = (elements, contextStr) => {
             $(elements).each((i, el) => {
-                // Tenta pegar título e valor dependendo da estrutura (Card ou Tabela)
                 let titulo = '', valor = '';
                 
                 if (contextStr === 'card') {
@@ -87,19 +98,21 @@ async function scrapeFundamentos(ticker) {
                 }
 
                 if (valor) {
-                    if (titulo.includes('dividend yield')) dados.dy = valor;
-                    else if (titulo.includes('p/vp')) dados.pvp = valor;
-                    else if (titulo.includes('liquidez')) dados.liquidez = valor;
-                    else if (titulo.includes('segmento')) dados.segmento = valor;
-                    else if (titulo.includes('vacancia')) dados.vacancia = valor;
-                    else if (titulo.includes('mercado')) dados.val_mercado = valor;
-                    else if (titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
-                    else if (titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
+                    // Só preenche se ainda for N/A (para não sobrescrever o método antigo)
+                    if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
+                    if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
+                    if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
+                    if (dados.vp_cota === 'N/A' && titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = valor;
 
-                    // Diferenciação de Patrimônios
-                    // Se tem "cota" no título, é VP por Cota. Se tem "liquido" (e não cota), é o total.
-                    if (titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = valor;
-                    else if (titulo.includes('patrimonio liquido')) dados.patrimonio_liquido = valor;
+                    // Campos novos
+                    if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
+                    if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
+                    if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
+                    if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
+                    if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
+                    
+                    // Patrimônio Total vs Cota
+                    if (titulo.includes('patrimonio liquido')) dados.patrimonio_liquido = valor;
 
                     // Captura Cotas para cálculo
                     if (titulo.includes('cotas') && titulo.includes('num')) {
@@ -109,11 +122,10 @@ async function scrapeFundamentos(ticker) {
             });
         };
 
-        // Executa varredura
         scanElements('._card', 'card');
         scanElements('.cell', 'cell');
 
-        // 3. Cálculo de Fallback para Valor de Mercado
+        // --- 3. CÁLCULO DE FALLBACK (VALOR DE MERCADO) ---
         if ((dados.val_mercado === 'N/A' || dados.val_mercado === '-') && cotacao_atual > 0 && num_cotas > 0) {
             const mercadoCalc = cotacao_atual * num_cotas;
             if (mercadoCalc > 1000000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
@@ -133,7 +145,7 @@ async function scrapeFundamentos(ticker) {
     }
 }
 
-// --- SCRAPER DE HISTÓRICO (MANTIDO O QUE FUNCIONA) ---
+// --- SCRAPER DE HISTÓRICO ---
 async function scrapeAsset(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;

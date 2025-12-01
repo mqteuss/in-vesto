@@ -23,6 +23,17 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
+// Helper para converter string "772,33 Milhões" em número puro
+function parseExtendedValue(str) {
+    if (!str) return 0;
+    const val = parseValue(str);
+    const lower = str.toLowerCase();
+    if (lower.includes('bilh')) return val * 1000000000;
+    if (lower.includes('milh')) return val * 1000000;
+    if (lower.includes('mil')) return val * 1000;
+    return val;
+}
+
 function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -66,7 +77,7 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // 1. MÉTODO ANTIGO (CLÁSSICO) - PRIORIDADE DY/PVP
+        // 1. MÉTODO ANTIGO (CLÁSSICO) - PRIORIDADE
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
 
@@ -76,7 +87,6 @@ async function scrapeFundamentos(ticker) {
         const liqEl = $('._card.liquidity ._card-body span').first();
         if (liqEl.length) dados.liquidez = liqEl.text().trim();
 
-        // Tenta pegar VP por Cota direto da classe específica se existir
         const valPatEl = $('._card.val_patrimonial ._card-body span').first();
         if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
 
@@ -97,27 +107,23 @@ async function scrapeFundamentos(ticker) {
                 }
 
                 if (valor) {
+                    // Preenche vazios
                     if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
                     if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
                     if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
-                    
+                    if (dados.vp_cota === 'N/A' && titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = valor;
+
+                    // Campos novos
                     if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
                     if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
                     if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
                     if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
                     if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
+                    
+                    if (titulo.includes('patrimonio liquido')) dados.patrimonio_liquido = valor;
 
-                    // --- CORREÇÃO AQUI ---
-                    // Se tem "cota", é VP por Cota.
-                    if (titulo.includes('patrimonial') && titulo.includes('cota')) {
-                        dados.vp_cota = valor;
-                    } 
-                    // Se tem "patrimonio" ou "patrimonial" MAS NÃO TEM "cota", é o Patrimônio Líquido Total
-                    else if ((titulo.includes('patrimonio') || titulo.includes('patrimonial')) && !titulo.includes('cota')) {
-                        dados.patrimonio_liquido = valor;
-                    }
-
-                    if (titulo.includes('cotas') && titulo.includes('num')) {
+                    // Captura Cotas (Melhorada)
+                    if (titulo.includes('cotas') && (titulo.includes('num') || titulo.includes('qtd') || titulo.includes('total'))) {
                         num_cotas = parseValue(valor);
                     }
                 }
@@ -127,9 +133,25 @@ async function scrapeFundamentos(ticker) {
         scanElements('._card', 'card');
         scanElements('.cell', 'cell');
 
-        // 3. CÁLCULO DE FALLBACK (Valor de Mercado)
-        if ((dados.val_mercado === 'N/A' || dados.val_mercado === '-') && cotacao_atual > 0 && num_cotas > 0) {
-            const mercadoCalc = cotacao_atual * num_cotas;
+        // 3. CÁLCULOS DE FALLBACK (Prioridade Máxima para preencher N/A)
+        
+        // Estratégia A: Preço * Cotas
+        let mercadoCalc = 0;
+        if (cotacao_atual > 0 && num_cotas > 0) {
+            mercadoCalc = cotacao_atual * num_cotas;
+        } 
+        // Estratégia B: Matemágica (Patrimônio Líquido * P/VP)
+        // Se MarketCap tá N/A, mas temos PL e PVP, podemos estimar: MarketCap = PL * PVP
+        else if (dados.patrimonio_liquido !== 'N/A' && dados.pvp !== 'N/A') {
+            const plValue = parseExtendedValue(dados.patrimonio_liquido);
+            const pvpValue = parseValue(dados.pvp);
+            if (plValue > 0 && pvpValue > 0) {
+                mercadoCalc = plValue * pvpValue;
+            }
+        }
+
+        // Aplica o cálculo se o campo estiver vazio
+        if ((dados.val_mercado === 'N/A' || dados.val_mercado === '-') && mercadoCalc > 0) {
             if (mercadoCalc > 1000000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
             else if (mercadoCalc > 1000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000).toFixed(2)} Milhões`;
             else dados.val_mercado = formatCurrency(mercadoCalc);

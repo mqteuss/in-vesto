@@ -1,7 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-// Configuração do cliente HTTP
 const client = axios.create({
     headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -20,7 +19,8 @@ function parseDate(dateStr) {
 function parseValue(valueStr) {
     if (!valueStr) return 0;
     try {
-        return parseFloat(valueStr.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
+        // Remove R$, pontos e espaços, troca vírgula por ponto
+        return parseFloat(valueStr.replace(/[^0-9,-]+/g, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
 
@@ -28,7 +28,13 @@ function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// --- FUNÇÃO DE SCRAPING DE FUNDAMENTOS (ATUALIZADA) ---
+// Função mágica para ignorar acentos e maiúsculas (Normalização)
+function normalize(str) {
+    if (!str) return '';
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+// --- SCRAPER DE FUNDAMENTOS (AGORA COM NORMALIZAÇÃO) ---
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -40,129 +46,130 @@ async function scrapeFundamentos(ticker) {
             if (e.response && e.response.status === 404) {
                 url = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
                 response = await client.get(url);
-            } else {
-                throw e; 
-            }
+            } else { throw e; }
         }
 
         const html = response.data;
         const $ = cheerio.load(html);
 
-        // Inicializa variáveis
-        let dy = 'N/A';
-        let pvp = 'N/A';
-        let segmento = 'N/A';
-        let vacancia = 'N/A';
-        let vp_cota = 'N/A';          // VP por Cota
-        let liquidez = 'N/A';
-        let val_mercado = 'N/A';
-        let patrimonio_liquido = 'N/A'; // Novo: Patrimônio Total
-        let variacao_12m = 'N/A';       // Novo: Variação 12M
-        let ultimo_rendimento = 'N/A';
+        let dados = {
+            dy: 'N/A',
+            pvp: 'N/A',
+            segmento: 'N/A',
+            vacancia: 'N/A',
+            vp_cota: 'N/A',
+            liquidez: 'N/A',
+            val_mercado: 'N/A',
+            patrimonio_liquido: 'N/A',
+            variacao_12m: 'N/A',
+            ultimo_rendimento: 'N/A'
+        };
         
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // 1. Busca Cotação Atual
+        // 1. Busca Cotação
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // 2. Varredura de Cards
-        $('._card').each((i, el) => {
-            const titulo = $(el).find('._card-header span').text().trim().toLowerCase();
-            const valor = $(el).find('._card-body span').text().trim();
-
-            if (valor) {
-                if (dy === 'N/A' && titulo.includes('dividend yield')) dy = valor;
-                if (pvp === 'N/A' && titulo.includes('p/vp')) pvp = valor;
-                if (liquidez === 'N/A' && titulo.includes('liquidez')) liquidez = valor;
-                if (segmento === 'N/A' && titulo.includes('segmento')) segmento = valor;
-                if (vacancia === 'N/A' && titulo.includes('vacância')) vacancia = valor;
-                if (val_mercado === 'N/A' && titulo.includes('valor de mercado')) val_mercado = valor;
-                if (ultimo_rendimento === 'N/A' && titulo.includes('último rendimento')) ultimo_rendimento = valor;
-                if (variacao_12m === 'N/A' && titulo.includes('variação') && titulo.includes('12m')) variacao_12m = valor;
-
-                // Diferenciação entre VP por Cota e Patrimônio Líquido Total
-                if (titulo.includes('patrimonial') && titulo.includes('cota')) vp_cota = valor;
-                else if (titulo.includes('patrimônio líquido')) patrimonio_liquido = valor;
-            }
-        });
-
-        // 3. Varredura de Tabelas (.cell) - Fallback e Num Cotas
-        $('.cell').each((i, el) => {
-             const titulo = $(el).find('.name').text().trim().toLowerCase();
-             const valor = $(el).find('.value').text().trim();
-
-             if (valor) {
-                if (dy === 'N/A' && titulo.includes('dividend yield')) dy = valor;
-                if (pvp === 'N/A' && titulo.includes('p/vp')) pvp = valor;
-                if (liquidez === 'N/A' && titulo.includes('liquidez')) liquidez = valor;
-                if (segmento === 'N/A' && titulo.includes('segmento')) segmento = valor;
-                if (vacancia === 'N/A' && titulo.includes('vacância')) vacancia = valor;
-                if (val_mercado === 'N/A' && titulo.includes('valor de mercado')) val_mercado = valor;
-                if (ultimo_rendimento === 'N/A' && titulo.includes('último rendimento')) ultimo_rendimento = valor;
-                if (variacao_12m === 'N/A' && titulo.includes('variação') && titulo.includes('12m')) variacao_12m = valor;
-
-                if (vp_cota === 'N/A' && (titulo.includes('patrimonial') && titulo.includes('cota'))) vp_cota = valor;
-                else if (patrimonio_liquido === 'N/A' && titulo.includes('patrimônio líquido')) patrimonio_liquido = valor;
+        // 2. Função auxiliar de varredura
+        const scanElements = (elements, contextStr) => {
+            $(elements).each((i, el) => {
+                // Tenta pegar título e valor dependendo da estrutura (Card ou Tabela)
+                let titulo = '', valor = '';
                 
-                if (titulo.includes('cotas') && titulo.includes('núm')) {
-                    num_cotas = parseValue(valor);
+                if (contextStr === 'card') {
+                    titulo = normalize($(el).find('._card-header span').text());
+                    valor = $(el).find('._card-body span').text().trim();
+                } else { // cell
+                    titulo = normalize($(el).find('.name').text());
+                    valor = $(el).find('.value').text().trim();
                 }
-             }
-         });
 
-        // 4. Cálculos de Fallback
-        if ((val_mercado === 'N/A' || val_mercado === '-') && cotacao_atual > 0 && num_cotas > 0) {
+                if (valor) {
+                    if (titulo.includes('dividend yield')) dados.dy = valor;
+                    else if (titulo.includes('p/vp')) dados.pvp = valor;
+                    else if (titulo.includes('liquidez')) dados.liquidez = valor;
+                    else if (titulo.includes('segmento')) dados.segmento = valor;
+                    else if (titulo.includes('vacancia')) dados.vacancia = valor;
+                    else if (titulo.includes('mercado')) dados.val_mercado = valor;
+                    else if (titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
+                    else if (titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
+
+                    // Diferenciação de Patrimônios
+                    // Se tem "cota" no título, é VP por Cota. Se tem "liquido" (e não cota), é o total.
+                    if (titulo.includes('patrimonial') && titulo.includes('cota')) dados.vp_cota = valor;
+                    else if (titulo.includes('patrimonio liquido')) dados.patrimonio_liquido = valor;
+
+                    // Captura Cotas para cálculo
+                    if (titulo.includes('cotas') && titulo.includes('num')) {
+                        num_cotas = parseValue(valor);
+                    }
+                }
+            });
+        };
+
+        // Executa varredura
+        scanElements('._card', 'card');
+        scanElements('.cell', 'cell');
+
+        // 3. Cálculo de Fallback para Valor de Mercado
+        if ((dados.val_mercado === 'N/A' || dados.val_mercado === '-') && cotacao_atual > 0 && num_cotas > 0) {
             const mercadoCalc = cotacao_atual * num_cotas;
-            if (mercadoCalc > 1000000000) val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
-            else if (mercadoCalc > 1000000) val_mercado = `R$ ${(mercadoCalc / 1000000).toFixed(2)} Milhões`;
-            else val_mercado = formatCurrency(mercadoCalc);
+            if (mercadoCalc > 1000000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
+            else if (mercadoCalc > 1000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000).toFixed(2)} Milhões`;
+            else dados.val_mercado = formatCurrency(mercadoCalc);
         }
 
-        return { dy, pvp, segmento, vacancia, vp_cota, liquidez, val_mercado, ultimo_rendimento, patrimonio_liquido, variacao_12m };
+        return dados;
 
     } catch (error) {
-        console.warn(`[Scraper] Falha ao ler fundamentos de ${ticker}: ${error.message}`);
+        console.warn(`[Scraper] Falha: ${error.message}`);
         return { 
             dy: '-', pvp: '-', segmento: '-', vacancia: '-', 
-            vp_cota: '-', liquidez: '-', val_mercado: '-', ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-'
+            vp_cota: '-', liquidez: '-', val_mercado: '-', 
+            ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-'
         }; 
     }
 }
 
-// --- 2. FUNÇÃO ASSET (ESTRATÉGIA CLÁSSICA) ---
+// --- SCRAPER DE HISTÓRICO (MANTIDO O QUE FUNCIONA) ---
 async function scrapeAsset(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         let response;
-
         try {
             response = await client.get(url);
         } catch (e) {
             if (e.response && e.response.status === 404) {
                 url = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
                 response = await client.get(url);
-            } else {
-                throw e; 
-            }
+            } else { throw e; }
         }
 
         const html = response.data;
         const $ = cheerio.load(html);
         const dividendos = [];
 
-        // Mantendo o seletor clássico que você confirmou que funciona
-        $('#table-dividends-history tbody tr').each((i, el) => {
+        let tableRows = $('#table-dividends-history tbody tr');
+        if (tableRows.length === 0) {
+            $('table').each((i, tbl) => {
+                const header = normalize($(tbl).find('thead').text());
+                if (header.includes('com') && header.includes('pagamento')) {
+                    tableRows = $(tbl).find('tbody tr');
+                    return false; 
+                }
+            });
+        }
+
+        tableRows.each((i, el) => {
             const cols = $(el).find('td');
             if (cols.length >= 4) {
-                const tipo = $(cols[0]).text().trim();
                 const dataCom = $(cols[1]).text().trim();
                 const dataPag = $(cols[2]).text().trim();
                 const valor = $(cols[3]).text().trim();
 
                 dividendos.push({
-                    tipo,
                     dataCom: parseDate(dataCom),
                     paymentDate: parseDate(dataPag),
                     value: parseValue(valor)
@@ -171,7 +178,6 @@ async function scrapeAsset(ticker) {
         });
         return dividendos;
     } catch (error) {
-        console.warn(`[Scraper] Falha ao ler histórico de ${ticker}: ${error.message}`);
         return []; 
     }
 }
@@ -182,99 +188,59 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
-    }
-
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: "Use POST" });
-    }
+    if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+    if (req.method !== 'POST') { return res.status(405).json({ error: "Use POST" }); }
 
     try {
-        if (!req.body || !req.body.mode) {
-             throw new Error("Payload inválido: 'mode' é obrigatório.");
-        }
-
+        if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
         if (mode === 'fundamentos') {
-            const { ticker } = payload || {};
-            if (!ticker) return res.json({ json: {} }); // Retorno vazio seguro
-
-            const dados = await scrapeFundamentos(ticker);
+            if (!payload.ticker) return res.json({ json: {} });
+            const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
         if (mode === 'proventos_carteira') {
-            const { fiiList } = payload || {};
-            if (!fiiList || !Array.isArray(fiiList)) return res.json({ json: [] });
-
-            const promises = fiiList.map(async (ticker) => {
+            if (!payload.fiiList) return res.json({ json: [] });
+            const promises = payload.fiiList.map(async (ticker) => {
                 const history = await scrapeAsset(ticker);
-                const recents = history
-                    .filter(h => h.paymentDate && h.value > 0)
-                    .slice(0, 3); 
-
-                if (recents.length > 0) {
-                    return recents.map(r => ({
-                        symbol: ticker.toUpperCase(),
-                        value: r.value,
-                        paymentDate: r.paymentDate,
-                        dataCom: r.dataCom
-                    }));
-                }
+                const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, 3);
+                if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                 return null;
             });
-
             const data = await Promise.all(promises);
             return res.status(200).json({ json: data.filter(d => d !== null).flat() });
         }
 
         if (mode === 'historico_12m') {
-            const { ticker } = payload || {};
-            if (!ticker) return res.json({ json: [] });
-
-            const history = await scrapeAsset(ticker);
+            if (!payload.ticker) return res.json({ json: [] });
+            const history = await scrapeAsset(payload.ticker);
             const formatted = history.slice(0, 18).map(h => {
                 if (!h.paymentDate) return null;
                 const [ano, mes] = h.paymentDate.split('-');
                 return { mes: `${mes}/${ano.substring(2)}`, valor: h.value };
             }).filter(h => h !== null);
-
             return res.status(200).json({ json: formatted });
         }
 
         if (mode === 'historico_portfolio') {
-            const { fiiList } = payload || {};
-            if (!fiiList) return res.json({ json: [] });
-
-            let allDividends = [];
-            const promises = fiiList.map(async (ticker) => {
+            if (!payload.fiiList) return res.json({ json: [] });
+            let all = [];
+            const promises = payload.fiiList.map(async (ticker) => {
                 const history = await scrapeAsset(ticker);
                 history.slice(0, 24).forEach(h => {
-                    if (h.value > 0) {
-                        allDividends.push({
-                            symbol: ticker.toUpperCase(),
-                            dataCom: h.dataCom,
-                            paymentDate: h.paymentDate,
-                            value: h.value
-                        });
-                    }
+                    if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
                 });
             });
-
             await Promise.all(promises);
-            return res.status(200).json({ json: allDividends });
+            return res.status(200).json({ json: all });
         }
 
         return res.status(400).json({ error: "Modo desconhecido" });
 
     } catch (error) {
-        console.error("CRITICAL SCRAPER ERROR:", error);
-        return res.status(500).json({ 
-            error: `Erro no servidor: ${error.message}`,
-            stack: error.stack 
-        });
+        console.error("SCRAPER ERROR:", error);
+        return res.status(500).json({ error: error.message });
     }
 };

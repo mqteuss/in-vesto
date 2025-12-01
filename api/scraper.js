@@ -24,7 +24,7 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
-// --- FUNÇÃO DE SCRAPING DE FUNDAMENTOS (VERSÃO CORRIGIDA) ---
+// --- FUNÇÃO DE SCRAPING DE FUNDAMENTOS ---
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -44,15 +44,17 @@ async function scrapeFundamentos(ticker) {
         const html = response.data;
         const $ = cheerio.load(html);
 
-        // Inicializa variáveis com N/A
+        // Inicializa variáveis
         let dy = 'N/A';
         let pvp = 'N/A';
         let segmento = 'N/A';
         let vacancia = 'N/A';
         let val_patrimonial = 'N/A';
         let liquidez = 'N/A';
+        let val_mercado = 'N/A';       // NOVO
+        let ultimo_rendimento = 'N/A'; // NOVO
 
-        // 1. TENTATIVA DIRETA (Melhor para DY e P/VP)
+        // 1. TENTATIVA DIRETA (Seletores específicos que funcionam bem)
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dy = dyEl.text().trim();
 
@@ -65,7 +67,7 @@ async function scrapeFundamentos(ticker) {
         const valPatEl = $('._card.val_patrimonial ._card-body span').first();
         if (valPatEl.length) val_patrimonial = valPatEl.text().trim();
 
-        // 2. VARREDURA DE CARDS (Cards genéricos)
+        // 2. VARREDURA DE CARDS (Genérica)
         $('._card').each((i, el) => {
             const titulo = $(el).find('._card-header span').text().trim().toLowerCase();
             const valor = $(el).find('._card-body span').text().trim();
@@ -75,15 +77,17 @@ async function scrapeFundamentos(ticker) {
                 if (pvp === 'N/A' && titulo.includes('p/vp')) pvp = valor;
                 if (liquidez === 'N/A' && titulo.includes('liquidez')) liquidez = valor;
                 
-                // Segmento e Vacância as vezes aparecem em cards
                 if (segmento === 'N/A' && titulo.includes('segmento')) segmento = valor;
                 if (vacancia === 'N/A' && titulo.includes('vacância')) vacancia = valor;
                 if (val_patrimonial === 'N/A' && titulo.includes('patrimonial') && titulo.includes('cota')) val_patrimonial = valor;
+                
+                // Novos Campos
+                if (val_mercado === 'N/A' && titulo.includes('valor de mercado')) val_mercado = valor;
+                if (ultimo_rendimento === 'N/A' && titulo.includes('último rendimento')) ultimo_rendimento = valor;
             }
         });
 
-        // 3. VARREDURA DE TABELAS (.cell) - OBRIGATÓRIA PARA SEGMENTO/VACÂNCIA
-        // Removemos o "if" que impedia isso de rodar se o DY já tivesse sido achado.
+        // 3. VARREDURA DE TABELAS (Fallback)
         $('.cell').each((i, el) => {
              const titulo = $(el).find('.name').text().trim().toLowerCase();
              const valor = $(el).find('.value').text().trim();
@@ -93,20 +97,24 @@ async function scrapeFundamentos(ticker) {
                 if (pvp === 'N/A' && titulo.includes('p/vp')) pvp = valor;
                 if (liquidez === 'N/A' && titulo.includes('liquidez')) liquidez = valor;
                 
-                // Prioridade aqui para preencher o que falta
                 if (segmento === 'N/A' && titulo.includes('segmento')) segmento = valor;
                 if (vacancia === 'N/A' && titulo.includes('vacância')) vacancia = valor;
-                
-                // Checagem extra para VP
                 if (val_patrimonial === 'N/A' && (titulo.includes('patrimonial') && titulo.includes('cota'))) val_patrimonial = valor;
+                
+                // Novos Campos
+                if (val_mercado === 'N/A' && titulo.includes('valor de mercado')) val_mercado = valor;
+                if (ultimo_rendimento === 'N/A' && titulo.includes('último rendimento')) ultimo_rendimento = valor;
              }
          });
 
-        return { dy, pvp, segmento, vacancia, val_patrimonial, liquidez };
+        return { dy, pvp, segmento, vacancia, val_patrimonial, liquidez, val_mercado, ultimo_rendimento };
 
     } catch (error) {
         console.warn(`[Scraper] Falha ao ler fundamentos de ${ticker}: ${error.message}`);
-        return { dy: '-', pvp: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-' }; 
+        return { 
+            dy: '-', pvp: '-', segmento: '-', vacancia: '-', 
+            val_patrimonial: '-', liquidez: '-', val_mercado: '-', ultimo_rendimento: '-' 
+        }; 
     }
 }
 
@@ -175,10 +183,9 @@ module.exports = async function handler(req, res) {
 
         const { mode, payload } = req.body;
 
-        // --- MODO FUNDAMENTOS ---
         if (mode === 'fundamentos') {
             const { ticker } = payload || {};
-            if (!ticker) return res.json({ json: { dy: '-', pvp: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-' } });
+            if (!ticker) return res.json({ json: { dy: '-', pvp: '-', segmento: '-', vacancia: '-', val_patrimonial: '-', liquidez: '-', val_mercado: '-', ultimo_rendimento: '-' } });
 
             const dados = await scrapeFundamentos(ticker);
             return res.status(200).json({ json: dados });

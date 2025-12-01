@@ -1625,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-    function renderizarDashboardSkeletons(show) {
+	function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
         const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
         
@@ -1720,7 +1720,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 variacaoFormatada = formatPercent(variacao);
                 corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
             } else {
-                precoFormatado = 'A carregar...';
+                precoFormatado = '...';
                 corVariacao = 'text-yellow-500';
             }
             
@@ -2497,6 +2497,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
+    // --- LÓGICA MINIMALISTA E LIMPA PARA O MODAL ---
     async function handleMostrarDetalhes(symbol) {
         detalhesMensagem.classList.add('hidden');
         detalhesLoading.classList.remove('hidden');
@@ -2546,190 +2547,104 @@ document.addEventListener('DOMContentLoaded', async () => {
             const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
             
             const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
-            let plHtml = '';
-            
+            let userPosHtml = '';
             if (ativoCarteira) {
                 const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
-                const custoTotal = ativoCarteira.precoMedio * ativoCarteira.quantity;
-                const lucroPrejuizo = totalPosicao - custoTotal;
-                const lucroPrejuizoPercent = (custoTotal === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
-                let corPL = 'text-gray-500';
-                if (lucroPrejuizo > 0) corPL = 'text-green-500';
-                else if (lucroPrejuizo < 0) corPL = 'text-red-500';
-                
-                plHtml = `
-                    <div class="bg-gray-800 p-4 rounded-3xl">
-                        <span class="text-xs text-gray-500">Sua Posição</span>
-                        <p class="text-lg font-semibold text-white">${formatBRL(totalPosicao)}</p>
-                    </div>
-                    <div class="bg-gray-800 p-4 rounded-3xl">
-                        <span class="text-xs text-gray-500">Seu L/P</span>
-                        <p class="text-lg font-semibold ${corPL}">${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)</p>
+                userPosHtml = `
+                    <div class="col-span-12 py-3 border-b border-gray-800 flex justify-between items-center mb-2">
+                        <div class="text-left">
+                            <span class="text-xs text-gray-500 uppercase tracking-wide">Sua Posição</span>
+                            <p class="text-lg font-semibold text-white">${formatBRL(totalPosicao)} <span class="text-xs text-gray-600 font-normal">(${ativoCarteira.quantity} cotas)</span></p>
+                        </div>
                     </div>
                 `;
             }
 
-            // Define um valor inicial para o Market Cap vindo da API
-            const marketCapDisplay = precoData.marketCap ? formatNumber(precoData.marketCap) : 'N/A';
-
-            // HTML ATUALIZADO COM AS NOVAS SEÇÕES
+            // HTML MINIMALISTA
             detalhesPreco.innerHTML = `
-                <div class="col-span-2 bg-gray-800 p-4 rounded-3xl text-center mb-1">
-                    <span class="text-sm text-gray-500">Preço Atual</span>
-                    <div class="flex justify-center items-end gap-3">
-                        <h2 class="text-4xl font-bold text-white">${formatBRL(precoData.regularMarketPrice)}</h2>
-                        <span class="text-xl font-semibold ${variacaoCor}">${formatPercent(precoData.regularMarketChangePercent)}</span>
-                    </div>
-                </div>
-                
-                ${plHtml}
-
-                <div class="col-span-2 grid grid-cols-2 gap-3" id="detalhes-fundamentos-area">
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">Segmento</span>
-                        <p class="text-base font-semibold text-gray-400">...</p>
-                    </div>
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">Vacância</span>
-                        <p class="text-base font-semibold text-gray-400">...</p>
-                    </div>
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">P/VP</span>
-                        <p class="text-base font-semibold text-gray-400">...</p>
-                    </div>
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">DY (12m)</span>
-                        <p class="text-base font-semibold text-gray-400">...</p>
-                    </div>
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">V. Patrimonial</span>
-                        <p class="text-base font-semibold text-gray-400">...</p>
-                    </div>
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">Liquidez</span>
-                        <p class="text-base font-semibold text-gray-400">...</p>
-                    </div>
+                <div class="col-span-12 text-center pb-4 pt-2">
+                    <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
+                    <span class="text-lg font-medium ${variacaoCor} mt-1 block">${formatPercent(precoData.regularMarketChangePercent)} Hoje</span>
                 </div>
 
-                <div class="col-span-2 grid grid-cols-3 gap-3">
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                        <span class="text-xs text-gray-500">Abertura</span>
-                        <p class="text-base font-semibold text-white">${formatBRL(precoData.regularMarketOpen)}</p>
-                    </div>
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                        <span class="text-xs text-gray-500">Máx. Dia</span>
-                        <p class="text-base font-semibold text-green-500">${formatBRL(precoData.regularMarketDayHigh)}</p>
-                    </div>
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                        <span class="text-xs text-gray-500">Mín. Dia</span>
-                        <p class="text-base font-semibold text-red-500">${formatBRL(precoData.regularMarketDayLow)}</p>
-                    </div>
+                ${userPosHtml}
+
+                <div class="col-span-12 grid grid-cols-3 gap-2 text-center mb-4" id="clean-stats-row">
+                    <div class="bg-gray-800/50 rounded-xl h-16 animate-pulse"></div>
+                    <div class="bg-gray-800/50 rounded-xl h-16 animate-pulse"></div>
+                    <div class="bg-gray-800/50 rounded-xl h-16 animate-pulse"></div>
                 </div>
-                <div class="bg-gray-800 p-4 rounded-3xl">
-                    <span class="text-xs text-gray-500">Máx. 52 Semanas</span>
-                    <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekHigh)}</p>
-                </div>
-                <div class="bg-gray-800 p-4 rounded-3xl">
-                    <span class="text-xs text-gray-500">Mín. 52 Semanas</span>
-                    <p class="text-lg font-semibold text-white">${formatBRL(precoData.fiftyTwoWeekLow)}</p>
-                </div>
-                <div class="col-span-2 bg-gray-800 p-4 rounded-3xl">
-                    <span class="text-xs text-gray-500">Valor de Mercado</span>
-                    <p id="detalhes-valor-mercado" class="text-lg font-semibold text-white">${marketCapDisplay}</p>
+
+                <div class="col-span-12 space-y-0" id="clean-details-list">
+                    <div class="h-10 border-b border-gray-800 animate-pulse"></div>
+                    <div class="h-10 border-b border-gray-800 animate-pulse"></div>
+                    <div class="h-10 border-b border-gray-800 animate-pulse"></div>
                 </div>
             `;
 
-            // Lógica para preencher os fundamentos E corrigir o Valor de Mercado se necessário
+            // Preenchimento dos dados
             callScraperFundamentosAPI(symbol).then(fundamentos => {
-                const area = document.getElementById('detalhes-fundamentos-area');
-                if (area) {
+                const rowStats = document.getElementById('clean-stats-row');
+                const listDetails = document.getElementById('clean-details-list');
+
+                if (rowStats && listDetails) {
                     const dados = fundamentos || { 
                         pvp: '-', dy: '-', segmento: '-', vacancia: '-', 
                         vp_cota: '-', liquidez: '-', val_mercado: '-', 
                         ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-',
                         cnpj: '-', num_cotistas: '-', tipo_gestao: '-'
                     };
-                    
-                    // Atualiza o Valor de Mercado se a API falhou
-                    const valMercadoEl = document.getElementById('detalhes-valor-mercado');
-                    if (valMercadoEl && (valMercadoEl.innerText.includes('N/A') || valMercadoEl.innerText === '0' || valMercadoEl.innerText === 'R$ 0,00')) {
-                         valMercadoEl.textContent = dados.val_mercado || 'N/A';
-                    }
 
-                    // Renderiza o grid de fundamentos
-                    const corVar12m = dados.variacao_12m && dados.variacao_12m.includes('-') ? 'text-red-500' : 'text-green-500';
+                    rowStats.innerHTML = `
+                        <div class="p-2">
+                            <span class="text-[10px] text-gray-500 uppercase block">DY (12m)</span>
+                            <span class="text-base font-bold text-purple-400">${dados.dy || '-'}</span>
+                        </div>
+                        <div class="p-2 border-l border-r border-gray-800">
+                            <span class="text-[10px] text-gray-500 uppercase block">P/VP</span>
+                            <span class="text-base font-bold text-white">${dados.pvp || '-'}</span>
+                        </div>
+                        <div class="p-2">
+                            <span class="text-[10px] text-gray-500 uppercase block">Últ. Rend.</span>
+                            <span class="text-base font-bold text-green-400">${dados.ultimo_rendimento || '-'}</span>
+                        </div>
+                    `;
 
-                    area.innerHTML = `
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                            <span class="text-xs text-gray-500">Segmento</span>
-                            <p class="text-sm font-semibold text-white truncate" title="${dados.segmento}">${dados.segmento || '-'}</p>
+                    const renderRow = (label, value) => `
+                        <div class="flex justify-between items-center py-3 border-b border-gray-800/60 last:border-0">
+                            <span class="text-sm text-gray-400">${label}</span>
+                            <span class="text-sm font-medium text-gray-200 text-right max-w-[60%] truncate">${value || '-'}</span>
                         </div>
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                            <span class="text-xs text-gray-500">Vacância</span>
-                            <p class="text-base font-semibold text-white">${dados.vacancia || '-'}</p>
+                    `;
+
+                    const corVar12m = dados.variacao_12m && dados.variacao_12m.includes('-') ? 'text-red-400' : 'text-green-400';
+
+                    listDetails.innerHTML = `
+                        ${renderRow('Liquidez Diária', dados.liquidez)}
+                        ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
+                        ${renderRow('VP por Cota', dados.vp_cota)}
+                        ${renderRow('Valor de Mercado', dados.val_mercado)}
+                        ${renderRow('Vacância', dados.vacancia)}
+                        <div class="flex justify-between items-center py-3 border-b border-gray-800/60">
+                            <span class="text-sm text-gray-400">Var. 12 Meses</span>
+                            <span class="text-sm font-medium ${corVar12m} text-right">${dados.variacao_12m || '-'}</span>
                         </div>
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                            <span class="text-xs text-gray-500">P/VP</span>
-                            <p class="text-base font-semibold text-white">${dados.pvp || '-'}</p>
-                        </div>
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                            <span class="text-xs text-gray-500">DY (12m)</span>
-                            <p class="text-base font-semibold text-purple-400">${dados.dy || '-'}</p>
-                        </div>
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                            <span class="text-xs text-gray-500">VP por Cota</span>
-                            <p class="text-base font-semibold text-white">${dados.vp_cota || '-'}</p>
-                        </div>
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                            <span class="text-xs text-gray-500">Liquidez Diária</span>
-                            <p class="text-sm font-semibold text-white truncate" title="${dados.liquidez}">${dados.liquidez || '-'}</p>
-                        </div>
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                            <span class="text-xs text-gray-500">Patr. Líquido</span>
-                            <p class="text-sm font-semibold text-white truncate" title="${dados.patrimonio_liquido}">${dados.patrimonio_liquido || '-'}</p>
-                        </div>
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                            <span class="text-xs text-gray-500">Var. 12M</span>
-                            <p class="text-base font-semibold ${corVar12m}">${dados.variacao_12m || '-'}</p>
-                        </div>
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center col-span-2 mt-1 border border-purple-500/30">
-                            <span class="text-xs text-gray-500">Último Rendimento</span>
-                            <p class="text-base font-bold text-green-400">${dados.ultimo_rendimento || '-'}</p>
-                        </div>
-                        
-                        <div class="col-span-2 mt-4 pt-4 border-t border-gray-800">
-                            <h4 class="text-sm font-bold text-gray-400 mb-3 text-left pl-1">DADOS GERAIS</h4>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                                    <span class="text-xs text-gray-500">Tipo de Gestão</span>
-                                    <p class="text-sm font-semibold text-white">${dados.tipo_gestao || '-'}</p>
-                                </div>
-                                <div class="bg-gray-800 p-3 rounded-3xl text-center">
-                                    <span class="text-xs text-gray-500">Cotistas</span>
-                                    <p class="text-sm font-semibold text-white">${dados.num_cotistas || '-'}</p>
-                                </div>
-                                <div class="bg-gray-800 p-3 rounded-3xl text-center col-span-2">
-                                    <span class="text-xs text-gray-500">CNPJ</span>
-                                    <p class="text-sm font-mono text-gray-400 select-all">${dados.cnpj || '-'}</p>
-                                </div>
+                        <div class="pt-4 mt-2">
+                            <h4 class="text-xs font-bold text-gray-600 uppercase mb-1">Dados Gerais</h4>
+                            ${renderRow('Segmento', dados.segmento)}
+                            ${renderRow('Gestão', dados.tipo_gestao)}
+                            ${renderRow('Cotistas', dados.num_cotistas)}
+                            <div class="flex justify-between items-center py-3">
+                                <span class="text-sm text-gray-400">CNPJ</span>
+                                <span class="text-xs font-mono text-gray-500 select-all">${dados.cnpj || '-'}</span>
                             </div>
                         </div>
                     `;
                 }
-            }).catch(e => {
-                console.error("Erro ao carregar fundamentos", e);
-                const area = document.getElementById('detalhes-fundamentos-area');
-                if (area) {
-                    area.innerHTML = `
-                        <div class="bg-gray-800 p-3 rounded-3xl text-center col-span-2">
-                            <span class="text-xs text-red-500">Erro ao carregar indicadores</span>
-                        </div>
-                    `;
-                }
-            });
+            }).catch(e => { console.error(e); });
 
         } else {
-            detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-2">Erro ao buscar preço.</p>';
+            detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-12 py-4">Erro ao buscar preço.</p>';
         }
         
         renderizarTransacoesDetalhes(symbol);
@@ -2758,19 +2673,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             txsDoAtivo.forEach(t => {
                 const card = document.createElement('div');
-                card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between'; 
+                card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between border border-gray-800'; 
                 
                 const cor = 'text-green-500';
                 const sinal = '+';
                 
                 card.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                        <div class="p-2 bg-gray-800 rounded-full text-green-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                            </svg>
+                        </div>
                         <div>
                             <p class="text-sm font-semibold text-white">Compra</p>
-                            <p class="text-xs text-gray-400">${formatDate(t.date)}</p>
+                            <p class="text-xs text-gray-500">${formatDate(t.date)}</p>
                         </div>
                     </div>
                     <div class="text-right">
@@ -2789,9 +2706,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchHistoricoScraper(symbol) {
         detalhesAiProvento.innerHTML = `
             <div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48">
-                <div class="h-4 bg-gray-700 rounded-md w-3/4"></div>
-                <div class="h-4 bg-gray-700 rounded-md w-1/2"></div>
-                <div class="h-4 bg-gray-700 rounded-md w-2/3"></div>
+                <div class="h-4 bg-gray-800 rounded-md w-3/4"></div>
+                <div class="h-4 bg-gray-800 rounded-md w-1/2"></div>
             </div>
         `;
         
@@ -2816,15 +2732,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
             showToast("Erro na consulta de dados."); 
             detalhesAiProvento.innerHTML = `
-                <div class="border border-red-700 bg-red-900/50 p-4 rounded-2xl flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div>
-                        <h5 class="font-semibold text-red-300">Erro na Consulta</h5>
-                        <p class="text-sm text-red-400">${e.message}</p>
-                    </div>
-                </div>
+                <div class="p-4 text-center text-red-400 text-sm">Erro ao carregar gráfico</div>
             `;
         }
     }
@@ -2836,8 +2744,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (currentDetalhesHistoricoJSON.length === 0) {
             detalhesAiProvento.innerHTML = `
-                <p class="text-sm text-gray-100 bg-gray-800 p-3 rounded-2xl">
-                    Não foi possível encontrar o histórico de proventos.
+                <p class="text-sm text-gray-500 text-center py-4">
+                    Sem histórico recente.
                 </p>
             `;
             if (detalhesChartInstance) {

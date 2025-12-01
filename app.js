@@ -2569,10 +2569,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
             }
 
-            // Inicializa com "..." para evitar N/A
-            const marketCapDisplay = '...';
+            // Define um valor inicial para o Market Cap vindo da API
+            const marketCapDisplay = precoData.marketCap ? formatNumber(precoData.marketCap) : 'N/A';
 
-            // HTML atualizado com ID para o valor de mercado e a estrutura de grid
+            // HTML ATUALIZADO COM AS NOVAS SEÇÕES
             detalhesPreco.innerHTML = `
                 <div class="col-span-2 bg-gray-800 p-4 rounded-3xl text-center mb-1">
                     <span class="text-sm text-gray-500">Preço Atual</span>
@@ -2602,19 +2602,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                     <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">VP por Cota</span>
+                        <span class="text-xs text-gray-500">V. Patrimonial</span>
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                     <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
                         <span class="text-xs text-gray-500">Liquidez</span>
-                        <p class="text-base font-semibold text-gray-400">...</p>
-                    </div>
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">Patr. Líquido</span>
-                        <p class="text-base font-semibold text-gray-400">...</p>
-                    </div>
-                    <div class="bg-gray-800 p-3 rounded-3xl text-center animate-pulse">
-                        <span class="text-xs text-gray-500">Var. 12M</span>
                         <p class="text-base font-semibold text-gray-400">...</p>
                     </div>
                 </div>
@@ -2654,17 +2646,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const dados = fundamentos || { 
                         pvp: '-', dy: '-', segmento: '-', vacancia: '-', 
                         vp_cota: '-', liquidez: '-', val_mercado: '-', 
-                        ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-' 
+                        ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-',
+                        cnpj: '-', num_cotistas: '-', tipo_gestao: '-'
                     };
                     
-                    // Preenche o Valor de Mercado (prioridade Scraper)
+                    // Atualiza o Valor de Mercado se a API falhou
                     const valMercadoEl = document.getElementById('detalhes-valor-mercado');
-                    if (valMercadoEl) {
+                    if (valMercadoEl && (valMercadoEl.innerText.includes('N/A') || valMercadoEl.innerText === '0' || valMercadoEl.innerText === 'R$ 0,00')) {
                          valMercadoEl.textContent = dados.val_mercado || 'N/A';
                     }
 
-                    // Define cor da variação
-                    const corVar12m = dados.variacao_12m.includes('-') ? 'text-red-500' : 'text-green-500';
+                    // Renderiza o grid de fundamentos
+                    const corVar12m = dados.variacao_12m && dados.variacao_12m.includes('-') ? 'text-red-500' : 'text-green-500';
 
                     area.innerHTML = `
                         <div class="bg-gray-800 p-3 rounded-3xl text-center">
@@ -2702,6 +2695,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="bg-gray-800 p-3 rounded-3xl text-center col-span-2 mt-1 border border-purple-500/30">
                             <span class="text-xs text-gray-500">Último Rendimento</span>
                             <p class="text-base font-bold text-green-400">${dados.ultimo_rendimento || '-'}</p>
+                        </div>
+                        
+                        <div class="col-span-2 mt-4 pt-4 border-t border-gray-800">
+                            <h4 class="text-sm font-bold text-gray-400 mb-3 text-left pl-1">DADOS GERAIS</h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-gray-800 p-3 rounded-3xl text-center">
+                                    <span class="text-xs text-gray-500">Tipo de Gestão</span>
+                                    <p class="text-sm font-semibold text-white">${dados.tipo_gestao || '-'}</p>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded-3xl text-center">
+                                    <span class="text-xs text-gray-500">Cotistas</span>
+                                    <p class="text-sm font-semibold text-white">${dados.num_cotistas || '-'}</p>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded-3xl text-center col-span-2">
+                                    <span class="text-xs text-gray-500">CNPJ</span>
+                                    <p class="text-sm font-mono text-gray-400 select-all">${dados.cnpj || '-'}</p>
+                                </div>
+                            </div>
                         </div>
                     `;
                 }

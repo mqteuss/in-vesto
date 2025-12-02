@@ -1625,7 +1625,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
-	function renderizarDashboardSkeletons(show) {
+	// --- FUNÇÕES DE RENDERIZAÇÃO E LÓGICA ---
+
+    function renderizarDashboardSkeletons(show) {
         const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
         const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
         
@@ -1649,15 +1651,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function getQuantidadeNaData(symbol, dataLimiteStr) {
         if (!dataLimiteStr) return 0;
-        
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
-
         return transacoes.reduce((total, t) => {
             if (t.symbol === symbol && t.type === 'buy') {
                 const dataTransacao = new Date(t.date);
-                if (dataTransacao <= dataLimite) {
-                    return total + t.quantity;
-                }
+                if (dataTransacao <= dataLimite) return total + t.quantity;
             }
             return total;
         }, 0);
@@ -1665,70 +1663,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
-
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
         const proventosOrdenados = [...proventosAtuais].sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
         const proventosMap = new Map(proventosOrdenados.map(p => [p.symbol, p]));
-        
         const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
-
-        let totalValorCarteira = 0;
-        let totalCustoCarteira = 0;
-        let dadosGrafico = [];
+        let totalValorCarteira = 0; let totalCustoCarteira = 0; let dadosGrafico = [];
 
         if (carteiraOrdenada.length === 0) {
-            listaCarteira.innerHTML = ''; 
-            carteiraStatus.classList.remove('hidden');
+            listaCarteira.innerHTML = ''; carteiraStatus.classList.remove('hidden');
             renderizarDashboardSkeletons(false);
             totalCarteiraValor.textContent = formatBRL(0);
             totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(0);
             totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
             totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
-            dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
-            dashboardLoading.classList.add('hidden');
-            dashboardStatus.classList.remove('hidden');
-            renderizarGraficoAlocacao([]);
-            renderizarGraficoHistorico({ labels: [], data: [] });
-            await salvarSnapshotPatrimonio(saldoCaixa);
-            renderizarGraficoPatrimonio();
+            dashboardMensagem.textContent = 'A sua carteira está vazia.';
+            dashboardLoading.classList.add('hidden'); dashboardStatus.classList.remove('hidden');
+            renderizarGraficoAlocacao([]); renderizarGraficoHistorico({ labels: [], data: [] });
+            await salvarSnapshotPatrimonio(saldoCaixa); renderizarGraficoPatrimonio();
             return; 
         } else {
-            carteiraStatus.classList.add('hidden');
-            dashboardStatus.classList.add('hidden');
+            carteiraStatus.classList.add('hidden'); dashboardStatus.classList.add('hidden');
         }
 
         const symbolsNaCarteira = new Set(carteiraOrdenada.map(a => a.symbol));
-
         const cardsNaTela = listaCarteira.querySelectorAll('[data-symbol]');
-        cardsNaTela.forEach(card => {
-            const symbol = card.dataset.symbol;
-            if (!symbolsNaCarteira.has(symbol)) {
-                card.remove();
-            }
-        });
+        cardsNaTela.forEach(card => { if (!symbolsNaCarteira.has(card.dataset.symbol)) card.remove(); });
 
         carteiraOrdenada.forEach(ativo => {
             const dadoPreco = precosMap.get(ativo.symbol);
             const dadoProvento = proventosMap.get(ativo.symbol);
-
             let precoAtual = 0, variacao = 0, precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
             if (dadoPreco) {
-                precoAtual = dadoPreco.regularMarketPrice ?? 0;
-                variacao = dadoPreco.regularMarketChangePercent ?? 0;
-                precoFormatado = formatBRL(precoAtual);
-                variacaoFormatada = formatPercent(variacao);
+                precoAtual = dadoPreco.regularMarketPrice ?? 0; variacao = dadoPreco.regularMarketChangePercent ?? 0;
+                precoFormatado = formatBRL(precoAtual); variacaoFormatada = formatPercent(variacao);
                 corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
-            } else {
-                precoFormatado = '...';
-                corVariacao = 'text-yellow-500';
-            }
+            } else { precoFormatado = '...'; corVariacao = 'text-yellow-500'; }
             
-            const totalPosicao = precoAtual * ativo.quantity;
-            const custoTotal = ativo.precoMedio * ativo.quantity;
+            const totalPosicao = precoAtual * ativo.quantity; const custoTotal = ativo.precoMedio * ativo.quantity;
             const lucroPrejuizo = totalPosicao - custoTotal;
             const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
-            
             let corPL = 'text-gray-500', bgPL = 'bg-gray-800';
             if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; bgPL = 'bg-green-900/50'; }
             else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; bgPL = 'bg-red-900/50'; }
@@ -1739,781 +1713,215 @@ document.addEventListener('DOMContentLoaded', async () => {
                  const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
                  proventoReceber = qtdElegivel * dadoProvento.value;
             }
-
-            const dadosRender = {
-                dadoPreco,
-                precoFormatado,
-                variacaoFormatada,
-                corVariacao,
-                totalPosicao,
-                custoTotal,
-                lucroPrejuizo,
-                lucroPrejuizoPercent,
-                corPL,
-                bgPL,
-                dadoProvento,
-                proventoReceber
-            };
-
-            totalValorCarteira += totalPosicao;
-            totalCustoCarteira += custoTotal;
-            if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
-
+            const dadosRender = { dadoPreco, precoFormatado, variacaoFormatada, corVariacao, totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent, corPL, bgPL, dadoProvento, proventoReceber };
+            totalValorCarteira += totalPosicao; totalCustoCarteira += custoTotal;
+            if (totalPosicao > 0) dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao });
             let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
-            
-            if (card) {
-                atualizarCardElemento(card, ativo, dadosRender);
-            } else {
-                card = criarCardElemento(ativo, dadosRender);
-                listaCarteira.appendChild(card);
-            }
+            if (card) atualizarCardElemento(card, ativo, dadosRender); else { card = criarCardElemento(ativo, dadosRender); listaCarteira.appendChild(card); }
         });
 
         if (carteiraOrdenada.length > 0) {
-            const patrimonioTotalAtivos = totalValorCarteira;
-            const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
+            const patrimonioTotalAtivos = totalValorCarteira; const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
             const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
-            
             let corPLTotal = 'text-gray-500';
-            if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
-            else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
-            
+            if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500'; else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
             renderizarDashboardSkeletons(false);
-            totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
-            totalCaixaValor.textContent = formatBRL(saldoCaixa);
+            totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos); totalCaixaValor.textContent = formatBRL(saldoCaixa);
             totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
             totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
             totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
-            
-            const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
-            await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
+            await salvarSnapshotPatrimonio(patrimonioTotalAtivos + saldoCaixa);
         }
-        
-        renderizarGraficoAlocacao(dadosGrafico);
-        renderizarGraficoPatrimonio();
-        
-        // REAPLICAR FILTRO DE PESQUISA
-        if (carteiraSearchInput && carteiraSearchInput.value) {
-            const term = carteiraSearchInput.value.trim().toUpperCase();
-            const cards = listaCarteira.querySelectorAll('.card-bg');
-            cards.forEach(card => {
-                const symbol = card.dataset.symbol;
-                if (symbol && symbol.includes(term)) {
-                    card.classList.remove('hidden');
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
-        }
+        renderizarGraficoAlocacao(dadosGrafico); renderizarGraficoPatrimonio();
     }
 
     function renderizarProventos() {
-        let totalEstimado = 0;
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        
+        let totalEstimado = 0; const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
         proventosAtuais.forEach(provento => {
             if (provento && typeof provento.value === 'number' && provento.value > 0) {
-                 const parts = provento.paymentDate.split('-');
-                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
-
+                 const parts = provento.paymentDate.split('-'); const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
                  if (dataPagamento > hoje) {
-                     const dataReferencia = provento.dataCom || provento.paymentDate;
-                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-                     
-                     if (qtdElegivel > 0) {
-                         totalEstimado += (qtdElegivel * provento.value);
-                     }
+                     const qtdElegivel = getQuantidadeNaData(provento.symbol, provento.dataCom || provento.paymentDate);
+                     if (qtdElegivel > 0) totalEstimado += (qtdElegivel * provento.value);
                  }
             }
         });
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
     
-    // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
-
+    // --- FUNÇÕES DE FETCH ---
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v5_filtered';
-        
-        if (!force) {
-            const cache = await getCache(cacheKey);
-            if (cache) {
-                renderizarNoticias(cache);
-                return;
-            }
-        }
-        
-        fiiNewsSkeleton.classList.remove('hidden');
-        fiiNewsList.innerHTML = '';
-        fiiNewsMensagem.classList.add('hidden');
-
-        const refreshIcon = refreshNoticiasButton.querySelector('svg');
-        if (force) {
-            refreshIcon.classList.add('spin-animation');
-        }
-
-        try {
-            const articles = await fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey);
-            renderizarNoticias(articles);
-        } catch (e) {
-            console.error("Erro ao buscar notícias (função separada):", e);
-            fiiNewsSkeleton.classList.add('hidden');
-            fiiNewsMensagem.textContent = 'Erro ao carregar notícias. Tente novamente.';
-            fiiNewsMensagem.classList.remove('hidden');
-        } finally {
-            refreshIcon.classList.remove('spin-animation');
-        }
+        if (!force) { const cache = await getCache(cacheKey); if (cache) { renderizarNoticias(cache); return; } }
+        fiiNewsSkeleton.classList.remove('hidden'); fiiNewsList.innerHTML = ''; fiiNewsMensagem.classList.add('hidden');
+        const refreshIcon = refreshNoticiasButton.querySelector('svg'); if (force) refreshIcon.classList.add('spin-animation');
+        try { const articles = await fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey); renderizarNoticias(articles); } 
+        catch (e) { fiiNewsSkeleton.classList.add('hidden'); fiiNewsMensagem.textContent = 'Erro ao carregar notícias.'; fiiNewsMensagem.classList.remove('hidden'); } 
+        finally { refreshIcon.classList.remove('spin-animation'); }
     }
 
     async function fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey) {
         await vestoDB.delete('apiCache', cacheKey);
-        
-        try {
-            const url = `/api/news?t=${Date.now()}`;
-            const response = await fetchBFF(url, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const articles = response; 
-            
-            if (articles && Array.isArray(articles) && articles.length > 0) {
-                await setCache(cacheKey, articles, CACHE_NOTICIAS);
-            }
-            return articles;
-        } catch (error) {
-            console.error("Erro ao buscar notícias (BFF):", error);
-            throw error;
-        }
+        const url = `/api/news?t=${Date.now()}`;
+        const response = await fetchBFF(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+        if (response && Array.isArray(response) && response.length > 0) await setCache(cacheKey, response, CACHE_NOTICIAS);
+        return response;
     }
     
     async function fetchBFF(url, options = {}) {
+        const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 60000);
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000); 
-            
-            const response = await fetch(url, { ...options, signal: controller.signal });
-            clearTimeout(timeoutId); 
-
-            if (!response.ok) {
-                const errorBody = await response.json().catch(() => ({}));
-                throw new Error(errorBody.error || `Erro do servidor: ${response.statusText}`);
-            }
+            const response = await fetch(url, { ...options, signal: controller.signal }); clearTimeout(timeoutId);
+            if (!response.ok) throw new Error(`Erro do servidor: ${response.statusText}`);
             return response.json();
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                throw new Error("O servidor demorou muito para responder.");
-            }
-            console.error(`Erro ao chamar o BFF ${url}:`, error);
-            throw error;
-        }
+        } catch (error) { throw error; }
     }
     
     async function buscarPrecosCarteira(force = false) { 
         if (carteiraCalculada.length === 0) return [];
-        
-        const mercadoAberto = isB3Open();
-        const duracaoCachePreco = mercadoAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
-
+        const mercadoAberto = isB3Open(); const duracao = mercadoAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
         const promessas = carteiraCalculada.map(async (ativo) => {
             const cacheKey = `preco_${ativo.symbol}`;
-            if (force) {
-                await vestoDB.delete('apiCache', cacheKey);
-            }
-            
-            if (!force) {
-                const precoCache = await getCache(cacheKey);
-                if (precoCache) return precoCache;
-            }
+            if (force) await vestoDB.delete('apiCache', cacheKey);
+            if (!force) { const c = await getCache(cacheKey); if (c) return c; }
             try {
-                const tickerParaApi = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
-                const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                const result = data.results?.[0];
-
-                if (result && !result.error) {
-                    if (result.symbol.endsWith('.SA')) result.symbol = result.symbol.replace('.SA', '');
-                    await setCache(cacheKey, result, duracaoCachePreco); 
-                    return result;
-                } else {
-                    return null;
-                }
-            } catch (err) {
-                console.error(`Erro ao buscar preço para ${ativo.symbol}:`, err);
+                const ticker = isFII(ativo.symbol) ? `${ativo.symbol}.SA` : ativo.symbol;
+                const data = await fetchBFF(`/api/brapi?path=/quote/${ticker}?range=1d&interval=1d`);
+                const res = data.results?.[0];
+                if (res && !res.error) { if (res.symbol.endsWith('.SA')) res.symbol = res.symbol.replace('.SA', ''); await setCache(cacheKey, res, duracao); return res; }
                 return null;
-            }
+            } catch (e) { return null; }
         });
-        const resultados = await Promise.all(promessas);
-        return resultados.filter(p => p !== null);
+        const res = await Promise.all(promessas); return res.filter(p => p !== null);
     }
 
     function processarProventosScraper(proventosScraper = []) {
-        const hoje = new Date(); 
-        hoje.setHours(0, 0, 0, 0);
-        const dataLimitePassado = new Date();
-        dataLimitePassado.setDate(hoje.getDate() - 45);
-        dataLimitePassado.setHours(0, 0, 0, 0);
-
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-
-        return proventosScraper
-            .map(provento => {
-                const ativoCarteira = carteiraCalculada.find(a => a.symbol === provento.symbol);
-                if (!ativoCarteira) return null;
-                
-                if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
-                    const parts = provento.paymentDate.split('-');
-                    const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
-                    
-                    if (!isNaN(dataPagamento) && dataPagamento >= dataLimitePassado) {
-                        return provento;
-                    }
-                }
-                return null; 
-            })
-            .filter(p => p !== null);
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+        const dataLimite = new Date(); dataLimite.setDate(hoje.getDate() - 45); dataLimite.setHours(0, 0, 0, 0);
+        return proventosScraper.map(p => {
+            if (!carteiraCalculada.find(a => a.symbol === p.symbol)) return null;
+            if (p.paymentDate && p.value > 0) {
+                const d = new Date(p.paymentDate.split('-').map((v, i) => i === 1 ? v - 1 : v));
+                if (d >= dataLimite) return p;
+            } return null;
+        }).filter(p => p !== null);
     }
 
     async function buscarProventosFuturos(force = false) {
-        const fiiNaCarteira = carteiraCalculada
-            .filter(a => isFII(a.symbol))
-            .map(a => a.symbol);
-            
+        const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol)).map(a => a.symbol);
         if (fiiNaCarteira.length === 0) return [];
-
-        let proventosPool = [];
-        let fiisParaBuscar = [];
-
-        for (const symbol of fiiNaCarteira) {
-            const cacheKey = `provento_ia_${symbol}`;
-            if (force) {
-                await vestoDB.delete('apiCache', cacheKey);
-                await removerProventosConhecidos(symbol);
-            }
-            
-            const proventoCache = await getCache(cacheKey);
-            if (proventoCache) {
-                proventosPool.push(proventoCache);
-            } else {
-                fiisParaBuscar.push(symbol);
-            }
+        let proventosPool = []; let buscar = [];
+        for (const s of fiiNaCarteira) {
+            const k = `provento_ia_${s}`;
+            if (force) { await vestoDB.delete('apiCache', k); await removerProventosConhecidos(s); }
+            const c = await getCache(k);
+            if (c) proventosPool.push(c); else buscar.push(s);
         }
-        
-        if (fiisParaBuscar.length > 0) {
+        if (buscar.length > 0) {
             try {
-                const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
-                
-                if (novosProventos && Array.isArray(novosProventos)) {
-                    for (const provento of novosProventos) {
-                        if (provento && provento.symbol && provento.paymentDate) {
-                            const cacheKey = `provento_ia_${provento.symbol}`;
-                            await setCache(cacheKey, provento, CACHE_PROVENTOS); 
-                            proventosPool.push(provento);
-
-                            const idUnico = provento.symbol + '_' + provento.paymentDate;
-                            const existe = proventosConhecidos.some(p => p.id === idUnico);
-                            
-                            if (!existe) {
-                                const novoProvento = { ...provento, processado: false, id: idUnico };
-                                await supabaseDB.addProventoConhecido(novoProvento);
-                                proventosConhecidos.push(novoProvento);
+                const novos = await callScraperProventosCarteiraAPI(buscar);
+                if (novos && Array.isArray(novos)) {
+                    for (const p of novos) {
+                        if (p && p.symbol && p.paymentDate) {
+                            await setCache(`provento_ia_${p.symbol}`, p, CACHE_PROVENTOS); proventosPool.push(p);
+                            const id = p.symbol + '_' + p.paymentDate;
+                            if (!proventosConhecidos.some(pc => pc.id === id)) {
+                                await supabaseDB.addProventoConhecido({ ...p, processado: false, id });
+                                proventosConhecidos.push({ ...p, processado: false, id });
                             }
                         }
                     }
                 }
-            } catch (error) {
-                console.error("Erro ao buscar novos proventos com Scraper:", error);
-            }
+            } catch (e) { console.error(e); }
         }
-        
-        return processarProventosScraper(proventosPool); 
+        return processarProventosScraper(proventosPool);
     }
 	
 	async function callScraperFundamentosAPI(ticker) {
-        const body = { 
-            mode: 'fundamentos', 
-            payload: { ticker } 
-        };
-        const response = await fetchBFF('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
+        const response = await fetchBFF('/api/scraper', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'fundamentos', payload: { ticker } }) });
         return response.json;
     }
 
     async function buscarHistoricoProventosAgregado(force = false) {
         const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
         if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
-
         const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
         const cacheKey = `cache_grafico_historico_${currentUserId}`;
-        
-        if (force) {
-            await vestoDB.delete('apiCache', cacheKey);
+        if (force) await vestoDB.delete('apiCache', cacheKey);
+        let raw = await getCache(cacheKey);
+        if (!raw) {
+            try { raw = await callScraperHistoricoPortfolioAPI(fiiSymbols); if (raw) await setCache(cacheKey, raw, CACHE_IA_HISTORICO); }
+            catch (e) { return { labels: [], data: [] }; }
         }
-        
-        let rawDividends = await getCache(cacheKey);
-
-        if (!rawDividends) {
-            try {
-                rawDividends = await callScraperHistoricoPortfolioAPI(fiiSymbols);
-                if (rawDividends && rawDividends.length > 0) {
-                    await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
-                }
-            } catch (e) {
-                console.error("Erro ao buscar histórico agregado:", e);
-                return { labels: [], data: [] }; 
-            }
-        }
-
-        if (!rawDividends || rawDividends.length === 0) return { labels: [], data: [] };
-
-        const aggregator = {};
-
-        rawDividends.forEach(item => {
-            const dataVisualizacao = item.paymentDate || item.dataCom;
-            const dataDireito = item.dataCom || item.paymentDate;
-            
-            if (dataVisualizacao) {
-                const [ano, mes] = dataVisualizacao.split('-'); 
-                const chaveMes = `${mes}/${ano.substring(2)}`; 
-                
-                const qtdNaData = getQuantidadeNaData(item.symbol, dataDireito);
-
-                if (qtdNaData > 0) {
-                    if (!aggregator[chaveMes]) aggregator[chaveMes] = 0;
-                    aggregator[chaveMes] += (item.value * qtdNaData);
-                }
+        if (!raw || raw.length === 0) return { labels: [], data: [] };
+        const agg = {};
+        raw.forEach(item => {
+            if (item.paymentDate) {
+                const [ano, mes] = item.paymentDate.split('-'); const k = `${mes}/${ano.substring(2)}`;
+                const qtd = getQuantidadeNaData(item.symbol, item.dataCom || item.paymentDate);
+                if (qtd > 0) agg[k] = (agg[k] || 0) + (item.value * qtd);
             }
         });
-
-        const labels = Object.keys(aggregator).sort((a, b) => {
-            const [mesA, anoA] = a.split('/');
-            const [mesB, anoB] = b.split('/');
-            return new Date(`20${anoA}-${mesA}-01`) - new Date(`20${anoB}-${mesB}-01`);
+        const labels = Object.keys(agg).sort((a, b) => {
+            const [mA, aA] = a.split('/'); const [mB, aB] = b.split('/');
+            return new Date(`20${aA}-${mA}-01`) - new Date(`20${aB}-${mB}-01`);
         });
-
-        const data = labels.map(label => aggregator[label]);
-
-        return { labels, data };
+        return { labels, data: labels.map(l => agg[l]) };
     }
     
     async function atualizarTodosDados(force = false) { 
-        renderizarDashboardSkeletons(true);
-        renderizarCarteiraSkeletons(true);
-        
-        calcularCarteira();
-        await processarDividendosPagos(); 
-        renderizarHistorico();
-        renderizarGraficoPatrimonio(); 
-        
-        if (carteiraCalculada.length > 0) {
-            dashboardStatus.classList.remove('hidden');
-            dashboardLoading.classList.remove('hidden');
-        }
-        
-        const refreshIcon = refreshButton.querySelector('svg'); 
-        if (force) {
-            refreshIcon.classList.add('spin-animation');
-        }
-
+        renderizarDashboardSkeletons(true); renderizarCarteiraSkeletons(true);
+        calcularCarteira(); await processarDividendosPagos(); 
+        renderizarHistorico(); renderizarGraficoPatrimonio();
+        if (carteiraCalculada.length > 0) { dashboardStatus.classList.remove('hidden'); dashboardLoading.classList.remove('hidden'); }
+        const refreshIcon = refreshButton.querySelector('svg'); if (force) refreshIcon.classList.add('spin-animation');
         if (!force) {
             const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
-            if (proventosFuturosCache.length > 0) {
-                proventosAtuais = proventosFuturosCache;
-                renderizarProventos();
-            }
+            if (proventosFuturosCache.length > 0) { proventosAtuais = proventosFuturosCache; renderizarProventos(); }
         }
-        
         if (carteiraCalculada.length === 0) {
-             precosAtuais = []; 
-             proventosAtuais = []; 
-             await renderizarCarteira(); 
-             renderizarProventos(); 
-             renderizarGraficoHistorico({ labels: [], data: [] }); 
-             refreshIcon.classList.remove('spin-animation');
-             return;
+             precosAtuais = []; proventosAtuais = []; await renderizarCarteira(); 
+             renderizarProventos(); renderizarGraficoHistorico({ labels: [], data: [] }); 
+             refreshIcon.classList.remove('spin-animation'); return;
         }
-
-        const promessaPrecos = buscarPrecosCarteira(force); 
-        const promessaProventos = buscarProventosFuturos(force);
-        const promessaHistorico = buscarHistoricoProventosAgregado(force);
-
-        promessaPrecos.then(async precos => {
-            if (precos.length > 0) {
-                precosAtuais = precos; 
-                await renderizarCarteira(); 
-            } else if (precosAtuais.length === 0) { 
-                await renderizarCarteira(); 
-            }
-        }).catch(async err => {
-            console.error("Erro ao buscar preços (BFF):", err);
-            showToast("Erro ao buscar preços."); 
-            if (precosAtuais.length === 0) { await renderizarCarteira(); }
-        });
-
-        promessaProventos.then(async proventosFuturos => {
-            proventosAtuais = processarProventosScraper(proventosConhecidos);
-            
-            renderizarProventos(); 
-            if (precosAtuais.length > 0) { 
-                await renderizarCarteira(); 
-            }
-        }).catch(async err => {
-            console.error("Erro ao buscar proventos (BFF):", err);
-            
-            if (proventosConhecidos.length > 0) {
-                 proventosAtuais = processarProventosScraper(proventosConhecidos);
-                 renderizarProventos();
-                 
-                 if (precosAtuais.length > 0) {
-                     await renderizarCarteira();
-                 }
-            } else if (proventosAtuais.length === 0) { 
-                 totalProventosEl.textContent = "Erro"; 
-            }
-        });
-        
-        promessaHistorico.then(({ labels, data }) => {
-            renderizarGraficoHistorico({ labels, data });
-        }).catch(err => {
-            console.error("Erro ao buscar histórico agregado (BFF):", err);
-            showToast("Erro ao buscar histórico."); 
-            renderizarGraficoHistorico({ labels: [], data: [] }); 
-        });
-        
-        try {
-            await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
-        } finally {
-            refreshIcon.classList.remove('spin-animation');
-            dashboardStatus.classList.add('hidden');
-            dashboardLoading.classList.add('hidden');
-        }
+        const pPrecos = buscarPrecosCarteira(force); const pProventos = buscarProventosFuturos(force); const pHistorico = buscarHistoricoProventosAgregado(force);
+        pPrecos.then(async precos => { if (precos.length > 0 || precosAtuais.length === 0) { precosAtuais = precos; await renderizarCarteira(); } }).catch(() => {});
+        pProventos.then(async p => { proventosAtuais = processarProventosScraper(proventosConhecidos); renderizarProventos(); if (precosAtuais.length > 0) await renderizarCarteira(); }).catch(() => {});
+        pHistorico.then(({ labels, data }) => renderizarGraficoHistorico({ labels, data })).catch(() => {});
+        try { await Promise.allSettled([pPrecos, pProventos, pHistorico]); } 
+        finally { refreshIcon.classList.remove('spin-animation'); dashboardStatus.classList.add('hidden'); dashboardLoading.classList.add('hidden'); }
     }
     
     // --- MANIPULADORES DE EVENTOS ---
-
-    async function handleToggleFavorito() {
-        const symbol = detalhesFavoritoBtn.dataset.symbol;
-        if (!symbol) return;
-
-        const isFavorite = watchlist.some(item => item.symbol === symbol);
-
-        try {
-            if (isFavorite) {
-                await supabaseDB.deleteWatchlist(symbol);
-                watchlist = watchlist.filter(item => item.symbol !== symbol);
-                showToast(`${symbol} removido.`);
-            } else {
-                const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
-                await supabaseDB.addWatchlist(newItem);
-                watchlist.push(newItem);
-                showToast(`${symbol} adicionado!`, 'success');
-            }
-            
-            atualizarIconeFavorito(symbol); 
-            renderizarWatchlist(); 
-        } catch (e) {
-            console.error("Erro ao salvar favorito:", e);
-            showToast("Erro ao salvar favorito.");
-        }
-    }
-    
-    async function handleSalvarTransacao() {
-        let ticker = tickerInput.value.trim().toUpperCase();
-        let novaQuantidade = parseInt(quantityInput.value, 10);
-        let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
-        let dataTransacao = dateInput.value;
-        let transacaoID = transacaoIdInput.value;
-
-        if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
-
-        if (!ticker || !novaQuantidade || novaQuantidade <= 0 || !novoPreco || novoPreco < 0 || !dataTransacao) { 
-            showToast("Preencha todos os campos."); 
-            if (!ticker) tickerInput.classList.add('border-red-500');
-            if (!novaQuantidade || novaQuantidade <= 0) quantityInput.classList.add('border-red-500');
-            if (!novoPreco || novoPreco < 0) precoMedioInput.classList.add('border-red-500'); 
-            if (!dataTransacao) dateInput.classList.add('border-red-500');
-            setTimeout(() => {
-                tickerInput.classList.remove('border-red-500');
-                quantityInput.classList.remove('border-red-500');
-                precoMedioInput.classList.remove('border-red-500'); 
-                dateInput.classList.remove('border-red-500');
-            }, 2000);
-            return;
-        }
-        
-        addButton.innerHTML = `<span class="loader-sm"></span>`;
-        addButton.disabled = true;
-
-        if (!transacaoID) {
-            const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
-
-            if (!ativoExistente && isFII(ticker)) {
-                saldoCaixa = 0;
-                await salvarCaixa();
-                mesesProcessados = [];
-                await salvarHistoricoProcessado();
-            }
-
-            if (!ativoExistente) {
-                const tickerParaApi = isFII(ticker) ? `${ticker}.SA` : ticker;
-                try {
-                     const quoteData = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                     if (!quoteData.results || quoteData.results[0].error) {
-                         throw new Error(quoteData.results?.[0]?.error || 'Ativo não encontrado');
-                     }
-                } catch (error) {
-                     showToast("Ativo não encontrado."); 
-                     tickerInput.value = '';
-                     tickerInput.placeholder = "Ativo não encontrado";
-                     tickerInput.classList.add('border-red-500');
-                     setTimeout(() => { 
-                        tickerInput.placeholder = "Pesquisar ativo"; 
-                        tickerInput.classList.remove('border-red-500');
-                     }, 2000);
-                     addButton.innerHTML = `Adicionar`;
-                     addButton.disabled = false;
-                     return;
-                }
-            } 
-        }
-        
-        const dataISO = new Date(dataTransacao + 'T12:00:00').toISOString();
-
-        if (transacaoID) {
-            const transacaoAtualizada = {
-                date: dataISO,
-                symbol: ticker,
-                type: 'buy',
-                quantity: novaQuantidade,
-                price: novoPreco
-            };
-            
-            await supabaseDB.updateTransacao(transacaoID, transacaoAtualizada);
-            
-            const index = transacoes.findIndex(t => t.id === transacaoID);
-            if (index > -1) {
-                transacoes[index] = { ...transacoes[index], ...transacaoAtualizada };
-            }
-            showToast("Transação atualizada!", 'success');
-            
-        } else {
-            const novaTransacao = {
-                id: 'tx_' + Date.now(),
-                date: dataISO,
-                symbol: ticker,
-                type: 'buy',
-                quantity: novaQuantidade,
-                price: novoPreco
-            };
-            
-            await supabaseDB.addTransacao(novaTransacao);
-            transacoes.push(novaTransacao);
-            showToast("Ativo adicionado!", 'success');
-        }
-
-        addButton.innerHTML = `Adicionar`;
-        addButton.disabled = false;
-        hideAddModal();
-        
-        await removerCacheAtivo(ticker); 
-        const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
-        const forceUpdate = (!ativoExistente && isFII(ticker));
-        
-        await atualizarTodosDados(forceUpdate);
-    }
-
-    function handleRemoverAtivo(symbol) {
-        showModal(
-            'Remover Ativo', 
-            `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
-            async () => { 
-                transacoes = transacoes.filter(t => t.symbol !== symbol);
-                
-                await supabaseDB.deleteTransacoesDoAtivo(symbol);
-                await removerCacheAtivo(symbol); 
-                await removerProventosConhecidos(symbol);
-                
-                await supabaseDB.deleteWatchlist(symbol);
-                watchlist = watchlist.filter(item => item.symbol !== symbol);
-                renderizarWatchlist();
-                
-                saldoCaixa = 0;
-                await salvarCaixa();
-                
-                mesesProcessados = [];
-                await salvarHistoricoProcessado();
-                
-                await atualizarTodosDados(true); 
-            }
-        );
-    }
-    
-    function handleAbrirModalEdicao(id) {
-        const tx = transacoes.find(t => t.id === id);
-        if (!tx) {
-            showToast("Erro: Transação não encontrada.");
-            return;
-        }
-        
-        transacaoEmEdicao = tx;
-        
-        addModalTitle.textContent = 'Editar Compra';
-        transacaoIdInput.value = tx.id;
-        tickerInput.value = tx.symbol;
-        tickerInput.disabled = true;
-        dateInput.value = formatDateToInput(tx.date);
-        quantityInput.value = tx.quantity;
-        precoMedioInput.value = tx.price;
-        addButton.textContent = 'Salvar';
-        
-        showAddModal();
-    }
-    
-    function handleExcluirTransacao(id, symbol) {
-        const tx = transacoes.find(t => t.id === id);
-        if (!tx) {
-             showToast("Erro: Transação não encontrada.");
-             return;
-        }
-
-        const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
-        
-        showModal(
-            'Excluir Transação', 
-            msg, 
-            async () => { 
-                await supabaseDB.deleteTransacao(id);
-                transacoes = transacoes.filter(t => t.id !== id);
-                
-                await removerCacheAtivo(symbol);
-                
-                const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
-
-                saldoCaixa = 0;
-                await salvarCaixa();
-                mesesProcessados = [];
-                await salvarHistoricoProcessado();
-
-                if (!outrasTransacoes) {
-                    await removerProventosConhecidos(symbol);
-                    
-                    const isFavorite = watchlist.some(item => item.symbol === symbol);
-                    if (isFavorite) {
-                        setTimeout(() => {
-                             showModal(
-                                'Manter nos Favoritos?',
-                                `${symbol} não está mais na sua carteira. Deseja mantê-lo na sua lista de favoritos?`,
-                                () => {} 
-                            );
-                        }, 300); 
-                    }
-                }
-                
-                await atualizarTodosDados(true); 
-                showToast("Transação excluída.", 'success');
-            }
-        );
-    }
-    
-    async function handleAlterarSenha(e) {
-        e.preventDefault();
-
-        const currentPassword = currentPasswordInput.value;
-        const newPassword = changeNewPasswordInput.value;
-        const confirmPassword = changeConfirmPasswordInput.value;
-        
-        if (newPassword.length < 6) {
-            showToast("A nova senha deve ter no mínimo 6 caracteres.");
-            return;
-        }
-
-        if (newPassword !== confirmPassword) {
-            showToast("As senhas não coincidem.");
-            return;
-        }
-        
-        changePasswordSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
-        changePasswordSubmitBtn.disabled = true;
-        
-        try {
-            const session = await supabaseDB.initialize();
-            if (!session || !session.user || !session.user.email) {
-                 throw new Error("Erro de sessão. Faça login novamente.");
-            }
-            const userEmail = session.user.email;
-
-            const signInError = await supabaseDB.signIn(userEmail, currentPassword);
-            
-            if (signInError) {
-                showToast("Senha atual incorreta.");
-            } else {
-                await supabaseDB.updateUserPassword(newPassword);
-                showToast("Senha alterada com sucesso!", 'success');
-                
-                setTimeout(() => {
-                    changePasswordModal.classList.remove('visible');
-                    changePasswordForm.reset();
-                }, 1500);
-            }
-
-        } catch (error) {
-            console.error("Erro ao alterar senha:", error);
-            showToast(error.message || "Erro ao alterar senha.");
-        } finally {
-            changePasswordSubmitBtn.textContent = 'Atualizar Senha';
-            changePasswordSubmitBtn.disabled = false;
-        }
-    }
+    async function handleToggleFavorito() { const symbol = detalhesFavoritoBtn.dataset.symbol; if(!symbol) return; const isFavorite = watchlist.some(i => i.symbol === symbol); try { if(isFavorite) { await supabaseDB.deleteWatchlist(symbol); watchlist = watchlist.filter(i => i.symbol !== symbol); showToast(`${symbol} removido.`); } else { const n = {symbol, addedAt: new Date().toISOString()}; await supabaseDB.addWatchlist(n); watchlist.push(n); showToast(`${symbol} adicionado!`, 'success'); } atualizarIconeFavorito(symbol); renderizarWatchlist(); } catch(e){ showToast("Erro ao salvar."); } }
+    async function handleSalvarTransacao() { let ticker = tickerInput.value.trim().toUpperCase(); let qtd = parseInt(quantityInput.value, 10); let preco = parseFloat(precoMedioInput.value.replace(',', '.')); let data = dateInput.value; let id = transacaoIdInput.value; if(ticker.endsWith('.SA')) ticker=ticker.replace('.SA',''); if(!ticker || !qtd || qtd<=0 || !preco || preco<0 || !data) { showToast("Preencha tudo."); return; } addButton.innerHTML = `<span class="loader-sm"></span>`; addButton.disabled = true; if(!id) { const existe = carteiraCalculada.find(a=>a.symbol===ticker); if(!existe && isFII(ticker)) { saldoCaixa=0; await salvarCaixa(); } if(!existe) { try { const d = await fetchBFF(`/api/brapi?path=/quote/${isFII(ticker)?ticker+'.SA':ticker}`); if(!d.results || d.results[0].error) throw new Error(); } catch(e) { showToast("Ativo não encontrado."); addButton.innerHTML=`Adicionar`; addButton.disabled=false; return; } } } const iso = new Date(data + 'T12:00:00').toISOString(); if(id) { await supabaseDB.updateTransacao(id, {date:iso, symbol:ticker, type:'buy', quantity:qtd, price:preco}); const idx = transacoes.findIndex(t=>t.id===id); if(idx>-1) transacoes[idx] = {...transacoes[idx], date:iso, symbol:ticker, quantity:qtd, price:preco}; showToast("Atualizado!", 'success'); } else { const nt = {id:'tx_'+Date.now(), date:iso, symbol:ticker, type:'buy', quantity:qtd, price:preco}; await supabaseDB.addTransacao(nt); transacoes.push(nt); showToast("Adicionado!", 'success'); } addButton.innerHTML=`Adicionar`; addButton.disabled=false; hideAddModal(); await removerCacheAtivo(ticker); await atualizarTodosDados((!carteiraCalculada.find(a=>a.symbol===ticker) && isFII(ticker))); }
+    function handleRemoverAtivo(symbol) { showModal('Remover Ativo', `Remover ${symbol} e todo histórico?`, async () => { transacoes = transacoes.filter(t => t.symbol !== symbol); await supabaseDB.deleteTransacoesDoAtivo(symbol); await removerCacheAtivo(symbol); await removerProventosConhecidos(symbol); await supabaseDB.deleteWatchlist(symbol); watchlist = watchlist.filter(i => i.symbol !== symbol); renderizarWatchlist(); saldoCaixa=0; await salvarCaixa(); await atualizarTodosDados(true); }); }
+    function handleAbrirModalEdicao(id) { const tx = transacoes.find(t => t.id === id); if (!tx) return; transacaoEmEdicao = tx; addModalTitle.textContent = 'Editar Compra'; transacaoIdInput.value = tx.id; tickerInput.value = tx.symbol; tickerInput.disabled = true; dateInput.value = formatDateToInput(tx.date); quantityInput.value = tx.quantity; precoMedioInput.value = tx.price; addButton.textContent = 'Salvar'; showAddModal(); }
+    function handleExcluirTransacao(id, symbol) { const tx = transacoes.find(t => t.id === id); if (!tx) return; showModal('Excluir', `Excluir compra de ${tx.symbol}?`, async () => { await supabaseDB.deleteTransacao(id); transacoes = transacoes.filter(t => t.id !== id); await removerCacheAtivo(symbol); const hasMore = transacoes.some(t => t.symbol === symbol); saldoCaixa=0; await salvarCaixa(); if(!hasMore) await removerProventosConhecidos(symbol); await atualizarTodosDados(true); showToast("Excluído.", 'success'); }); }
+    async function handleAlterarSenha(e) { e.preventDefault(); const current = currentPasswordInput.value; const newP = changeNewPasswordInput.value; const confirmP = changeConfirmPasswordInput.value; if(newP.length < 6) { showToast("Mínimo 6 caracteres."); return; } if(newP !== confirmP) { showToast("Senhas não conferem."); return; } changePasswordSubmitBtn.innerHTML = '<span class="loader-sm"></span>'; changePasswordSubmitBtn.disabled = true; try { const session = await supabaseDB.initialize(); const err = await supabaseDB.signIn(session.user.email, current); if(err) { showToast("Senha atual incorreta."); } else { await supabaseDB.updateUserPassword(newP); showToast("Senha alterada!", 'success'); setTimeout(() => { changePasswordModal.classList.remove('visible'); changePasswordForm.reset(); }, 1500); } } catch(e) { showToast("Erro."); } finally { changePasswordSubmitBtn.textContent='Atualizar Senha'; changePasswordSubmitBtn.disabled=false; } }
 
     function limparDetalhes() {
-        detalhesMensagem.classList.remove('hidden');
-        detalhesLoading.classList.add('hidden');
-        detalhesTituloTexto.textContent = 'Detalhes'; 
-        detalhesNomeLongo.textContent = ''; 
-        detalhesPreco.innerHTML = '';
-        detalhesHistoricoContainer.classList.add('hidden');
-        detalhesAiProvento.innerHTML = '';
-        
+        detalhesMensagem.classList.remove('hidden'); detalhesLoading.classList.add('hidden');
+        detalhesTituloTexto.textContent = 'Detalhes'; detalhesNomeLongo.textContent = ''; 
+        detalhesPreco.innerHTML = ''; detalhesHistoricoContainer.classList.add('hidden'); detalhesAiProvento.innerHTML = '';
         document.getElementById('detalhes-transacoes-container').classList.add('hidden');
         document.getElementById('detalhes-lista-transacoes').innerHTML = '';
         document.getElementById('detalhes-transacoes-vazio').classList.add('hidden');
-        
-        if (detalhesChartInstance) {
-            detalhesChartInstance.destroy();
-            detalhesChartInstance = null;
-        }
-        
-        detalhesFavoritoIconEmpty.classList.remove('hidden');
-        detalhesFavoritoIconFilled.classList.add('hidden');
-        detalhesFavoritoBtn.dataset.symbol = '';
-        
-        currentDetalhesSymbol = null;
-        currentDetalhesMeses = 3; 
-        currentDetalhesHistoricoJSON = null; 
-        
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '3'); 
-        });
+        if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; }
+        detalhesFavoritoIconEmpty.classList.remove('hidden'); detalhesFavoritoIconFilled.classList.add('hidden'); detalhesFavoritoBtn.dataset.symbol = '';
+        currentDetalhesSymbol = null; currentDetalhesMeses = 3; currentDetalhesHistoricoJSON = null; 
+        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.meses === '3'));
     }
     
     // --- LÓGICA MINIMALISTA E LIMPA PARA O MODAL (Visual Premium) ---
     async function handleMostrarDetalhes(symbol) {
-        detalhesMensagem.classList.add('hidden');
-        detalhesLoading.classList.remove('hidden');
-        detalhesPreco.innerHTML = '';
-        detalhesAiProvento.innerHTML = ''; 
+        detalhesMensagem.classList.add('hidden'); detalhesLoading.classList.remove('hidden');
+        detalhesPreco.innerHTML = ''; detalhesAiProvento.innerHTML = ''; 
         detalhesHistoricoContainer.classList.add('hidden');
-        detalhesTituloTexto.textContent = symbol;
-        detalhesNomeLongo.textContent = 'A carregar...';
+        detalhesTituloTexto.textContent = symbol; detalhesNomeLongo.textContent = 'A carregar...';
         
-        currentDetalhesSymbol = symbol;
-        currentDetalhesMeses = 3;
-        currentDetalhesHistoricoJSON = null; 
-        
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '3'); 
-        });
+        currentDetalhesSymbol = symbol; currentDetalhesMeses = 3; currentDetalhesHistoricoJSON = null; 
+        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.meses === '3'));
         
         const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
         const cacheKeyPreco = `detalhe_preco_${symbol}`;
@@ -2525,15 +1933,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 precoData = data.results?.[0];
                 const isAberto = isB3Open();
                 if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO); 
-            } catch (e) { 
-                precoData = null; 
-                showToast("Erro ao buscar preço."); 
-            }
+            } catch (e) { precoData = null; showToast("Erro ao buscar preço."); }
         }
 
         if (isFII(symbol)) {
-            detalhesHistoricoContainer.classList.remove('hidden'); 
-            fetchHistoricoScraper(symbol); 
+            detalhesHistoricoContainer.classList.remove('hidden'); fetchHistoricoScraper(symbol); 
         }
         
         detalhesLoading.classList.add('hidden');
@@ -2657,743 +2061,96 @@ document.addEventListener('DOMContentLoaded', async () => {
         atualizarIconeFavorito(symbol);
     }
     
-    function renderizarTransacoesDetalhes(symbol) {
-        const listaContainer = document.getElementById('detalhes-lista-transacoes');
-        const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
-        const container = document.getElementById('detalhes-transacoes-container');
+    function renderizarTransacoesDetalhes(symbol) { const listaContainer = document.getElementById('detalhes-lista-transacoes'); const vazioMsg = document.getElementById('detalhes-transacoes-vazio'); const container = document.getElementById('detalhes-transacoes-container'); listaContainer.innerHTML = ''; const txsDoAtivo = transacoes.filter(t => t.symbol === symbol).sort((a, b) => new Date(b.date) - new Date(a.date)); if (txsDoAtivo.length === 0) { vazioMsg.classList.remove('hidden'); listaContainer.classList.add('hidden'); } else { vazioMsg.classList.add('hidden'); listaContainer.classList.remove('hidden'); const fragment = document.createDocumentFragment(); txsDoAtivo.forEach(t => { const card = document.createElement('div'); card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E]'; const cor = 'text-green-500'; const sinal = '+'; card.innerHTML = `<div class="flex items-center gap-3"><div class="p-2 bg-[#1C1C1E] rounded-full text-green-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg></div><div><p class="text-sm font-semibold text-white">Compra</p><p class="text-xs text-gray-500">${formatDate(t.date)}</p></div></div><div class="text-right"><p class="text-sm font-semibold ${cor}">${sinal}${t.quantity} Cotas</p><p class="text-xs text-gray-400">${formatBRL(t.price)}</p></div>`; fragment.appendChild(card); }); listaContainer.appendChild(fragment); } container.classList.remove('hidden'); }
+    async function fetchHistoricoScraper(symbol) { detalhesAiProvento.innerHTML = `<div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48"><div class="h-4 bg-[#1C1C1E] rounded-md w-3/4"></div><div class="h-4 bg-[#1C1C1E] rounded-md w-1/2"></div><div class="h-4 bg-[#1C1C1E] rounded-md w-2/3"></div></div>`; try { const cacheKey = `hist_ia_${symbol}_12`; let scraperResultJSON = await getCache(cacheKey); if (!scraperResultJSON) { scraperResultJSON = await callScraperHistoricoAPI(symbol); if (scraperResultJSON && Array.isArray(scraperResultJSON)) { await setCache(cacheKey, scraperResultJSON, CACHE_IA_HISTORICO); } else { scraperResultJSON = []; } } currentDetalhesHistoricoJSON = scraperResultJSON; renderHistoricoIADetalhes(3); } catch (e) { showToast("Erro na consulta de dados."); detalhesAiProvento.innerHTML = `<div class="border border-red-900/50 bg-[#1C1C1E] p-4 rounded-2xl flex items-center gap-3"><p class="text-red-400 text-sm">Erro</p></div>`; } }
+    function renderHistoricoIADetalhes(meses) { if (!currentDetalhesHistoricoJSON) return; if (currentDetalhesHistoricoJSON.length === 0) { detalhesAiProvento.innerHTML = `<p class="text-sm text-gray-500 text-center py-4 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E]">Sem histórico recente.</p>`; if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; } return; } if (!document.getElementById('detalhes-proventos-chart')) { detalhesAiProvento.innerHTML = `<div class="relative h-48 w-full"><canvas id="detalhes-proventos-chart"></canvas></div>`; } const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse(); const labels = dadosFiltrados.map(item => item.mes); const data = dadosFiltrados.map(item => item.valor); renderizarGraficoProventosDetalhes({ labels, data }); }
+    function mudarAba(tabId) { tabContents.forEach(content => { content.classList.toggle('active', content.id === tabId); }); tabButtons.forEach(button => { button.classList.toggle('active', button.dataset.tab === tabId); }); showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira'); }
     
-        listaContainer.innerHTML = '';
-        
-        const txsDoAtivo = transacoes
-            .filter(t => t.symbol === symbol)
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-        if (txsDoAtivo.length === 0) {
-            vazioMsg.classList.remove('hidden');
-            listaContainer.classList.add('hidden');
-        } else {
-            vazioMsg.classList.add('hidden');
-            listaContainer.classList.remove('hidden');
-            
-            const fragment = document.createDocumentFragment();
-
-            txsDoAtivo.forEach(t => {
-                const card = document.createElement('div');
-                card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E]'; 
-                
-                const cor = 'text-green-500';
-                const sinal = '+';
-                
-                card.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="p-2 bg-[#1C1C1E] rounded-full text-green-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-white">Compra</p>
-                            <p class="text-xs text-gray-500">${formatDate(t.date)}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-sm font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                        <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
-                    </div>
-                `;
-                fragment.appendChild(card);
-            });
-            listaContainer.appendChild(fragment);
-        }
-        
-        container.classList.remove('hidden');
-    }
-    
-    async function fetchHistoricoScraper(symbol) {
-        detalhesAiProvento.innerHTML = `
-            <div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48">
-                <div class="h-4 bg-[#1C1C1E] rounded-md w-3/4"></div>
-                <div class="h-4 bg-[#1C1C1E] rounded-md w-1/2"></div>
-                <div class="h-4 bg-[#1C1C1E] rounded-md w-2/3"></div>
-            </div>
-        `;
-        
-        try {
-            const cacheKey = `hist_ia_${symbol}_12`;
-            let scraperResultJSON = await getCache(cacheKey);
-
-            if (!scraperResultJSON) {
-                scraperResultJSON = await callScraperHistoricoAPI(symbol); 
-                
-                if (scraperResultJSON && Array.isArray(scraperResultJSON)) {
-                    await setCache(cacheKey, scraperResultJSON, CACHE_IA_HISTORICO);
-                } else {
-                    scraperResultJSON = [];
-                }
-            }
-
-            currentDetalhesHistoricoJSON = scraperResultJSON;
-            
-            renderHistoricoIADetalhes(3);
-
-        } catch (e) {
-            showToast("Erro na consulta de dados."); 
-            detalhesAiProvento.innerHTML = `
-                <div class="border border-red-900/50 bg-[#1C1C1E] p-4 rounded-2xl flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div>
-                        <h5 class="font-semibold text-red-300">Erro na Consulta</h5>
-                        <p class="text-sm text-red-400">${e.message}</p>
-                    </div>
-                </div>
-            `;
-        }
-    }
-    
-    function renderHistoricoIADetalhes(meses) {
-        if (!currentDetalhesHistoricoJSON) {
-            return;
-        }
-
-        if (currentDetalhesHistoricoJSON.length === 0) {
-            detalhesAiProvento.innerHTML = `
-                <p class="text-sm text-gray-500 text-center py-4 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E]">
-                    Sem histórico recente.
-                </p>
-            `;
-            if (detalhesChartInstance) {
-                detalhesChartInstance.destroy();
-                detalhesChartInstance = null;
-            }
-            return;
-        }
-
-        if (!document.getElementById('detalhes-proventos-chart')) {
-             detalhesAiProvento.innerHTML = `
-                <div class="relative h-48 w-full">
-                    <canvas id="detalhes-proventos-chart"></canvas>
-                </div>
-             `;
-        }
-
-        const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
-        
-        const labels = dadosFiltrados.map(item => item.mes);
-        const data = dadosFiltrados.map(item => item.valor);
-
-        renderizarGraficoProventosDetalhes({ labels, data });
-    }
-    
-    function mudarAba(tabId) {
-        tabContents.forEach(content => {
-            content.classList.toggle('active', content.id === tabId);
-        });
-        tabButtons.forEach(button => {
-            button.classList.toggle('active', button.dataset.tab === tabId);
-        });
-        
-        showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
-    }
-    
-    refreshButton.addEventListener('click', async () => {
-        await atualizarTodosDados(true); 
-    });
-    
-    refreshNoticiasButton.addEventListener('click', async () => {
-        await handleAtualizarNoticias(true); 
-    });
-    
+    // Listeners (SETUP)
+    refreshButton.addEventListener('click', async () => { await atualizarTodosDados(true); });
+    refreshNoticiasButton.addEventListener('click', async () => { await handleAtualizarNoticias(true); });
     showAddModalBtn.addEventListener('click', showAddModal);
     emptyStateAddBtn.addEventListener('click', showAddModal);
     addAtivoCancelBtn.addEventListener('click', hideAddModal);
-    addAtivoModal.addEventListener('click', (e) => {
-        if (e.target === addAtivoModal) { hideAddModal(); } 
-    });
-    
-    addAtivoForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        handleSalvarTransacao();
-    });
-    
-    listaCarteira.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
-        
-        const action = target.dataset.action;
-        const symbol = target.dataset.symbol;
-
-        if (action === 'remove') {
-            handleRemoverAtivo(symbol);
-        } else if (action === 'details') {
-            showDetalhesModal(symbol);
-        } else if (action === 'toggle') {
-            const drawer = document.getElementById(`drawer-${symbol}`);
-            const icon = target.querySelector('.card-arrow-icon');
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        }
-    });
-    
-    listaHistorico.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
-
-        const action = target.dataset.action;
-        const id = target.dataset.id;
-        const symbol = target.dataset.symbol;
-
-        if (action === 'edit') {
-            handleAbrirModalEdicao(id);
-        } else if (action === 'delete') {
-            handleExcluirTransacao(id, symbol);
-        }
-    });
-    
-    dashboardDrawers.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target || !target.dataset.targetDrawer) return;
-        
-        const drawerId = target.dataset.targetDrawer;
-        const drawer = document.getElementById(drawerId);
-        const icon = target.querySelector('.card-arrow-icon');
-        
-        drawer?.classList.toggle('open');
-        icon?.classList.toggle('open');
-    });
-
-    const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
-    if (watchlistToggleBtn) {
-        watchlistToggleBtn.addEventListener('click', (e) => {
-            const target = e.currentTarget; 
-            const drawerId = target.dataset.targetDrawer;
-            const drawer = document.getElementById(drawerId);
-            const icon = target.querySelector('.card-arrow-icon');
-            
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        });
-    }
-
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            mudarAba(button.dataset.tab);
-        });
-    });
-    
-    if (btnIaAnalise) {
-        btnIaAnalise.addEventListener('click', handleAnaliseIA);
-    }
-    
-    if (closeAiModal) {
-        closeAiModal.addEventListener('click', () => {
-            aiModal.classList.remove('visible');
-            aiContent.innerHTML = ''; 
-        });
-    }
-
-    if (aiModal) {
-        aiModal.addEventListener('click', (e) => {
-            if (e.target === aiModal) {
-                aiModal.classList.remove('visible');
-                aiContent.innerHTML = '';
-            }
-        });
-    }
-
+    addAtivoModal.addEventListener('click', (e) => { if (e.target === addAtivoModal) { hideAddModal(); } });
+    addAtivoForm.addEventListener('submit', (e) => { e.preventDefault(); handleSalvarTransacao(); });
+    listaCarteira.addEventListener('click', (e) => { const target = e.target.closest('button'); if (!target) return; const action = target.dataset.action; const symbol = target.dataset.symbol; if (action === 'remove') { handleRemoverAtivo(symbol); } else if (action === 'details') { showDetalhesModal(symbol); } else if (action === 'toggle') { const drawer = document.getElementById(`drawer-${symbol}`); const icon = target.querySelector('.card-arrow-icon'); drawer?.classList.toggle('open'); icon?.classList.toggle('open'); } });
+    listaHistorico.addEventListener('click', (e) => { const target = e.target.closest('button'); if (!target) return; const action = target.dataset.action; const id = target.dataset.id; const symbol = target.dataset.symbol; if (action === 'edit') { handleAbrirModalEdicao(id); } else if (action === 'delete') { handleExcluirTransacao(id, symbol); } });
+    dashboardDrawers.addEventListener('click', (e) => { const target = e.target.closest('button'); if (!target || !target.dataset.targetDrawer) return; const drawerId = target.dataset.targetDrawer; const drawer = document.getElementById(drawerId); const icon = target.querySelector('.card-arrow-icon'); drawer?.classList.toggle('open'); icon?.classList.toggle('open'); });
+    if(watchlistToggleBtn) watchlistToggleBtn.addEventListener('click', (e) => { const target = e.currentTarget; const drawerId = target.dataset.targetDrawer; const drawer = document.getElementById(drawerId); const icon = target.querySelector('.card-arrow-icon'); drawer?.classList.toggle('open'); icon?.classList.toggle('open'); });
+    tabButtons.forEach(button => { button.addEventListener('click', () => { mudarAba(button.dataset.tab); }); });
+    if (btnIaAnalise) btnIaAnalise.addEventListener('click', handleAnaliseIA);
+    if (closeAiModal) closeAiModal.addEventListener('click', () => { aiModal.classList.remove('visible'); aiContent.innerHTML = ''; });
+    if (aiModal) aiModal.addEventListener('click', (e) => { if (e.target === aiModal) { aiModal.classList.remove('visible'); aiContent.innerHTML = ''; } });
     customModalCancel.addEventListener('click', hideModal);
-    customModalOk.addEventListener('click', () => {
-        if (typeof onConfirmCallback === 'function') {
-            onConfirmCallback(); 
-        }
-        hideModal(); 
-    });
-    customModal.addEventListener('click', (e) => {
-        if (e.target === customModal) { hideModal(); } 
-    });
-    
+    customModalOk.addEventListener('click', () => { if (typeof onConfirmCallback === 'function') { onConfirmCallback(); } hideModal(); });
+    customModal.addEventListener('click', (e) => { if (e.target === customModal) { hideModal(); } });
     detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
-    detalhesPageModal.addEventListener('click', (e) => {
-        if (e.target === detalhesPageModal) { hideDetalhesModal(); } 
-    });
-
-    detalhesPageContent.addEventListener('touchstart', (e) => {
-        if (detalhesConteudoScroll.scrollTop === 0) {
-            touchStartY = e.touches[0].clientY;
-            touchMoveY = touchStartY; 
-            isDraggingDetalhes = true;
-            detalhesPageContent.style.transition = 'none'; 
-        }
-    }, { passive: true }); 
-    
-    detalhesPageContent.addEventListener('touchmove', (e) => {
-        if (!isDraggingDetalhes) return;
-        touchMoveY = e.touches[0].clientY;
-        const diff = touchMoveY - touchStartY;
-        if (diff > 0) { 
-            e.preventDefault(); 
-            detalhesPageContent.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false }); 
-    
-    detalhesPageContent.addEventListener('touchend', (e) => {
-        if (!isDraggingDetalhes) return;
-        isDraggingDetalhes = false;
-        const diff = touchMoveY - touchStartY;
-        detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
-        
-        if (diff > 100) { 
-            hideDetalhesModal(); 
-        } else {
-            detalhesPageContent.style.transform = ''; 
-        }
-        touchStartY = 0;
-        touchMoveY = 0;
-    });
-
-    fiiNewsList.addEventListener('click', (e) => {
-        const tickerTag = e.target.closest('.news-ticker-tag');
-        if (tickerTag) {
-            e.stopPropagation(); 
-            const symbol = tickerTag.dataset.symbol;
-            if (symbol) {
-                showDetalhesModal(symbol);
-            }
-            return;
-        }
-        if (e.target.closest('a')) {
-            e.stopPropagation(); 
-            return; 
-        }
-        const card = e.target.closest('.news-card-interactive');
-        if (card) {
-            const targetId = card.dataset.target;
-            const drawer = document.getElementById(targetId);
-            const icon = card.querySelector('.card-arrow-icon');
-            
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        }
-    });
-    
+    detalhesPageModal.addEventListener('click', (e) => { if (e.target === detalhesPageModal) { hideDetalhesModal(); } });
+    detalhesPageContent.addEventListener('touchstart', (e) => { if (detalhesConteudoScroll.scrollTop === 0) { touchStartY = e.touches[0].clientY; touchMoveY = touchStartY; isDraggingDetalhes = true; detalhesPageContent.style.transition = 'none'; } }, { passive: true });
+    detalhesPageContent.addEventListener('touchmove', (e) => { if (!isDraggingDetalhes) return; touchMoveY = e.touches[0].clientY; const diff = touchMoveY - touchStartY; if (diff > 0) { e.preventDefault(); detalhesPageContent.style.transform = `translateY(${diff}px)`; } }, { passive: false });
+    detalhesPageContent.addEventListener('touchend', (e) => { if (!isDraggingDetalhes) return; isDraggingDetalhes = false; const diff = touchMoveY - touchStartY; detalhesPageContent.style.transition = 'transform 0.4s ease-in-out'; if (diff > 100) { hideDetalhesModal(); } else { detalhesPageContent.style.transform = ''; } touchStartY = 0; touchMoveY = 0; });
+    fiiNewsList.addEventListener('click', (e) => { const tickerTag = e.target.closest('.news-ticker-tag'); if (tickerTag) { e.stopPropagation(); const symbol = tickerTag.dataset.symbol; if (symbol) { showDetalhesModal(symbol); } return; } if (e.target.closest('a')) { e.stopPropagation(); return; } const card = e.target.closest('.news-card-interactive'); if (card) { const targetId = card.dataset.target; const drawer = document.getElementById(targetId); const icon = card.querySelector('.card-arrow-icon'); drawer?.classList.toggle('open'); icon?.classList.toggle('open'); } });
     detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
+    if (watchlistListaEl) watchlistListaEl.addEventListener('click', (e) => { const target = e.target.closest('button'); if (target && target.dataset.action === 'details' && target.dataset.symbol) { showDetalhesModal(target.dataset.symbol); } });
+    if (carteiraSearchInput) { carteiraSearchInput.addEventListener('input', (e) => { const term = e.target.value.trim().toUpperCase(); const cards = listaCarteira.querySelectorAll('.card-bg'); cards.forEach(card => { const symbol = card.dataset.symbol; if (symbol && symbol.includes(term)) { card.classList.remove('hidden'); } else { card.classList.add('hidden'); } }); }); carteiraSearchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') { const term = carteiraSearchInput.value.trim().toUpperCase(); if (!term) return; carteiraSearchInput.blur(); showToast(`Buscando ${term}...`, 'success'); showDetalhesModal(term); carteiraSearchInput.value = ''; carteiraSearchInput.dispatchEvent(new Event('input')); } }); }
+    periodoSelectorGroup.addEventListener('click', (e) => { const target = e.target.closest('.periodo-selector-btn'); if (!target) return; const meses = parseInt(target.dataset.meses, 10); if (meses === currentDetalhesMeses) return; currentDetalhesMeses = meses; periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => { btn.classList.remove('active'); }); target.classList.add('active'); renderHistoricoIADetalhes(currentDetalhesMeses); });
+    if (toggleBioBtn) { toggleBioBtn.addEventListener('click', () => { const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true'; if (isEnabled) { showModal("Desativar Biometria?", "Deseja remover o bloqueio por Face ID/Digital?", () => { desativarBiometria(); }); } else { showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => { ativarBiometria(); }); } }); }
+    if (togglePrivacyBtn) { updatePrivacyUI(); togglePrivacyBtn.addEventListener('click', () => { const current = localStorage.getItem('vesto_privacy_mode') === 'true'; localStorage.setItem('vesto_privacy_mode', !current); updatePrivacyUI(); showToast(!current ? "Modo Privacidade Ativado" : "Modo Privacidade Desativado", "success"); }); }
+    if (exportCsvBtn) { exportCsvBtn.addEventListener('click', () => { if (!transacoes || transacoes.length === 0) { showToast("Sem dados."); return; } let csvContent = "data:text/csv;charset=utf-8,Data,Ativo,Tipo,Quantidade,Preco,ID\n"; transacoes.forEach(t => { const dataFmt = t.date.split('T')[0]; const row = `${dataFmt},${t.symbol},${t.type},${t.quantity},${t.price},${t.id}`; csvContent += row + "\n"; }); const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", `vesto_export.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); showToast("Download iniciado!", "success"); }); }
+    if (clearCacheBtn) { clearCacheBtn.addEventListener('click', () => { showModal("Limpar Cache?", "Isso pode corrigir erros.", async () => { try { await vestoDB.clear('apiCache'); if ('serviceWorker' in navigator) { const registrations = await navigator.serviceWorker.getRegistrations(); for(let registration of registrations) { await registration.unregister(); } } window.location.reload(); } catch (e) { console.error(e); showToast("Erro."); } }); }); }
+    if (openChangePasswordBtn) { openChangePasswordBtn.addEventListener('click', () => { changePasswordModal.classList.add('visible'); changePasswordModal.querySelector('.modal-content').classList.remove('modal-out'); currentPasswordInput.focus(); }); }
+    if (closeChangePasswordBtn) { closeChangePasswordBtn.addEventListener('click', () => { const modalContent = changePasswordModal.querySelector('.modal-content'); modalContent.classList.add('modal-out'); setTimeout(() => { changePasswordModal.classList.remove('visible'); changePasswordForm.reset(); }, 200); }); }
+    if (changePasswordForm) { changePasswordForm.addEventListener('submit', handleAlterarSenha); }
+    if (logoutBtn) { logoutBtn.addEventListener('click', () => { showModal("Sair?", "Tem certeza?", async () => { try { await vestoDB.clear('apiCache'); sessionStorage.clear(); } catch (e) {} sessionStorage.setItem('vesto_just_logged_out', 'true'); await supabaseDB.signOut(); window.location.reload(); }); }); }
 
-    if (watchlistListaEl) {
-        watchlistListaEl.addEventListener('click', (e) => {
-            const target = e.target.closest('button');
-            if (target && target.dataset.action === 'details' && target.dataset.symbol) {
-                showDetalhesModal(target.dataset.symbol);
-            }
-        });
-    }
-    
-    if (carteiraSearchInput) {
-        carteiraSearchInput.addEventListener('input', (e) => {
-            const term = e.target.value.trim().toUpperCase();
-            const cards = listaCarteira.querySelectorAll('.card-bg');
-            
-            cards.forEach(card => {
-                const symbol = card.dataset.symbol;
-                if (symbol && symbol.includes(term)) {
-                    card.classList.remove('hidden');
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
-        });
-
-        carteiraSearchInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') {
-                const term = carteiraSearchInput.value.trim().toUpperCase();
-                
-                if (!term) return;
-                
-                carteiraSearchInput.blur(); 
-                showToast(`Buscando ${term}...`, 'success');
-
-                showDetalhesModal(term);
-
-                carteiraSearchInput.value = '';
-                carteiraSearchInput.dispatchEvent(new Event('input'));
-            }
-        });
-    }
-    
-    periodoSelectorGroup.addEventListener('click', (e) => {
-        const target = e.target.closest('.periodo-selector-btn');
-        if (!target) return;
-
-        const meses = parseInt(target.dataset.meses, 10);
-        
-        if (meses === currentDetalhesMeses) {
-            return;
-        }
-
-        currentDetalhesMeses = meses;
-        
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        target.classList.add('active');
-
-        renderHistoricoIADetalhes(currentDetalhesMeses);
-    });
-
-    if (toggleBioBtn) {
-        toggleBioBtn.addEventListener('click', () => {
-            const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
-            if (isEnabled) {
-                showModal("Desativar Biometria?", "Deseja remover o bloqueio por Face ID/Digital?", () => {
-                    desativarBiometria();
-                });
-            } else {
-                showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => {
-                    ativarBiometria();
-                });
-            }
-        });
-    }
-
-    // --- LÓGICA MODO PRIVACIDADE ---
-    function updatePrivacyUI() {
-        const isPrivacyOn = localStorage.getItem('vesto_privacy_mode') === 'true';
-        if (isPrivacyOn) {
-            document.body.classList.add('privacy-mode');
-            togglePrivacyBtn.classList.remove('bg-gray-700');
-            togglePrivacyBtn.classList.add('bg-purple-600');
-            privacyToggleKnob.classList.remove('translate-x-1');
-            privacyToggleKnob.classList.add('translate-x-6');
+    // --- FUNÇÕES DE UI QUE FALTAVAM (CORREÇÃO DO ERRO) ---
+    function showAuthLoading(isLoading) {
+        if (isLoading) {
+            authLoading.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            signupForm.classList.add('hidden');
+            recoverForm.classList.add('hidden'); 
         } else {
-            document.body.classList.remove('privacy-mode');
-            togglePrivacyBtn.classList.remove('bg-purple-600');
-            togglePrivacyBtn.classList.add('bg-gray-700');
-            privacyToggleKnob.classList.remove('translate-x-6');
-            privacyToggleKnob.classList.add('translate-x-1');
+            authLoading.classList.add('hidden');
         }
     }
-
-    if (togglePrivacyBtn) {
-        updatePrivacyUI();
-        
-        togglePrivacyBtn.addEventListener('click', () => {
-            const current = localStorage.getItem('vesto_privacy_mode') === 'true';
-            localStorage.setItem('vesto_privacy_mode', !current);
-            updatePrivacyUI();
-            showToast(!current ? "Modo Privacidade Ativado" : "Modo Privacidade Desativado", "success");
-        });
-    }
-
-    // --- LÓGICA EXPORTAR CSV ---
-    if (exportCsvBtn) {
-        exportCsvBtn.addEventListener('click', () => {
-            if (!transacoes || transacoes.length === 0) {
-                showToast("Sem dados para exportar.");
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Data,Ativo,Tipo,Quantidade,Preco,ID\n"; 
-
-            transacoes.forEach(t => {
-                const dataFmt = t.date.split('T')[0];
-                const row = `${dataFmt},${t.symbol},${t.type},${t.quantity},${t.price},${t.id}`;
-                csvContent += row + "\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `vesto_export_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            
-            link.click();
-            document.body.removeChild(link);
-            showToast("Download iniciado!", "success");
-        });
-    }
-
-    if (clearCacheBtn) {
-        clearCacheBtn.addEventListener('click', () => {
-            showModal(
-                "Limpar Cache?", 
-                "Isso pode corrigir erros de visualização, mas o carregamento inicial será mais lento na próxima vez.", 
-                async () => {
-                    try {
-                        await vestoDB.clear('apiCache');
-                        if ('serviceWorker' in navigator) {
-                            const registrations = await navigator.serviceWorker.getRegistrations();
-                            for(let registration of registrations) {
-                                await registration.unregister();
-                            }
-                        }
-                        window.location.reload();
-                    } catch (e) {
-                        console.error(e);
-                        showToast("Erro ao limpar cache.");
-                    }
-                }
-            );
-        });
-    }
-
-    if (openChangePasswordBtn) {
-        openChangePasswordBtn.addEventListener('click', () => {
-            changePasswordModal.classList.add('visible');
-            const modalContent = changePasswordModal.querySelector('.modal-content');
-            modalContent.classList.remove('modal-out');
-            currentPasswordInput.focus();
-        });
-    }
-
-    if (closeChangePasswordBtn) {
-        closeChangePasswordBtn.addEventListener('click', () => {
-            const modalContent = changePasswordModal.querySelector('.modal-content');
-            modalContent.classList.add('modal-out');
-            setTimeout(() => {
-                changePasswordModal.classList.remove('visible');
-                changePasswordForm.reset();
-            }, 200);
-        });
-    }
     
-    if (changePasswordForm) {
-        changePasswordForm.addEventListener('submit', handleAlterarSenha);
+    function showLoginError(message) {
+        loginError.textContent = message;
+        loginError.classList.remove('hidden');
+        loginSubmitBtn.innerHTML = 'Entrar';
+        loginSubmitBtn.disabled = false;
     }
 
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            showModal("Sair?", "Tem certeza que deseja sair da sua conta?", async () => {
-                try {
-                    await vestoDB.clear('apiCache'); 
-                    sessionStorage.clear(); 
-                } catch (e) {
-                    console.error("Erro ao limpar dados locais:", e);
-                }
-                sessionStorage.setItem('vesto_just_logged_out', 'true');
-                await supabaseDB.signOut();
-                window.location.reload();
-            });
-        });
+    function showSignupError(message) {
+        signupError.textContent = message;
+        signupError.classList.remove('hidden');
+        signupSubmitBtn.innerHTML = 'Criar conta';
+        signupSubmitBtn.disabled = false;
+        signupSuccess.classList.add('hidden');
+        signupEmailInput.classList.remove('hidden');
+        signupPasswordInput.parentElement.classList.remove('hidden');
+        signupConfirmPasswordInput.parentElement.classList.remove('hidden');
+        signupSubmitBtn.classList.remove('hidden');
     }
 
     // --- FUNÇÕES FINAIS ---
     async function init() {
-        try { await vestoDB.init(); } catch (e) { 
-            console.error("[IDB Cache] Falha fatal ao inicializar o DB.", e);
-            showToast("Erro crítico: Banco de dados local não pôde ser carregado."); 
-            return; 
-        }
-        
-        if (showRecoverBtn) {
-            showRecoverBtn.addEventListener('click', () => {
-                loginForm.classList.add('hidden');
-                signupForm.classList.add('hidden');
-                recoverForm.classList.remove('hidden');
-                recoverError.classList.add('hidden');
-                recoverMessage.classList.add('hidden');
-            });
-        }
-        
-        if (backToLoginBtn) {
-            backToLoginBtn.addEventListener('click', () => {
-                recoverForm.classList.add('hidden');
-                loginForm.classList.remove('hidden');
-            });
-        }
-
-        if (recoverForm) {
-            recoverForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = recoverEmailInput.value;
-                recoverError.classList.add('hidden');
-                recoverMessage.classList.add('hidden');
-                
-                recoverSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
-                recoverSubmitBtn.disabled = true;
-
-                const result = await supabaseDB.sendPasswordResetEmail(email);
-
-                if (result === 'success') {
-                    recoverMessage.classList.remove('hidden');
-                    recoverForm.reset();
-                } else {
-                    recoverError.textContent = result;
-                    recoverError.classList.remove('hidden');
-                }
-                
-                recoverSubmitBtn.innerHTML = 'Enviar Link';
-                recoverSubmitBtn.disabled = false;
-            });
-        }
-        
-        if (window.location.hash && window.location.hash.includes('type=recovery')) {
-             console.log("Modo de recuperação de senha detectado via URL Hash");
-             newPasswordModal.classList.add('visible');
-             document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
-        }
-        
-        if (newPasswordForm) {
-            newPasswordForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const newPass = newPasswordInput.value;
-
-                if (newPass.length < 6) {
-                    showToast("A senha deve ter no mínimo 6 caracteres.");
-                    return;
-                }
-
-                newPasswordBtn.innerHTML = '<span class="loader-sm"></span>';
-                newPasswordBtn.disabled = true;
-
-                try {
-                    await supabaseDB.updateUserPassword(newPass);
-                    showToast("Senha atualizada com sucesso!", "success");
-                    
-                    setTimeout(() => {
-                        newPasswordModal.classList.remove('visible');
-                        window.location.href = "/"; 
-                    }, 1500);
-
-                } catch (error) {
-                    showToast("Erro ao atualizar senha: " + error.message);
-                    newPasswordBtn.innerHTML = 'Salvar Nova Senha';
-                    newPasswordBtn.disabled = false;
-                }
-            });
-        }
-
+        try { await vestoDB.init(); } catch (e) { showToast("Erro DB Local."); return; }
+        if (showRecoverBtn) showRecoverBtn.addEventListener('click', () => { loginForm.classList.add('hidden'); signupForm.classList.add('hidden'); recoverForm.classList.remove('hidden'); recoverError.classList.add('hidden'); recoverMessage.classList.add('hidden'); });
+        if (backToLoginBtn) backToLoginBtn.addEventListener('click', () => { recoverForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
+        if (recoverForm) recoverForm.addEventListener('submit', async (e) => { e.preventDefault(); const email = recoverEmailInput.value; recoverError.classList.add('hidden'); recoverMessage.classList.add('hidden'); recoverSubmitBtn.innerHTML = '<span class="loader-sm"></span>'; recoverSubmitBtn.disabled = true; const result = await supabaseDB.sendPasswordResetEmail(email); if (result === 'success') { recoverMessage.classList.remove('hidden'); recoverForm.reset(); } else { recoverError.textContent = result; recoverError.classList.remove('hidden'); } recoverSubmitBtn.innerHTML = 'Enviar Link'; recoverSubmitBtn.disabled = false; });
+        if (window.location.hash && window.location.hash.includes('type=recovery')) { newPasswordModal.classList.add('visible'); document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out'); }
+        if (newPasswordForm) newPasswordForm.addEventListener('submit', async (e) => { e.preventDefault(); const newPass = newPasswordInput.value; if (newPass.length < 6) { showToast("Mínimo 6 caracteres."); return; } newPasswordBtn.innerHTML = '<span class="loader-sm"></span>'; newPasswordBtn.disabled = true; try { await supabaseDB.updateUserPassword(newPass); showToast("Senha atualizada!", "success"); setTimeout(() => { newPasswordModal.classList.remove('visible'); window.location.href = "/"; }, 1500); } catch (error) { showToast("Erro: " + error.message); newPasswordBtn.innerHTML = 'Salvar Nova Senha'; newPasswordBtn.disabled = false; } });
         showAuthLoading(true);
-
-        let session;
-        try {
-            session = await supabaseDB.initialize();
-        } catch (e) {
-            console.error("Erro na inicialização:", e);
-            showAuthLoading(false);
-            showLoginError("Erro ao conectar com o servidor. Tente novamente.");
-            return; 
-        }
-        
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
-            loginSubmitBtn.disabled = true;
-            loginError.classList.add('hidden');
-
-            const email = loginEmailInput.value;
-            const password = loginPasswordInput.value;
-            const error = await supabaseDB.signIn(email, password);
-            
-            if (error) {
-                showLoginError(error);
-            } else {
-                window.location.reload();
-            }
-        });
-
-        signupForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = signupEmailInput.value;
-            const password = signupPasswordInput.value;
-            const confirmPassword = signupConfirmPasswordInput.value;
-
-            signupError.classList.add('hidden');
-            signupSuccess.classList.add('hidden'); 
-            
-            if (password !== confirmPassword) {
-                showSignupError("As senhas não coincidem.");
-                return;
-            }
-            if (password.length < 6) {
-                showSignupError("A senha deve ter no mínimo 6 caracteres.");
-                return;
-            }
-            
-            signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
-            signupSubmitBtn.disabled = true;
-
-            const result = await supabaseDB.signUp(email, password);
-            
-            if (result === 'success') {
-                signupEmailInput.classList.add('hidden');
-                signupPasswordInput.parentElement.classList.add('hidden');
-                signupConfirmPasswordInput.parentElement.classList.add('hidden');
-                signupSubmitBtn.classList.add('hidden');
-                
-                signupSuccess.classList.remove('hidden');
-
-                signupForm.reset();
-                signupSubmitBtn.innerHTML = 'Criar conta';
-                signupSubmitBtn.disabled = false;
-
-            } else {
-                showSignupError(result);
-            }
-        });
-
-        showSignupBtn.addEventListener('click', () => {
-            loginForm.classList.add('hidden');
-            signupForm.classList.remove('hidden');
-            recoverForm.classList.add('hidden'); 
-            loginError.classList.add('hidden');
-            
-            signupError.classList.add('hidden'); 
-            signupSuccess.classList.add('hidden'); 
-            
-            signupEmailInput.classList.remove('hidden');
-            signupPasswordInput.parentElement.classList.remove('hidden');
-            signupConfirmPasswordInput.parentElement.classList.remove('hidden');
-            signupSubmitBtn.classList.remove('hidden');
-        });
-
-        showLoginBtn.addEventListener('click', () => {
-            signupForm.classList.add('hidden');
-            recoverForm.classList.add('hidden');
-            loginForm.classList.remove('hidden');
-            signupError.classList.add('hidden');
-        });
-        
-        passwordToggleButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const targetId = button.dataset.target;
-                const targetInput = document.getElementById(targetId);
-                if (!targetInput) return;
-
-                const eyeOpen = button.querySelector('.eye-icon-open');
-                const eyeClosed = button.querySelector('.eye-icon-closed');
-
-                if (targetInput.type === 'password') {
-                    targetInput.type = 'text';
-                    eyeOpen.classList.add('hidden');
-                    eyeClosed.classList.remove('hidden');
-                } else {
-                    targetInput.type = 'password';
-                    eyeOpen.classList.remove('hidden');
-                    eyeClosed.classList.add('hidden');
-                }
-            });
-        });
-
-        if (session) {
-            currentUserId = session.user.id;
-            authContainer.classList.add('hidden');    
-            appWrapper.classList.remove('hidden'); 
-            
-            await verificarStatusBiometria();
-            
-            mudarAba('tab-dashboard'); 
-            await carregarDadosIniciais();
-        } else {
-            appWrapper.classList.add('hidden');      
-            authContainer.classList.remove('hidden'); 
-            
-            if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) {
-                loginForm.classList.remove('hidden');
-            }
-            showAuthLoading(false);                 
-        }
+        let session; try { session = await supabaseDB.initialize(); } catch (e) { showAuthLoading(false); showLoginError("Erro conexão."); return; }
+        loginForm.addEventListener('submit', async (e) => { e.preventDefault(); loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>'; loginSubmitBtn.disabled = true; loginError.classList.add('hidden'); const email = loginEmailInput.value; const password = loginPasswordInput.value; const error = await supabaseDB.signIn(email, password); if (error) { showLoginError(error); } else { window.location.reload(); } });
+        signupForm.addEventListener('submit', async (e) => { e.preventDefault(); const email = signupEmailInput.value; const password = signupPasswordInput.value; const confirmPassword = signupConfirmPasswordInput.value; signupError.classList.add('hidden'); signupSuccess.classList.add('hidden'); if (password !== confirmPassword) { showSignupError("Senhas não conferem."); return; } if (password.length < 6) { showSignupError("Mínimo 6 caracteres."); return; } signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>'; signupSubmitBtn.disabled = true; const result = await supabaseDB.signUp(email, password); if (result === 'success') { signupEmailInput.classList.add('hidden'); signupPasswordInput.parentElement.classList.add('hidden'); signupConfirmPasswordInput.parentElement.classList.add('hidden'); signupSubmitBtn.classList.add('hidden'); signupSuccess.classList.remove('hidden'); signupForm.reset(); signupSubmitBtn.innerHTML = 'Criar conta'; signupSubmitBtn.disabled = false; } else { showSignupError(result); } });
+        showSignupBtn.addEventListener('click', () => { loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); recoverForm.classList.add('hidden'); loginError.classList.add('hidden'); signupError.classList.add('hidden'); signupSuccess.classList.add('hidden'); signupEmailInput.classList.remove('hidden'); signupPasswordInput.parentElement.classList.remove('hidden'); signupConfirmPasswordInput.parentElement.classList.remove('hidden'); signupSubmitBtn.classList.remove('hidden'); });
+        showLoginBtn.addEventListener('click', () => { signupForm.classList.add('hidden'); recoverForm.classList.add('hidden'); loginForm.classList.remove('hidden'); signupError.classList.add('hidden'); });
+        passwordToggleButtons.forEach(button => { button.addEventListener('click', () => { const targetId = button.dataset.target; const targetInput = document.getElementById(targetId); if (!targetInput) return; const eyeOpen = button.querySelector('.eye-icon-open'); const eyeClosed = button.querySelector('.eye-icon-closed'); if (targetInput.type === 'password') { targetInput.type = 'text'; eyeOpen.classList.add('hidden'); eyeClosed.classList.remove('hidden'); } else { targetInput.type = 'password'; eyeOpen.classList.remove('hidden'); eyeClosed.classList.add('hidden'); } }); });
+        if (session) { currentUserId = session.user.id; authContainer.classList.add('hidden'); appWrapper.classList.remove('hidden'); await verificarStatusBiometria(); mudarAba('tab-dashboard'); await carregarDadosIniciais(); } else { appWrapper.classList.add('hidden'); authContainer.classList.remove('hidden'); if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) { loginForm.classList.remove('hidden'); } showAuthLoading(false); }
     }
     
     await init();

@@ -2498,6 +2498,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // --- LÓGICA MINIMALISTA E LIMPA PARA O MODAL ---
+// --- CORREÇÃO: Função handleMostrarDetalhes (Ajuste de Proporção) ---
+
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
@@ -2639,16 +2641,16 @@ async function handleMostrarDetalhes(symbol) {
                     </div>
                 `;
                 
-                // Bloco "Dados Gerais" separado
+                // --- CORREÇÃO AQUI: Adicionado 'col-span-12' ---
                 const dadosGeraisHtml = `
-                    <div class="mt-6 px-4 py-2 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E]">
+                    <div class="col-span-12 mt-4 px-4 py-2 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E]">
                         <h4 class="text-[10px] font-bold text-gray-500 uppercase mb-2 mt-2 tracking-wider">Dados Gerais</h4>
                         ${renderRow('Segmento', dados.segmento)}
                         ${renderRow('Gestão', dados.tipo_gestao)}
                         ${renderRow('Cotistas', dados.num_cotistas)}
                         <div class="flex justify-between items-center py-3.5">
                             <span class="text-sm text-gray-400 font-medium">CNPJ</span>
-                            <span class="text-xs font-mono text-gray-500 select-all bg-[#2C2C2E] px-2 py-1 rounded">${dados.cnpj || '-'}</span>
+                            <span class="text-xs font-mono text-gray-500 select-all bg-[#2C2C2E] px-2 py-1 rounded truncate max-w-[150px] text-right">${dados.cnpj || '-'}</span>
                         </div>
                     </div>
                 `;

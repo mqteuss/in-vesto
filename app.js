@@ -2506,6 +2506,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // --- CORREÇÃO FINAL: Largura Total (w-full) e Fundo Preto Absoluto ---
 
+// --- ATUALIZAÇÃO: Bordas Padrão App (#2C2C2E) e Botões Roxos ---
+
 async function handleMostrarDetalhes(symbol) {
     // 1. Limpeza e Estado Inicial
     detalhesMensagem.classList.add('hidden');
@@ -2520,12 +2522,20 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // Reseta botões de período
-    periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.meses === '3'); 
+    // 2. Configuração Visual dos Botões de Período (Padrão Roxo)
+    const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
+    btnsPeriodo.forEach(btn => {
+        const isActive = btn.dataset.meses === '3';
+        // Reseta classes e aplica o estilo correto
+        btn.className = `periodo-selector-btn py-1 px-4 rounded-full text-xs font-bold transition-all duration-200 border ${
+            isActive 
+            ? 'bg-purple-600 border-purple-600 text-white shadow-[0_0_10px_rgba(124,58,237,0.3)] active' 
+            : 'bg-transparent border-[#2C2C2E] text-gray-500 hover:text-gray-300 hover:border-gray-600'
+        }`;
+        if(isActive) btn.classList.add('active'); // Garante marcador lógico
     });
     
-    // 2. Busca Preço
+    // 3. Busca Preço
     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
@@ -2545,7 +2555,7 @@ async function handleMostrarDetalhes(symbol) {
         }
     }
 
-    // 3. Busca Histórico (se FII)
+    // 4. Busca Histórico (se FII)
     if (isFII(symbol)) {
         detalhesHistoricoContainer.classList.remove('hidden'); 
         fetchHistoricoScraper(symbol); 
@@ -2553,19 +2563,19 @@ async function handleMostrarDetalhes(symbol) {
     
     detalhesLoading.classList.add('hidden');
 
-    // 4. Renderização
+    // 5. Renderização
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
         
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         
-        // --- Card: Sua Posição ---
+        // --- Card: Sua Posição (Borda #2C2C2E) ---
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
             userPosHtml = `
-                <div class="w-full p-4 bg-black border border-gray-800 rounded-2xl flex justify-between items-center shadow-sm">
+                <div class="w-full p-4 bg-black border border-[#2C2C2E] rounded-2xl flex justify-between items-center shadow-sm">
                     <div class="text-left">
                         <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sua Posição</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
@@ -2601,16 +2611,15 @@ async function handleMostrarDetalhes(symbol) {
         
         const corVar12m = dados.variacao_12m.includes('-') ? 'text-red-400' : 'text-green-400';
 
-        // Helper para linhas da lista
+        // Helper para linhas da lista (Borda #2C2C2E)
         const renderRow = (label, value, isLast = false) => `
-            <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-gray-800'}">
+            <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
                 <span class="text-sm text-gray-400 font-medium">${label}</span>
                 <span class="text-sm font-semibold text-gray-200 text-right max-w-[60%] truncate">${value}</span>
             </div>
         `;
 
-        // 5. Estrutura HTML Unificada (Fix de Largura)
-        // O wrapper 'col-span-12 w-full flex flex-col' garante que tudo ocupe 100% da largura disponível
+        // --- Renderização HTML (Bordas #2C2C2E e BG Black) ---
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
                 
@@ -2622,21 +2631,21 @@ async function handleMostrarDetalhes(symbol) {
                 ${userPosHtml}
 
                 <div class="grid grid-cols-3 gap-3 w-full">
-                    <div class="p-3 bg-black border border-gray-800 rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">DY (12m)</span>
                         <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
                     </div>
-                    <div class="p-3 bg-black border border-gray-800 rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">P/VP</span>
                         <span class="text-lg font-bold text-white">${dados.pvp}</span>
                     </div>
-                    <div class="p-3 bg-black border border-gray-800 rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
                         <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
                     </div>
                 </div>
 
-                <div class="w-full bg-black border border-gray-800 rounded-2xl overflow-hidden px-4">
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
@@ -2648,14 +2657,14 @@ async function handleMostrarDetalhes(symbol) {
                     </div>
                 </div>
                 
-                <div class="w-full bg-black border border-gray-800 rounded-2xl px-4">
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4">
                     <h4 class="text-[10px] font-bold text-gray-500 uppercase pt-4 mb-2 tracking-wider">Dados Gerais</h4>
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Gestão', dados.tipo_gestao)}
                     ${renderRow('Cotistas', dados.num_cotistas)}
                     <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm text-gray-400 font-medium">CNPJ</span>
-                        <span class="text-xs font-mono text-gray-500 select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-gray-800">${dados.cnpj}</span>
+                        <span class="text-xs font-mono text-gray-500 select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
                     </div>
                 </div>
 
@@ -2671,6 +2680,8 @@ async function handleMostrarDetalhes(symbol) {
 }
     
 // --- ATUALIZAÇÃO: Lista de Transações com Fundo Preto Absoluto ---
+
+// --- ATUALIZAÇÃO: Lista de Transações com Borda #2C2C2E ---
 
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');
@@ -2694,15 +2705,15 @@ function renderizarTransacoesDetalhes(symbol) {
 
         txsDoAtivo.forEach(t => {
             const card = document.createElement('div');
-            // ATUALIZADO: bg-black e border-gray-800
-            card.className = 'bg-black p-3.5 rounded-2xl flex items-center justify-between border border-gray-800 mb-2 shadow-sm w-full'; 
+            // ATUALIZADO: Borda #2C2C2E
+            card.className = 'bg-black p-3.5 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2 shadow-sm w-full'; 
             
             const cor = 'text-green-500';
             const sinal = '+';
             
             card.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <div class="p-2 bg-[#1A1A1A] rounded-full text-green-500 flex-shrink-0 border border-gray-800">
+                    <div class="p-2 bg-[#1A1A1A] rounded-full text-green-500 flex-shrink-0 border border-[#2C2C2E]">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
@@ -3027,22 +3038,28 @@ function renderizarTransacoesDetalhes(symbol) {
         });
     }
     
+// --- ATUALIZAÇÃO: Lógica de clique dos botões de período (Tema Roxo) ---
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
         if (!target) return;
 
         const meses = parseInt(target.dataset.meses, 10);
         
-        if (meses === currentDetalhesMeses) {
-            return;
-        }
+        if (meses === currentDetalhesMeses) return;
 
         currentDetalhesMeses = meses;
         
+        // Atualiza visual de todos os botões
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.remove('active');
+            const isTarget = btn === target;
+            btn.className = `periodo-selector-btn py-1 px-4 rounded-full text-xs font-bold transition-all duration-200 border ${
+                isTarget
+                ? 'bg-purple-600 border-purple-600 text-white shadow-[0_0_10px_rgba(124,58,237,0.3)] active' 
+                : 'bg-transparent border-[#2C2C2E] text-gray-500 hover:text-gray-300 hover:border-gray-600'
+            }`;
+            if (isTarget) btn.classList.add('active');
+            else btn.classList.remove('active');
         });
-        target.classList.add('active');
 
         renderHistoricoIADetalhes(currentDetalhesMeses);
     });

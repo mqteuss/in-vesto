@@ -2498,210 +2498,225 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // --- LÓGICA MINIMALISTA E LIMPA PARA O MODAL ---
-    async function handleMostrarDetalhes(symbol) {
-        detalhesMensagem.classList.add('hidden');
-        detalhesLoading.classList.remove('hidden');
-        detalhesPreco.innerHTML = '';
-        detalhesAiProvento.innerHTML = ''; 
-        detalhesHistoricoContainer.classList.add('hidden');
-        detalhesTituloTexto.textContent = symbol;
-        detalhesNomeLongo.textContent = 'A carregar...';
-        
-        currentDetalhesSymbol = symbol;
-        currentDetalhesMeses = 3; 
-        currentDetalhesHistoricoJSON = null; 
-        
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '3'); 
-        });
-        
-        const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
-        const cacheKeyPreco = `detalhe_preco_${symbol}`;
-        let precoData = await getCache(cacheKeyPreco);
-        
-        if (!precoData) {
-            try {
-                const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-                precoData = data.results?.[0];
-                
-                const isAberto = isB3Open();
-                const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
-                
-                if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, duracao); 
-                else throw new Error(precoData?.error || 'Ativo não encontrado');
-            } catch (e) { 
-                precoData = null; 
-                showToast("Erro ao buscar preço."); 
-            }
-        }
-
-        if (isFII(symbol)) {
-            detalhesHistoricoContainer.classList.remove('hidden'); 
-            fetchHistoricoScraper(symbol); 
-        }
-        
-        detalhesLoading.classList.add('hidden');
-
-        if (precoData) {
-            detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
-            const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
+async function handleMostrarDetalhes(symbol) {
+    detalhesMensagem.classList.add('hidden');
+    detalhesLoading.classList.remove('hidden');
+    detalhesPreco.innerHTML = '';
+    detalhesAiProvento.innerHTML = ''; 
+    detalhesHistoricoContainer.classList.add('hidden');
+    detalhesTituloTexto.textContent = symbol;
+    detalhesNomeLongo.textContent = 'A carregar...';
+    
+    currentDetalhesSymbol = symbol;
+    currentDetalhesMeses = 3; 
+    currentDetalhesHistoricoJSON = null; 
+    
+    // Reseta botões de período
+    periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.meses === '3'); 
+    });
+    
+    const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
+    const cacheKeyPreco = `detalhe_preco_${symbol}`;
+    let precoData = await getCache(cacheKeyPreco);
+    
+    if (!precoData) {
+        try {
+            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+            precoData = data.results?.[0];
             
-            const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
-            let userPosHtml = '';
-            if (ativoCarteira) {
-                const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
-                userPosHtml = `
-                    <div class="col-span-12 py-3 border-b border-gray-800 flex justify-between items-center mb-2">
-                        <div class="text-left">
-                            <span class="text-xs text-gray-500 uppercase tracking-wide">Sua Posição</span>
-                            <p class="text-lg font-semibold text-white">${formatBRL(totalPosicao)} <span class="text-xs text-gray-600 font-normal">(${ativoCarteira.quantity} cotas)</span></p>
+            const isAberto = isB3Open();
+            const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
+            
+            if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, duracao); 
+            else throw new Error(precoData?.error || 'Ativo não encontrado');
+        } catch (e) { 
+            precoData = null; 
+            showToast("Erro ao buscar preço."); 
+        }
+    }
+
+    if (isFII(symbol)) {
+        detalhesHistoricoContainer.classList.remove('hidden'); 
+        fetchHistoricoScraper(symbol); 
+    }
+    
+    detalhesLoading.classList.add('hidden');
+
+    if (precoData) {
+        detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
+        const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
+        
+        const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
+        let userPosHtml = '';
+        
+        // --- VISUAL DARK: Card "Sua Posição" ---
+        if (ativoCarteira) {
+            const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
+            userPosHtml = `
+                <div class="col-span-12 p-4 bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl flex justify-between items-center mb-4 shadow-sm">
+                    <div class="text-left">
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sua Posição</span>
+                        <div class="flex items-baseline gap-2 mt-0.5">
+                            <p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p>
+                            <span class="text-xs text-gray-400 font-medium">(${ativoCarteira.quantity} cotas)</span>
                         </div>
                     </div>
-                `;
-            }
-
-            // HTML MINIMALISTA
-            detalhesPreco.innerHTML = `
-                <div class="col-span-12 text-center pb-4 pt-2">
-                    <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
-                    <span class="text-lg font-medium ${variacaoCor} mt-1 block">${formatPercent(precoData.regularMarketChangePercent)} Hoje</span>
-                </div>
-
-                ${userPosHtml}
-
-                <div class="col-span-12 grid grid-cols-3 gap-2 text-center mb-4" id="clean-stats-row">
-                    <div class="bg-gray-800/50 rounded-xl h-16 animate-pulse"></div>
-                    <div class="bg-gray-800/50 rounded-xl h-16 animate-pulse"></div>
-                    <div class="bg-gray-800/50 rounded-xl h-16 animate-pulse"></div>
-                </div>
-
-                <div class="col-span-12 space-y-0" id="clean-details-list">
-                    <div class="h-10 border-b border-gray-800 animate-pulse"></div>
-                    <div class="h-10 border-b border-gray-800 animate-pulse"></div>
-                    <div class="h-10 border-b border-gray-800 animate-pulse"></div>
                 </div>
             `;
-
-            // Preenchimento dos dados
-            callScraperFundamentosAPI(symbol).then(fundamentos => {
-                const rowStats = document.getElementById('clean-stats-row');
-                const listDetails = document.getElementById('clean-details-list');
-
-                if (rowStats && listDetails) {
-                    const dados = fundamentos || { 
-                        pvp: '-', dy: '-', segmento: '-', vacancia: '-', 
-                        vp_cota: '-', liquidez: '-', val_mercado: '-', 
-                        ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-',
-                        cnpj: '-', num_cotistas: '-', tipo_gestao: '-'
-                    };
-
-                    rowStats.innerHTML = `
-                        <div class="p-2">
-                            <span class="text-[10px] text-gray-500 uppercase block">DY (12m)</span>
-                            <span class="text-base font-bold text-purple-400">${dados.dy || '-'}</span>
-                        </div>
-                        <div class="p-2 border-l border-r border-gray-800">
-                            <span class="text-[10px] text-gray-500 uppercase block">P/VP</span>
-                            <span class="text-base font-bold text-white">${dados.pvp || '-'}</span>
-                        </div>
-                        <div class="p-2">
-                            <span class="text-[10px] text-gray-500 uppercase block">Últ. Rend.</span>
-                            <span class="text-base font-bold text-green-400">${dados.ultimo_rendimento || '-'}</span>
-                        </div>
-                    `;
-
-                    const renderRow = (label, value) => `
-                        <div class="flex justify-between items-center py-3 border-b border-gray-800/60 last:border-0">
-                            <span class="text-sm text-gray-400">${label}</span>
-                            <span class="text-sm font-medium text-gray-200 text-right max-w-[60%] truncate">${value || '-'}</span>
-                        </div>
-                    `;
-
-                    const corVar12m = dados.variacao_12m && dados.variacao_12m.includes('-') ? 'text-red-400' : 'text-green-400';
-
-                    listDetails.innerHTML = `
-                        ${renderRow('Liquidez Diária', dados.liquidez)}
-                        ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
-                        ${renderRow('VP por Cota', dados.vp_cota)}
-                        ${renderRow('Valor de Mercado', dados.val_mercado)}
-                        ${renderRow('Vacância', dados.vacancia)}
-                        <div class="flex justify-between items-center py-3 border-b border-gray-800/60">
-                            <span class="text-sm text-gray-400">Var. 12 Meses</span>
-                            <span class="text-sm font-medium ${corVar12m} text-right">${dados.variacao_12m || '-'}</span>
-                        </div>
-                        <div class="pt-4 mt-2">
-                            <h4 class="text-xs font-bold text-gray-600 uppercase mb-1">Dados Gerais</h4>
-                            ${renderRow('Segmento', dados.segmento)}
-                            ${renderRow('Gestão', dados.tipo_gestao)}
-                            ${renderRow('Cotistas', dados.num_cotistas)}
-                            <div class="flex justify-between items-center py-3">
-                                <span class="text-sm text-gray-400">CNPJ</span>
-                                <span class="text-xs font-mono text-gray-500 select-all">${dados.cnpj || '-'}</span>
-                            </div>
-                        </div>
-                    `;
-                }
-            }).catch(e => { console.error(e); });
-
-        } else {
-            detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-12 py-4">Erro ao buscar preço.</p>';
         }
-        
-        renderizarTransacoesDetalhes(symbol);
-        atualizarIconeFavorito(symbol);
-    }
-    
-    function renderizarTransacoesDetalhes(symbol) {
-        const listaContainer = document.getElementById('detalhes-lista-transacoes');
-        const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
-        const container = document.getElementById('detalhes-transacoes-container');
-    
-        listaContainer.innerHTML = '';
-        
-        const txsDoAtivo = transacoes
-            .filter(t => t.symbol === symbol)
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-        if (txsDoAtivo.length === 0) {
-            vazioMsg.classList.remove('hidden');
-            listaContainer.classList.add('hidden');
-        } else {
-            vazioMsg.classList.add('hidden');
-            listaContainer.classList.remove('hidden');
-            
-            const fragment = document.createDocumentFragment();
 
-            txsDoAtivo.forEach(t => {
-                const card = document.createElement('div');
-                card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between border border-gray-800'; 
-                
-                const cor = 'text-green-500';
-                const sinal = '+';
-                
-                card.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="p-2 bg-gray-800 rounded-full text-green-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-white">Compra</p>
-                            <p class="text-xs text-gray-500">${formatDate(t.date)}</p>
-                        </div>
+        // --- VISUAL DARK: Layout Principal ---
+        detalhesPreco.innerHTML = `
+            <div class="col-span-12 text-center pb-6 pt-2">
+                <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
+                <span class="text-lg font-medium ${variacaoCor} mt-1 block tracking-tight">${formatPercent(precoData.regularMarketChangePercent)} Hoje</span>
+            </div>
+
+            ${userPosHtml}
+
+            <div class="col-span-12 grid grid-cols-3 gap-3 text-center mb-6" id="clean-stats-row">
+                <div class="bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl h-20 animate-pulse"></div>
+                <div class="bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl h-20 animate-pulse"></div>
+                <div class="bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl h-20 animate-pulse"></div>
+            </div>
+
+            <div class="col-span-12 space-y-0 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E] overflow-hidden px-4" id="clean-details-list">
+                <div class="h-12 border-b border-[#2C2C2E] animate-pulse opacity-50"></div>
+                <div class="h-12 border-b border-[#2C2C2E] animate-pulse opacity-50"></div>
+                <div class="h-12 border-b border-transparent animate-pulse opacity-50"></div>
+            </div>
+        `;
+
+        // Preenchimento dos dados
+        callScraperFundamentosAPI(symbol).then(fundamentos => {
+            const rowStats = document.getElementById('clean-stats-row');
+            const listDetails = document.getElementById('clean-details-list');
+
+            if (rowStats && listDetails) {
+                const dados = fundamentos || { 
+                    pvp: '-', dy: '-', segmento: '-', vacancia: '-', 
+                    vp_cota: '-', liquidez: '-', val_mercado: '-', 
+                    ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-',
+                    cnpj: '-', num_cotistas: '-', tipo_gestao: '-'
+                };
+
+                // --- VISUAL DARK: Cards Indicadores ---
+                rowStats.innerHTML = `
+                    <div class="p-3 bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">DY (12m)</span>
+                        <span class="text-lg font-bold text-purple-400">${dados.dy || '-'}</span>
                     </div>
-                    <div class="text-right">
-                        <p class="text-sm font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                        <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
+                    <div class="p-3 bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">P/VP</span>
+                        <span class="text-lg font-bold text-white">${dados.pvp || '-'}</span>
+                    </div>
+                    <div class="p-3 bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
+                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento || '-'}</span>
                     </div>
                 `;
-                fragment.appendChild(card);
-            });
-            listaContainer.appendChild(fragment);
-        }
-        
-        container.classList.remove('hidden');
+
+                const renderRow = (label, value, isLast = false) => `
+                    <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
+                        <span class="text-sm text-gray-400 font-medium">${label}</span>
+                        <span class="text-sm font-semibold text-gray-200 text-right max-w-[60%] truncate">${value || '-'}</span>
+                    </div>
+                `;
+
+                const corVar12m = dados.variacao_12m && dados.variacao_12m.includes('-') ? 'text-red-400' : 'text-green-400';
+
+                // --- VISUAL DARK: Lista Principal ---
+                listDetails.innerHTML = `
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                    ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
+                    ${renderRow('VP por Cota', dados.vp_cota)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                    ${renderRow('Vacância', dados.vacancia)}
+                    <div class="flex justify-between items-center py-3.5">
+                        <span class="text-sm text-gray-400 font-medium">Var. 12 Meses</span>
+                        <span class="text-sm font-semibold ${corVar12m} text-right">${dados.variacao_12m || '-'}</span>
+                    </div>
+                `;
+                
+                // Bloco "Dados Gerais" separado
+                const dadosGeraisHtml = `
+                    <div class="mt-6 px-4 py-2 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E]">
+                        <h4 class="text-[10px] font-bold text-gray-500 uppercase mb-2 mt-2 tracking-wider">Dados Gerais</h4>
+                        ${renderRow('Segmento', dados.segmento)}
+                        ${renderRow('Gestão', dados.tipo_gestao)}
+                        ${renderRow('Cotistas', dados.num_cotistas)}
+                        <div class="flex justify-between items-center py-3.5">
+                            <span class="text-sm text-gray-400 font-medium">CNPJ</span>
+                            <span class="text-xs font-mono text-gray-500 select-all bg-[#2C2C2E] px-2 py-1 rounded">${dados.cnpj || '-'}</span>
+                        </div>
+                    </div>
+                `;
+                
+                listDetails.insertAdjacentHTML('afterend', dadosGeraisHtml);
+            }
+        }).catch(e => { console.error(e); });
+
+    } else {
+        detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-12 py-4">Erro ao buscar preço.</p>';
     }
+    
+    renderizarTransacoesDetalhes(symbol);
+    atualizarIconeFavorito(symbol);
+}
+    
+function renderizarTransacoesDetalhes(symbol) {
+    const listaContainer = document.getElementById('detalhes-lista-transacoes');
+    const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
+    const container = document.getElementById('detalhes-transacoes-container');
+
+    listaContainer.innerHTML = '';
+    
+    const txsDoAtivo = transacoes
+        .filter(t => t.symbol === symbol)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (txsDoAtivo.length === 0) {
+        vazioMsg.classList.remove('hidden');
+        listaContainer.classList.add('hidden');
+    } else {
+        vazioMsg.classList.add('hidden');
+        listaContainer.classList.remove('hidden');
+        
+        const fragment = document.createDocumentFragment();
+
+        txsDoAtivo.forEach(t => {
+            const card = document.createElement('div');
+            // --- VISUAL DARK: Card de Transação ---
+            card.className = 'bg-[#1C1C1E] p-3.5 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2 shadow-sm'; 
+            
+            const cor = 'text-green-500';
+            const sinal = '+';
+            
+            card.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-[#2C2C2E] rounded-full text-green-500 flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-200">Compra</p>
+                        <p class="text-xs text-gray-500 font-medium">${formatDate(t.date)}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-bold ${cor}">${sinal}${t.quantity} Cotas</p>
+                    <p class="text-xs text-gray-400 font-medium">${formatBRL(t.price)}</p>
+                </div>
+            `;
+            fragment.appendChild(card);
+        });
+        listaContainer.appendChild(fragment);
+    }
+    
+    container.classList.remove('hidden');
+}
     
     async function fetchHistoricoScraper(symbol) {
         detalhesAiProvento.innerHTML = `

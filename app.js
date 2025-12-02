@@ -2500,6 +2500,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- LÓGICA MINIMALISTA E LIMPA PARA O MODAL ---
 // --- CORREÇÃO: Função handleMostrarDetalhes (Ajuste de Proporção) ---
 
+// --- CORREÇÃO FINAL: Espaçamentos e Ritmo Vertical ---
+
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
@@ -2513,7 +2515,6 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // Reseta botões de período
     periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.meses === '3'); 
     });
@@ -2552,7 +2553,6 @@ async function handleMostrarDetalhes(symbol) {
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         
-        // --- VISUAL DARK: Card "Sua Posição" ---
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
             userPosHtml = `
@@ -2568,7 +2568,6 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- VISUAL DARK: Layout Principal ---
         detalhesPreco.innerHTML = `
             <div class="col-span-12 text-center pb-6 pt-2">
                 <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
@@ -2590,7 +2589,6 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
-        // Preenchimento dos dados
         callScraperFundamentosAPI(symbol).then(fundamentos => {
             const rowStats = document.getElementById('clean-stats-row');
             const listDetails = document.getElementById('clean-details-list');
@@ -2603,7 +2601,6 @@ async function handleMostrarDetalhes(symbol) {
                     cnpj: '-', num_cotistas: '-', tipo_gestao: '-'
                 };
 
-                // --- VISUAL DARK: Cards Indicadores ---
                 rowStats.innerHTML = `
                     <div class="p-3 bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">DY (12m)</span>
@@ -2628,7 +2625,6 @@ async function handleMostrarDetalhes(symbol) {
 
                 const corVar12m = dados.variacao_12m && dados.variacao_12m.includes('-') ? 'text-red-400' : 'text-green-400';
 
-                // --- VISUAL DARK: Lista Principal ---
                 listDetails.innerHTML = `
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
@@ -2641,10 +2637,14 @@ async function handleMostrarDetalhes(symbol) {
                     </div>
                 `;
                 
-                // --- CORREÇÃO AQUI: Adicionado 'col-span-12' ---
+                // --- AJUSTE DE ESPAÇAMENTO AQUI ---
+                // mt-3 (mesmo gap dos cards de cima)
+                // px-4 (mesmo padding interno lateral)
+                // pt-3 (espaço para o título respirar)
+                // mb-1 (aproxima o título da lista)
                 const dadosGeraisHtml = `
-                    <div class="col-span-12 mt-4 px-4 py-2 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E]">
-                        <h4 class="text-[10px] font-bold text-gray-500 uppercase mb-2 mt-2 tracking-wider">Dados Gerais</h4>
+                    <div class="col-span-12 mt-3 px-4 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E]">
+                        <h4 class="text-[10px] font-bold text-gray-500 uppercase pt-4 mb-2 tracking-wider">Dados Gerais</h4>
                         ${renderRow('Segmento', dados.segmento)}
                         ${renderRow('Gestão', dados.tipo_gestao)}
                         ${renderRow('Cotistas', dados.num_cotistas)}

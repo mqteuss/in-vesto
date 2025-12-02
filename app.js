@@ -2202,12 +2202,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (isFavorite) {
                 await supabaseDB.deleteWatchlist(symbol);
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
-                showToast(`${symbol} removido dos favoritos.`);
+                showToast(`${symbol} removido.`);
             } else {
                 const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
                 await supabaseDB.addWatchlist(newItem);
                 watchlist.push(newItem);
-                showToast(`${symbol} adicionado aos favoritos!`, 'success');
+                showToast(`${symbol} adicionado!`, 'success');
             }
             
             atualizarIconeFavorito(symbol); 
@@ -2497,7 +2497,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // --- LÓGICA MINIMALISTA E LIMPA PARA O MODAL ---
+    // --- LÓGICA MINIMALISTA E LIMPA PARA O MODAL (Visual Premium) ---
     async function handleMostrarDetalhes(symbol) {
         detalhesMensagem.classList.add('hidden');
         detalhesLoading.classList.remove('hidden');
@@ -2508,7 +2508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         detalhesNomeLongo.textContent = 'A carregar...';
         
         currentDetalhesSymbol = symbol;
-        currentDetalhesMeses = 3; 
+        currentDetalhesMeses = 3;
         currentDetalhesHistoricoJSON = null; 
         
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
@@ -2523,12 +2523,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
                 precoData = data.results?.[0];
-                
                 const isAberto = isB3Open();
-                const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
-                
-                if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, duracao); 
-                else throw new Error(precoData?.error || 'Ativo não encontrado');
+                if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO); 
             } catch (e) { 
                 precoData = null; 
                 showToast("Erro ao buscar preço."); 
@@ -2550,11 +2546,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             let userPosHtml = '';
             if (ativoCarteira) {
                 const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
+                // Card "Sua Posição" com fundo diferenciado (Premium)
                 userPosHtml = `
-                    <div class="col-span-12 py-3 border-b border-gray-800 flex justify-between items-center mb-2">
-                        <div class="text-left">
-                            <span class="text-xs text-gray-500 uppercase tracking-wide">Sua Posição</span>
-                            <p class="text-lg font-semibold text-white">${formatBRL(totalPosicao)} <span class="text-xs text-gray-600 font-normal">(${ativoCarteira.quantity} cotas)</span></p>
+                    <div class="col-span-12 bg-[#1C1C1E] border border-purple-500/20 p-4 rounded-3xl flex justify-between items-center shadow-lg relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-purple-600/10 blur-2xl rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+                        <div>
+                            <span class="text-xs text-gray-400 block mb-1">Sua Posição</span>
+                            <p class="text-xl font-bold text-white">${formatBRL(totalPosicao)}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">${ativoCarteira.quantity} cotas</p>
+                        </div>
+                        <div class="text-right z-10">
+                            <span class="text-xs text-gray-400 block mb-1">Custo Médio</span>
+                            <p class="text-sm font-medium text-gray-300">${formatBRL(ativoCarteira.precoMedio)}</p>
                         </div>
                     </div>
                 `;
@@ -2569,16 +2572,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 ${userPosHtml}
 
-                <div class="col-span-12 grid grid-cols-3 gap-2 text-center mb-4" id="clean-stats-row">
-                    <div class="bg-gray-800/50 rounded-xl h-16 animate-pulse"></div>
-                    <div class="bg-gray-800/50 rounded-xl h-16 animate-pulse"></div>
-                    <div class="bg-gray-800/50 rounded-xl h-16 animate-pulse"></div>
+                <div class="col-span-12 grid grid-cols-3 gap-3 text-center mb-2 mt-2" id="clean-stats-row">
+                    <div class="bg-[#1C1C1E] rounded-2xl h-20 animate-pulse border border-[#2C2C2E]"></div>
+                    <div class="bg-[#1C1C1E] rounded-2xl h-20 animate-pulse border border-[#2C2C2E]"></div>
+                    <div class="bg-[#1C1C1E] rounded-2xl h-20 animate-pulse border border-[#2C2C2E]"></div>
                 </div>
 
-                <div class="col-span-12 space-y-0" id="clean-details-list">
-                    <div class="h-10 border-b border-gray-800 animate-pulse"></div>
-                    <div class="h-10 border-b border-gray-800 animate-pulse"></div>
-                    <div class="h-10 border-b border-gray-800 animate-pulse"></div>
+                <div class="col-span-12 space-y-0 bg-[#1C1C1E] rounded-3xl border border-[#2C2C2E] overflow-hidden" id="clean-details-list">
+                    <div class="h-12 border-b border-[#2C2C2E] animate-pulse"></div>
+                    <div class="h-12 border-b border-[#2C2C2E] animate-pulse"></div>
+                    <div class="h-12 border-b border-[#2C2C2E] animate-pulse"></div>
                 </div>
             `;
 
@@ -2595,48 +2598,51 @@ document.addEventListener('DOMContentLoaded', async () => {
                         cnpj: '-', num_cotistas: '-', tipo_gestao: '-'
                     };
 
+                    // Linha de Destaques (3 Pilares) com visual de Card
                     rowStats.innerHTML = `
-                        <div class="p-2">
-                            <span class="text-[10px] text-gray-500 uppercase block">DY (12m)</span>
+                        <div class="bg-[#1C1C1E] rounded-2xl p-3 border border-[#2C2C2E] flex flex-col justify-center">
+                            <span class="text-[10px] text-gray-500 uppercase tracking-wide mb-1">DY (12m)</span>
                             <span class="text-base font-bold text-purple-400">${dados.dy || '-'}</span>
                         </div>
-                        <div class="p-2 border-l border-r border-gray-800">
-                            <span class="text-[10px] text-gray-500 uppercase block">P/VP</span>
+                        <div class="bg-[#1C1C1E] rounded-2xl p-3 border border-[#2C2C2E] flex flex-col justify-center">
+                            <span class="text-[10px] text-gray-500 uppercase tracking-wide mb-1">P/VP</span>
                             <span class="text-base font-bold text-white">${dados.pvp || '-'}</span>
                         </div>
-                        <div class="p-2">
-                            <span class="text-[10px] text-gray-500 uppercase block">Últ. Rend.</span>
+                        <div class="bg-[#1C1C1E] rounded-2xl p-3 border border-[#2C2C2E] flex flex-col justify-center">
+                            <span class="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Últ. Rend.</span>
                             <span class="text-base font-bold text-green-400">${dados.ultimo_rendimento || '-'}</span>
                         </div>
                     `;
 
-                    const renderRow = (label, value) => `
-                        <div class="flex justify-between items-center py-3 border-b border-gray-800/60 last:border-0">
-                            <span class="text-sm text-gray-400">${label}</span>
-                            <span class="text-sm font-medium text-gray-200 text-right max-w-[60%] truncate">${value || '-'}</span>
+                    // Função para gerar linha da lista
+                    const renderRow = (label, value, isLast = false) => `
+                        <div class="flex justify-between items-center py-3.5 px-4 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
+                            <span class="text-sm text-gray-400 font-medium">${label}</span>
+                            <span class="text-sm font-semibold text-white text-right max-w-[60%] truncate">${value || '-'}</span>
                         </div>
                     `;
 
                     const corVar12m = dados.variacao_12m && dados.variacao_12m.includes('-') ? 'text-red-400' : 'text-green-400';
 
+                    // Lista Limpa e Organizada
                     listDetails.innerHTML = `
                         ${renderRow('Liquidez Diária', dados.liquidez)}
                         ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
                         ${renderRow('VP por Cota', dados.vp_cota)}
                         ${renderRow('Valor de Mercado', dados.val_mercado)}
                         ${renderRow('Vacância', dados.vacancia)}
-                        <div class="flex justify-between items-center py-3 border-b border-gray-800/60">
-                            <span class="text-sm text-gray-400">Var. 12 Meses</span>
-                            <span class="text-sm font-medium ${corVar12m} text-right">${dados.variacao_12m || '-'}</span>
+                        <div class="flex justify-between items-center py-3.5 px-4 border-b border-[#2C2C2E]">
+                            <span class="text-sm text-gray-400 font-medium">Var. 12 Meses</span>
+                            <span class="text-sm font-semibold ${corVar12m} text-right">${dados.variacao_12m || '-'}</span>
                         </div>
-                        <div class="pt-4 mt-2">
-                            <h4 class="text-xs font-bold text-gray-600 uppercase mb-1">Dados Gerais</h4>
+                        <div class="bg-black/20">
+                            <div class="px-4 py-2 text-[10px] font-bold text-gray-600 uppercase tracking-widest bg-[#151517] border-b border-[#2C2C2E]">Dados Gerais</div>
                             ${renderRow('Segmento', dados.segmento)}
                             ${renderRow('Gestão', dados.tipo_gestao)}
                             ${renderRow('Cotistas', dados.num_cotistas)}
-                            <div class="flex justify-between items-center py-3">
-                                <span class="text-sm text-gray-400">CNPJ</span>
-                                <span class="text-xs font-mono text-gray-500 select-all">${dados.cnpj || '-'}</span>
+                            <div class="flex justify-between items-center py-3.5 px-4">
+                                <span class="text-sm text-gray-400 font-medium">CNPJ</span>
+                                <span class="text-xs font-mono text-gray-500 select-all bg-[#2C2C2E] px-2 py-1 rounded">${dados.cnpj || '-'}</span>
                             </div>
                         </div>
                     `;
@@ -2673,14 +2679,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             txsDoAtivo.forEach(t => {
                 const card = document.createElement('div');
-                card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between border border-gray-800'; 
+                card.className = 'card-bg p-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E]'; 
                 
                 const cor = 'text-green-500';
                 const sinal = '+';
                 
                 card.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <div class="p-2 bg-gray-800 rounded-full text-green-500">
+                        <div class="p-2 bg-[#1C1C1E] rounded-full text-green-500">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                             </svg>
@@ -2706,8 +2712,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchHistoricoScraper(symbol) {
         detalhesAiProvento.innerHTML = `
             <div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48">
-                <div class="h-4 bg-gray-800 rounded-md w-3/4"></div>
-                <div class="h-4 bg-gray-800 rounded-md w-1/2"></div>
+                <div class="h-4 bg-[#1C1C1E] rounded-md w-3/4"></div>
+                <div class="h-4 bg-[#1C1C1E] rounded-md w-1/2"></div>
+                <div class="h-4 bg-[#1C1C1E] rounded-md w-2/3"></div>
             </div>
         `;
         
@@ -2732,7 +2739,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
             showToast("Erro na consulta de dados."); 
             detalhesAiProvento.innerHTML = `
-                <div class="p-4 text-center text-red-400 text-sm">Erro ao carregar gráfico</div>
+                <div class="border border-red-900/50 bg-[#1C1C1E] p-4 rounded-2xl flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                        <h5 class="font-semibold text-red-300">Erro na Consulta</h5>
+                        <p class="text-sm text-red-400">${e.message}</p>
+                    </div>
+                </div>
             `;
         }
     }
@@ -2744,7 +2759,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (currentDetalhesHistoricoJSON.length === 0) {
             detalhesAiProvento.innerHTML = `
-                <p class="text-sm text-gray-500 text-center py-4">
+                <p class="text-sm text-gray-500 text-center py-4 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E]">
                     Sem histórico recente.
                 </p>
             `;
@@ -3162,98 +3177,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- NOVAS FUNÇÕES SCRAPER ---
-
-    async function callScraperHistoricoAPI(ticker) { 
-        const body = { 
-            mode: 'historico_12m', 
-            payload: { ticker } 
-        };
-        const response = await fetchBFF('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        return response.json; 
-    }
-    
-    async function callScraperProventosCarteiraAPI(fiiList) {
-        const body = { mode: 'proventos_carteira', payload: { fiiList } };
-        const response = await fetchBFF('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        return response.json; 
-    }
-    
-    async function callScraperHistoricoPortfolioAPI(fiiList) {
-         const body = { mode: 'historico_portfolio', payload: { fiiList } };
-         const response = await fetchBFF('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        return response.json; 
-    }
-
-    function showAuthLoading(isLoading) {
-        if (isLoading) {
-            authLoading.classList.remove('hidden');
-            loginForm.classList.add('hidden');
-            signupForm.classList.add('hidden');
-            recoverForm.classList.add('hidden'); 
-        } else {
-            authLoading.classList.add('hidden');
-        }
-    }
-    
-    function showLoginError(message) {
-        loginError.textContent = message;
-        loginError.classList.remove('hidden');
-        loginSubmitBtn.innerHTML = 'Entrar';
-        loginSubmitBtn.disabled = false;
-    }
-
-    function showSignupError(message) {
-        signupError.textContent = message;
-        signupError.classList.remove('hidden');
-        signupSubmitBtn.innerHTML = 'Criar conta';
-        signupSubmitBtn.disabled = false;
-
-        signupSuccess.classList.add('hidden');
-        signupEmailInput.classList.remove('hidden');
-        signupPasswordInput.parentElement.classList.remove('hidden');
-        signupConfirmPasswordInput.parentElement.classList.remove('hidden');
-        signupSubmitBtn.classList.remove('hidden');
-    }
-
-    async function carregarDadosIniciais() {
-        try {
-            await carregarTransacoes();
-            await carregarPatrimonio();
-            await carregarCaixa();
-            await carregarProventosConhecidos();
-            await carregarHistoricoProcessado();
-            await carregarWatchlist(); 
-            
-            renderizarWatchlist(); 
-            
-            atualizarTodosDados(false); 
-            handleAtualizarNoticias(false); 
-            
-            setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
-
-        } catch (e) {
-            console.error("Erro ao carregar dados iniciais:", e);
-            showToast("Falha ao carregar dados da nuvem.");
-        }
-    }
-    
+    // --- FUNÇÕES FINAIS ---
     async function init() {
-        try {
-            await vestoDB.init();
-        } catch (e) {
+        try { await vestoDB.init(); } catch (e) { 
             console.error("[IDB Cache] Falha fatal ao inicializar o DB.", e);
             showToast("Erro crítico: Banco de dados local não pôde ser carregado."); 
             return; 

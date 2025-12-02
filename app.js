@@ -2497,16 +2497,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // --- LÓGICA MINIMALISTA E LIMPA PARA O MODAL ---
-// --- CORREÇÃO: Função handleMostrarDetalhes (Ajuste de Proporção) ---
 
-// --- CORREÇÃO FINAL: Espaçamentos e Ritmo Vertical ---
-
-// --- CORREÇÃO DEFINITIVA: Layout, Espaçamento e Cor Preto Absoluto ---
-
-// --- CORREÇÃO FINAL: Largura Total (w-full) e Fundo Preto Absoluto ---
-
-// --- ATUALIZAÇÃO: Bordas Padrão App (#2C2C2E) e Botões Roxos ---
+// --- ATUALIZAÇÃO: Setas de Variação (Cima/Baixo) ---
 
 async function handleMostrarDetalhes(symbol) {
     // 1. Limpeza e Estado Inicial
@@ -2522,17 +2514,16 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // 2. Configuração Visual dos Botões de Período (Padrão Roxo)
+    // 2. Configuração Visual dos Botões de Período
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
-        // Reseta classes e aplica o estilo correto
         btn.className = `periodo-selector-btn py-1 px-4 rounded-full text-xs font-bold transition-all duration-200 border ${
             isActive 
             ? 'bg-purple-600 border-purple-600 text-white shadow-[0_0_10px_rgba(124,58,237,0.3)] active' 
             : 'bg-transparent border-[#2C2C2E] text-gray-500 hover:text-gray-300 hover:border-gray-600'
         }`;
-        if(isActive) btn.classList.add('active'); // Garante marcador lógico
+        if(isActive) btn.classList.add('active');
     });
     
     // 3. Busca Preço
@@ -2566,11 +2557,27 @@ async function handleMostrarDetalhes(symbol) {
     // 5. Renderização
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
-        const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
+        
+        // Lógica de Variação do Header (Seta e Cor)
+        const varPercent = precoData.regularMarketChangePercent || 0;
+        let variacaoCor = 'text-gray-500';
+        let variacaoIcone = '';
+
+        // Ícones SVG
+        const arrowUp = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>`;
+        const arrowDown = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>`;
+
+        if (varPercent > 0) {
+            variacaoCor = 'text-green-500';
+            variacaoIcone = arrowUp;
+        } else if (varPercent < 0) {
+            variacaoCor = 'text-red-500';
+            variacaoIcone = arrowDown;
+        }
         
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         
-        // --- Card: Sua Posição (Borda #2C2C2E) ---
+        // --- Card: Sua Posição ---
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
@@ -2609,9 +2616,21 @@ async function handleMostrarDetalhes(symbol) {
             tipo_gestao: fundamentos.tipo_gestao || '-'
         };
         
-        const corVar12m = dados.variacao_12m.includes('-') ? 'text-red-400' : 'text-green-400';
+        // Lógica de Variação 12 Meses (Seta e Cor)
+        let corVar12m = 'text-gray-400';
+        let icon12m = '';
+        
+        if (dados.variacao_12m && dados.variacao_12m !== '-') {
+            if (dados.variacao_12m.includes('-')) {
+                corVar12m = 'text-red-500'; // Mais vibrante que red-400
+                icon12m = arrowDown;
+            } else if (dados.variacao_12m !== '0.00%') {
+                corVar12m = 'text-green-500'; // Mais vibrante que green-400
+                icon12m = arrowUp;
+            }
+        }
 
-        // Helper para linhas da lista (Borda #2C2C2E)
+        // Helper para linhas da lista
         const renderRow = (label, value, isLast = false) => `
             <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
                 <span class="text-sm text-gray-400 font-medium">${label}</span>
@@ -2619,13 +2638,16 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
-        // --- Renderização HTML (Bordas #2C2C2E e BG Black) ---
+        // --- Renderização HTML ---
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
                 
                 <div class="text-center pb-6 pt-2">
                     <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
-                    <span class="text-lg font-medium ${variacaoCor} mt-1 block tracking-tight">${formatPercent(precoData.regularMarketChangePercent)} Hoje</span>
+                    <span class="text-lg font-bold ${variacaoCor} mt-1 flex items-center justify-center gap-0.5 tracking-tight">
+                        ${variacaoIcone}
+                        ${formatPercent(precoData.regularMarketChangePercent)} Hoje
+                    </span>
                 </div>
 
                 ${userPosHtml}
@@ -2653,7 +2675,9 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Vacância', dados.vacancia)}
                     <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm text-gray-400 font-medium">Var. 12 Meses</span>
-                        <span class="text-sm font-semibold ${corVar12m} text-right">${dados.variacao_12m}</span>
+                        <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
+                            ${icon12m} ${dados.variacao_12m}
+                        </span>
                     </div>
                 </div>
                 
@@ -2679,9 +2703,6 @@ async function handleMostrarDetalhes(symbol) {
     atualizarIconeFavorito(symbol);
 }
     
-// --- ATUALIZAÇÃO: Lista de Transações com Fundo Preto Absoluto ---
-
-// --- ATUALIZAÇÃO: Lista de Transações com Borda #2C2C2E ---
 
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');

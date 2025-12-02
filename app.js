@@ -2504,8 +2504,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // --- CORREÇÃO DEFINITIVA: Layout, Espaçamento e Cor Preto Absoluto ---
 
+// --- CORREÇÃO FINAL: Largura Total (w-full) e Fundo Preto Absoluto ---
+
 async function handleMostrarDetalhes(symbol) {
-    // Reset visual inicial
+    // 1. Limpeza e Estado Inicial
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
     detalhesPreco.innerHTML = '';
@@ -2523,7 +2525,7 @@ async function handleMostrarDetalhes(symbol) {
         btn.classList.toggle('active', btn.dataset.meses === '3'); 
     });
     
-    // Busca dados de Preço
+    // 2. Busca Preço
     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
@@ -2543,7 +2545,7 @@ async function handleMostrarDetalhes(symbol) {
         }
     }
 
-    // Busca dados de Histórico se for FII
+    // 3. Busca Histórico (se FII)
     if (isFII(symbol)) {
         detalhesHistoricoContainer.classList.remove('hidden'); 
         fetchHistoricoScraper(symbol); 
@@ -2551,19 +2553,19 @@ async function handleMostrarDetalhes(symbol) {
     
     detalhesLoading.classList.add('hidden');
 
-    // Renderização Principal
+    // 4. Renderização
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
         
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         
-        // 1. Card "Sua Posição"
+        // --- Card: Sua Posição ---
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
             userPosHtml = `
-                <div class="w-full p-4 bg-black border border-gray-800 rounded-2xl flex justify-between items-center mb-4 shadow-sm">
+                <div class="w-full p-4 bg-black border border-gray-800 rounded-2xl flex justify-between items-center shadow-sm">
                     <div class="text-left">
                         <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sua Posição</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
@@ -2575,7 +2577,7 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // Busca dados fundamentais em paralelo
+        // Busca dados fundamentais
         let fundamentos = {};
         try {
             fundamentos = await callScraperFundamentosAPI(symbol) || {};
@@ -2607,10 +2609,11 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
-        // 2. Construção do HTML Completo (Garante a estrutura W-FULL)
-        // Usamos 'bg-black' (Preto Absoluto) e 'border-gray-800' nos cards
+        // 5. Estrutura HTML Unificada (Fix de Largura)
+        // O wrapper 'col-span-12 w-full flex flex-col' garante que tudo ocupe 100% da largura disponível
         detalhesPreco.innerHTML = `
-            <div class="flex flex-col w-full">
+            <div class="col-span-12 w-full flex flex-col gap-3">
+                
                 <div class="text-center pb-6 pt-2">
                     <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
                     <span class="text-lg font-medium ${variacaoCor} mt-1 block tracking-tight">${formatPercent(precoData.regularMarketChangePercent)} Hoje</span>
@@ -2618,7 +2621,7 @@ async function handleMostrarDetalhes(symbol) {
 
                 ${userPosHtml}
 
-                <div class="grid grid-cols-3 gap-3 w-full mb-4">
+                <div class="grid grid-cols-3 gap-3 w-full">
                     <div class="p-3 bg-black border border-gray-800 rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">DY (12m)</span>
                         <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
@@ -2633,7 +2636,7 @@ async function handleMostrarDetalhes(symbol) {
                     </div>
                 </div>
 
-                <div class="w-full bg-black rounded-2xl border border-gray-800 overflow-hidden px-4 mb-4">
+                <div class="w-full bg-black border border-gray-800 rounded-2xl overflow-hidden px-4">
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
@@ -2645,7 +2648,7 @@ async function handleMostrarDetalhes(symbol) {
                     </div>
                 </div>
                 
-                <div class="w-full bg-black rounded-2xl border border-gray-800 px-4">
+                <div class="w-full bg-black border border-gray-800 rounded-2xl px-4">
                     <h4 class="text-[10px] font-bold text-gray-500 uppercase pt-4 mb-2 tracking-wider">Dados Gerais</h4>
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Gestão', dados.tipo_gestao)}
@@ -2655,6 +2658,7 @@ async function handleMostrarDetalhes(symbol) {
                         <span class="text-xs font-mono text-gray-500 select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-gray-800">${dados.cnpj}</span>
                     </div>
                 </div>
+
             </div>
         `;
 

@@ -2502,7 +2502,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // --- CORREÇÃO FINAL: Espaçamentos e Ritmo Vertical ---
 
+// --- CORREÇÃO DEFINITIVA: Layout, Espaçamento e Cor Preto Absoluto ---
+
 async function handleMostrarDetalhes(symbol) {
+    // Reset visual inicial
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
     detalhesPreco.innerHTML = '';
@@ -2515,10 +2518,12 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
+    // Reseta botões de período
     periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.meses === '3'); 
     });
     
+    // Busca dados de Preço
     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
@@ -2527,7 +2532,6 @@ async function handleMostrarDetalhes(symbol) {
         try {
             const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
             precoData = data.results?.[0];
-            
             const isAberto = isB3Open();
             const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
             
@@ -2539,6 +2543,7 @@ async function handleMostrarDetalhes(symbol) {
         }
     }
 
+    // Busca dados de Histórico se for FII
     if (isFII(symbol)) {
         detalhesHistoricoContainer.classList.remove('hidden'); 
         fetchHistoricoScraper(symbol); 
@@ -2546,17 +2551,19 @@ async function handleMostrarDetalhes(symbol) {
     
     detalhesLoading.classList.add('hidden');
 
+    // Renderização Principal
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const variacaoCor = precoData.regularMarketChangePercent > 0 ? 'text-green-500' : (precoData.regularMarketChangePercent < 0 ? 'text-red-500' : 'text-gray-500');
         
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
-        let userPosHtml = '';
         
+        // 1. Card "Sua Posição"
+        let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
             userPosHtml = `
-                <div class="col-span-12 p-4 bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl flex justify-between items-center mb-4 shadow-sm">
+                <div class="w-full p-4 bg-black border border-gray-800 rounded-2xl flex justify-between items-center mb-4 shadow-sm">
                     <div class="text-left">
                         <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sua Posição</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
@@ -2568,64 +2575,65 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        detalhesPreco.innerHTML = `
-            <div class="col-span-12 text-center pb-6 pt-2">
-                <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
-                <span class="text-lg font-medium ${variacaoCor} mt-1 block tracking-tight">${formatPercent(precoData.regularMarketChangePercent)} Hoje</span>
-            </div>
+        // Busca dados fundamentais em paralelo
+        let fundamentos = {};
+        try {
+            fundamentos = await callScraperFundamentosAPI(symbol) || {};
+        } catch (e) { console.error(e); }
+        
+        const dados = { 
+            pvp: fundamentos.pvp || '-', 
+            dy: fundamentos.dy || '-', 
+            segmento: fundamentos.segmento || '-', 
+            vacancia: fundamentos.vacancia || '-', 
+            vp_cota: fundamentos.vp_cota || '-', 
+            liquidez: fundamentos.liquidez || '-', 
+            val_mercado: fundamentos.val_mercado || '-', 
+            ultimo_rendimento: fundamentos.ultimo_rendimento || '-', 
+            patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
+            variacao_12m: fundamentos.variacao_12m || '-',
+            cnpj: fundamentos.cnpj || '-', 
+            num_cotistas: fundamentos.num_cotistas || '-', 
+            tipo_gestao: fundamentos.tipo_gestao || '-'
+        };
+        
+        const corVar12m = dados.variacao_12m.includes('-') ? 'text-red-400' : 'text-green-400';
 
-            ${userPosHtml}
-
-            <div class="col-span-12 grid grid-cols-3 gap-3 text-center mb-6" id="clean-stats-row">
-                <div class="bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl h-20 animate-pulse"></div>
-                <div class="bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl h-20 animate-pulse"></div>
-                <div class="bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl h-20 animate-pulse"></div>
-            </div>
-
-            <div class="col-span-12 space-y-0 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E] overflow-hidden px-4" id="clean-details-list">
-                <div class="h-12 border-b border-[#2C2C2E] animate-pulse opacity-50"></div>
-                <div class="h-12 border-b border-[#2C2C2E] animate-pulse opacity-50"></div>
-                <div class="h-12 border-b border-transparent animate-pulse opacity-50"></div>
+        // Helper para linhas da lista
+        const renderRow = (label, value, isLast = false) => `
+            <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-gray-800'}">
+                <span class="text-sm text-gray-400 font-medium">${label}</span>
+                <span class="text-sm font-semibold text-gray-200 text-right max-w-[60%] truncate">${value}</span>
             </div>
         `;
 
-        callScraperFundamentosAPI(symbol).then(fundamentos => {
-            const rowStats = document.getElementById('clean-stats-row');
-            const listDetails = document.getElementById('clean-details-list');
+        // 2. Construção do HTML Completo (Garante a estrutura W-FULL)
+        // Usamos 'bg-black' (Preto Absoluto) e 'border-gray-800' nos cards
+        detalhesPreco.innerHTML = `
+            <div class="flex flex-col w-full">
+                <div class="text-center pb-6 pt-2">
+                    <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
+                    <span class="text-lg font-medium ${variacaoCor} mt-1 block tracking-tight">${formatPercent(precoData.regularMarketChangePercent)} Hoje</span>
+                </div>
 
-            if (rowStats && listDetails) {
-                const dados = fundamentos || { 
-                    pvp: '-', dy: '-', segmento: '-', vacancia: '-', 
-                    vp_cota: '-', liquidez: '-', val_mercado: '-', 
-                    ultimo_rendimento: '-', patrimonio_liquido: '-', variacao_12m: '-',
-                    cnpj: '-', num_cotistas: '-', tipo_gestao: '-'
-                };
+                ${userPosHtml}
 
-                rowStats.innerHTML = `
-                    <div class="p-3 bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                <div class="grid grid-cols-3 gap-3 w-full mb-4">
+                    <div class="p-3 bg-black border border-gray-800 rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                        <span class="text-lg font-bold text-purple-400">${dados.dy || '-'}</span>
+                        <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
                     </div>
-                    <div class="p-3 bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                    <div class="p-3 bg-black border border-gray-800 rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">P/VP</span>
-                        <span class="text-lg font-bold text-white">${dados.pvp || '-'}</span>
+                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
                     </div>
-                    <div class="p-3 bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                    <div class="p-3 bg-black border border-gray-800 rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
-                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento || '-'}</span>
+                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
                     </div>
-                `;
+                </div>
 
-                const renderRow = (label, value, isLast = false) => `
-                    <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
-                        <span class="text-sm text-gray-400 font-medium">${label}</span>
-                        <span class="text-sm font-semibold text-gray-200 text-right max-w-[60%] truncate">${value || '-'}</span>
-                    </div>
-                `;
-
-                const corVar12m = dados.variacao_12m && dados.variacao_12m.includes('-') ? 'text-red-400' : 'text-green-400';
-
-                listDetails.innerHTML = `
+                <div class="w-full bg-black rounded-2xl border border-gray-800 overflow-hidden px-4 mb-4">
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
@@ -2633,40 +2641,33 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Vacância', dados.vacancia)}
                     <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm text-gray-400 font-medium">Var. 12 Meses</span>
-                        <span class="text-sm font-semibold ${corVar12m} text-right">${dados.variacao_12m || '-'}</span>
+                        <span class="text-sm font-semibold ${corVar12m} text-right">${dados.variacao_12m}</span>
                     </div>
-                `;
+                </div>
                 
-                // --- AJUSTE DE ESPAÇAMENTO AQUI ---
-                // mt-3 (mesmo gap dos cards de cima)
-                // px-4 (mesmo padding interno lateral)
-                // pt-3 (espaço para o título respirar)
-                // mb-1 (aproxima o título da lista)
-                const dadosGeraisHtml = `
-                    <div class="col-span-12 mt-3 px-4 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E]">
-                        <h4 class="text-[10px] font-bold text-gray-500 uppercase pt-4 mb-2 tracking-wider">Dados Gerais</h4>
-                        ${renderRow('Segmento', dados.segmento)}
-                        ${renderRow('Gestão', dados.tipo_gestao)}
-                        ${renderRow('Cotistas', dados.num_cotistas)}
-                        <div class="flex justify-between items-center py-3.5">
-                            <span class="text-sm text-gray-400 font-medium">CNPJ</span>
-                            <span class="text-xs font-mono text-gray-500 select-all bg-[#2C2C2E] px-2 py-1 rounded truncate max-w-[150px] text-right">${dados.cnpj || '-'}</span>
-                        </div>
+                <div class="w-full bg-black rounded-2xl border border-gray-800 px-4">
+                    <h4 class="text-[10px] font-bold text-gray-500 uppercase pt-4 mb-2 tracking-wider">Dados Gerais</h4>
+                    ${renderRow('Segmento', dados.segmento)}
+                    ${renderRow('Gestão', dados.tipo_gestao)}
+                    ${renderRow('Cotistas', dados.num_cotistas)}
+                    <div class="flex justify-between items-center py-3.5">
+                        <span class="text-sm text-gray-400 font-medium">CNPJ</span>
+                        <span class="text-xs font-mono text-gray-500 select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-gray-800">${dados.cnpj}</span>
                     </div>
-                `;
-                
-                listDetails.insertAdjacentHTML('afterend', dadosGeraisHtml);
-            }
-        }).catch(e => { console.error(e); });
+                </div>
+            </div>
+        `;
 
     } else {
-        detalhesPreco.innerHTML = '<p class="text-center text-red-500 col-span-12 py-4">Erro ao buscar preço.</p>';
+        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }
     
     renderizarTransacoesDetalhes(symbol);
     atualizarIconeFavorito(symbol);
 }
     
+// --- ATUALIZAÇÃO: Lista de Transações com Fundo Preto Absoluto ---
+
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');
     const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
@@ -2689,15 +2690,15 @@ function renderizarTransacoesDetalhes(symbol) {
 
         txsDoAtivo.forEach(t => {
             const card = document.createElement('div');
-            // --- VISUAL DARK: Card de Transação ---
-            card.className = 'bg-[#1C1C1E] p-3.5 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2 shadow-sm'; 
+            // ATUALIZADO: bg-black e border-gray-800
+            card.className = 'bg-black p-3.5 rounded-2xl flex items-center justify-between border border-gray-800 mb-2 shadow-sm w-full'; 
             
             const cor = 'text-green-500';
             const sinal = '+';
             
             card.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <div class="p-2 bg-[#2C2C2E] rounded-full text-green-500 flex-shrink-0">
+                    <div class="p-2 bg-[#1A1A1A] rounded-full text-green-500 flex-shrink-0 border border-gray-800">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                         </svg>

@@ -550,7 +550,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (metaTheme) metaTheme.setAttribute('content', '#f9fafb');
             
-            // Atualiza cores padrão do Chart.js para Tema Claro
             Chart.defaults.color = '#374151'; 
             Chart.defaults.borderColor = '#e5e7eb';
         } else {
@@ -563,13 +562,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (metaTheme) metaTheme.setAttribute('content', '#000000');
             
-            // Atualiza cores padrão do Chart.js para Tema Escuro
             Chart.defaults.color = '#9ca3af'; 
             Chart.defaults.borderColor = '#374151';
         }
     }
 
-    // Inicializa o tema imediatamente
     updateThemeUI();
 
     if (toggleThemeBtn) {
@@ -578,8 +575,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('vesto_theme', current ? 'dark' : 'light');
             updateThemeUI();
             
-            // Força atualização dos gráficos se existirem
-            // (As variáveis são globais no escopo do DOMContentLoaded, definidas na Parte 2)
             if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) alocacaoChartInstance.update();
             if (typeof patrimonioChartInstance !== 'undefined' && patrimonioChartInstance) patrimonioChartInstance.update();
             if (typeof historicoChartInstance !== 'undefined' && historicoChartInstance) historicoChartInstance.update();
@@ -616,6 +611,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesSymbol = null;
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
+
+    // --- VARIÁVEIS NOVAS PARA OTIMIZAÇÃO ---
+    let lastNewsSignature = ''; 
+    let lastProventosCalcSignature = ''; 
+    let cachedSaldoCaixa = 0;
 
     function showToast(message, type = 'error') {
         clearTimeout(toastTimer);
@@ -975,13 +975,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // 1. Abre o Modal e mostra Loading
         aiModal.classList.add('visible');
         aiModal.querySelector('.modal-content').classList.remove('modal-out');
         aiContent.classList.add('hidden');
         aiLoading.classList.remove('hidden');
 
-        // 2. Prepara os dados (Payload)
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
         let valorTotalAtivos = 0;
         
@@ -1004,7 +1002,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalPatrimonio = valorTotalAtivos + saldoCaixa;
 
         try {
-            // 3. Chama a API Serverless
             const response = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1019,7 +1016,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const data = await response.json();
             
-            // 4. Renderiza o Markdown
             if (data.result && window.marked) {
                 aiContent.innerHTML = marked.parse(data.result);
             } else {
@@ -1136,10 +1132,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function salvarHistoricoProcessado() {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
-
+    // --- CORREÇÃO #4: Otimização de Cálculo de Saldo ---
     async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
+        const hojeString = hoje.toISOString().split('T')[0];
+
+        // Cria uma assinatura única baseada na data e no tamanho dos dados
+        const currentSignature = `${hojeString}-${proventosConhecidos.length}-${transacoes.length}`;
+
+        // Se a assinatura for igual à última, usa o valor em cache (Memória)
+        if (currentSignature === lastProventosCalcSignature) {
+            saldoCaixa = cachedSaldoCaixa;
+            if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+            return;
+        }
+
         let novoSaldoCalculado = 0; 
         let proventosParaMarcarComoProcessado = [];
 
@@ -1164,7 +1172,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         }
+        
+        // Atualiza o estado e o cache
         saldoCaixa = novoSaldoCalculado;
+        cachedSaldoCaixa = novoSaldoCalculado;
+        lastProventosCalcSignature = currentSignature;
+
         await salvarCaixa();
         
         if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
@@ -1254,8 +1267,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         listaHistorico.appendChild(fragment);
     }
 
+    // --- CORREÇÃO #3: Otimização de DOM (Notícias) ---
     function renderizarNoticias(articles) { 
         fiiNewsSkeleton.classList.add('hidden');
+        
+        // Verifica assinatura para evitar renderização desnecessária
+        const newSignature = JSON.stringify(articles);
+        if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
+            return;
+        }
+        lastNewsSignature = newSignature;
+
         fiiNewsList.innerHTML = ''; 
         fiiNewsMensagem.classList.add('hidden');
 
@@ -1265,11 +1287,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+        const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
         
         const fragment = document.createDocumentFragment();
 
-        articles.forEach((article, index) => {
+        sortedArticles.forEach((article, index) => {
             const sourceName = article.sourceName || 'Fonte';
             const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
             const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
@@ -2498,10 +2520,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
 
-// --- ATUALIZAÇÃO: Setas de Variação (Cima/Baixo) ---
-
 async function handleMostrarDetalhes(symbol) {
-    // 1. Limpeza e Estado Inicial
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
     detalhesPreco.innerHTML = '';
@@ -2514,7 +2533,6 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // 2. Configuração Visual dos Botões de Período
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
@@ -2526,7 +2544,6 @@ async function handleMostrarDetalhes(symbol) {
         if(isActive) btn.classList.add('active');
     });
     
-    // 3. Busca Preço
     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
@@ -2546,7 +2563,6 @@ async function handleMostrarDetalhes(symbol) {
         }
     }
 
-    // 4. Busca Histórico (se FII)
     if (isFII(symbol)) {
         detalhesHistoricoContainer.classList.remove('hidden'); 
         fetchHistoricoScraper(symbol); 
@@ -2554,16 +2570,13 @@ async function handleMostrarDetalhes(symbol) {
     
     detalhesLoading.classList.add('hidden');
 
-    // 5. Renderização
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         
-        // Lógica de Variação do Header (Seta e Cor)
         const varPercent = precoData.regularMarketChangePercent || 0;
         let variacaoCor = 'text-gray-500';
         let variacaoIcone = '';
 
-        // Ícones SVG
         const arrowUp = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>`;
         const arrowDown = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>`;
 
@@ -2577,7 +2590,6 @@ async function handleMostrarDetalhes(symbol) {
         
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         
-        // --- Card: Sua Posição ---
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
@@ -2594,7 +2606,6 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // Busca dados fundamentais
         let fundamentos = {};
         try {
             fundamentos = await callScraperFundamentosAPI(symbol) || {};
@@ -2616,21 +2627,19 @@ async function handleMostrarDetalhes(symbol) {
             tipo_gestao: fundamentos.tipo_gestao || '-'
         };
         
-        // Lógica de Variação 12 Meses (Seta e Cor)
         let corVar12m = 'text-gray-400';
         let icon12m = '';
         
         if (dados.variacao_12m && dados.variacao_12m !== '-') {
             if (dados.variacao_12m.includes('-')) {
-                corVar12m = 'text-red-500'; // Mais vibrante que red-400
+                corVar12m = 'text-red-500'; 
                 icon12m = arrowDown;
             } else if (dados.variacao_12m !== '0.00%') {
-                corVar12m = 'text-green-500'; // Mais vibrante que green-400
+                corVar12m = 'text-green-500'; 
                 icon12m = arrowUp;
             }
         }
 
-        // Helper para linhas da lista
         const renderRow = (label, value, isLast = false) => `
             <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
                 <span class="text-sm text-gray-400 font-medium">${label}</span>
@@ -2638,7 +2647,6 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
-        // --- Renderização HTML ---
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
                 
@@ -3059,7 +3067,6 @@ function renderizarTransacoesDetalhes(symbol) {
         });
     }
     
-// --- ATUALIZAÇÃO: Lógica de clique dos botões de período (Tema Roxo) ---
     periodoSelectorGroup.addEventListener('click', (e) => {
         const target = e.target.closest('.periodo-selector-btn');
         if (!target) return;
@@ -3070,7 +3077,6 @@ function renderizarTransacoesDetalhes(symbol) {
 
         currentDetalhesMeses = meses;
         
-        // Atualiza visual de todos os botões
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
             const isTarget = btn === target;
             btn.className = `periodo-selector-btn py-1 px-4 rounded-full text-xs font-bold transition-all duration-200 border ${

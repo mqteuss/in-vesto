@@ -43,6 +43,16 @@ function normalize(str) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
+// --- FUNÇÃO DE UTILIDADE: Divisão em Lotes (Batching) ---
+// Evita bloqueio do servidor alvo dividindo a lista em grupos menores
+function chunkArray(array, size) {
+    const results = [];
+    for (let i = 0; i < array.length; i += size) {
+        results.push(array.slice(i, i + size));
+    }
+    return results;
+}
+
 // --- SCRAPER DE FUNDAMENTOS ---
 async function scrapeFundamentos(ticker) {
     try {
@@ -115,22 +125,18 @@ async function scrapeFundamentos(ticker) {
             if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
             if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
 
-            // HEURÍSTICA DE PATRIMÔNIO (Resolve a confusão entre VP e VP/Cota)
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
 
-                // Se tem "milhões", "bilhões" ou é um número muito grande (> 10.000), é o TOTAL
                 if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
                     if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
                 } 
-                // Se é um número pequeno (ex: 10,34 ou 100,50), é por COTA
                 else {
                     if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
 
-            // Captura Cotas
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
             }
@@ -143,15 +149,11 @@ async function scrapeFundamentos(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // 3. CÁLCULOS DE FALLBACK PARA "VALOR DE MERCADO"
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
-
-            // Estratégia A: Preço * Cotas
             if (cotacao_atual > 0 && num_cotas > 0) {
                 mercadoCalc = cotacao_atual * num_cotas;
             } 
-            // Estratégia B: Matemágica (Patrimônio Total * P/VP) -> Salva o SNAG11
             else if (dados.patrimonio_liquido !== 'N/A' && dados.pvp !== 'N/A') {
                 const plValue = parseExtendedValue(dados.patrimonio_liquido);
                 const pvpValue = parseValue(dados.pvp);
@@ -160,7 +162,6 @@ async function scrapeFundamentos(ticker) {
                 }
             }
 
-            // Formata o valor calculado
             if (mercadoCalc > 0) {
                 if (mercadoCalc > 1000000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
                 else if (mercadoCalc > 1000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000).toFixed(2)} Milhões`;
@@ -251,14 +252,28 @@ module.exports = async function handler(req, res) {
 
         if (mode === 'proventos_carteira') {
             if (!payload.fiiList) return res.json({ json: [] });
-            const promises = payload.fiiList.map(async (ticker) => {
-                const history = await scrapeAsset(ticker);
-                const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, 3);
-                if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
-                return null;
-            });
-            const data = await Promise.all(promises);
-            return res.status(200).json({ json: data.filter(d => d !== null).flat() });
+            
+            // OTIMIZAÇÃO: Divide em grupos de 3 para não sobrecarregar o servidor alvo
+            const batches = chunkArray(payload.fiiList, 3);
+            let finalResults = [];
+
+            for (const batch of batches) {
+                const promises = batch.map(async (ticker) => {
+                    const history = await scrapeAsset(ticker);
+                    // Pega apenas os 3 últimos pagamentos
+                    const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, 3);
+                    if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
+                    return null;
+                });
+                
+                const batchResults = await Promise.all(promises);
+                finalResults = finalResults.concat(batchResults);
+                
+                // Pausa de 500ms entre lotes para segurança
+                await new Promise(r => setTimeout(r, 500)); 
+            }
+
+            return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
         if (mode === 'historico_12m') {
@@ -274,14 +289,22 @@ module.exports = async function handler(req, res) {
 
         if (mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
+            
+            // OTIMIZAÇÃO: Batching também no histórico
+            const batches = chunkArray(payload.fiiList, 3); 
             let all = [];
-            const promises = payload.fiiList.map(async (ticker) => {
-                const history = await scrapeAsset(ticker);
-                history.slice(0, 24).forEach(h => {
-                    if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
+
+            for (const batch of batches) {
+                const promises = batch.map(async (ticker) => {
+                    const history = await scrapeAsset(ticker);
+                    history.slice(0, 24).forEach(h => {
+                        if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
+                    });
                 });
-            });
-            await Promise.all(promises);
+                await Promise.all(promises);
+                await new Promise(r => setTimeout(r, 500));
+            }
+            
             return res.status(200).json({ json: all });
         }
 

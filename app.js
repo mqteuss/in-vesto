@@ -1,3 +1,4 @@
+
 import * as supabaseDB from './supabase.js';
 
 // --- LÓGICA DE INSTALAÇÃO PWA ---
@@ -2048,6 +2049,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         return processarProventosScraper(proventosPool); 
     }
+	async function callScraperProximoProventoAPI(ticker) {
+        const body = { mode: 'proximo_provento', payload: { ticker } };
+        // Usa fetchBFF para aproveitar o tratamento de erros
+        const response = await fetchBFF('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return response.json; 
+    }
 	
 	async function callScraperFundamentosAPI(ticker) {
         const body = { 
@@ -2533,6 +2544,7 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
+    // Reset dos botões de período
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
@@ -2544,10 +2556,12 @@ async function handleMostrarDetalhes(symbol) {
         if(isActive) btn.classList.add('active');
     });
     
+    // --- LÓGICA DE DADOS ---
     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
     
+    // 1. Busca Preço (Brapi)
     if (!precoData) {
         try {
             const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -2563,9 +2577,28 @@ async function handleMostrarDetalhes(symbol) {
         }
     }
 
+    // 2. Dispara buscas assíncronas (Fundamentos, Gráfico e NOVO: Próximo Provento)
+    let fundamentos = {};
+    let nextProventoData = null;
+
     if (isFII(symbol)) {
         detalhesHistoricoContainer.classList.remove('hidden'); 
-        fetchHistoricoScraper(symbol); 
+        fetchHistoricoScraper(symbol); // Inicia gráfico em background
+        
+        try {
+            // Busca Fundamentos e Próximo Provento em paralelo
+            const [fundData, provData] = await Promise.all([
+                callScraperFundamentosAPI(symbol),
+                callScraperProximoProventoAPI(symbol)
+            ]);
+            fundamentos = fundData || {};
+            nextProventoData = provData;
+        } catch (e) { console.error("Erro dados extras", e); }
+    } else {
+        // Se for ação, tenta buscar fundamentos também (opcional)
+        try {
+            fundamentos = await callScraperFundamentosAPI(symbol) || {};
+        } catch(e) {}
     }
     
     detalhesLoading.classList.add('hidden');
@@ -2576,20 +2609,14 @@ async function handleMostrarDetalhes(symbol) {
         const varPercent = precoData.regularMarketChangePercent || 0;
         let variacaoCor = 'text-gray-500';
         let variacaoIcone = '';
-
         const arrowUp = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>`;
         const arrowDown = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>`;
 
-        if (varPercent > 0) {
-            variacaoCor = 'text-green-500';
-            variacaoIcone = arrowUp;
-        } else if (varPercent < 0) {
-            variacaoCor = 'text-red-500';
-            variacaoIcone = arrowDown;
-        }
+        if (varPercent > 0) { variacaoCor = 'text-green-500'; variacaoIcone = arrowUp; } 
+        else if (varPercent < 0) { variacaoCor = 'text-red-500'; variacaoIcone = arrowDown; }
         
+        // --- CARD: SUA POSIÇÃO ---
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
-        
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
@@ -2606,11 +2633,46 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        let fundamentos = {};
-        try {
-            fundamentos = await callScraperFundamentosAPI(symbol) || {};
-        } catch (e) { console.error(e); }
-        
+        // --- CARD: PRÓXIMO PROVENTO (NOVO) ---
+        let proximoProventoHtml = '';
+        if (nextProventoData && nextProventoData.value > 0) {
+            const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
+            const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
+            
+            // Verifica se é futuro ou passado para mudar a cor da borda/título
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            let isFuturo = false;
+            if(nextProventoData.paymentDate) {
+                const parts = nextProventoData.paymentDate.split('-');
+                const pDate = new Date(parts[0], parts[1]-1, parts[2]);
+                if(pDate >= hoje) isFuturo = true;
+            }
+
+            const tituloCard = isFuturo ? "Próximo Pagamento" : "Último Anúncio";
+            const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
+            const textClass = isFuturo ? "text-green-400" : "text-gray-400";
+
+            proximoProventoHtml = `
+                <div class="w-full p-3 rounded-2xl border ${borderClass} flex flex-col gap-2 shadow-sm">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-2 mb-1">
+                        <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${tituloCard}</span>
+                        <span class="text-lg font-bold text-white">${formatBRL(nextProventoData.value)}</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <div class="text-center">
+                            <span class="block text-gray-500 mb-0.5">Data Com</span>
+                            <span class="text-gray-300 font-medium">${dataComFmt}</span>
+                        </div>
+                        <div class="text-center">
+                            <span class="block text-gray-500 mb-0.5">Pagamento</span>
+                            <span class="text-gray-300 font-medium">${dataPagFmt}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- DADOS FUNDAMENTOS ---
         const dados = { 
             pvp: fundamentos.pvp || '-', 
             dy: fundamentos.dy || '-', 
@@ -2627,17 +2689,11 @@ async function handleMostrarDetalhes(symbol) {
             tipo_gestao: fundamentos.tipo_gestao || '-'
         };
         
-        let corVar12m = 'text-gray-400';
-        let icon12m = '';
-        
-        if (dados.variacao_12m && dados.variacao_12m !== '-') {
-            if (dados.variacao_12m.includes('-')) {
-                corVar12m = 'text-red-500'; 
-                icon12m = arrowDown;
-            } else if (dados.variacao_12m !== '0.00%') {
-                corVar12m = 'text-green-500'; 
-                icon12m = arrowUp;
-            }
+        let corVar12m = 'text-gray-400'; let icon12m = '';
+        if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
+            corVar12m = 'text-red-500'; icon12m = arrowDown;
+        } else if (dados.variacao_12m !== '0.00%' && dados.variacao_12m !== '-') {
+            corVar12m = 'text-green-500'; icon12m = arrowUp;
         }
 
         const renderRow = (label, value, isLast = false) => `
@@ -2647,10 +2703,11 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
+        // Renderização Final do HTML
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
                 
-                <div class="text-center pb-6 pt-2">
+                <div class="text-center pb-4 pt-2">
                     <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
                     <span class="text-lg font-bold ${variacaoCor} mt-1 flex items-center justify-center gap-0.5 tracking-tight">
                         ${variacaoIcone}
@@ -2659,6 +2716,8 @@ async function handleMostrarDetalhes(symbol) {
                 </div>
 
                 ${userPosHtml}
+                
+                ${proximoProventoHtml} 
 
                 <div class="grid grid-cols-3 gap-3 w-full">
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">

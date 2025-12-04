@@ -2530,7 +2530,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
@@ -2561,7 +2560,6 @@ async function handleMostrarDetalhes(symbol) {
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
     
-    // 1. Busca Preço (Brapi)
     if (!precoData) {
         try {
             const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -2577,16 +2575,14 @@ async function handleMostrarDetalhes(symbol) {
         }
     }
 
-    // 2. Dispara buscas assíncronas (Fundamentos, Gráfico e NOVO: Próximo Provento)
     let fundamentos = {};
     let nextProventoData = null;
 
     if (isFII(symbol)) {
         detalhesHistoricoContainer.classList.remove('hidden'); 
-        fetchHistoricoScraper(symbol); // Inicia gráfico em background
+        fetchHistoricoScraper(symbol); // Background graph fetch
         
         try {
-            // Busca Fundamentos e Próximo Provento em paralelo
             const [fundData, provData] = await Promise.all([
                 callScraperFundamentosAPI(symbol),
                 callScraperProximoProventoAPI(symbol)
@@ -2595,7 +2591,6 @@ async function handleMostrarDetalhes(symbol) {
             nextProventoData = provData;
         } catch (e) { console.error("Erro dados extras", e); }
     } else {
-        // Se for ação, tenta buscar fundamentos também (opcional)
         try {
             fundamentos = await callScraperFundamentosAPI(symbol) || {};
         } catch(e) {}
@@ -2633,13 +2628,11 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- CARD: PRÓXIMO PROVENTO (NOVO) ---
+        // --- CARD: PRÓXIMO PROVENTO ---
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
             const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
-            
-            // Verifica se é futuro ou passado para mudar a cor da borda/título
             const hoje = new Date(); hoje.setHours(0,0,0,0);
             let isFuturo = false;
             if(nextProventoData.paymentDate) {
@@ -2647,7 +2640,6 @@ async function handleMostrarDetalhes(symbol) {
                 const pDate = new Date(parts[0], parts[1]-1, parts[2]);
                 if(pDate >= hoje) isFuturo = true;
             }
-
             const tituloCard = isFuturo ? "Próximo Pagamento" : "Último Anúncio";
             const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
             const textClass = isFuturo ? "text-green-400" : "text-gray-400";
@@ -2672,11 +2664,13 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- DADOS FUNDAMENTOS ---
+        // --- DADOS FUNDAMENTOS (PREENCHIDOS) ---
         const dados = { 
             pvp: fundamentos.pvp || '-', 
             dy: fundamentos.dy || '-', 
             segmento: fundamentos.segmento || '-', 
+            mandato: fundamentos.mandato || '-',           // NOVO
+            tipo_fundo: fundamentos.tipo_fundo || '-',     // NOVO
             vacancia: fundamentos.vacancia || '-', 
             vp_cota: fundamentos.vp_cota || '-', 
             liquidez: fundamentos.liquidez || '-', 
@@ -2686,7 +2680,10 @@ async function handleMostrarDetalhes(symbol) {
             variacao_12m: fundamentos.variacao_12m || '-',
             cnpj: fundamentos.cnpj || '-', 
             num_cotistas: fundamentos.num_cotistas || '-', 
-            tipo_gestao: fundamentos.tipo_gestao || '-'
+            tipo_gestao: fundamentos.tipo_gestao || '-',
+            prazo_duracao: fundamentos.prazo_duracao || '-', // NOVO
+            taxa_adm: fundamentos.taxa_adm || '-',           // NOVO
+            cotas_emitidas: fundamentos.cotas_emitidas || '-' // NOVO
         };
         
         let corVar12m = 'text-gray-400'; let icon12m = '';
@@ -2703,7 +2700,6 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
-        // Renderização Final do HTML
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
                 
@@ -2751,8 +2747,13 @@ async function handleMostrarDetalhes(symbol) {
                 <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4">
                     <h4 class="text-[10px] font-bold text-gray-500 uppercase pt-4 mb-2 tracking-wider">Dados Gerais</h4>
                     ${renderRow('Segmento', dados.segmento)}
+                    ${renderRow('Tipo de Fundo', dados.tipo_fundo)}
+                    ${renderRow('Mandato', dados.mandato)}
                     ${renderRow('Gestão', dados.tipo_gestao)}
+                    ${renderRow('Prazo', dados.prazo_duracao)}
+                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('Cotistas', dados.num_cotistas)}
+                    ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
                     <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm text-gray-400 font-medium">CNPJ</span>
                         <span class="text-xs font-mono text-gray-500 select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
@@ -2769,7 +2770,7 @@ async function handleMostrarDetalhes(symbol) {
     renderizarTransacoesDetalhes(symbol);
     atualizarIconeFavorito(symbol);
 }
-    
+
 
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');

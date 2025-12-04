@@ -43,7 +43,7 @@ function normalize(str) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
-// --- FUNÇÃO DE UTILIDADE: Divisão em Lotes (Batching) ---
+// --- OTIMIZAÇÃO: Divisão em Lotes (Batching) ---
 // Evita bloqueio do servidor alvo dividindo a lista em grupos menores
 function chunkArray(array, size) {
     const results = [];
@@ -306,6 +306,19 @@ module.exports = async function handler(req, res) {
             }
             
             return res.status(200).json({ json: all });
+        }
+
+        // --- NOVO MODO: Retorna apenas o último provento (mais recente/futuro) ---
+        if (mode === 'proximo_provento') {
+            if (!payload.ticker) return res.json({ json: null });
+            
+            const history = await scrapeAsset(payload.ticker);
+            
+            // O scraper geralmente retorna do mais novo para o mais antigo.
+            // Pegamos o índice 0.
+            const ultimo = history.length > 0 ? history[0] : null;
+            
+            return res.status(200).json({ json: ultimo });
         }
 
         return res.status(400).json({ error: "Modo desconhecido" });

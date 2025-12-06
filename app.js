@@ -1556,7 +1556,8 @@ function renderizarGraficoPatrimonio() {
         
         const labels = patrimonio.map(p => formatDate(p.date));
         const dataValor = patrimonio.map(p => p.value);
-        
+    
+    
         const dataCusto = patrimonio.map(p => {
             const dataSnapshot = new Date(p.date + 'T23:59:59');
             

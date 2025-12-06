@@ -485,7 +485,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addButton = document.getElementById('add-button');
     const updateNotification = document.getElementById('update-notification');
     const updateButton = document.getElementById('update-button');
-    const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn'); 
+    const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn');
+	const detalhesShareBtn = document.getElementById('detalhes-share-btn');
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
@@ -2341,6 +2342,62 @@ function renderizarGraficoPatrimonio() {
             showToast("Erro ao salvar favorito.");
         }
     }
+	
+	// ... acima ou abaixo de handleToggleFavorito ...
+
+    async function handleCompartilharAtivo() {
+        if (!currentDetalhesSymbol) return;
+
+        // Tenta pegar dados visíveis na tela para deixar a mensagem rica
+        // Se falhar, usa apenas o ticker
+        let precoTexto = document.querySelector('#detalhes-preco h2')?.textContent || '';
+        let dyTexto = 'N/A';
+        let pvpTexto = 'N/A';
+
+        // Procura os cards de DY e PVP pelo texto do label (mais robusto que classes genéricas)
+        const cards = document.querySelectorAll('#detalhes-preco span');
+        cards.forEach(span => {
+            if (span.textContent.includes('DY')) {
+                dyTexto = span.nextElementSibling?.textContent || 'N/A';
+            }
+            if (span.textContent.includes('P/VP')) {
+                pvpTexto = span.nextElementSibling?.textContent || 'N/A';
+            }
+        });
+
+        const baseUrl = window.location.origin + window.location.pathname;
+        const deepLink = `${baseUrl}?ativo=${currentDetalhesSymbol}`;
+        
+        const textoCompartilhado = `Confira ${currentDetalhesSymbol} no Vesto!\nPreço: ${precoTexto}\nDY (12m): ${dyTexto}\nP/VP: ${pvpTexto}\n\nVer detalhes: ${deepLink}`;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Vesto - ${currentDetalhesSymbol}`,
+                    text: textoCompartilhado,
+                    url: deepLink
+                });
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('Erro ao compartilhar', err);
+                    // Fallback para clipboard se falhar (ex: desktop)
+                    copiarParaClipboard(deepLink);
+                }
+            }
+        } else {
+            // Desktop ou navegador sem suporte a Share API
+            copiarParaClipboard(deepLink);
+        }
+    }
+
+    function copiarParaClipboard(texto) {
+        navigator.clipboard.writeText(texto).then(() => {
+            showToast('Link copiado para a área de transferência!', 'success');
+        }).catch(err => {
+            console.error('Erro ao copiar', err);
+            showToast('Erro ao copiar link.');
+        });
+    }
     
     async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
@@ -3185,6 +3242,10 @@ function renderizarTransacoesDetalhes(symbol) {
             }
         });
     }
+	
+	if (detalhesShareBtn) {
+        detalhesShareBtn.addEventListener('click', handleCompartilharAtivo);
+    }
     
     if (carteiraSearchInput) {
         carteiraSearchInput.addEventListener('input', (e) => {
@@ -3667,7 +3728,7 @@ function renderizarTransacoesDetalhes(symbol) {
             });
         });
 
-        if (session) {
+if (session) {
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
@@ -3676,6 +3737,27 @@ function renderizarTransacoesDetalhes(symbol) {
             
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
+
+            // === DEEP LINKING: Verifica se tem ativo na URL (NOVO) ===
+            const urlParams = new URLSearchParams(window.location.search);
+            const ativoShared = urlParams.get('ativo');
+
+            if (ativoShared) {
+                // Limpa a URL visualmente sem recarregar
+                const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({path: newUrl}, '', newUrl);
+                
+                // Abre o modal automaticamente
+                setTimeout(() => {
+                    let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
+                    if (symbolClean) {
+                        showToast(`Abrindo ${symbolClean}...`, 'success');
+                        showDetalhesModal(symbolClean);
+                    }
+                }, 800); // Pequeno delay para garantir que a UI carregou
+            }
+            // ========================================================
+            
         } else {
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 

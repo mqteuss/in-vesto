@@ -1,7 +1,6 @@
 
 import * as supabaseDB from './supabase.js';
 
-// --- LÓGICA DE INSTALAÇÃO PWA ---
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -9,9 +8,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredPrompt = e;
     console.log('Instalação disponível');
 });
-// ---------------------------------------
 
-// Configuração Inicial de Gráficos (Será sobrescrita pela função de tema)
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
@@ -92,7 +89,6 @@ function isB3Open() {
     return false;
 }
 
-// --- CONSTANTES DE CONFIGURAÇÃO ---
 const REFRESH_INTERVAL = 300000; 
 const CACHE_PRECO_MERCADO_ABERTO = 1000 * 60 * 5; 
 const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12; 
@@ -358,40 +354,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
     
-    // --- SELETORES DO DOM ---
     const authContainer = document.getElementById('auth-container');
-    const authLoading = document.getElementById('auth-loading');
-    
+    const authLoading = document.getElementById('auth-loading');    
     const loginForm = document.getElementById('login-form');
     const loginEmailInput = document.getElementById('login-email');
     const loginPasswordInput = document.getElementById('login-password');
     const loginSubmitBtn = document.getElementById('login-submit-btn');
-    const loginError = document.getElementById('login-error');
-    
+    const loginError = document.getElementById('login-error');    
     const signupForm = document.getElementById('signup-form');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
     const signupConfirmPasswordInput = document.getElementById('signup-confirm-password'); 
     const signupSubmitBtn = document.getElementById('signup-submit-btn');
     const signupError = document.getElementById('signup-error');
-    const signupSuccess = document.getElementById('signup-success'); 
-    
+    const signupSuccess = document.getElementById('signup-success');     
     const recoverForm = document.getElementById('recover-form');
     const recoverEmailInput = document.getElementById('recover-email');
     const recoverSubmitBtn = document.getElementById('recover-submit-btn');
     const recoverError = document.getElementById('recover-error');
     const recoverMessage = document.getElementById('recover-message');
     const showRecoverBtn = document.getElementById('show-recover-btn');
-    const backToLoginBtn = document.getElementById('back-to-login-btn');
-    
+    const backToLoginBtn = document.getElementById('back-to-login-btn');    
     const showSignupBtn = document.getElementById('show-signup-btn');
-    const showLoginBtn = document.getElementById('show-login-btn');
-    
+    const showLoginBtn = document.getElementById('show-login-btn');   
     const newPasswordModal = document.getElementById('new-password-modal');
     const newPasswordForm = document.getElementById('new-password-form');
     const newPasswordInput = document.getElementById('new-password-input');
     const newPasswordBtn = document.getElementById('new-password-btn');
-
     const changePasswordModal = document.getElementById('change-password-modal');
     const changePasswordForm = document.getElementById('change-password-form');
     const currentPasswordInput = document.getElementById('current-password-input');
@@ -400,26 +389,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const changePasswordSubmitBtn = document.getElementById('change-password-submit-btn');
     const openChangePasswordBtn = document.getElementById('open-change-password-btn');
     const closeChangePasswordBtn = document.getElementById('close-change-password-btn');
-    
-    // Configs - Biometria
     const toggleBioBtn = document.getElementById('toggle-bio-btn');
     const bioToggleKnob = document.getElementById('bio-toggle-knob'); 
     const bioStatusIcon = document.getElementById('bio-status-icon');
-    
-    // Configs - Tema (NOVO)
     const toggleThemeBtn = document.getElementById('toggle-theme-btn');
     const themeToggleKnob = document.getElementById('theme-toggle-knob');
-
-    // Configs - Privacidade (NOVO)
     const togglePrivacyBtn = document.getElementById('toggle-privacy-btn');
     const privacyToggleKnob = document.getElementById('privacy-toggle-knob');
     const exportCsvBtn = document.getElementById('export-csv-btn');
     const clearCacheBtn = document.getElementById('clear-cache-btn');
-
     const appWrapper = document.getElementById('app-wrapper');
     const logoutBtn = document.getElementById('logout-btn');
     const passwordToggleButtons = document.querySelectorAll('.password-toggle'); 
-
     const refreshButton = document.getElementById('refresh-button');
     const refreshNoticiasButton = document.getElementById('refresh-noticias-button');
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -445,8 +426,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCarteiraPL = document.getElementById('total-carteira-pl');
     const totalCaixaValor = document.getElementById('total-caixa-valor');
     const listaCarteira = document.getElementById('lista-carteira');
-    const carteiraSearchInput = document.getElementById('carteira-search-input');
-    
+    const carteiraSearchInput = document.getElementById('carteira-search-input');    
     const carteiraStatus = document.getElementById('carteira-status');
     const skeletonListaCarteira = document.getElementById('skeleton-lista-carteira');
     const emptyStateAddBtn = document.getElementById('empty-state-add-btn');
@@ -490,22 +470,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
     const watchlistListaEl = document.getElementById('watchlist-lista'); 
-    const watchlistStatusEl = document.getElementById('watchlist-status');
-    
+    const watchlistStatusEl = document.getElementById('watchlist-status');   
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
-    
     const btnIaAnalise = document.getElementById('btn-ia-analise');
     const aiModal = document.getElementById('ai-modal');
     const closeAiModal = document.getElementById('close-ai-modal');
     const aiContent = document.getElementById('ai-content');
     const aiLoading = document.getElementById('ai-loading');
-
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
 
-    // --- LÓGICA DE INSTALAÇÃO DO PWA ---
     function verificarStatusInstalacao() {
         if (deferredPrompt) {
             installSection.classList.remove('hidden');
@@ -536,7 +512,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- LÓGICA DE TEMA (CLARO / ESCURO) ---
     function updateThemeUI() {
         const isLight = localStorage.getItem('vesto_theme') === 'light';
         const metaTheme = document.querySelector('meta[name="theme-color"]');
@@ -613,7 +588,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDetalhesMeses = 3; 
     let currentDetalhesHistoricoJSON = null; 
 
-    // --- VARIÁVEIS NOVAS PARA OTIMIZAÇÃO ---
     let lastNewsSignature = ''; 
     let lastProventosCalcSignature = ''; 
     let cachedSaldoCaixa = 0;
@@ -966,7 +940,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             limparDetalhes(); 
         }, 400); 
     }
-	// --- FUNÇÃO: HANDLER DE IA ---
+
     async function handleAnaliseIA() {
         if (!carteiraCalculada || carteiraCalculada.length === 0) {
             showToast("Adicione ativos antes de pedir uma análise.");
@@ -1130,16 +1104,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function salvarHistoricoProcessado() {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
-    // --- CORREÇÃO #4: Otimização de Cálculo de Saldo ---
+
     async function processarDividendosPagos() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         const hojeString = hoje.toISOString().split('T')[0];
 
-        // Cria uma assinatura única baseada na data e no tamanho dos dados
         const currentSignature = `${hojeString}-${proventosConhecidos.length}-${transacoes.length}`;
 
-        // Se a assinatura for igual à última, usa o valor em cache (Memória)
         if (currentSignature === lastProventosCalcSignature) {
             saldoCaixa = cachedSaldoCaixa;
             if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
@@ -1171,7 +1143,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // Atualiza o estado e o cache
         saldoCaixa = novoSaldoCalculado;
         cachedSaldoCaixa = novoSaldoCalculado;
         lastProventosCalcSignature = currentSignature;
@@ -1265,11 +1236,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         listaHistorico.appendChild(fragment);
     }
 
-    // --- CORREÇÃO #3: Otimização de DOM (Notícias) ---
     function renderizarNoticias(articles) { 
         fiiNewsSkeleton.classList.add('hidden');
         
-        // Verifica assinatura para evitar renderização desnecessária
         const newSignature = JSON.stringify(articles);
         if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
             return;
@@ -1585,23 +1554,16 @@ function renderizarGraficoPatrimonio() {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         
-        // Dados do Valor de Mercado (Linha Roxa)
         const labels = patrimonio.map(p => formatDate(p.date));
         const dataValor = patrimonio.map(p => p.value);
         
-        // --- NOVO: Cálculo do Custo Histórico (Linha Cinza) ---
-        // Para cada data do gráfico, calculamos quanto foi investido até aquele dia
         const dataCusto = patrimonio.map(p => {
-            const dataSnapshot = new Date(p.date + 'T23:59:59'); // Fim do dia do snapshot
+            const dataSnapshot = new Date(p.date + 'T23:59:59');
             
-            // Filtra transações feitas até essa data
             const transacoesAteData = transacoes.filter(t => new Date(t.date) <= dataSnapshot);
             
-            // Calcula o custo acumulado dessas transações
-            // Usamos um Map para garantir que vendas reduzam o custo proporcionalmente ao Preço Médio
             const carteiraTemp = new Map();
             
-            // Ordena cronologicamente para o cálculo ficar certo
             transacoesAteData.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(t => {
                 let ativo = carteiraTemp.get(t.symbol) || { qtd: 0, custoTotal: 0 };
                 
@@ -1611,13 +1573,11 @@ function renderizarGraficoPatrimonio() {
                 } else if (t.type === 'sell' && ativo.qtd > 0) {
                     const precoMedio = ativo.custoTotal / ativo.qtd;
                     ativo.qtd -= t.quantity;
-                    ativo.custoTotal -= (t.quantity * precoMedio); // Reduz pelo PM
-                }
+                    ativo.custoTotal -= (t.quantity * precoMedio);
                 
                 carteiraTemp.set(t.symbol, ativo);
             });
 
-            // Soma o custo total dos ativos que sobraram na carteira naquele dia
             let custoTotalDia = 0;
             carteiraTemp.forEach(ativo => {
                 if (ativo.qtd > 0) custoTotalDia += ativo.custoTotal;
@@ -1625,7 +1585,6 @@ function renderizarGraficoPatrimonio() {
             
             return custoTotalDia;
         });
-        // -------------------------------------------------------
 
         const newDataString = JSON.stringify({ labels, dataValor, dataCusto });
 
@@ -1646,18 +1605,17 @@ function renderizarGraficoPatrimonio() {
 
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
-            patrimonioChartInstance.data.datasets[0].data = dataValor; // Atualiza Valor
+            patrimonioChartInstance.data.datasets[0].data = dataValor;
             
-            // Se o segundo dataset (Custo) já existir, atualiza. Se não, adiciona.
             if (patrimonioChartInstance.data.datasets[1]) {
                 patrimonioChartInstance.data.datasets[1].data = dataCusto;
             } else {
                 patrimonioChartInstance.data.datasets.push({
                     label: 'Custo Total',
                     data: dataCusto,
-                    borderColor: '#6b7280', // Cinza
+                    borderColor: '#6b7280',
                     borderWidth: 2,
-                    borderDash: [5, 5], // Tracejado
+                    borderDash: [5, 5],
                     pointRadius: 0,
                     fill: false,
                     tension: 0.1
@@ -1675,7 +1633,7 @@ function renderizarGraficoPatrimonio() {
                             data: dataValor,
                             fill: true,
                             backgroundColor: gradient,
-                            borderColor: '#c084fc', // Roxo
+                            borderColor: '#c084fc',
                             tension: 0.3,
                             pointRadius: 3, 
                             pointBackgroundColor: '#c084fc', 
@@ -1686,11 +1644,11 @@ function renderizarGraficoPatrimonio() {
                             label: 'Custo Investido',
                             data: dataCusto,
                             fill: false,
-                            borderColor: '#6b7280', // Cinza
+                            borderColor: '#6b7280',
                             borderWidth: 2,
-                            borderDash: [5, 5], // Tracejado para diferenciar
+                            borderDash: [5, 5],
                             tension: 0.3,
-                            pointRadius: 0, // Sem bolinhas para limpar o visual
+                            pointRadius: 0,
                             pointHoverRadius: 4
                         }
                     ]
@@ -1698,12 +1656,12 @@ function renderizarGraficoPatrimonio() {
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     interaction: {
-                        mode: 'index', // Mostra os dois valores ao passar o mouse
+                        mode: 'index',
                         intersect: false,
                     },
                     plugins: {
                         legend: { 
-                            display: true, // Agora mostramos a legenda para diferenciar
+                            display: true,
                             labels: { color: '#9ca3af', boxWidth: 12, usePointStyle: true }
                         },
                         tooltip: {
@@ -1723,7 +1681,7 @@ function renderizarGraficoPatrimonio() {
                         y: { 
                             beginAtZero: false, 
                             ticks: { 
-                                display: true, // Mostra valores no eixo Y
+                                display: true,
                                 color: '#4b5563',
                                 font: { size: 10 },
                                 callback: function(value) { return value >= 1000 ? `${value/1000}k` : value; }
@@ -1903,7 +1861,6 @@ function renderizarGraficoPatrimonio() {
         renderizarGraficoAlocacao(dadosGrafico);
         renderizarGraficoPatrimonio();
         
-        // REAPLICAR FILTRO DE PESQUISA
         if (carteiraSearchInput && carteiraSearchInput.value) {
             const term = carteiraSearchInput.value.trim().toUpperCase();
             const cards = listaCarteira.querySelectorAll('.card-bg');
@@ -1940,8 +1897,6 @@ function renderizarGraficoPatrimonio() {
         });
         totalProventosEl.textContent = formatBRL(totalEstimado);
     }
-    
-    // --- LÓGICA DE DADOS (FETCH & ATUALIZAÇÃO) ---
 
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v5_filtered';
@@ -2139,7 +2094,6 @@ function renderizarGraficoPatrimonio() {
     }
 	async function callScraperProximoProventoAPI(ticker) {
         const body = { mode: 'proximo_provento', payload: { ticker } };
-        // Usa fetchBFF para aproveitar o tratamento de erros
         const response = await fetchBFF('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2310,8 +2264,6 @@ function renderizarGraficoPatrimonio() {
             dashboardLoading.classList.add('hidden');
         }
     }
-    
-    // --- MANIPULADORES DE EVENTOS ---
 
     async function handleToggleFavorito() {
         const symbol = detalhesFavoritoBtn.dataset.symbol;
@@ -2336,13 +2288,10 @@ function renderizarGraficoPatrimonio() {
             showToast("Erro ao salvar favorito.");
         }
     }
-	
-	// ... acima ou abaixo de handleToggleFavorito ...
 
 async function handleCompartilharAtivo() {
         if (!currentDetalhesSymbol) return;
 
-        // Captura dados da tela
         let precoTexto = document.querySelector('#detalhes-preco h2')?.textContent || '';
         let dyTexto = 'N/A';
         let pvpTexto = 'N/A';
@@ -2360,27 +2309,25 @@ async function handleCompartilharAtivo() {
         const baseUrl = window.location.origin + window.location.pathname;
         const deepLink = `${baseUrl}?ativo=${currentDetalhesSymbol}`;
         
-        // 1. Texto BASE (Sem o link) - Para usar no Mobile
         const textoBase = `Confira ${currentDetalhesSymbol} no Vesto!\nPreço: ${precoTexto}\nDY (12m): ${dyTexto}\nP/VP: ${pvpTexto}`;
         
-        // 2. Texto COMPLETO (Com o link) - Para usar no PC (Clipboard)
         const textoCompleto = `${textoBase}\n\nVer detalhes: ${deepLink}`;
 
         if (navigator.share) {
             try {
                 await navigator.share({
                     title: `Vesto - ${currentDetalhesSymbol}`,
-                    text: textoBase, // Envia SEM o link, pois a propriedade 'url' abaixo já adiciona
+                    text: textoBase,
                     url: deepLink
                 });
             } catch (err) {
                 if (err.name !== 'AbortError') {
-                    // Fallback se der erro
+
                     copiarParaClipboard(textoCompleto);
                 }
             }
         } else {
-            // PC
+
             copiarParaClipboard(textoCompleto);
         }
     }
@@ -2686,7 +2633,6 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // Reset dos botões de período
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
@@ -2698,7 +2644,6 @@ async function handleMostrarDetalhes(symbol) {
         if(isActive) btn.classList.add('active');
     });
     
-    // --- LÓGICA DE DADOS ---
     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
@@ -2723,7 +2668,7 @@ async function handleMostrarDetalhes(symbol) {
 
     if (isFII(symbol)) {
         detalhesHistoricoContainer.classList.remove('hidden'); 
-        fetchHistoricoScraper(symbol); // Background graph fetch
+        fetchHistoricoScraper(symbol);
         
         try {
             const [fundData, provData] = await Promise.all([
@@ -2753,7 +2698,6 @@ async function handleMostrarDetalhes(symbol) {
         if (varPercent > 0) { variacaoCor = 'text-green-500'; variacaoIcone = arrowUp; } 
         else if (varPercent < 0) { variacaoCor = 'text-red-500'; variacaoIcone = arrowDown; }
         
-        // --- CARD: SUA POSIÇÃO ---
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
@@ -2771,7 +2715,6 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- CARD: PRÓXIMO PROVENTO ---
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
@@ -2807,13 +2750,12 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- DADOS FUNDAMENTOS (PREENCHIDOS) ---
         const dados = { 
             pvp: fundamentos.pvp || '-', 
             dy: fundamentos.dy || '-', 
             segmento: fundamentos.segmento || '-', 
-            mandato: fundamentos.mandato || '-',           // NOVO
-            tipo_fundo: fundamentos.tipo_fundo || '-',     // NOVO
+            mandato: fundamentos.mandato || '-',          
+            tipo_fundo: fundamentos.tipo_fundo || '-',    
             vacancia: fundamentos.vacancia || '-', 
             vp_cota: fundamentos.vp_cota || '-', 
             liquidez: fundamentos.liquidez || '-', 
@@ -2824,9 +2766,9 @@ async function handleMostrarDetalhes(symbol) {
             cnpj: fundamentos.cnpj || '-', 
             num_cotistas: fundamentos.num_cotistas || '-', 
             tipo_gestao: fundamentos.tipo_gestao || '-',
-            prazo_duracao: fundamentos.prazo_duracao || '-', // NOVO
-            taxa_adm: fundamentos.taxa_adm || '-',           // NOVO
-            cotas_emitidas: fundamentos.cotas_emitidas || '-' // NOVO
+            prazo_duracao: fundamentos.prazo_duracao || '-', 
+            taxa_adm: fundamentos.taxa_adm || '-',           
+            cotas_emitidas: fundamentos.cotas_emitidas || '-' 
         };
         
         let corVar12m = 'text-gray-400'; let icon12m = '';
@@ -2937,7 +2879,6 @@ function renderizarTransacoesDetalhes(symbol) {
 
         txsDoAtivo.forEach(t => {
             const card = document.createElement('div');
-            // ATUALIZADO: Borda #2C2C2E
             card.className = 'bg-black p-3.5 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2 shadow-sm w-full'; 
             
             const cor = 'text-green-500';
@@ -3257,22 +3198,18 @@ function renderizarTransacoesDetalhes(symbol) {
             });
         });
 
-// Captura o ENTER: Salva histórico -> Abre Modal -> Limpa campo
         carteiraSearchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 const term = carteiraSearchInput.value.trim().toUpperCase();
                 
                 if (!term) return;
 
-                // 1. Salva no histórico (AGORA FUNCIONA POIS O VALOR AINDA EXISTE)
                 saveSearchHistory(term);
                 suggestionsContainer.classList.add('hidden');
 
-                // 2. Executa a ação de busca visual
                 carteiraSearchInput.blur(); 
                 showDetalhesModal(term);
 
-                // 3. Só agora limpa o campo
                 carteiraSearchInput.value = '';
                 carteiraSearchInput.dispatchEvent(new Event('input'));
             }
@@ -3317,7 +3254,6 @@ function renderizarTransacoesDetalhes(symbol) {
         });
     }
 
-    // --- LÓGICA MODO PRIVACIDADE ---
     function updatePrivacyUI() {
         const isPrivacyOn = localStorage.getItem('vesto_privacy_mode') === 'true';
         if (isPrivacyOn) {
@@ -3345,7 +3281,6 @@ function renderizarTransacoesDetalhes(symbol) {
         });
     }
 
-    // --- LÓGICA EXPORTAR CSV ---
     if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', () => {
             if (!transacoes || transacoes.length === 0) {
@@ -3379,10 +3314,9 @@ if (clearCacheBtn) {
                 "Limpar Cache e Reparar?", 
                 "Isso apagará dados temporários (preços, notícias) e baixará a versão mais recente do app. Suas configurações (Tema, Biometria) serão mantidas.", 
                 async () => {
-                    // Feedback visual imediato                    
+             
                     try {
-                        // 1. Limpar IndexedDB (Onde ficam Preços, Gráficos e Notícias)
-                        // Tentamos limpar a store específica e, se falhar, deletamos o banco todo
+
                         try {
                             await vestoDB.clear('apiCache');
                         } catch (e) {
@@ -3391,13 +3325,11 @@ if (clearCacheBtn) {
                             req.onsuccess = () => console.log("DB Deletado com sucesso");
                         }
 
-                        // 2. Limpar Cache Storage (Cache de Arquivos do Navegador)
                         if ('caches' in window) {
                             const keys = await caches.keys();
                             await Promise.all(keys.map(key => caches.delete(key)));
                         }
 
-                        // 3. Remove Service Worker (Código antigo)
                         if ('serviceWorker' in navigator) {
                             const registrations = await navigator.serviceWorker.getRegistrations();
                             for(let registration of registrations) {
@@ -3455,8 +3387,6 @@ if (clearCacheBtn) {
             });
         });
     }
-
-    // --- NOVAS FUNÇÕES SCRAPER ---
 
     async function callScraperHistoricoAPI(ticker) { 
         const body = { 
@@ -3754,24 +3684,21 @@ if (session) {
             mudarAba('tab-dashboard'); 
             await carregarDadosIniciais();
 
-            // === DEEP LINKING: Verifica se tem ativo na URL (NOVO) ===
             const urlParams = new URLSearchParams(window.location.search);
             const ativoShared = urlParams.get('ativo');
 
             if (ativoShared) {
-                // Limpa a URL visualmente sem recarregar
+
                 const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.replaceState({path: newUrl}, '', newUrl);
                 
-                // Abre o modal automaticamente
                 setTimeout(() => {
                     let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
                     if (symbolClean) {
                         showDetalhesModal(symbolClean);
                     }
-                }, 800); // Pequeno delay para garantir que a UI carregou
+                }, 800);
             }
-            // ========================================================
             
         } else {
             appWrapper.classList.add('hidden');      
@@ -3783,22 +3710,17 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
             showAuthLoading(false);                 
         }
     }
-
-// ============================================================
-    // === SISTEMA DE SUGESTÃO DE PESQUISA (HISTÓRICO) ===
-    // ============================================================
     
     const STORAGE_KEY_SEARCH = 'vesto_search_history';
     const MAX_HISTORY_ITEMS = 5;
 
-    // 1. Criar o elemento visual (Dropdown)
     const suggestionsContainer = document.createElement('ul');
     suggestionsContainer.id = 'search-suggestions';
-    // Ajustei z-index para 60 para garantir que fique acima dos cards
+
     suggestionsContainer.className = 'absolute top-full left-0 w-full bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl mt-2 z-[60] hidden overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)]';
     
     if (carteiraSearchInput && carteiraSearchInput.parentNode) {
-        // Garante que o pai tenha posição relativa para o absolute funcionar
+
         const parentStyle = window.getComputedStyle(carteiraSearchInput.parentNode);
         if (parentStyle.position === 'static') {
             carteiraSearchInput.parentNode.style.position = 'relative';
@@ -3808,11 +3730,10 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
         console.error("Erro Vesto: Input de pesquisa não encontrado para anexar sugestões.");
     }
 
-    // 2. Gerenciamento de Dados
 function getSearchHistory() {
         try {
             const history = localStorage.getItem(STORAGE_KEY_SEARCH);
-            // Retorna o histórico salvo ou uma lista vazia se não existir nada
+
             return history ? JSON.parse(history) : [];
         } catch (e) { return []; }
     }
@@ -3822,9 +3743,9 @@ function saveSearchHistory(term) {
         term = term.toUpperCase().trim();
         
         let history = getSearchHistory();
-        history = history.filter(item => item !== term); // Remove duplicado
-        history.unshift(term); // Adiciona no topo
-        if (history.length > MAX_HISTORY_ITEMS) history.pop(); // Limita tamanho
+        history = history.filter(item => item !== term);
+        history.unshift(term); 
+        if (history.length > MAX_HISTORY_ITEMS) history.pop(); 
         
         localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
         
@@ -3836,7 +3757,6 @@ function saveSearchHistory(term) {
         history = history.filter(item => item !== term);
         localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
         
-        // Se esvaziar, esconde o container, senão renderiza de novo
         if (history.length === 0) {
             suggestionsContainer.classList.add('hidden');
         } else {
@@ -3845,7 +3765,6 @@ function saveSearchHistory(term) {
         carteiraSearchInput.focus();
     }
 
-    // 3. Renderização Visual (Otimizada para Mobile)
     function renderSuggestions() {
         const history = getSearchHistory();
         suggestionsContainer.innerHTML = '';
@@ -3861,7 +3780,6 @@ function saveSearchHistory(term) {
             const li = document.createElement('li');
             li.className = 'flex justify-between items-center bg-[#1C1C1E] active:bg-gray-800 hover:bg-gray-800 transition-colors cursor-pointer border-b border-[#2C2C2E] last:border-0 group';
             
-            // Área de texto (clicável)
             const contentDiv = document.createElement('div');
             contentDiv.className = 'flex items-center gap-3 flex-1 p-4';
             contentDiv.innerHTML = `
@@ -3871,7 +3789,6 @@ function saveSearchHistory(term) {
                 <span class="text-sm text-gray-200 font-medium">${term}</span>
             `;
             
-            // Botão Excluir (Sempre visível no mobile)
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'p-4 text-gray-600 hover:text-red-400 active:text-red-400 transition-colors border-l border-[#2C2C2E]';
             deleteBtn.title = "Remover do histórico";
@@ -3881,20 +3798,16 @@ function saveSearchHistory(term) {
                 </svg>
             `;
 
-            // Clique no texto: Preenche e busca
             contentDiv.addEventListener('mousedown', (e) => {
-                e.preventDefault(); // Evita perder o foco antes da hora
+                e.preventDefault(); 
                 carteiraSearchInput.value = term;
                 suggestionsContainer.classList.add('hidden');
                 
-                // Dispara filtro da lista
                 carteiraSearchInput.dispatchEvent(new Event('input'));
                 
-                // Abre o modal diretamente
                 showDetalhesModal(term);
             });
 
-            // Clique no X: Exclui
             deleteBtn.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -3909,9 +3822,7 @@ function saveSearchHistory(term) {
         suggestionsContainer.appendChild(fragment);
     }
 
-    // 4. Event Listeners do Input
     if (carteiraSearchInput) {
-        // Ao focar, mostra sugestões
         carteiraSearchInput.addEventListener('focus', () => {
             const history = getSearchHistory();
             if (history.length > 0) {
@@ -3920,25 +3831,23 @@ function saveSearchHistory(term) {
             }
         });
 
-        // Ao digitar
         carteiraSearchInput.addEventListener('input', () => {
             if (carteiraSearchInput.value.length > 0) {
                 suggestionsContainer.classList.add('hidden');
             } else {
-                // Se limpou o campo, mostra histórico de novo
+
                 renderSuggestions();
                 suggestionsContainer.classList.remove('hidden');
             }
         });
 
-        // Ao sair do foco (Blur)
+
         carteiraSearchInput.addEventListener('blur', () => {
             setTimeout(() => {
                 suggestionsContainer.classList.add('hidden');
             }, 200);
         });
 
-        // Captura o ENTER para salvar no histórico
         carteiraSearchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 const term = carteiraSearchInput.value.trim();
@@ -3949,6 +3858,5 @@ function saveSearchHistory(term) {
             }
         });
     }
-    // ============================================================
     await init();
 });

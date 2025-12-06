@@ -3769,48 +3769,56 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
         }
     }
 
-    // ============================================================
+// ============================================================
     // === SISTEMA DE SUGESTÃO DE PESQUISA (HISTÓRICO) ===
     // ============================================================
     
     const STORAGE_KEY_SEARCH = 'vesto_search_history';
     const MAX_HISTORY_ITEMS = 5;
 
-    // 1. Criar o elemento visual da lista de sugestões dinamicamente
+    // 1. Criar o elemento visual (Dropdown)
     const suggestionsContainer = document.createElement('ul');
     suggestionsContainer.id = 'search-suggestions';
-    suggestionsContainer.className = 'absolute top-full left-0 w-full bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl mt-2 z-50 hidden overflow-hidden shadow-2xl';
+    // Ajustei z-index para 60 para garantir que fique acima dos cards
+    suggestionsContainer.className = 'absolute top-full left-0 w-full bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl mt-2 z-[60] hidden overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)]';
     
-    // Inserir logo após o input de pesquisa
-    if (carteiraSearchInput) {
-        carteiraSearchInput.parentNode.appendChild(suggestionsContainer);
-        // Ajuste no parent para garantir posicionamento relativo
-        if (window.getComputedStyle(carteiraSearchInput.parentNode).position === 'static') {
+    if (carteiraSearchInput && carteiraSearchInput.parentNode) {
+        // Garante que o pai tenha posição relativa para o absolute funcionar
+        const parentStyle = window.getComputedStyle(carteiraSearchInput.parentNode);
+        if (parentStyle.position === 'static') {
             carteiraSearchInput.parentNode.style.position = 'relative';
         }
+        carteiraSearchInput.parentNode.appendChild(suggestionsContainer);
+    } else {
+        console.error("Erro Vesto: Input de pesquisa não encontrado para anexar sugestões.");
     }
 
-    // 2. Funções de Gerenciamento do Histórico
+    // 2. Gerenciamento de Dados
     function getSearchHistory() {
         try {
             const history = localStorage.getItem(STORAGE_KEY_SEARCH);
-            return history ? JSON.parse(history) : [];
+            // --- AJUSTE: Dados iniciais para teste se estiver vazio ---
+            if (!history) {
+                const initialData = ["MXRF11", "HGLG11", "VISC11"];
+                localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(initialData));
+                return initialData;
+            }
+            // ---------------------------------------------------------
+            return JSON.parse(history);
         } catch (e) { return []; }
     }
 
     function saveSearchHistory(term) {
-        if (!term || term.length < 3) return; // Ignora termos muito curtos
+        if (!term || term.length < 3) return;
         term = term.toUpperCase().trim();
         
         let history = getSearchHistory();
-        // Remove se já existir (para mover pro topo)
-        history = history.filter(item => item !== term);
-        // Adiciona no início
-        history.unshift(term);
-        // Limita tamanho
-        if (history.length > MAX_HISTORY_ITEMS) history.pop();
+        history = history.filter(item => item !== term); // Remove duplicado
+        history.unshift(term); // Adiciona no topo
+        if (history.length > MAX_HISTORY_ITEMS) history.pop(); // Limita tamanho
         
         localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
+        console.log("Histórico salvo:", history); // Diagnóstico
         renderSuggestions();
     }
 
@@ -3818,13 +3826,17 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
         let history = getSearchHistory();
         history = history.filter(item => item !== term);
         localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
-        renderSuggestions();
-        // Mantém o input focado após excluir
+        
+        // Se esvaziar, esconde o container, senão renderiza de novo
+        if (history.length === 0) {
+            suggestionsContainer.classList.add('hidden');
+        } else {
+            renderSuggestions();
+        }
         carteiraSearchInput.focus();
     }
 
-    // 3. Renderização Visual
-// 3. Renderização Visual (OTIMIZADA PARA MOBILE)
+    // 3. Renderização Visual (Otimizada para Mobile)
     function renderSuggestions() {
         const history = getSearchHistory();
         suggestionsContainer.innerHTML = '';
@@ -3838,13 +3850,11 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
 
         history.forEach(term => {
             const li = document.createElement('li');
-            // 'active:bg-gray-800' adiciona feedback visual imediato ao tocar no celular
-            li.className = 'flex justify-between items-center bg-[#1C1C1E] active:bg-gray-800 hover:bg-gray-800 transition-colors cursor-pointer border-b border-[#2C2C2E] last:border-0';
+            li.className = 'flex justify-between items-center bg-[#1C1C1E] active:bg-gray-800 hover:bg-gray-800 transition-colors cursor-pointer border-b border-[#2C2C2E] last:border-0 group';
             
-            // Ícone de relógio + Texto
-            // Aumentei o padding (p-4) para facilitar o toque no texto
+            // Área de texto (clicável)
             const contentDiv = document.createElement('div');
-            contentDiv.className = 'flex items-center gap-3 flex-1 p-4'; 
+            contentDiv.className = 'flex items-center gap-3 flex-1 p-4';
             contentDiv.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -3852,9 +3862,7 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
                 <span class="text-sm text-gray-200 font-medium">${term}</span>
             `;
             
-            // Botão Excluir (X)
-            // REMOVIDO: 'opacity-0 group-hover:opacity-100' (para aparecer sempre no mobile)
-            // AUMENTADO: p-1.5 -> p-4 (área de toque maior para o dedo)
+            // Botão Excluir (Sempre visível no mobile)
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'p-4 text-gray-600 hover:text-red-400 active:text-red-400 transition-colors border-l border-[#2C2C2E]';
             deleteBtn.title = "Remover do histórico";
@@ -3864,23 +3872,24 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
                 </svg>
             `;
 
-            // Evento: Clicar no texto (Preenche e Busca)
-            // Usei 'mousedown' pois ele dispara antes do 'blur' do input, garantindo que o clique funcione
-            contentDiv.addEventListener('mousedown', (e) => { 
-                e.preventDefault(); 
+            // Clique no texto: Preenche e busca
+            contentDiv.addEventListener('mousedown', (e) => {
+                e.preventDefault(); // Evita perder o foco antes da hora
                 carteiraSearchInput.value = term;
                 suggestionsContainer.classList.add('hidden');
                 
+                // Dispara filtro da lista
                 carteiraSearchInput.dispatchEvent(new Event('input'));
                 
+                // Abre o modal diretamente
                 showToast(`Buscando ${term}...`, 'success');
                 showDetalhesModal(term);
             });
 
-            // Evento: Clicar no X (Excluir)
+            // Clique no X: Exclui
             deleteBtn.addEventListener('mousedown', (e) => {
                 e.preventDefault();
-                e.stopPropagation(); // Impede que o clique propague e acione a busca
+                e.stopPropagation();
                 removeSearchHistoryItem(term);
             });
 
@@ -3896,33 +3905,32 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
     if (carteiraSearchInput) {
         // Ao focar, mostra sugestões
         carteiraSearchInput.addEventListener('focus', () => {
-            renderSuggestions();
             const history = getSearchHistory();
             if (history.length > 0) {
+                renderSuggestions();
                 suggestionsContainer.classList.remove('hidden');
             }
         });
 
         // Ao digitar
         carteiraSearchInput.addEventListener('input', () => {
-            // Se tiver texto, pode esconder as sugestões ou filtrar (aqui optei por esconder para focar no resultado da lista)
             if (carteiraSearchInput.value.length > 0) {
                 suggestionsContainer.classList.add('hidden');
             } else {
-                suggestionsContainer.classList.remove('hidden');
+                // Se limpou o campo, mostra histórico de novo
                 renderSuggestions();
+                suggestionsContainer.classList.remove('hidden');
             }
         });
 
         // Ao sair do foco (Blur)
         carteiraSearchInput.addEventListener('blur', () => {
-            // Pequeno delay para permitir o clique nos itens antes de esconder
             setTimeout(() => {
                 suggestionsContainer.classList.add('hidden');
             }, 200);
         });
 
-        // Intercepta o 'Enter' existente para salvar no histórico
+        // Captura o ENTER para salvar no histórico
         carteiraSearchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 const term = carteiraSearchInput.value.trim();
@@ -3934,6 +3942,5 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
         });
     }
     // ============================================================
-
     await init();
 });

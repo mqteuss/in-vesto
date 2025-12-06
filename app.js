@@ -3262,17 +3262,23 @@ function renderizarTransacoesDetalhes(symbol) {
             });
         });
 
+// Captura o ENTER: Salva histórico -> Abre Modal -> Limpa campo
         carteiraSearchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 const term = carteiraSearchInput.value.trim().toUpperCase();
                 
                 if (!term) return;
-                
+
+                // 1. Salva no histórico (AGORA FUNCIONA POIS O VALOR AINDA EXISTE)
+                saveSearchHistory(term);
+                suggestionsContainer.classList.add('hidden');
+
+                // 2. Executa a ação de busca visual
                 carteiraSearchInput.blur(); 
                 showToast(`Buscando ${term}...`, 'success');
-
                 showDetalhesModal(term);
 
+                // 3. Só agora limpa o campo
                 carteiraSearchInput.value = '';
                 carteiraSearchInput.dispatchEvent(new Event('input'));
             }

@@ -3821,17 +3821,11 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
     }
 
     // 2. Gerenciamento de Dados
-    function getSearchHistory() {
+function getSearchHistory() {
         try {
             const history = localStorage.getItem(STORAGE_KEY_SEARCH);
-            // --- AJUSTE: Dados iniciais para teste se estiver vazio ---
-            if (!history) {
-                const initialData = ["MXRF11", "HGLG11", "VISC11"];
-                localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(initialData));
-                return initialData;
-            }
-            // ---------------------------------------------------------
-            return JSON.parse(history);
+            // Retorna o histórico salvo ou uma lista vazia se não existir nada
+            return history ? JSON.parse(history) : [];
         } catch (e) { return []; }
     }
 

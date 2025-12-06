@@ -724,8 +724,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('vesto_bio_id', credentialId);
                 localStorage.setItem('vesto_bio_enabled', 'true');
                 verificarStatusBiometria();
-                showToast('Face ID / Digital ativado!', 'success');
-            }
+                showToast('Biometria ativada com sucesso!', 'success');            }
         } catch (e) {
             console.error("Erro biometria:", e);
             showToast(`Erro ao ativar: ${e.message || e.name}`);
@@ -3308,8 +3307,7 @@ function renderizarTransacoesDetalhes(symbol) {
         toggleBioBtn.addEventListener('click', () => {
             const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
             if (isEnabled) {
-                showModal("Desativar Biometria?", "Deseja remover o bloqueio por Face ID/Digital?", () => {
-                    desativarBiometria();
+                showModal("Desativar Biometria?", "Deseja remover o bloqueio por impressão digital?", () => {                    desativarBiometria();
                 });
             } else {
                 showModal("Ativar Biometria?", "Isso usará o sensor do seu dispositivo para proteger o app.", () => {

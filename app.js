@@ -3382,24 +3382,45 @@ function renderizarTransacoesDetalhes(symbol) {
         });
     }
 
-    if (clearCacheBtn) {
+if (clearCacheBtn) {
         clearCacheBtn.addEventListener('click', () => {
             showModal(
-                "Limpar Cache?", 
-                "Isso pode corrigir erros de visualização, mas o carregamento inicial será mais lento na próxima vez.", 
+                "Limpar Cache e Reparar?", 
+                "Isso apagará dados temporários (preços, notícias) e baixará a versão mais recente do app. Suas configurações (Tema, Biometria) serão mantidas.", 
                 async () => {
+                    // Feedback visual imediato
+                    showToast("Limpando sistema...", "success");
+                    
                     try {
-                        await vestoDB.clear('apiCache');
+                        // 1. Limpar IndexedDB (Onde ficam Preços, Gráficos e Notícias)
+                        // Tentamos limpar a store específica e, se falhar, deletamos o banco todo
+                        try {
+                            await vestoDB.clear('apiCache');
+                        } catch (e) {
+                            console.warn("Falha ao limpar store, tentando deletar DB completo...", e);
+                            const req = indexedDB.deleteDatabase(DB_NAME);
+                            req.onsuccess = () => console.log("DB Deletado com sucesso");
+                        }
+
+                        // 2. Limpar Cache Storage (Cache de Arquivos do Navegador)
+                        if ('caches' in window) {
+                            const keys = await caches.keys();
+                            await Promise.all(keys.map(key => caches.delete(key)));
+                        }
+
+                        // 3. Remove Service Worker (Código antigo)
                         if ('serviceWorker' in navigator) {
                             const registrations = await navigator.serviceWorker.getRegistrations();
                             for(let registration of registrations) {
                                 await registration.unregister();
                             }
                         }
-                        window.location.reload();
+
+                        window.location.reload(true);
+
                     } catch (e) {
-                        console.error(e);
-                        showToast("Erro ao limpar cache.");
+                        console.error("Erro fatal ao limpar:", e);
+                        showToast("Erro ao limpar. Tente reiniciar o navegador.");
                     }
                 }
             );

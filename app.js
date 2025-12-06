@@ -3372,7 +3372,6 @@ function renderizarTransacoesDetalhes(symbol) {
             
             link.click();
             document.body.removeChild(link);
-            showToast("Download iniciado!", "success");
         });
     }
 

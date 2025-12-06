@@ -132,7 +132,6 @@
     <div id="app-wrapper" class="hidden">
 
         <div id="app-container" class="max-w-lg mx-auto min-h-screen pb-32">
-
             <div id="tab-dashboard" class="tab-content active p-4">
                 <div class="flex justify-between items-center mb-6 relative">
                     <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Dashboard</h1>
@@ -426,7 +425,7 @@
                             </button>
                         </div>
                     </section>
-
+                    
                     <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 mt-4 ml-2">Dados</h3>
                     <section class="card-bg rounded-3xl p-4 space-y-4">
                         <button id="export-csv-btn" class="w-full flex items-center justify-between p-0 hover:bg-gray-800/50 rounded-2xl transition-colors text-left group">
@@ -589,7 +588,7 @@
         </div>
         
         <div id="ai-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm" aria-hidden="true">
-            <div class="modal-content card-bg rounded-3xl p-6 w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" style="opacity: 0; transform: scale(0.95);">
+             <div class="modal-content card-bg rounded-3xl p-6 w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col" style="opacity: 0; transform: scale(0.95);">
                 <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
                     <div class="flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -644,6 +643,12 @@
                         <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate">Detalhes</h1>
                          <p id="detalhes-nome-longo" class="text-xs font-normal text-gray-500 truncate"></p>
                     </div>
+                    <button id="detalhes-share-btn" class="p-2 ml-3 text-gray-500 hover:text-blue-400 rounded-full transition-colors flex-shrink-0" title="Compartilhar">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                        </svg>
+                    </button>
+                    
                     <button id="detalhes-favorito-btn" class="p-2 ml-3 text-gray-500 hover:text-yellow-400 rounded-full transition-colors flex-shrink-0" title="Adicionar aos favoritos">
                         <svg id="detalhes-favorito-icon-empty" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z" />

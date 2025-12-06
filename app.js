@@ -1583,14 +1583,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    function renderizarGraficoPatrimonio() {
+function renderizarGraficoPatrimonio() {
         const canvas = document.getElementById('patrimonio-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         
+        // Dados do Valor de Mercado (Linha Roxa)
         const labels = patrimonio.map(p => formatDate(p.date));
-        const data = patrimonio.map(p => p.value);
-        const newDataString = JSON.stringify({ labels, data });
+        const dataValor = patrimonio.map(p => p.value);
+        
+        // --- NOVO: Cálculo do Custo Histórico (Linha Cinza) ---
+        // Para cada data do gráfico, calculamos quanto foi investido até aquele dia
+        const dataCusto = patrimonio.map(p => {
+            const dataSnapshot = new Date(p.date + 'T23:59:59'); // Fim do dia do snapshot
+            
+            // Filtra transações feitas até essa data
+            const transacoesAteData = transacoes.filter(t => new Date(t.date) <= dataSnapshot);
+            
+            // Calcula o custo acumulado dessas transações
+            // Usamos um Map para garantir que vendas reduzam o custo proporcionalmente ao Preço Médio
+            const carteiraTemp = new Map();
+            
+            // Ordena cronologicamente para o cálculo ficar certo
+            transacoesAteData.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(t => {
+                let ativo = carteiraTemp.get(t.symbol) || { qtd: 0, custoTotal: 0 };
+                
+                if (t.type === 'buy') {
+                    ativo.qtd += t.quantity;
+                    ativo.custoTotal += (t.quantity * t.price);
+                } else if (t.type === 'sell' && ativo.qtd > 0) {
+                    const precoMedio = ativo.custoTotal / ativo.qtd;
+                    ativo.qtd -= t.quantity;
+                    ativo.custoTotal -= (t.quantity * precoMedio); // Reduz pelo PM
+                }
+                
+                carteiraTemp.set(t.symbol, ativo);
+            });
+
+            // Soma o custo total dos ativos que sobraram na carteira naquele dia
+            let custoTotalDia = 0;
+            carteiraTemp.forEach(ativo => {
+                if (ativo.qtd > 0) custoTotalDia += ativo.custoTotal;
+            });
+            
+            return custoTotalDia;
+        });
+        // -------------------------------------------------------
+
+        const newDataString = JSON.stringify({ labels, dataValor, dataCusto });
 
         if (newDataString === lastPatrimonioData) { return; }
         lastPatrimonioData = newDataString;
@@ -1609,39 +1649,90 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (patrimonioChartInstance) {
             patrimonioChartInstance.data.labels = labels;
-            patrimonioChartInstance.data.datasets[0].data = data;
-            patrimonioChartInstance.data.datasets[0].backgroundColor = gradient;
+            patrimonioChartInstance.data.datasets[0].data = dataValor; // Atualiza Valor
+            
+            // Se o segundo dataset (Custo) já existir, atualiza. Se não, adiciona.
+            if (patrimonioChartInstance.data.datasets[1]) {
+                patrimonioChartInstance.data.datasets[1].data = dataCusto;
+            } else {
+                patrimonioChartInstance.data.datasets.push({
+                    label: 'Custo Total',
+                    data: dataCusto,
+                    borderColor: '#6b7280', // Cinza
+                    borderWidth: 2,
+                    borderDash: [5, 5], // Tracejado
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.1
+                });
+            }
             patrimonioChartInstance.update();
         } else {
             patrimonioChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: 'Patrimônio',
-                        data: data,
-                        fill: true,
-                        backgroundColor: gradient,
-                        borderColor: '#c084fc', 
-                        tension: 0.1,
-                        pointRadius: 3, 
-                        pointBackgroundColor: '#c084fc', 
-                        pointHitRadius: 15, 
-                        pointHoverRadius: 5 
-                    }]
+                    datasets: [
+                        {
+                            label: 'Patrimônio',
+                            data: dataValor,
+                            fill: true,
+                            backgroundColor: gradient,
+                            borderColor: '#c084fc', // Roxo
+                            tension: 0.3,
+                            pointRadius: 3, 
+                            pointBackgroundColor: '#c084fc', 
+                            pointHitRadius: 15, 
+                            pointHoverRadius: 5 
+                        },
+                        {
+                            label: 'Custo Investido',
+                            data: dataCusto,
+                            fill: false,
+                            borderColor: '#6b7280', // Cinza
+                            borderWidth: 2,
+                            borderDash: [5, 5], // Tracejado para diferenciar
+                            tension: 0.3,
+                            pointRadius: 0, // Sem bolinhas para limpar o visual
+                            pointHoverRadius: 4
+                        }
+                    ]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index', // Mostra os dois valores ao passar o mouse
+                        intersect: false,
+                    },
                     plugins: {
-                        legend: { display: false },
+                        legend: { 
+                            display: true, // Agora mostramos a legenda para diferenciar
+                            labels: { color: '#9ca3af', boxWidth: 12, usePointStyle: true }
+                        },
                         tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#374151',
+                            borderWidth: 1,
                             callbacks: {
-                                label: (context) => `Patrimônio: ${formatBRL(context.parsed.y)}`
+                                label: (context) => {
+                                    return `${context.dataset.label}: ${formatBRL(context.parsed.y)}`;
+                                }
                             }
                         }
                     },
                     scales: {
-                        y: { beginAtZero: false, ticks: { display: false }, grid: { color: '#2A2A2A' } },
+                        y: { 
+                            beginAtZero: false, 
+                            ticks: { 
+                                display: true, // Mostra valores no eixo Y
+                                color: '#4b5563',
+                                font: { size: 10 },
+                                callback: function(value) { return value >= 1000 ? `${value/1000}k` : value; }
+                            }, 
+                            grid: { color: '#2A2A2A' } 
+                        },
                         x: { ticks: { display: false }, grid: { display: false } }
                     }
                 }

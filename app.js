@@ -1009,8 +1009,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({
                     carteira: carteiraParaEnvio,
                     totalPatrimonio: formatBRL(totalPatrimonio),
-                    perfil: "Investidor focado em dividendos e longo prazo"
-                })
+                    perfil: "Investidor em fase de ACUMULAÇÃO AGRESSIVA. Não tenho medo de volatilidade. Quero atingir o 'Número Mágico' rápido. Priorizo comprar barato (Valor) e Yield alto sustentável."                })
             });
 
             if (!response.ok) throw new Error('Falha na comunicação com a IA');

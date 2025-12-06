@@ -2345,16 +2345,14 @@ function renderizarGraficoPatrimonio() {
 	
 	// ... acima ou abaixo de handleToggleFavorito ...
 
-    async function handleCompartilharAtivo() {
+async function handleCompartilharAtivo() {
         if (!currentDetalhesSymbol) return;
 
-        // Tenta pegar dados visíveis na tela para deixar a mensagem rica
-        // Se falhar, usa apenas o ticker
+        // Captura dados da tela
         let precoTexto = document.querySelector('#detalhes-preco h2')?.textContent || '';
         let dyTexto = 'N/A';
         let pvpTexto = 'N/A';
 
-        // Procura os cards de DY e PVP pelo texto do label (mais robusto que classes genéricas)
         const cards = document.querySelectorAll('#detalhes-preco span');
         cards.forEach(span => {
             if (span.textContent.includes('DY')) {
@@ -2368,25 +2366,28 @@ function renderizarGraficoPatrimonio() {
         const baseUrl = window.location.origin + window.location.pathname;
         const deepLink = `${baseUrl}?ativo=${currentDetalhesSymbol}`;
         
-        const textoCompartilhado = `Confira ${currentDetalhesSymbol} no Vesto!\nPreço: ${precoTexto}\nDY (12m): ${dyTexto}\nP/VP: ${pvpTexto}\n\nVer detalhes: ${deepLink}`;
+        // 1. Texto BASE (Sem o link) - Para usar no Mobile
+        const textoBase = `Confira ${currentDetalhesSymbol} no Vesto!\nPreço: ${precoTexto}\nDY (12m): ${dyTexto}\nP/VP: ${pvpTexto}`;
+        
+        // 2. Texto COMPLETO (Com o link) - Para usar no PC (Clipboard)
+        const textoCompleto = `${textoBase}\n\nVer detalhes: ${deepLink}`;
 
         if (navigator.share) {
             try {
                 await navigator.share({
                     title: `Vesto - ${currentDetalhesSymbol}`,
-                    text: textoCompartilhado,
+                    text: textoBase, // Envia SEM o link, pois a propriedade 'url' abaixo já adiciona
                     url: deepLink
                 });
             } catch (err) {
                 if (err.name !== 'AbortError') {
-                    console.error('Erro ao compartilhar', err);
-                    // Fallback para clipboard se falhar (ex: desktop)
-                    copiarParaClipboard(deepLink);
+                    // Fallback se der erro
+                    copiarParaClipboard(textoCompleto);
                 }
             }
         } else {
-            // Desktop ou navegador sem suporte a Share API
-            copiarParaClipboard(deepLink);
+            // PC
+            copiarParaClipboard(textoCompleto);
         }
     }
 

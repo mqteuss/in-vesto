@@ -521,7 +521,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('appinstalled', () => {
         installSection.classList.add('hidden');
         deferredPrompt = null;
-        showToast('App instalado com sucesso!', 'success');
     });
 
     if (installBtn) {
@@ -763,7 +762,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (assertion) {
                 biometricLockScreen.classList.add('hidden');
                 document.body.style.overflow = '';
-                showToast('Acesso liberado!', 'success');
             }
         } catch (e) {
             console.warn("Biometria cancelada ou falhou:", e);
@@ -777,7 +775,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.removeItem('vesto_bio_enabled');
         localStorage.removeItem('vesto_bio_id');
         verificarStatusBiometria();
-        showToast('Biometria desativada.');
     }
 
     if (btnDesbloquear) {
@@ -2327,12 +2324,10 @@ function renderizarGraficoPatrimonio() {
             if (isFavorite) {
                 await supabaseDB.deleteWatchlist(symbol);
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
-                showToast(`${symbol} removido dos favoritos.`);
             } else {
                 const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
                 await supabaseDB.addWatchlist(newItem);
                 watchlist.push(newItem);
-                showToast(`${symbol} adicionado aos favoritos!`, 'success');
             }
             
             atualizarIconeFavorito(symbol); 
@@ -3276,7 +3271,6 @@ function renderizarTransacoesDetalhes(symbol) {
 
                 // 2. Executa a ação de busca visual
                 carteiraSearchInput.blur(); 
-                showToast(`Buscando ${term}...`, 'success');
                 showDetalhesModal(term);
 
                 // 3. Só agora limpa o campo
@@ -3350,7 +3344,6 @@ function renderizarTransacoesDetalhes(symbol) {
             const current = localStorage.getItem('vesto_privacy_mode') === 'true';
             localStorage.setItem('vesto_privacy_mode', !current);
             updatePrivacyUI();
-            showToast(!current ? "Modo Privacidade Ativado" : "Modo Privacidade Desativado", "success");
         });
     }
 
@@ -3389,9 +3382,7 @@ if (clearCacheBtn) {
                 "Limpar Cache e Reparar?", 
                 "Isso apagará dados temporários (preços, notícias) e baixará a versão mais recente do app. Suas configurações (Tema, Biometria) serão mantidas.", 
                 async () => {
-                    // Feedback visual imediato
-                    showToast("Limpando sistema...", "success");
-                    
+                    // Feedback visual imediato                    
                     try {
                         // 1. Limpar IndexedDB (Onde ficam Preços, Gráficos e Notícias)
                         // Tentamos limpar a store específica e, se falhar, deletamos o banco todo
@@ -3779,7 +3770,6 @@ if (session) {
                 setTimeout(() => {
                     let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
                     if (symbolClean) {
-                        showToast(`Abrindo ${symbolClean}...`, 'success');
                         showDetalhesModal(symbolClean);
                     }
                 }, 800); // Pequeno delay para garantir que a UI carregou
@@ -3904,7 +3894,6 @@ function saveSearchHistory(term) {
                 carteiraSearchInput.dispatchEvent(new Event('input'));
                 
                 // Abre o modal diretamente
-                showToast(`Buscando ${term}...`, 'success');
                 showDetalhesModal(term);
             });
 

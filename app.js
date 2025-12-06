@@ -3814,7 +3814,7 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
         } catch (e) { return []; }
     }
 
-    function saveSearchHistory(term) {
+function saveSearchHistory(term) {
         if (!term || term.length < 3) return;
         term = term.toUpperCase().trim();
         
@@ -3824,7 +3824,7 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
         if (history.length > MAX_HISTORY_ITEMS) history.pop(); // Limita tamanho
         
         localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
-        console.log("Histórico salvo:", history); // Diagnóstico
+        
         renderSuggestions();
     }
 

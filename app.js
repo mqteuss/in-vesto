@@ -3937,4 +3937,3 @@ if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('h
 
     await init();
 });
-});

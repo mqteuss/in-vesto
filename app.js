@@ -1575,7 +1575,7 @@ function renderizarGraficoPatrimonio() {
                     const precoMedio = ativo.custoTotal / ativo.qtd;
                     ativo.qtd -= t.quantity;
                     ativo.custoTotal -= (t.quantity * precoMedio);
-                
+                }
                 carteiraTemp.set(t.symbol, ativo);
             });
 

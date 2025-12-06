@@ -3762,12 +3762,179 @@ if (session) {
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 
             
-            if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) {
+if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) {
                 loginForm.classList.remove('hidden');
             }
             showAuthLoading(false);                 
         }
     }
+
+    // ============================================================
+    // === SISTEMA DE SUGESTÃO DE PESQUISA (HISTÓRICO) ===
+    // ============================================================
     
+    const STORAGE_KEY_SEARCH = 'vesto_search_history';
+    const MAX_HISTORY_ITEMS = 5;
+
+    // 1. Criar o elemento visual da lista de sugestões dinamicamente
+    const suggestionsContainer = document.createElement('ul');
+    suggestionsContainer.id = 'search-suggestions';
+    suggestionsContainer.className = 'absolute top-full left-0 w-full bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl mt-2 z-50 hidden overflow-hidden shadow-2xl';
+    
+    // Inserir logo após o input de pesquisa
+    if (carteiraSearchInput) {
+        carteiraSearchInput.parentNode.appendChild(suggestionsContainer);
+        // Ajuste no parent para garantir posicionamento relativo
+        if (window.getComputedStyle(carteiraSearchInput.parentNode).position === 'static') {
+            carteiraSearchInput.parentNode.style.position = 'relative';
+        }
+    }
+
+    // 2. Funções de Gerenciamento do Histórico
+    function getSearchHistory() {
+        try {
+            const history = localStorage.getItem(STORAGE_KEY_SEARCH);
+            return history ? JSON.parse(history) : [];
+        } catch (e) { return []; }
+    }
+
+    function saveSearchHistory(term) {
+        if (!term || term.length < 3) return; // Ignora termos muito curtos
+        term = term.toUpperCase().trim();
+        
+        let history = getSearchHistory();
+        // Remove se já existir (para mover pro topo)
+        history = history.filter(item => item !== term);
+        // Adiciona no início
+        history.unshift(term);
+        // Limita tamanho
+        if (history.length > MAX_HISTORY_ITEMS) history.pop();
+        
+        localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
+        renderSuggestions();
+    }
+
+    function removeSearchHistoryItem(term) {
+        let history = getSearchHistory();
+        history = history.filter(item => item !== term);
+        localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
+        renderSuggestions();
+        // Mantém o input focado após excluir
+        carteiraSearchInput.focus();
+    }
+
+    // 3. Renderização Visual
+// 3. Renderização Visual (OTIMIZADA PARA MOBILE)
+    function renderSuggestions() {
+        const history = getSearchHistory();
+        suggestionsContainer.innerHTML = '';
+
+        if (history.length === 0) {
+            suggestionsContainer.classList.add('hidden');
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        history.forEach(term => {
+            const li = document.createElement('li');
+            // 'active:bg-gray-800' adiciona feedback visual imediato ao tocar no celular
+            li.className = 'flex justify-between items-center bg-[#1C1C1E] active:bg-gray-800 hover:bg-gray-800 transition-colors cursor-pointer border-b border-[#2C2C2E] last:border-0';
+            
+            // Ícone de relógio + Texto
+            // Aumentei o padding (p-4) para facilitar o toque no texto
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'flex items-center gap-3 flex-1 p-4'; 
+            contentDiv.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-sm text-gray-200 font-medium">${term}</span>
+            `;
+            
+            // Botão Excluir (X)
+            // REMOVIDO: 'opacity-0 group-hover:opacity-100' (para aparecer sempre no mobile)
+            // AUMENTADO: p-1.5 -> p-4 (área de toque maior para o dedo)
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'p-4 text-gray-600 hover:text-red-400 active:text-red-400 transition-colors border-l border-[#2C2C2E]';
+            deleteBtn.title = "Remover do histórico";
+            deleteBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            `;
+
+            // Evento: Clicar no texto (Preenche e Busca)
+            // Usei 'mousedown' pois ele dispara antes do 'blur' do input, garantindo que o clique funcione
+            contentDiv.addEventListener('mousedown', (e) => { 
+                e.preventDefault(); 
+                carteiraSearchInput.value = term;
+                suggestionsContainer.classList.add('hidden');
+                
+                carteiraSearchInput.dispatchEvent(new Event('input'));
+                
+                showToast(`Buscando ${term}...`, 'success');
+                showDetalhesModal(term);
+            });
+
+            // Evento: Clicar no X (Excluir)
+            deleteBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // Impede que o clique propague e acione a busca
+                removeSearchHistoryItem(term);
+            });
+
+            li.appendChild(contentDiv);
+            li.appendChild(deleteBtn);
+            fragment.appendChild(li);
+        });
+
+        suggestionsContainer.appendChild(fragment);
+    }
+
+    // 4. Event Listeners do Input
+    if (carteiraSearchInput) {
+        // Ao focar, mostra sugestões
+        carteiraSearchInput.addEventListener('focus', () => {
+            renderSuggestions();
+            const history = getSearchHistory();
+            if (history.length > 0) {
+                suggestionsContainer.classList.remove('hidden');
+            }
+        });
+
+        // Ao digitar
+        carteiraSearchInput.addEventListener('input', () => {
+            // Se tiver texto, pode esconder as sugestões ou filtrar (aqui optei por esconder para focar no resultado da lista)
+            if (carteiraSearchInput.value.length > 0) {
+                suggestionsContainer.classList.add('hidden');
+            } else {
+                suggestionsContainer.classList.remove('hidden');
+                renderSuggestions();
+            }
+        });
+
+        // Ao sair do foco (Blur)
+        carteiraSearchInput.addEventListener('blur', () => {
+            // Pequeno delay para permitir o clique nos itens antes de esconder
+            setTimeout(() => {
+                suggestionsContainer.classList.add('hidden');
+            }, 200);
+        });
+
+        // Intercepta o 'Enter' existente para salvar no histórico
+        carteiraSearchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                const term = carteiraSearchInput.value.trim();
+                if (term) {
+                    saveSearchHistory(term);
+                    suggestionsContainer.classList.add('hidden');
+                }
+            }
+        });
+    }
+    // ============================================================
+
     await init();
+});
 });

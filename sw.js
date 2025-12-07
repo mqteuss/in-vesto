@@ -4,7 +4,6 @@ const CACHE_NAME = 'vesto-cache-v9'; // Atualizei para v9 para forçar a renova�
 // IMPORTANTE: Todos devem começar com '/' para bater com url.pathname
 const APP_SHELL_FILES_NETWORK_FIRST = [
   '/',
-  '/logo-vesto.png', 
   '/index.html',
   '/app.js',
   '/supabase.js',
@@ -14,6 +13,7 @@ const APP_SHELL_FILES_NETWORK_FIRST = [
 // Arquivos estáticos ou externos que preferem o CACHE (carregamento rápido)
 const APP_SHELL_FILES_CACHE_FIRST = [
   '/manifest.json',
+  '/logo-vesto.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
   'https://cdn.tailwindcss.com',

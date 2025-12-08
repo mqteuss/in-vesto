@@ -1319,15 +1319,14 @@ function renderizarHistoricoProventos() {
 
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
 if (btnHistTransacoes && btnHistProventos) {
-        // Classes para o estado ATIVO (Roxo com brilho)
-        const activeClass = 'flex-1 py-2 rounded-full text-xs font-bold text-white bg-purple-600 shadow-[0_0_10px_rgba(124,58,237,0.3)] transition-all';
-        // Classes para o estado INATIVO (Cinza transparente)
-        const inactiveClass = 'flex-1 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-300 hover:bg-gray-800/50 transition-all';
+        // Estilo ATIVO: Roxo neon, com sombra e borda roxa
+        const activeClass = 'px-6 py-1.5 rounded-full text-xs font-bold text-white bg-purple-600 shadow-[0_0_10px_rgba(124,58,237,0.5)] border border-purple-500 transition-all';
+        
+        // Estilo INATIVO: Fundo transparente, texto cinza e borda escura
+        const inactiveClass = 'px-6 py-1.5 rounded-full text-xs font-bold text-gray-500 bg-transparent border border-[#2C2C2E] hover:border-gray-600 transition-all';
 
         btnHistTransacoes.addEventListener('click', () => {
-            // Ativa Transações
             btnHistTransacoes.className = activeClass;
-            // Desativa Proventos
             btnHistProventos.className = inactiveClass;
             
             listaHistorico.classList.remove('hidden');
@@ -1336,9 +1335,7 @@ if (btnHistTransacoes && btnHistProventos) {
         });
 
         btnHistProventos.addEventListener('click', () => {
-            // Desativa Transações
             btnHistTransacoes.className = inactiveClass;
-            // Ativa Proventos
             btnHistProventos.className = activeClass;
 
             listaHistorico.classList.add('hidden');

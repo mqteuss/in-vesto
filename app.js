@@ -3835,7 +3835,20 @@ if (session) {
             
             await verificarStatusBiometria();
             
-            mudarAba('tab-dashboard'); 
+            // --- CÓDIGO NOVO PARA OS ATALHOS ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            
+            // Se houver um parametro 'tab' válido na URL, abre ele. Se não, abre o Dashboard.
+            if (tabParam && document.getElementById(tabParam)) {
+                mudarAba(tabParam);
+                // Limpa a URL para não ficar "presa" na aba se o usuário recarregar
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+                mudarAba('tab-dashboard'); 
+            }
+            // ------------------------------------
+
             await carregarDadosIniciais();
 
             const urlParams = new URLSearchParams(window.location.search);

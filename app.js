@@ -294,6 +294,41 @@ function atualizarCardElemento(card, ativo, dados) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+	
+	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
+    let currentUserId = null;
+    let transacoes = [];        
+    let carteiraCalculada = []; 
+    let patrimonio = [];
+    let saldoCaixa = 0;
+    let proventosConhecidos = [];
+    let watchlist = []; 
+    let alocacaoChartInstance = null;
+    let historicoChartInstance = null;
+    let patrimonioChartInstance = null; 
+    let detalhesChartInstance = null;
+    let onConfirmCallback = null; 
+    let precosAtuais = [];
+    let proventosAtuais = [];
+    let mesesProcessados = [];
+    const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
+    let lastAlocacaoData = null; 
+    let lastHistoricoData = null;
+    let lastPatrimonioData = null; 
+    let toastTimer = null;
+    let isToastShowing = false;
+    let touchStartY = 0;
+    let touchMoveY = 0;
+    let isDraggingDetalhes = false;
+    let newWorker;
+    let transacaoEmEdicao = null;
+    let currentDetalhesSymbol = null;
+    let currentDetalhesMeses = 3; 
+    let currentDetalhesHistoricoJSON = null; 
+    let lastNewsSignature = ''; 
+    let lastProventosCalcSignature = ''; 
+    let cachedSaldoCaixa = 0;
+    // -------------------------------------------
     
     const vestoDB = {
         db: null,
@@ -519,46 +554,43 @@ function updateThemeUI() {
         const isLight = localStorage.getItem('vesto_theme') === 'light';
         const metaTheme = document.querySelector('meta[name="theme-color"]');
         
-        // 1. Atualiza classes do Body e Meta Tags
+        // 1. Configurações Globais do Chart.js
         if (isLight) {
             document.body.classList.add('light-mode');
-            if (toggleThemeBtn && themeToggleKnob) {
-                toggleThemeBtn.classList.remove('bg-gray-700');
-                toggleThemeBtn.classList.add('bg-purple-600');
-                themeToggleKnob.classList.remove('translate-x-1');
-                themeToggleKnob.classList.add('translate-x-6');
-            }
             if (metaTheme) metaTheme.setAttribute('content', '#f9fafb');
             
-            // Defaults Globais para novos gráficos
             Chart.defaults.color = '#374151'; 
             Chart.defaults.borderColor = '#e5e7eb';
         } else {
             document.body.classList.remove('light-mode');
-            if (toggleThemeBtn && themeToggleKnob) {
-                toggleThemeBtn.classList.remove('bg-purple-600');
-                toggleThemeBtn.classList.add('bg-gray-700');
-                themeToggleKnob.classList.remove('translate-x-6');
-                themeToggleKnob.classList.add('translate-x-1');
-            }
             if (metaTheme) metaTheme.setAttribute('content', '#000000');
             
-            // Defaults Globais para novos gráficos
             Chart.defaults.color = '#9ca3af'; 
             Chart.defaults.borderColor = '#374151';
         }
 
-        // 2. Função auxiliar para forçar atualização de cores em gráficos JÁ EXISTENTES
-        const updateChartColors = (chart) => {
-            if (!chart) return;
+        // Ajuste dos botões de Toggle de Tema (se existirem)
+        if (toggleThemeBtn && themeToggleKnob) {
+            if (isLight) {
+                toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-purple-600";
+                themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6";
+            } else {
+                toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-gray-700";
+                themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1";
+            }
+        }
 
-            // Cores baseadas no tema
+        // 2. Função para forçar atualização profunda nas instâncias já criadas
+        const updateChartColors = (chart) => {
+            if (!chart || !chart.options) return;
+
+            // Paleta de cores baseada no tema
             const gridColor = isLight ? '#e5e7eb' : '#2A2A2A';
             const textColor = isLight ? '#374151' : '#9ca3af';
-            const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.9)';
+            const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(28, 28, 30, 0.95)';
             const tooltipText = isLight ? '#1f2937' : '#f3f4f6';
             const tooltipBorder = isLight ? '#e5e7eb' : '#374151';
-            const doughnutBorder = isLight ? '#ffffff' : '#000000'; // Borda das fatias (cor do fundo do card)
+            const doughnutBorder = isLight ? '#ffffff' : '#000000'; // Borda das fatias
 
             // Atualiza Escalas (Eixos X e Y)
             if (chart.options.scales) {
@@ -614,40 +646,6 @@ function updateThemeUI() {
             if (typeof detalhesChartInstance !== 'undefined' && detalhesChartInstance) detalhesChartInstance.update();
         });
     }
-
-    let currentUserId = null;
-    let transacoes = [];        
-    let carteiraCalculada = []; 
-    let patrimonio = [];
-    let saldoCaixa = 0;
-    let proventosConhecidos = [];
-    let watchlist = []; 
-    let alocacaoChartInstance = null;
-    let historicoChartInstance = null;
-    let patrimonioChartInstance = null; 
-    let onConfirmCallback = null; 
-    let precosAtuais = [];
-    let proventosAtuais = [];
-    let mesesProcessados = [];
-    const todayString = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: 'long', day: 'numeric' });
-    let lastAlocacaoData = null; 
-    let lastHistoricoData = null;
-    let lastPatrimonioData = null; 
-    let detalhesChartInstance = null;
-    let toastTimer = null;
-    let isToastShowing = false;
-    let touchStartY = 0;
-    let touchMoveY = 0;
-    let isDraggingDetalhes = false;
-    let newWorker;
-    let transacaoEmEdicao = null;
-    let currentDetalhesSymbol = null;
-    let currentDetalhesMeses = 3; 
-    let currentDetalhesHistoricoJSON = null; 
-
-    let lastNewsSignature = ''; 
-    let lastProventosCalcSignature = ''; 
-    let cachedSaldoCaixa = 0;
 
     function showToast(message, type = 'error') {
         clearTimeout(toastTimer);
@@ -3682,7 +3680,7 @@ if (clearCacheBtn) {
         }
     }
     
-    async function init() {
+async function init() {
         try {
             await vestoDB.init();
         } catch (e) {
@@ -3691,6 +3689,7 @@ if (clearCacheBtn) {
             return; 
         }
         
+        // Listeners de Formulários (Recuperação e Login)
         if (showRecoverBtn) {
             showRecoverBtn.addEventListener('click', () => {
                 loginForm.classList.add('hidden');
@@ -3714,7 +3713,6 @@ if (clearCacheBtn) {
                 const email = recoverEmailInput.value;
                 recoverError.classList.add('hidden');
                 recoverMessage.classList.add('hidden');
-                
                 recoverSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
                 recoverSubmitBtn.disabled = true;
 
@@ -3727,14 +3725,13 @@ if (clearCacheBtn) {
                     recoverError.textContent = result;
                     recoverError.classList.remove('hidden');
                 }
-                
                 recoverSubmitBtn.innerHTML = 'Enviar Link';
                 recoverSubmitBtn.disabled = false;
             });
         }
         
+        // Verificação de Nova Senha via URL
         if (window.location.hash && window.location.hash.includes('type=recovery')) {
-             console.log("Modo de recuperação de senha detectado via URL Hash");
              newPasswordModal.classList.add('visible');
              document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
         }
@@ -3743,24 +3740,19 @@ if (clearCacheBtn) {
             newPasswordForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const newPass = newPasswordInput.value;
-
                 if (newPass.length < 6) {
                     showToast("A senha deve ter no mínimo 6 caracteres.");
                     return;
                 }
-
                 newPasswordBtn.innerHTML = '<span class="loader-sm"></span>';
                 newPasswordBtn.disabled = true;
-
                 try {
                     await supabaseDB.updateUserPassword(newPass);
                     showToast("Senha atualizada com sucesso!", "success");
-                    
                     setTimeout(() => {
                         newPasswordModal.classList.remove('visible');
                         window.location.href = "/"; 
                     }, 1500);
-
                 } catch (error) {
                     showToast("Erro ao atualizar senha: " + error.message);
                     newPasswordBtn.innerHTML = 'Salvar Nova Senha';
@@ -3771,6 +3763,7 @@ if (clearCacheBtn) {
 
         showAuthLoading(true);
 
+        // Inicialização do Supabase
         let session;
         try {
             session = await supabaseDB.initialize();
@@ -3781,6 +3774,7 @@ if (clearCacheBtn) {
             return; 
         }
         
+        // Listeners de Login/Cadastro
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             loginSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
@@ -3800,7 +3794,6 @@ if (clearCacheBtn) {
 
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
             const confirmPassword = signupConfirmPasswordInput.value;
@@ -3827,13 +3820,10 @@ if (clearCacheBtn) {
                 signupPasswordInput.parentElement.classList.add('hidden');
                 signupConfirmPasswordInput.parentElement.classList.add('hidden');
                 signupSubmitBtn.classList.add('hidden');
-                
                 signupSuccess.classList.remove('hidden');
-
                 signupForm.reset();
                 signupSubmitBtn.innerHTML = 'Criar conta';
                 signupSubmitBtn.disabled = false;
-
             } else {
                 showSignupError(result);
             }
@@ -3844,7 +3834,6 @@ if (clearCacheBtn) {
             signupForm.classList.remove('hidden');
             recoverForm.classList.add('hidden'); 
             loginError.classList.add('hidden');
-            
             signupError.classList.add('hidden'); 
             signupSuccess.classList.add('hidden'); 
             
@@ -3866,10 +3855,8 @@ if (clearCacheBtn) {
                 const targetId = button.dataset.target;
                 const targetInput = document.getElementById(targetId);
                 if (!targetInput) return;
-
                 const eyeOpen = button.querySelector('.eye-icon-open');
                 const eyeClosed = button.querySelector('.eye-icon-closed');
-
                 if (targetInput.type === 'password') {
                     targetInput.type = 'text';
                     eyeOpen.classList.add('hidden');
@@ -3882,7 +3869,8 @@ if (clearCacheBtn) {
             });
         });
 
-if (session) {
+        // LÓGICA DE SESSÃO E ROTEAMENTO
+        if (session) {
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
@@ -3895,13 +3883,10 @@ if (session) {
             const ativoShared = urlParams.get('ativo');
 
             // 2. Lógica de Atalhos (App Shortcuts)
-            // Se houver um parametro 'tab' válido na URL (ex: tab-carteira), abre ele.
             if (tabParam && document.getElementById(tabParam)) {
                 mudarAba(tabParam);
-                // Limpa a URL para não ficar presa na aba ao recarregar
                 window.history.replaceState({}, document.title, window.location.pathname);
             } else {
-                // Caso contrário, abre o Dashboard padrão
                 mudarAba('tab-dashboard'); 
             }
 
@@ -3921,6 +3906,7 @@ if (session) {
             }
             
         } else {
+            // Caso NÃO tenha sessão
             appWrapper.classList.add('hidden');      
             authContainer.classList.remove('hidden'); 
             

@@ -3973,11 +3973,8 @@ function saveSearchHistory(term) {
         carteiraSearchInput.focus();
     }
 
+// --- LÓGICA DE SUGESTÕES DE PESQUISA ---
     function renderSuggestions() {
-        const history = getSearchHistory();
-        suggestionsContainer.innerHTML = '';
-
-function renderSuggestions() {
         const history = getSearchHistory();
         suggestionsContainer.innerHTML = '';
 
@@ -4014,9 +4011,7 @@ function renderSuggestions() {
                 e.preventDefault(); 
                 carteiraSearchInput.value = term;
                 suggestionsContainer.classList.add('hidden');
-                
                 carteiraSearchInput.dispatchEvent(new Event('input'));
-                
                 showDetalhesModal(term);
             });
 
@@ -4069,14 +4064,13 @@ function renderSuggestions() {
         });
     }
 
-    // --- NAVEGAÇÃO POR GESTOS (SWIPE) ---
-    // Define a ordem das abas para saber qual é a próxima/anterior
+    // --- GESTOS (SWIPE) PARA NAVEGAÇÃO ---
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
     let swipeStartX = 0;
     let swipeStartY = 0;
 
     document.addEventListener('touchstart', (e) => {
-        // Bloqueia o gesto se algum modal importante estiver aberto para evitar fechamento acidental
+        // Bloqueia se houver modal aberto
         if (document.querySelector('.custom-modal.visible') || 
             document.querySelector('.page-modal.visible') || 
             document.querySelector('#ai-modal.visible')) {
@@ -4087,7 +4081,6 @@ function renderSuggestions() {
     }, { passive: true });
 
     document.addEventListener('touchend', (e) => {
-        // Mesma verificação de segurança dos modais
         if (document.querySelector('.custom-modal.visible') || 
             document.querySelector('.page-modal.visible') || 
             document.querySelector('#ai-modal.visible')) {
@@ -4096,13 +4089,10 @@ function renderSuggestions() {
 
         const swipeEndX = e.changedTouches[0].screenX;
         const swipeEndY = e.changedTouches[0].screenY;
-
         const diffX = swipeEndX - swipeStartX;
         const diffY = swipeEndY - swipeStartY;
 
-        // Lógica do Gesto:
-        // 1. Math.abs(diffX) > Math.abs(diffY): Garante que o movimento foi mais horizontal que vertical (para não atrapalhar o scroll da página).
-        // 2. Math.abs(diffX) > 50: Garante uma distância mínima de 50px para considerar um swipe intencional.
+        // Verifica se o movimento foi horizontal e longo o suficiente (> 50px)
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
             const currentTab = document.querySelector('.tab-content.active');
             if (!currentTab) return;
@@ -4111,12 +4101,12 @@ function renderSuggestions() {
             if (currentIndex === -1) return;
 
             if (diffX < 0) {
-                // Deslizou para ESQUERDA (<<) -> Vai para a PRÓXIMA aba
+                // Deslizou para ESQUERDA (<<) -> Próxima Aba
                 if (currentIndex < tabOrder.length - 1) {
                     mudarAba(tabOrder[currentIndex + 1]);
                 }
             } else {
-                // Deslizou para DIREITA (>>) -> Vai para a aba ANTERIOR
+                // Deslizou para DIREITA (>>) -> Aba Anterior
                 if (currentIndex > 0) {
                     mudarAba(tabOrder[currentIndex - 1]);
                 }

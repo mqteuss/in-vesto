@@ -3829,43 +3829,43 @@ if (clearCacheBtn) {
         });
 
 if (session) {
-            currentUserId = session.user.id;
-            authContainer.classList.add('hidden');    
-            appWrapper.classList.remove('hidden'); 
-            
-            await verificarStatusBiometria();
-            
-            // --- CÓDIGO NOVO PARA OS ATALHOS ---
-            const urlParams = new URLSearchParams(window.location.search);
-            const tabParam = urlParams.get('tab');
-            
-            // Se houver um parametro 'tab' válido na URL, abre ele. Se não, abre o Dashboard.
-            if (tabParam && document.getElementById(tabParam)) {
-                mudarAba(tabParam);
-                // Limpa a URL para não ficar "presa" na aba se o usuário recarregar
-                window.history.replaceState({}, document.title, window.location.pathname);
-            } else {
-                mudarAba('tab-dashboard'); 
+    currentUserId = session.user.id;
+    authContainer.classList.add('hidden');    
+    appWrapper.classList.remove('hidden'); 
+    
+    await verificarStatusBiometria();
+    
+    // 1. Captura os parâmetros da URL (Atalhos e Compartilhamento)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    const ativoShared = urlParams.get('ativo');
+
+    // 2. Lógica de Atalhos (App Shortcuts)
+    // Se existir um parametro 'tab' válido (ex: tab-carteira), abre ele.
+    // Caso contrário, abre o Dashboard padrão.
+    if (tabParam && document.getElementById(tabParam)) {
+        mudarAba(tabParam);
+        // Limpa a URL visualmente para não travar na aba ao recarregar
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+        mudarAba('tab-dashboard'); 
+    }
+
+    await carregarDadosIniciais();
+
+    // 3. Lógica de Ativo Compartilhado (Deep Link)
+    if (ativoShared) {
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({path: newUrl}, '', newUrl);
+        
+        setTimeout(() => {
+            let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
+            if (symbolClean) {
+                showDetalhesModal(symbolClean);
             }
-            // ------------------------------------
-
-            await carregarDadosIniciais();
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const ativoShared = urlParams.get('ativo');
-
-            if (ativoShared) {
-
-                const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                window.history.replaceState({path: newUrl}, '', newUrl);
-                
-                setTimeout(() => {
-                    let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
-                    if (symbolClean) {
-                        showDetalhesModal(symbolClean);
-                    }
-                }, 800);
-            }
+        }, 800);
+    }
+}
             
         } else {
             appWrapper.classList.add('hidden');      

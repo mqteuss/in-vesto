@@ -3977,6 +3977,10 @@ function saveSearchHistory(term) {
         const history = getSearchHistory();
         suggestionsContainer.innerHTML = '';
 
+function renderSuggestions() {
+        const history = getSearchHistory();
+        suggestionsContainer.innerHTML = '';
+
         if (history.length === 0) {
             suggestionsContainer.classList.add('hidden');
             return;
@@ -4043,12 +4047,10 @@ function saveSearchHistory(term) {
             if (carteiraSearchInput.value.length > 0) {
                 suggestionsContainer.classList.add('hidden');
             } else {
-
                 renderSuggestions();
                 suggestionsContainer.classList.remove('hidden');
             }
         });
-
 
         carteiraSearchInput.addEventListener('blur', () => {
             setTimeout(() => {
@@ -4066,5 +4068,61 @@ function saveSearchHistory(term) {
             }
         });
     }
+
+    // --- NAVEGAÇÃO POR GESTOS (SWIPE) ---
+    // Define a ordem das abas para saber qual é a próxima/anterior
+    const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+
+    document.addEventListener('touchstart', (e) => {
+        // Bloqueia o gesto se algum modal importante estiver aberto para evitar fechamento acidental
+        if (document.querySelector('.custom-modal.visible') || 
+            document.querySelector('.page-modal.visible') || 
+            document.querySelector('#ai-modal.visible')) {
+            return;
+        }
+        swipeStartX = e.changedTouches[0].screenX;
+        swipeStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        // Mesma verificação de segurança dos modais
+        if (document.querySelector('.custom-modal.visible') || 
+            document.querySelector('.page-modal.visible') || 
+            document.querySelector('#ai-modal.visible')) {
+            return;
+        }
+
+        const swipeEndX = e.changedTouches[0].screenX;
+        const swipeEndY = e.changedTouches[0].screenY;
+
+        const diffX = swipeEndX - swipeStartX;
+        const diffY = swipeEndY - swipeStartY;
+
+        // Lógica do Gesto:
+        // 1. Math.abs(diffX) > Math.abs(diffY): Garante que o movimento foi mais horizontal que vertical (para não atrapalhar o scroll da página).
+        // 2. Math.abs(diffX) > 50: Garante uma distância mínima de 50px para considerar um swipe intencional.
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+            const currentTab = document.querySelector('.tab-content.active');
+            if (!currentTab) return;
+
+            const currentIndex = tabOrder.indexOf(currentTab.id);
+            if (currentIndex === -1) return;
+
+            if (diffX < 0) {
+                // Deslizou para ESQUERDA (<<) -> Vai para a PRÓXIMA aba
+                if (currentIndex < tabOrder.length - 1) {
+                    mudarAba(tabOrder[currentIndex + 1]);
+                }
+            } else {
+                // Deslizou para DIREITA (>>) -> Vai para a aba ANTERIOR
+                if (currentIndex > 0) {
+                    mudarAba(tabOrder[currentIndex - 1]);
+                }
+            }
+        }
+    }, { passive: true });
+
     await init();
 });

@@ -1269,50 +1269,53 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 	
-	function renderizarHistoricoProventos() {
-        listaHistoricoProventos.innerHTML = '';
-        const hoje = new Date(); hoje.setHours(0,0,0,0);
+function renderizarHistoricoProventos() {
+    listaHistoricoProventos.innerHTML = '';
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-        const proventosPagos = proventosConhecidos.filter(p => {
-            if (!p.paymentDate) return false;
-            const parts = p.paymentDate.split('-');
-            const dPag = new Date(parts[0], parts[1]-1, parts[2]);
-            return dPag <= hoje;
-        }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+    const proventosPagos = proventosConhecidos.filter(p => {
+        if (!p.paymentDate) return false;
+        const parts = p.paymentDate.split('-');
+        const dPag = new Date(parts[0], parts[1]-1, parts[2]);
+        return dPag <= hoje;
+    }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-        const fragment = document.createDocumentFragment();
-        let temItem = false;
+    const fragment = document.createDocumentFragment();
+    let temItem = false;
 
-        proventosPagos.forEach(p => {
-            const dataRef = p.dataCom || p.paymentDate;
-            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+    proventosPagos.forEach(p => {
+        const dataRef = p.dataCom || p.paymentDate;
+        const qtd = getQuantidadeNaData(p.symbol, dataRef);
 
-            if (qtd > 0) {
-                temItem = true;
-                const total = p.value * qtd;
-                const card = document.createElement('div');
-                card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between border border-[#2C2C2E] mb-2';
-                card.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="p-2 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-white">${p.symbol}</h3>
-                            <p class="text-xs text-gray-400">Pag: ${formatDate(p.paymentDate)}</p>
-                        </div>
+        if (qtd > 0) {
+            temItem = true;
+            const total = p.value * qtd;
+            const card = document.createElement('div');
+            card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between border border-[#2C2C2E] mb-2';
+            
+            // ALTERAÇÃO ABAIXO:
+            // Substituimos 'text-green-400' por 'accent-text' na div "text-right"
+            card.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
-                    <div class="text-right">
-                        <p class="text-sm font-bold text-green-400">+ ${formatBRL(total)}</p>
-                        <p class="text-[10px] text-gray-500">${formatBRL(p.value)} x ${qtd}</p>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">${p.symbol}</h3>
+                        <p class="text-xs text-gray-400">Pag: ${formatDate(p.paymentDate)}</p>
                     </div>
-                `;
-                fragment.appendChild(card);
-            }
-        });
-        
-        if (temItem) listaHistoricoProventos.appendChild(fragment);
-    }
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-bold accent-text">+ ${formatBRL(total)}</p>
+                    <p class="text-[10px] text-gray-500">${formatBRL(p.value)} x ${qtd}</p>
+                </div>
+            `;
+            fragment.appendChild(card);
+        }
+    });
+    
+    if (temItem) listaHistoricoProventos.appendChild(fragment);
+}
 
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
     if (btnHistTransacoes && btnHistProventos) {

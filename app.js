@@ -560,16 +560,16 @@ function updateThemeUI() {
             if (metaTheme) metaTheme.setAttribute('content', '#f9fafb');
             
             Chart.defaults.color = '#374151'; 
-            Chart.defaults.borderColor = '#e5e7eb';
+            Chart.defaults.borderColor = 'transparent'; // Remove bordas globais
         } else {
             document.body.classList.remove('light-mode');
             if (metaTheme) metaTheme.setAttribute('content', '#000000');
             
             Chart.defaults.color = '#9ca3af'; 
-            Chart.defaults.borderColor = '#374151';
+            Chart.defaults.borderColor = 'transparent'; // Remove bordas globais
         }
 
-        // Ajuste dos botões de Toggle de Tema (se existirem)
+        // Ajuste dos botões de Toggle de Tema
         if (toggleThemeBtn && themeToggleKnob) {
             if (isLight) {
                 toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-purple-600";
@@ -584,19 +584,21 @@ function updateThemeUI() {
         const updateChartColors = (chart) => {
             if (!chart || !chart.options) return;
 
-            // Paleta de cores baseada no tema
-            const gridColor = isLight ? '#e5e7eb' : '#2A2A2A';
             const textColor = isLight ? '#374151' : '#9ca3af';
             const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(28, 28, 30, 0.95)';
             const tooltipText = isLight ? '#1f2937' : '#f3f4f6';
             const tooltipBorder = isLight ? '#e5e7eb' : '#374151';
-            const doughnutBorder = isLight ? '#ffffff' : '#000000'; // Borda das fatias
+            const doughnutBorder = isLight ? '#ffffff' : '#000000'; 
 
-            // Atualiza Escalas (Eixos X e Y)
+            // REMOVE AS LINHAS DE GRADE (GRID LINES)
             if (chart.options.scales) {
                 Object.keys(chart.options.scales).forEach(key => {
                     const scale = chart.options.scales[key];
-                    if (scale.grid) scale.grid.color = gridColor;
+                    if (scale.grid) {
+                        scale.grid.display = false;    // Desliga a grade
+                        scale.grid.drawBorder = false; // Desliga a linha do eixo
+                        scale.grid.color = 'transparent';
+                    }
                     if (scale.ticks) scale.ticks.color = textColor;
                 });
             }
@@ -615,7 +617,7 @@ function updateThemeUI() {
                 chart.options.plugins.tooltip.borderWidth = 1;
             }
 
-            // Especial: Gráfico de Rosca (Alocação) - Atualiza cor da borda das fatias
+            // Borda do Gráfico de Rosca
             if (chart.config.type === 'doughnut') {
                 if (chart.data.datasets[0]) {
                     chart.data.datasets[0].borderColor = doughnutBorder;

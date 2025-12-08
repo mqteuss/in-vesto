@@ -465,6 +465,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addButton = document.getElementById('add-button');
     const updateNotification = document.getElementById('update-notification');
     const updateButton = document.getElementById('update-button');
+	const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
+    const btnHistTransacoes = document.getElementById('btn-hist-transacoes');
+    const btnHistProventos = document.getElementById('btn-hist-proventos');
     const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn');
 	const detalhesShareBtn = document.getElementById('detalhes-share-btn');
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
@@ -1158,26 +1161,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function calcularCarteira() {
+function calcularCarteira() {
         const ativosMap = new Map();
         const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
 
         for (const t of transacoesOrdenadas) {
-            if (t.type !== 'buy') continue;
             const symbol = t.symbol;
             let ativo = ativosMap.get(symbol) || { 
-                symbol: symbol, 
-                quantity: 0, 
-                totalCost: 0, 
-                dataCompra: t.date
+                symbol: symbol, quantity: 0, totalCost: 0, dataCompra: t.date
             };
-            ativo.quantity += t.quantity;
-            ativo.totalCost += t.quantity * t.price;
+
+            if (t.type === 'buy') {
+                ativo.quantity += t.quantity;
+                ativo.totalCost += t.quantity * t.price;
+            } else if (t.type === 'sell') {
+                // LÓGICA DE VENDA: Reduz quantidade e custo proporcional
+                if (ativo.quantity > 0) {
+                    const pmAtual = ativo.totalCost / ativo.quantity;
+                    ativo.quantity -= t.quantity;
+                    ativo.totalCost -= t.quantity * pmAtual;
+                }
+            }
+            
+            if (ativo.quantity < 0) { ativo.quantity = 0; ativo.totalCost = 0; }
             ativosMap.set(symbol, ativo);
         }
         
         carteiraCalculada = Array.from(ativosMap.values())
-            .filter(a => a.quantity > 0) 
+            .filter(a => a.quantity > 0.0001) // Remove o que foi zerado
             .map(a => ({
                 symbol: a.symbol,
                 quantity: a.quantity,
@@ -1234,6 +1245,70 @@ document.addEventListener('DOMContentLoaded', async () => {
             fragment.appendChild(card);
         });
         listaHistorico.appendChild(fragment);
+    }
+	
+	function renderizarHistoricoProventos() {
+        listaHistoricoProventos.innerHTML = '';
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+        const proventosPagos = proventosConhecidos.filter(p => {
+            if (!p.paymentDate) return false;
+            const parts = p.paymentDate.split('-');
+            const dPag = new Date(parts[0], parts[1]-1, parts[2]);
+            return dPag <= hoje;
+        }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+        const fragment = document.createDocumentFragment();
+        let temItem = false;
+
+        proventosPagos.forEach(p => {
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+
+            if (qtd > 0) {
+                temItem = true;
+                const total = p.value * qtd;
+                const card = document.createElement('div');
+                card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between border border-[#2C2C2E]/50 mb-2';
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-white">${p.symbol}</h3>
+                            <p class="text-xs text-gray-400">Pag: ${formatDate(p.paymentDate)}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-bold text-green-400">+ ${formatBRL(total)}</p>
+                        <p class="text-[10px] text-gray-500">${formatBRL(p.value)} x ${qtd}</p>
+                    </div>
+                `;
+                fragment.appendChild(card);
+            }
+        });
+        
+        if (temItem) listaHistoricoProventos.appendChild(fragment);
+    }
+
+    // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
+    if (btnHistTransacoes && btnHistProventos) {
+        btnHistTransacoes.addEventListener('click', () => {
+            btnHistTransacoes.className = 'flex-1 py-2 rounded-full text-xs font-bold text-white bg-gray-800 shadow-md transition-all';
+            btnHistProventos.className = 'flex-1 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-300 transition-all';
+            listaHistorico.classList.remove('hidden');
+            listaHistoricoProventos.classList.add('hidden');
+            renderizarHistorico();
+        });
+
+        btnHistProventos.addEventListener('click', () => {
+            btnHistProventos.className = 'flex-1 py-2 rounded-full text-xs font-bold text-white bg-gray-800 shadow-md transition-all';
+            btnHistTransacoes.className = 'flex-1 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-300 transition-all';
+            listaHistorico.classList.add('hidden');
+            listaHistoricoProventos.classList.remove('hidden');
+            renderizarHistoricoProventos();
+        });
     }
 
     function renderizarNoticias(articles) { 

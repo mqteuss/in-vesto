@@ -515,10 +515,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function updateThemeUI() {
+function updateThemeUI() {
         const isLight = localStorage.getItem('vesto_theme') === 'light';
         const metaTheme = document.querySelector('meta[name="theme-color"]');
         
+        // 1. Atualiza classes do Body e Meta Tags
         if (isLight) {
             document.body.classList.add('light-mode');
             if (toggleThemeBtn && themeToggleKnob) {
@@ -529,6 +530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (metaTheme) metaTheme.setAttribute('content', '#f9fafb');
             
+            // Defaults Globais para novos gráficos
             Chart.defaults.color = '#374151'; 
             Chart.defaults.borderColor = '#e5e7eb';
         } else {
@@ -541,9 +543,61 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (metaTheme) metaTheme.setAttribute('content', '#000000');
             
+            // Defaults Globais para novos gráficos
             Chart.defaults.color = '#9ca3af'; 
             Chart.defaults.borderColor = '#374151';
         }
+
+        // 2. Função auxiliar para forçar atualização de cores em gráficos JÁ EXISTENTES
+        const updateChartColors = (chart) => {
+            if (!chart) return;
+
+            // Cores baseadas no tema
+            const gridColor = isLight ? '#e5e7eb' : '#2A2A2A';
+            const textColor = isLight ? '#374151' : '#9ca3af';
+            const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.9)';
+            const tooltipText = isLight ? '#1f2937' : '#f3f4f6';
+            const tooltipBorder = isLight ? '#e5e7eb' : '#374151';
+            const doughnutBorder = isLight ? '#ffffff' : '#000000'; // Borda das fatias (cor do fundo do card)
+
+            // Atualiza Escalas (Eixos X e Y)
+            if (chart.options.scales) {
+                Object.keys(chart.options.scales).forEach(key => {
+                    const scale = chart.options.scales[key];
+                    if (scale.grid) scale.grid.color = gridColor;
+                    if (scale.ticks) scale.ticks.color = textColor;
+                });
+            }
+
+            // Atualiza Legendas
+            if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+                chart.options.plugins.legend.labels.color = textColor;
+            }
+
+            // Atualiza Tooltips
+            if (chart.options.plugins && chart.options.plugins.tooltip) {
+                chart.options.plugins.tooltip.backgroundColor = tooltipBg;
+                chart.options.plugins.tooltip.titleColor = tooltipText;
+                chart.options.plugins.tooltip.bodyColor = tooltipText;
+                chart.options.plugins.tooltip.borderColor = tooltipBorder;
+                chart.options.plugins.tooltip.borderWidth = 1;
+            }
+
+            // Especial: Gráfico de Rosca (Alocação) - Atualiza cor da borda das fatias
+            if (chart.config.type === 'doughnut') {
+                if (chart.data.datasets[0]) {
+                    chart.data.datasets[0].borderColor = doughnutBorder;
+                }
+            }
+
+            chart.update();
+        };
+
+        // 3. Aplica a correção em todos os gráficos ativos
+        if (typeof alocacaoChartInstance !== 'undefined') updateChartColors(alocacaoChartInstance);
+        if (typeof patrimonioChartInstance !== 'undefined') updateChartColors(patrimonioChartInstance);
+        if (typeof historicoChartInstance !== 'undefined') updateChartColors(historicoChartInstance);
+        if (typeof detalhesChartInstance !== 'undefined') updateChartColors(detalhesChartInstance);
     }
 
     updateThemeUI();

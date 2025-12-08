@@ -1269,7 +1269,7 @@ function calcularCarteira() {
                 temItem = true;
                 const total = p.value * qtd;
                 const card = document.createElement('div');
-                card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between border border-[#2C2C2E]/50 mb-2';
+                card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between border border-[#2C2C2E] mb-2';
                 card.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="p-2 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">

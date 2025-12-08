@@ -1201,55 +1201,73 @@ function calcularCarteira() {
             }));
     }
 
-    function renderizarHistorico() {
-        listaHistorico.innerHTML = '';
-        if (transacoes.length === 0) {
-            historicoStatus.classList.remove('hidden');
-            return;
-        }
-        
-        historicoStatus.classList.add('hidden');
-        const fragment = document.createDocumentFragment();
+// Substitua a função inteira em app.js
 
-        [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
-            const card = document.createElement('div');
-            card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between';
-            const cor = 'text-green-500';
-            const sinal = '+';
-            const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-            
-            card.innerHTML = `
-                <div class="flex items-center gap-3">
-                    ${icone}
-                    <div>
-                        <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
-                        <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="text-right">
-                        <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                        <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button class="p-1 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                              <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                        <button class="p-1 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            `;
-            fragment.appendChild(card);
-        });
-        listaHistorico.appendChild(fragment);
+function renderizarHistorico() {
+    listaHistorico.innerHTML = '';
+    if (transacoes.length === 0) {
+        historicoStatus.classList.remove('hidden');
+        return;
     }
+    
+    historicoStatus.classList.add('hidden');
+    const fragment = document.createDocumentFragment();
+
+    // Ordena por data (mais recente primeiro)
+    [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between';
+        
+        // --- LÓGICA VISUAL (CORRIGIDA) ---
+        const isVenda = t.type === 'sell'; // Verifica se é venda
+        const cor = isVenda ? 'text-red-500' : 'text-green-500'; // Vermelho se venda, Verde se compra
+        const sinal = isVenda ? '-' : '+'; // Sinal de menos ou mais
+        
+        // Ícone muda: Seta pra baixo (venda) ou Seta pra cima/Mais (compra)
+        let pathIcone = '';
+        if (isVenda) {
+             // Ícone de menos/saída
+            pathIcone = 'M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
+        } else {
+             // Ícone de mais/entrada
+            pathIcone = 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
+        }
+
+        const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${pathIcone}" /></svg>`;
+        // ---------------------------
+        
+        card.innerHTML = `
+            <div class="flex items-center gap-3">
+                ${icone}
+                <div>
+                    <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
+                    <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right">
+                    <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
+                    <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <button class="p-1 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                          <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button class="p-1 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+        fragment.appendChild(card);
+    });
+    listaHistorico.appendChild(fragment);
+}
 	
 	function renderizarHistoricoProventos() {
         listaHistoricoProventos.innerHTML = '';
@@ -2953,6 +2971,8 @@ async function handleMostrarDetalhes(symbol) {
 }
 
 
+// Substitua a função inteira em app.js
+
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');
     const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
@@ -2975,20 +2995,31 @@ function renderizarTransacoesDetalhes(symbol) {
 
         txsDoAtivo.forEach(t => {
             const card = document.createElement('div');
+            // Estilo do card
             card.className = 'bg-black p-3.5 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2 shadow-sm w-full'; 
             
-            const cor = 'text-green-500';
-            const sinal = '+';
+            // --- LÓGICA VISUAL ---
+            const isVenda = t.type === 'sell';
+            const cor = isVenda ? 'text-red-500' : 'text-green-500'; // Vermelho/Verde
+            const sinal = isVenda ? '-' : '+';
+            const textoTipo = isVenda ? 'Venda' : 'Compra';
             
+            // Ícone: seta pra baixo (venda) ou seta pra cima/plus (compra)
+            const svgContent = isVenda 
+                ? '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" />' // Menos
+                : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />'; // Mais
+
+            // ---------------------------
+
             card.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <div class="p-2 bg-[#1A1A1A] rounded-full text-green-500 flex-shrink-0 border border-[#2C2C2E]">
+                    <div class="p-2 bg-[#1A1A1A] rounded-full ${cor} flex-shrink-0 border border-[#2C2C2E]">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                            ${svgContent}
                         </svg>
                     </div>
                     <div>
-                        <p class="text-sm font-bold text-gray-200">Compra</p>
+                        <p class="text-sm font-bold text-gray-200">${textoTipo}</p>
                         <p class="text-xs text-gray-500 font-medium">${formatDate(t.date)}</p>
                     </div>
                 </div>

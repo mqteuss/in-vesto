@@ -901,7 +901,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    function hideAddModal() {
+function hideAddModal() {
         addAtivoModalContent.classList.add('modal-out');
         setTimeout(() => {
             addAtivoModal.classList.remove('visible');
@@ -912,6 +912,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             precoMedioInput.value = '';
             dateInput.value = '';
             transacaoIdInput.value = '';
+            
+            // CORREÇÃO: Reseta o rádio para "Compra" (padrão)
+            const buyRadio = document.querySelector('input[name="tipo-operacao"][value="buy"]');
+            if (buyRadio) buyRadio.checked = true;
             
             transacaoEmEdicao = null;
             tickerInput.disabled = false;
@@ -2417,12 +2421,15 @@ async function handleCompartilharAtivo() {
         });
     }
     
-    async function handleSalvarTransacao() {
+async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
         let novaQuantidade = parseInt(quantityInput.value, 10);
         let novoPreco = parseFloat(precoMedioInput.value.replace(',', '.')); 
         let dataTransacao = dateInput.value;
         let transacaoID = transacaoIdInput.value;
+
+        // Captura o valor do botão de rádio selecionado (buy ou sell)
+        const tipoOperacao = document.querySelector('input[name="tipo-operacao"]:checked').value;
 
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
@@ -2483,7 +2490,7 @@ async function handleCompartilharAtivo() {
             const transacaoAtualizada = {
                 date: dataISO,
                 symbol: ticker,
-                type: 'buy',
+                type: tipoOperacao, // Usa o valor selecionado (buy/sell)
                 quantity: novaQuantidade,
                 price: novoPreco
             };
@@ -2501,14 +2508,17 @@ async function handleCompartilharAtivo() {
                 id: 'tx_' + Date.now(),
                 date: dataISO,
                 symbol: ticker,
-                type: 'buy',
+                type: tipoOperacao, // Usa o valor selecionado (buy/sell)
                 quantity: novaQuantidade,
                 price: novoPreco
             };
             
             await supabaseDB.addTransacao(novaTransacao);
             transacoes.push(novaTransacao);
-            showToast("Ativo adicionado!", 'success');
+            
+            // Mensagem personalizada para compra ou venda
+            const msg = tipoOperacao === 'sell' ? "Venda registrada!" : "Compra registrada!";
+            showToast(msg, 'success');
         }
 
         addButton.innerHTML = `Adicionar`;
@@ -2548,7 +2558,7 @@ async function handleCompartilharAtivo() {
         );
     }
     
-    function handleAbrirModalEdicao(id) {
+function handleAbrirModalEdicao(id) {
         const tx = transacoes.find(t => t.id === id);
         if (!tx) {
             showToast("Erro: Transação não encontrada.");
@@ -2557,13 +2567,22 @@ async function handleCompartilharAtivo() {
         
         transacaoEmEdicao = tx;
         
-        addModalTitle.textContent = 'Editar Compra';
+        // Ajusta o título dependendo do tipo
+        addModalTitle.textContent = tx.type === 'sell' ? 'Editar Venda' : 'Editar Compra';
+        
         transacaoIdInput.value = tx.id;
         tickerInput.value = tx.symbol;
         tickerInput.disabled = true;
         dateInput.value = formatDateToInput(tx.date);
         quantityInput.value = tx.quantity;
         precoMedioInput.value = tx.price;
+        
+        // CORREÇÃO: Marca o rádio button correto (buy ou sell) baseado na transação
+        const radioBtn = document.querySelector(`input[name="tipo-operacao"][value="${tx.type}"]`);
+        if (radioBtn) {
+            radioBtn.checked = true;
+        }
+
         addButton.textContent = 'Salvar';
         
         showAddModal();

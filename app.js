@@ -2905,7 +2905,7 @@ async function handleMostrarDetalhes(symbol) {
                     </div>
                 </div>
                 
-<h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 mt-4 ml-2">Dados Gerais</h3>
+<h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 mt-3 ml-2">Dados Gerais</h3>
                 
                 <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
                     ${renderRow('Segmento', dados.segmento)}

@@ -1318,18 +1318,29 @@ function renderizarHistoricoProventos() {
 }
 
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
-    if (btnHistTransacoes && btnHistProventos) {
+if (btnHistTransacoes && btnHistProventos) {
+        // Classes para o estado ATIVO (Roxo com brilho)
+        const activeClass = 'flex-1 py-2 rounded-full text-xs font-bold text-white bg-purple-600 shadow-[0_0_10px_rgba(124,58,237,0.3)] transition-all';
+        // Classes para o estado INATIVO (Cinza transparente)
+        const inactiveClass = 'flex-1 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-300 hover:bg-gray-800/50 transition-all';
+
         btnHistTransacoes.addEventListener('click', () => {
-            btnHistTransacoes.className = 'flex-1 py-2 rounded-full text-xs font-bold text-white bg-gray-800 shadow-md transition-all';
-            btnHistProventos.className = 'flex-1 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-300 transition-all';
+            // Ativa Transações
+            btnHistTransacoes.className = activeClass;
+            // Desativa Proventos
+            btnHistProventos.className = inactiveClass;
+            
             listaHistorico.classList.remove('hidden');
             listaHistoricoProventos.classList.add('hidden');
             renderizarHistorico();
         });
 
         btnHistProventos.addEventListener('click', () => {
-            btnHistProventos.className = 'flex-1 py-2 rounded-full text-xs font-bold text-white bg-gray-800 shadow-md transition-all';
-            btnHistTransacoes.className = 'flex-1 py-2 rounded-full text-xs font-bold text-gray-500 hover:text-gray-300 transition-all';
+            // Desativa Transações
+            btnHistTransacoes.className = inactiveClass;
+            // Ativa Proventos
+            btnHistProventos.className = activeClass;
+
             listaHistorico.classList.add('hidden');
             listaHistoricoProventos.classList.remove('hidden');
             renderizarHistoricoProventos();

@@ -1814,16 +1814,25 @@ function renderizarGraficoPatrimonio() {
         }
     }
     
-    function getQuantidadeNaData(symbol, dataLimiteStr) {
+function getQuantidadeNaData(symbol, dataLimiteStr) {
         if (!dataLimiteStr) return 0;
         
+        // Define o limite como o final do dia da "Data Com"
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
 
         return transacoes.reduce((total, t) => {
-            if (t.symbol === symbol && t.type === 'buy') {
+            // Verifica se é o mesmo ativo
+            if (t.symbol === symbol) {
                 const dataTransacao = new Date(t.date);
+                
+                // Só considera transações feitas ATÉ a data limite (Data Com)
                 if (dataTransacao <= dataLimite) {
-                    return total + t.quantity;
+                    if (t.type === 'buy') {
+                        return total + t.quantity;
+                    } else if (t.type === 'sell') {
+                        // CORREÇÃO: Subtrai a quantidade se for venda
+                        return total - t.quantity;
+                    }
                 }
             }
             return total;

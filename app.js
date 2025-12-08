@@ -1318,26 +1318,33 @@ function renderizarHistoricoProventos() {
 }
 
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
-if (btnHistTransacoes && btnHistProventos) {
-        // Estilo ATIVO: Roxo neon, com sombra e borda roxa
-        const activeClass = 'px-6 py-1.5 rounded-full text-xs font-bold text-white bg-purple-600 shadow-[0_0_10px_rgba(124,58,237,0.5)] border border-purple-500 transition-all';
-        
-        // Estilo INATIVO: Fundo transparente, texto cinza e borda escura
-        const inactiveClass = 'px-6 py-1.5 rounded-full text-xs font-bold text-gray-500 bg-transparent border border-[#2C2C2E] hover:border-gray-600 transition-all';
+// --- LISTENER DOS BOTÕES DE HISTÓRICO (TOGGLE ANIMADO) ---
+    if (btnHistTransacoes && btnHistProventos) {
+        const toggleBg = document.getElementById('historico-toggle-bg');
 
         btnHistTransacoes.addEventListener('click', () => {
-            btnHistTransacoes.className = activeClass;
-            btnHistProventos.className = inactiveClass;
+            // Move a pílula para a esquerda (remove o translate)
+            toggleBg.classList.remove('translate-x-full');
             
+            // Ajusta as cores do texto
+            btnHistTransacoes.classList.replace('text-gray-500', 'text-white');
+            btnHistProventos.classList.replace('text-white', 'text-gray-500');
+            
+            // Troca o conteúdo da lista
             listaHistorico.classList.remove('hidden');
             listaHistoricoProventos.classList.add('hidden');
             renderizarHistorico();
         });
 
         btnHistProventos.addEventListener('click', () => {
-            btnHistTransacoes.className = inactiveClass;
-            btnHistProventos.className = activeClass;
+            // Move a pílula para a direita (adiciona translate de 100% da largura dela)
+            toggleBg.classList.add('translate-x-full');
 
+            // Ajusta as cores do texto
+            btnHistProventos.classList.replace('text-gray-500', 'text-white');
+            btnHistTransacoes.classList.replace('text-white', 'text-gray-500');
+
+            // Troca o conteúdo da lista
             listaHistorico.classList.add('hidden');
             listaHistoricoProventos.classList.remove('hidden');
             renderizarHistoricoProventos();

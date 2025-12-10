@@ -355,30 +355,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         const sentinela = document.getElementById(sentinelaId);
         if (!sentinela) return;
 
-        // Se não tem mais itens, esconde a sentinela e para.
+        // Se não tem mais itens, esconde a sentinela e desconecta observer
         if (!hasMore) {
             sentinela.style.display = 'none';
+            
+            // Desconecta o observer ativo
+            if (sentinelaId === 'sentinela-historico' && observerHistorico) {
+                observerHistorico.disconnect();
+                observerHistorico = null;
+            }
+            if (sentinelaId === 'sentinela-proventos' && observerProventos) {
+                observerProventos.disconnect();
+                observerProventos = null;
+            }
+            if (sentinelaId === 'sentinela-noticias' && observerNoticias) {
+                observerNoticias.disconnect();
+                observerNoticias = null;
+            }
             return;
         }
         
         // Mostra a sentinela para detecção
         sentinela.style.display = 'flex'; 
 
-        // Evita duplicar observers ativos
-        if (sentinelaId === 'sentinela-historico' && observerHistorico) return;
-        if (sentinelaId === 'sentinela-proventos' && observerProventos) return;
-        if (sentinelaId === 'sentinela-noticias' && observerNoticias) return;
+        // Se já existe observer ativo, desconecta antes de criar novo
+        if (sentinelaId === 'sentinela-historico' && observerHistorico) {
+            observerHistorico.disconnect();
+        }
+        if (sentinelaId === 'sentinela-proventos' && observerProventos) {
+            observerProventos.disconnect();
+        }
+        if (sentinelaId === 'sentinela-noticias' && observerNoticias) {
+            observerNoticias.disconnect();
+        }
 
         const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                console.log(`✅ Sentinela ${sentinelaId} detectada! Carregando mais...`);
-                callback();
-            }
-        }, { rootMargin: '200px' }); // Carrega antecipadamente (200px antes do fim)
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    console.log(`✅ Sentinela ${sentinelaId} detectada! Carregando mais...`);
+                    callback();
+                }
+            });
+        }, { 
+            root: null, // usa o viewport
+            rootMargin: '100px', // Carrega 100px antes
+            threshold: 0.1 // Ativa quando 10% visível
+        });
 
         observer.observe(sentinela);
 
-        // Salva referência
+        // Salva referência do novo observer
         if (sentinelaId === 'sentinela-historico') observerHistorico = observer;
         if (sentinelaId === 'sentinela-proventos') observerProventos = observer;
         if (sentinelaId === 'sentinela-noticias') observerNoticias = observer;

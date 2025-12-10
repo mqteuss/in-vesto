@@ -297,7 +297,7 @@ function atualizarCardElemento(card, ativo, dados) {
 document.addEventListener('DOMContentLoaded', async () => {
 
     // ------------------------------------------------------------------
-    // 1. VARIÁVEIS GLOBAIS (Coloque isso logo no início, após o DOMContentLoaded)
+    // 1. VARIÁVEIS GLOBAIS
     // ------------------------------------------------------------------
     let currentUserId = null;
     let transacoes = [];        
@@ -332,117 +332,117 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastProventosCalcSignature = ''; 
     let cachedSaldoCaixa = 0;
 
-    // --- VARIÁVEIS DO SCROLL INFINITO (IMPORTANTE) ---
-    const ITEMS_PER_PAGE = 10; // Mantém 10 por página
+    // --- VARIÁVEIS DO SCROLL INFINITO ---
+    const ITEMS_PER_PAGE = 10; 
+    
+    // Contadores
     let renderCountHistorico = ITEMS_PER_PAGE;
     let renderCountProventos = ITEMS_PER_PAGE;
     let renderCountNoticias = ITEMS_PER_PAGE;
     
+    // Variáveis dos Observadores (Salvas globalmente)
     let observerHistorico = null;
     let observerProventos = null;
     let observerNoticias = null;
     
-    // CACHE GLOBAL DE NOTÍCIAS (Essencial para não perder os dados ao rolar)
+    // Cache de Notícias
     let cacheNoticiasGlobal = []; 
 
     // ------------------------------------------------------------------
-    // 2. FUNÇÃO SETUP OBSERVER (Otimizada sem delay)
+    // 2. FUNÇÃO SETUP OBSERVER (CORRIGIDA E SIMPLIFICADA)
     // ------------------------------------------------------------------
     function setupObserver(sentinelaId, callback, hasMore) {
         const sentinela = document.getElementById(sentinelaId);
         if (!sentinela) return;
 
-        // Desconecta observadores antigos para evitar duplicidade
-        if (sentinelaId === 'sentinela-historico' && observerHistorico) observerHistorico.disconnect();
-        if (sentinelaId === 'sentinela-proventos' && observerProventos) observerProventos.disconnect();
-        if (sentinelaId === 'sentinela-noticias' && observerNoticias) observerNoticias.disconnect();
-
+        // Se não tem mais itens, apenas esconde a sentinela e para.
+        // Não desconectamos o observer para evitar erros de recriação.
         if (!hasMore) {
             sentinela.style.display = 'none';
             return;
         }
         
-        // Torna visível para o observador detectar
+        // Mostra a sentinela para que o scroll possa atingi-la
         sentinela.style.display = 'flex'; 
 
+        // Se já existe um observer rodando para este ID, não recria
+        if (sentinelaId === 'sentinela-historico' && observerHistorico) return;
+        if (sentinelaId === 'sentinela-proventos' && observerProventos) return;
+        if (sentinelaId === 'sentinela-noticias' && observerNoticias) return;
+
+        // Cria o Observer
         const observer = new IntersectionObserver((entries) => {
+            // Se a sentinela apareceu na tela (isIntersecting)
             if (entries[0].isIntersecting) {
-                // Removemos o setTimeout para carregamento instantâneo
+                // Chama a função de carregar mais
                 callback();
             }
-        }, { rootMargin: '200px' }); // Carrega 200px antes de chegar ao fim
+        }, { rootMargin: '100px' }); // Carrega 100px antes do fim
 
         observer.observe(sentinela);
 
-        // Salva a referência
+        // Salva a referência globalmente
         if (sentinelaId === 'sentinela-historico') observerHistorico = observer;
         if (sentinelaId === 'sentinela-proventos') observerProventos = observer;
         if (sentinelaId === 'sentinela-noticias') observerNoticias = observer;
     }
 
     // ------------------------------------------------------------------
-    // 3. FUNÇÃO RENDERIZAR NOTÍCIAS (Corrigida)
+    // 3. FUNÇÕES DE RENDERIZAÇÃO (ATUALIZADAS)
     // ------------------------------------------------------------------
+
     function renderizarNoticias(articles, append = false) { 
         const fiiNewsList = document.getElementById('fii-news-list');
         const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
         const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
+        const sentinela = document.getElementById('sentinela-noticias');
         
         fiiNewsSkeleton.classList.add('hidden');
 
+        // --- MODO INICIAL (Primeira carga) ---
         if (!append) {
-            // Se NÃO for append (primeira carga), salvamos no cache global e resetamos a lista
-            cacheNoticiasGlobal = articles || []; 
+            cacheNoticiasGlobal = articles || []; // Salva no cache
             fiiNewsList.innerHTML = ''; 
             fiiNewsMensagem.classList.add('hidden');
-            renderCountNoticias = ITEMS_PER_PAGE;
+            renderCountNoticias = ITEMS_PER_PAGE; // Reseta contador para 10
 
             if (!cacheNoticiasGlobal || cacheNoticiasGlobal.length === 0) {
-                fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada nos últimos 30 dias.';
+                fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada.';
                 fiiNewsMensagem.classList.remove('hidden');
-                // Esconde sentinela se não tiver nada
-                const sentinela = document.getElementById('sentinela-noticias');
                 if(sentinela) sentinela.style.display = 'none';
                 return;
             }
         }
 
-        // Usa sempre o cache global para calcular
+        // --- PREPARAÇÃO DOS DADOS ---
         const sortedArticles = [...cacheNoticiasGlobal].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
         const totalItems = sortedArticles.length;
         
-        // Define o intervalo de corte
+        // Define o intervalo (Slice)
         const start = append ? renderCountNoticias : 0;
         const end = append ? renderCountNoticias + ITEMS_PER_PAGE : ITEMS_PER_PAGE;
         
-        // Pega os itens
+        // Pega os itens deste lote
         const itemsParaRenderizar = sortedArticles.slice(start, end);
         
-        // Atualiza o contador para a PRÓXIMA vez
-        if (append) {
-            renderCountNoticias += ITEMS_PER_PAGE;
-        }
-
-        // Renderiza
+        // --- RENDERIZAÇÃO ---
         const fragment = document.createDocumentFragment();
 
         itemsParaRenderizar.forEach((article, index) => {
+            // ID único global
             const uniqueId = start + index; 
             const drawerId = `news-drawer-${uniqueId}`;
             
+            // Lógica de Ticker e Conteúdo
             const sourceName = article.sourceName || 'Fonte';
             const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
             const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
-            
             const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
-            
             let tickersHtml = '';
-            if (foundTickers.length > 0) {
-                foundTickers.forEach(ticker => {
-                    tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
-                });
-            }
+            foundTickers.forEach(ticker => {
+                tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+            });
 
             const drawerContentHtml = `
                 <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
@@ -495,11 +495,152 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         fiiNewsList.appendChild(fragment);
 
-        // Verifica se ainda tem mais itens (se o final renderizado é menor que o total)
+        // --- ATUALIZAÇÃO DE ESTADO ---
+        if (append) {
+            // Se foi append, incrementamos o contador para o próximo lote
+            renderCountNoticias += ITEMS_PER_PAGE;
+        }
+
+        // Verifica se ainda há itens (Se o que renderizamos agora + próximo lote <= total)
+        // OBS: Usamos 'end' (o último índice renderizado agora) < totalItems
         const hasMore = end < totalItems;
         
-        // Reinicia o observador
-        setupObserver('sentinela-noticias', () => renderizarNoticias(null, true), hasMore);
+        // Configura ou Atualiza o Observer
+        setupObserver('sentinela-noticias', () => {
+            // AQUI ESTÁ O SEGREDO: Chamamos a função novamente em modo append
+            renderizarNoticias(null, true); 
+        }, hasMore);
+    }
+
+    function renderizarHistorico(append = false) {
+        const listaHistorico = document.getElementById('lista-historico');
+        const historicoStatus = document.getElementById('historico-status');
+        const sentinela = document.getElementById('sentinela-historico');
+
+        const todosOrdenados = [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const totalItems = todosOrdenados.length;
+
+        if (!append) {
+            listaHistorico.innerHTML = '';
+            renderCountHistorico = ITEMS_PER_PAGE;
+            if (totalItems === 0) {
+                historicoStatus.classList.remove('hidden');
+                if(sentinela) sentinela.style.display = 'none';
+                return;
+            }
+            historicoStatus.classList.add('hidden');
+        }
+
+        const start = append ? renderCountHistorico : 0;
+        const end = append ? renderCountHistorico + ITEMS_PER_PAGE : ITEMS_PER_PAGE;
+        const itensParaRenderizar = todosOrdenados.slice(start, end);
+
+        const fragment = document.createDocumentFragment();
+
+        itensParaRenderizar.forEach(t => {
+            const card = document.createElement('div');
+            card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between mb-2 card-animate-in';
+            
+            const isVenda = t.type === 'sell';
+            const cor = isVenda ? 'text-red-500' : 'text-green-500';
+            const sinal = isVenda ? '-' : '+';
+            const pathIcone = isVenda ? 'M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z' : 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
+            const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${pathIcone}" /></svg>`;
+            
+            card.innerHTML = `
+                <div class="flex items-center gap-3">
+                    ${icone}
+                    <div>
+                        <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
+                        <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
+                        <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button class="p-1 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>
+                        </button>
+                        <button class="p-1 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                </div>`;
+            fragment.appendChild(card);
+        });
+        
+        listaHistorico.appendChild(fragment);
+
+        if (append) renderCountHistorico += ITEMS_PER_PAGE;
+        const hasMore = end < totalItems;
+        setupObserver('sentinela-historico', () => renderizarHistorico(true), hasMore);
+    }
+
+    function renderizarHistoricoProventos(append = false) {
+        const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
+        const sentinela = document.getElementById('sentinela-proventos');
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+        const proventosPagos = proventosConhecidos.filter(p => {
+            if (!p.paymentDate) return false;
+            const parts = p.paymentDate.split('-');
+            const dPag = new Date(parts[0], parts[1]-1, parts[2]);
+            return dPag <= hoje;
+        }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+        const itensValidos = [];
+        proventosPagos.forEach(p => {
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+            if (qtd > 0) itensValidos.push({ ...p, qtd, total: p.value * qtd });
+        });
+
+        const totalItems = itensValidos.length;
+
+        if (!append) {
+            listaHistoricoProventos.innerHTML = '';
+            renderCountProventos = ITEMS_PER_PAGE;
+            if (totalItems === 0) {
+                 if(sentinela) sentinela.style.display = 'none';
+                 return;
+            }
+        }
+
+        const start = append ? renderCountProventos : 0;
+        const end = append ? renderCountProventos + ITEMS_PER_PAGE : ITEMS_PER_PAGE;
+        const itensParaRenderizar = itensValidos.slice(start, end);
+
+        const fragment = document.createDocumentFragment();
+
+        itensParaRenderizar.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between border border-[#2C2C2E] mb-2 card-animate-in';
+            card.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">${p.symbol}</h3>
+                        <p class="text-xs text-gray-400">Pag: ${formatDate(p.paymentDate)}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-bold accent-text">+ ${formatBRL(p.total)}</p>
+                    <p class="text-[10px] text-gray-500">${formatBRL(p.value)} x ${p.qtd}</p>
+                </div>
+            `;
+            fragment.appendChild(card);
+        });
+        
+        listaHistoricoProventos.appendChild(fragment);
+        
+        if (append) renderCountProventos += ITEMS_PER_PAGE;
+        const hasMore = end < totalItems;
+        setupObserver('sentinela-proventos', () => renderizarHistoricoProventos(true), hasMore);
     }
 
     // ... (Continue com o restante do código: vestoDB, renderizarHistorico, etc.)

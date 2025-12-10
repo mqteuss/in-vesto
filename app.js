@@ -1509,109 +1509,109 @@ function renderizarHistoricoProventos(append = false) {
     }
 
 function renderizarNoticias(articles, append = false) { 
-        const fiiNewsList = document.getElementById('fii-news-list');
-        const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
-        const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
-        const sentinela = document.getElementById('sentinela-noticias');
-        
-        fiiNewsSkeleton.classList.add('hidden');
+    const fiiNewsList = document.getElementById('fii-news-list');
+    const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
+    const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
+    const sentinela = document.getElementById('sentinela-noticias');
+    
+    fiiNewsSkeleton.classList.add('hidden');
 
-        if (!append) {
-            cacheNoticiasGlobal = articles || []; 
-            fiiNewsList.innerHTML = ''; 
-            fiiNewsMensagem.classList.add('hidden');
-            renderCountNoticias = 0; // ✅ CORREÇÃO: Reseta para 0
+    if (!append) {
+        cacheNoticiasGlobal = articles || []; 
+        fiiNewsList.innerHTML = ''; 
+        fiiNewsMensagem.classList.add('hidden');
+        renderCountNoticias = 0;
 
-            if (!cacheNoticiasGlobal || cacheNoticiasGlobal.length === 0) {
-                fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada.';
-                fiiNewsMensagem.classList.remove('hidden');
-                if(sentinela) sentinela.style.display = 'none';
-                return;
-            }
+        if (!cacheNoticiasGlobal || cacheNoticiasGlobal.length === 0) {
+            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada.';
+            fiiNewsMensagem.classList.remove('hidden');
+            if(sentinela) sentinela.style.display = 'none';
+            return;
         }
+    }
 
-        const sortedArticles = [...cacheNoticiasGlobal].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
-        const totalItems = sortedArticles.length;
+    // 🔥 CORREÇÃO: Usa sempre o cache global, não o parâmetro
+    const sortedArticles = [...cacheNoticiasGlobal].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+    const totalItems = sortedArticles.length;
+    
+    const start = renderCountNoticias;
+    const end = start + ITEMS_PER_PAGE;
+    const itemsParaRenderizar = sortedArticles.slice(start, end);
+    
+    renderCountNoticias = end;
+
+    const fragment = document.createDocumentFragment();
+
+    itemsParaRenderizar.forEach((article, index) => {
+        const uniqueId = start + index; 
+        const drawerId = `news-drawer-${uniqueId}`;
         
-        // ✅ LÓGICA DE FATIAMENTO CORRIGIDA
-        const start = renderCountNoticias;
-        const end = start + ITEMS_PER_PAGE;
-        const itemsParaRenderizar = sortedArticles.slice(start, end);
+        const sourceName = article.sourceName || 'Fonte';
+        const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+        const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
         
-        // ✅ ATUALIZA O CONTADOR PARA O PRÓXIMO CICLO
-        renderCountNoticias = end;
-
-        const fragment = document.createDocumentFragment();
-
-        itemsParaRenderizar.forEach((article, index) => {
-            const uniqueId = start + index; 
-            const drawerId = `news-drawer-${uniqueId}`;
-            
-            const sourceName = article.sourceName || 'Fonte';
-            const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
-            const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
-            
-            const tickerRegex = /[A-Z]{4}11/g;
-            const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
-            let tickersHtml = '';
-            foundTickers.forEach(ticker => {
-                tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
-            });
-
-            const drawerContentHtml = `
-                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
-                    ${article.summary ? article.summary : 'Resumo não disponível.'}
-                </div>
-                <div class="flex justify-between items-end pt-2 border-t border-gray-800">
-                    <div class="flex flex-wrap gap-2">
-                        ${tickersHtml}
-                    </div>
-                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex-shrink-0">
-                        Ler notícia completa
-                    </a>
-                </div>
-            `;
-
-            const newsCard = document.createElement('div');
-            newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive card-animate-in mb-3';
-            newsCard.setAttribute('data-action', 'toggle-news');
-            newsCard.setAttribute('data-target', drawerId);
-
-            newsCard.innerHTML = `
-                <div class="flex items-start gap-3 pointer-events-none">
-                    <img src="${faviconUrl}" alt="${sourceName}" 
-                            class="w-9 h-9 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
-                            loading="lazy"
-                            onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
-                    />
-                    <div class="flex-1 min-w-0">
-                        <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
-                        <div class="flex items-center gap-2 mt-1.5">
-                            <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
-                            <span class="text-[10px] text-gray-600">•</span>
-                            <span class="text-xs text-gray-500">${publicationDate}</span>
-                        </div>
-                    </div>
-                    <div class="flex-shrink-0 -mr-2 -mt-2">
-                        <svg class="card-arrow-icon w-5 h-5 text-gray-500 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                        </svg>
-                    </div>
-                </div>
-                <div id="${drawerId}" class="card-drawer pointer-events-auto">
-                    <div class="drawer-content pt-3 mt-2">
-                        ${drawerContentHtml}
-                    </div>
-                </div>
-            `;
-            fragment.appendChild(newsCard);
+        const tickerRegex = /[A-Z]{4}11/g;
+        const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
+        let tickersHtml = '';
+        foundTickers.forEach(ticker => {
+            tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
         });
 
-        fiiNewsList.appendChild(fragment);
+        const drawerContentHtml = `
+            <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
+                ${article.summary ? article.summary : 'Resumo não disponível.'}
+            </div>
+            <div class="flex justify-between items-end pt-2 border-t border-gray-800">
+                <div class="flex flex-wrap gap-2">
+                    ${tickersHtml}
+                </div>
+                <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex-shrink-0">
+                    Ler notícia completa
+                </a>
+            </div>
+        `;
 
-        const hasMore = end < totalItems;
-        setupObserver('sentinela-noticias', () => renderizarNoticias(null, true), hasMore);
-    }
+        const newsCard = document.createElement('div');
+        newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive card-animate-in mb-3';
+        newsCard.setAttribute('data-action', 'toggle-news');
+        newsCard.setAttribute('data-target', drawerId);
+
+        newsCard.innerHTML = `
+            <div class="flex items-start gap-3 pointer-events-none">
+                <img src="${faviconUrl}" alt="${sourceName}" 
+                        class="w-9 h-9 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
+                        loading="lazy"
+                        onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
+                />
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
+                    <div class="flex items-center gap-2 mt-1.5">
+                        <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
+                        <span class="text-[10px] text-gray-600">•</span>
+                        <span class="text-xs text-gray-500">${publicationDate}</span>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 -mr-2 -mt-2">
+                    <svg class="card-arrow-icon w-5 h-5 text-gray-500 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </div>
+            </div>
+            <div id="${drawerId}" class="card-drawer pointer-events-auto">
+                <div class="drawer-content pt-3 mt-2">
+                    ${drawerContentHtml}
+                </div>
+            </div>
+        `;
+        fragment.appendChild(newsCard);
+    });
+
+    fiiNewsList.appendChild(fragment);
+
+    const hasMore = end < totalItems;
+    // 🔥 CORREÇÃO: Não passa parâmetro articles, a função usa o cache global
+    setupObserver('sentinela-noticias', () => renderizarNoticias(null, true), hasMore);
+}
 
     function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');

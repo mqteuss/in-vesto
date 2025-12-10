@@ -295,10 +295,8 @@ function atualizarCardElemento(card, ativo, dados) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-
-    // ------------------------------------------------------------------
-    // 1. VARIÁVEIS GLOBAIS
-    // ------------------------------------------------------------------
+	
+	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
     let currentUserId = null;
     let transacoes = [];        
     let carteiraCalculada = []; 
@@ -331,84 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastNewsSignature = ''; 
     let lastProventosCalcSignature = ''; 
     let cachedSaldoCaixa = 0;
-
-    // --- VARIÁVEIS DO SCROLL INFINITO ---
-    const ITEMS_PER_PAGE = 10; 
-    
-    // Contadores (Iniciados em 0)
-    let renderCountHistorico = 0;
-    let renderCountProventos = 0;
-    let renderCountNoticias = 0;
-    
-    // Variáveis dos Observadores
-    let observerHistorico = null;
-    let observerProventos = null;
-    let observerNoticias = null;
-    
-    // Cache de Notícias
-    let cacheNoticiasGlobal = []; 
-
-    // ------------------------------------------------------------------
-    // 2. FUNÇÃO SETUP OBSERVER (COM DEBUG E LOGICA CORRIGIDA)
-    // ------------------------------------------------------------------
-    function setupObserver(sentinelaId, callback, hasMore) {
-        const sentinela = document.getElementById(sentinelaId);
-        if (!sentinela) return;
-
-        // Se não tem mais itens, esconde a sentinela e desconecta observer
-        if (!hasMore) {
-            sentinela.style.display = 'none';
-            
-            // Desconecta o observer ativo
-            if (sentinelaId === 'sentinela-historico' && observerHistorico) {
-                observerHistorico.disconnect();
-                observerHistorico = null;
-            }
-            if (sentinelaId === 'sentinela-proventos' && observerProventos) {
-                observerProventos.disconnect();
-                observerProventos = null;
-            }
-            if (sentinelaId === 'sentinela-noticias' && observerNoticias) {
-                observerNoticias.disconnect();
-                observerNoticias = null;
-            }
-            return;
-        }
-        
-        // Mostra a sentinela para detecção
-        sentinela.style.display = 'flex'; 
-
-        // Se já existe observer ativo, desconecta antes de criar novo
-        if (sentinelaId === 'sentinela-historico' && observerHistorico) {
-            observerHistorico.disconnect();
-        }
-        if (sentinelaId === 'sentinela-proventos' && observerProventos) {
-            observerProventos.disconnect();
-        }
-        if (sentinelaId === 'sentinela-noticias' && observerNoticias) {
-            observerNoticias.disconnect();
-        }
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    console.log(`✅ Sentinela ${sentinelaId} detectada! Carregando mais...`);
-                    callback();
-                }
-            });
-        }, { 
-            root: null, // usa o viewport
-            rootMargin: '100px', // Carrega 100px antes
-            threshold: 0.1 // Ativa quando 10% visível
-        });
-
-        observer.observe(sentinela);
-
-        // Salva referência do novo observer
-        if (sentinelaId === 'sentinela-historico') observerHistorico = observer;
-        if (sentinelaId === 'sentinela-proventos') observerProventos = observer;
-        if (sentinelaId === 'sentinela-noticias') observerNoticias = observer;
-    }
+    // -------------------------------------------
     
     const vestoDB = {
         db: null,
@@ -1337,119 +1258,98 @@ function calcularCarteira() {
 
 // Substitua a função inteira em app.js
 
-function renderizarHistorico(append = false) {
-        const listaHistorico = document.getElementById('lista-historico');
-        const historicoStatus = document.getElementById('historico-status');
-        const sentinela = document.getElementById('sentinela-historico');
-
-        const todosOrdenados = [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date));
-        const totalItems = todosOrdenados.length;
-
-        if (!append) {
-            listaHistorico.innerHTML = '';
-            renderCountHistorico = 0; // ✅ CORREÇÃO: Reseta para 0
-            if (totalItems === 0) {
-                historicoStatus.classList.remove('hidden');
-                if(sentinela) sentinela.style.display = 'none';
-                return;
-            }
-            historicoStatus.classList.add('hidden');
-        }
-
-        // ✅ LÓGICA DE FATIAMENTO CORRIGIDA
-        const start = renderCountHistorico;
-        const end = start + ITEMS_PER_PAGE;
-        const itemsParaRenderizar = todosOrdenados.slice(start, end);
-        
-        // ✅ ATUALIZA O CONTADOR
-        renderCountHistorico = end;
-
-        const fragment = document.createDocumentFragment();
-
-        itemsParaRenderizar.forEach(t => {
-            const card = document.createElement('div');
-            card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between mb-2 card-animate-in';
-            
-            const isVenda = t.type === 'sell';
-            const cor = isVenda ? 'text-red-500' : 'text-green-500';
-            const sinal = isVenda ? '-' : '+';
-            const pathIcone = isVenda ? 'M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z' : 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
-            const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${pathIcone}" /></svg>`;
-            
-            card.innerHTML = `
-                <div class="flex items-center gap-3">
-                    ${icone}
-                    <div>
-                        <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
-                        <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="text-right">
-                        <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                        <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button class="p-1 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
-                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>
-                        </button>
-                        <button class="p-1 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                        </button>
-                    </div>
-                </div>`;
-            fragment.appendChild(card);
-        });
-        
-        listaHistorico.appendChild(fragment);
-
-        const hasMore = end < totalItems;
-        setupObserver('sentinela-historico', () => renderizarHistorico(true), hasMore);
+function renderizarHistorico() {
+    listaHistorico.innerHTML = '';
+    if (transacoes.length === 0) {
+        historicoStatus.classList.remove('hidden');
+        return;
     }
-	
-function renderizarHistoricoProventos(append = false) {
-        const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
-        const sentinela = document.getElementById('sentinela-proventos');
-        const hoje = new Date(); hoje.setHours(0,0,0,0);
+    
+    historicoStatus.classList.add('hidden');
+    const fragment = document.createDocumentFragment();
 
-        const proventosPagos = proventosConhecidos.filter(p => {
-            if (!p.paymentDate) return false;
-            const parts = p.paymentDate.split('-');
-            const dPag = new Date(parts[0], parts[1]-1, parts[2]);
-            return dPag <= hoje;
-        }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-
-        const itensValidos = [];
-        proventosPagos.forEach(p => {
-            const dataRef = p.dataCom || p.paymentDate;
-            const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            if (qtd > 0) itensValidos.push({ ...p, qtd, total: p.value * qtd });
-        });
-
-        const totalItems = itensValidos.length;
-
-        if (!append) {
-            listaHistoricoProventos.innerHTML = '';
-            renderCountProventos = 0; // ✅ CORREÇÃO: Reseta para 0
-            if (totalItems === 0) {
-                 if(sentinela) sentinela.style.display = 'none';
-                 return;
-            }
+    // Ordena por data (mais recente primeiro)
+    [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between';
+        
+        // --- LÓGICA VISUAL (CORRIGIDA) ---
+        const isVenda = t.type === 'sell'; // Verifica se é venda
+        const cor = isVenda ? 'text-red-500' : 'text-green-500'; // Vermelho se venda, Verde se compra
+        const sinal = isVenda ? '-' : '+'; // Sinal de menos ou mais
+        
+        // Ícone muda: Seta pra baixo (venda) ou Seta pra cima/Mais (compra)
+        let pathIcone = '';
+        if (isVenda) {
+             // Ícone de menos/saída
+            pathIcone = 'M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
+        } else {
+             // Ícone de mais/entrada
+            pathIcone = 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
         }
 
-        // ✅ LÓGICA DE FATIAMENTO CORRIGIDA
-        const start = renderCountProventos;
-        const end = start + ITEMS_PER_PAGE;
-        const itensParaRenderizar = itensValidos.slice(start, end);
+        const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${pathIcone}" /></svg>`;
+        // ---------------------------
         
-        // ✅ ATUALIZA O CONTADOR
-        renderCountProventos = end;
+        card.innerHTML = `
+            <div class="flex items-center gap-3">
+                ${icone}
+                <div>
+                    <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
+                    <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right">
+                    <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
+                    <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <button class="p-1 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                          <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button class="p-1 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+        fragment.appendChild(card);
+    });
+    listaHistorico.appendChild(fragment);
+}
+	
+function renderizarHistoricoProventos() {
+    listaHistoricoProventos.innerHTML = '';
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-        const fragment = document.createDocumentFragment();
+    const proventosPagos = proventosConhecidos.filter(p => {
+        if (!p.paymentDate) return false;
+        const parts = p.paymentDate.split('-');
+        const dPag = new Date(parts[0], parts[1]-1, parts[2]);
+        return dPag <= hoje;
+    }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-        itensParaRenderizar.forEach(p => {
+    const fragment = document.createDocumentFragment();
+    let temItem = false;
+
+    proventosPagos.forEach(p => {
+        const dataRef = p.dataCom || p.paymentDate;
+        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+
+        if (qtd > 0) {
+            temItem = true;
+            const total = p.value * qtd;
             const card = document.createElement('div');
-            card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between border border-[#2C2C2E] mb-2 card-animate-in';
+            card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between border border-[#2C2C2E] mb-2';
+            
+            // ALTERAÇÃO ABAIXO:
+            // Substituimos 'text-green-400' por 'accent-text' na div "text-right"
             card.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">
@@ -1461,18 +1361,16 @@ function renderizarHistoricoProventos(append = false) {
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-sm font-bold accent-text">+ ${formatBRL(p.total)}</p>
-                    <p class="text-[10px] text-gray-500">${formatBRL(p.value)} x ${p.qtd}</p>
+                    <p class="text-sm font-bold accent-text">+ ${formatBRL(total)}</p>
+                    <p class="text-[10px] text-gray-500">${formatBRL(p.value)} x ${qtd}</p>
                 </div>
             `;
             fragment.appendChild(card);
-        });
-        
-        listaHistoricoProventos.appendChild(fragment);
-        
-        const hasMore = end < totalItems;
-        setupObserver('sentinela-proventos', () => renderizarHistoricoProventos(true), hasMore);
-    }
+        }
+    });
+    
+    if (temItem) listaHistoricoProventos.appendChild(fragment);
+}
 
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
 // --- LISTENER DOS BOTÕES DE HISTÓRICO (TOGGLE ANIMADO) ---
@@ -1508,110 +1406,95 @@ function renderizarHistoricoProventos(append = false) {
         });
     }
 
-function renderizarNoticias(articles, append = false) { 
-    const fiiNewsList = document.getElementById('fii-news-list');
-    const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
-    const fiiNewsMensagem = document.getElementById('fii-news-mensagem');
-    const sentinela = document.getElementById('sentinela-noticias');
-    
-    fiiNewsSkeleton.classList.add('hidden');
-
-    if (!append) {
-        cacheNoticiasGlobal = articles || []; 
-        fiiNewsList.innerHTML = ''; 
-        fiiNewsMensagem.classList.add('hidden');
-        renderCountNoticias = 0;
-
-        if (!cacheNoticiasGlobal || cacheNoticiasGlobal.length === 0) {
-            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada.';
-            fiiNewsMensagem.classList.remove('hidden');
-            if(sentinela) sentinela.style.display = 'none';
+    function renderizarNoticias(articles) { 
+        fiiNewsSkeleton.classList.add('hidden');
+        
+        const newSignature = JSON.stringify(articles);
+        if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
             return;
         }
-    }
+        lastNewsSignature = newSignature;
 
-    // 🔥 CORREÇÃO: Usa sempre o cache global, não o parâmetro
-    const sortedArticles = [...cacheNoticiasGlobal].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
-    const totalItems = sortedArticles.length;
-    
-    const start = renderCountNoticias;
-    const end = start + ITEMS_PER_PAGE;
-    const itemsParaRenderizar = sortedArticles.slice(start, end);
-    
-    renderCountNoticias = end;
+        fiiNewsList.innerHTML = ''; 
+        fiiNewsMensagem.classList.add('hidden');
 
-    const fragment = document.createDocumentFragment();
-
-    itemsParaRenderizar.forEach((article, index) => {
-        const uniqueId = start + index; 
-        const drawerId = `news-drawer-${uniqueId}`;
+        if (!articles || articles.length === 0) {
+            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada nos últimos 30 dias.';
+            fiiNewsMensagem.classList.remove('hidden');
+            return;
+        }
         
-        const sourceName = article.sourceName || 'Fonte';
-        const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
-        const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
+        const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
         
-        const tickerRegex = /[A-Z]{4}11/g;
-        const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
-        let tickersHtml = '';
-        foundTickers.forEach(ticker => {
-            tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
-        });
+        const fragment = document.createDocumentFragment();
 
-        const drawerContentHtml = `
-            <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
-                ${article.summary ? article.summary : 'Resumo não disponível.'}
-            </div>
-            <div class="flex justify-between items-end pt-2 border-t border-gray-800">
-                <div class="flex flex-wrap gap-2">
-                    ${tickersHtml}
+        sortedArticles.forEach((article, index) => {
+            const sourceName = article.sourceName || 'Fonte';
+            const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+            const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
+            const drawerId = `news-drawer-${index}`;
+            
+            const tickerRegex = /[A-Z]{4}11/g;
+            const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
+            
+            let tickersHtml = '';
+            if (foundTickers.length > 0) {
+                foundTickers.forEach(ticker => {
+                    tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                });
+            }
+
+            const drawerContentHtml = `
+                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
+                    ${article.summary ? article.summary : 'Resumo não disponível.'}
                 </div>
-                <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex-shrink-0">
-                    Ler notícia completa
-                </a>
-            </div>
-        `;
+                <div class="flex justify-between items-end pt-2 border-t border-gray-800">
+                    <div class="flex flex-wrap gap-2">
+                        ${tickersHtml}
+                    </div>
+                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex-shrink-0">
+                        Ler notícia completa
+                    </a>
+                </div>
+            `;
 
-        const newsCard = document.createElement('div');
-        newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive card-animate-in mb-3';
-        newsCard.setAttribute('data-action', 'toggle-news');
-        newsCard.setAttribute('data-target', drawerId);
+            const newsCard = document.createElement('div');
+            newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive'; 
+            newsCard.setAttribute('data-action', 'toggle-news');
+            newsCard.setAttribute('data-target', drawerId);
 
-        newsCard.innerHTML = `
-            <div class="flex items-start gap-3 pointer-events-none">
-                <img src="${faviconUrl}" alt="${sourceName}" 
-                        class="w-9 h-9 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
-                        loading="lazy"
-                        onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
-                />
-                <div class="flex-1 min-w-0">
-                    <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
-                    <div class="flex items-center gap-2 mt-1.5">
-                        <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
-                        <span class="text-[10px] text-gray-600">•</span>
-                        <span class="text-xs text-gray-500">${publicationDate}</span>
+            newsCard.innerHTML = `
+                <div class="flex items-start gap-3 pointer-events-none">
+                    <img src="${faviconUrl}" alt="${sourceName}" 
+                         class="w-9 h-9 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
+                         loading="lazy"
+                         onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
+                    />
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
+                            <span class="text-[10px] text-gray-600">•</span>
+                            <span class="text-xs text-gray-500">${publicationDate}</span>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 -mr-2 -mt-2">
+                        <svg class="card-arrow-icon w-5 h-5 text-gray-500 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
                     </div>
                 </div>
-                <div class="flex-shrink-0 -mr-2 -mt-2">
-                    <svg class="card-arrow-icon w-5 h-5 text-gray-500 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                    </svg>
+                
+                <div id="${drawerId}" class="card-drawer pointer-events-auto">
+                    <div class="drawer-content pt-3 mt-2">
+                        ${drawerContentHtml}
+                    </div>
                 </div>
-            </div>
-            <div id="${drawerId}" class="card-drawer pointer-events-auto">
-                <div class="drawer-content pt-3 mt-2">
-                    ${drawerContentHtml}
-                </div>
-            </div>
-        `;
-        fragment.appendChild(newsCard);
-    });
-
-    fiiNewsList.appendChild(fragment);
-
-    const hasMore = end < totalItems;
-    // 🔥 CORREÇÃO: Não passa parâmetro articles, a função usa o cache global
-    setupObserver('sentinela-noticias', () => renderizarNoticias(null, true), hasMore);
-}
+            `;
+            fragment.appendChild(newsCard);
+        });
+        fiiNewsList.appendChild(fragment);
+    }
 
     function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');

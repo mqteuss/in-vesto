@@ -335,12 +335,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- VARIÁVEIS DO SCROLL INFINITO ---
     const ITEMS_PER_PAGE = 10; 
     
-    // Contadores
-    let renderCountHistorico = ITEMS_PER_PAGE;
-    let renderCountProventos = ITEMS_PER_PAGE;
-    let renderCountNoticias = ITEMS_PER_PAGE;
+    // Contadores (Iniciados em 0)
+    let renderCountHistorico = 0;
+    let renderCountProventos = 0;
+    let renderCountNoticias = 0;
     
-    // Variáveis dos Observadores (Salvas globalmente)
+    // Variáveis dos Observadores
     let observerHistorico = null;
     let observerProventos = null;
     let observerNoticias = null;
@@ -349,48 +349,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     let cacheNoticiasGlobal = []; 
 
     // ------------------------------------------------------------------
-    // 2. FUNÇÃO SETUP OBSERVER (CORRIGIDA E SIMPLIFICADA)
+    // 2. FUNÇÃO SETUP OBSERVER (COM DEBUG E LOGICA CORRIGIDA)
     // ------------------------------------------------------------------
     function setupObserver(sentinelaId, callback, hasMore) {
         const sentinela = document.getElementById(sentinelaId);
         if (!sentinela) return;
 
-        // Se não tem mais itens, apenas esconde a sentinela e para.
-        // Não desconectamos o observer para evitar erros de recriação.
+        // Se não tem mais itens, esconde a sentinela e para.
         if (!hasMore) {
             sentinela.style.display = 'none';
             return;
         }
         
-        // Mostra a sentinela para que o scroll possa atingi-la
+        // Mostra a sentinela para detecção
         sentinela.style.display = 'flex'; 
 
-        // Se já existe um observer rodando para este ID, não recria
+        // Evita duplicar observers ativos
         if (sentinelaId === 'sentinela-historico' && observerHistorico) return;
         if (sentinelaId === 'sentinela-proventos' && observerProventos) return;
         if (sentinelaId === 'sentinela-noticias' && observerNoticias) return;
 
-        // Cria o Observer
         const observer = new IntersectionObserver((entries) => {
-            // Se a sentinela apareceu na tela (isIntersecting)
             if (entries[0].isIntersecting) {
-                // Chama a função de carregar mais
+                console.log(`✅ Sentinela ${sentinelaId} detectada! Carregando mais...`);
                 callback();
             }
-        }, { rootMargin: '100px' }); // Carrega 100px antes do fim
+        }, { rootMargin: '200px' }); // Carrega antecipadamente (200px antes do fim)
 
         observer.observe(sentinela);
 
-        // Salva a referência globalmente
+        // Salva referência
         if (sentinelaId === 'sentinela-historico') observerHistorico = observer;
         if (sentinelaId === 'sentinela-proventos') observerProventos = observer;
         if (sentinelaId === 'sentinela-noticias') observerNoticias = observer;
     }
 
     // ------------------------------------------------------------------
-    // 3. FUNÇÕES DE RENDERIZAÇÃO (ATUALIZADAS)
+    // 3. FUNÇÃO RENDERIZAR NOTÍCIAS (CORRIGIDA)
     // ------------------------------------------------------------------
-
     function renderizarNoticias(articles, append = false) { 
         const fiiNewsList = document.getElementById('fii-news-list');
         const fiiNewsSkeleton = document.getElementById('fii-news-skeleton');
@@ -399,12 +395,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         fiiNewsSkeleton.classList.add('hidden');
 
-        // --- MODO INICIAL (Primeira carga) ---
         if (!append) {
-            cacheNoticiasGlobal = articles || []; // Salva no cache
+            cacheNoticiasGlobal = articles || []; 
             fiiNewsList.innerHTML = ''; 
             fiiNewsMensagem.classList.add('hidden');
-            renderCountNoticias = ITEMS_PER_PAGE; // Reseta contador para 10
+            renderCountNoticias = 0; // ✅ CORREÇÃO: Reseta para 0
 
             if (!cacheNoticiasGlobal || cacheNoticiasGlobal.length === 0) {
                 fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada.';
@@ -414,29 +409,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // --- PREPARAÇÃO DOS DADOS ---
         const sortedArticles = [...cacheNoticiasGlobal].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
         const totalItems = sortedArticles.length;
         
-        // Define o intervalo (Slice)
-        const start = append ? renderCountNoticias : 0;
-        const end = append ? renderCountNoticias + ITEMS_PER_PAGE : ITEMS_PER_PAGE;
-        
-        // Pega os itens deste lote
+        // ✅ LÓGICA DE FATIAMENTO CORRIGIDA
+        const start = renderCountNoticias;
+        const end = start + ITEMS_PER_PAGE;
         const itemsParaRenderizar = sortedArticles.slice(start, end);
         
-        // --- RENDERIZAÇÃO ---
+        // ✅ ATUALIZA O CONTADOR PARA O PRÓXIMO CICLO
+        renderCountNoticias = end;
+
         const fragment = document.createDocumentFragment();
 
         itemsParaRenderizar.forEach((article, index) => {
-            // ID único global
             const uniqueId = start + index; 
             const drawerId = `news-drawer-${uniqueId}`;
             
-            // Lógica de Ticker e Conteúdo
             const sourceName = article.sourceName || 'Fonte';
             const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
             const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
+            
             const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
@@ -495,23 +488,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         fiiNewsList.appendChild(fragment);
 
-        // --- ATUALIZAÇÃO DE ESTADO ---
-        if (append) {
-            // Se foi append, incrementamos o contador para o próximo lote
-            renderCountNoticias += ITEMS_PER_PAGE;
-        }
-
-        // Verifica se ainda há itens (Se o que renderizamos agora + próximo lote <= total)
-        // OBS: Usamos 'end' (o último índice renderizado agora) < totalItems
         const hasMore = end < totalItems;
-        
-        // Configura ou Atualiza o Observer
-        setupObserver('sentinela-noticias', () => {
-            // AQUI ESTÁ O SEGREDO: Chamamos a função novamente em modo append
-            renderizarNoticias(null, true); 
-        }, hasMore);
+        setupObserver('sentinela-noticias', () => renderizarNoticias(null, true), hasMore);
     }
 
+    // ------------------------------------------------------------------
+    // 4. FUNÇÃO RENDERIZAR HISTÓRICO (CORRIGIDA)
+    // ------------------------------------------------------------------
     function renderizarHistorico(append = false) {
         const listaHistorico = document.getElementById('lista-historico');
         const historicoStatus = document.getElementById('historico-status');
@@ -522,7 +505,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!append) {
             listaHistorico.innerHTML = '';
-            renderCountHistorico = ITEMS_PER_PAGE;
+            renderCountHistorico = 0; // ✅ CORREÇÃO: Reseta para 0
             if (totalItems === 0) {
                 historicoStatus.classList.remove('hidden');
                 if(sentinela) sentinela.style.display = 'none';
@@ -531,13 +514,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             historicoStatus.classList.add('hidden');
         }
 
-        const start = append ? renderCountHistorico : 0;
-        const end = append ? renderCountHistorico + ITEMS_PER_PAGE : ITEMS_PER_PAGE;
-        const itensParaRenderizar = todosOrdenados.slice(start, end);
+        // ✅ LÓGICA DE FATIAMENTO CORRIGIDA
+        const start = renderCountHistorico;
+        const end = start + ITEMS_PER_PAGE;
+        const itemsParaRenderizar = todosOrdenados.slice(start, end);
+        
+        // ✅ ATUALIZA O CONTADOR
+        renderCountHistorico = end;
 
         const fragment = document.createDocumentFragment();
 
-        itensParaRenderizar.forEach(t => {
+        itemsParaRenderizar.forEach(t => {
             const card = document.createElement('div');
             card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between mb-2 card-animate-in';
             
@@ -574,11 +561,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         listaHistorico.appendChild(fragment);
 
-        if (append) renderCountHistorico += ITEMS_PER_PAGE;
         const hasMore = end < totalItems;
         setupObserver('sentinela-historico', () => renderizarHistorico(true), hasMore);
     }
 
+    // ------------------------------------------------------------------
+    // 5. FUNÇÃO RENDERIZAR PROVENTOS (CORRIGIDA)
+    // ------------------------------------------------------------------
     function renderizarHistoricoProventos(append = false) {
         const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
         const sentinela = document.getElementById('sentinela-proventos');
@@ -602,16 +591,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!append) {
             listaHistoricoProventos.innerHTML = '';
-            renderCountProventos = ITEMS_PER_PAGE;
+            renderCountProventos = 0; // ✅ CORREÇÃO: Reseta para 0
             if (totalItems === 0) {
                  if(sentinela) sentinela.style.display = 'none';
                  return;
             }
         }
 
-        const start = append ? renderCountProventos : 0;
-        const end = append ? renderCountProventos + ITEMS_PER_PAGE : ITEMS_PER_PAGE;
+        // ✅ LÓGICA DE FATIAMENTO CORRIGIDA
+        const start = renderCountProventos;
+        const end = start + ITEMS_PER_PAGE;
         const itensParaRenderizar = itensValidos.slice(start, end);
+        
+        // ✅ ATUALIZA O CONTADOR
+        renderCountProventos = end;
 
         const fragment = document.createDocumentFragment();
 
@@ -638,7 +631,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         listaHistoricoProventos.appendChild(fragment);
         
-        if (append) renderCountProventos += ITEMS_PER_PAGE;
         const hasMore = end < totalItems;
         setupObserver('sentinela-proventos', () => renderizarHistoricoProventos(true), hasMore);
     }

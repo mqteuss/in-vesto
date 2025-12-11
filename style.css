@@ -11,6 +11,7 @@ body {
 /* =========================================
    TEMA CLARO (LIGHT MODE) - REVISÃO TOTAL
    ========================================= */
+
 body.light-mode {
     background-color: #f3f4f6; /* Fundo cinza bem claro */
     color: #1f2937;
@@ -45,7 +46,8 @@ body.light-mode .bg-gray-800 {
 }
 
 /* Cabeçalho do Modal (transparencia) */
-body.light-mode .bg-neutral-950\/80 {
+body.light-mode .bg-neutral-950\/80,
+body.light-mode .bg-neutral-950\/95 {
     background-color: rgba(255, 255, 255, 0.95) !important;
     border-color: #e5e7eb !important;
     color: #111827 !important;
@@ -75,6 +77,15 @@ body.light-mode .bottom-nav {
     box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
 }
 
+/* Sidebar Desktop Light Mode */
+body.light-mode aside {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border-color: #e5e7eb !important;
+}
+body.light-mode aside .tab-button:hover {
+    background-color: #f3f4f6 !important;
+}
+
 /* Inputs e Selects */
 body.light-mode input, 
 body.light-mode select, 
@@ -84,25 +95,28 @@ body.light-mode #carteira-search-input {
     border-color: #d1d5db !important;
     color: #111827 !important;
 }
+
 body.light-mode input::placeholder {
     color: #9ca3af !important;
 }
+
 body.light-mode input:focus {
     background-color: #ffffff !important;
     border-color: #c084fc !important;
 }
 
 /* --- TOGGLE DE HISTÓRICO NO LIGHT MODE --- */
-/* O container precisa ser um pouco mais escuro que o fundo branco para destacar */
 body.light-mode .relative.bg-black.rounded-full.border.border-gray-800 {
     background-color: #e5e7eb !important; 
     border-color: #d1d5db !important;
 }
+
 /* Botão Inativo */
 body.light-mode #btn-hist-transacoes.text-gray-500,
 body.light-mode #btn-hist-proventos.text-gray-500 {
     color: #6b7280 !important;
 }
+
 /* Botão Ativo (texto sobre o roxo) deve permanecer branco */
 body.light-mode #btn-hist-transacoes.text-white,
 body.light-mode #btn-hist-proventos.text-white {
@@ -121,6 +135,14 @@ body.light-mode .card-arrow-icon {
     color: #9ca3af !important;
 }
 
+/* Scrollbars Light Mode */
+@media (min-width: 768px) {
+    body.light-mode ::-webkit-scrollbar-track { background: #f3f4f6; }
+    body.light-mode ::-webkit-scrollbar-thumb { background: #d1d5db; }
+    body.light-mode ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+}
+
+
 /* =========================================
    ESTILOS GERAIS
    ========================================= */
@@ -128,11 +150,46 @@ body.light-mode .card-arrow-icon {
 /* Remove highlight azul no mobile */
 * { -webkit-tap-highlight-color: transparent; }
 
+/* Scrollbars Mobile (Ocultas) */
 html, body {
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+
+/* Scrollbars Desktop (Visíveis e Estilizadas) */
+@media (min-width: 768px) {
+    html, body {
+        scrollbar-width: auto;
+    }
+    ::-webkit-scrollbar {
+        display: block;
+        width: 8px;
+        height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #09090b; 
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #3f3f46; 
+        border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #52525b; 
+    }
+    
+    /* Custom scroll for internal divs */
+    .custom-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+        background: #3f3f46;
+        border-radius: 3px;
+    }
+}
 
 .card-bg {
     background-color: #000000;
@@ -161,8 +218,21 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     display: block;
     animation: slideUpIn 0.3s ease-out forwards;
 }
+
+/* No desktop, removemos o slideUp exagerado para tabs, usamos fade */
+@media (min-width: 768px) {
+    .tab-content.active {
+        animation: fadeInDesktop 0.3s ease-out forwards;
+    }
+}
+
 @keyframes slideUpIn {
     from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDesktop {
+    from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
@@ -177,7 +247,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     50% { transform: translateY(-3px); }
 }
 
-/* Navegação Inferior */
+/* Navegação Inferior (Mobile) */
 .bottom-nav {
     background-color: rgba(28, 28, 30, 0.85);
     backdrop-filter: blur(20px);
@@ -221,6 +291,25 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     color: #c084fc;
     transform: translateY(-3px); 
 }
+
+/* Ajustes Sidebar Desktop */
+@media (min-width: 768px) {
+    .tab-button {
+        flex-direction: row;
+        justify-content: flex-start;
+        height: auto;
+    }
+    .tab-button.active {
+        transform: none; /* Remove o pulo no desktop */
+    }
+    
+    /* Estado ativo sidebar via data attribute (JS) */
+    .tab-button[data-active="true"] {
+        background-color: rgba(147, 51, 234, 0.15); /* Roxo bem suave */
+        color: #c084fc;
+    }
+}
+
 .tab-button.active .tab-button-icon-wrapper {
       animation: gentleFloat 1.5s ease-in-out infinite;
       position: relative;
@@ -228,19 +317,23 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
       align-items: center;
       justify-content: center;
 }
-.tab-button.active .tab-button-icon-wrapper::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 36px; 
-    height: 36px;
-    background-color: rgba(192, 132, 252, 0.15);
-    border-radius: 9999px;
-    z-index: -1;
-    opacity: 0;
-    animation: fadeInHalo 0.3s ease-out forwards;
+
+/* Halo no mobile apenas */
+@media (max-width: 767px) {
+    .tab-button.active .tab-button-icon-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 36px; 
+        height: 36px;
+        background-color: rgba(192, 132, 252, 0.15);
+        border-radius: 9999px;
+        z-index: -1;
+        opacity: 0;
+        animation: fadeInHalo 0.3s ease-out forwards;
+    }
 }
 
 @keyframes fadeInHalo {
@@ -318,15 +411,24 @@ input[type=number] { -moz-appearance: textfield; }
     -ms-overflow-style: none;
 }
 .scrollable-content::-webkit-scrollbar { display: none; }
+
 #detalhes-conteudo-scroll {
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 #detalhes-conteudo-scroll::-webkit-scrollbar { display: none; }
 
-/* Modais */
+/* Reativar scrollbar para este container específico no desktop */
+@media (min-width: 768px) {
+    #detalhes-conteudo-scroll::-webkit-scrollbar { display: block; width: 6px; }
+    #detalhes-conteudo-scroll::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+}
+
+
+/* Modais Genéricos */
 .custom-modal { display: none; }
 .custom-modal.visible { display: flex; }
+
 .custom-modal.visible .modal-content {
     background-color: #000000;
     border: 1px solid #2C2C2E;
@@ -334,6 +436,7 @@ input[type=number] { -moz-appearance: textfield; }
     border-radius: 1.5rem;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
+
 .modal-content.modal-out { animation: modalOut 0.2s ease-in forwards; }
 
 @keyframes modalIn {
@@ -374,7 +477,7 @@ input[type=number] { -moz-appearance: textfield; }
     outline: none;
 }
 
-/* Page Modal (Detalhes) */
+/* --- PAGE MODAL (DETALHES) - Mobile Bottom Sheet vs Desktop Centered --- */
 .page-modal { 
     opacity: 0;
     pointer-events: none;
@@ -385,6 +488,8 @@ input[type=number] { -moz-appearance: textfield; }
     opacity: 1;
     pointer-events: auto;
 }
+
+/* Mobile: Sobe de baixo */
 .page-content {
     transition: transform 0.4s ease-in-out, background-color 0.3s ease;
     transform: translateY(100%);
@@ -401,6 +506,25 @@ input[type=number] { -moz-appearance: textfield; }
 .page-modal.visible .page-content { transform: translateY(0); }
 .page-content.closing { transform: translateY(100%); }
 
+/* Desktop Overrides for Page Modal */
+@media (min-width: 768px) {
+    .page-content {
+        position: relative; /* Reseta posicionamento fixed */
+        transform: scale(0.95) !important; /* Começa levemente menor */
+        opacity: 0;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        border: 1px solid #2C2C2E; /* Borda completa */
+    }
+    .page-modal.visible .page-content {
+        transform: scale(1) !important;
+        opacity: 1;
+    }
+    .page-content.closing {
+        transform: scale(0.95) !important;
+        opacity: 0;
+    }
+}
+
 select {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -412,9 +536,10 @@ select {
 .card-drawer {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.4s ease-in-out;
+    transition: max-height 0.4s ease-in-out, opacity 0.3s ease;
 }
 .card-drawer.open { max-height: 350px; }
+
 .card-drawer .drawer-content {
     opacity: 0;
     transform: translateY(-5px);
@@ -447,6 +572,7 @@ select {
   40%, 60% { transform: translateX(2%) translateY(1rem); }
 }
 
+/* News Tags */
 .news-card-summary { line-height: 1.6; color: #d1d5db; }
 .news-ticker-tag {
     display: inline-block;
@@ -468,6 +594,7 @@ select {
     color: #FFF;
 }
 
+/* Buttons */
 .periodo-selector-btn {
     background-color: #374151;
     color: #d1d5db;
@@ -485,13 +612,27 @@ select {
     font-weight: 600;
 }
 
-button:active, .accent-bg:active, #refresh-button:active, #refresh-noticias-button:active, #show-add-modal-btn:active, .periodo-selector-btn:active, .news-ticker-tag:active, #copiar-dados-btn:active, #abrir-importar-modal-btn:active, #logout-btn:active {
+button:active, 
+.accent-bg:active, 
+#refresh-button:active, 
+#refresh-noticias-button:active, 
+#show-add-modal-btn:active, 
+.periodo-selector-btn:active, 
+.news-ticker-tag:active, 
+#copiar-dados-btn:active, 
+#abrir-importar-modal-btn:active, 
+#logout-btn:active {
     transform: scale(0.96);
     transition: transform 0.1s ease-out;
 }
-#lista-carteira .card-bg:active, #fii-news-list .card-bg:active {
+#lista-carteira .card-bg:active, 
+#fii-news-list .card-bg:active {
     transform: scale(0.98);
     transition: transform 0.1s ease-out;
+}
+/* No desktop, cards não devem "clicar" visualmente se não forem links */
+@media (min-width: 768px) {
+    #lista-carteira .card-bg:active { transform: none; }
 }
 
 /* Shimmer */
@@ -566,6 +707,7 @@ input:-webkit-autofill:active {
     border-radius: 9999px !important;
     transition: background-color 5000s ease-in-out 0s;
 }
+
 /* Autofill Fix para Light Mode */
 body.light-mode input:-webkit-autofill,
 body.light-mode input:-webkit-autofill:hover, 

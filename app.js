@@ -162,24 +162,20 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 3. ÍCONE SVG: HEXÁGONO REALISTA + BARRAS ROXAS CENTRALIZADAS
+    // 3. ÍCONE SVG: HEXÁGONO FLAT + BARRAS ROXAS
     const vestoIconSvg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-full h-full">
         <defs>
             <linearGradient id="barGradReal-${ativo.symbol}" x1="0%" y1="100%" x2="0%" y2="0%">
-                <stop offset="0%" style="stop-color:#6b21a8;stop-opacity:1" /> <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /> </linearGradient>
-            
-            <linearGradient id="hexFillGrad-${ativo.symbol}" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#3f3f46;stop-opacity:1" /> <stop offset="100%" style="stop-color:#18181b;stop-opacity:1" /> </linearGradient>
-
-             <linearGradient id="hexBorderGrad-${ativo.symbol}" x1="0%" y1="0%" x2="100%" y2="100%">
-                 <stop offset="0%" style="stop-color:#71717a;stop-opacity:1" /> <stop offset="100%" style="stop-color:#27272a;stop-opacity:1" /> </linearGradient>
-        </defs>
+                <stop offset="0%" style="stop-color:#6b21a8;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+            </linearGradient>
+            </defs>
         
         <path d="M16 2 L28.1 9 L28.1 23 L16 30 L3.9 23 L3.9 9 Z" 
-              fill="url(#hexFillGrad-${ativo.symbol})" 
-              stroke="url(#hexBorderGrad-${ativo.symbol})"
-              stroke-width="1.2" />
+              fill="#18181b" 
+              stroke="#27272a"
+              stroke-width="1" />
         
         <rect x="9" y="19" width="4" height="6" rx="1" fill="url(#barGradReal-${ativo.symbol})" opacity="0.7" />
         <rect x="14" y="13" width="4" height="12" rx="1" fill="url(#barGradReal-${ativo.symbol})" opacity="0.85" />
@@ -196,7 +192,7 @@ function criarCardElemento(ativo, dados) {
             
             <div class="flex items-center gap-3 flex-1 min-w-0">
                 
-                <div class="w-12 h-12 flex items-center justify-center flex-shrink-0 group-active:scale-95 transition-transform shadow-md shadow-black/50 rounded-full">
+                <div class="w-12 h-12 flex items-center justify-center flex-shrink-0 group-active:scale-95 transition-transform">
                     ${vestoIconSvg}
                 </div>
                 

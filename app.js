@@ -107,7 +107,7 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Tag de Lucro/Prejuízo (L/P) - MANTIDO IGUAL
+    // 1. Tag de Lucro/Prejuízo (L/P)
     let plTagHtml = '';
     if (dadoPreco) {
         plTagHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block tracking-wide">
@@ -115,7 +115,7 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
     
-    // 2. Lógica de Proventos (FIIs) - MANTIDO IGUAL
+    // 2. Lógica de Proventos (FIIs)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -162,32 +162,35 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 3. NOVO ÍCONE SVG (2 Torres + V atrás)
-    // O 'V' é desenhado primeiro, então fica no fundo. As torres são desenhadas depois, ficando na frente.
-const vestoIconSvg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-7 h-7">
-        <path d="M6 4 L16 26 L26 4 L21 4 L16 16 L11 4 Z" fill="#8b5cf6" />
-        
-        <g fill="#e5e7eb">
-            <rect x="9" y="12" width="6" height="20" rx="0.5" />
+    // 3. ÍCONE SVG: HEXÁGONO + BARRAS
+    const vestoIconSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-full h-full">
+        <defs>
+            <linearGradient id="barGrad-${ativo.symbol}" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" style="stop-color:#a855f7;stop-opacity:1" /> <stop offset="100%" style="stop-color:#e9d5ff;stop-opacity:1" /> </linearGradient>
             
-            <rect x="17" y="8" width="6" height="24" rx="0.5" />
-        </g>
+            <filter id="innerShadow-${ativo.symbol}">
+                <feOffset dx="0" dy="1" />
+                <feGaussianBlur stdDeviation="1" result="offset-blur" />
+                <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" />
+                <feFlood flood-color="black" flood-opacity="0.5" result="color" />
+                <feComposite operator="in" in="color" in2="inverse" result="shadow" />
+                <feComposite operator="over" in="shadow" in2="SourceGraphic" />
+            </filter>
+        </defs>
         
-        <g fill="#9ca3af">
-            <rect x="10.5" y="15" width="3" height="1.5" />
-            <rect x="10.5" y="19" width="3" height="1.5" />
-            <rect x="10.5" y="23" width="3" height="1.5" />
-            
-            <rect x="18.5" y="11" width="3" height="1.5" />
-            <rect x="18.5" y="15" width="3" height="1.5" />
-            <rect x="18.5" y="19" width="3" height="1.5" />
-            <rect x="18.5" y="23" width="3" height="1.5" />
-            <rect x="18.5" y="27" width="3" height="1.5" />
-        </g>
+        <path d="M16 2 L28.5 9.2 L28.5 22.8 L16 30 L3.5 22.8 L3.5 9.2 Z" 
+              fill="#18181b" 
+              stroke="#4c1d95" 
+              stroke-width="1"
+              stroke-opacity="0.5" />
+        
+        <rect x="9" y="19" width="4" height="6" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.6" />
+        <rect x="14" y="14" width="4" height="11" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.8" />
+        <rect x="19" y="9" width="4" height="16" rx="1" fill="url(#barGrad-${ativo.symbol})" />
     </svg>`;
 
-    // 4. Criação do Elemento DOM - MANTIDO IGUAL
+    // 4. Criação do Elemento DOM
     const card = document.createElement('div');
     card.className = 'card-bg p-4 rounded-3xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
@@ -197,8 +200,7 @@ const vestoIconSvg = `
             
             <div class="flex items-center gap-3 flex-1 min-w-0">
                 
-                <div class="w-12 h-12 rounded-full bg-[#131315] border border-purple-900/30 flex items-center justify-center flex-shrink-0 shadow-sm group-active:scale-95 transition-transform relative overflow-hidden">
-                    <div class="absolute inset-0 bg-purple-600 opacity-5 blur-md"></div>
+                <div class="w-12 h-12 flex items-center justify-center flex-shrink-0 group-active:scale-95 transition-transform drop-shadow-lg">
                     ${vestoIconSvg}
                 </div>
                 

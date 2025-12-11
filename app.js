@@ -2003,7 +2003,7 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
         }, 0);
     }
 
-async function renderizarCarteira() {
+ async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -2048,7 +2048,8 @@ async function renderizarCarteira() {
             }
         });
 
-        carteiraOrdenada.forEach((ativo, index) => {
+        // --- AQUI COMEÇA A MÁGICA DA CASCATA ---
+        carteiraOrdenada.forEach((ativo, index) => { // Adicionamos 'index' aqui
             const dadoPreco = precosMap.get(ativo.symbol);
             const dadoProvento = proventosMap.get(ativo.symbol);
 
@@ -2093,27 +2094,19 @@ async function renderizarCarteira() {
             let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
             
             if (card) {
-                // Atualiza dados
+                // Se o card já existe, apenas atualiza os dados (sem animação de entrada)
                 atualizarCardElemento(card, ativo, dadosRender);
             } else {
-                // Cria novo card
+                // Se é um card NOVO (ou primeira carga), cria e anima
                 card = criarCardElemento(ativo, dadosRender);
                 
-                // --- CORREÇÃO DA ANIMAÇÃO ---
-                // Adiciona a classe de animação
+                // --- APLICANDO A ANIMAÇÃO ---
                 card.classList.add('card-stagger');
                 
-                // Define o delay
-                const delay = Math.min(index * 50, 500); 
+                // Cálculo do atraso: index * 50ms.
+                // Math.min limita o atraso máximo a 500ms (para listas longas não demorarem séculos)
+                const delay = Math.min(index * 50, 500);
                 card.style.animationDelay = `${delay}ms`;
-                
-                // IMPORTANTE: Remove a classe assim que a animação termina.
-                // Isso impede que ela rode novamente ao trocar de abas.
-                card.addEventListener('animationend', () => {
-                    card.classList.remove('card-stagger');
-                    card.style.animationDelay = ''; // Limpa o estilo inline
-                    card.style.opacity = '1';       // Garante que fique visível
-                }, { once: true }); // Executa apenas uma vez
                 
                 listaCarteira.appendChild(card);
             }

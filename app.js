@@ -1942,16 +1942,40 @@ function renderizarGraficoPatrimonio() {
     }
     
 function renderizarCarteiraSkeletons(show) {
-        if (show) {
-            // MOSTRAR LOADING:
-            skeletonListaCarteira.classList.remove('hidden'); // Aparece o esqueleto
-            listaCarteira.classList.add('hidden');          // ESCONDE a lista atual (Correção aqui)
-            carteiraStatus.classList.add('hidden');           // Esconde msg de vazio se houver
-        } else {
-            // FINALIZAR LOADING:
-            skeletonListaCarteira.classList.add('hidden');    // Esconde o esqueleto
-            listaCarteira.classList.remove('hidden');         // MOSTRA a lista atualizada
+        // Se a lista estiver vazia (primeiro load), usamos o skeleton genérico
+        if (listaCarteira.children.length === 0 && show) {
+            skeletonListaCarteira.classList.remove('hidden');
+            return;
         }
+
+        // Se já tem cards, aplicamos o efeito neles
+        skeletonListaCarteira.classList.add('hidden'); // Garante que o genérico suma
+        listaCarteira.classList.remove('hidden');      // Garante que a lista real apareça
+
+        const cards = listaCarteira.querySelectorAll('.card-bg');
+        
+        cards.forEach(card => {
+            // Selecionamos apenas os elementos que vão mudar de valor
+            const camposDinamicos = card.querySelectorAll(`
+                [data-field="preco-valor"], 
+                [data-field="variacao-valor"], 
+                [data-field="posicao-valor"], 
+                [data-field="custo-valor"], 
+                [data-field="pl-valor"],
+                [data-field="pl-tag"] span  /* Pega o span dentro da tag */
+            `);
+
+            camposDinamicos.forEach(el => {
+                if (show) {
+                    el.classList.add('skeleton-text');
+                    // Opcional: Se quiser limpar o texto antigo imediatamente
+                    // el.dataset.oldText = el.textContent; 
+                    // el.textContent = ''; 
+                } else {
+                    el.classList.remove('skeleton-text');
+                }
+            });
+        });
     }
     
 function getQuantidadeNaData(symbol, dataLimiteStr) {

@@ -162,32 +162,28 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 3. ÍCONE SVG: HEXÁGONO + BARRAS
+    // 3. ÍCONE SVG: HEXÁGONO REALISTA + BARRAS ROXAS CENTRALIZADAS
     const vestoIconSvg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-full h-full">
         <defs>
-            <linearGradient id="barGrad-${ativo.symbol}" x1="0%" y1="100%" x2="0%" y2="0%">
-                <stop offset="0%" style="stop-color:#a855f7;stop-opacity:1" /> <stop offset="100%" style="stop-color:#e9d5ff;stop-opacity:1" /> </linearGradient>
+            <linearGradient id="barGradReal-${ativo.symbol}" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" style="stop-color:#6b21a8;stop-opacity:1" /> <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /> </linearGradient>
             
-            <filter id="innerShadow-${ativo.symbol}">
-                <feOffset dx="0" dy="1" />
-                <feGaussianBlur stdDeviation="1" result="offset-blur" />
-                <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" />
-                <feFlood flood-color="black" flood-opacity="0.5" result="color" />
-                <feComposite operator="in" in="color" in2="inverse" result="shadow" />
-                <feComposite operator="over" in="shadow" in2="SourceGraphic" />
-            </filter>
+            <linearGradient id="hexFillGrad-${ativo.symbol}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#3f3f46;stop-opacity:1" /> <stop offset="100%" style="stop-color:#18181b;stop-opacity:1" /> </linearGradient>
+
+             <linearGradient id="hexBorderGrad-${ativo.symbol}" x1="0%" y1="0%" x2="100%" y2="100%">
+                 <stop offset="0%" style="stop-color:#71717a;stop-opacity:1" /> <stop offset="100%" style="stop-color:#27272a;stop-opacity:1" /> </linearGradient>
         </defs>
         
-        <path d="M16 2 L28.5 9.2 L28.5 22.8 L16 30 L3.5 22.8 L3.5 9.2 Z" 
-              fill="#18181b" 
-              stroke="#4c1d95" 
-              stroke-width="1"
-              stroke-opacity="0.5" />
+        <path d="M16 2 L28.1 9 L28.1 23 L16 30 L3.9 23 L3.9 9 Z" 
+              fill="url(#hexFillGrad-${ativo.symbol})" 
+              stroke="url(#hexBorderGrad-${ativo.symbol})"
+              stroke-width="1.2" />
         
-        <rect x="9" y="19" width="4" height="6" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.6" />
-        <rect x="14" y="14" width="4" height="11" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.8" />
-        <rect x="19" y="9" width="4" height="16" rx="1" fill="url(#barGrad-${ativo.symbol})" />
+        <rect x="9" y="19" width="4" height="6" rx="1" fill="url(#barGradReal-${ativo.symbol})" opacity="0.7" />
+        <rect x="14" y="13" width="4" height="12" rx="1" fill="url(#barGradReal-${ativo.symbol})" opacity="0.85" />
+        <rect x="19" y="7" width="4" height="18" rx="1" fill="url(#barGradReal-${ativo.symbol})" />
     </svg>`;
 
     // 4. Criação do Elemento DOM
@@ -200,7 +196,7 @@ function criarCardElemento(ativo, dados) {
             
             <div class="flex items-center gap-3 flex-1 min-w-0">
                 
-                <div class="w-12 h-12 flex items-center justify-center flex-shrink-0 group-active:scale-95 transition-transform drop-shadow-lg">
+                <div class="w-12 h-12 flex items-center justify-center flex-shrink-0 group-active:scale-95 transition-transform shadow-md shadow-black/50 rounded-full">
                     ${vestoIconSvg}
                 </div>
                 

@@ -8,15 +8,14 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* =========================================
-   TEMA CLARO (LIGHT MODE) - REVISÃO TOTAL
+/* =========================================   
+   TEMA CLARO (LIGHT MODE) 
    ========================================= */
 body.light-mode {
-    background-color: #f3f4f6; /* Fundo cinza bem claro */
+    background-color: #f3f4f6;
     color: #1f2937;
 }
 
-/* Força Cards, Modais e Gavetas a serem brancos */
 body.light-mode .card-bg,
 body.light-mode .modal-content,
 body.light-mode .page-content,
@@ -27,15 +26,11 @@ body.light-mode #watchlist-drawer {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
-/* --- OVERRIDES DE CORES HARDCODED (TAILWIND) --- */
-
-/* Elementos pretos viram brancos ou cinza muito claro */
 body.light-mode .bg-black {
     background-color: #ffffff !important;
     border-color: #e5e7eb !important;
 }
 
-/* Elementos cinza escuro (inputs, cards pequenos) viram cinza claro */
 body.light-mode .bg-\[\#1C1C1E\], 
 body.light-mode .bg-gray-900,
 body.light-mode .bg-gray-800 {
@@ -44,38 +39,31 @@ body.light-mode .bg-gray-800 {
     color: #111827 !important;
 }
 
-/* Cabeçalho do Modal (transparencia) */
 body.light-mode .bg-neutral-950\/80 {
     background-color: rgba(255, 255, 255, 0.95) !important;
     border-color: #e5e7eb !important;
     color: #111827 !important;
 }
 
-/* Texto Branco vira Preto */
 body.light-mode .text-white { color: #111827 !important; }
-
-/* Textos Cinzas ajustados para contraste */
 body.light-mode .text-gray-100 { color: #1f2937 !important; }
 body.light-mode .text-gray-200 { color: #374151 !important; }
 body.light-mode .text-gray-300 { color: #4b5563 !important; }
 body.light-mode .text-gray-400 { color: #6b7280 !important; }
 body.light-mode .text-gray-500 { color: #6b7280 !important; }
 
-/* Bordas Escuras viram Claras */
 body.light-mode .border-\[\#2C2C2E\],
 body.light-mode .border-gray-800,
 body.light-mode .border-gray-700 {
     border-color: #e5e7eb !important;
 }
 
-/* Navegação Inferior */
 body.light-mode .bottom-nav {
     background-color: rgba(255, 255, 255, 0.95) !important;
     border-color: #e5e7eb !important;
     box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
 }
 
-/* Inputs e Selects */
 body.light-mode input, 
 body.light-mode select, 
 body.light-mode textarea,
@@ -84,48 +72,47 @@ body.light-mode #carteira-search-input {
     border-color: #d1d5db !important;
     color: #111827 !important;
 }
-body.light-mode input::placeholder {
-    color: #9ca3af !important;
-}
+
+body.light-mode input::placeholder { color: #9ca3af !important; }
 body.light-mode input:focus {
     background-color: #ffffff !important;
     border-color: #c084fc !important;
 }
 
-/* --- TOGGLE DE HISTÓRICO NO LIGHT MODE --- */
-/* O container precisa ser um pouco mais escuro que o fundo branco para destacar */
 body.light-mode .relative.bg-black.rounded-full.border.border-gray-800 {
-    background-color: #e5e7eb !important; 
+    background-color: #e5e7eb !important;     
     border-color: #d1d5db !important;
 }
-/* Botão Inativo */
+
 body.light-mode #btn-hist-transacoes.text-gray-500,
 body.light-mode #btn-hist-proventos.text-gray-500 {
     color: #6b7280 !important;
 }
-/* Botão Ativo (texto sobre o roxo) deve permanecer branco */
+
 body.light-mode #btn-hist-transacoes.text-white,
 body.light-mode #btn-hist-proventos.text-white {
     color: #ffffff !important;
 }
 
-/* Shimmer / Skeleton Loading */
 body.light-mode .bg-gray-700 { background-color: #e5e7eb !important; }
 body.light-mode .animate-shimmer::before,
 body.light-mode .animate-shimmer-parent .bg-gray-700::before {
     background: linear-gradient(110deg, transparent 25%, rgba(0, 0, 0, 0.05), transparent 75%);
 }
 
-/* Ícones de Seta */
-body.light-mode .card-arrow-icon {
-    color: #9ca3af !important;
+body.light-mode .card-arrow-icon { color: #9ca3af !important; }
+
+body.light-mode input:-webkit-autofill,
+body.light-mode input:-webkit-autofill:hover, 
+body.light-mode input:-webkit-autofill:focus, 
+body.light-mode input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #f3f4f6 inset !important;
+    -webkit-text-fill-color: #111827 !important;
 }
 
-/* =========================================
-   ESTILOS GERAIS
+/* =========================================   
+   ESTILOS GERAIS 
    ========================================= */
-
-/* Remove highlight azul no mobile */
 * { -webkit-tap-highlight-color: transparent; }
 
 html, body {
@@ -152,21 +139,23 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     background-size: 150% auto;
     background-position: right center;
 }
+
 .accent-text { color: #c084fc; }
 .hover-accent-text:hover { color: #7c3aed; }
 
-/* Animações de Entrada */
+/* Animações */
 .tab-content { display: none; }
 .tab-content.active {
     display: block;
     animation: slideUpIn 0.3s ease-out forwards;
 }
+
 @keyframes slideUpIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes newCardIn { 
+@keyframes newCardIn {     
     from { opacity: 0; transform: scale(0.95) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
@@ -187,7 +176,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     bottom: 1.5rem;
     left: 50%;
     transform: translateX(-50%);
-    margin: 0;
     width: 90%;
     max-width: 340px;
     height: 3.7rem;
@@ -197,12 +185,11 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     justify-content: space-evenly;
     align-items: center;
     padding: 0 0.25rem;
-    box-sizing: border-box;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .tab-button {
-    color: #6b7280; 
+    color: #6b7280;     
     transition: all 0.3s ease-in-out;
     flex: 1;
     display: flex;
@@ -214,19 +201,18 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     border: none;
     padding: 0;
     cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
 }
 .tab-button:active { transform: scale(0.90); }
 .tab-button.active {
     color: #c084fc;
     transform: translateY(-3px); 
 }
-.tab-button.active .tab-button-icon-wrapper {
-      animation: gentleFloat 1.5s ease-in-out infinite;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+.tab-button.active .tab-button-icon-wrapper {      
+    animation: gentleFloat 1.5s ease-in-out infinite;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .tab-button.active .tab-button-icon-wrapper::before {
     content: '';
@@ -234,7 +220,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 36px; 
+    width: 36px;     
     height: 36px;
     background-color: rgba(192, 132, 252, 0.15);
     border-radius: 9999px;
@@ -254,10 +240,10 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     to { transform: rotate(360deg); }
 }
 
-/* Inputs Reset */
+/* Inputs */
 input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { 
-    -webkit-appearance: none; 
+input[type=number]::-webkit-outer-spin-button {     
+    -webkit-appearance: none;     
     margin: 0; 
 }
 input[type=number] { -moz-appearance: textfield; }
@@ -311,13 +297,15 @@ input[type=number] { -moz-appearance: textfield; }
     100% { transform: scaleY(1); opacity: 1; }
 }
 
+/* Utils */
 .scrollable-content {
-    max-height: 40vh; 
+    max-height: 40vh;     
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 .scrollable-content::-webkit-scrollbar { display: none; }
+
 #detalhes-conteudo-scroll {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -345,43 +333,32 @@ input[type=number] { -moz-appearance: textfield; }
     to { opacity: 0; transform: scale(0.95) translateY(10px); }
 }
 
-/* Inputs padrão Dark Mode */
-#add-ativo-modal input[type="text"],
-#add-ativo-modal input[type="date"],
-#add-ativo-modal input[type="number"],
-#auth-container input[type="text"],
-#auth-container input[type="email"],
-#auth-container input[type="password"],
-#new-password-form input,
-#change-password-form input,
-#recover-form input,
-#carteira-search-input {
+/* Inputs padrão */
+#add-ativo-modal input, #auth-container input,
+#new-password-form input, #change-password-form input,
+#recover-form input, #carteira-search-input {
     transition: all 0.2s ease-in-out;
-    background-color: #1C1C1E; 
+    background-color: #1C1C1E;     
     border: 1px solid #2C2C2E;
     color: #ffffff;
     border-radius: 9999px;
     outline: none; 
 }
-#add-ativo-modal input:focus,
-#auth-container input:focus,
-#new-password-form input:focus,
-#change-password-form input:focus,
-#recover-form input:focus,
-#carteira-search-input:focus {
+#add-ativo-modal input:focus, #auth-container input:focus,
+#new-password-form input:focus, #change-password-form input:focus,
+#recover-form input:focus, #carteira-search-input:focus {
     border-color: #c084fc;
     box-shadow: none;
-    outline: none;
 }
 
 /* Page Modal (Detalhes) */
-.page-modal { 
+.page-modal {     
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s ease-in-out;
     z-index: 70; 
 }
-.page-modal.visible { 
+.page-modal.visible {     
     opacity: 1;
     pointer-events: auto;
 }
@@ -390,11 +367,11 @@ input[type=number] { -moz-appearance: textfield; }
     transform: translateY(100%);
     background-color: #000000;
     border-top: 1px solid #2C2C2E;
-    position: fixed; 
+    position: fixed;     
     bottom: 0;
     left: 0;
     right: 0;
-    margin: 0 auto; 
+    margin: 0 auto;     
     max-width: 32rem;
     z-index: 80;
 }
@@ -403,18 +380,23 @@ input[type=number] { -moz-appearance: textfield; }
 
 select {
     -webkit-appearance: none;
-    -moz-appearance: none;
     appearance: none;
     border-radius: 9999px; 
 }
 
-/* Drawers (Gavetas expansíveis) */
+/* =========================================
+   GAVETAS (DRAWERS) - CORREÇÃO DE LAG
+   ========================================= */
 .card-drawer {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.4s ease-in-out;
+    /* Adicionada curva bezier para suavidade e will-change para performance */
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: max-height; /* Otimização GPU */
+    transform: translateZ(0); /* Força aceleração de hardware */
 }
 .card-drawer.open { max-height: 350px; }
+
 .card-drawer .drawer-content {
     opacity: 0;
     transform: translateY(-5px);
@@ -425,14 +407,15 @@ select {
     transform: translateY(0);
 }
 
+/* SETAS */
 .card-arrow-icon { 
-    transition: transform 0.4s ease-in-out; 
+    transition: transform 0.3s ease-in-out; 
 }
-
-/* ALTERAÇÃO AQUI: De 180deg para 90deg */
+/* Rotação corrigida para 90 graus (de > para v) */
 .card-arrow-icon.open { 
     transform: rotate(90deg); 
 }
+
 /* Toasts */
 #toast-notification {
     opacity: 0;
@@ -465,7 +448,7 @@ select {
     margin-bottom: 6px;
     transition: all 0.2s ease;
     cursor: pointer;
-    z-index: 20; 
+    z-index: 20;     
     position: relative;
 }
 .news-ticker-tag:hover {
@@ -490,7 +473,11 @@ select {
     font-weight: 600;
 }
 
-button:active, .accent-bg:active, #refresh-button:active, #refresh-noticias-button:active, #show-add-modal-btn:active, .periodo-selector-btn:active, .news-ticker-tag:active, #copiar-dados-btn:active, #abrir-importar-modal-btn:active, #logout-btn:active {
+button:active, .accent-bg:active, #refresh-button:active, 
+#refresh-noticias-button:active, #show-add-modal-btn:active, 
+.periodo-selector-btn:active, .news-ticker-tag:active, 
+#copiar-dados-btn:active, #abrir-importar-modal-btn:active, 
+#logout-btn:active {
     transform: scale(0.96);
     transition: transform 0.1s ease-out;
 }
@@ -570,14 +557,6 @@ input:-webkit-autofill:active {
     -webkit-text-fill-color: white !important;
     border-radius: 9999px !important;
     transition: background-color 5000s ease-in-out 0s;
-}
-/* Autofill Fix para Light Mode */
-body.light-mode input:-webkit-autofill,
-body.light-mode input:-webkit-autofill:hover, 
-body.light-mode input:-webkit-autofill:focus, 
-body.light-mode input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px #f3f4f6 inset !important;
-    -webkit-text-fill-color: #111827 !important;
 }
 
 .news-card-interactive { cursor: pointer; }

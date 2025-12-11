@@ -3186,14 +3186,32 @@ function renderizarTransacoesDetalhes(symbol) {
         renderizarGraficoProventosDetalhes({ labels, data });
     }
     
-    function mudarAba(tabId) {
+function mudarAba(tabId) {
+        // Esconde todas as abas e mostra a ativa
         tabContents.forEach(content => {
             content.classList.toggle('active', content.id === tabId);
         });
-        tabButtons.forEach(button => {
+
+        // Atualiza a navegação inferior (Mobile)
+        const mobileNavButtons = document.querySelectorAll('.bottom-nav .tab-button');
+        mobileNavButtons.forEach(button => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
+
+        // Atualiza a Sidebar (Desktop)
+        const sidebarButtons = document.querySelectorAll('aside .tab-button');
+        sidebarButtons.forEach(button => {
+            const isActive = button.dataset.tab === tabId;
+            if (isActive) {
+                button.setAttribute('data-active', 'true');
+                button.classList.add('bg-purple-900/20', 'text-purple-400');
+            } else {
+                button.removeAttribute('data-active');
+                button.classList.remove('bg-purple-900/20', 'text-purple-400');
+            }
+        });
         
+        // Exibe botão de adicionar apenas na aba carteira
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     
@@ -4114,6 +4132,13 @@ function saveSearchHistory(term) {
             }
         }
     }, { passive: true });
+	
+	// Listener para botões da Sidebar
+    document.querySelectorAll('aside .tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+            mudarAba(button.dataset.tab);
+        });
+    });
 
     await init();
 });

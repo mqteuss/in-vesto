@@ -3339,7 +3339,6 @@ function mudarAba(tabId) {
         
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
           }
-        });
 
         // 5. Atualiza os botões da navegação inferior
         tabButtons.forEach(button => {

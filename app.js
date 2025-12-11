@@ -1941,12 +1941,16 @@ function renderizarGraficoPatrimonio() {
         }
     }
     
-    function renderizarCarteiraSkeletons(show) {
+function renderizarCarteiraSkeletons(show) {
         if (show) {
-            skeletonListaCarteira.classList.remove('hidden');
-            carteiraStatus.classList.add('hidden');
+            // MOSTRAR LOADING:
+            skeletonListaCarteira.classList.remove('hidden'); // Aparece o esqueleto
+            listaCarteira.classList.add('hidden');          // ESCONDE a lista atual (Correção aqui)
+            carteiraStatus.classList.add('hidden');           // Esconde msg de vazio se houver
         } else {
-            skeletonListaCarteira.classList.add('hidden');
+            // FINALIZAR LOADING:
+            skeletonListaCarteira.classList.add('hidden');    // Esconde o esqueleto
+            listaCarteira.classList.remove('hidden');         // MOSTRA a lista atualizada
         }
     }
     

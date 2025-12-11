@@ -3215,73 +3215,98 @@ function mudarAba(tabId) {
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     
-    refreshButton.addEventListener('click', async () => {
-        await atualizarTodosDados(true); 
-    });
+if (refreshButton) {
+        refreshButton.addEventListener('click', async () => {
+            await atualizarTodosDados(true); 
+        });
+    }
     
-    refreshNoticiasButton.addEventListener('click', async () => {
-        await handleAtualizarNoticias(true); 
-    });
+    if (refreshNoticiasButton) {
+        refreshNoticiasButton.addEventListener('click', async () => {
+            await handleAtualizarNoticias(true); 
+        });
+    }
     
-    showAddModalBtn.addEventListener('click', showAddModal);
-    emptyStateAddBtn.addEventListener('click', showAddModal);
-    addAtivoCancelBtn.addEventListener('click', hideAddModal);
-    addAtivoModal.addEventListener('click', (e) => {
-        if (e.target === addAtivoModal) { hideAddModal(); } 
-    });
-    
-    addAtivoForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        handleSalvarTransacao();
-    });
-    
-    listaCarteira.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
-        
-        const action = target.dataset.action;
-        const symbol = target.dataset.symbol;
+    // Botões de Adicionar (Com verificação de existência)
+    if (showAddModalBtn) {
+        showAddModalBtn.addEventListener('click', showAddModal);
+    }
 
-        if (action === 'remove') {
-            handleRemoverAtivo(symbol);
-        } else if (action === 'details') {
-            showDetalhesModal(symbol);
-        } else if (action === 'toggle') {
-            const drawer = document.getElementById(`drawer-${symbol}`);
+    if (emptyStateAddBtn) {
+        emptyStateAddBtn.addEventListener('click', showAddModal);
+    }
+
+    if (addAtivoCancelBtn) {
+        addAtivoCancelBtn.addEventListener('click', hideAddModal);
+    }
+    
+    if (addAtivoModal) {
+        addAtivoModal.addEventListener('click', (e) => {
+            if (e.target === addAtivoModal) { hideAddModal(); } 
+        });
+    }
+    
+    if (addAtivoForm) {
+        addAtivoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleSalvarTransacao();
+        });
+    }
+    
+    if (listaCarteira) {
+        listaCarteira.addEventListener('click', (e) => {
+            const target = e.target.closest('button');
+            if (!target) return;
+            
+            const action = target.dataset.action;
+            const symbol = target.dataset.symbol;
+
+            if (action === 'remove') {
+                handleRemoverAtivo(symbol);
+            } else if (action === 'details') {
+                showDetalhesModal(symbol);
+            } else if (action === 'toggle') {
+                const drawer = document.getElementById(`drawer-${symbol}`);
+                const icon = target.querySelector('.card-arrow-icon');
+                if (drawer) drawer.classList.toggle('open');
+                if (icon) icon.classList.toggle('open');
+            }
+        });
+    }
+    
+    if (listaHistorico) {
+        listaHistorico.addEventListener('click', (e) => {
+            const target = e.target.closest('button');
+            if (!target) return;
+
+            const action = target.dataset.action;
+            const id = target.dataset.id;
+            const symbol = target.dataset.symbol;
+
+            if (action === 'edit') {
+                handleAbrirModalEdicao(id);
+            } else if (action === 'delete') {
+                handleExcluirTransacao(id, symbol);
+            }
+        });
+    }
+    
+    // Proteção para o layout Desktop (onde dashboardDrawers não existe)
+    if (dashboardDrawers) {
+        dashboardDrawers.addEventListener('click', (e) => {
+            const target = e.target.closest('button');
+            if (!target || !target.dataset.targetDrawer) return;
+            
+            const drawerId = target.dataset.targetDrawer;
+            const drawer = document.getElementById(drawerId);
             const icon = target.querySelector('.card-arrow-icon');
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        }
-    });
-    
-    listaHistorico.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
-
-        const action = target.dataset.action;
-        const id = target.dataset.id;
-        const symbol = target.dataset.symbol;
-
-        if (action === 'edit') {
-            handleAbrirModalEdicao(id);
-        } else if (action === 'delete') {
-            handleExcluirTransacao(id, symbol);
-        }
-    });
-    
-    dashboardDrawers.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target || !target.dataset.targetDrawer) return;
-        
-        const drawerId = target.dataset.targetDrawer;
-        const drawer = document.getElementById(drawerId);
-        const icon = target.querySelector('.card-arrow-icon');
-        
-        drawer?.classList.toggle('open');
-        icon?.classList.toggle('open');
-    });
-
-    const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
+            
+            if (drawer) drawer.classList.toggle('open');
+            if (icon) icon.classList.toggle('open');
+        });
+    }
+	
+const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
     if (watchlistToggleBtn) {
         watchlistToggleBtn.addEventListener('click', (e) => {
             const target = e.currentTarget; 
@@ -3289,115 +3314,129 @@ function mudarAba(tabId) {
             const drawer = document.getElementById(drawerId);
             const icon = target.querySelector('.card-arrow-icon');
             
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
+            if (drawer) drawer.classList.toggle('open');
+            if (icon) icon.classList.toggle('open');
         });
     }
 
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            mudarAba(button.dataset.tab);
+if (tabButtons) {
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                mudarAba(button.dataset.tab);
+            });
         });
-    });
+    }
     
-    if (btnIaAnalise) {
+if (btnIaAnalise) {
         btnIaAnalise.addEventListener('click', handleAnaliseIA);
     }
     
     if (closeAiModal) {
         closeAiModal.addEventListener('click', () => {
-            aiModal.classList.remove('visible');
-            aiContent.innerHTML = ''; 
+            if (aiModal) aiModal.classList.remove('visible');
+            if (aiContent) aiContent.innerHTML = ''; 
         });
     }
 
-    if (aiModal) {
+if (aiModal) {
         aiModal.addEventListener('click', (e) => {
             if (e.target === aiModal) {
                 aiModal.classList.remove('visible');
-                aiContent.innerHTML = '';
+                if (aiContent) aiContent.innerHTML = '';
             }
         });
     }
 
-    customModalCancel.addEventListener('click', hideModal);
-    customModalOk.addEventListener('click', () => {
-        if (typeof onConfirmCallback === 'function') {
-            onConfirmCallback(); 
-        }
-        hideModal(); 
-    });
-    customModal.addEventListener('click', (e) => {
-        if (e.target === customModal) { hideModal(); } 
-    });
+if (customModalCancel) customModalCancel.addEventListener('click', hideModal);
     
-    detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
-    detalhesPageModal.addEventListener('click', (e) => {
-        if (e.target === detalhesPageModal) { hideDetalhesModal(); } 
-    });
-
-    detalhesPageContent.addEventListener('touchstart', (e) => {
-        if (detalhesConteudoScroll.scrollTop === 0) {
-            touchStartY = e.touches[0].clientY;
-            touchMoveY = touchStartY; 
-            isDraggingDetalhes = true;
-            detalhesPageContent.style.transition = 'none'; 
-        }
-    }, { passive: true }); 
-    
-    detalhesPageContent.addEventListener('touchmove', (e) => {
-        if (!isDraggingDetalhes) return;
-        touchMoveY = e.touches[0].clientY;
-        const diff = touchMoveY - touchStartY;
-        if (diff > 0) { 
-            e.preventDefault(); 
-            detalhesPageContent.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false }); 
-    
-    detalhesPageContent.addEventListener('touchend', (e) => {
-        if (!isDraggingDetalhes) return;
-        isDraggingDetalhes = false;
-        const diff = touchMoveY - touchStartY;
-        detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
-        
-        if (diff > 100) { 
-            hideDetalhesModal(); 
-        } else {
-            detalhesPageContent.style.transform = ''; 
-        }
-        touchStartY = 0;
-        touchMoveY = 0;
-    });
-
-    fiiNewsList.addEventListener('click', (e) => {
-        const tickerTag = e.target.closest('.news-ticker-tag');
-        if (tickerTag) {
-            e.stopPropagation(); 
-            const symbol = tickerTag.dataset.symbol;
-            if (symbol) {
-                showDetalhesModal(symbol);
+    if (customModalOk) {
+        customModalOk.addEventListener('click', () => {
+            if (typeof onConfirmCallback === 'function') {
+                onConfirmCallback(); 
             }
-            return;
-        }
-        if (e.target.closest('a')) {
-            e.stopPropagation(); 
-            return; 
-        }
-        const card = e.target.closest('.news-card-interactive');
-        if (card) {
-            const targetId = card.dataset.target;
-            const drawer = document.getElementById(targetId);
-            const icon = card.querySelector('.card-arrow-icon');
-            
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        }
-    });
+            hideModal(); 
+        });
+    }
+if (customModal) {
+        customModal.addEventListener('click', (e) => {
+            if (e.target === customModal) { hideModal(); } 
+        });
+    }
     
-    detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
+if (detalhesVoltarBtn) detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
+    
+    if (detalhesPageModal) {
+        detalhesPageModal.addEventListener('click', (e) => {
+            if (e.target === detalhesPageModal) { hideDetalhesModal(); } 
+        });
+    }
 
-    if (watchlistListaEl) {
+if (detalhesPageContent) {
+        detalhesPageContent.addEventListener('touchstart', (e) => {
+            if (detalhesConteudoScroll && detalhesConteudoScroll.scrollTop === 0) {
+                touchStartY = e.touches[0].clientY;
+                touchMoveY = touchStartY; 
+                isDraggingDetalhes = true;
+                detalhesPageContent.style.transition = 'none'; 
+            }
+        }, { passive: true }); 
+        
+        detalhesPageContent.addEventListener('touchmove', (e) => {
+            if (!isDraggingDetalhes) return;
+            touchMoveY = e.touches[0].clientY;
+            const diff = touchMoveY - touchStartY;
+            if (diff > 0) { 
+                e.preventDefault(); 
+                detalhesPageContent.style.transform = `translateY(${diff}px)`;
+            }
+        }, { passive: false }); 
+        
+        detalhesPageContent.addEventListener('touchend', (e) => {
+            if (!isDraggingDetalhes) return;
+            isDraggingDetalhes = false;
+            const diff = touchMoveY - touchStartY;
+            detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
+            
+            if (diff > 100) { 
+                hideDetalhesModal(); 
+            } else {
+                detalhesPageContent.style.transform = ''; 
+            }
+            touchStartY = 0;
+            touchMoveY = 0;
+        });
+    }
+
+if (fiiNewsList) {
+        fiiNewsList.addEventListener('click', (e) => {
+            const tickerTag = e.target.closest('.news-ticker-tag');
+            if (tickerTag) {
+                e.stopPropagation(); 
+                const symbol = tickerTag.dataset.symbol;
+                if (symbol) {
+                    showDetalhesModal(symbol);
+                }
+                return;
+            }
+            if (e.target.closest('a')) {
+                e.stopPropagation(); 
+                return; 
+            }
+            const card = e.target.closest('.news-card-interactive');
+            if (card) {
+                const targetId = card.dataset.target;
+                const drawer = document.getElementById(targetId);
+                const icon = card.querySelector('.card-arrow-icon');
+                
+                if (drawer) drawer.classList.toggle('open');
+                if (icon) icon.classList.toggle('open');
+            }
+        });
+    }
+    
+if (detalhesFavoritoBtn) detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
+
+if (watchlistListaEl) {
         watchlistListaEl.addEventListener('click', (e) => {
             const target = e.target.closest('button');
             if (target && target.dataset.action === 'details' && target.dataset.symbol) {
@@ -3406,14 +3445,14 @@ function mudarAba(tabId) {
         });
     }
 	
-	if (detalhesShareBtn) {
+if (detalhesShareBtn) {
         detalhesShareBtn.addEventListener('click', handleCompartilharAtivo);
     }
     
-    if (carteiraSearchInput) {
+if (carteiraSearchInput) {
         carteiraSearchInput.addEventListener('input', (e) => {
             const term = e.target.value.trim().toUpperCase();
-            const cards = listaCarteira.querySelectorAll('.card-bg');
+            const cards = listaCarteira ? listaCarteira.querySelectorAll('.card-bg') : [];
             
             cards.forEach(card => {
                 const symbol = card.dataset.symbol;
@@ -3425,14 +3464,14 @@ function mudarAba(tabId) {
             });
         });
 
-        carteiraSearchInput.addEventListener('keyup', (e) => {
+carteiraSearchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 const term = carteiraSearchInput.value.trim().toUpperCase();
                 
                 if (!term) return;
 
                 saveSearchHistory(term);
-                suggestionsContainer.classList.add('hidden');
+                if (suggestionsContainer) suggestionsContainer.classList.add('hidden');
 
                 carteiraSearchInput.blur(); 
                 showDetalhesModal(term);
@@ -3443,31 +3482,33 @@ function mudarAba(tabId) {
         });
     }
     
-    periodoSelectorGroup.addEventListener('click', (e) => {
-        const target = e.target.closest('.periodo-selector-btn');
-        if (!target) return;
+if (periodoSelectorGroup) {
+        periodoSelectorGroup.addEventListener('click', (e) => {
+            const target = e.target.closest('.periodo-selector-btn');
+            if (!target) return;
 
-        const meses = parseInt(target.dataset.meses, 10);
-        
-        if (meses === currentDetalhesMeses) return;
+            const meses = parseInt(target.dataset.meses, 10);
+            
+            if (meses === currentDetalhesMeses) return;
 
-        currentDetalhesMeses = meses;
-        
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            const isTarget = btn === target;
-            btn.className = `periodo-selector-btn py-1 px-4 rounded-full text-xs font-bold transition-all duration-200 border ${
-                isTarget
-                ? 'bg-purple-600 border-purple-600 text-white shadow-[0_0_10px_rgba(124,58,237,0.3)] active' 
-                : 'bg-transparent border-[#2C2C2E] text-gray-500 hover:text-gray-300 hover:border-gray-600'
-            }`;
-            if (isTarget) btn.classList.add('active');
-            else btn.classList.remove('active');
+            currentDetalhesMeses = meses;
+            
+            periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
+                const isTarget = btn === target;
+                btn.className = `periodo-selector-btn py-1 px-4 rounded-full text-xs font-bold transition-all duration-200 border ${
+                    isTarget
+                    ? 'bg-purple-600 border-purple-600 text-white shadow-[0_0_10px_rgba(124,58,237,0.3)] active' 
+                    : 'bg-transparent border-[#2C2C2E] text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                }`;
+                if (isTarget) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            renderHistoricoIADetalhes(currentDetalhesMeses);
         });
+    }
 
-        renderHistoricoIADetalhes(currentDetalhesMeses);
-    });
-
-    if (toggleBioBtn) {
+if (toggleBioBtn) {
         toggleBioBtn.addEventListener('click', () => {
             const isEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
             if (isEnabled) {
@@ -3498,7 +3539,7 @@ function mudarAba(tabId) {
         }
     }
 
-    if (togglePrivacyBtn) {
+if (togglePrivacyBtn) {
         updatePrivacyUI();
         
         togglePrivacyBtn.addEventListener('click', () => {
@@ -3508,7 +3549,7 @@ function mudarAba(tabId) {
         });
     }
 
-    if (exportCsvBtn) {
+if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', () => {
             if (!transacoes || transacoes.length === 0) {
                 showToast("Sem dados para exportar.");
@@ -4133,8 +4174,7 @@ function saveSearchHistory(term) {
         }
     }, { passive: true });
 	
-	// Listener para botões da Sidebar
-    document.querySelectorAll('aside .tab-button').forEach(button => {
+document.querySelectorAll('aside .tab-button').forEach(button => {
         button.addEventListener('click', () => {
             mudarAba(button.dataset.tab);
         });

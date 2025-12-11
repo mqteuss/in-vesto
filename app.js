@@ -107,7 +107,7 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Tag de Lucro/Prejuízo (L/P)
+    // 1. Tag de Lucro/Prejuízo (L/P) - MANTIDO IGUAL
     let plTagHtml = '';
     if (dadoPreco) {
         plTagHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block tracking-wide">
@@ -115,7 +115,7 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
     
-    // 2. Lógica de Proventos (FIIs)
+    // 2. Lógica de Proventos (FIIs) - MANTIDO IGUAL
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -162,8 +162,8 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 3. Ícone SVG Personalizado (V + Torres)
-    // Usamos o ID único no gradiente para não conflitar entre cards
+    // 3. NOVO ÍCONE SVG (2 Torres + V atrás)
+    // O 'V' é desenhado primeiro, então fica no fundo. As torres são desenhadas depois, ficando na frente.
     const vestoIconSvg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-7 h-7">
         <defs>
@@ -172,18 +172,21 @@ function criarCardElemento(ativo, dados) {
                 <stop offset="90%" style="stop-color:#7e22ce;stop-opacity:1" />
             </linearGradient>
         </defs>
-        <path d="M4 2 L16 26 L28 2 L23 2 L16 17 L9 2 Z" fill="url(#vestoGrad-${ativo.symbol})" opacity="0.6" />
-        <g fill="#e5e7eb">
-            <path d="M7 14 H10 V30 H7 Z" />
-            <path d="M13 10 H19 V30 H13 Z" />
-            <path d="M22 16 H25 V30 H22 Z" />
-            <rect x="14.5" y="12" width="2" height="1" fill="#9ca3af" opacity="0.5"/>
-            <rect x="14.5" y="15" width="2" height="1" fill="#9ca3af" opacity="0.5"/>
-            <rect x="14.5" y="18" width="2" height="1" fill="#9ca3af" opacity="0.5"/>
+        
+        <path d="M4 2 L16 26 L28 2 L23 2 L16 17 L9 2 Z" fill="url(#vestoGrad-${ativo.symbol})" opacity="0.7" />
+        
+        <g fill="#e5e7eb" stroke="#131315" stroke-width="0.5">
+            <path d="M9 14 H14 V30 H9 Z" />
+            <path d="M18 10 H23 V30 H18 Z" />
+        </g>
+        
+        <g fill="#9ca3af" opacity="0.6">
+            <rect x="10.5" y="16" width="2" height="1" /> <rect x="10.5" y="19" width="2" height="1" />
+            <rect x="19.5" y="12" width="2" height="1" /> <rect x="19.5" y="15" width="2" height="1" /> <rect x="19.5" y="18" width="2" height="1" />
         </g>
     </svg>`;
 
-    // 4. Criação do Elemento DOM
+    // 4. Criação do Elemento DOM - MANTIDO IGUAL
     const card = document.createElement('div');
     card.className = 'card-bg p-4 rounded-3xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 

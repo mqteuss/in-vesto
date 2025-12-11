@@ -2003,7 +2003,7 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
         }, 0);
     }
 
- async function renderizarCarteira() {
+async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -2048,8 +2048,7 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
             }
         });
 
-        // --- AQUI COMEÇA A MÁGICA DA CASCATA ---
-        carteiraOrdenada.forEach((ativo, index) => { // Adicionamos 'index' aqui
+        carteiraOrdenada.forEach((ativo, index) => {
             const dadoPreco = precosMap.get(ativo.symbol);
             const dadoProvento = proventosMap.get(ativo.symbol);
 
@@ -2094,19 +2093,27 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
             let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
             
             if (card) {
-                // Se o card já existe, apenas atualiza os dados (sem animação de entrada)
+                // Atualiza dados
                 atualizarCardElemento(card, ativo, dadosRender);
             } else {
-                // Se é um card NOVO (ou primeira carga), cria e anima
+                // Cria novo card
                 card = criarCardElemento(ativo, dadosRender);
                 
-                // --- APLICANDO A ANIMAÇÃO ---
+                // --- CORREÇÃO DA ANIMAÇÃO ---
+                // Adiciona a classe de animação
                 card.classList.add('card-stagger');
                 
-                // Cálculo do atraso: index * 50ms.
-                // Math.min limita o atraso máximo a 500ms (para listas longas não demorarem séculos)
-                const delay = Math.min(index * 50, 500);
+                // Define o delay
+                const delay = Math.min(index * 50, 500); 
                 card.style.animationDelay = `${delay}ms`;
+                
+                // IMPORTANTE: Remove a classe assim que a animação termina.
+                // Isso impede que ela rode novamente ao trocar de abas.
+                card.addEventListener('animationend', () => {
+                    card.classList.remove('card-stagger');
+                    card.style.animationDelay = ''; // Limpa o estilo inline
+                    card.style.opacity = '1';       // Garante que fique visível
+                }, { once: true }); // Executa apenas uma vez
                 
                 listaCarteira.appendChild(card);
             }

@@ -165,30 +165,20 @@ function criarCardElemento(ativo, dados) {
     // 3. NOVO ÍCONE SVG (2 Torres + V atrás)
     // O 'V' é desenhado primeiro, então fica no fundo. As torres são desenhadas depois, ficando na frente.
 const vestoIconSvg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-7 h-7">
-        <defs>
-            <linearGradient id="vestoGrad-${ativo.symbol}" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="10%" style="stop-color:#c084fc;stop-opacity:1" />
-                <stop offset="90%" style="stop-color:#7e22ce;stop-opacity:1" />
-            </linearGradient>
-        </defs>
-        
-        <path d="M4 2 L16 26 L28 2 L23 2 L16 17 L9 2 Z" fill="url(#vestoGrad-${ativo.symbol})" opacity="0.8" />
-        
-        <g fill="#e5e7eb"> <path d="M6 9 H15 V30 H6 Z" />
-            <path d="M18 4 H26 V30 H18 Z" />
-        </g>
-        
-        <g fill="#6b7280" opacity="0.4">
-            <rect x="8" y="12" width="5" height="2" rounded="sm" />
-            <rect x="8" y="16" width="5" height="2" />
-            <rect x="8" y="20" width="5" height="2" />
-            <rect x="20" y="7" width="4" height="2" />
-            <rect x="20" y="11" width="4" height="2" />
-            <rect x="20" y="15" width="4" height="2" />
-            <rect x="20" y="19" width="4" height="2" />
-            <rect x="20" y="23" width="4" height="2" />
-        </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-7 h-7">
+    <defs>
+        <linearGradient id="vestoGrad-${ativo.symbol}" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#c084fc;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#7e22ce;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    
+    <rect x="6" y="14" width="5" height="14" rx="1" fill="url(#vestoGrad-${ativo.symbol})" opacity="0.6" />
+    
+    <rect x="13" y="8" width="5" height="20" rx="1" fill="url(#vestoGrad-${ativo.symbol})" opacity="0.8" />
+    
+    <rect x="20" y="2" width="6" height="26" rx="1" fill="url(#vestoGrad-${ativo.symbol})" />
+    
     </svg>`;
 
     // 4. Criação do Elemento DOM - MANTIDO IGUAL

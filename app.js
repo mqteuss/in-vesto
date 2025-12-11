@@ -3307,14 +3307,40 @@ function renderizarTransacoesDetalhes(symbol) {
         renderizarGraficoProventosDetalhes({ labels, data });
     }
     
+// Defina a ordem exata das suas abas (de esquerda para direita)
+    const TAB_ORDER = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
+
     function mudarAba(tabId) {
+        // 1. Descobre a aba que está ativa agora
+        const currentTab = document.querySelector('.tab-content.active');
+        const currentIndex = currentTab ? TAB_ORDER.indexOf(currentTab.id) : 0;
+        const newIndex = TAB_ORDER.indexOf(tabId);
+
+        // 2. Se for a mesma aba, não faz nada
+        if (currentIndex === newIndex) return;
+
+        // 3. Define a direção da animação
+        // Se o novo índice for maior, estamos indo para a DIREITA (Next)
+        // Se for menor, estamos voltando para a ESQUERDA (Prev)
+        const animationClass = newIndex > currentIndex ? 'tab-anim-next' : 'tab-anim-prev';
+
+        // 4. Troca as classes
         tabContents.forEach(content => {
-            content.classList.toggle('active', content.id === tabId);
+            // Remove classes antigas de animação e ativação
+            content.classList.remove('active', 'tab-anim-next', 'tab-anim-prev');
+            
+            if (content.id === tabId) {
+                // Adiciona a classe ativa e a animação correta
+                content.classList.add('active', animationClass);
+            }
         });
+
+        // 5. Atualiza os botões da navegação inferior
         tabButtons.forEach(button => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
         
+        // Exibe ou esconde o botão flutuante de adicionar
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
     }
     

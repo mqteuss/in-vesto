@@ -169,14 +169,14 @@
                     </div>
                 </div>
                 
-                <div class="card-bg p-4 rounded-3xl mb-4">
+                <div class="card-bg p-4 rounded-3xl mb-4 cursor-pointer group" onclick="this.querySelector('button').click()">
                     <div class="flex justify-between items-center">
-    <div class="flex items-center gap-2">
-         <h3 class="text-lg font-semibold text-white ml-2">Favoritos</h3>
-    </div>
-                        <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="watchlist-drawer" title="Expandir">
-                            <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        <div class="flex items-center gap-2">
+                             <h3 class="text-lg font-semibold text-white ml-2">Favoritos</h3>
+                        </div>
+                        <button class="p-1 text-gray-600 hover:text-white transition-colors rounded-full" data-target-drawer="watchlist-drawer" title="Expandir">
+                            <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                             </svg>
                         </button>
                     </div>
@@ -189,12 +189,12 @@
                 </div>
 
                 <div id="dashboard-drawers" class="space-y-4">
-                    <div class="card-bg p-4 rounded-3xl">
+                    <div class="card-bg p-4 rounded-3xl cursor-pointer group" onclick="this.querySelector('button').click()">
                         <div class="flex justify-between items-center">
-                            <h3 class="text-lg font-semibold text-white ml-2">Evolução do Patrimônio</h3>
-                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="patrimonio-chart-drawer" title="Mostrar mais">
-                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            <h3 class="text-base font-bold text-white ml-2">Evolução do Patrimônio</h3>
+                            <button class="p-1 text-gray-600 transition-colors rounded-full" data-target-drawer="patrimonio-chart-drawer">
+                                <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                                 </svg>
                             </button>
                         </div>
@@ -204,12 +204,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-bg p-4 rounded-3xl">
+                    
+                    <div class="card-bg p-4 rounded-3xl cursor-pointer group" onclick="this.querySelector('button').click()">
                         <div class="flex justify-between items-center">
-                            <h3 class="text-lg font-semibold text-white ml-2">Alocação</h3>
-                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="alocacao-chart-drawer" title="Mostrar mais">
-                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            <h3 class="text-base font-bold text-white ml-2">Alocação</h3>
+                            <button class="p-1 text-gray-600 transition-colors rounded-full" data-target-drawer="alocacao-chart-drawer">
+                                <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                                 </svg>
                             </button>
                         </div>
@@ -219,12 +220,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-bg p-4 rounded-3xl">
+                    
+                    <div class="card-bg p-4 rounded-3xl cursor-pointer group" onclick="this.querySelector('button').click()">
                         <div class="flex justify-between items-center">
-                            <h3 class="text-lg font-semibold text-white ml-2">Proventos Recebidos</h3>
-                            <button class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-gray-700" data-target-drawer="proventos-chart-drawer" title="Mostrar mais">
-                                <svg class="card-arrow-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            <h3 class="text-base font-bold text-white ml-2">Proventos Recebidos</h3>
+                            <button class="p-1 text-gray-600 transition-colors rounded-full" data-target-drawer="proventos-chart-drawer">
+                                <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                                 </svg>
                             </button>
                         </div>

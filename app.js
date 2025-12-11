@@ -211,7 +211,7 @@ function criarCardElemento(ativo, dados) {
 
     // 4. Criação do Elemento DOM
     const card = document.createElement('div');
-    card.className = 'card-bg p-4 rounded-3xl card-animate-in';
+    card.className = 'card-bg p-4 rounded-3xl';
     card.setAttribute('data-symbol', ativo.symbol); 
 
     card.innerHTML = `
@@ -2093,20 +2093,25 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
 
             let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
             
-            if (card) {
-                // Se o card já existe, apenas atualiza os dados (sem animação de entrada)
+if (card) {
+                // Se o card já existe, apenas atualiza (SEM animação)
                 atualizarCardElemento(card, ativo, dadosRender);
             } else {
-                // Se é um card NOVO (ou primeira carga), cria e anima
+                // Se é NOVO, cria e anima
                 card = criarCardElemento(ativo, dadosRender);
                 
-                // --- APLICANDO A ANIMAÇÃO ---
+                // Adiciona a animação de entrada
                 card.classList.add('card-stagger');
-                
-                // Cálculo do atraso: index * 50ms.
-                // Math.min limita o atraso máximo a 500ms (para listas longas não demorarem séculos)
-                const delay = Math.min(index * 50, 500);
+                const delay = Math.min(index * 50, 500); 
                 card.style.animationDelay = `${delay}ms`;
+                
+                // IMPORTANTE: Remove a classe assim que terminar. 
+                // Isso impede que anime de novo ao trocar de aba.
+                card.addEventListener('animationend', () => {
+                    card.classList.remove('card-stagger');
+                    card.style.animationDelay = '';
+                    card.style.opacity = '1';
+                }, { once: true });
                 
                 listaCarteira.appendChild(card);
             }

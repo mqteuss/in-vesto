@@ -114,6 +114,7 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
     
+    // Lógica do Provento (Mantida igual)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -164,10 +165,11 @@ function criarCardElemento(ativo, dados) {
     card.className = 'card-bg p-4 rounded-3xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
+    // --- MUDANÇAS AQUI EMBAIXO ---
     card.innerHTML = `
-        <div class="flex justify-between items-start">
+        <div class="flex justify-between items-start cursor-pointer select-none group" data-symbol="${ativo.symbol}" data-action="toggle">
             <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-full bg-[#1C1C1E] border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
+                <div class="w-12 h-12 rounded-full bg-[#1C1C1E] border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm group-active:scale-95 transition-transform">
                     <span class="text-xs font-bold text-purple-400 tracking-tight leading-none">${ativo.symbol}</span>
                 </div>
                 <div>
@@ -176,18 +178,21 @@ function criarCardElemento(ativo, dados) {
                     <div class="mt-1" data-field="pl-tag">${plTagHtml}</div>
                 </div>
             </div>
+            
             <div class="text-right flex-shrink-0 ml-2">
-                <span data-field="variacao-valor" class="${corVariacao} font-semibold text-base block">${dadoPreco ? variacaoFormatada : '...'}</span>
-                <p data-field="preco-valor" class="text-gray-200 text-base font-medium money-value">${precoFormatado}</p>
+                <p data-field="preco-valor" class="text-white text-lg font-bold money-value tracking-tight">${precoFormatado}</p>
+                <span data-field="variacao-valor" class="${corVariacao} text-xs font-medium block mt-0.5">${dadoPreco ? variacaoFormatada : '...'}</span>
             </div>
         </div>
-        <div class="flex justify-center mt-1 pt-1">
-            <button class="p-1 text-gray-600 hover:text-white transition-colors rounded-full hover:bg-gray-800" data-symbol="${ativo.symbol}" data-action="toggle" title="Mostrar mais">
-                <svg class="card-arrow-icon w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+
+        <div class="flex justify-center mt-1 pt-1 pointer-events-none">
+            <div class="p-1 text-gray-600 transition-colors rounded-full">
+                <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>
-            </button>
+            </div>
         </div>
+
         <div id="drawer-${ativo.symbol}" class="card-drawer">
             <div class="drawer-content space-y-2 pt-1">
                 <div class="flex justify-between items-center">
@@ -230,10 +235,12 @@ function atualizarCardElemento(card, ativo, dados) {
     card.querySelector('[data-field="pm-label"]').textContent = `Custo (P.M. ${formatBRL(ativo.precoMedio)})`;
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
 
+    // Atualiza variação com as novas classes (texto menor, abaixo do preço)
     const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
     variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-    variacaoEl.className = `${corVariacao} font-semibold text-base block`; 
+    variacaoEl.className = `${corVariacao} text-xs font-medium block mt-0.5`; 
 
+    // O restante da função permanece igual...
     const plValorEl = card.querySelector('[data-field="pl-valor"]');
     plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...';
     plValorEl.className = `text-sm font-semibold ${corPL}`; 
@@ -247,6 +254,8 @@ function atualizarCardElemento(card, ativo, dados) {
     card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
 
     if (isFII(ativo.symbol)) { 
+        // ... (Mantenha a lógica interna do FII igual ao original)
+        // Apenas garanta que o código HTML dentro do if (isFII) seja o mesmo da função criarCardElemento
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
@@ -3217,8 +3226,11 @@ function renderizarTransacoesDetalhes(symbol) {
         handleSalvarTransacao();
     });
     
-    listaCarteira.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
+listaCarteira.addEventListener('click', (e) => {
+        // MUDANÇA: Agora procuramos por qualquer elemento com data-action, não só 'button'
+        // Isso permite que a div do header funcione como gatilho
+        const target = e.target.closest('[data-action]'); 
+        
         if (!target) return;
         
         const action = target.dataset.action;
@@ -3230,7 +3242,11 @@ function renderizarTransacoesDetalhes(symbol) {
             showDetalhesModal(symbol);
         } else if (action === 'toggle') {
             const drawer = document.getElementById(`drawer-${symbol}`);
-            const icon = target.querySelector('.card-arrow-icon');
+            // Precisamos achar o ícone de seta dentro deste card específico para girá-lo
+            // Como o clique pode vir do Header, procuramos o ícone no card pai
+            const cardPai = target.closest('.card-bg'); 
+            const icon = cardPai.querySelector('.card-arrow-icon');
+            
             drawer?.classList.toggle('open');
             icon?.classList.toggle('open');
         }

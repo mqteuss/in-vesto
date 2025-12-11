@@ -3339,15 +3339,6 @@ function mudarAba(tabId) {
         
         showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
           }
-
-        // 5. Atualiza os botões da navegação inferior
-        tabButtons.forEach(button => {
-            button.classList.toggle('active', button.dataset.tab === tabId);
-        });
-        
-        // Exibe ou esconde o botão flutuante de adicionar
-        showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
-    }
     
     refreshButton.addEventListener('click', async () => {
         await atualizarTodosDados(true); 

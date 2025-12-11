@@ -162,7 +162,7 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 3. ÍCONE SVG: HEXÁGONO FLAT + 2 BARRAS GROSSAS
+    // 3. ÍCONE SVG: HEXÁGONO FLAT + 2 BARRAS EQUILIBRADAS
     const vestoIconSvg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-full h-full">
         <defs>
@@ -177,9 +177,9 @@ function criarCardElemento(ativo, dados) {
               stroke="#27272a"
               stroke-width="1" />
         
-        <rect x="8" y="14" width="7" height="11" rx="1.5" fill="url(#barGradReal-${ativo.symbol})" opacity="0.75" />
+        <rect x="10" y="15" width="5" height="10" rx="1" fill="url(#barGradReal-${ativo.symbol})" opacity="0.75" />
         
-        <rect x="17" y="7" width="7" height="18" rx="1.5" fill="url(#barGradReal-${ativo.symbol})" />
+        <rect x="17" y="9" width="5" height="16" rx="1" fill="url(#barGradReal-${ativo.symbol})" />
     </svg>`;
 
     // 4. Criação do Elemento DOM

@@ -147,7 +147,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .tab-content { display: none; }
 .tab-content.active {
     display: block;
-    animation: slideUpIn 0.3s ease-out forwards;
+    /* Removemos a animação para a troca ser instantânea e sólida */
+    animation: none; 
 }
 
 @keyframes slideUpIn {

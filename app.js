@@ -165,20 +165,26 @@ function criarCardElemento(ativo, dados) {
     // 3. NOVO ÍCONE SVG (2 Torres + V atrás)
     // O 'V' é desenhado primeiro, então fica no fundo. As torres são desenhadas depois, ficando na frente.
 const vestoIconSvg = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-7 h-7">
-    <defs>
-        <linearGradient id="vestoGrad-${ativo.symbol}" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style="stop-color:#c084fc;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#7e22ce;stop-opacity:1" />
-        </linearGradient>
-    </defs>
-    
-    <rect x="6" y="14" width="5" height="14" rx="1" fill="url(#vestoGrad-${ativo.symbol})" opacity="0.6" />
-    
-    <rect x="13" y="8" width="5" height="20" rx="1" fill="url(#vestoGrad-${ativo.symbol})" opacity="0.8" />
-    
-    <rect x="20" y="2" width="6" height="26" rx="1" fill="url(#vestoGrad-${ativo.symbol})" />
-    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-7 h-7">
+        <path d="M6 4 L16 26 L26 4 L21 4 L16 16 L11 4 Z" fill="#8b5cf6" />
+        
+        <g fill="#e5e7eb">
+            <rect x="9" y="12" width="6" height="20" rx="0.5" />
+            
+            <rect x="17" y="8" width="6" height="24" rx="0.5" />
+        </g>
+        
+        <g fill="#9ca3af">
+            <rect x="10.5" y="15" width="3" height="1.5" />
+            <rect x="10.5" y="19" width="3" height="1.5" />
+            <rect x="10.5" y="23" width="3" height="1.5" />
+            
+            <rect x="18.5" y="11" width="3" height="1.5" />
+            <rect x="18.5" y="15" width="3" height="1.5" />
+            <rect x="18.5" y="19" width="3" height="1.5" />
+            <rect x="18.5" y="23" width="3" height="1.5" />
+            <rect x="18.5" y="27" width="3" height="1.5" />
+        </g>
     </svg>`;
 
     // 4. Criação do Elemento DOM - MANTIDO IGUAL

@@ -2003,7 +2003,7 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
         }, 0);
     }
 
-    async function renderizarCarteira() {
+ async function renderizarCarteira() {
         renderizarCarteiraSkeletons(false);
 
         const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
@@ -2048,7 +2048,8 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
             }
         });
 
-        carteiraOrdenada.forEach(ativo => {
+        // --- AQUI COMEÇA A MÁGICA DA CASCATA ---
+        carteiraOrdenada.forEach((ativo, index) => { // Adicionamos 'index' aqui
             const dadoPreco = precosMap.get(ativo.symbol);
             const dadoProvento = proventosMap.get(ativo.symbol);
 
@@ -2081,18 +2082,9 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
             }
 
             const dadosRender = {
-                dadoPreco,
-                precoFormatado,
-                variacaoFormatada,
-                corVariacao,
-                totalPosicao,
-                custoTotal,
-                lucroPrejuizo,
-                lucroPrejuizoPercent,
-                corPL,
-                bgPL,
-                dadoProvento,
-                proventoReceber
+                dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
+                totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
+                corPL, bgPL, dadoProvento, proventoReceber
             };
 
             totalValorCarteira += totalPosicao;
@@ -2102,9 +2094,20 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
             let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
             
             if (card) {
+                // Se o card já existe, apenas atualiza os dados (sem animação de entrada)
                 atualizarCardElemento(card, ativo, dadosRender);
             } else {
+                // Se é um card NOVO (ou primeira carga), cria e anima
                 card = criarCardElemento(ativo, dadosRender);
+                
+                // --- APLICANDO A ANIMAÇÃO ---
+                card.classList.add('card-stagger');
+                
+                // Cálculo do atraso: index * 50ms.
+                // Math.min limita o atraso máximo a 500ms (para listas longas não demorarem séculos)
+                const delay = Math.min(index * 50, 500);
+                card.style.animationDelay = `${delay}ms`;
+                
                 listaCarteira.appendChild(card);
             }
         });

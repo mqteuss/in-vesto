@@ -114,7 +114,7 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
     
-    // Lógica do Provento (Mantida igual)
+    // --- Lógica de Proventos (Mantida igual) ---
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -160,41 +160,44 @@ function criarCardElemento(ativo, dados) {
             </div>`;
         }
     }
+    // ---------------------------------------------
 
     const card = document.createElement('div');
     card.className = 'card-bg p-4 rounded-3xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
-    // --- MUDANÇAS AQUI EMBAIXO ---
     card.innerHTML = `
-        <div class="flex justify-between items-start cursor-pointer select-none group" data-symbol="${ativo.symbol}" data-action="toggle">
-            <div class="flex items-center gap-3">
+        <div class="flex justify-between items-center cursor-pointer select-none group" data-symbol="${ativo.symbol}" data-action="toggle">
+            
+            <div class="flex items-center gap-3 overflow-hidden">
                 <div class="w-12 h-12 rounded-full bg-[#1C1C1E] border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm group-active:scale-95 transition-transform">
                     <span class="text-xs font-bold text-purple-400 tracking-tight leading-none">${ativo.symbol}</span>
                 </div>
-                <div>
-                    <h2 class="text-lg font-bold text-white leading-tight">${ativo.symbol}</h2>
-                    <p class="text-xs text-gray-500" data-field="cota-qtd">${ativo.quantity} cota(s)</p>
+                <div class="min-w-0">
+                    <h2 class="text-lg font-bold text-white leading-tight truncate">${ativo.symbol}</h2>
+                    <div class="flex items-center gap-2">
+                        <p class="text-xs text-gray-500 whitespace-nowrap" data-field="cota-qtd">${ativo.quantity} cota(s)</p>
+                    </div>
                     <div class="mt-1" data-field="pl-tag">${plTagHtml}</div>
                 </div>
             </div>
             
-            <div class="text-right flex-shrink-0 ml-2">
-                <p data-field="preco-valor" class="text-white text-lg font-bold money-value tracking-tight">${precoFormatado}</p>
-                <span data-field="variacao-valor" class="${corVariacao} text-xs font-medium block mt-0.5">${dadoPreco ? variacaoFormatada : '...'}</span>
-            </div>
-        </div>
-
-        <div class="flex justify-center mt-1 pt-1 pointer-events-none">
-            <div class="p-1 text-gray-600 transition-colors rounded-full">
-                <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                </svg>
+            <div class="flex items-center gap-3 pl-2">
+                <div class="text-right flex-shrink-0">
+                    <p data-field="preco-valor" class="text-white text-lg font-bold money-value tracking-tight">${precoFormatado}</p>
+                    <span data-field="variacao-valor" class="${corVariacao} text-xs font-medium block mt-0.5">${dadoPreco ? variacaoFormatada : '...'}</span>
+                </div>
+                
+                <div class="text-gray-600">
+                    <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                    </svg>
+                </div>
             </div>
         </div>
 
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-            <div class="drawer-content space-y-2 pt-1">
+            <div class="drawer-content space-y-2 pt-3 border-t border-gray-800 mt-2">
                 <div class="flex justify-between items-center">
                     <span class="text-xs text-gray-500 font-medium">Posição</span>
                     <span data-field="posicao-valor" class="text-sm font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
@@ -209,10 +212,10 @@ function criarCardElemento(ativo, dados) {
                 </div>
                 <div data-field="provento-container">${proventoHtml}</div> 
                 <div class="flex justify-end gap-3 pt-2">
-                    <button class="py-1 px-3 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="details">
+                    <button class="py-1.5 px-4 text-xs font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="details">
                         Detalhes
                     </button>
-                    <button class="py-1 px-3 text-xs font-medium text-red-400 bg-red-900/50 hover:bg-red-900/80 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
+                    <button class="py-1.5 px-4 text-xs font-medium text-red-400 bg-red-900/20 hover:bg-red-900/40 border border-red-900/30 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
                         Remover
                     </button>
                 </div>

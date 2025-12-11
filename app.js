@@ -115,7 +115,7 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
     
-    // 2. Lógica de Proventos (FIIs)
+    // 2. Lógica de Proventos (FIIs) - MANTIDA IGUAL
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -162,13 +162,40 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 3. ÍCONE SVG: HEXÁGONO FLAT + 2 BARRAS EQUILIBRADAS
+    // 3. ÍCONE DINÂMICO (LUCRO vs PREJUÍZO)
+    
+    // Definição das variáveis visuais baseadas no estado
+    let gradStart, gradEnd;
+    let bar1_y, bar1_h; // Barra da Esquerda
+    let bar2_y, bar2_h; // Barra da Direita
+
+    // Se não tem preço (carregando ou erro), usa Roxo Padrão Crescente
+    if (!dadoPreco) {
+        gradStart = '#6b21a8'; gradEnd = '#a855f7'; // Roxo
+        bar1_y = 15; bar1_h = 10; // Pequena
+        bar2_y = 9;  bar2_h = 16; // Grande
+    } 
+    // Se for Lucro (>= 0)
+    else if (lucroPrejuizo >= 0) {
+        gradStart = '#15803d'; gradEnd = '#22c55e'; // Verde (Escuro -> Claro)
+        // Configuração Crescente (Esquerda pequena, Direita grande)
+        bar1_y = 15; bar1_h = 10; 
+        bar2_y = 9;  bar2_h = 16; 
+    } 
+    // Se for Prejuízo (< 0)
+    else {
+        gradStart = '#991b1b'; gradEnd = '#ef4444'; // Vermelho (Escuro -> Claro)
+        // Configuração Decrescente/Invertida (Esquerda grande, Direita pequena)
+        bar1_y = 9;  bar1_h = 16; 
+        bar2_y = 15; bar2_h = 10; 
+    }
+
     const vestoIconSvg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-full h-full">
         <defs>
-            <linearGradient id="barGradReal-${ativo.symbol}" x1="0%" y1="100%" x2="0%" y2="0%">
-                <stop offset="0%" style="stop-color:#6b21a8;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+            <linearGradient id="barGrad-${ativo.symbol}" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" style="stop-color:${gradStart};stop-opacity:1" />
+                <stop offset="100%" style="stop-color:${gradEnd};stop-opacity:1" />
             </linearGradient>
         </defs>
         
@@ -177,9 +204,9 @@ function criarCardElemento(ativo, dados) {
               stroke="#27272a"
               stroke-width="1" />
         
-        <rect x="10" y="15" width="5" height="10" rx="1" fill="url(#barGradReal-${ativo.symbol})" opacity="0.75" />
+        <rect x="10" y="${bar1_y}" width="5" height="${bar1_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.85" />
         
-        <rect x="17" y="9" width="5" height="16" rx="1" fill="url(#barGradReal-${ativo.symbol})" />
+        <rect x="17" y="${bar2_y}" width="5" height="${bar2_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" />
     </svg>`;
 
     // 4. Criação do Elemento DOM

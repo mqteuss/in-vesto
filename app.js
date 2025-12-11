@@ -162,7 +162,7 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 3. ÍCONE SVG: HEXÁGONO FLAT + BARRAS ROXAS
+    // 3. ÍCONE SVG: HEXÁGONO FLAT + 2 BARRAS GROSSAS
     const vestoIconSvg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-full h-full">
         <defs>
@@ -170,16 +170,16 @@ function criarCardElemento(ativo, dados) {
                 <stop offset="0%" style="stop-color:#6b21a8;stop-opacity:1" />
                 <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
             </linearGradient>
-            </defs>
+        </defs>
         
         <path d="M16 2 L28.1 9 L28.1 23 L16 30 L3.9 23 L3.9 9 Z" 
               fill="#18181b" 
               stroke="#27272a"
               stroke-width="1" />
         
-        <rect x="9" y="19" width="4" height="6" rx="1" fill="url(#barGradReal-${ativo.symbol})" opacity="0.7" />
-        <rect x="14" y="13" width="4" height="12" rx="1" fill="url(#barGradReal-${ativo.symbol})" opacity="0.85" />
-        <rect x="19" y="7" width="4" height="18" rx="1" fill="url(#barGradReal-${ativo.symbol})" />
+        <rect x="8" y="14" width="7" height="11" rx="1.5" fill="url(#barGradReal-${ativo.symbol})" opacity="0.75" />
+        
+        <rect x="17" y="7" width="7" height="18" rx="1.5" fill="url(#barGradReal-${ativo.symbol})" />
     </svg>`;
 
     // 4. Criação do Elemento DOM

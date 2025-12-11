@@ -107,14 +107,15 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
+    // 1. Tag de Lucro/Prejuízo (L/P)
     let plTagHtml = '';
     if (dadoPreco) {
-        plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
+        plTagHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block tracking-wide">
             ${lucroPrejuizoPercent.toFixed(1)}% L/P
         </span>`;
     }
     
-    // --- Lógica de Proventos (Mantida igual) ---
+    // 2. Lógica de Proventos (FIIs)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -160,31 +161,55 @@ function criarCardElemento(ativo, dados) {
             </div>`;
         }
     }
-    // ---------------------------------------------
 
+    // 3. Ícone SVG Personalizado (V + Torres)
+    // Usamos o ID único no gradiente para não conflitar entre cards
+    const vestoIconSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-7 h-7">
+        <defs>
+            <linearGradient id="vestoGrad-${ativo.symbol}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="10%" style="stop-color:#c084fc;stop-opacity:1" />
+                <stop offset="90%" style="stop-color:#7e22ce;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <path d="M4 2 L16 26 L28 2 L23 2 L16 17 L9 2 Z" fill="url(#vestoGrad-${ativo.symbol})" opacity="0.6" />
+        <g fill="#e5e7eb">
+            <path d="M7 14 H10 V30 H7 Z" />
+            <path d="M13 10 H19 V30 H13 Z" />
+            <path d="M22 16 H25 V30 H22 Z" />
+            <rect x="14.5" y="12" width="2" height="1" fill="#9ca3af" opacity="0.5"/>
+            <rect x="14.5" y="15" width="2" height="1" fill="#9ca3af" opacity="0.5"/>
+            <rect x="14.5" y="18" width="2" height="1" fill="#9ca3af" opacity="0.5"/>
+        </g>
+    </svg>`;
+
+    // 4. Criação do Elemento DOM
     const card = document.createElement('div');
     card.className = 'card-bg p-4 rounded-3xl card-animate-in';
     card.setAttribute('data-symbol', ativo.symbol); 
 
     card.innerHTML = `
-        <div class="flex justify-between items-center cursor-pointer select-none group" data-symbol="${ativo.symbol}" data-action="toggle">
+        <div class="flex justify-between items-center cursor-pointer select-none group py-1" data-symbol="${ativo.symbol}" data-action="toggle">
             
-            <div class="flex items-center gap-3 overflow-hidden">
-                <div class="w-12 h-12 rounded-full bg-[#1C1C1E] border border-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm group-active:scale-95 transition-transform">
-                    <span class="text-xs font-bold text-purple-400 tracking-tight leading-none">${ativo.symbol}</span>
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                
+                <div class="w-12 h-12 rounded-full bg-[#131315] border border-purple-900/30 flex items-center justify-center flex-shrink-0 shadow-sm group-active:scale-95 transition-transform relative overflow-hidden">
+                    <div class="absolute inset-0 bg-purple-600 opacity-5 blur-md"></div>
+                    ${vestoIconSvg}
                 </div>
+                
                 <div class="min-w-0">
-                    <h2 class="text-lg font-bold text-white leading-tight truncate">${ativo.symbol}</h2>
-                    <div class="flex items-center gap-2">
-                        <p class="text-xs text-gray-500 whitespace-nowrap" data-field="cota-qtd">${ativo.quantity} cota(s)</p>
+                    <div class="flex items-baseline gap-2">
+                        <h2 class="text-base font-bold text-white leading-tight truncate">${ativo.symbol}</h2>
+                        <span class="text-xs text-gray-500 font-medium whitespace-nowrap" data-field="cota-qtd">${ativo.quantity} cota(s)</span>
                     </div>
-                    <div class="mt-1" data-field="pl-tag">${plTagHtml}</div>
+                    <div class="mt-1.5" data-field="pl-tag">${plTagHtml}</div>
                 </div>
             </div>
             
             <div class="flex items-center gap-3 pl-2">
                 <div class="text-right flex-shrink-0">
-                    <p data-field="preco-valor" class="text-white text-lg font-bold money-value tracking-tight">${precoFormatado}</p>
+                    <p data-field="preco-valor" class="text-white text-base font-bold money-value tracking-tight">${precoFormatado}</p>
                     <span data-field="variacao-valor" class="${corVariacao} text-xs font-medium block mt-0.5">${dadoPreco ? variacaoFormatada : '...'}</span>
                 </div>
                 
@@ -207,7 +232,7 @@ function criarCardElemento(ativo, dados) {
                     <span data-field="custo-valor" class="text-sm font-semibold text-white">${formatBRL(custoTotal)}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 font-medium">L/P</span>
+                    <span class="text-xs text-gray-500 font-medium">L/P Total</span>
                     <span data-field="pl-valor" class="text-sm font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
                 </div>
                 <div data-field="provento-container">${proventoHtml}</div> 

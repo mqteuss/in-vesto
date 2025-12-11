@@ -1525,30 +1525,31 @@ function renderizarHistoricoProventos() {
             newsCard.setAttribute('data-action', 'toggle-news');
             newsCard.setAttribute('data-target', drawerId);
 
-            newsCard.innerHTML = `
-                <div class="flex items-start gap-3 pointer-events-none">
-                    <img src="${faviconUrl}" alt="${sourceName}" 
-                         class="w-9 h-9 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto"
+                newsCard.innerHTML = `
+                <div class="flex items-center gap-3 pointer-events-none"> <img src="${faviconUrl}" alt="${sourceName}" 
+                         class="w-10 h-10 rounded-xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto flex-shrink-0"
                          loading="lazy"
                          onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                     />
+                    
                     <div class="flex-1 min-w-0">
-                        <h4 class="font-semibold text-white line-clamp-2 text-sm md:text-base leading-tight">${article.title || 'Título indisponível'}</h4>
-                        <div class="flex items-center gap-2 mt-1.5">
-                            <span class="text-xs text-gray-400 font-medium">${sourceName}</span>
+                        <h4 class="font-bold text-white line-clamp-2 text-sm leading-tight">${article.title || 'Título indisponível'}</h4>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wide">${sourceName}</span>
                             <span class="text-[10px] text-gray-600">•</span>
-                            <span class="text-xs text-gray-500">${publicationDate}</span>
+                            <span class="text-[10px] text-gray-500">${publicationDate}</span>
                         </div>
                     </div>
-                    <div class="flex-shrink-0 -mr-2 -mt-2">
-                        <svg class="card-arrow-icon w-5 h-5 text-gray-500 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+
+                    <div class="text-gray-600 pl-1">
+                        <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
                     </div>
                 </div>
                 
                 <div id="${drawerId}" class="card-drawer pointer-events-auto">
-                    <div class="drawer-content pt-3 mt-2">
+                    <div class="drawer-content pt-3 mt-2 border-t border-gray-800/50">
                         ${drawerContentHtml}
                     </div>
                 </div>

@@ -1167,7 +1167,7 @@ function hideAddModal() {
         watchlist = await supabaseDB.getWatchlist();
     }
 
-    function renderizarWatchlist() {
+function renderizarWatchlist() {
         if (!watchlistListaEl) return;
         watchlistListaEl.innerHTML = ''; 
 
@@ -1184,10 +1184,13 @@ function hideAddModal() {
         watchlist.forEach(item => {
             const symbol = item.symbol;
             const el = document.createElement('div');
+            // Mantém a estrutura, alterando apenas o ícone interno
             el.className = 'flex justify-between items-center p-3 bg-black rounded-2xl border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
+            
+            // MUDANÇA AQUI: Alterado 'rounded-full' para 'rounded-xl'
             el.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center text-[10px] font-bold text-purple-400">
+                    <div class="w-8 h-8 rounded-xl bg-[#1C1C1E] flex items-center justify-center text-[10px] font-bold text-purple-400">
                         ${symbol.substring(0, 4)}
                     </div>
                     <span class="font-semibold text-white">${symbol}</span>

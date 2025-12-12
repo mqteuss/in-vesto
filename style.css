@@ -10,8 +10,8 @@ body {
     overscroll-behavior-y: none;
 }
 
-/* =========================================   
-   TEMA CLARO (LIGHT MODE) 
+/* =========================================
+      TEMA CLARO (LIGHT MODE)
    ========================================= */
 body.light-mode {
     background-color: #f3f4f6;
@@ -66,9 +66,7 @@ body.light-mode .bottom-nav {
     box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
 }
 
-body.light-mode input, 
-body.light-mode select, 
-body.light-mode textarea,
+body.light-mode input, body.light-mode select, body.light-mode textarea,
 body.light-mode #carteira-search-input {
     background-color: #f9fafb !important;
     border-color: #d1d5db !important;
@@ -97,6 +95,7 @@ body.light-mode #btn-hist-proventos.text-white {
 }
 
 body.light-mode .bg-gray-700 { background-color: #e5e7eb !important; }
+
 body.light-mode .animate-shimmer::before,
 body.light-mode .animate-shimmer-parent .bg-gray-700::before {
     background: linear-gradient(110deg, transparent 25%, rgba(0, 0, 0, 0.05), transparent 75%);
@@ -112,8 +111,8 @@ body.light-mode input:-webkit-autofill:active {
     -webkit-text-fill-color: #111827 !important;
 }
 
-/* =========================================   
-   ESTILOS GERAIS 
+/* =========================================
+      ESTILOS GERAIS
    ========================================= */
 * { -webkit-tap-highlight-color: transparent; }
 
@@ -146,7 +145,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .hover-accent-text:hover { color: #7c3aed; }
 
 /* --- SISTEMA DE ABAS (CARROSSEL/SLIDER) --- */
-
 /* Garante que o slider ocupe a tela toda */
 #tabs-slider {
     width: 100%;
@@ -155,7 +153,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     will-change: transform;
 }
 
-/* As abas agora estão sempre visíveis para o layout (display: block), 
+/* As abas agora estão sempre visíveis para o layout (display: block),
    mas posicionadas lado a lado pelo Flexbox do pai */
 .tab-content { 
     display: block !important; 
@@ -167,29 +165,29 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 
 /* Animações antigas desativadas pois o slider controla o movimento */
 .tab-content.active {
-    animation: none; 
+   animation: none; 
 }
 
 /* --- ANIMAÇÃO CASCATA (STAGGER) PARA CARDS --- */
 @keyframes slideInStagger {
-    from { 
+   from { 
         opacity: 0; 
         transform: translateY(20px); 
     }
-    to { 
+   to { 
         opacity: 1; 
         transform: translateY(0); 
     }
 }
 
 .card-stagger {
-    opacity: 0; 
-    animation: slideInStagger 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    will-change: opacity, transform; 
+   opacity: 0; 
+   animation: slideInStagger 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+   will-change: opacity, transform; 
 }
 
-@keyframes newCardIn {     
-    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+@keyframes newCardIn {
+     from { opacity: 0; transform: scale(0.95) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 .card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
@@ -235,11 +233,13 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     padding: 0;
     cursor: pointer;
 }
+
 .tab-button:active { transform: scale(0.90); }
 .tab-button.active {
-    color: #c084fc;
-    transform: translateY(-3px); 
+   color: #c084fc;
+   transform: translateY(-3px); 
 }
+
 .tab-button.active .tab-button-icon-wrapper {      
     animation: gentleFloat 1.5s ease-in-out infinite;
     position: relative;
@@ -247,6 +247,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
     align-items: center;
     justify-content: center;
 }
+
 .tab-button.active .tab-button-icon-wrapper::before {
     content: '';
     position: absolute;
@@ -268,6 +269,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 }
 
 .spin-animation { animation: spin 1s linear infinite; }
+
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
@@ -275,8 +277,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 
 /* Inputs */
 input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button {     
-    -webkit-appearance: none;     
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
     margin: 0; 
 }
 input[type=number] { 
@@ -350,10 +352,10 @@ input[type=number] {
 
 /* Custom Scroll para as abas */
 .custom-scroll::-webkit-scrollbar {
-    display: none; 
+   display: none; 
 }
 .custom-scroll {
-    scrollbar-width: none;
+   scrollbar-width: none;
 }
 
 /* Modais */
@@ -366,6 +368,7 @@ input[type=number] {
     border-radius: 1.5rem;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
+
 .modal-content.modal-out { animation: modalOut 0.2s ease-in forwards; }
 
 @keyframes modalIn {
@@ -406,6 +409,7 @@ input[type=number] {
     opacity: 1;
     pointer-events: auto;
 }
+
 .page-content {
     transition: transform 0.4s ease-in-out, background-color 0.3s ease;
     transform: translateY(100%);
@@ -423,9 +427,9 @@ input[type=number] {
 .page-content.closing { transform: translateY(100%); }
 
 select {
-    -webkit-appearance: none;
-    appearance: none;
-    border-radius: 9999px; 
+   -webkit-appearance: none;
+   appearance: none;
+   border-radius: 9999px; 
 }
 
 /* =========================================
@@ -438,6 +442,7 @@ select {
     will-change: max-height; /* Otimização GPU */
     transform: translateZ(0); /* Força aceleração de hardware */
 }
+
 .card-drawer.open { max-height: 350px; }
 
 .card-drawer .drawer-content {
@@ -445,6 +450,7 @@ select {
     transform: translateY(-5px);
     transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s;
 }
+
 .card-drawer.open .drawer-content {
     opacity: 1;
     transform: translateY(0);
@@ -471,6 +477,7 @@ select {
     transform: translateY(1rem);
 }
 .toast-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+
 @keyframes shake {
   10%, 90% { transform: translateX(-1%) translateY(1rem); }
   20%, 80% { transform: translateX(1%) translateY(1rem); }
@@ -479,6 +486,7 @@ select {
 }
 
 .news-card-summary { line-height: 1.6; color: #d1d5db; }
+
 .news-ticker-tag {
     display: inline-block;
     background-color: #374151;
@@ -510,24 +518,26 @@ select {
     transition: all 0.2s ease-in-out;
 }
 .periodo-selector-btn:hover { background-color: #4b5563; }
+
 .periodo-selector-btn.active {
     background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);
     color: #ffffff;
     font-weight: 600;
 }
 
-button:active, .accent-bg:active, #refresh-button:active, 
-#refresh-noticias-button:active, #show-add-modal-btn:active, 
-.periodo-selector-btn:active, .news-ticker-tag:active, 
-#copiar-dados-btn:active, #abrir-importar-modal-btn:active, 
-#logout-btn:active {
+/* Animações de botão gerais (escala) */
+button:active, .accent-bg:active, 
+#refresh-button:active, #refresh-noticias-button:active, 
+#show-add-modal-btn:active, .periodo-selector-btn:active, 
+.news-ticker-tag:active, #copiar-dados-btn:active, 
+#abrir-importar-modal-btn:active, #logout-btn:active {
     transform: scale(0.96);
     transition: transform 0.1s ease-out;
 }
-#lista-carteira .card-bg:active, #fii-news-list .card-bg:active {
-    transform: scale(0.98);
-    transition: transform 0.1s ease-out;
-}
+
+/* IMPORTANTE: Removido o efeito de scale(:active) para os cards da carteira
+   para evitar o "pulo" visual ao tentar clicar na seta ou expandir.
+*/
 
 /* Shimmer */
 @keyframes shimmer {
@@ -554,6 +564,7 @@ button:active, .accent-bg:active, #refresh-button:active,
     transform: translateX(-100%);
     animation: shimmer 1.5s infinite linear;
 }
+
 .animate-shimmer-parent .bg-gray-700 {
     position: relative;
     overflow: hidden;
@@ -605,8 +616,7 @@ input:-webkit-autofill:active {
 .news-card-interactive { cursor: pointer; }
 
 /* Dica Pro: Números Tabulares para não "dançarem" */
-.money-value, 
-input[type="number"] {
+.money-value, input[type="number"] {
     font-feature-settings: "tnum";
     font-variant-numeric: tabular-nums;
 }

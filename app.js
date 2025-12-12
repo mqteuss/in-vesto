@@ -115,7 +115,7 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
     
-    // 2. Lógica de Proventos (FIIs) - MANTIDA IGUAL
+    // 2. Lógica de Proventos (FIIs)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -163,29 +163,22 @@ function criarCardElemento(ativo, dados) {
     }
 
     // 3. ÍCONE DINÂMICO (LUCRO vs PREJUÍZO)
-    
-    // Definição das variáveis visuais baseadas no estado
     let gradStart, gradEnd;
-    let bar1_y, bar1_h; // Barra da Esquerda
-    let bar2_y, bar2_h; // Barra da Direita
+    let bar1_y, bar1_h; 
+    let bar2_y, bar2_h; 
 
-    // Se não tem preço (carregando ou erro), usa Roxo Padrão Crescente
     if (!dadoPreco) {
-        gradStart = '#6b21a8'; gradEnd = '#a855f7'; // Roxo
-        bar1_y = 15; bar1_h = 10; // Pequena
-        bar2_y = 9;  bar2_h = 16; // Grande
-    } 
-    // Se for Lucro (>= 0)
-    else if (lucroPrejuizo >= 0) {
-        gradStart = '#15803d'; gradEnd = '#22c55e'; // Verde (Escuro -> Claro)
-        // Configuração Crescente (Esquerda pequena, Direita grande)
+        gradStart = '#6b21a8'; gradEnd = '#a855f7'; 
         bar1_y = 15; bar1_h = 10; 
         bar2_y = 9;  bar2_h = 16; 
     } 
-    // Se for Prejuízo (< 0)
+    else if (lucroPrejuizo >= 0) {
+        gradStart = '#15803d'; gradEnd = '#22c55e'; 
+        bar1_y = 15; bar1_h = 10; 
+        bar2_y = 9;  bar2_h = 16; 
+    } 
     else {
-        gradStart = '#991b1b'; gradEnd = '#ef4444'; // Vermelho (Escuro -> Claro)
-        // Configuração Decrescente/Invertida (Esquerda grande, Direita pequena)
+        gradStart = '#991b1b'; gradEnd = '#ef4444'; 
         bar1_y = 9;  bar1_h = 16; 
         bar2_y = 15; bar2_h = 10; 
     }
@@ -198,14 +191,11 @@ function criarCardElemento(ativo, dados) {
                 <stop offset="100%" style="stop-color:${gradEnd};stop-opacity:1" />
             </linearGradient>
         </defs>
-        
         <path d="M16 2 L28.1 9 L28.1 23 L16 30 L3.9 23 L3.9 9 Z" 
               fill="#18181b" 
               stroke="#27272a"
               stroke-width="1" />
-        
         <rect x="10" y="${bar1_y}" width="5" height="${bar1_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.85" />
-        
         <rect x="17" y="${bar2_y}" width="5" height="${bar2_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" />
     </svg>`;
 
@@ -214,12 +204,13 @@ function criarCardElemento(ativo, dados) {
     card.className = 'card-bg p-4 rounded-3xl';
     card.setAttribute('data-symbol', ativo.symbol); 
 
+    // ALTERAÇÃO: Adicionada classe group-active:scale-90 APENAS no ícone para a animação isolada
     card.innerHTML = `
         <div class="flex justify-between items-center cursor-pointer select-none group py-1" data-symbol="${ativo.symbol}" data-action="toggle">
             
             <div class="flex items-center gap-3 flex-1 min-w-0">
                 
-                <div class="w-12 h-12 flex items-center justify-center flex-shrink-0 group-active:scale-95 transition-transform">
+                <div class="w-12 h-12 flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-active:scale-90">
                     ${vestoIconSvg}
                 </div>
                 
@@ -1330,40 +1321,36 @@ function renderizarHistorico() {
     historicoStatus.classList.add('hidden');
     const fragment = document.createDocumentFragment();
 
-    // Ordena por data (mais recente primeiro)
     [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
         const card = document.createElement('div');
-        card.className = 'card-bg p-4 rounded-3xl flex items-center justify-between';
+        // ALTERAÇÃO: Reduzido padding (p-4 -> p-3)
+        card.className = 'card-bg p-3 rounded-3xl flex items-center justify-between border border-[#2C2C2E]';
         
-        // --- LÓGICA VISUAL (CORRIGIDA) ---
-        const isVenda = t.type === 'sell'; // Verifica se é venda
-        const cor = isVenda ? 'text-red-500' : 'text-green-500'; // Vermelho se venda, Verde se compra
-        const sinal = isVenda ? '-' : '+'; // Sinal de menos ou mais
+        const isVenda = t.type === 'sell';
+        const cor = isVenda ? 'text-red-500' : 'text-green-500';
+        const sinal = isVenda ? '-' : '+';
         
-        // Ícone muda: Seta pra baixo (venda) ou Seta pra cima/Mais (compra)
         let pathIcone = '';
         if (isVenda) {
-             // Ícone de menos/saída
             pathIcone = 'M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
         } else {
-             // Ícone de mais/entrada
             pathIcone = 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
         }
 
         const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${pathIcone}" /></svg>`;
-        // ---------------------------
         
+        // ALTERAÇÃO: Fontes reduzidas (text-base -> text-sm) para ficar mais compacto
         card.innerHTML = `
             <div class="flex items-center gap-3">
                 ${icone}
                 <div>
-                    <h3 class="text-base font-semibold text-white">${t.symbol}</h3>
-                    <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
+                    <h3 class="text-sm font-semibold text-white">${t.symbol}</h3>
+                    <p class="text-xs text-gray-400">${formatDate(t.date)}</p>
                 </div>
             </div>
             <div class="flex items-center gap-4">
                 <div class="text-right">
-                    <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
+                    <p class="text-sm font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
                     <p class="text-xs text-gray-400">${formatBRL(t.price)}</p>
                 </div>
                 <div class="flex flex-col gap-2">
@@ -3414,16 +3401,34 @@ listaCarteira.addEventListener('click', (e) => {
         }
     });
     
-    dashboardDrawers.addEventListener('click', (e) => {
+dashboardDrawers.addEventListener('click', (e) => {
+        // 1. Procura o elemento pai que possui o atributo 'data-toggle-drawer'
+        // (Isso será configurado no novo index.html)
+        const toggleCard = e.target.closest('[data-toggle-drawer]');
+        
+        if (toggleCard) {
+            // Se clicou dentro do conteúdo expandido (ex: no gráfico), NÃO fecha
+            if (e.target.closest('.drawer-content')) return;
+
+            const drawerId = toggleCard.dataset.toggleDrawer;
+            const drawer = document.getElementById(drawerId);
+            const icon = toggleCard.querySelector('.card-arrow-icon');
+            
+            drawer?.classList.toggle('open');
+            icon?.classList.toggle('open');
+            return;
+        }
+
+        // Mantém funcionalidade para botões antigos, se houver
         const target = e.target.closest('button');
-        if (!target || !target.dataset.targetDrawer) return;
-        
-        const drawerId = target.dataset.targetDrawer;
-        const drawer = document.getElementById(drawerId);
-        const icon = target.querySelector('.card-arrow-icon');
-        
-        drawer?.classList.toggle('open');
-        icon?.classList.toggle('open');
+        if (target && target.dataset.targetDrawer) {
+            const drawerId = target.dataset.targetDrawer;
+            const drawer = document.getElementById(drawerId);
+            const icon = target.querySelector('.card-arrow-icon');
+            
+            drawer?.classList.toggle('open');
+            icon?.classList.toggle('open');
+        }
     });
 
     const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');

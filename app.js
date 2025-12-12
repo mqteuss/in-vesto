@@ -183,6 +183,7 @@ function criarCardElemento(ativo, dados) {
         bar2_y = 15; bar2_h = 10; 
     }
 
+// Substitua a variável vestoIconSvg antiga por esta:
     const vestoIconSvg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-full h-full">
         <defs>
@@ -191,11 +192,15 @@ function criarCardElemento(ativo, dados) {
                 <stop offset="100%" style="stop-color:${gradEnd};stop-opacity:1" />
             </linearGradient>
         </defs>
-        <path d="M16 2 L28.1 9 L28.1 23 L16 30 L3.9 23 L3.9 9 Z" 
+        
+        <path d="M16 3 L27.25 9.5 L27.25 22.5 L16 29 L4.75 22.5 L4.75 9.5 Z" 
               fill="#18181b" 
               stroke="#27272a"
-              stroke-width="1" />
+              stroke-width="1.5"
+              stroke-linejoin="round" />
+        
         <rect x="10" y="${bar1_y}" width="5" height="${bar1_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.85" />
+        
         <rect x="17" y="${bar2_y}" width="5" height="${bar2_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" />
     </svg>`;
 

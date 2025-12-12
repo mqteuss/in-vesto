@@ -3307,38 +3307,51 @@ function renderizarTransacoesDetalhes(symbol) {
         renderizarGraficoProventosDetalhes({ labels, data });
     }
     
-// Defina a ordem exata das suas abas (de esquerda para direita)
-const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
+// Ordem exata das telas (deve bater com a ordem das divs no HTML)
+    const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
 
-function mudarAba(tabId) {
-        // 1. Descobre a aba que está ativa agora
-        const currentTab = document.querySelector('.tab-content.active');
-        // CORREÇÃO: Usando tabOrder (minúsculo)
-        const currentIndex = currentTab ? tabOrder.indexOf(currentTab.id) : 0;
-        const newIndex = tabOrder.indexOf(tabId);
+    function mudarAba(tabId) {
+        const index = tabOrder.indexOf(tabId);
+        if (index === -1) return;
 
-        // 2. Se for a mesma aba, não faz nada
-        if (currentIndex === newIndex) return;
+        // --- A MÁGICA DO CARROSSEL ---
+        // Em vez de esconder/mostrar, nós movemos o slider para o lado.
+        const slider = document.getElementById('tabs-slider');
+        if (slider) {
+            // Se índice for 0 -> move 0%
+            // Se índice for 1 -> move -100%
+            // Se índice for 2 -> move -200%
+            slider.style.transform = `translateX(-${index * 100}%)`;
+        }
 
-        // 3. Define a direção da animação
-        const animationClass = newIndex > currentIndex ? 'tab-anim-next' : 'tab-anim-prev';
-
-        // 4. Troca as classes
+        // --- ATUALIZAÇÃO DE ESTADO ---
+        // Mantemos a classe 'active' apenas para o código saber qual aba está "focada"
+        // (importante para os gestos de swipe funcionarem)
         tabContents.forEach(content => {
-            content.classList.remove('active', 'tab-anim-next', 'tab-anim-prev');
-            
             if (content.id === tabId) {
-                content.classList.add('active', animationClass);
+                content.classList.add('active');
+                // Pequeno ajuste para garantir que o scroll funcione
+                content.scrollTop = content.scrollTop; 
+            } else {
+                content.classList.remove('active');
             }
         });
 
-        // 5. Atualiza os botões da navegação inferior
+        // Atualiza a cor dos ícones na barra de baixo
         tabButtons.forEach(button => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
         
-        showAddModalBtn.classList.toggle('hidden', tabId !== 'tab-carteira');
-          }
+        // Controla a visibilidade do botão flutuante "Adicionar"
+        if (showAddModalBtn) {
+            if (tabId === 'tab-carteira') {
+                // Delay pequeno para o botão aparecer suavemente após o slide
+                setTimeout(() => showAddModalBtn.classList.remove('hidden'), 200);
+            } else {
+                showAddModalBtn.classList.add('hidden');
+            }
+        }
+    }
     
     refreshButton.addEventListener('click', async () => {
         await atualizarTodosDados(true); 

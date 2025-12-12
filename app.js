@@ -3297,45 +3297,50 @@ function renderizarTransacoesDetalhes(symbol) {
 // Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
 
-    function mudarAba(tabId) {
+function mudarAba(tabId) {
         const index = tabOrder.indexOf(tabId);
         if (index === -1) return;
 
-        // --- A MÁGICA DO CARROSSEL ---
-        // Em vez de esconder/mostrar, nós movemos o slider para o lado.
+        // --- MOVIMENTO DO SLIDER ---
         const slider = document.getElementById('tabs-slider');
         if (slider) {
-            // Se índice for 0 -> move 0%
-            // Se índice for 1 -> move -100%
-            // Se índice for 2 -> move -200%
             slider.style.transform = `translateX(-${index * 100}%)`;
         }
 
-        // --- ATUALIZAÇÃO DE ESTADO ---
-        // Mantemos a classe 'active' apenas para o código saber qual aba está "focada"
-        // (importante para os gestos de swipe funcionarem)
+        // --- ATUALIZAÇÃO DE ESTADO DAS ABAS ---
         tabContents.forEach(content => {
             if (content.id === tabId) {
                 content.classList.add('active');
-                // Pequeno ajuste para garantir que o scroll funcione
                 content.scrollTop = content.scrollTop; 
             } else {
                 content.classList.remove('active');
             }
         });
 
-        // Atualiza a cor dos ícones na barra de baixo
+        // --- ATUALIZAÇÃO DOS ÍCONES DA NAV ---
         tabButtons.forEach(button => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
         
-        // Controla a visibilidade do botão flutuante "Adicionar"
+        // --- LÓGICA DO BOTÃO ADICIONAR (COM ANIMAÇÃO) ---
         if (showAddModalBtn) {
             if (tabId === 'tab-carteira') {
-                // Delay pequeno para o botão aparecer suavemente após o slide
-                setTimeout(() => showAddModalBtn.classList.remove('hidden'), 200);
+                // Pequeno delay para esperar o slider começar a mover
+                setTimeout(() => {
+                    showAddModalBtn.classList.remove('hidden');
+                    
+                    // 1. Remove a classe de animação (reset)
+                    showAddModalBtn.classList.remove('fab-animate');
+                    
+                    // 2. Força um 'Reflow' (reinicia o ciclo de renderização do CSS)
+                    void showAddModalBtn.offsetWidth;
+                    
+                    // 3. Adiciona a classe novamente para tocar a animação
+                    showAddModalBtn.classList.add('fab-animate');
+                }, 150); 
             } else {
                 showAddModalBtn.classList.add('hidden');
+                showAddModalBtn.classList.remove('fab-animate');
             }
         }
     }

@@ -3401,35 +3401,39 @@ listaCarteira.addEventListener('click', (e) => {
         }
     });
     
-dashboardDrawers.addEventListener('click', (e) => {
-        // 1. Procura o elemento pai que possui o atributo 'data-toggle-drawer'
-        // (Isso será configurado no novo index.html)
-        const toggleCard = e.target.closest('[data-toggle-drawer]');
-        
-        if (toggleCard) {
-            // Se clicou dentro do conteúdo expandido (ex: no gráfico), NÃO fecha
-            if (e.target.closest('.drawer-content')) return;
+const tabDashboard = document.getElementById('tab-dashboard');
 
-            const drawerId = toggleCard.dataset.toggleDrawer;
-            const drawer = document.getElementById(drawerId);
-            const icon = toggleCard.querySelector('.card-arrow-icon');
+    if (tabDashboard) {
+        tabDashboard.addEventListener('click', (e) => {
+            // 1. Procura qualquer elemento com o atributo 'data-toggle-drawer' dentro do Dashboard
+            const toggleCard = e.target.closest('[data-toggle-drawer]');
             
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-            return;
-        }
+            if (toggleCard) {
+                // Se clicou dentro do conteúdo expandido (ex: listas ou gráficos), NÃO fecha
+                if (e.target.closest('.drawer-content')) return;
 
-        // Mantém funcionalidade para botões antigos, se houver
-        const target = e.target.closest('button');
-        if (target && target.dataset.targetDrawer) {
-            const drawerId = target.dataset.targetDrawer;
-            const drawer = document.getElementById(drawerId);
-            const icon = target.querySelector('.card-arrow-icon');
-            
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        }
-    });
+                const drawerId = toggleCard.dataset.toggleDrawer;
+                const drawer = document.getElementById(drawerId);
+                const icon = toggleCard.querySelector('.card-arrow-icon');
+                
+                // Abre/Fecha com a animação
+                drawer?.classList.toggle('open');
+                icon?.classList.toggle('open');
+                return;
+            }
+
+            // (Opcional) Mantém compatibilidade com botões antigos que usam data-target-drawer
+            const targetBtn = e.target.closest('button');
+            if (targetBtn && targetBtn.dataset.targetDrawer) {
+                const drawerId = targetBtn.dataset.targetDrawer;
+                const drawer = document.getElementById(drawerId);
+                const icon = targetBtn.querySelector('.card-arrow-icon');
+                
+                drawer?.classList.toggle('open');
+                icon?.classList.toggle('open');
+            }
+        });
+    }
 
     const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
     if (watchlistToggleBtn) {

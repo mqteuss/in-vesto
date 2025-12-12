@@ -195,8 +195,8 @@ const vestoIconSvg = `
         
         <path d="M3 16 L9.5 4.75 L22.5 4.75 L29 16 L22.5 27.25 L9.5 27.25 Z" 
               fill="#18181b" 
-              stroke="#27272a"
-              stroke-width="1.5"
+              stroke="#2C2C2E" 
+              stroke-width="1"
               stroke-linejoin="round" />
         
         <rect x="10" y="${bar1_y}" width="5" height="${bar1_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.85" />

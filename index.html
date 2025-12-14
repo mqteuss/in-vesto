@@ -124,10 +124,29 @@
                 
                 <div id="tab-dashboard" class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll active">
                     <div class="p-4">
-                        <div class="flex justify-between items-center mb-6 relative">
-                            <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Dashboard</h1>
-                        </div>
+                        <div class="flex flex-col mb-6">
+                            <div class="flex justify-between items-center relative z-20">
+                                <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Dashboard</h1>
+                                
+                                <button id="btn-notifications" class="relative p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-800 focus:outline-none" title="Notificações">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                    
+                                    <span id="notification-badge" class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-black hidden animate-pulse"></span>
+                                </button>
+                            </div>
 
+                            <div id="notifications-drawer" class="card-drawer mt-2">
+                                <div class="drawer-content p-4 bg-[#1C1C1E] rounded-3xl border border-[#2C2C2E] shadow-xl">
+                                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">Avisos de Hoje</h3>
+                                    
+                                    <div id="notifications-list" class="space-y-2"></div>
+                                    
+                                    <p id="notifications-empty" class="text-sm text-gray-500 text-center py-2 hidden">Nenhuma novidade financeira para hoje.</p>
+                                </div>
+                            </div>
+                        </div>
                         <div id="resumo-carteira-card" class="card-bg rounded-3xl mb-6 overflow-hidden">
                             <div class="p-5 text-center bg-gradient-to-b from-purple-900/20 to-transparent">
                                 <span class="text-sm text-gray-400">Valor Total em Ativos</span>

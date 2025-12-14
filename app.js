@@ -571,11 +571,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
-    const btnIaAnalise = document.getElementById('btn-ia-analise');
-    const aiModal = document.getElementById('ai-modal');
-    const closeAiModal = document.getElementById('close-ai-modal');
-    const aiContent = document.getElementById('ai-content');
-    const aiLoading = document.getElementById('ai-loading');
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
 
@@ -1059,70 +1054,6 @@ function hideAddModal() {
         setTimeout(() => {
             limparDetalhes(); 
         }, 400); 
-    }
-
-    async function handleAnaliseIA() {
-        if (!carteiraCalculada || carteiraCalculada.length === 0) {
-            showToast("Adicione ativos antes de pedir uma análise.");
-            return;
-        }
-
-        aiModal.classList.add('visible');
-        aiModal.querySelector('.modal-content').classList.remove('modal-out');
-        aiContent.classList.add('hidden');
-        aiLoading.classList.remove('hidden');
-
-        const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-        let valorTotalAtivos = 0;
-        
-        const carteiraParaEnvio = carteiraCalculada.map(ativo => {
-            const dadosPreco = precosMap.get(ativo.symbol);
-            const precoAtual = dadosPreco ? dadosPreco.regularMarketPrice : ativo.precoMedio;
-            const total = precoAtual * ativo.quantity;
-            valorTotalAtivos += total;
-
-            return {
-                ticker: ativo.symbol,
-                qtd: ativo.quantity,
-                pm: ativo.precoMedio,
-                atual: precoAtual,
-                total: total,
-                tipo: isFII(ativo.symbol) ? 'FII' : 'Ação'
-            };
-        });
-
-        const totalPatrimonio = valorTotalAtivos + saldoCaixa;
-
-        try {
-            const response = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    carteira: carteiraParaEnvio,
-                    totalPatrimonio: formatBRL(totalPatrimonio),
-                    perfil: "Investidor em fase de ACUMULAÇÃO AGRESSIVA. Não tenho medo de volatilidade. Quero atingir o 'Número Mágico' rápido. Priorizo comprar barato (Valor) e Yield alto sustentável."
-                })
-            });
-
-            if (!response.ok) throw new Error('Falha na comunicação com a IA');
-
-            const data = await response.json();
-            
-            if (data.result && window.marked) {
-                aiContent.innerHTML = marked.parse(data.result);
-            } else {
-                aiContent.textContent = data.result || "Sem resposta.";
-            }
-
-            aiLoading.classList.add('hidden');
-            aiContent.classList.remove('hidden');
-
-        } catch (error) {
-            console.error("Erro IA:", error);
-            aiLoading.classList.add('hidden');
-            aiContent.classList.remove('hidden');
-            aiContent.innerHTML = `<p class="text-red-400 text-center">Ocorreu um erro ao analisar sua carteira.<br><span class="text-xs text-gray-500">${error.message}</span></p>`;
-        }
     }
 
     async function carregarTransacoes() {
@@ -3465,26 +3396,6 @@ const tabDashboard = document.getElementById('tab-dashboard');
             mudarAba(button.dataset.tab);
         });
     });
-    
-    if (btnIaAnalise) {
-        btnIaAnalise.addEventListener('click', handleAnaliseIA);
-    }
-    
-    if (closeAiModal) {
-        closeAiModal.addEventListener('click', () => {
-            aiModal.classList.remove('visible');
-            aiContent.innerHTML = ''; 
-        });
-    }
-
-    if (aiModal) {
-        aiModal.addEventListener('click', (e) => {
-            if (e.target === aiModal) {
-                aiModal.classList.remove('visible');
-                aiContent.innerHTML = '';
-            }
-        });
-    }
 
     customModalCancel.addEventListener('click', hideModal);
     customModalOk.addEventListener('click', () => {

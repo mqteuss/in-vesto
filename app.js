@@ -448,6 +448,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
     
+	const btnNotifications = document.getElementById('btn-notifications');
+    const notificationBadge = document.getElementById('notification-badge');
+    const notificationsDrawer = document.getElementById('notifications-drawer');
+    const notificationsList = document.getElementById('notifications-list');
+    const notificationsEmpty = document.getElementById('notifications-empty');
     const authContainer = document.getElementById('auth-container');
     const authLoading = document.getElementById('auth-loading');    
     const loginForm = document.getElementById('login-form');
@@ -2376,10 +2381,82 @@ if (card) {
         return { labels, data };
     }
     
+function verificarNotificacoesFinanceiras() {
+    // Limpa a lista atual
+    notificationsList.innerHTML = '';
+    let temNotificacao = false;
+    let totalNotificacoes = 0;
+
+    // Data de hoje (YYYY-MM-DD) para comparar com strings da API
+    const hoje = new Date();
+    // Ajuste de fuso horário simples para garantir dia correto
+    const offset = hoje.getTimezoneOffset() * 60000;
+    const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
+    
+    // 1. Verificar Pagamentos (PAY DAY)
+    // Filtra proventos conhecidos onde paymentDate == hoje
+    const pagamentosHoje = proventosConhecidos.filter(p => p.paymentDate === hojeLocal);
+
+    pagamentosHoje.forEach(p => {
+        // Pega a quantidade que o usuário tinha na Data Com
+        const qtd = getQuantidadeNaData(p.symbol, p.dataCom || p.paymentDate);
+        
+        if (qtd > 0) {
+            temNotificacao = true;
+            totalNotificacoes++;
+            const totalRecebido = p.value * qtd;
+
+            // Cria o HTML do aviso
+            const div = document.createElement('div');
+            div.className = 'notif-card-payment animate-shimmer-parent';
+            div.innerHTML = `
+                <div class="p-2 bg-green-900/20 rounded-full text-green-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-gray-200">Pagamento Hoje!</p>
+                    <p class="text-xs text-gray-400">Você recebeu <span class="text-green-400 font-bold">${formatBRL(totalRecebido)}</span> de ${p.symbol}.</p>
+                </div>
+            `;
+            notificationsList.appendChild(div);
+        }
+    });
+
+    // 2. Verificar Data Com (Último dia)
+    const dataComHoje = proventosConhecidos.filter(p => p.dataCom === hojeLocal);
+    
+    dataComHoje.forEach(p => {
+        temNotificacao = true;
+        totalNotificacoes++;
+        
+        const div = document.createElement('div');
+        div.className = 'notif-card-datacom';
+        div.innerHTML = `
+            <div class="p-2 bg-yellow-900/20 rounded-full text-yellow-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            </div>
+            <div>
+                <p class="text-sm font-bold text-gray-200">Data Com Hoje</p>
+                <p class="text-xs text-gray-400">Garanta ${p.symbol} hoje para receber <span class="text-yellow-400 font-bold">${formatBRL(p.value)}</span>.</p>
+            </div>
+        `;
+        notificationsList.appendChild(div);
+    });
+
+    // Atualiza a UI da bolinha e do estado vazio
+    if (temNotificacao) {
+        notificationBadge.classList.remove('hidden');
+        btnNotifications.classList.add('bell-ringing'); // Faz o sino balançar
+        notificationsEmpty.classList.add('hidden');
+    } else {
+        notificationBadge.classList.add('hidden');
+        btnNotifications.classList.remove('bell-ringing');
+        notificationsEmpty.classList.remove('hidden');
+    }
+}	
+	
 async function atualizarTodosDados(force = false) { 
-        // --- DICA PRO: FEEDBACK INSTANTÂNEO ---
-        // Se o usuário clicou no botão (force = true), limpamos a tela imediatamente.
-        // Isso evita a sensação de "cliquei e nada aconteceu".
+
         if (force) {
             // 1. Feedback Tátil (Vibração leve em Android)
             if (navigator.vibrate) navigator.vibrate(50);
@@ -2477,7 +2554,7 @@ async function atualizarTodosDados(force = false) {
         });
         
         // --- FINALIZAÇÃO ---
-        try {
+try {
             // Espera tudo terminar (sucesso ou falha) para limpar o estado de loading
             await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
         } finally {
@@ -2488,8 +2565,11 @@ async function atualizarTodosDados(force = false) {
             // Garante que os skeletons sumam no final de tudo
             renderizarDashboardSkeletons(false);
             renderizarCarteiraSkeletons(false);
+
+            // CHAMA A FUNÇÃO NOVA AQUI:
+            verificarNotificacoesFinanceiras();
         }
-    }
+    } // Fim da função atualizarTodosDados
 
     async function handleToggleFavorito() {
         const symbol = detalhesFavoritoBtn.dataset.symbol;
@@ -4209,6 +4289,28 @@ let swipeStartX = 0;
             }
         }
     }, { passive: true });
+	
+if (btnNotifications) {
+        btnNotifications.addEventListener('click', () => {
+            // Abre ou fecha a gaveta
+            notificationsDrawer.classList.toggle('open');
+            
+            // Se abriu, marca como lido (remove bolinha e animação)
+            if (notificationsDrawer.classList.contains('open')) {
+                notificationBadge.classList.add('hidden');
+                btnNotifications.classList.remove('bell-ringing');
+            }
+        });
+    }
+
+    // Fechar a gaveta de notificações se clicar fora dela
+    document.addEventListener('click', (e) => {
+        if (notificationsDrawer && notificationsDrawer.classList.contains('open') && 
+            !notificationsDrawer.contains(e.target) && 
+            !btnNotifications.contains(e.target)) {
+            notificationsDrawer.classList.remove('open');
+        }
+    });
 
     await init();
 });

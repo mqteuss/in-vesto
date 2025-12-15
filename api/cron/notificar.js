@@ -1,8 +1,8 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
+// IMPORTANTE: Sobe um nível (..) para achar o scraper na pasta pai 'api'
 const scraperHandler = require('../scraper.js');
 
-// Configuração Web Push
 webpush.setVapidDetails(
   'mailto:mh.umateus@gmail.com',
   process.env.VAPID_PUBLIC_KEY,
@@ -14,7 +14,6 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Função auxiliar para rodar o scraper internamente
 async function atualizarProventosPeloScraper(fiiList) {
     const req = {
         method: 'POST',
@@ -39,15 +38,13 @@ async function atualizarProventosPeloScraper(fiiList) {
 
 module.exports = async function handler(req, res) {
     try {
-        console.log("Executando rotina diária de atualização e notificação...");
+        console.log("Iniciando CRON...");
         
-        // --- ETAPA 1: ATUALIZAÇÃO AUTOMÁTICA ---
+        // 1. ATUALIZA DADOS
         const { data: ativos } = await supabase.from('transacoes').select('symbol');
         
         if (ativos && ativos.length > 0) {
             const uniqueSymbols = [...new Set(ativos.map(a => a.symbol))];
-            
-            // Busca dados novos
             const novosDados = await atualizarProventosPeloScraper(uniqueSymbols);
             
             if (novosDados && novosDados.length > 0) {
@@ -56,56 +53,45 @@ module.exports = async function handler(req, res) {
                     if (!dado.paymentDate || !dado.value) continue;
                     
                     const { data: usersWithAsset } = await supabase
-                        .from('transacoes')
-                        .select('user_id')
-                        .eq('symbol', dado.symbol);
+                        .from('transacoes').select('user_id').eq('symbol', dado.symbol);
                         
                     if (usersWithAsset) {
                          const usersUnicos = [...new Set(usersWithAsset.map(u => u.user_id))];
                          usersUnicos.forEach(uid => {
                              const idUnico = `${dado.symbol}_${dado.paymentDate}`;
                              upserts.push({
-                                 id: idUnico,
-                                 user_id: uid,
-                                 symbol: dado.symbol,
-                                 value: dado.value,
-                                 paymentdate: dado.paymentDate,
-                                 datacom: dado.dataCom,
-                                 processado: false
+                                 id: idUnico, user_id: uid, symbol: dado.symbol,
+                                 value: dado.value, paymentdate: dado.paymentDate,
+                                 datacom: dado.dataCom, processado: false
                              });
                          });
                     }
                 }
                 
                 if (upserts.length > 0) {
-                    for (let i = 0; i < upserts.length; i += 100) {
-                        const batch = upserts.slice(i, i + 100);
+                    for (let i = 0; i < upserts.length; i += 50) {
+                        const batch = upserts.slice(i, i + 50);
                         await supabase.from('proventosconhecidos')
                             .upsert(batch, { onConflict: 'user_id, id', ignoreDuplicates: true });
                     }
-                    console.log(`Base de dados sincronizada: ${upserts.length} registros.`);
                 }
             }
         }
 
-        // --- ETAPA 2: NOTIFICAÇÃO ---
+        // 2. ENVIA PUSH
         const agora = new Date();
         agora.setHours(agora.getHours() - 3); 
         const hojeString = agora.toISOString().split('T')[0];
         const inicioDoDia = `${hojeString}T00:00:00`;
-        
-        // Objeto data zerado para comparação lógica correta
         const hojeDateObj = new Date(hojeString + 'T00:00:00');
 
-        const { data: proventos, error } = await supabase
+        const { data: proventos } = await supabase
             .from('proventosconhecidos')
             .select('*')
             .or(`paymentdate.eq.${hojeString},datacom.eq.${hojeString},created_at.gte.${inicioDoDia}`);
 
-        if (error) throw error;
-
         if (!proventos || proventos.length === 0) {
-            return res.status(200).json({ status: 'Updated', message: 'Sem notificações para hoje.' });
+            return res.status(200).json({ status: 'Updated', message: 'Sem notificações.' });
         }
 
         const userEvents = {};
@@ -119,57 +105,47 @@ module.exports = async function handler(req, res) {
         for (const userId of Object.keys(userEvents)) {
             const eventos = userEvents[userId];
             const { data: subscriptions } = await supabase
-                .from('push_subscriptions')
-                .select('*')
-                .eq('user_id', userId);
+                .from('push_subscriptions').select('*').eq('user_id', userId);
 
             if (!subscriptions || subscriptions.length === 0) continue;
 
-            // Filtros de Eventos
-            const pagamentos = eventos.filter(e => e.paymentdate === hojeString);
-            const dataComs = eventos.filter(e => e.datacom === hojeString);
-            
-            // FILTRO DE NOVOS ANÚNCIOS (CORRIGIDO)
-            const novosAnuncios = eventos.filter(e => {
-                // 1. Foi criado hoje?
-                const isCreatedToday = e.created_at >= inicioDoDia;
-                // 2. Não é redundante? (já avisa em outros grupos)
-                const isNotDuplicate = e.datacom !== hojeString && e.paymentdate !== hojeString;
-                // 3. É FUTURO? (Evita spam de histórico antigo)
-                const dataPagamentoObj = new Date(e.paymentdate + 'T00:00:00');
-                const isFuturo = dataPagamentoObj >= hojeDateObj;
+            const matchDate = (dateField, dateString) => dateField && dateField.startsWith(dateString);
 
-                return isCreatedToday && isNotDuplicate && isFuturo;
+            const pagamentos = eventos.filter(e => matchDate(e.paymentdate, hojeString));
+            const dataComs = eventos.filter(e => matchDate(e.datacom, hojeString));
+            
+            // FILTRO DE NOVOS ANÚNCIOS (BLINDADO)
+            const novosAnuncios = eventos.filter(e => {
+                const propsCreatedAt = e.created_at || '';
+                const isCreatedToday = propsCreatedAt.startsWith(hojeString);
+                
+                const isDuplicate = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
+                
+                // Ignora datas passadas (Velharia)
+                let isFuturo = false;
+                if (e.paymentdate) {
+                    const dataPagObj = new Date(e.paymentdate.split('T')[0] + 'T00:00:00');
+                    isFuturo = dataPagObj >= hojeDateObj;
+                }
+
+                return isCreatedToday && !isDuplicate && isFuturo;
             });
             
             let title = '';
             let body = '';
 
-            // Lógica de Prioridade (Dinheiro > Agenda > Notícia)
             if (pagamentos.length > 0) {
                 const symbols = pagamentos.map(p => p.symbol).slice(0, 3).join(', ');
-                const count = pagamentos.length;
                 title = 'Proventos Recebidos';
-                body = count === 1 ? `Crédito confirmado: O pagamento de ${symbols} foi realizado.` : `Créditos confirmados hoje para: ${symbols}${count > 3 ? ' e outros' : ''}.`;
-            
+                body = `Crédito confirmado: O pagamento de ${symbols} foi realizado.`;
             } else if (dataComs.length > 0) {
                 const symbols = dataComs.map(p => p.symbol).slice(0, 3).join(', ');
-                const count = dataComs.length;
                 title = 'Agenda de Dividendos';
-                body = count === 1 ? `Data Com: Hoje é o limite para garantir proventos de ${symbols}.` : `Data Com hoje para os ativos: ${symbols}${count > 3 ? ' e outros' : ''}.`;
-            
+                body = `Data Com: Hoje é o limite para garantir proventos de ${symbols}.`;
             } else if (novosAnuncios.length > 0) {
                 const symbols = novosAnuncios.map(p => p.symbol).slice(0, 3).join(', ');
-                const count = novosAnuncios.length;
                 title = 'Novo Comunicado';
-                
-                if (count === 1) {
-                    const p = novosAnuncios[0];
-                    const valorFmt = p.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                    body = `${p.symbol} informou distribuição de ${valorFmt} por cota.`;
-                } else {
-                    body = `Novos anúncios de rendimentos: ${symbols}${count > 3 ? ' e outros' : ''}.`;
-                }
+                body = `Novos anúncios de rendimentos: ${symbols}.`;
             } else {
                 continue; 
             }

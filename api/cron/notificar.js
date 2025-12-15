@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
-const scraperHandler = require('./scraper.js');
+const scraperHandler = require('../scraper.js');
 
 // Configuração Web Push
 webpush.setVapidDetails(

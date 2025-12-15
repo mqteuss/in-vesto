@@ -14,7 +14,7 @@ const client = axios.create({
     },
     // OTIMIZAÇÃO 2: Timeout reduzido para 6s. 
     // Motivo: O limite da Vercel Hobby é 10s. Se esperar 9s, o script morre antes de tratar o erro.
-    timeout: 6000
+    timeout: 9000
 });
 
 function parseDate(dateStr) {

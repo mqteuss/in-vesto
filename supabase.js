@@ -307,3 +307,17 @@ export async function salvarPushSubscription(subscription) {
 
     if (error) console.error("Erro ao salvar push:", error);
 }
+// Adicione ao final do supabase.js
+export async function removerPushSubscription(subscription) {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+
+    // Remove do banco procurando pelo endpoint (que é único)
+    const { error } = await supabaseClient
+        .from('push_subscriptions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('subscription->>endpoint', subscription.endpoint);
+
+    if (error) console.error("Erro ao remover push:", error);
+}

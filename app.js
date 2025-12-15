@@ -3945,6 +3945,28 @@ if (clearCacheBtn) {
             atualizarUINotificacao(false);
         }
     }
+	
+	async function desativarNotificacoesPush() {
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            
+            if (sub) {
+                // 1. Remove do Banco de Dados
+                await supabaseDB.removerPushSubscription(sub);
+                
+                // 2. Cancela a inscrição no navegador
+                await sub.unsubscribe();
+            }
+
+            atualizarUINotificacao(false);
+            showToast("Notificações desativadas.");
+
+        } catch (e) {
+            console.error("Erro ao desativar:", e);
+            showToast("Erro ao desativar notificações.");
+        }
+    }
     
 async function init() {
         try {
@@ -4401,9 +4423,20 @@ document.addEventListener('click', (e) => {
 	
 if (toggleNotifBtn) {
         toggleNotifBtn.addEventListener('click', () => {
-            if (Notification.permission === 'granted' && toggleNotifBtn.classList.contains('bg-purple-600')) {
-                showToast("Notificações já estão ativas.");
+            // Verifica se visualmente está ligado (bg-purple-600)
+            const estaAtivado = toggleNotifBtn.classList.contains('bg-purple-600');
+
+            if (estaAtivado) {
+                // Lógica de DESATIVAR
+                showModal(
+                    "Desativar Notificações?", 
+                    "Você deixará de receber alertas sobre proventos e datas de corte.", 
+                    () => {
+                        desativarNotificacoesPush();
+                    }
+                );
             } else {
+                // Lógica de ATIVAR
                 assinarNotificacoesPush();
             }
         });

@@ -1,5 +1,5 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 const client = axios.create({
     headers: {
@@ -50,7 +50,7 @@ function chunkArray(array, size) {
     return results;
 }
 
-// --- SCRAPER DE FUNDAMENTOS (ATUALIZADO COM NOVOS CAMPOS) ---
+// --- SCRAPER DE FUNDAMENTOS ---
 async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
@@ -69,48 +69,19 @@ async function scrapeFundamentos(ticker) {
         const $ = cheerio.load(html);
 
         let dados = {
-            dy: 'N/A',
-            pvp: 'N/A',
-            segmento: 'N/A',
-            tipo_fundo: 'N/A',     // NOVO
-            mandato: 'N/A',        // NOVO
-            vacancia: 'N/A',
-            vp_cota: 'N/A',
-            liquidez: 'N/A',
-            val_mercado: 'N/A',
-            patrimonio_liquido: 'N/A',
-            variacao_12m: 'N/A',
-            ultimo_rendimento: 'N/A',
-            cnpj: 'N/A',
-            num_cotistas: 'N/A',
-            tipo_gestao: 'N/A',
-            prazo_duracao: 'N/A',  // NOVO
-            taxa_adm: 'N/A',       // NOVO
-            cotas_emitidas: 'N/A'  // NOVO
+            dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
+            vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
+            patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
+            cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A'
         };
         
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        const dyEl = $('._card.dy ._card-body span').first();
-        if (dyEl.length) dados.dy = dyEl.text().trim();
-
-        const pvpEl = $('._card.vp ._card-body span').first();
-        if (pvpEl.length) dados.pvp = pvpEl.text().trim();
-
-        const liqEl = $('._card.liquidity ._card-body span').first();
-        if (liqEl.length) dados.liquidez = liqEl.text().trim();
-
-        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
-        if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
-
-        const cotacaoEl = $('._card.cotacao ._card-body span').first();
-        if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
-
         const processPair = (tituloRaw, valorRaw) => {
             const titulo = normalize(tituloRaw);
             const valor = valorRaw.trim();
-
             if (!valor) return;
 
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
@@ -124,14 +95,11 @@ async function scrapeFundamentos(ticker) {
             if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
             if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
             if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
-
-            // --- NOVOS CAMPOS MAPEADOS ---
             if (dados.mandato === 'N/A' && titulo.includes('mandato')) dados.mandato = valor;
             if (dados.tipo_fundo === 'N/A' && titulo.includes('tipo de fundo')) dados.tipo_fundo = valor;
             if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
-            // -----------------------------
 
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
@@ -145,11 +113,23 @@ async function scrapeFundamentos(ticker) {
 
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
-                // Fallback se não pegou direto pelo titulo 'cotas emitidas'
                 if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
             }
         };
 
+        // Extração de Cards Especiais
+        const dyEl = $('._card.dy ._card-body span').first();
+        if (dyEl.length) dados.dy = dyEl.text().trim();
+        const pvpEl = $('._card.vp ._card-body span').first();
+        if (pvpEl.length) dados.pvp = pvpEl.text().trim();
+        const liqEl = $('._card.liquidity ._card-body span').first();
+        if (liqEl.length) dados.liquidez = liqEl.text().trim();
+        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
+        if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
+        const cotacaoEl = $('._card.cotacao ._card-body span').first();
+        if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
+
+        // Extração Geral
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         $('table tbody tr').each((i, row) => {
@@ -157,6 +137,7 @@ async function scrapeFundamentos(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
+        // Cálculo Valor de Mercado Fallback
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -173,10 +154,9 @@ async function scrapeFundamentos(ticker) {
         }
 
         return dados;
-
     } catch (error) {
         console.warn(`[Scraper] Falha: ${error.message}`);
-        return { dy: '-', pvp: '-', segmento: '-' }; // Retorno simplificado em erro
+        return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 
@@ -227,7 +207,8 @@ async function scrapeAsset(ticker) {
     } catch (error) { return []; }
 }
 
-module.exports = async function handler(req, res) {
+// --- API HANDLER (Default Export) ---
+export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');

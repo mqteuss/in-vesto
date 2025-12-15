@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
-import webpush from 'web-push';
-import scraperHandler from './scraper.js';
+const { createClient } = require('@supabase/supabase-js');
+const webpush = require('web-push');
+const scraperHandler = require('./scraper.js');
 
 // Configuração Web Push
 webpush.setVapidDetails(
@@ -22,7 +22,6 @@ async function atualizarProventosPeloScraper(fiiList) {
     };
     
     let resultado = [];
-    // Simula o objeto Response (res) que o scraper espera
     const res = {
         setHeader: () => {},
         status: () => ({ json: (data) => { resultado = data.json; } }),
@@ -38,25 +37,21 @@ async function atualizarProventosPeloScraper(fiiList) {
     }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     try {
         console.log("Executando rotina diária de atualização e notificação...");
         
-        // =================================================================
-        // ETAPA 1: ATUALIZAÇÃO AUTOMÁTICA DOS DADOS (AUTO-UPDATE)
-        // =================================================================
-        
+        // --- ETAPA 1: ATUALIZAÇÃO AUTOMÁTICA ---
         const { data: ativos } = await supabase.from('transacoes').select('symbol');
         
         if (ativos && ativos.length > 0) {
             const uniqueSymbols = [...new Set(ativos.map(a => a.symbol))];
             
-            // Busca dados novos na fonte (usando o scraper importado)
+            // Busca dados novos
             const novosDados = await atualizarProventosPeloScraper(uniqueSymbols);
             
             if (novosDados && novosDados.length > 0) {
                 const upserts = [];
-                
                 for (const dado of novosDados) {
                     if (!dado.paymentDate || !dado.value) continue;
                     
@@ -67,7 +62,6 @@ export default async function handler(req, res) {
                         
                     if (usersWithAsset) {
                          const usersUnicos = [...new Set(usersWithAsset.map(u => u.user_id))];
-                         
                          usersUnicos.forEach(uid => {
                              const idUnico = `${dado.symbol}_${dado.paymentDate}`;
                              upserts.push({
@@ -89,15 +83,12 @@ export default async function handler(req, res) {
                         await supabase.from('proventosconhecidos')
                             .upsert(batch, { onConflict: 'user_id, id', ignoreDuplicates: true });
                     }
-                    console.log(`Base de dados sincronizada: ${upserts.length} registros processados.`);
+                    console.log(`Base de dados sincronizada: ${upserts.length} registros.`);
                 }
             }
         }
 
-        // =================================================================
-        // ETAPA 2: ENVIO DE NOTIFICAÇÕES (PUSH)
-        // =================================================================
-        
+        // --- ETAPA 2: NOTIFICAÇÃO ---
         const agora = new Date();
         agora.setHours(agora.getHours() - 3); 
         const hojeString = agora.toISOString().split('T')[0];
@@ -111,7 +102,7 @@ export default async function handler(req, res) {
         if (error) throw error;
 
         if (!proventos || proventos.length === 0) {
-            return res.status(200).json({ status: 'Updated', message: 'Nenhum evento financeiro relevante para hoje.' });
+            return res.status(200).json({ status: 'Updated', message: 'Sem notificações para hoje.' });
         }
 
         const userEvents = {};
@@ -133,8 +124,6 @@ export default async function handler(req, res) {
 
             const pagamentos = eventos.filter(e => e.paymentdate === hojeString);
             const dataComs = eventos.filter(e => e.datacom === hojeString);
-            
-            // Novos anúncios (criados hoje, sem conflito de data de pagamento)
             const novosAnuncios = eventos.filter(e => 
                 e.created_at >= inicioDoDia && 
                 e.datacom !== hojeString && 
@@ -144,34 +133,20 @@ export default async function handler(req, res) {
             let title = '';
             let body = '';
 
-            // --- LÓGICA DE TEXTO (Profissional / Sem Emojis) ---
-            
+            // Lógica Profissional Sem Emojis
             if (pagamentos.length > 0) {
                 const symbols = pagamentos.map(p => p.symbol).slice(0, 3).join(', ');
                 const count = pagamentos.length;
-                
                 title = 'Proventos Recebidos';
-                if (count === 1) {
-                    body = `Crédito confirmado: O pagamento de ${symbols} foi realizado.`;
-                } else {
-                    body = `Créditos confirmados hoje para: ${symbols}${count > 3 ? ' e outros' : ''}.`;
-                }
-            
+                body = count === 1 ? `Crédito confirmado: O pagamento de ${symbols} foi realizado.` : `Créditos confirmados hoje para: ${symbols}${count > 3 ? ' e outros' : ''}.`;
             } else if (dataComs.length > 0) {
                 const symbols = dataComs.map(p => p.symbol).slice(0, 3).join(', ');
                 const count = dataComs.length;
-                
                 title = 'Agenda de Dividendos';
-                if (count === 1) {
-                    body = `Data Com: Hoje é o limite para garantir proventos de ${symbols}.`;
-                } else {
-                    body = `Data Com hoje para os ativos: ${symbols}${count > 3 ? ' e outros' : ''}.`;
-                }
-
+                body = count === 1 ? `Data Com: Hoje é o limite para garantir proventos de ${symbols}.` : `Data Com hoje para os ativos: ${symbols}${count > 3 ? ' e outros' : ''}.`;
             } else if (novosAnuncios.length > 0) {
                 const symbols = novosAnuncios.map(p => p.symbol).slice(0, 3).join(', ');
                 const count = novosAnuncios.length;
-                
                 title = 'Novo Comunicado';
                 if (count === 1) {
                     const p = novosAnuncios[0];
@@ -198,9 +173,8 @@ export default async function handler(req, res) {
         }
 
         return res.status(200).json({ status: 'Success', updated: true, notifications_sent: totalSent });
-
     } catch (error) {
         console.error('CRON ERROR:', error);
         return res.status(500).json({ error: error.message });
     }
-}
+};

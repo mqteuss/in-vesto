@@ -294,3 +294,16 @@ export async function updateUserPassword(newPassword) {
     if (error) throw new Error(handleSupabaseError(error, "updateUserPassword"));
     return "success";
 }
+// Adicione isso ao final do arquivo supabase.js
+export async function salvarPushSubscription(subscription) {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+    
+    // Salva a inscrição no banco ou atualiza se já existir
+    const { error } = await supabaseClient.from('push_subscriptions').upsert({ 
+       user_id: user.id, 
+       subscription: subscription 
+    }, { onConflict: 'user_id, subscription' });
+
+    if (error) console.error("Erro ao salvar push:", error);
+}

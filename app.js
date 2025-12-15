@@ -3857,6 +3857,94 @@ if (clearCacheBtn) {
             showToast("Falha ao carregar dados da nuvem.");
         }
     }
+	
+	// --- LÓGICA DE NOTIFICAÇÕES PUSH ---
+    
+    // SUA CHAVE PÚBLICA (Preenchida com a que você enviou)
+    const VAPID_PUBLIC_KEY = 'BHsn3oIOqeyV80WVlU7yw7528e9EPrJ3KI7mgaX_aMcAtrE0qrfRFuYbT1RL46X34tkxXB_MLCStRrmIYVh6tVY'; 
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    const toggleNotifBtn = document.getElementById('toggle-notif-btn');
+    const notifToggleKnob = document.getElementById('notif-toggle-knob');
+    const notifStatusIcon = document.getElementById('notif-status-icon');
+
+    function atualizarUINotificacao(ativado) {
+        if (!toggleNotifBtn || !notifToggleKnob) return;
+        if (ativado) {
+            toggleNotifBtn.classList.remove('bg-gray-700');
+            toggleNotifBtn.classList.add('bg-purple-600');
+            notifToggleKnob.classList.remove('translate-x-1');
+            notifToggleKnob.classList.add('translate-x-6');
+            if(notifStatusIcon) notifStatusIcon.classList.replace('text-gray-500', 'text-purple-400');
+        } else {
+            toggleNotifBtn.classList.remove('bg-purple-600');
+            toggleNotifBtn.classList.add('bg-gray-700');
+            notifToggleKnob.classList.remove('translate-x-6');
+            notifToggleKnob.classList.add('translate-x-1');
+            if(notifStatusIcon) notifStatusIcon.classList.replace('text-purple-400', 'text-gray-500');
+        }
+    }
+
+    async function verificarStatusPush() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            if(toggleNotifBtn) toggleNotifBtn.disabled = true; // Navegador não suporta
+            return;
+        }
+        
+        // Se já tem permissão e SW ativo, marca o botão como ligado
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        
+        if (sub && Notification.permission === 'granted') {
+            atualizarUINotificacao(true);
+            // Garante que o servidor tenha a chave atualizada
+            await supabaseDB.salvarPushSubscription(sub);
+        } else {
+            atualizarUINotificacao(false);
+        }
+    }
+
+    async function assinarNotificacoesPush() {
+        if (!currentUserId) return; 
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            
+            // Pede permissão
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                showToast('Permissão negada. Ative nas configurações do navegador.');
+                atualizarUINotificacao(false);
+                return;
+            }
+
+            // Assina
+            const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+
+            // Salva no banco
+            await supabaseDB.salvarPushSubscription(subscription);
+            showToast('Notificações ativadas!', 'success');
+            atualizarUINotificacao(true);
+
+        } catch (e) {
+            console.error('Erro ao assinar push:', e);
+            showToast('Erro ao ativar notificações.');
+            atualizarUINotificacao(false);
+        }
+    }
     
 async function init() {
         try {
@@ -4049,6 +4137,7 @@ async function init() {
 
         // LÓGICA DE SESSÃO E ROTEAMENTO
         if (session) {
+			await verificarStatusPush();
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
@@ -4292,10 +4381,8 @@ let swipeStartX = 0;
 	
 if (btnNotifications) {
         btnNotifications.addEventListener('click', () => {
-            // Abre ou fecha a gaveta
             notificationsDrawer.classList.toggle('open');
             
-            // Se abriu, marca como lido (remove bolinha e animação)
             if (notificationsDrawer.classList.contains('open')) {
                 notificationBadge.classList.add('hidden');
                 btnNotifications.classList.remove('bell-ringing');
@@ -4304,13 +4391,23 @@ if (btnNotifications) {
     }
 
     // Fechar a gaveta de notificações se clicar fora dela
-    document.addEventListener('click', (e) => {
+document.addEventListener('click', (e) => {
         if (notificationsDrawer && notificationsDrawer.classList.contains('open') && 
             !notificationsDrawer.contains(e.target) && 
             !btnNotifications.contains(e.target)) {
             notificationsDrawer.classList.remove('open');
         }
     });
+	
+if (toggleNotifBtn) {
+        toggleNotifBtn.addEventListener('click', () => {
+            if (Notification.permission === 'granted' && toggleNotifBtn.classList.contains('bg-purple-600')) {
+                showToast("Notificações já estão ativas.");
+            } else {
+                assinarNotificacoesPush();
+            }
+        });
+    }
 
     await init();
 });

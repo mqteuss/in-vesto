@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesto-cache-v10'; // Versão final/produção
+const CACHE_NAME = 'vesto-cache-v11'; // Atualizei a versão para garantir que o navegador pegue o novo arquivo
 
 // Lista unificada de todos os arquivos que o App precisa para funcionar offline
 const APP_FILES = [
@@ -47,7 +47,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// 2. ATIVAÇÃO: Limpa caches antigos (v8, v9, etc) para economizar espaço
+// 2. ATIVAÇÃO: Limpa caches antigos para economizar espaço
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => Promise.all(
@@ -63,8 +63,7 @@ self.addEventListener('fetch', event => {
   // A. Ignora requests que não sejam HTTP/HTTPS (ex: chrome-extension://)
   if (!url.protocol.startsWith('http')) return;
 
-  // B. Ignora API e Supabase (Sempre Network Only - dados frescos)
-  // Isso garante que o saldo/preço nunca venha do cache do SW
+  // B. Ignora API, Supabase e rotas de Cron (Sempre Network Only - dados frescos)
   if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
     event.respondWith(fetch(event.request));
     return;
@@ -105,4 +104,52 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.action === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+// --- NOTIFICAÇÕES PUSH (NOVO) ---
+
+// 1. Receber a notificação do servidor (Vercel Cron)
+self.addEventListener('push', function(event) {
+  if (event.data) {
+    const data = event.data.json();
+    
+    const options = {
+      body: data.body,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-192x192.png', // Ícone monocromático para Android
+      vibrate: [100, 50, 100], // Vibra: Vrumm-pa-Vrumm
+      data: {
+        dateOfArrival: Date.now(),
+        url: data.url || '/?tab=tab-carteira' // URL para abrir ao clicar
+      },
+      actions: [
+        { action: 'explore', title: 'Ver Carteira' }
+      ]
+    };
+    
+    event.waitUntil(
+      self.registration.showNotification(data.title, options)
+    );
+  }
+});
+
+// 2. Clicar na notificação
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close(); // Fecha a notificação da barra
+  
+  event.waitUntil(
+    clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
+      // Se o app já estiver aberto em alguma aba, foca nela
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Se não estiver aberto, abre uma nova janela/aba
+      if (clients.openWindow) {
+        return clients.openWindow(event.notification.data.url);
+      }
+    })
+  );
 });

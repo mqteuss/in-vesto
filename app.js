@@ -2381,108 +2381,184 @@ if (card) {
         return { labels, data };
     }
     
-function verificarNotificacoesFinanceiras() {
-    // Limpa a lista atual
-    notificationsList.innerHTML = '';
-    let temNotificacao = false;
-    let totalNotificacoes = 0;
+// --- FUNÇÃO AUXILIAR: GERENCIAR NOTIFICAÇÕES EXCLUÍDAS ---
+function isNotificationDismissed(id) {
+    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
+    return dismissed.includes(id);
+}
 
-    // Data de hoje (YYYY-MM-DD) para comparar com strings da API
+function dismissNotification(id, element) {
+    // 1. Salva no navegador para não voltar mais
+    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
+    if (!dismissed.includes(id)) {
+        dismissed.push(id);
+        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify(dismissed));
+    }
+    
+    // 2. Animação visual de saída
+    element.style.transition = 'opacity 0.3s, transform 0.3s';
+    element.style.opacity = '0';
+    element.style.transform = 'translateX(20px)';
+    
+    setTimeout(() => {
+        element.remove();
+        // Se a lista ficou vazia, esconde o badge
+        const list = document.getElementById('notifications-list');
+        if (!list || list.children.length === 0) {
+            document.getElementById('notification-badge').classList.add('hidden');
+            document.getElementById('notifications-empty').classList.remove('hidden');
+        }
+    }, 300);
+}
+
+// --- FUNÇÃO PRINCIPAL CORRIGIDA ---
+function verificarNotificacoesFinanceiras() {
+    const list = document.getElementById('notifications-list');
+    const badge = document.getElementById('notification-badge');
+    const emptyState = document.getElementById('notifications-empty');
+    const btnNotif = document.getElementById('btn-notifications');
+
+    // 1. LIMPEZA E ESTILO (Adiciona Scrollbar)
+    list.innerHTML = '';
+    list.className = 'space-y-2 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar'; 
+    
+    let temNotificacao = false;
+
+    // Datas para comparação
     const hoje = new Date();
-    // Ajuste de fuso horário para garantir dia correto local
     const offset = hoje.getTimezoneOffset() * 60000;
     const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
-    
-    // --- 1. Verificar Pagamentos (PAY DAY - Verde) ---
-    const pagamentosHoje = proventosConhecidos.filter(p => p.paymentDate === hojeLocal);
+    const hojeDateObj = new Date(hojeLocal + 'T00:00:00'); 
+
+    // Helper para criar o botão "X"
+    const createCloseBtn = (id, container) => {
+        const btn = document.createElement('button');
+        btn.className = 'absolute top-2 right-2 p-1 text-gray-600 hover:text-gray-300 transition-colors z-10';
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            dismissNotification(id, container);
+        };
+        return btn;
+    };
+
+    // Helper para normalizar dados (Resolve problema do F5 vs Reload)
+    const getProps = (p) => ({
+        paymentDate: p.paymentDate || p.paymentdate,
+        dataCom: p.dataCom || p.datacom,
+        createdAt: p.created_at || new Date().toISOString() // Assume hoje se não tiver data (Reload)
+    });
+
+    // --- 1. PAGAMENTOS (Verde) ---
+    const pagamentosHoje = proventosConhecidos.filter(p => {
+        const props = getProps(p);
+        return props.paymentDate === hojeLocal;
+    });
 
     pagamentosHoje.forEach(p => {
-        // Pega a quantidade que o usuário tinha na Data Com
-        const qtd = getQuantidadeNaData(p.symbol, p.dataCom || p.paymentDate);
+        const notifId = `pay_${p.id || p.symbol + Date.now()}`;
+        if (isNotificationDismissed(notifId)) return;
+
+        const props = getProps(p);
+        const qtd = getQuantidadeNaData(p.symbol, props.dataCom || props.paymentDate);
         
         if (qtd > 0) {
             temNotificacao = true;
-            totalNotificacoes++;
             const totalRecebido = p.value * qtd;
 
             const div = document.createElement('div');
-            // Card com borda verde suave e fundo escuro
-            div.className = 'flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-green-900/30 mb-2 shadow-sm';
+            div.className = 'relative flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-green-900/30 shadow-sm group';
             div.innerHTML = `
                 <div class="p-2 bg-green-900/20 rounded-full text-green-500 flex-shrink-0 border border-green-500/20">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
-                <div>
+                <div class="pr-6">
                     <p class="text-sm font-bold text-gray-200">Proventos Recebidos</p>
                     <p class="text-xs text-gray-400">Crédito confirmado: <span class="text-green-400 font-bold">${formatBRL(totalRecebido)}</span> de ${p.symbol}.</p>
                 </div>
             `;
-            notificationsList.appendChild(div);
+            div.appendChild(createCloseBtn(notifId, div));
+            list.appendChild(div);
         }
     });
 
-    // --- 2. Verificar Data Com (Agenda - Amarelo) ---
-    const dataComHoje = proventosConhecidos.filter(p => p.dataCom === hojeLocal);
+    // --- 2. DATA COM (Amarelo) ---
+    const dataComHoje = proventosConhecidos.filter(p => {
+        const props = getProps(p);
+        return props.dataCom === hojeLocal;
+    });
     
     dataComHoje.forEach(p => {
+        const notifId = `com_${p.id || p.symbol + 'com'}`;
+        if (isNotificationDismissed(notifId)) return;
+
         temNotificacao = true;
-        totalNotificacoes++;
         
         const div = document.createElement('div');
-        // Card com borda amarela suave
-        div.className = 'flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-yellow-900/30 mb-2 shadow-sm';
+        div.className = 'relative flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-yellow-900/30 shadow-sm group';
         div.innerHTML = `
             <div class="p-2 bg-yellow-900/20 rounded-full text-yellow-500 flex-shrink-0 border border-yellow-500/20">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             </div>
-            <div>
+            <div class="pr-6">
                 <p class="text-sm font-bold text-gray-200">Agenda de Dividendos</p>
                 <p class="text-xs text-gray-400">Data Com: Limite hoje para garantir <span class="text-yellow-400 font-bold">${formatBRL(p.value)}</span> de ${p.symbol}.</p>
             </div>
         `;
-        notificationsList.appendChild(div);
+        div.appendChild(createCloseBtn(notifId, div));
+        list.appendChild(div);
     });
 
-    // --- 3. Novos Anúncios (Info - Azul) ---
-    // Filtra proventos descobertos HOJE (created_at), mas que NÃO são pagamento nem datacom hoje (evita duplicidade)
+    // --- 3. NOVOS ANÚNCIOS (Azul) - CORREÇÃO CRÍTICA ---
     const novosAnuncios = proventosConhecidos.filter(p => {
-        if (!p.created_at) return false;
-        // Pega apenas a data YYYY-MM-DD da criação
-        const dataCriacao = p.created_at.split('T')[0]; 
+        const props = getProps(p);
         
-        return dataCriacao === hojeLocal && 
-               p.paymentDate !== hojeLocal && 
-               p.dataCom !== hojeLocal;
+        // 1. Data de Criação é Hoje?
+        const dataCriacao = props.createdAt.split('T')[0];
+        const isCreatedToday = dataCriacao === hojeLocal;
+
+        // 2. Evita duplicidade (se já é dia de pagamento/com, não mostra aviso de anúncio)
+        const isNotDuplicate = props.paymentDate !== hojeLocal && props.dataCom !== hojeLocal;
+
+        // 3. É FUTURO? (Corrige o problema de ver coisas de 2023)
+        // Se a data de pagamento for inválida ou antiga, esconde.
+        if (!props.paymentDate) return false;
+        const dataPagamentoObj = new Date(props.paymentDate + 'T00:00:00');
+        const isFuturo = dataPagamentoObj >= hojeDateObj;
+
+        return isCreatedToday && isNotDuplicate && isFuturo;
     });
 
     novosAnuncios.forEach(p => {
+        const notifId = `news_${p.id}`;
+        if (isNotificationDismissed(notifId)) return;
+
         temNotificacao = true;
-        totalNotificacoes++;
 
         const div = document.createElement('div');
-        // Card com borda azul suave para informação
-        div.className = 'flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-blue-900/30 mb-2 shadow-sm';
+        div.className = 'relative flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-blue-900/30 shadow-sm group';
         div.innerHTML = `
             <div class="p-2 bg-blue-900/20 rounded-full text-blue-500 flex-shrink-0 border border-blue-500/20">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
             </div>
-            <div>
+            <div class="pr-6">
                 <p class="text-sm font-bold text-gray-200">Novo Comunicado</p>
                 <p class="text-xs text-gray-400">${p.symbol} informou distribuição de <span class="text-blue-400 font-bold">${formatBRL(p.value)}</span>.</p>
             </div>
         `;
-        notificationsList.appendChild(div);
+        div.appendChild(createCloseBtn(notifId, div));
+        list.appendChild(div);
     });
 
-    // Atualiza a UI da bolinha e do estado vazio
+    // Atualiza estado vazio
     if (temNotificacao) {
-        notificationBadge.classList.remove('hidden');
-        btnNotifications.classList.add('bell-ringing');
-        notificationsEmpty.classList.add('hidden');
+        badge.classList.remove('hidden');
+        btnNotif.classList.add('bell-ringing');
+        emptyState.classList.add('hidden');
     } else {
-        notificationBadge.classList.add('hidden');
-        btnNotifications.classList.remove('bell-ringing');
-        notificationsEmpty.classList.remove('hidden');
+        badge.classList.add('hidden');
+        btnNotif.classList.remove('bell-ringing');
+        emptyState.classList.remove('hidden');
     }
 }
 	

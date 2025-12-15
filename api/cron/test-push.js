@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 
-// Configura Web Push com as mesmas chaves do oficial
+// Configuração idêntica ao notificar.js
 webpush.setVapidDetails(
   'mailto:mh.umateus@gmail.com',
   process.env.VAPID_PUBLIC_KEY,
@@ -15,7 +15,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
     try {
-        // 1. Busca TODAS as inscrições no banco (sem filtrar por usuário ou data)
+        // 1. Busca todas as inscrições no banco
         const { data: subscriptions, error } = await supabase
             .from('push_subscriptions')
             .select('*');
@@ -23,39 +23,35 @@ export default async function handler(req, res) {
         if (error) throw error;
         
         if (!subscriptions || subscriptions.length === 0) {
-            return res.status(200).json({ message: 'Nenhuma inscrição encontrada no banco. Ative o botão no app primeiro.' });
+            return res.status(200).json({ message: 'Ninguém inscrito. Ative as notificações no app primeiro.' });
         }
 
-        // 2. Define a mensagem de teste
+        // 2. Mensagem de Teste (Força o envio)
         const payload = JSON.stringify({ 
-            title: '🧪 Teste Vesto', 
-            body: 'Se você está lendo isso, o sistema funcionou perfeitamente!', 
+            title: '🧪 Teste de Notificação', 
+            body: 'Seu sistema de Push está funcionando perfeitamente!', 
             url: '/?tab=tab-config' 
         });
 
         let sucesso = 0;
         let falhas = 0;
 
-        // 3. Dispara para todos os dispositivos encontrados
+        // 3. Envia para todo mundo
         const promises = subscriptions.map(sub => 
             webpush.sendNotification(sub.subscription, payload)
-                .then(() => {
-                    sucesso++;
-                })
+                .then(() => { sucesso++; })
                 .catch(err => {
-                    console.error('Erro no envio:', err);
+                    console.error('Falha:', err);
                     falhas++;
-                    // Se der erro 410 (Gone), poderíamos deletar do banco aqui
                 })
         );
         
         await Promise.all(promises);
 
         return res.status(200).json({ 
-            status: 'Concluído', 
-            total_encontrado: subscriptions.length,
-            enviados_sucesso: sucesso,
-            falhas: falhas
+            status: 'Teste Finalizado', 
+            enviados: sucesso, 
+            erros: falhas 
         });
 
     } catch (error) {

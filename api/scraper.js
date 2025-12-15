@@ -1,16 +1,33 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const https = require('https');
+
+// OTIMIZAÇÃO 1: Agente HTTPS com Keep-Alive para reutilizar conexões TCP
+// Isso acelera muito requisições em lote (portfolio).
+const httpsAgent = new https.Agent({ 
+    keepAlive: true,
+    maxSockets: 100,
+    maxFreeSockets: 10,
+    timeout: 10000
+});
 
 const client = axios.create({
+    httpsAgent,
     headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br' // Garante compressão
     },
     timeout: 9000
 });
 
+// OTIMIZAÇÃO 2: Pré-compilação de Regex (evita recriar a cada chamada)
+const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
+const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
+
 function parseDate(dateStr) {
     if (!dateStr || dateStr === '-') return null;
+    // Otimização simples de string sem regex complexo
     const parts = dateStr.trim().split('/');
     if (parts.length !== 3) return null;
     return `${parts[2]}-${parts[1]}-${parts[0]}`;
@@ -19,7 +36,8 @@ function parseDate(dateStr) {
 function parseValue(valueStr) {
     if (!valueStr) return 0;
     try {
-        return parseFloat(valueStr.replace(/[^0-9,-]+/g, "").replace(',', '.')) || 0;
+        // Usa a regex pré-compilada
+        return parseFloat(valueStr.replace(REGEX_CLEAN_NUMBER, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
 
@@ -27,6 +45,7 @@ function parseExtendedValue(str) {
     if (!str) return 0;
     const val = parseValue(str);
     const lower = str.toLowerCase();
+    // Multiplicadores
     if (lower.includes('bilh')) return val * 1000000000;
     if (lower.includes('milh')) return val * 1000000;
     if (lower.includes('mil')) return val * 1000;
@@ -39,7 +58,7 @@ function formatCurrency(value) {
 
 function normalize(str) {
     if (!str) return '';
-    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
 function chunkArray(array, size) {
@@ -50,20 +69,25 @@ function chunkArray(array, size) {
     return results;
 }
 
+// Helper para evitar duplicar a lógica de try/catch de URL
+async function fetchHtmlWithRetry(ticker) {
+    const tickerLower = ticker.toLowerCase();
+    try {
+        // Tenta FII
+        return await client.get(`https://investidor10.com.br/fiis/${tickerLower}/`);
+    } catch (e) {
+        if (e.response && e.response.status === 404) {
+            // Fallback para Ações (mantendo a lógica original)
+            return await client.get(`https://investidor10.com.br/acoes/${tickerLower}/`);
+        }
+        throw e;
+    }
+}
+
 // --- SCRAPER DE FUNDAMENTOS ---
 async function scrapeFundamentos(ticker) {
     try {
-        let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
-        let response;
-        try {
-            response = await client.get(url);
-        } catch (e) {
-            if (e.response && e.response.status === 404) {
-                url = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
-                response = await client.get(url);
-            } else { throw e; }
-        }
-
+        const response = await fetchHtmlWithRetry(ticker);
         const html = response.data;
         const $ = cheerio.load(html);
 
@@ -83,6 +107,7 @@ async function scrapeFundamentos(ticker) {
             const valor = valorRaw.trim();
             if (!valor) return;
 
+            // Mantida a lógica exata de mapeamento
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
@@ -116,6 +141,7 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
+        // Extração por Cards (Prioritário)
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
         const pvpEl = $('._card.vp ._card-body span').first();
@@ -127,6 +153,7 @@ async function scrapeFundamentos(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
+        // Varredura Geral
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         $('table tbody tr').each((i, row) => {
@@ -134,6 +161,7 @@ async function scrapeFundamentos(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
+        // Cálculo de Mercado (Fallback)
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -158,17 +186,7 @@ async function scrapeFundamentos(ticker) {
 // --- SCRAPER DE HISTÓRICO ---
 async function scrapeAsset(ticker) {
     try {
-        let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
-        let response;
-        try {
-            response = await client.get(url);
-        } catch (e) {
-            if (e.response && e.response.status === 404) {
-                url = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
-                response = await client.get(url);
-            } else { throw e; }
-        }
-
+        const response = await fetchHtmlWithRetry(ticker);
         const html = response.data;
         const $ = cheerio.load(html);
         const dividendos = [];
@@ -203,10 +221,20 @@ async function scrapeAsset(ticker) {
 }
 
 module.exports = async function handler(req, res) {
+    // CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    // OTIMIZAÇÃO 3: Cache Headers (Importantíssimo)
+    // Cacheia a resposta por 1 hora (3600s) na CDN da Vercel.
+    // O 'stale-while-revalidate' serve o cache antigo enquanto atualiza em segundo plano.
+    if (req.method === 'GET' || (req.method === 'POST' && req.body.mode !== 'proventos_carteira')) {
+       // Evitamos cache em 'proventos_carteira' se ele for muito dinâmico ou grande, 
+       // mas para fundamentos e histórico é seguro.
+       res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+    }
 
     if (req.method === 'OPTIONS') { res.status(200).end(); return; }
     if (req.method !== 'POST') { return res.status(405).json({ error: "Use POST" }); }
@@ -225,6 +253,8 @@ module.exports = async function handler(req, res) {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
+            
+            // Loop sequencial de batches para evitar block IP
             for (const batch of batches) {
                 const promises = batch.map(async (ticker) => {
                     const history = await scrapeAsset(ticker);
@@ -234,7 +264,9 @@ module.exports = async function handler(req, res) {
                 });
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-                await new Promise(r => setTimeout(r, 500)); 
+                
+                // Pequeno delay mantido para segurança
+                if (batches.length > 1) await new Promise(r => setTimeout(r, 500)); 
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
@@ -262,7 +294,7 @@ module.exports = async function handler(req, res) {
                     });
                 });
                 await Promise.all(promises);
-                await new Promise(r => setTimeout(r, 500));
+                if (batches.length > 1) await new Promise(r => setTimeout(r, 500));
             }
             return res.status(200).json({ json: all });
         }

@@ -2389,12 +2389,11 @@ function verificarNotificacoesFinanceiras() {
 
     // Data de hoje (YYYY-MM-DD) para comparar com strings da API
     const hoje = new Date();
-    // Ajuste de fuso horário simples para garantir dia correto
+    // Ajuste de fuso horário para garantir dia correto local
     const offset = hoje.getTimezoneOffset() * 60000;
     const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
     
-    // 1. Verificar Pagamentos (PAY DAY)
-    // Filtra proventos conhecidos onde paymentDate == hoje
+    // --- 1. Verificar Pagamentos (PAY DAY - Verde) ---
     const pagamentosHoje = proventosConhecidos.filter(p => p.paymentDate === hojeLocal);
 
     pagamentosHoje.forEach(p => {
@@ -2406,23 +2405,23 @@ function verificarNotificacoesFinanceiras() {
             totalNotificacoes++;
             const totalRecebido = p.value * qtd;
 
-            // Cria o HTML do aviso
             const div = document.createElement('div');
-            div.className = 'notif-card-payment animate-shimmer-parent';
+            // Card com borda verde suave e fundo escuro
+            div.className = 'flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-green-900/30 mb-2 shadow-sm';
             div.innerHTML = `
-                <div class="p-2 bg-green-900/20 rounded-full text-green-500">
+                <div class="p-2 bg-green-900/20 rounded-full text-green-500 flex-shrink-0 border border-green-500/20">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
                 <div>
-                    <p class="text-sm font-bold text-gray-200">Pagamento Hoje!</p>
-                    <p class="text-xs text-gray-400">Você recebeu <span class="text-green-400 font-bold">${formatBRL(totalRecebido)}</span> de ${p.symbol}.</p>
+                    <p class="text-sm font-bold text-gray-200">Proventos Recebidos</p>
+                    <p class="text-xs text-gray-400">Crédito confirmado: <span class="text-green-400 font-bold">${formatBRL(totalRecebido)}</span> de ${p.symbol}.</p>
                 </div>
             `;
             notificationsList.appendChild(div);
         }
     });
 
-    // 2. Verificar Data Com (Último dia)
+    // --- 2. Verificar Data Com (Agenda - Amarelo) ---
     const dataComHoje = proventosConhecidos.filter(p => p.dataCom === hojeLocal);
     
     dataComHoje.forEach(p => {
@@ -2430,14 +2429,46 @@ function verificarNotificacoesFinanceiras() {
         totalNotificacoes++;
         
         const div = document.createElement('div');
-        div.className = 'notif-card-datacom';
+        // Card com borda amarela suave
+        div.className = 'flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-yellow-900/30 mb-2 shadow-sm';
         div.innerHTML = `
-            <div class="p-2 bg-yellow-900/20 rounded-full text-yellow-500">
+            <div class="p-2 bg-yellow-900/20 rounded-full text-yellow-500 flex-shrink-0 border border-yellow-500/20">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             </div>
             <div>
-                <p class="text-sm font-bold text-gray-200">Data Com Hoje</p>
-                <p class="text-xs text-gray-400">Garanta ${p.symbol} hoje para receber <span class="text-yellow-400 font-bold">${formatBRL(p.value)}</span>.</p>
+                <p class="text-sm font-bold text-gray-200">Agenda de Dividendos</p>
+                <p class="text-xs text-gray-400">Data Com: Limite hoje para garantir <span class="text-yellow-400 font-bold">${formatBRL(p.value)}</span> de ${p.symbol}.</p>
+            </div>
+        `;
+        notificationsList.appendChild(div);
+    });
+
+    // --- 3. Novos Anúncios (Info - Azul) ---
+    // Filtra proventos descobertos HOJE (created_at), mas que NÃO são pagamento nem datacom hoje (evita duplicidade)
+    const novosAnuncios = proventosConhecidos.filter(p => {
+        if (!p.created_at) return false;
+        // Pega apenas a data YYYY-MM-DD da criação
+        const dataCriacao = p.created_at.split('T')[0]; 
+        
+        return dataCriacao === hojeLocal && 
+               p.paymentDate !== hojeLocal && 
+               p.dataCom !== hojeLocal;
+    });
+
+    novosAnuncios.forEach(p => {
+        temNotificacao = true;
+        totalNotificacoes++;
+
+        const div = document.createElement('div');
+        // Card com borda azul suave para informação
+        div.className = 'flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-blue-900/30 mb-2 shadow-sm';
+        div.innerHTML = `
+            <div class="p-2 bg-blue-900/20 rounded-full text-blue-500 flex-shrink-0 border border-blue-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+            </div>
+            <div>
+                <p class="text-sm font-bold text-gray-200">Novo Comunicado</p>
+                <p class="text-xs text-gray-400">${p.symbol} informou distribuição de <span class="text-blue-400 font-bold">${formatBRL(p.value)}</span>.</p>
             </div>
         `;
         notificationsList.appendChild(div);
@@ -2446,14 +2477,14 @@ function verificarNotificacoesFinanceiras() {
     // Atualiza a UI da bolinha e do estado vazio
     if (temNotificacao) {
         notificationBadge.classList.remove('hidden');
-        btnNotifications.classList.add('bell-ringing'); // Faz o sino balançar
+        btnNotifications.classList.add('bell-ringing');
         notificationsEmpty.classList.add('hidden');
     } else {
         notificationBadge.classList.add('hidden');
         btnNotifications.classList.remove('bell-ringing');
         notificationsEmpty.classList.remove('hidden');
     }
-}	
+}
 	
 async function atualizarTodosDados(force = false) { 
 

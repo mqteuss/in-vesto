@@ -1,5 +1,5 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+const axios = require('axios');
+const cheerio = require('cheerio');
 
 const client = axios.create({
     headers: {
@@ -55,7 +55,6 @@ async function scrapeFundamentos(ticker) {
     try {
         let url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         let response;
-
         try {
             response = await client.get(url);
         } catch (e) {
@@ -117,7 +116,6 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
-        // Extração de Cards Especiais
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
         const pvpEl = $('._card.vp ._card-body span').first();
@@ -129,7 +127,6 @@ async function scrapeFundamentos(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // Extração Geral
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         $('table tbody tr').each((i, row) => {
@@ -137,7 +134,6 @@ async function scrapeFundamentos(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // Cálculo Valor de Mercado Fallback
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -155,7 +151,6 @@ async function scrapeFundamentos(ticker) {
 
         return dados;
     } catch (error) {
-        console.warn(`[Scraper] Falha: ${error.message}`);
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
@@ -207,8 +202,7 @@ async function scrapeAsset(ticker) {
     } catch (error) { return []; }
 }
 
-// --- API HANDLER (Default Export) ---
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
@@ -283,7 +277,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Modo desconhecido" });
 
     } catch (error) {
-        console.error("SCRAPER ERROR:", error);
         return res.status(500).json({ error: error.message });
     }
 };

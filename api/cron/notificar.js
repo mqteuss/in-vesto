@@ -93,6 +93,9 @@ module.exports = async function handler(req, res) {
         agora.setHours(agora.getHours() - 3); 
         const hojeString = agora.toISOString().split('T')[0];
         const inicioDoDia = `${hojeString}T00:00:00`;
+        
+        // Objeto data zerado para comparação lógica correta
+        const hojeDateObj = new Date(hojeString + 'T00:00:00');
 
         const { data: proventos, error } = await supabase
             .from('proventosconhecidos')
@@ -122,32 +125,44 @@ module.exports = async function handler(req, res) {
 
             if (!subscriptions || subscriptions.length === 0) continue;
 
+            // Filtros de Eventos
             const pagamentos = eventos.filter(e => e.paymentdate === hojeString);
             const dataComs = eventos.filter(e => e.datacom === hojeString);
-            const novosAnuncios = eventos.filter(e => 
-                e.created_at >= inicioDoDia && 
-                e.datacom !== hojeString && 
-                e.paymentdate !== hojeString
-            );
+            
+            // FILTRO DE NOVOS ANÚNCIOS (CORRIGIDO)
+            const novosAnuncios = eventos.filter(e => {
+                // 1. Foi criado hoje?
+                const isCreatedToday = e.created_at >= inicioDoDia;
+                // 2. Não é redundante? (já avisa em outros grupos)
+                const isNotDuplicate = e.datacom !== hojeString && e.paymentdate !== hojeString;
+                // 3. É FUTURO? (Evita spam de histórico antigo)
+                const dataPagamentoObj = new Date(e.paymentdate + 'T00:00:00');
+                const isFuturo = dataPagamentoObj >= hojeDateObj;
+
+                return isCreatedToday && isNotDuplicate && isFuturo;
+            });
             
             let title = '';
             let body = '';
 
-            // Lógica Profissional Sem Emojis
+            // Lógica de Prioridade (Dinheiro > Agenda > Notícia)
             if (pagamentos.length > 0) {
                 const symbols = pagamentos.map(p => p.symbol).slice(0, 3).join(', ');
                 const count = pagamentos.length;
                 title = 'Proventos Recebidos';
                 body = count === 1 ? `Crédito confirmado: O pagamento de ${symbols} foi realizado.` : `Créditos confirmados hoje para: ${symbols}${count > 3 ? ' e outros' : ''}.`;
+            
             } else if (dataComs.length > 0) {
                 const symbols = dataComs.map(p => p.symbol).slice(0, 3).join(', ');
                 const count = dataComs.length;
                 title = 'Agenda de Dividendos';
                 body = count === 1 ? `Data Com: Hoje é o limite para garantir proventos de ${symbols}.` : `Data Com hoje para os ativos: ${symbols}${count > 3 ? ' e outros' : ''}.`;
+            
             } else if (novosAnuncios.length > 0) {
                 const symbols = novosAnuncios.map(p => p.symbol).slice(0, 3).join(', ');
                 const count = novosAnuncios.length;
                 title = 'Novo Comunicado';
+                
                 if (count === 1) {
                     const p = novosAnuncios[0];
                     const valorFmt = p.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

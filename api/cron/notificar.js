@@ -1,6 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
-// IMPORTANTE: Sobe um nível (..) para achar o scraper na pasta pai 'api'
 const scraperHandler = require('../scraper.js');
 
 webpush.setVapidDetails(
@@ -14,71 +13,79 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Formata dinheiro (R$ 0,00)
+const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 async function atualizarProventosPeloScraper(fiiList) {
-    const req = {
-        method: 'POST',
-        body: { mode: 'proventos_carteira', payload: { fiiList } }
-    };
-    
+    const req = { method: 'POST', body: { mode: 'proventos_carteira', payload: { fiiList } } };
     let resultado = [];
     const res = {
         setHeader: () => {},
         status: () => ({ json: (data) => { resultado = data.json; } }),
         json: (data) => { resultado = data.json; }
     };
-
     try {
         await scraperHandler(req, res);
         return resultado || [];
     } catch (e) {
-        console.error("Erro interno no Scraper:", e);
+        console.error("Scraper Error:", e);
         return [];
     }
 }
 
 module.exports = async function handler(req, res) {
     try {
-        console.log("Iniciando CRON...");
+        console.log("🚀 Iniciando CRON Inteligente...");
+        const start = Date.now();
         
-        // 1. ATUALIZA DADOS
+        // --- 1. ATUALIZAÇÃO INTELIGENTE (Mantida) ---
         const { data: ativos } = await supabase.from('transacoes').select('symbol');
         
-        if (ativos && ativos.length > 0) {
+        if (ativos?.length > 0) {
             const uniqueSymbols = [...new Set(ativos.map(a => a.symbol))];
             const novosDados = await atualizarProventosPeloScraper(uniqueSymbols);
             
-            if (novosDados && novosDados.length > 0) {
+            if (novosDados?.length > 0) {
                 const upserts = [];
+                // Otimização: Busca todos os users de uma vez só
+                const { data: allTransacoes } = await supabase
+                    .from('transacoes')
+                    .select('user_id, symbol');
+
                 for (const dado of novosDados) {
                     if (!dado.paymentDate || !dado.value) continue;
                     
-                    const { data: usersWithAsset } = await supabase
-                        .from('transacoes').select('user_id').eq('symbol', dado.symbol);
-                        
-                    if (usersWithAsset) {
-                         const usersUnicos = [...new Set(usersWithAsset.map(u => u.user_id))];
-                         usersUnicos.forEach(uid => {
-                             const idUnico = `${dado.symbol}_${dado.paymentDate}`;
-                             upserts.push({
-                                 id: idUnico, user_id: uid, symbol: dado.symbol,
-                                 value: dado.value, paymentdate: dado.paymentDate,
-                                 datacom: dado.dataCom, processado: false
-                             });
+                    // Filtra na memória (mais rápido que ir no banco N vezes)
+                    const usersInteressados = allTransacoes
+                        .filter(t => t.symbol === dado.symbol)
+                        .map(u => u.user_id);
+                    
+                    const usersUnicos = [...new Set(usersInteressados)];
+                    
+                    usersUnicos.forEach(uid => {
+                         upserts.push({
+                             id: `${dado.symbol}_${dado.paymentDate}`,
+                             user_id: uid,
+                             symbol: dado.symbol,
+                             value: dado.value,
+                             paymentdate: dado.paymentDate,
+                             datacom: dado.dataCom,
+                             processado: false
                          });
-                    }
+                    });
                 }
                 
                 if (upserts.length > 0) {
-                    for (let i = 0; i < upserts.length; i += 50) {
-                        const batch = upserts.slice(i, i + 50);
+                    // Salva em lotes maiores (menos chamadas ao banco)
+                    for (let i = 0; i < upserts.length; i += 200) {
                         await supabase.from('proventosconhecidos')
-                            .upsert(batch, { onConflict: 'user_id, id', ignoreDuplicates: true });
+                            .upsert(upserts.slice(i, i + 200), { onConflict: 'user_id, id', ignoreDuplicates: true });
                     }
                 }
             }
         }
 
-        // 2. ENVIA PUSH
+        // --- 2. NOTIFICAÇÃO TURBO ---
         const agora = new Date();
         agora.setHours(agora.getHours() - 3); 
         const hojeString = agora.toISOString().split('T')[0];
@@ -90,10 +97,9 @@ module.exports = async function handler(req, res) {
             .select('*')
             .or(`paymentdate.eq.${hojeString},datacom.eq.${hojeString},created_at.gte.${inicioDoDia}`);
 
-        if (!proventos || proventos.length === 0) {
-            return res.status(200).json({ status: 'Updated', message: 'Sem notificações.' });
-        }
+        if (!proventos?.length) return res.json({ status: 'OK', msg: 'Nada hoje.' });
 
+        // Agrupamento
         const userEvents = {};
         proventos.forEach(p => {
             if (!userEvents[p.user_id]) userEvents[p.user_id] = [];
@@ -101,71 +107,95 @@ module.exports = async function handler(req, res) {
         });
 
         let totalSent = 0;
+        const usersIds = Object.keys(userEvents);
 
-        for (const userId of Object.keys(userEvents)) {
-            const eventos = userEvents[userId];
-            const { data: subscriptions } = await supabase
-                .from('push_subscriptions').select('*').eq('user_id', userId);
+        // OTIMIZAÇÃO: Promise.all para enviar para todos os usuários AO MESMO TEMPO
+        await Promise.all(usersIds.map(async (userId) => {
+            try {
+                const eventos = userEvents[userId];
+                const { data: subs } = await supabase
+                    .from('push_subscriptions').select('*').eq('user_id', userId);
 
-            if (!subscriptions || subscriptions.length === 0) continue;
+                if (!subs?.length) return;
 
-            const matchDate = (dateField, dateString) => dateField && dateField.startsWith(dateString);
-
-            const pagamentos = eventos.filter(e => matchDate(e.paymentdate, hojeString));
-            const dataComs = eventos.filter(e => matchDate(e.datacom, hojeString));
-            
-            // FILTRO DE NOVOS ANÚNCIOS (BLINDADO)
-            const novosAnuncios = eventos.filter(e => {
-                const propsCreatedAt = e.created_at || '';
-                const isCreatedToday = propsCreatedAt.startsWith(hojeString);
+                const matchDate = (f, s) => f && f.startsWith(s);
                 
-                const isDuplicate = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
-                
-                // Ignora datas passadas (Velharia)
-                let isFuturo = false;
-                if (e.paymentdate) {
-                    const dataPagObj = new Date(e.paymentdate.split('T')[0] + 'T00:00:00');
-                    isFuturo = dataPagObj >= hojeDateObj;
+                // Filtros
+                const pagamentos = eventos.filter(e => matchDate(e.paymentdate, hojeString));
+                const dataComs = eventos.filter(e => matchDate(e.datacom, hojeString));
+                const novosAnuncios = eventos.filter(e => {
+                    const createdToday = (e.created_at || '').startsWith(hojeString);
+                    const duplicate = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
+                    let isFuturo = false;
+                    if (e.paymentdate) {
+                        const d = new Date(e.paymentdate.split('T')[0] + 'T00:00:00');
+                        isFuturo = d >= hojeDateObj;
+                    }
+                    return createdToday && !duplicate && isFuturo;
+                });
+
+                let title = '', body = '';
+                // Ícone padrão (pode trocar pela URL do seu logo na Vercel)
+                const icon = '/android-chrome-192x192.png'; 
+
+                // Lógica de Texto Inteligente
+                if (pagamentos.length > 0) {
+                    const total = pagamentos.reduce((acc, curr) => acc + curr.value, 0); // Soma simples dos unitários
+                    const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)})`).join(', ');
+                    
+                    title = '💰 Dinheiro na Conta!';
+                    // Se tiver muitos, resume. Se for pouco, detalha.
+                    body = pagamentos.length === 1 
+                        ? `O pagamento de ${lista} caiu hoje.` 
+                        : `${pagamentos.length} ativos pagaram hoje: ${lista}.`;
+
+                } else if (dataComs.length > 0) {
+                    const lista = dataComs.map(p => `${p.symbol} (${fmtBRL(p.value)})`).join(', ');
+                    title = '📅 Agenda de Dividendos';
+                    body = `Data Com hoje! Garanta proventos de: ${lista}.`;
+
+                } else if (novosAnuncios.length > 0) {
+                    const lista = novosAnuncios.map(p => `${p.symbol} (${fmtBRL(p.value)})`).slice(0,3).join(', ');
+                    title = '🔔 Novo Anúncio';
+                    body = novosAnuncios.length === 1
+                        ? `FII Informa: ${novosAnuncios[0].symbol} vai pagar ${fmtBRL(novosAnuncios[0].value)}.`
+                        : `Novos anúncios de: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
+                } else {
+                    return; 
                 }
 
-                return isCreatedToday && !isDuplicate && isFuturo;
-            });
-            
-            let title = '';
-            let body = '';
+                const payload = JSON.stringify({ 
+                    title, 
+                    body, 
+                    icon,
+                    url: '/?tab=tab-carteira',
+                    // Adiciona badge para Android
+                    badge: '/favicon.ico' 
+                });
+                
+                // Envia para todos os dispositivos deste usuário
+                const pushPromises = subs.map(sub => 
+                    webpush.sendNotification(sub.subscription, payload).catch(err => {
+                        if (err.statusCode === 410 || err.statusCode === 404) {
+                            supabase.from('push_subscriptions').delete().match({ id: sub.id }).then(()=>{});
+                        }
+                    })
+                );
+                await Promise.all(pushPromises);
+                totalSent += pushPromises.length;
 
-            if (pagamentos.length > 0) {
-                const symbols = pagamentos.map(p => p.symbol).slice(0, 3).join(', ');
-                title = 'Proventos Recebidos';
-                body = `Crédito confirmado: O pagamento de ${symbols} foi realizado.`;
-            } else if (dataComs.length > 0) {
-                const symbols = dataComs.map(p => p.symbol).slice(0, 3).join(', ');
-                title = 'Agenda de Dividendos';
-                body = `Data Com: Hoje é o limite para garantir proventos de ${symbols}.`;
-            } else if (novosAnuncios.length > 0) {
-                const symbols = novosAnuncios.map(p => p.symbol).slice(0, 3).join(', ');
-                title = 'Novo Comunicado';
-                body = `Novos anúncios de rendimentos: ${symbols}.`;
-            } else {
-                continue; 
+            } catch (errUser) {
+                console.error(`Erro ao notificar user ${userId}:`, errUser);
+                // Não quebra o loop dos outros usuários
             }
+        }));
 
-            const payload = JSON.stringify({ title, body, url: '/?tab=tab-carteira' });
-            
-            const pushPromises = subscriptions.map(sub => 
-                webpush.sendNotification(sub.subscription, payload).catch(err => {
-                     if (err.statusCode === 410 || err.statusCode === 404) {
-                        supabase.from('push_subscriptions').delete().match({ id: sub.id }).then(() => {});
-                     }
-                })
-            );
-            await Promise.all(pushPromises);
-            totalSent += pushPromises.length;
-        }
+        const duration = (Date.now() - start) / 1000;
+        console.log(`✅ Finalizado em ${duration}s. Enviados: ${totalSent}`);
+        return res.status(200).json({ status: 'Success', sent: totalSent, time: duration });
 
-        return res.status(200).json({ status: 'Success', updated: true, notifications_sent: totalSent });
     } catch (error) {
-        console.error('CRON ERROR:', error);
+        console.error('CRON FATAL ERROR:', error);
         return res.status(500).json({ error: error.message });
     }
 };

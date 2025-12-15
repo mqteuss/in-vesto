@@ -10,10 +10,9 @@
     "rss-parser": "^3.13.0",
     "axios": "^1.7.0",
     "cheerio": "^1.0.0-rc.12",
-    "@google/generative-ai": "^0.21.0",
     "web-push": "^3.6.0"
   },
   "engines": {
-    "node": "22.x"
+    "node": "24.x"
   }
 }

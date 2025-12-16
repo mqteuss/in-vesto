@@ -1,8 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./index.html",     // <--- Olha especificamente o seu HTML na raiz
-    "./**/*.js"         // <--- Olha seus arquivos JS (para classes dinâmicas)
+    "./index.html",     
+    "./**/*.js",         
+    "!./node_modules/**" // <--- ESSA LINHA CORRIGE A LENTIDÃO
   ],
   theme: {
     extend: {},

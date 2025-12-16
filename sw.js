@@ -6,7 +6,8 @@ const APP_FILES = [
   '/index.html',
   '/app.js',
   '/supabase.js',
-  '/style.css', // <--- NOVO: O arquivo leve gerado pelo Build
+  '/style.css',
+  '/style-tailwind.css',
   '/manifest.json',
   '/icons/carteira.png',
   '/icons/noticias.png',

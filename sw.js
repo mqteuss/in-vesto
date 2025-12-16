@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesto-cache-v11'; // Atualizei a versão para garantir que o navegador pegue o novo arquivo
+const CACHE_NAME = 'vesto-cache-v12'; // Atualizado para v12 (Força limpeza do cache antigo)
 
 // Lista unificada de todos os arquivos que o App precisa para funcionar offline
 const APP_FILES = [
@@ -7,6 +7,7 @@ const APP_FILES = [
   '/app.js',
   '/supabase.js',
   '/style.css',
+  '/style-tailwind.css', // <--- NOVO: O arquivo leve gerado pelo Build
   '/manifest.json',
   '/icons/carteira.png',
   '/icons/noticias.png',
@@ -14,7 +15,7 @@ const APP_FILES = [
   '/logo-vesto.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
-  'https://cdn.tailwindcss.com',
+  // REMOVIDO: 'https://cdn.tailwindcss.com', (Não precisamos mais baixar 3MB!)
   'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
   'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
@@ -23,7 +24,7 @@ const APP_FILES = [
 // 1. INSTALAÇÃO: Baixa e salva tudo no cache inicial
 self.addEventListener('install', event => {
   self.skipWaiting(); // Força o SW a ativar imediatamente
-  
+
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       // Separa arquivos externos (CDN) para tratar com no-cors
@@ -79,7 +80,7 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {
-        
+
         // Dispara a atualização na rede em paralelo (Background)
         const fetchPromise = fetch(event.request).then(networkResponse => {
           // Se a resposta for válida, atualiza o cache
@@ -106,13 +107,13 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// --- NOTIFICAÇÕES PUSH (NOVO) ---
+// --- NOTIFICAÇÕES PUSH ---
 
 // 1. Receber a notificação do servidor (Vercel Cron)
 self.addEventListener('push', function(event) {
   if (event.data) {
     const data = event.data.json();
-    
+
     const options = {
       body: data.body,
       icon: '/icons/icon-192x192.png',
@@ -126,7 +127,7 @@ self.addEventListener('push', function(event) {
         { action: 'explore', title: 'Ver Carteira' }
       ]
     };
-    
+
     event.waitUntil(
       self.registration.showNotification(data.title, options)
     );
@@ -136,7 +137,7 @@ self.addEventListener('push', function(event) {
 // 2. Clicar na notificação
 self.addEventListener('notificationclick', function(event) {
   event.notification.close(); // Fecha a notificação da barra
-  
+
   event.waitUntil(
     clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
       // Se o app já estiver aberto em alguma aba, foca nela

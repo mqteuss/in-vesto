@@ -4,7 +4,7 @@
   "description": "BFF para o app Vesto com Scraper",
   "private": true,
   "scripts": {
-    "build": "tailwindcss -i ./input.css -o style.css --minify"
+    "build": "tailwindcss -i ./input.css -o ./style-tailwind.css --minify"
   },
   "dependencies": {
     "@vercel/kv": "^2.0.0",

@@ -1277,6 +1277,7 @@ function agruparPorMes(itens, dateField) {
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (ESTILO FINTECH) ---
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL CONSISTENTE E ÍCONES ÚNICOS) ---
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (CLIQUE PARA EDITAR) ---
+// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (ESPAÇAMENTO REDUZIDO / IGUAL PROVENTOS) ---
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
     
@@ -1292,26 +1293,27 @@ function renderizarHistorico() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header
+        // Header do Mês
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
         header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // Lista
+        // Lista de Itens
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-5 space-y-1';
+        // ALTERAÇÃO AQUI: Mudamos de space-y-4 (ou similar) para space-y-1
+        // Isso remove o buraco grande entre os itens
+        listaGrupo.className = 'mb-5 space-y-1'; 
 
         grupos[mes].forEach(t => {
             const isVenda = t.type === 'sell';
             const item = document.createElement('div');
             
-            // AQUI: Adicionamos cursor-pointer e o data-action na div principal
+            // Container do item (padding e hover)
             item.className = 'flex items-center justify-between group cursor-pointer py-3 px-2 hover:bg-neutral-900/40 rounded-xl transition-colors relative';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
             
-            // Ícones
             const svgCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>`;
             const svgVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 8V3h4z" /></svg>`;
             const iconSvg = isVenda ? svgVenda : svgCompra;

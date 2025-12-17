@@ -1590,13 +1590,13 @@ function renderizarGraficoAlocacao(dadosGrafico) {
             },
             options: {
                 responsive: true, 
-                maintainAspectRatio: false, // Permite que ele obedeça a altura do CSS
-                cutout: '65%', // Reduzi de 80% para 65% (fica mais "grosso", preenche melhor o visual)
+                maintainAspectRatio: false, 
+                cutout: '70%', // Espessura equilibrada
                 layout: {
-                    padding: 10
+                    padding: 0 // MUDANÇA: Zero padding para o gráfico crescer
                 },
                 plugins: {
-                    legend: { display: false }, // Desliga a legenda padrão feia
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: '#1C1C1E',
                         bodyColor: '#fff',
@@ -1612,8 +1612,6 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                     }
                 }
             }
-        });
-    }
     
 function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');

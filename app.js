@@ -1501,6 +1501,7 @@ function agruparNoticiasPorData(articles) {
 }
 
 // --- RENDERIZAR NOTÍCIAS (VISUAL IDÊNTICO AO HISTÓRICO) ---
+// --- RENDERIZAR NOTÍCIAS (AJUSTES FINAIS: TAMANHO, BORDAS E COR) ---
 function renderizarNoticias(articles) { 
     fiiNewsSkeleton.classList.add('hidden');
     
@@ -1556,19 +1557,20 @@ function renderizarNoticias(articles) {
 
             const item = document.createElement('div');
             
-            // Estilos condicionais
+            // --- ESTILOS ---
             let itemWrapperClass = 'group relative transition-all news-card-interactive ';
             let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
             let badgeDestaque = '';
 
             if (isGlobalFirstItem) {
-                // Destaque
+                // DESTAQUE (Ajustado para ser menor)
                 itemWrapperClass += 'bg-gradient-to-r from-purple-900/30 to-transparent border-l-[3px] border-purple-500 py-1 my-2 rounded-r-lg';
-                titleClass += 'text-lg'; 
+                // Mudado de text-lg para text-base (diminuiu um pouco)
+                titleClass += 'text-base'; 
                 badgeDestaque = '<span class="inline-block bg-purple-600 text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
                 isGlobalFirstItem = false;
             } else {
-                // Normal
+                // NORMAL
                 itemWrapperClass += 'border-b border-neutral-800 last:border-0 hover:bg-neutral-900/40';
                 titleClass += 'text-sm';
             }
@@ -1581,7 +1583,7 @@ function renderizarNoticias(articles) {
                 <div class="flex items-start gap-4 py-4 px-3 cursor-pointer">
                     <div class="flex-shrink-0 mt-1.5">
                         <img src="${faviconUrl}" alt="${sourceName}" 
-                             class="w-10 h-10 rounded-2xl bg-[#1C1C1E] object-contain p-2 border border-neutral-800 grayscale transition-all"
+                             class="w-10 h-10 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 border border-neutral-800 transition-all"
                              loading="lazy"
                              onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                         />

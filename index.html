@@ -353,33 +353,36 @@
                     </div>
                 </div>
 
-<div id="tab-historico" class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll">
-    <div class="p-4">
-        <h1 class="text-4xl font-extrabold tracking-wider text-white uppercase mb-6">Extrato</h1>
+                <div id="tab-historico" class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll">
+                    <div class="p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Histórico</h1>
+                        </div>
 
-        <div class="relative bg-black rounded-full p-1 border border-[#2C2C2E] flex h-10 w-full mb-4">
-            <div id="historico-toggle-bg" class="absolute left-1 top-1 bottom-1 w-[calc(50%-4px)] bg-gray-800 rounded-full shadow-sm transition-transform duration-300 ease-out translate-x-0 border border-gray-700"></div>
-            
-            <button id="btn-hist-transacoes" class="relative z-10 w-1/2 text-xs font-bold text-white transition-colors duration-300 focus:outline-none">Transações</button>
-            <button id="btn-hist-proventos" class="relative z-10 w-1/2 text-xs font-bold text-gray-500 transition-colors duration-300 focus:outline-none">Proventos</button>
-        </div>
+                        <div class="relative bg-black rounded-full p-1 border border-gray-800 flex h-10 w-full mb-6">
+                            <div id="historico-toggle-bg" class="absolute left-1 top-1 bottom-1 w-[calc(50%-4px)] bg-purple-600 rounded-full shadow-[0_0_10px_rgba(124,58,237,0.5)] transition-transform duration-300 ease-out translate-x-0"></div>
 
-        <div class="relative mb-6">
-            <input type="text" id="historico-search" placeholder="Buscar no histórico..." class="w-full p-2.5 pl-9 bg-transparent border-b border-gray-800 focus:border-gray-500 transition-colors text-white text-sm outline-none rounded-none placeholder-gray-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 absolute left-2 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-        </div>
+                            <button id="btn-hist-transacoes" class="relative z-10 w-1/2 text-xs font-bold text-white transition-colors duration-300 focus:outline-none">
+                                Transações
+                            </button>
 
-        <div id="lista-historico" class="pb-10"></div>
-        <div id="lista-historico-proventos" class="hidden pb-10"></div>
+                            <button id="btn-hist-proventos" class="relative z-10 w-1/2 text-xs font-bold text-gray-500 transition-colors duration-300 focus:outline-none">
+                                Proventos Recebidos
+                            </button>
+                        </div>
 
-        <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
-            <div class="w-16 h-16 bg-[#1C1C1E] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#2C2C2E]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-            </div>
-            <p id="historico-mensagem" class="text-sm">Nenhum registro encontrado.</p>
-        </div>
-    </div>
-</div>
+                        <div id="lista-historico" class="space-y-3"></div>
+                        
+                        <div id="lista-historico-proventos" class="space-y-3 hidden"></div>
+
+                        <div id="historico-status" class="text-center text-gray-500 mt-12 hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-700">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+                            </svg>
+                            <p id="historico-mensagem" class="text-lg mt-4 font-semibold text-gray-200">Nenhum registro encontrado.</p>
+                        </div>
+                    </div>
+                </div>
 
                 <div id="tab-config" class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll">
                     <div class="p-4">
@@ -780,40 +783,6 @@
         </div>
 
     </div> 
-	
-	<div id="transaction-details-modal" class="custom-modal fixed inset-0 z-[80] items-end justify-center bg-black bg-opacity-80 backdrop-blur-sm" style="display: none;">
-    <div id="transaction-details-content" class="w-full bg-[#1C1C1E] rounded-t-3xl border-t border-[#2C2C2E] p-6 transform transition-transform duration-300 translate-y-full">
-        <div class="w-12 h-1.5 bg-gray-700 rounded-full mx-auto mb-6"></div>
-        
-        <div class="text-center mb-8">
-            <div id="tx-detail-icon" class="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-xl font-bold bg-gray-800 text-white border border-gray-700"></div>
-            <h3 id="tx-detail-title" class="text-2xl font-bold text-white mb-1">---</h3>
-            <p id="tx-detail-subtitle" class="text-sm text-gray-400">---</p>
-        </div>
-
-        <div class="space-y-4 mb-8">
-            <div class="flex justify-between py-3 border-b border-gray-800">
-                <span class="text-gray-500">Valor Total</span>
-                <span id="tx-detail-total" class="font-bold text-white">R$ 0,00</span>
-            </div>
-            <div class="flex justify-between py-3 border-b border-gray-800">
-                <span class="text-gray-500">Preço Unitário</span>
-                <span id="tx-detail-price" class="font-medium text-gray-300">R$ 0,00</span>
-            </div>
-            <div class="flex justify-between py-3 border-b border-gray-800">
-                <span class="text-gray-500">Quantidade</span>
-                <span id="tx-detail-qtd" class="font-medium text-gray-300">0</span>
-            </div>
-        </div>
-
-        <div class="flex gap-3">
-            <button id="btn-edit-tx" class="flex-1 py-3 bg-gray-800 text-white font-semibold rounded-xl hover:bg-gray-700 transition-colors">Editar</button>
-            <button id="btn-delete-tx" class="flex-1 py-3 bg-red-900/20 text-red-400 font-semibold rounded-xl hover:bg-red-900/40 transition-colors">Excluir</button>
-        </div>
-        
-        <button id="btn-close-tx-details" class="w-full mt-4 py-3 text-gray-500 text-sm font-medium">Fechar</button>
-    </div>
-</div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js" type="module"></script>

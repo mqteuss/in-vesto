@@ -107,163 +107,71 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Tag de Lucro/Prejuízo (L/P)
-    let plTagHtml = '';
+    // Removemos tags coloridas de fundo, usamos apenas texto colorido para o PL
+    let plTexto = '';
     if (dadoPreco) {
-        plTagHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block tracking-wide">
-            ${lucroPrejuizoPercent.toFixed(1)}% L/P
-        </span>`;
+        plTexto = `<span class="${corPL} text-xs font-medium">${lucroPrejuizoPercent.toFixed(1)}%</span>`;
     }
-    
-    // 2. Lógica de Proventos (FIIs)
+
+    // Lógica Proventos (FIIs) simplificada e limpa
     let proventoHtml = '';
-    if (isFII(ativo.symbol)) { 
+    if (isFII(ativo.symbol)) {
         if (dadoProvento && dadoProvento.value > 0) {
-            const parts = dadoProvento.paymentDate.split('-');
-            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-            const hoje = new Date();
-            hoje.setHours(0, 0, 0, 0);
-            
-            const foiPago = dataPag <= hoje;
-            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
-            const valorClass = foiPago ? "text-gray-400" : "accent-text";
-            const sinal = foiPago ? "" : "+";
-
-            let valorTexto = '';
-            if (proventoReceber > 0) {
-                 valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
-            } else {
-                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
-            }
-            
-            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
-
             proventoHtml = `
-            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
-                    <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
-                    ${valorTexto}
-                </div>
-                <div class="flex justify-between items-center"> 
-                    <span class="text-xs text-gray-500 font-medium" title="Data limite para compra">Data Com: ${dataComTexto}</span>
-                    <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
-                </div>
-            </div>`;
-        } else {
-            proventoHtml = `
-            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
-                <span class="text-xs text-gray-500 font-medium">Provento</span>
-                <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
+            <div class="mt-3 pt-2 border-t border-dashed border-gray-800 flex justify-between items-center">
+                <span class="text-xs text-gray-500">Próx. Provento</span>
+                <span class="text-xs text-white font-medium">${formatBRL(dadoProvento.value)} <span class="text-gray-600">/cota</span></span>
             </div>`;
         }
     }
 
-    // 3. ÍCONE DINÂMICO (LUCRO vs PREJUÍZO)
-    let gradStart, gradEnd;
-    let bar1_y, bar1_h; 
-    let bar2_y, bar2_h; 
-
-    if (!dadoPreco) {
-        gradStart = '#6b21a8'; gradEnd = '#a855f7'; 
-        bar1_y = 15; bar1_h = 10; 
-        bar2_y = 9;  bar2_h = 16; 
-    } 
-    else if (lucroPrejuizo >= 0) {
-        gradStart = '#15803d'; gradEnd = '#22c55e'; 
-        bar1_y = 15; bar1_h = 10; 
-        bar2_y = 9;  bar2_h = 16; 
-    } 
-    else {
-        gradStart = '#991b1b'; gradEnd = '#ef4444'; 
-        bar1_y = 9;  bar1_h = 16; 
-        bar2_y = 15; bar2_h = 10; 
-    }
-
-// Substitua a variável vestoIconSvg antiga por esta:
-const vestoIconSvg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-full h-full">
-        <defs>
-            <linearGradient id="barGrad-${ativo.symbol}" x1="0%" y1="100%" x2="0%" y2="0%">
-                <stop offset="0%" style="stop-color:${gradStart};stop-opacity:1" />
-                <stop offset="100%" style="stop-color:${gradEnd};stop-opacity:1" />
-            </linearGradient>
-        </defs>
-        
-        <path d="M3 16 L9.5 4.75 L22.5 4.75 L29 16 L22.5 27.25 L9.5 27.25 Z" 
-              fill="#18181b" 
-              stroke="#2C2C2E" 
-              stroke-width="1"
-              stroke-linejoin="round" />
-        
-        <rect x="10" y="${bar1_y}" width="5" height="${bar1_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.85" />
-        
-        <rect x="17" y="${bar2_y}" width="5" height="${bar2_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" />
-    </svg>`;
-
-    // 4. Criação do Elemento DOM
     const card = document.createElement('div');
-    card.className = 'card-bg p-4 rounded-3xl';
-    card.setAttribute('data-symbol', ativo.symbol); 
+    // A classe card-bg agora deve ser transparente com border-bottom no CSS
+    card.className = 'card-bg group'; 
+    card.setAttribute('data-symbol', ativo.symbol);
 
-    // ALTERAÇÃO: Adicionada classe group-active:scale-90 APENAS no ícone para a animação isolada
+    // Layout Limpo: Nome/Qtd à esquerda | Preço/Var à direita
     card.innerHTML = `
-        <div class="flex justify-between items-center cursor-pointer select-none group py-1" data-symbol="${ativo.symbol}" data-action="toggle">
-            
-            <div class="flex items-center gap-3 flex-1 min-w-0">
+        <div class="cursor-pointer select-none" data-symbol="${ativo.symbol}" data-action="toggle">
+            <div class="flex justify-between items-center py-1">
                 
-                <div class="w-12 h-12 flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-active:scale-90">
-                    ${vestoIconSvg}
+                <div>
+                    <h2 class="text-base font-semibold text-white tracking-wide">${ativo.symbol}</h2>
+                    <p class="text-xs text-gray-500 mt-0.5" data-field="cota-qtd">${ativo.quantity} cotas</p>
                 </div>
-                
-                <div class="min-w-0">
-                    <div class="flex items-baseline gap-2">
-                        <h2 class="text-base font-bold text-white leading-tight truncate">${ativo.symbol}</h2>
-                        <span class="text-xs text-gray-500 font-medium whitespace-nowrap" data-field="cota-qtd">${ativo.quantity} cota(s)</span>
+
+                <div class="text-right">
+                    <p data-field="preco-valor" class="text-white text-base font-medium money-value">${precoFormatado}</p>
+                    <div class="flex items-center justify-end gap-2 mt-0.5">
+                        <span data-field="variacao-valor" class="${corVariacao} text-xs">${dadoPreco ? variacaoFormatada : '...'}</span>
+                        ${plTexto}
                     </div>
-                    <div class="mt-1.5" data-field="pl-tag">${plTagHtml}</div>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-3 pl-2">
-                <div class="text-right flex-shrink-0">
-                    <p data-field="preco-valor" class="text-white text-base font-bold money-value tracking-tight">${precoFormatado}</p>
-                    <span data-field="variacao-valor" class="${corVariacao} text-xs font-medium block mt-0.5">${dadoPreco ? variacaoFormatada : '...'}</span>
-                </div>
-                
-                <div class="text-gray-600">
-                    <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                    </svg>
                 </div>
             </div>
         </div>
 
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-            <div class="drawer-content space-y-2 pt-3 border-t border-gray-800 mt-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 font-medium">Posição</span>
-                    <span data-field="posicao-valor" class="text-sm font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
+            <div class="drawer-content pt-3 pb-1">
+                <div class="grid grid-cols-2 gap-4 mb-2">
+                    <div>
+                        <span class="block text-[10px] text-gray-500 uppercase">Posição</span>
+                        <span data-field="posicao-valor" class="text-sm text-white">${dadoPreco ? formatBRL(totalPosicao) : '-'}</span>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] text-gray-500 uppercase">Custo Médio</span>
+                        <span data-field="custo-valor" class="text-sm text-white">${formatBRL(ativo.custoTotal)}</span>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] text-gray-500 uppercase">Lucro/Prej.</span>
+                        <span data-field="pl-valor" class="text-sm ${corPL}">${dadoPreco ? formatBRL(lucroPrejuizo) : '-'}</span>
+                    </div>
                 </div>
-                <div class="flex justify-between items-center">
-                    <span data-field="pm-label" class="text-xs text-gray-500 font-medium">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
-                    <span data-field="custo-valor" class="text-sm font-semibold text-white">${formatBRL(custoTotal)}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 font-medium">L/P Total</span>
-                    <span data-field="pl-valor" class="text-sm font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
-                </div>
-                <div data-field="provento-container">${proventoHtml}</div> 
-                <div class="flex justify-end gap-3 pt-2">
-                    <button class="py-1.5 px-4 text-xs font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="details">
-                        Detalhes
-                    </button>
-                    <button class="py-1.5 px-4 text-xs font-medium text-red-400 bg-red-900/20 hover:bg-red-900/40 border border-red-900/30 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
-                        Remover
-                    </button>
+                
+                ${proventoHtml}
+                
+                <div class="flex gap-4 mt-3">
+                    <button class="text-xs text-white hover:underline transition-all" data-symbol="${ativo.symbol}" data-action="details">Ver Detalhes</button>
+                    <button class="text-xs text-red-500 hover:underline transition-all" data-symbol="${ativo.symbol}" data-action="remove">Remover</button>
                 </div>
             </div>
         </div>
@@ -350,28 +258,6 @@ function atualizarCardElemento(card, ativo, dados) {
         }
         card.querySelector('[data-field="provento-container"]').innerHTML = proventoHtml;
     }
-}
-
-let selectedTransactionId = null;
-const transactionDetailsModal = document.getElementById('transaction-details-modal');
-const transactionDetailsContent = document.getElementById('transaction-details-content');
-const historicoSearchInput = document.getElementById('historico-search');
-
-// Função auxiliar para agrupar array por Mês/Ano
-function groupTransactionsByMonth(list, dateKey = 'date') {
-    const groups = {};
-    list.forEach(item => {
-        const dateObj = new Date(item[dateKey]);
-        // Corrige fuso horário se a data vier YYYY-MM-DD
-        if (item[dateKey].length === 10) dateObj.setMinutes(dateObj.getMinutes() + dateObj.getTimezoneOffset());
-        
-        const monthYear = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        const key = monthYear.charAt(0).toUpperCase() + monthYear.slice(1); // Primeira letra maiúscula
-        
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(item);
-    });
-    return groups;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1277,336 +1163,187 @@ function calcularCarteira() {
 
 // Substitua a função inteira em app.js
 
-function renderizarHistorico(filtro = '') {
+function renderizarHistorico() {
     listaHistorico.innerHTML = '';
-    
-    // Filtragem
-    let itensFiltrados = transacoes;
-    if (filtro) {
-        const f = filtro.toLowerCase();
-        itensFiltrados = transacoes.filter(t => t.symbol.toLowerCase().includes(f));
-    }
-
-    if (itensFiltrados.length === 0) {
+    if (transacoes.length === 0) {
         historicoStatus.classList.remove('hidden');
-        document.getElementById('historico-mensagem').textContent = filtro ? 'Nada encontrado na busca.' : 'Nenhum registro.';
         return;
     }
-    
     historicoStatus.classList.add('hidden');
-    
-    // Ordenar e Agrupar
-    itensFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
-    const groups = groupTransactionsByMonth(itensFiltrados, 'date');
-
     const fragment = document.createDocumentFragment();
 
-    Object.keys(groups).forEach(month => {
-        // Header do Mês (Sticky)
-        const header = document.createElement('div');
-        header.className = 'history-month-header'; // Estilo definido no CSS anterior
-        header.textContent = month;
-        fragment.appendChild(header);
+    [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+        const card = document.createElement('div');
+        // Layout de lista contínua
+        card.className = 'py-3 border-b border-gray-800 flex justify-between items-center hover:bg-white/5 transition-colors px-2';
+        
+        const isVenda = t.type === 'sell';
+        const cor = isVenda ? 'text-white' : 'text-white'; // Monocromático, ou use cores financeiras se preferir
+        const sinal = isVenda ? '-' : '+';
+        const tipoTxt = isVenda ? 'Venda' : 'Compra';
 
-        groups[month].forEach(t => {
-            const el = document.createElement('div');
-            el.className = 'history-item flex items-center justify-between cursor-pointer';
-            el.onclick = () => openTransactionDetails(t);
-
-            const isSell = t.type === 'sell';
-            // Visual: Compra = Cinza (Neutro), Venda = Vermelho (Saída/Alerta)
-            const avatarClass = isSell ? 'avatar-sell' : 'avatar-buy'; 
-            const totalVal = t.price * t.quantity;
-
-            el.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <div class="asset-avatar ${avatarClass}">
-                        ${t.symbol.substring(0, 2)}
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-white text-sm leading-tight">${t.symbol}</h4>
-                        <span class="text-xs text-gray-500">${isSell ? 'Venda' : 'Compra'} • ${formatDate(t.date).slice(0, 5)}</span>
-                    </div>
+        card.innerHTML = `
+            <div>
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-sm font-semibold text-white">${t.symbol}</h3>
+                    <span class="text-xs text-gray-500">${tipoTxt}</span>
                 </div>
-                <div class="text-right">
-                    <p class="font-bold text-sm ${isSell ? 'text-green-400' : 'text-white'}">${formatBRL(totalVal)}</p>
-                    <p class="text-xs text-gray-500">${t.quantity} un. x ${formatBRL(t.price)}</p>
-                </div>
-            `;
-            fragment.appendChild(el);
-        });
+                <p class="text-xs text-gray-600 mt-0.5">${formatDate(t.date)}</p>
+            </div>
+            
+            <div class="text-right">
+                <p class="text-sm font-medium text-white">${sinal}${t.quantity}</p>
+                <p class="text-xs text-gray-500">${formatBRL(t.price)}</p>
+            </div>
+            
+            <div class="flex gap-3 ml-4">
+                 <button class="text-gray-600 hover:text-white transition-colors" data-action="edit" data-id="${t.id}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>
+                 </button>
+                 <button class="text-gray-600 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                 </button>
+            </div>
+        `;
+        fragment.appendChild(card);
     });
-
     listaHistorico.appendChild(fragment);
 }
 	
-function renderizarHistoricoProventos(filtro = '') {
+function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    let proventosPagos = proventosConhecidos.filter(p => {
+    const proventosPagos = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dPag = new Date(parts[0], parts[1]-1, parts[2]);
         return dPag <= hoje;
-    });
+    }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    if (filtro) {
-        const f = filtro.toLowerCase();
-        proventosPagos = proventosPagos.filter(p => p.symbol.toLowerCase().includes(f));
-    }
+    const fragment = document.createDocumentFragment();
+    let temItem = false;
 
-    if (proventosPagos.length === 0) return;
-
-    proventosPagos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-    
-    // Cálculo de totais
-    const listaFinal = [];
     proventosPagos.forEach(p => {
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
+
         if (qtd > 0) {
-            listaFinal.push({ ...p, totalRecebido: p.value * qtd, qtdNaData: qtd });
-        }
-    });
-
-    const groups = groupTransactionsByMonth(listaFinal, 'paymentDate');
-    const fragment = document.createDocumentFragment();
-
-    Object.keys(groups).forEach(month => {
-        const header = document.createElement('div');
-        header.className = 'history-month-header';
-        header.textContent = month;
-        fragment.appendChild(header);
-
-        groups[month].forEach(p => {
-            const el = document.createElement('div');
-            el.className = 'history-item flex items-center justify-between';
-
-            el.innerHTML = `
+            temItem = true;
+            const total = p.value * qtd;
+            const card = document.createElement('div');
+            // MUDANÇA: Mesmo estilo compacto da função anterior
+            card.className = 'card-bg py-2.5 px-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2';
+            
+            card.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <div class="asset-avatar avatar-dividend">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
+                    <div class="p-1.5 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
                     <div>
-                        <h4 class="font-bold text-white text-sm leading-tight">${p.symbol}</h4>
-                        <span class="text-xs text-gray-500">Dividendo • ${formatDate(p.paymentDate).slice(0, 5)}</span>
+                        <h3 class="text-sm font-bold text-white leading-tight">${p.symbol}</h3>
+                        <p class="text-[10px] text-gray-400 font-medium">Pag: ${formatDate(p.paymentDate)}</p>
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="font-bold text-sm text-green-400">+ ${formatBRL(p.totalRecebido)}</p>
-                    <p class="text-xs text-gray-500">${p.qtdNaData} x ${formatBRL(p.value)}</p>
+                    <p class="text-sm font-bold accent-text leading-tight">+ ${formatBRL(total)}</p>
+                    <p class="text-[10px] text-gray-500 font-medium">${formatBRL(p.value)} x ${qtd}</p>
                 </div>
             `;
-            fragment.appendChild(el);
-        });
+            fragment.appendChild(card);
+        }
     });
-
-    listaHistoricoProventos.appendChild(fragment);
-}
-
-function openTransactionDetails(tx) {
-    selectedTransactionId = tx.id;
     
-    const isSell = tx.type === 'sell';
-    const total = tx.price * tx.quantity;
-    const dateStr = new Date(tx.date).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
-
-    document.getElementById('tx-detail-title').textContent = tx.symbol;
-    document.getElementById('tx-detail-subtitle').textContent = `${isSell ? 'Venda' : 'Compra'} • ${dateStr}`;
-    document.getElementById('tx-detail-total').textContent = formatBRL(total);
-    document.getElementById('tx-detail-price').textContent = formatBRL(tx.price);
-    document.getElementById('tx-detail-qtd').textContent = tx.quantity;
-
-    const iconEl = document.getElementById('tx-detail-icon');
-    iconEl.textContent = tx.symbol.substring(0, 2);
-    
-    if(isSell) {
-        // Venda: Vermelho suave
-        iconEl.className = "w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-xl font-bold bg-red-900/20 text-red-400 border border-red-900/40";
-        document.getElementById('tx-detail-total').className = "font-bold text-red-400";
-    } else {
-        // Compra: Cinza Clean (sem azul/roxo)
-        iconEl.className = "w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-xl font-bold bg-gray-800 text-white border border-gray-700";
-        document.getElementById('tx-detail-total').className = "font-bold text-white";
-    }
-
-    transactionDetailsModal.style.display = 'flex';
-    void transactionDetailsModal.offsetWidth; 
-    transactionDetailsContent.style.transform = 'translateY(0)';
-}
-
-function closeTransactionDetails() {
-    transactionDetailsContent.style.transform = 'translateY(100%)';
-    setTimeout(() => {
-        transactionDetailsModal.style.display = 'none';
-        selectedTransactionId = null;
-    }, 300);
+    if (temItem) listaHistoricoProventos.appendChild(fragment);
 }
 
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
 // --- LISTENER DOS BOTÕES DE HISTÓRICO (TOGGLE ANIMADO) ---
-// --- Listeners de Busca e Abas ---
-const toggleBg = document.getElementById('historico-toggle-bg');
+    if (btnHistTransacoes && btnHistProventos) {
+        const toggleBg = document.getElementById('historico-toggle-bg');
 
-if (btnHistTransacoes) {
-    btnHistTransacoes.addEventListener('click', () => {
-        toggleBg.classList.remove('translate-x-full');
-        // Mantém cinza, apenas move
-        
-        btnHistTransacoes.classList.replace('text-gray-500', 'text-white');
-        btnHistProventos.classList.replace('text-white', 'text-gray-500');
-        
-        listaHistorico.classList.remove('hidden');
-        listaHistoricoProventos.classList.add('hidden');
-        
-        if(historicoSearchInput) historicoSearchInput.value = '';
-        renderizarHistorico();
-    });
-}
-
-if (btnHistProventos) {
-    btnHistProventos.addEventListener('click', () => {
-        toggleBg.classList.add('translate-x-full');
-        // Mantém cinza, não adiciona roxo
-        
-        btnHistProventos.classList.replace('text-gray-500', 'text-white');
-        btnHistTransacoes.classList.replace('text-white', 'text-gray-500');
-
-        listaHistorico.classList.add('hidden');
-        listaHistoricoProventos.classList.remove('hidden');
-        
-        if(historicoSearchInput) historicoSearchInput.value = '';
-        renderizarHistoricoProventos();
-    });
-}
-
-// Busca
-if (historicoSearchInput) {
-    historicoSearchInput.addEventListener('input', (e) => {
-        const term = e.target.value;
-        const isTransacoes = !listaHistorico.classList.contains('hidden');
-        if (isTransacoes) renderizarHistorico(term);
-        else renderizarHistoricoProventos(term);
-    });
-}
-
-// Ações do Modal (Correção de Race Condition)
-document.getElementById('btn-close-tx-details').addEventListener('click', closeTransactionDetails);
-transactionDetailsModal.addEventListener('click', (e) => {
-    if(e.target === transactionDetailsModal) closeTransactionDetails();
-});
-
-document.getElementById('btn-edit-tx').addEventListener('click', () => {
-    if (selectedTransactionId) {
-        const idParaEditar = selectedTransactionId; // Salva ID
-        closeTransactionDetails();
-        // Delay seguro
-        setTimeout(() => handleAbrirModalEdicao(idParaEditar), 350); 
-    }
-});
-
-document.getElementById('btn-delete-tx').addEventListener('click', () => {
-    if (selectedTransactionId) {
-        const tx = transacoes.find(t => t.id === selectedTransactionId);
-        const idParaExcluir = selectedTransactionId;
-        const symbolParaExcluir = tx.symbol;
-        
-        closeTransactionDetails();
-        setTimeout(() => handleExcluirTransacao(idParaExcluir, symbolParaExcluir), 350);
-    }
-});
-
-    function renderizarNoticias(articles) { 
-        fiiNewsSkeleton.classList.add('hidden');
-        
-        const newSignature = JSON.stringify(articles);
-        if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
-            return;
-        }
-        lastNewsSignature = newSignature;
-
-        fiiNewsList.innerHTML = ''; 
-        fiiNewsMensagem.classList.add('hidden');
-
-        if (!articles || articles.length === 0) {
-            fiiNewsMensagem.textContent = 'Nenhuma notícia recente encontrada nos últimos 30 dias.';
-            fiiNewsMensagem.classList.remove('hidden');
-            return;
-        }
-        
-        const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
-        
-        const fragment = document.createDocumentFragment();
-
-        sortedArticles.forEach((article, index) => {
-            const sourceName = article.sourceName || 'Fonte';
-            const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
-            const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
-            const drawerId = `news-drawer-${index}`;
+        btnHistTransacoes.addEventListener('click', () => {
+            // Move a pílula para a esquerda (remove o translate)
+            toggleBg.classList.remove('translate-x-full');
             
-            const tickerRegex = /[A-Z]{4}11/g;
-            const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
+            // Ajusta as cores do texto
+            btnHistTransacoes.classList.replace('text-gray-500', 'text-white');
+            btnHistProventos.classList.replace('text-white', 'text-gray-500');
             
-            let tickersHtml = '';
-            if (foundTickers.length > 0) {
-                foundTickers.forEach(ticker => {
-                    tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
-                });
-            }
+            // Troca o conteúdo da lista
+            listaHistorico.classList.remove('hidden');
+            listaHistoricoProventos.classList.add('hidden');
+            renderizarHistorico();
+        });
 
-            const drawerContentHtml = `
-                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
-                    ${article.summary ? article.summary : 'Resumo não disponível.'}
-                </div>
-                <div class="flex justify-between items-end pt-2 border-t border-gray-800">
-                    <div class="flex flex-wrap gap-2">
-                        ${tickersHtml}
-                    </div>
-                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex-shrink-0">
-                        Ler notícia completa
-                    </a>
-                </div>
-            `;
+        btnHistProventos.addEventListener('click', () => {
+            // Move a pílula para a direita (adiciona translate de 100% da largura dela)
+            toggleBg.classList.add('translate-x-full');
 
-            const newsCard = document.createElement('div');
-            newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive'; 
-            newsCard.setAttribute('data-action', 'toggle-news');
-            newsCard.setAttribute('data-target', drawerId);
+            // Ajusta as cores do texto
+            btnHistProventos.classList.replace('text-gray-500', 'text-white');
+            btnHistTransacoes.classList.replace('text-white', 'text-gray-500');
 
-                newsCard.innerHTML = `
-                <div class="flex items-center gap-3 pointer-events-none"> <img src="${faviconUrl}" alt="${sourceName}" 
-                         class="w-10 h-10 rounded-xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto flex-shrink-0"
-                         loading="lazy"
-                         onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
-                    />
-                    
-                    <div class="flex-1 min-w-0">
-                        <h4 class="font-bold text-white line-clamp-2 text-sm leading-tight">${article.title || 'Título indisponível'}</h4>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wide">${sourceName}</span>
-                            <span class="text-[10px] text-gray-600">•</span>
-                            <span class="text-[10px] text-gray-500">${publicationDate}</span>
-                        </div>
-                    </div>
+            // Troca o conteúdo da lista
+            listaHistorico.classList.add('hidden');
+            listaHistoricoProventos.classList.remove('hidden');
+            renderizarHistoricoProventos();
+        });
+    }
 
-                    <div class="text-gray-600 pl-1">
-                        <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                        </svg>
-                    </div>
+function renderizarNoticias(articles) { 
+    fiiNewsSkeleton.classList.add('hidden');
+    fiiNewsList.innerHTML = ''; 
+    fiiNewsMensagem.classList.add('hidden');
+
+    if (!articles || articles.length === 0) {
+        fiiNewsMensagem.textContent = 'Sem notícias recentes.';
+        fiiNewsMensagem.classList.remove('hidden');
+        return;
+    }
+    
+    const fragment = document.createDocumentFragment();
+
+    articles.forEach((article, index) => {
+        const sourceName = article.sourceName || 'Fonte';
+        const publicationDate = article.publicationDate ? formatDate(article.publicationDate) : '';
+        const drawerId = `news-drawer-${index}`;
+
+        // Cria o elemento da notícia
+        const newsItem = document.createElement('div');
+        // Estilo: Linha contínua, padding generoso
+        newsItem.className = 'py-5 border-b border-gray-800 news-card-interactive group cursor-pointer'; 
+        newsItem.setAttribute('data-action', 'toggle-news');
+        newsItem.setAttribute('data-target', drawerId);
+
+        newsItem.innerHTML = `
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${sourceName}</span>
+                    <span class="text-[10px] text-gray-600">•</span>
+                    <span class="text-[10px] text-gray-600">${publicationDate}</span>
                 </div>
                 
-                <div id="${drawerId}" class="card-drawer pointer-events-auto">
-                    <div class="drawer-content pt-3 mt-2 border-t border-gray-800/50">
-                        ${drawerContentHtml}
-                    </div>
+                <h3 class="text-base font-medium text-white leading-snug group-hover:text-gray-300 transition-colors">
+                    ${article.title}
+                </h3>
+            </div>
+            
+            <div id="${drawerId}" class="card-drawer">
+                <div class="drawer-content pt-3">
+                    <p class="text-sm text-gray-400 leading-relaxed font-light">
+                        ${article.summary || 'Conteúdo indisponível.'}
+                    </p>
+                    <a href="${article.link}" target="_blank" class="inline-block mt-3 text-xs font-bold text-white border-b border-white pb-0.5 hover:opacity-70">
+                        Ler no site original
+                    </a>
                 </div>
-            `;
-            fragment.appendChild(newsCard);
-        });
-        fiiNewsList.appendChild(fragment);
-    }
+            </div>
+        `;
+        fragment.appendChild(newsItem);
+    });
+    fiiNewsList.appendChild(fragment);
+}
 
     function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');

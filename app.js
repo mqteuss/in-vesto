@@ -1348,51 +1348,87 @@ function renderizarHistorico() {
     }
 	
 function renderizarHistoricoProventos() {
-    listaHistoricoProventos.innerHTML = '';
-    const hoje = new Date(); hoje.setHours(0,0,0,0);
+        listaHistoricoProventos.innerHTML = '';
+        const hoje = new Date(); 
+        hoje.setHours(0,0,0,0);
 
-    const proventosPagos = proventosConhecidos.filter(p => {
-        if (!p.paymentDate) return false;
-        const parts = p.paymentDate.split('-');
-        const dPag = new Date(parts[0], parts[1]-1, parts[2]);
-        return dPag <= hoje;
-    }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        // 1. Filtra e Ordena
+        const proventosPagos = proventosConhecidos.filter(p => {
+            if (!p.paymentDate) return false;
+            const parts = p.paymentDate.split('-');
+            const dPag = new Date(parts[0], parts[1]-1, parts[2]);
+            return dPag <= hoje;
+        }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    const fragment = document.createDocumentFragment();
-    let temItem = false;
+        const fragment = document.createDocumentFragment();
+        let lastDateHeader = '';
+        let temItem = false;
 
-    proventosPagos.forEach(p => {
-        const dataRef = p.dataCom || p.paymentDate;
-        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+        proventosPagos.forEach(p => {
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
 
-        if (qtd > 0) {
-            temItem = true;
-            const total = p.value * qtd;
-            const card = document.createElement('div');
-            // MUDANÇA: Mesmo estilo compacto da função anterior
-            card.className = 'card-bg py-2.5 px-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2';
-            
-            card.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <div class="p-1.5 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            if (qtd > 0) {
+                temItem = true;
+                const total = p.value * qtd;
+                
+                // 2. Lógica de Agrupamento de Data
+                const parts = p.paymentDate.split('-');
+                const dateObj = new Date(parts[0], parts[1]-1, parts[2]);
+                
+                const dataHoje = new Date();
+                const dataOntem = new Date();
+                dataOntem.setDate(dataHoje.getDate() - 1);
+
+                let dateHeader = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+                
+                if (dateObj.toDateString() === dataHoje.toDateString()) dateHeader = "Hoje";
+                else if (dateObj.toDateString() === dataOntem.toDateString()) dateHeader = "Ontem";
+
+                // Insere cabeçalho se mudou a data
+                if (dateHeader !== lastDateHeader) {
+                    const headerEl = document.createElement('div');
+                    headerEl.className = 'history-date-header';
+                    headerEl.textContent = dateHeader;
+                    fragment.appendChild(headerEl);
+                    lastDateHeader = dateHeader;
+                }
+
+                // 3. Cria o Item (Estilo Lista Limpa)
+                const item = document.createElement('div');
+                item.className = 'history-item group';
+                
+                // Ícone: Cifrão ou Seta recebendo (Verde)
+                const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+
+                item.innerHTML = `
+                    <div class="flex items-center flex-1 min-w-0">
+                        <div class="history-icon-circle bg-green-900/20 text-green-500">
+                            ${iconSvg}
+                        </div>
+                        
+                        <div class="min-w-0 flex-1 pr-4">
+                            <div class="flex justify-between items-baseline">
+                                <h3 class="text-base font-semibold text-white truncate">${p.symbol}</h3>
+                                <span class="text-base font-bold text-green-500">+ ${formatBRL(total)}</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-0.5">
+                                <p class="text-sm text-gray-500">Rendimento recebido</p>
+                                <p class="text-xs text-gray-600 font-medium">${formatBRL(p.value)} x ${qtd}</p>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="text-sm font-bold text-white leading-tight">${p.symbol}</h3>
-                        <p class="text-[10px] text-gray-400 font-medium">Pag: ${formatDate(p.paymentDate)}</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="text-sm font-bold accent-text leading-tight">+ ${formatBRL(total)}</p>
-                    <p class="text-[10px] text-gray-500 font-medium">${formatBRL(p.value)} x ${qtd}</p>
-                </div>
-            `;
-            fragment.appendChild(card);
+                `;
+                fragment.appendChild(item);
+            }
+        });
+        
+        if (temItem) {
+            listaHistoricoProventos.appendChild(fragment);
+        } else {
+            listaHistoricoProventos.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhum provento recebido ainda.</p>';
         }
-    });
-    
-    if (temItem) listaHistoricoProventos.appendChild(fragment);
-}
+    }
 
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
 // --- LISTENER DOS BOTÕES DE HISTÓRICO (TOGGLE ANIMADO) ---

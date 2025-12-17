@@ -107,7 +107,7 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // Ícone
+    // Ícone Minimalista
     const iconLetters = ativo.symbol.substring(0, 2);
     const iconHtml = `
         <div class="w-10 h-10 rounded-lg bg-[#1C1C1E] border border-[#2C2C2E] flex items-center justify-center shrink-0 shadow-sm">
@@ -115,7 +115,7 @@ function criarCardElemento(ativo, dados) {
         </div>
     `;
 
-    // Lógica de Proventos (Mantida)
+    // Cartão de Proventos (Compacto)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -193,29 +193,27 @@ function criarCardElemento(ativo, dados) {
         </div>
 
         <div id="drawer-${ativo.symbol}" class="card-drawer bg-[#09090b]">
-            <div class="drawer-content pl-2 pr-2 pb-3 pt-2 md:pl-[3.5rem] md:pr-4">
+            <div class="drawer-content pl-2 pr-2 pb-3 pt-1 md:pl-[3.5rem] md:pr-4">
                 
-                <div class="flex justify-between items-center mb-3 px-1 border-b border-[#1C1C1E] pb-2">
-                    
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Patrimônio</span>
-                        <span data-field="posicao-valor" class="text-lg font-bold text-white tracking-tight leading-none">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
-                    </div>
-                    
-                    <div data-field="pl-badge">
-                        <div class="flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')} ${corPL}">
+                <div class="grid grid-cols-2 gap-2 bg-[#131315] p-2.5 rounded-xl border border-[#1C1C1E]">
+                    <div class="col-span-2 border-b border-[#2C2C2E] pb-2 mb-0.5 flex justify-between items-center">
+                        
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Patrimônio</span>
+                            <span data-field="posicao-valor" class="text-lg font-bold text-white tracking-tight">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
+                        </div>
+                        
+                        <div data-field="pl-badge" class="flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')}">
                             <span class="text-[10px] font-bold">${formatBRL(lucroPrejuizo)}</span>
-                            <span class="text-[10px] font-bold opacity-80">(${lucroPrejuizoPercent.toFixed(1)}%)</span>
                         </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-2 gap-4 px-1 pb-1">
-                    <div>
+                    <div class="relative">
                         <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider block">Custo Total</span>
                         <span data-field="custo-valor" class="block text-xs font-semibold text-gray-300 mt-0.5">${formatBRL(custoTotal)}</span>
                     </div>
-                    <div class="text-right">
+
+                    <div class="relative pl-2 border-l border-[#2C2C2E]">
                         <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider block">Preço Médio</span>
                         <span class="block text-xs font-semibold text-gray-300 mt-0.5">${formatBRL(ativo.precoMedio)}</span>
                     </div>
@@ -252,28 +250,24 @@ function atualizarCardElemento(card, ativo, dados) {
     variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
     variacaoEl.className = `${corVariacao} text-[10px] font-medium leading-none`; 
     
-    // Mini Tag
+    // Mini Tag (Desktop)
     const miniTagEl = card.querySelector('[data-field="pl-tag-mini"]');
     if (miniTagEl) {
         miniTagEl.innerHTML = dadoPreco ? `<span class="text-[10px] font-bold ${corPL}">${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%</span>` : '';
     }
 
-    // Drawer - Patrimônio (Topo)
+    // Drawer - Dados Principais
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
 
     // Badge de Resultado
     const plBadge = card.querySelector('[data-field="pl-badge"]');
     if (plBadge) {
-        plBadge.innerHTML = `
-            <div class="flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')} ${corPL}">
-                <span class="text-[10px] font-bold">${formatBRL(lucroPrejuizo)}</span>
-                <span class="text-[10px] font-bold opacity-80">(${lucroPrejuizoPercent.toFixed(1)}%)</span>
-            </div>
-        `;
+        plBadge.innerHTML = `<span class="text-[10px] font-bold">${formatBRL(lucroPrejuizo)}</span>`;
+        plBadge.className = `flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')} ${corPL}`;
     }
 
-    // Proventos (Mantido)
+    // Proventos - Recria o HTML (Versão Compacta)
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
@@ -320,6 +314,7 @@ function atualizarCardElemento(card, ativo, dados) {
         if (container) container.innerHTML = proventoHtml;
     }
 }
+
 document.addEventListener('DOMContentLoaded', async () => {
 	
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---

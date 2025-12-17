@@ -1521,73 +1521,98 @@ function renderizarHistoricoProventos() {
 
 function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
+        const legendContainer = document.getElementById('alocacao-legend-container'); // O container que adicionamos
+        
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         
+        // Limpeza se não houver dados
         if (dadosGrafico.length === 0) {
             if (alocacaoChartInstance) {
                 alocacaoChartInstance.destroy();
                 alocacaoChartInstance = null; 
             }
+            if (legendContainer) legendContainer.innerHTML = '';
             lastAlocacaoData = null; 
             return;
         }
         
-        // Ordenar do maior para o menor para ficar visualmente agradável
+        // Ordena do maior para o menor
         dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
         const labels = dadosGrafico.map(d => d.symbol);
         const data = dadosGrafico.map(d => d.totalPosicao);
         const newDataString = JSON.stringify({ labels, data });
 
+        // Cache simples para não renderizar a toa
         if (newDataString === lastAlocacaoData) { return; }
         lastAlocacaoData = newDataString; 
         
         const colors = gerarCores(labels.length);
 
-        const config = {
+        // --- 1. GERAR AS CAIXINHAS (LEGENDA HTML) ---
+        if (legendContainer) {
+            const total = data.reduce((a, b) => a + b, 0);
+            
+            legendContainer.innerHTML = labels.map((label, index) => {
+                const color = colors[index % colors.length];
+                const value = data[index];
+                const percent = ((value / total) * 100).toFixed(1);
+                
+                // Cria a "caixinha" para cada ativo
+                return `
+                    <div class="legend-item">
+                        <span class="legend-color-dot" style="background-color: ${color}"></span>
+                        <span>${label}</span>
+                        <span class="ml-1.5 opacity-60 font-normal">${percent}%</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- 2. DESENHAR O GRÁFICO ---
+        if (alocacaoChartInstance) {
+            alocacaoChartInstance.destroy();
+        }
+
+        alocacaoChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: { 
                 labels: labels, 
                 datasets: [{ 
                     data: data, 
                     backgroundColor: colors, 
-                    borderWidth: 4, // Espaço entre fatias
-                    borderColor: document.body.classList.contains('light-mode') ? '#f3f4f6' : '#000000', // Cor do fundo para "cortar" as fatias
-                    borderRadius: 5, // Bordas arredondadas nas fatias (Moderno)
+                    borderWidth: 2, 
+                    borderColor: document.body.classList.contains('light-mode') ? '#ffffff' : '#000000', 
+                    borderRadius: 4, 
                     hoverOffset: 4
                 }] 
             },
             options: {
                 responsive: true, 
-                maintainAspectRatio: false,
-                cutout: '75%', // Anel mais fino (Estilo Fintech)
+                maintainAspectRatio: false, // Permite que ele obedeça a altura do CSS
+                cutout: '65%', // Reduzi de 80% para 65% (fica mais "grosso", preenche melhor o visual)
+                layout: {
+                    padding: 10
+                },
                 plugins: {
-                    legend: { 
-                        display: false // Nubank geralmente não polui o gráfico com legenda, usa lista abaixo. Mas se quiser manter, mude para true.
-                    },
+                    legend: { display: false }, // Desliga a legenda padrão feia
                     tooltip: {
                         backgroundColor: '#1C1C1E',
-                        padding: 12,
+                        bodyColor: '#fff',
+                        borderColor: '#333',
+                        borderWidth: 1,
+                        padding: 10,
                         cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percent = ((value / total) * 100).toFixed(1);
-                                return ` ${label}: ${formatBRL(value)} (${percent}%)`;
+                                return ` ${formatBRL(context.parsed)}`;
                             }
                         }
                     }
                 }
             }
-        };
-
-        if (alocacaoChartInstance) {
-            alocacaoChartInstance.destroy(); // Destruir para recriar com novas opções de border
-        }
-        alocacaoChartInstance = new Chart(ctx, config);
+        });
     }
     
 function renderizarGraficoHistorico({ labels, data }) {

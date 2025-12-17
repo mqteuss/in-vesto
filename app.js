@@ -1276,6 +1276,7 @@ function agruparPorMes(itens, dateField) {
 
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (ESTILO FINTECH) ---
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL CONSISTENTE E ÍCONES ÚNICOS) ---
+// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (CLIQUE PARA EDITAR) ---
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
     
@@ -1291,44 +1292,32 @@ function renderizarHistorico() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // 1. Header do Mês (Sticky)
+        // Header
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
-        // Fonte padronizada: text-xs e tracking-widest para cabeçalhos
         header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // 2. Lista de Itens
+        // Lista
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-5 space-y-1'; // Espaçamento vertical entre itens mais justo
+        listaGrupo.className = 'mb-5 space-y-1';
 
         grupos[mes].forEach(t => {
             const isVenda = t.type === 'sell';
             const item = document.createElement('div');
             
-            // Container do item
-            item.className = 'flex items-center justify-between group cursor-default py-3 px-2 hover:bg-neutral-900/40 rounded-xl transition-colors';
+            // AQUI: Adicionamos cursor-pointer e o data-action na div principal
+            item.className = 'flex items-center justify-between group cursor-pointer py-3 px-2 hover:bg-neutral-900/40 rounded-xl transition-colors relative';
+            item.setAttribute('data-action', 'edit-row');
+            item.setAttribute('data-id', t.id);
             
-            // --- ÍCONES SVG MINIMALISTAS ---
-            // Compra: Sacola (Shopping Bag)
-            const svgCompra = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>`;
-                
-            // Venda: Etiqueta (Tag/Sale)
-            const svgVenda = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 8V3h4z" />
-                </svg>`;
-
+            // Ícones
+            const svgCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>`;
+            const svgVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 8V3h4z" /></svg>`;
             const iconSvg = isVenda ? svgVenda : svgCompra;
             
-            // Cores dos ícones (Fundo sutil)
             const corIconeBg = isVenda ? 'bg-red-500/10' : 'bg-purple-500/10';
             const corIcone = isVenda ? 'text-red-500' : 'text-purple-400';
-            
-            // Formatação de data
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             
             item.innerHTML = `
@@ -1336,7 +1325,6 @@ function renderizarHistorico() {
                     <div class="w-10 h-10 rounded-2xl ${corIconeBg} ${corIcone} flex items-center justify-center flex-shrink-0 border border-neutral-800">
                         ${iconSvg}
                     </div>
-                    
                     <div class="flex-1 min-w-0 flex flex-col justify-center">
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-semibold text-gray-200 truncate">${t.symbol}</span>
@@ -1344,25 +1332,15 @@ function renderizarHistorico() {
                                 ${isVenda ? 'VENDA' : 'COMPRA'}
                             </span>
                         </div>
-                        <p class="text-xs text-neutral-500 mt-0.5 font-medium">
-                            Dia ${dia} • ${t.quantity} cotas
-                        </p>
+                        <p class="text-xs text-neutral-500 mt-0.5 font-medium">Dia ${dia} • ${t.quantity} cotas</p>
                     </div>
                 </div>
                 
-                <div class="text-right pl-3 flex flex-col justify-center h-full">
-                    <p class="text-sm font-semibold text-gray-200 whitespace-nowrap tracking-tight">
-                        ${formatBRL(t.quantity * t.price)}
-                    </p>
-                    <p class="text-xs text-neutral-500 mt-0.5 font-medium">
-                        ${formatBRL(t.price)} un.
-                    </p>
-                    
-                    <div class="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black pl-2 border-l border-neutral-800">
-                         <button class="p-1.5 text-neutral-400 hover:text-white bg-neutral-800 rounded-lg transition-colors" data-action="edit" data-id="${t.id}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-                         </button>
-                         <button class="p-1.5 text-neutral-400 hover:text-red-500 bg-neutral-800 rounded-lg transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                <div class="text-right pl-3 flex flex-col justify-center items-end h-full">
+                    <p class="text-sm font-semibold text-gray-200 whitespace-nowrap tracking-tight">${formatBRL(t.quantity * t.price)}</p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                         <span class="text-xs text-neutral-500 font-medium">${formatBRL(t.price)}</span>
+                         <button class="p-1.5 -mr-2 text-neutral-600 hover:text-red-500 transition-colors z-20" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                          </button>
                     </div>
@@ -1372,11 +1350,11 @@ function renderizarHistorico() {
         });
         fragment.appendChild(listaGrupo);
     });
-
     listaHistorico.appendChild(fragment);
 }
 
 // --- RENDERIZAR HISTÓRICO DE PROVENTOS (ESTILO FINTECH) ---
+// --- RENDERIZAR HISTÓRICO DE PROVENTOS (VISUAL UNIFICADO) ---
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1389,7 +1367,7 @@ function renderizarHistoricoProventos() {
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     if (proventosPagos.length === 0) {
-        listaHistoricoProventos.innerHTML = `<p class="text-center text-neutral-500 mt-10">Nenhum provento recebido ainda.</p>`;
+        listaHistoricoProventos.innerHTML = `<p class="text-center text-neutral-500 mt-10 text-sm">Nenhum provento recebido ainda.</p>`;
         return;
     }
 
@@ -1397,15 +1375,15 @@ function renderizarHistoricoProventos() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // 1. Cabeçalho do Mês
+        // Header (Idêntico ao de Transações)
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
-        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">${mes}</h3>`;
+        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // 2. Lista de Itens
+        // Lista
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-6 space-y-4';
+        listaGrupo.className = 'mb-5 space-y-1';
 
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
@@ -1414,31 +1392,43 @@ function renderizarHistoricoProventos() {
             if (qtd > 0) {
                 const total = p.value * qtd;
                 const dia = new Date(p.paymentDate).getDate().toString().padStart(2, '0');
-
                 const item = document.createElement('div');
-                item.className = 'flex items-center justify-between';
                 
+                // Mesmo container base
+                item.className = 'flex items-center justify-between group cursor-default py-3 px-2 hover:bg-neutral-900/40 rounded-xl transition-colors';
+                
+                // SVG Minimalista (Moeda/Dinheiro)
+                const iconSvg = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>`;
+
                 item.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full bg-green-900/20 text-green-500 flex items-center justify-center flex-shrink-0 border border-green-900/30">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                    <div class="flex items-center gap-4 flex-1 min-w-0">
+                        <div class="w-10 h-10 rounded-2xl bg-green-500/10 text-green-500 flex items-center justify-center flex-shrink-0 border border-neutral-800">
+                            ${iconSvg}
                         </div>
-                        <div>
-                            <span class="text-sm font-bold text-white block">${p.symbol}</span>
-                            <p class="text-xs text-neutral-500">Dia ${dia} • Rendimento</p>
+                        
+                        <div class="flex-1 min-w-0 flex flex-col justify-center">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-semibold text-gray-200 truncate">${p.symbol}</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-green-500 opacity-80">
+                                    PROVENTO
+                                </span>
+                            </div>
+                            <p class="text-xs text-neutral-500 mt-0.5 font-medium">Dia ${dia} • ${formatBRL(p.value)}/cota</p>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-sm font-bold text-green-400">+ ${formatBRL(total)}</p>
+                    
+                    <div class="text-right pl-3 flex flex-col justify-center h-full">
+                        <p class="text-sm font-semibold text-green-400 whitespace-nowrap tracking-tight">+ ${formatBRL(total)}</p>
+                        <p class="text-xs text-neutral-500 mt-0.5 font-medium">Pago</p>
                     </div>
                 `;
                 listaGrupo.appendChild(item);
             }
         });
         
-        // Só adiciona o grupo se tiver itens dentro (devido ao filtro de qtd > 0)
         if (listaGrupo.children.length > 0) {
             fragment.appendChild(listaGrupo);
         }
@@ -3599,18 +3589,22 @@ listaCarteira.addEventListener('click', (e) => {
         }
     });
     
-    listaHistorico.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
-
-        const action = target.dataset.action;
-        const id = target.dataset.id;
-        const symbol = target.dataset.symbol;
-
-        if (action === 'edit') {
-            handleAbrirModalEdicao(id);
-        } else if (action === 'delete') {
+listaHistorico.addEventListener('click', (e) => {
+        // 1. Verifica se clicou no botão de EXCLUIR
+        const deleteBtn = e.target.closest('[data-action="delete"]');
+        if (deleteBtn) {
+            e.stopPropagation(); // Impede que o clique propague para a linha (evita abrir o modal)
+            const id = deleteBtn.dataset.id;
+            const symbol = deleteBtn.dataset.symbol;
             handleExcluirTransacao(id, symbol);
+            return;
+        }
+
+        // 2. Verifica se clicou na LINHA da transação (para EDITAR)
+        const itemRow = e.target.closest('[data-action="edit-row"]');
+        if (itemRow) {
+            const id = itemRow.dataset.id;
+            handleAbrirModalEdicao(id);
         }
     });
     

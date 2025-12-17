@@ -100,6 +100,146 @@ const CACHE_PROVENTOS = 1000 * 60 * 60 * 12;
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
+function criarCardElemento(ativo, dados) {
+    const {
+        dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
+        totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
+        corPL, bgPL, dadoProvento, proventoReceber
+    } = dados;
+
+    // 1. Configuração Visual (Ícone Neutro)
+    const initials = ativo.symbol.substring(0, 2);
+    
+    // 2. Cor do texto L/P
+    const isLucro = lucroPrejuizo >= 0;
+    const corLPTexto = isLucro ? 'text-green-500' : 'text-red-500';
+
+    // 3. Lógica de Proventos (A QUE VOCÊ GOSTA)
+    let proventoHtml = '';
+    if (isFII(ativo.symbol)) { 
+        if (dadoProvento && dadoProvento.value > 0) {
+            const parts = dadoProvento.paymentDate.split('-');
+            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+            const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+            
+            // Verifica se é passado ou futuro para mudar o texto e a cor
+            const foiPago = dataPag <= hoje;
+            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
+            const valorClass = foiPago ? "text-gray-400" : "text-purple-400 font-bold";
+            const sinal = foiPago ? "" : "+";
+
+            let valorTexto = '';
+            if (proventoReceber > 0) {
+                 valorTexto = `<span class="text-sm ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
+            } else {
+                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
+            }
+            
+            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
+
+            // HTML detalhado do provento
+            proventoHtml = `
+            <div class="mt-4 space-y-2 border-t border-gray-800 pt-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
+                    <span class="text-sm font-medium text-gray-300">${formatBRL(dadoProvento.value)}</span>
+                </div>
+                <div class="flex justify-between items-center bg-[#161618] p-2 rounded-lg">
+                    <span class="text-xs text-gray-400 font-bold uppercase">${labelTexto}</span>
+                    ${valorTexto}
+                </div>
+                <div class="flex justify-between items-center px-1"> 
+                    <span class="text-[10px] text-gray-500">Data Com: ${dataComTexto}</span>
+                    <span class="text-[10px] text-gray-500">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
+                </div>
+            </div>`;
+        } else {
+            proventoHtml = `
+            <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-800">
+                <span class="text-xs text-gray-500 font-medium">Provento</span>
+                <span class="text-sm font-medium text-gray-500">Aguardando anúncio.</span>
+            </div>`;
+        }
+    }
+
+    // 4. Criação do Elemento (Layout LISTA LIMPA)
+    const card = document.createElement('div');
+    card.className = 'group'; // Wrapper simples
+    card.setAttribute('data-symbol', ativo.symbol);
+
+    card.innerHTML = `
+        <div class="wallet-item-row" data-symbol="${ativo.symbol}" data-action="toggle">
+            
+            <div class="flex items-center min-w-0 gap-4">
+                <div class="wallet-icon-uniform">
+                    ${initials}
+                </div>
+                
+                <div class="min-w-0 flex flex-col">
+                    <h3 class="text-base font-bold text-white leading-tight truncate">${ativo.symbol}</h3>
+                    <span class="text-xs text-gray-500 font-medium mt-0.5" data-field="cota-qtd">${ativo.quantity} cotas</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="flex flex-col items-end">
+                    <span data-field="posicao-valor" class="text-base font-semibold text-white tracking-tight">
+                        ${dadoPreco ? formatBRL(totalPosicao) : '...'}
+                    </span>
+                    
+                    <div class="flex items-center gap-1.5 mt-0.5">
+                        <span data-field="preco-valor" class="text-xs text-gray-500">${precoFormatado}</span>
+                        <span data-field="pl-valor" class="text-[10px] font-bold ${corLPTexto} bg-gray-800 px-1.5 py-0.5 rounded">
+                             ${lucroPrejuizoPercent.toFixed(1)}%
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="text-gray-600 pl-1">
+                    <svg class="card-arrow-icon w-4 h-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div id="drawer-${ativo.symbol}" class="card-drawer border-b border-[#1C1C1E]">
+            <div class="drawer-content px-2 pb-6 pt-2">
+                <div class="grid grid-cols-2 gap-3 mt-1">
+                    <div class="p-3 rounded-xl bg-[#161618]">
+                        <span class="text-[10px] text-gray-500 block uppercase font-bold">Preço Médio</span>
+                        <span class="text-sm font-semibold text-gray-200">${formatBRL(ativo.precoMedio)}</span>
+                    </div>
+                    <div class="p-3 rounded-xl bg-[#161618]">
+                        <span class="text-[10px] text-gray-500 block uppercase font-bold">Custo Total</span>
+                        <span data-field="custo-valor" class="text-sm font-semibold text-gray-200">${formatBRL(custoTotal)}</span>
+                    </div>
+                    <div class="p-3 rounded-xl bg-[#161618]">
+                        <span class="text-[10px] text-gray-500 block uppercase font-bold">Lucro/Prej. (R$)</span>
+                        <span class="text-sm font-semibold ${corLPTexto}">${formatBRL(lucroPrejuizo)}</span>
+                    </div>
+                    <div class="p-3 rounded-xl bg-[#161618]">
+                        <span class="text-[10px] text-gray-500 block uppercase font-bold">Var. Dia</span>
+                        <span data-field="variacao-valor" class="text-sm font-semibold ${corVariacao}">${dadoPreco ? variacaoFormatada : '-'}</span>
+                    </div>
+                </div>
+
+                <div data-field="provento-container">${proventoHtml}</div> 
+
+                <div class="flex justify-end gap-3 pt-5 px-1">
+                    <button class="flex-1 py-2.5 px-4 text-xs font-bold text-gray-300 bg-[#2C2C2E] hover:bg-gray-700 rounded-xl transition-colors" data-symbol="${ativo.symbol}" data-action="details">
+                        Ver Detalhes
+                    </button>
+                    <button class="py-2.5 px-4 text-xs font-bold text-red-400 bg-red-900/10 hover:bg-red-900/20 border border-red-900/20 rounded-xl transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
+                        Remover
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
 function atualizarCardElemento(card, ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -185,87 +325,6 @@ function atualizarCardElemento(card, ativo, dados) {
             }
             containerProv.innerHTML = proventoHtml;
         }
-    }
-}
-
-function atualizarCardElemento(card, ativo, dados) {
-    const {
-        dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
-        totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, bgPL, dadoProvento, proventoReceber
-    } = dados;
-
-    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
-    card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
-    card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : 'A calcular...';
-    card.querySelector('[data-field="pm-label"]').textContent = `Custo (P.M. ${formatBRL(ativo.precoMedio)})`;
-    card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
-
-    // Atualiza variação com as novas classes (texto menor, abaixo do preço)
-    const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
-    variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-    variacaoEl.className = `${corVariacao} text-xs font-medium block mt-0.5`; 
-
-    // O restante da função permanece igual...
-    const plValorEl = card.querySelector('[data-field="pl-valor"]');
-    plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...';
-    plValorEl.className = `text-sm font-semibold ${corPL}`; 
-
-    let plTagHtml = '';
-    if (dadoPreco) {
-        plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
-            ${lucroPrejuizoPercent.toFixed(1)}% L/P
-        </span>`;
-    }
-    card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
-
-    if (isFII(ativo.symbol)) { 
-        // ... (Mantenha a lógica interna do FII igual ao original)
-        // Apenas garanta que o código HTML dentro do if (isFII) seja o mesmo da função criarCardElemento
-        let proventoHtml = '';
-        if (dadoProvento && dadoProvento.value > 0) {
-            const parts = dadoProvento.paymentDate.split('-');
-            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-            const hoje = new Date();
-            hoje.setHours(0, 0, 0, 0);
-            
-            const foiPago = dataPag <= hoje;
-            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
-            const valorClass = foiPago ? "text-gray-400" : "accent-text";
-            const sinal = foiPago ? "" : "+";
-
-            let valorTexto = '';
-            if (proventoReceber > 0) {
-                 valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
-            } else {
-                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
-            }
-
-            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
-            
-            proventoHtml = `
-            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
-                    <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
-                    ${valorTexto}
-                </div>
-                <div class="flex justify-between items-center"> 
-                    <span class="text-xs text-gray-500 font-medium" title="Data limite para compra">Data Com: ${dataComTexto}</span>
-                    <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
-                </div>
-            </div>`;
-        } else {
-            proventoHtml = `
-            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
-                <span class="text-xs text-gray-500 font-medium">Provento</span>
-                <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
-            </div>`;
-        }
-        card.querySelector('[data-field="provento-container"]').innerHTML = proventoHtml;
     }
 }
 

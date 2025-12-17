@@ -1521,6 +1521,8 @@ function renderizarHistoricoProventos() {
 
 function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
+        const legendContainer = document.getElementById('alocacao-legend-container'); // Pegamos o container novo
+        
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         
@@ -1529,11 +1531,12 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                 alocacaoChartInstance.destroy();
                 alocacaoChartInstance = null; 
             }
+            if (legendContainer) legendContainer.innerHTML = '';
             lastAlocacaoData = null; 
             return;
         }
         
-        // Ordenar do maior para o menor para ficar visualmente agradável
+        // Ordena visualmente
         dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
         const labels = dadosGrafico.map(d => d.symbol);
@@ -1545,52 +1548,64 @@ function renderizarGraficoAlocacao(dadosGrafico) {
         
         const colors = gerarCores(labels.length);
 
-        const config = {
+        // --- 1. GERAÇÃO DA LEGENDA HTML (As "Caixinhas") ---
+        if (legendContainer) {
+            legendContainer.innerHTML = labels.map((label, index) => {
+                const color = colors[index % colors.length];
+                const value = data[index];
+                const total = data.reduce((a, b) => a + b, 0);
+                const percent = ((value / total) * 100).toFixed(1);
+                
+                return `
+                    <div class="legend-item">
+                        <span class="legend-color-dot" style="background-color: ${color}"></span>
+                        <span class="font-bold mr-1">${label}</span>
+                        <span class="opacity-70">${percent}%</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- 2. RENDERIZAÇÃO DO GRÁFICO ---
+        if (alocacaoChartInstance) {
+            alocacaoChartInstance.destroy();
+        }
+
+        alocacaoChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: { 
                 labels: labels, 
                 datasets: [{ 
                     data: data, 
                     backgroundColor: colors, 
-                    borderWidth: 4, // Espaço entre fatias
-                    borderColor: document.body.classList.contains('light-mode') ? '#f3f4f6' : '#000000', // Cor do fundo para "cortar" as fatias
-                    borderRadius: 5, // Bordas arredondadas nas fatias (Moderno)
-                    hoverOffset: 4
+                    borderWidth: 0, // Sem borda para visual flat super limpo
+                    borderRadius: 4, 
+                    hoverOffset: 10,
+                    spacing: 5 // Espaço real entre as fatias
                 }] 
             },
             options: {
-                responsive: true, 
-                maintainAspectRatio: false,
-                cutout: '75%', // Anel mais fino (Estilo Fintech)
+                responsive: true, maintainAspectRatio: false,
+                cutout: '80%', // Bem fino
                 plugins: {
-                    legend: { 
-                        display: false // Nubank geralmente não polui o gráfico com legenda, usa lista abaixo. Mas se quiser manter, mude para true.
-                    },
+                    legend: { display: false }, // Desligamos a legenda nativa feia
                     tooltip: {
-                        backgroundColor: '#1C1C1E',
-                        padding: 12,
-                        cornerRadius: 8,
+                        backgroundColor: '#000',
+                        bodyColor: '#fff',
+                        borderColor: '#333',
+                        borderWidth: 1,
                         callbacks: {
                             label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percent = ((value / total) * 100).toFixed(1);
-                                return ` ${label}: ${formatBRL(value)} (${percent}%)`;
+                                return ` ${formatBRL(context.parsed)}`;
                             }
                         }
                     }
                 }
             }
-        };
-
-        if (alocacaoChartInstance) {
-            alocacaoChartInstance.destroy(); // Destruir para recriar com novas opções de border
-        }
-        alocacaoChartInstance = new Chart(ctx, config);
+        });
     }
     
-    function renderizarGraficoHistorico({ labels, data }) {
+function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1607,19 +1622,15 @@ function renderizarGraficoAlocacao(dadosGrafico) {
             return;
         }
         
-        const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
-        
-        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
-        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
+        // --- ESTILO VISUAL NOVO (Gradiente Vertical Suave) ---
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300); 
+        gradient.addColorStop(0, '#c084fc');       // Roxo claro no topo
+        gradient.addColorStop(1, 'rgba(192, 132, 252, 0.1)'); // Quase transparente na base
         
         if (historicoChartInstance) {
             historicoChartInstance.data.labels = labels;
             historicoChartInstance.data.datasets[0].data = data;
             historicoChartInstance.data.datasets[0].backgroundColor = gradient;
-            historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
             historicoChartInstance.update();
         } else {
             historicoChartInstance = new Chart(ctx, {
@@ -1630,37 +1641,45 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                         label: 'Total Recebido',
                         data: data,
                         backgroundColor: gradient,
-                        hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', 
-                        borderWidth: 1,
-                        borderRadius: 5 
+                        borderRadius: 4, // Barras arredondadas (Topo)
+                        borderSkipped: false, // Arredonda tudo (visual pílula) ou 'bottom' para base reta
+                        barPercentage: 0.6, // Barras mais finas e elegantes
+                        categoryPercentage: 0.8
                     }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
+                    responsive: true, 
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#1A1A1A',
+                            backgroundColor: '#1C1C1E',
                             titleColor: '#f3f4f6',
-                            bodyColor: '#f3f4f6',
-                            borderColor: '#2A2A2A',
+                            bodyColor: '#c084fc', // Valor em roxo
+                            borderColor: '#2C2C2E',
                             borderWidth: 1,
                             padding: 10,
                             displayColors: false, 
+                            cornerRadius: 8,
                             callbacks: {
-                                title: (context) => `Mês: ${context[0].label}`, 
-                                label: (context) => `Total: ${formatBRL(context.parsed.y)}`
+                                title: (context) => context[0].label, 
+                                label: (context) => formatBRL(context.parsed.y)
                             }
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: { color: '#2A2A2A' }, 
-                            ticks: { display: false }
+                            grid: { display: false, drawBorder: false }, // Remove linhas Y
+                            ticks: { display: false } // Remove números Y (visual limpo)
                         },
-                        x: { grid: { display: false } }
+                        x: { 
+                            grid: { display: false, drawBorder: false }, // Remove linhas X
+                            ticks: { 
+                                color: Chart.defaults.color,
+                                font: { size: 10 }
+                            }
+                        }
                     }
                 }
             });

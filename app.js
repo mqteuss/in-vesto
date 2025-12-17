@@ -107,127 +107,162 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // Ícone Minimalista
-    const iconLetters = ativo.symbol.substring(0, 2);
-    const iconHtml = `
-        <div class="w-10 h-10 rounded-lg bg-[#1C1C1E] border border-[#2C2C2E] flex items-center justify-center shrink-0 shadow-sm">
-            <span class="text-white font-bold text-sm tracking-wide">${iconLetters}</span>
-        </div>
-    `;
-
-    // Cartão de Proventos (Compacto)
+    // 1. Tag de Lucro/Prejuízo (L/P)
+    let plTagHtml = '';
+    if (dadoPreco) {
+        plTagHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block tracking-wide">
+            ${lucroPrejuizoPercent.toFixed(1)}% L/P
+        </span>`;
+    }
+    
+    // 2. Lógica de Proventos (FIIs)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            
             const foiPago = dataPag <= hoje;
+            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
+            const valorClass = foiPago ? "text-gray-400" : "accent-text";
+            const sinal = foiPago ? "" : "+";
+
+            let valorTexto = '';
+            if (proventoReceber > 0) {
+                 valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
+            } else {
+                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
+            }
             
-            const statusIcon = foiPago 
-                ? `<svg class="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>`
-                : `<svg class="w-3 h-3 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-            
-            const textoStatus = foiPago ? "Pago" : "Agendado";
-            const corStatus = foiPago ? "text-green-400" : "text-yellow-400";
-            const bgStatus = foiPago ? "bg-green-400/10 border-green-400/20" : "bg-yellow-400/10 border-yellow-400/20";
+            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
 
             proventoHtml = `
-            <div class="mt-2 relative group overflow-hidden rounded-lg border ${bgStatus} border p-2.5 transition-all hover:border-opacity-50">
-                <div class="flex justify-between items-start relative z-10">
-                    <div>
-                        <div class="flex items-center gap-1.5 mb-0.5">
-                            ${statusIcon}
-                            <span class="text-[9px] font-bold uppercase tracking-wider ${corStatus}">${textoStatus}</span>
-                        </div>
-                        <span class="text-[10px] text-gray-400 font-medium">Data Com: ${dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-'}</span>
-                    </div>
-                    <div class="text-right">
-                        <span class="block text-base font-bold text-white tracking-tight leading-tight">${formatBRL(dadoProvento.value)}</span>
-                        <span class="text-[9px] text-gray-500 uppercase font-bold">p/ cota</span>
-                    </div>
+            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
+                    <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
-                <div class="mt-1.5 pt-1.5 border-t border-white/5 flex justify-between items-center relative z-10">
-                    <span class="text-[10px] text-gray-400">Pagamento</span>
-                    <span class="text-[10px] font-bold text-white">${formatDate(dadoProvento.paymentDate)}</span>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
+                    ${valorTexto}
+                </div>
+                <div class="flex justify-between items-center"> 
+                    <span class="text-xs text-gray-500 font-medium" title="Data limite para compra">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
-            <div class="mt-2 p-2 rounded-lg border border-dashed border-[#2C2C2E] bg-[#111111] flex items-center justify-center gap-2 opacity-60">
-                <span class="text-[10px] text-gray-500 font-medium">Aguardando anúncio</span>
+            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
+                <span class="text-xs text-gray-500 font-medium">Provento</span>
+                <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
             </div>`;
         }
     }
 
+    // 3. ÍCONE DINÂMICO (LUCRO vs PREJUÍZO)
+    let gradStart, gradEnd;
+    let bar1_y, bar1_h; 
+    let bar2_y, bar2_h; 
+
+    if (!dadoPreco) {
+        gradStart = '#6b21a8'; gradEnd = '#a855f7'; 
+        bar1_y = 15; bar1_h = 10; 
+        bar2_y = 9;  bar2_h = 16; 
+    } 
+    else if (lucroPrejuizo >= 0) {
+        gradStart = '#15803d'; gradEnd = '#22c55e'; 
+        bar1_y = 15; bar1_h = 10; 
+        bar2_y = 9;  bar2_h = 16; 
+    } 
+    else {
+        gradStart = '#991b1b'; gradEnd = '#ef4444'; 
+        bar1_y = 9;  bar1_h = 16; 
+        bar2_y = 15; bar2_h = 10; 
+    }
+
+// Substitua a variável vestoIconSvg antiga por esta:
+const vestoIconSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-full h-full">
+        <defs>
+            <linearGradient id="barGrad-${ativo.symbol}" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" style="stop-color:${gradStart};stop-opacity:1" />
+                <stop offset="100%" style="stop-color:${gradEnd};stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        
+        <path d="M3 16 L9.5 4.75 L22.5 4.75 L29 16 L22.5 27.25 L9.5 27.25 Z" 
+              fill="#18181b" 
+              stroke="#2C2C2E" 
+              stroke-width="1"
+              stroke-linejoin="round" />
+        
+        <rect x="10" y="${bar1_y}" width="5" height="${bar1_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" opacity="0.85" />
+        
+        <rect x="17" y="${bar2_y}" width="5" height="${bar2_h}" rx="1" fill="url(#barGrad-${ativo.symbol})" />
+    </svg>`;
+
+    // 4. Criação do Elemento DOM
     const card = document.createElement('div');
-    card.className = 'border-b border-[#1C1C1E] transition-colors duration-200 hover:bg-[#0a0a0a] group';
+    card.className = 'card-bg p-4 rounded-3xl';
     card.setAttribute('data-symbol', ativo.symbol); 
 
+    // ALTERAÇÃO: Adicionada classe group-active:scale-90 APENAS no ícone para a animação isolada
     card.innerHTML = `
-        <div class="flex justify-between items-center cursor-pointer select-none py-2.5 px-2" data-symbol="${ativo.symbol}" data-action="toggle">
+        <div class="flex justify-between items-center cursor-pointer select-none group py-1" data-symbol="${ativo.symbol}" data-action="toggle">
+            
             <div class="flex items-center gap-3 flex-1 min-w-0">
-                ${iconHtml}
-                <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-2">
-                        <h2 class="text-sm font-bold text-white tracking-tight leading-none">${ativo.symbol}</h2>
-                        ${dadoPreco ? `<span class="text-[9px] px-1.5 py-0.5 rounded bg-[#1C1C1E] text-gray-400 border border-[#2C2C2E]">${ativo.quantity} un.</span>` : ''}
+                
+                <div class="w-12 h-12 flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-active:scale-90">
+                    ${vestoIconSvg}
+                </div>
+                
+                <div class="min-w-0">
+                    <div class="flex items-baseline gap-2">
+                        <h2 class="text-base font-bold text-white leading-tight truncate">${ativo.symbol}</h2>
+                        <span class="text-xs text-gray-500 font-medium whitespace-nowrap" data-field="cota-qtd">${ativo.quantity} cota(s)</span>
                     </div>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="text-sm font-semibold text-gray-300 tracking-tight leading-none" data-field="preco-valor">${precoFormatado}</span>
-                        <span data-field="variacao-valor" class="${corVariacao} text-[10px] font-medium leading-none">${dadoPreco ? variacaoFormatada : '...'}</span>
-                    </div>
+                    <div class="mt-1.5" data-field="pl-tag">${plTagHtml}</div>
                 </div>
             </div>
             
-            <div class="pl-4 flex items-center gap-3">
-                <div class="text-right hidden sm:block">
-                     <div data-field="pl-tag-mini">
-                        ${dadoPreco ? `<span class="text-[10px] font-bold ${corPL}">${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%</span>` : ''}
-                     </div>
+            <div class="flex items-center gap-3 pl-2">
+                <div class="text-right flex-shrink-0">
+                    <p data-field="preco-valor" class="text-white text-base font-bold money-value tracking-tight">${precoFormatado}</p>
+                    <span data-field="variacao-valor" class="${corVariacao} text-xs font-medium block mt-0.5">${dadoPreco ? variacaoFormatada : '...'}</span>
                 </div>
-                <div class="text-gray-600 group-hover:text-gray-400 transition-colors">
-                     <svg class="card-arrow-icon w-4 h-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+                
+                <div class="text-gray-600">
+                    <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                    </svg>
                 </div>
             </div>
         </div>
 
-        <div id="drawer-${ativo.symbol}" class="card-drawer bg-[#09090b]">
-            <div class="drawer-content pl-2 pr-2 pb-3 pt-1 md:pl-[3.5rem] md:pr-4">
-                
-                <div class="grid grid-cols-2 gap-2 bg-[#131315] p-2.5 rounded-xl border border-[#1C1C1E]">
-                    <div class="col-span-2 border-b border-[#2C2C2E] pb-2 mb-0.5 flex justify-between items-center">
-                        
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Patrimônio</span>
-                            <span data-field="posicao-valor" class="text-lg font-bold text-white tracking-tight">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
-                        </div>
-                        
-                        <div data-field="pl-badge" class="flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')}">
-                            <span class="text-[10px] font-bold">${formatBRL(lucroPrejuizo)}</span>
-                        </div>
-                    </div>
-
-                    <div class="relative">
-                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider block">Custo Total</span>
-                        <span data-field="custo-valor" class="block text-xs font-semibold text-gray-300 mt-0.5">${formatBRL(custoTotal)}</span>
-                    </div>
-
-                    <div class="relative pl-2 border-l border-[#2C2C2E]">
-                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider block">Preço Médio</span>
-                        <span class="block text-xs font-semibold text-gray-300 mt-0.5">${formatBRL(ativo.precoMedio)}</span>
-                    </div>
+        <div id="drawer-${ativo.symbol}" class="card-drawer">
+            <div class="drawer-content space-y-2 pt-3 border-t border-gray-800 mt-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">Posição</span>
+                    <span data-field="posicao-valor" class="text-sm font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
                 </div>
-
-                <div data-field="provento-container">${proventoHtml}</div>
-
-                <div class="flex gap-2 mt-3 pt-1">
-                    <button class="flex-1 py-2 bg-[#1C1C1E] hover:bg-[#27272a] border border-[#2C2C2E] rounded-lg text-[10px] font-bold text-white transition-all active:scale-95 flex items-center justify-center gap-1.5" data-symbol="${ativo.symbol}" data-action="details">
-                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                        Análise
+                <div class="flex justify-between items-center">
+                    <span data-field="pm-label" class="text-xs text-gray-500 font-medium">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
+                    <span data-field="custo-valor" class="text-sm font-semibold text-white">${formatBRL(custoTotal)}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">L/P Total</span>
+                    <span data-field="pl-valor" class="text-sm font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
+                </div>
+                <div data-field="provento-container">${proventoHtml}</div> 
+                <div class="flex justify-end gap-3 pt-2">
+                    <button class="py-1.5 px-4 text-xs font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="details">
+                        Detalhes
                     </button>
-                    <button class="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-[10px] font-bold text-red-400 transition-all active:scale-95 flex items-center justify-center" data-symbol="${ativo.symbol}" data-action="remove">
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    <button class="py-1.5 px-4 text-xs font-medium text-red-400 bg-red-900/20 hover:bg-red-900/40 border border-red-900/30 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
+                        Remover
                     </button>
                 </div>
             </div>
@@ -243,75 +278,77 @@ function atualizarCardElemento(card, ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // Cabeçalho
+    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
     card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
-    
-    const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
-    variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-    variacaoEl.className = `${corVariacao} text-[10px] font-medium leading-none`; 
-    
-    // Mini Tag (Desktop)
-    const miniTagEl = card.querySelector('[data-field="pl-tag-mini"]');
-    if (miniTagEl) {
-        miniTagEl.innerHTML = dadoPreco ? `<span class="text-[10px] font-bold ${corPL}">${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%</span>` : '';
-    }
-
-    // Drawer - Dados Principais
-    card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
+    card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : 'A calcular...';
+    card.querySelector('[data-field="pm-label"]').textContent = `Custo (P.M. ${formatBRL(ativo.precoMedio)})`;
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
 
-    // Badge de Resultado
-    const plBadge = card.querySelector('[data-field="pl-badge"]');
-    if (plBadge) {
-        plBadge.innerHTML = `<span class="text-[10px] font-bold">${formatBRL(lucroPrejuizo)}</span>`;
-        plBadge.className = `flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')} ${corPL}`;
-    }
+    // Atualiza variação com as novas classes (texto menor, abaixo do preço)
+    const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
+    variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
+    variacaoEl.className = `${corVariacao} text-xs font-medium block mt-0.5`; 
 
-    // Proventos - Recria o HTML (Versão Compacta)
+    // O restante da função permanece igual...
+    const plValorEl = card.querySelector('[data-field="pl-valor"]');
+    plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...';
+    plValorEl.className = `text-sm font-semibold ${corPL}`; 
+
+    let plTagHtml = '';
+    if (dadoPreco) {
+        plTagHtml = `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block">
+            ${lucroPrejuizoPercent.toFixed(1)}% L/P
+        </span>`;
+    }
+    card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
+
     if (isFII(ativo.symbol)) { 
+        // ... (Mantenha a lógica interna do FII igual ao original)
+        // Apenas garanta que o código HTML dentro do if (isFII) seja o mesmo da função criarCardElemento
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            
             const foiPago = dataPag <= hoje;
-            
-            const statusIcon = foiPago 
-                ? `<svg class="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>`
-                : `<svg class="w-3 h-3 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-            
-            const textoStatus = foiPago ? "Pago" : "Agendado";
-            const corStatus = foiPago ? "text-green-400" : "text-yellow-400";
-            const bgStatus = foiPago ? "bg-green-400/10 border-green-400/20" : "bg-yellow-400/10 border-yellow-400/20";
+            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
+            const valorClass = foiPago ? "text-gray-400" : "accent-text";
+            const sinal = foiPago ? "" : "+";
 
+            let valorTexto = '';
+            if (proventoReceber > 0) {
+                 valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
+            } else {
+                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
+            }
+
+            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
+            
             proventoHtml = `
-            <div class="mt-2 relative group overflow-hidden rounded-lg border ${bgStatus} border p-2.5 transition-all hover:border-opacity-50">
-                <div class="flex justify-between items-start relative z-10">
-                    <div>
-                        <div class="flex items-center gap-1.5 mb-0.5">
-                            ${statusIcon}
-                            <span class="text-[9px] font-bold uppercase tracking-wider ${corStatus}">${textoStatus}</span>
-                        </div>
-                        <span class="text-[10px] text-gray-400 font-medium">Data Com: ${dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-'}</span>
-                    </div>
-                    <div class="text-right">
-                        <span class="block text-base font-bold text-white tracking-tight leading-tight">${formatBRL(dadoProvento.value)}</span>
-                        <span class="text-[9px] text-gray-500 uppercase font-bold">p/ cota</span>
-                    </div>
+            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
+                    <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
-                <div class="mt-1.5 pt-1.5 border-t border-white/5 flex justify-between items-center relative z-10">
-                    <span class="text-[10px] text-gray-400">Pagamento</span>
-                    <span class="text-[10px] font-bold text-white">${formatDate(dadoProvento.paymentDate)}</span>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
+                    ${valorTexto}
+                </div>
+                <div class="flex justify-between items-center"> 
+                    <span class="text-xs text-gray-500 font-medium" title="Data limite para compra">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
-             proventoHtml = `
-            <div class="mt-2 p-2 rounded-lg border border-dashed border-[#2C2C2E] bg-[#111111] flex items-center justify-center gap-2 opacity-60">
-                <span class="text-[10px] text-gray-500 font-medium">Aguardando anúncio</span>
+            proventoHtml = `
+            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
+                <span class="text-xs text-gray-500 font-medium">Provento</span>
+                <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
             </div>`;
         }
-        const container = card.querySelector('[data-field="provento-container"]');
-        if (container) container.innerHTML = proventoHtml;
+        card.querySelector('[data-field="provento-container"]').innerHTML = proventoHtml;
     }
 }
 
@@ -939,26 +976,14 @@ function updateThemeUI() {
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-function gerarCores(num) {
-        // Paleta de Alto Contraste (Estilo Fintech/Dark Mode)
-        // Mistura roxo, ciano, verde, rosa, amarelo e azul para máxima distinção.
+    function gerarCores(num) {
         const PALETA_CORES = [
-            '#8b5cf6', // Roxo Vesto (Identidade)
-            '#22d3ee', // Ciano Neon
-            '#34d399', // Verde Menta
-            '#f472b6', // Rosa Chiclete
-            '#facc15', // Amarelo
-            '#60a5fa', // Azul Sky
-            '#fb923c', // Laranja
-            '#a78bfa', // Roxo Claro
-            '#e879f9', // Magenta
-            '#9ca3af'  // Cinza (para os últimos itens)
+            '#c084fc', '#7c3aed', '#a855f7', '#8b5cf6',
+            '#6d28d9', '#5b21b6', '#3b82f6', '#22c55e',
+            '#f97316', '#ef4444'
         ];
-        
         let cores = [];
-        for (let i = 0; i < num; i++) { 
-            cores.push(PALETA_CORES[i % PALETA_CORES.length]); 
-        }
+        for (let i = 0; i < num; i++) { cores.push(PALETA_CORES[i % PALETA_CORES.length]); }
         return cores;
     }
     
@@ -1231,178 +1256,113 @@ function calcularCarteira() {
 // Substitua a função inteira em app.js
 
 function renderizarHistorico() {
-        listaHistorico.innerHTML = '';
-        if (transacoes.length === 0) {
-            historicoStatus.classList.remove('hidden');
-            return;
-        }
-        
-        historicoStatus.classList.add('hidden');
-        const fragment = document.createDocumentFragment();
-
-        // 1. Ordenar por data (mais recente primeiro)
-        const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        let lastDateHeader = '';
-
-        transacoesOrdenadas.forEach(t => {
-            // 2. Lógica de Agrupamento de Data
-            const dateObj = new Date(t.date);
-            // Ajuste de fuso horário simples para exibição correta do dia
-            dateObj.setMinutes(dateObj.getMinutes() + dateObj.getTimezoneOffset());
-
-            const hoje = new Date();
-            const ontem = new Date();
-            ontem.setDate(hoje.getDate() - 1);
-
-            let dateHeader = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
-            
-            // Verifica "Hoje" e "Ontem"
-            if (dateObj.toDateString() === hoje.toDateString()) dateHeader = "Hoje";
-            else if (dateObj.toDateString() === ontem.toDateString()) dateHeader = "Ontem";
-
-            // Se mudou a data, insere o cabeçalho
-            if (dateHeader !== lastDateHeader) {
-                const headerEl = document.createElement('div');
-                headerEl.className = 'history-date-header';
-                headerEl.textContent = dateHeader;
-                fragment.appendChild(headerEl);
-                lastDateHeader = dateHeader;
-            }
-
-            // 3. Visual do Item (Estilo Nubank)
-            const isVenda = t.type === 'sell';
-            const item = document.createElement('div');
-            item.className = 'history-item group';
-            
-            // Ícones mais conceituais
-            // Compra = Seta para baixo ou sacola / Venda = Seta para cima ou cifrão
-            const iconColor = isVenda ? 'text-gray-400' : 'text-purple-400';
-            const bgIcon = isVenda ? 'bg-gray-800/50' : 'bg-purple-900/20';
-            
-            // Ícone Compra (Seta inclinada recebendo) vs Venda (Seta saindo)
-            const iconSvg = isVenda 
-                ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>` // Gráfico subindo/Saindo
-                : `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>`; // Sacola de compras
-
-            // Valor
-            const valorTotal = t.quantity * t.price;
-            const sinal = isVenda ? '+' : '-'; // Na visão de "caixa" do banco, venda entra dinheiro (+), compra sai (-). Mas para investimentos, geralmente mostramos o valor da operação. Vamos deixar neutro ou usar a lógica de fluxo.
-            // Para carteira de investimentos: 
-            // Compra = Aumentou posição (mas saiu dinheiro). Nubank mostra compra em preto/branco e recebimento em verde.
-            
-            const valorCor = isVenda ? 'text-green-500' : 'text-white'; // Venda = Lucro/Caixa (Verde), Compra = Neutro
-            
-            // Interação: Ao clicar na linha, abre a edição. 
-            // Botão de deletar fica escondido na UI principal para limpar o visual (estará dentro do modal de edição) ou podemos colocar um ícone de lixeira muito sutil na direita.
-            
-            item.innerHTML = `
-                <div class="flex items-center flex-1 min-w-0" onclick="document.querySelector('[data-edit-trigger=\\'${t.id}\\']').click()">
-                    <div class="history-icon-circle ${bgIcon} ${iconColor}">
-                        ${iconSvg}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <div class="flex justify-between items-baseline pr-2">
-                            <h3 class="text-base font-semibold text-white truncate">${t.symbol}</h3>
-                            <span class="text-base font-bold ${valorCor}">${formatBRL(valorTotal)}</span>
-                        </div>
-                        <div class="flex justify-between items-center pr-2 mt-0.5">
-                            <p class="text-sm text-gray-500">${isVenda ? 'Venda' : 'Compra'} de ${t.quantity} cotas</p>
-                            <p class="text-xs text-gray-600">Unid. ${formatBRL(t.price)}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <button data-action="edit" data-id="${t.id}" data-edit-trigger="${t.id}" class="hidden"></button>
-            `;
-            
-            fragment.appendChild(item);
-        });
-
-        listaHistorico.appendChild(fragment);
+    listaHistorico.innerHTML = '';
+    if (transacoes.length === 0) {
+        historicoStatus.classList.remove('hidden');
+        return;
     }
+    
+    historicoStatus.classList.add('hidden');
+    const fragment = document.createDocumentFragment();
+
+    [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+        const card = document.createElement('div');
+        // MUDANÇA: py-2.5 px-3 (mais fino), rounded-2xl, mb-2
+        card.className = 'card-bg py-2.5 px-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2';
+        
+        const isVenda = t.type === 'sell';
+        const cor = isVenda ? 'text-red-500' : 'text-green-500';
+        const sinal = isVenda ? '-' : '+';
+        
+        let pathIcone = '';
+        if (isVenda) {
+            pathIcone = 'M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
+        } else {
+            pathIcone = 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
+        }
+
+        // MUDANÇA: Ícone reduzido para h-5 w-5
+        const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${pathIcone}" /></svg>`;
+        
+        card.innerHTML = `
+            <div class="flex items-center gap-3">
+                ${icone}
+                <div>
+                    <h3 class="text-sm font-bold text-white leading-tight">${t.symbol}</h3>
+                    <p class="text-[10px] text-gray-400 font-medium">${formatDate(t.date)}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-right">
+                    <p class="text-sm font-bold ${cor} leading-tight">${sinal}${t.quantity} Cotas</p>
+                    <p class="text-[10px] text-gray-400 font-medium">${formatBRL(t.price)}</p>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <button class="p-0.5 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                          <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button class="p-0.5 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+        fragment.appendChild(card);
+    });
+    listaHistorico.appendChild(fragment);
+}
 	
 function renderizarHistoricoProventos() {
-        listaHistoricoProventos.innerHTML = '';
-        const hoje = new Date(); 
-        hoje.setHours(0,0,0,0);
+    listaHistoricoProventos.innerHTML = '';
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-        const proventosPagos = proventosConhecidos.filter(p => {
-            if (!p.paymentDate) return false;
-            const parts = p.paymentDate.split('-');
-            const dPag = new Date(parts[0], parts[1]-1, parts[2]);
-            return dPag <= hoje;
-        }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+    const proventosPagos = proventosConhecidos.filter(p => {
+        if (!p.paymentDate) return false;
+        const parts = p.paymentDate.split('-');
+        const dPag = new Date(parts[0], parts[1]-1, parts[2]);
+        return dPag <= hoje;
+    }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-        const fragment = document.createDocumentFragment();
-        let lastDateHeader = '';
-        let temItem = false;
+    const fragment = document.createDocumentFragment();
+    let temItem = false;
 
-        proventosPagos.forEach(p => {
-            const dataRef = p.dataCom || p.paymentDate;
-            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+    proventosPagos.forEach(p => {
+        const dataRef = p.dataCom || p.paymentDate;
+        const qtd = getQuantidadeNaData(p.symbol, dataRef);
 
-            if (qtd > 0) {
-                temItem = true;
-                const total = p.value * qtd;
-                
-                // Lógica de Agrupamento de Data
-                const parts = p.paymentDate.split('-');
-                const dateObj = new Date(parts[0], parts[1]-1, parts[2]);
-                const dataHoje = new Date();
-                const dataOntem = new Date();
-                dataOntem.setDate(dataHoje.getDate() - 1);
-
-                let dateHeader = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
-                if (dateObj.toDateString() === dataHoje.toDateString()) dateHeader = "Hoje";
-                else if (dateObj.toDateString() === dataOntem.toDateString()) dateHeader = "Ontem";
-
-                if (dateHeader !== lastDateHeader) {
-                    const headerEl = document.createElement('div');
-                    headerEl.className = 'history-date-header';
-                    headerEl.textContent = dateHeader;
-                    fragment.appendChild(headerEl);
-                    lastDateHeader = dateHeader;
-                }
-
-                // Item da lista
-                const item = document.createElement('div');
-                item.className = 'history-item group';
-                
-                // Ícone SVG (Cifrão)
-                const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-
-                item.innerHTML = `
-                    <div class="flex items-center flex-1 min-w-0">
-                        <div class="history-icon-circle bg-purple-900/20 text-purple-400">
-                            ${iconSvg}
-                        </div>
-                        
-                        <div class="min-w-0 flex-1 pr-4">
-                            <div class="flex justify-between items-baseline">
-                                <h3 class="text-base font-semibold text-white truncate">${p.symbol}</h3>
-                                
-                                <span class="text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">
-                                    + ${formatBRL(total)}
-                                </span>
-                            </div>
-                            <div class="flex justify-between items-center mt-0.5">
-                                <p class="text-sm text-gray-500">Rendimento recebido</p>
-                                <p class="text-xs text-gray-600 font-medium">${formatBRL(p.value)} x ${qtd}</p>
-                            </div>
-                        </div>
+        if (qtd > 0) {
+            temItem = true;
+            const total = p.value * qtd;
+            const card = document.createElement('div');
+            // MUDANÇA: Mesmo estilo compacto da função anterior
+            card.className = 'card-bg py-2.5 px-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2';
+            
+            card.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="p-1.5 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
-                `;
-                fragment.appendChild(item);
-            }
-        });
-        
-        if (temItem) {
-            listaHistoricoProventos.appendChild(fragment);
-        } else {
-            listaHistoricoProventos.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhum provento recebido ainda.</p>';
+                    <div>
+                        <h3 class="text-sm font-bold text-white leading-tight">${p.symbol}</h3>
+                        <p class="text-[10px] text-gray-400 font-medium">Pag: ${formatDate(p.paymentDate)}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-bold accent-text leading-tight">+ ${formatBRL(total)}</p>
+                    <p class="text-[10px] text-gray-500 font-medium">${formatBRL(p.value)} x ${qtd}</p>
+                </div>
+            `;
+            fragment.appendChild(card);
         }
-    }
+    });
+    
+    if (temItem) listaHistoricoProventos.appendChild(fragment);
+}
 
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
 // --- LISTENER DOS BOTÕES DE HISTÓRICO (TOGGLE ANIMADO) ---
@@ -1438,7 +1398,7 @@ function renderizarHistoricoProventos() {
         });
     }
 
-function renderizarNoticias(articles) { 
+    function renderizarNoticias(articles) { 
         fiiNewsSkeleton.classList.add('hidden');
         
         const newSignature = JSON.stringify(articles);
@@ -1457,243 +1417,140 @@ function renderizarNoticias(articles) {
         }
         
         const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
-        const fragment = document.createDocumentFragment();
         
-        let lastDateHeader = '';
+        const fragment = document.createDocumentFragment();
 
         sortedArticles.forEach((article, index) => {
             const sourceName = article.sourceName || 'Fonte';
             const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+            const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
+            const drawerId = `news-drawer-${index}`;
             
-            const dateObj = new Date(article.publicationDate);
-            const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-            // Agrupamento de Data (Hoje, Ontem, etc.)
-            const hoje = new Date();
-            const ontem = new Date();
-            ontem.setDate(hoje.getDate() - 1);
-            
-            let dateHeader = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
-            if (dateObj.toDateString() === hoje.toDateString()) dateHeader = "Hoje";
-            else if (dateObj.toDateString() === ontem.toDateString()) dateHeader = "Ontem";
-
-            // Insere cabeçalho de data se mudou o dia (exceto antes do destaque/hero)
-            if (index > 0 && dateHeader !== lastDateHeader) {
-                const headerEl = document.createElement('div');
-                headerEl.className = 'news-date-header';
-                headerEl.textContent = dateHeader;
-                fragment.appendChild(headerEl);
-                lastDateHeader = dateHeader;
-            } else if (index === 0) {
-                lastDateHeader = dateHeader;
-            }
-
-            // Identificar Tickers no Título para criar etiquetas
             const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
-            let tickersHtml = '';
             
+            let tickersHtml = '';
             if (foundTickers.length > 0) {
-                // Cria as pílulas com data-symbol para abrir o modal
-                tickersHtml = foundTickers.map(t => 
-                    `<span class="news-ticker-pill" data-symbol="${t}" title="Ver detalhes de ${t}">${t}</span>`
-                ).join('');
+                foundTickers.forEach(ticker => {
+                    tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                });
             }
 
-            const drawerId = `news-drawer-${index}`;
             const drawerContentHtml = `
-                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3 mt-3">
-                    ${article.summary ? article.summary : 'Toque no link abaixo para ler a matéria completa na fonte original.'}
+                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
+                    ${article.summary ? article.summary : 'Resumo não disponível.'}
                 </div>
-                <div class="flex justify-end pt-2 border-t border-gray-800">
-                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex items-center gap-1 py-2">
-                        Ler notícia na íntegra 
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                <div class="flex justify-between items-end pt-2 border-t border-gray-800">
+                    <div class="flex flex-wrap gap-2">
+                        ${tickersHtml}
+                    </div>
+                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex-shrink-0">
+                        Ler notícia completa
                     </a>
                 </div>
             `;
 
             const newsCard = document.createElement('div');
-            
-            if (index === 0) {
-                // --- HERO CARD (DESTAQUE) ---
-                newsCard.className = 'news-hero-card news-card-interactive group cursor-pointer';
-                newsCard.setAttribute('data-action', 'toggle-news');
-                newsCard.setAttribute('data-target', drawerId);
+            newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive'; 
+            newsCard.setAttribute('data-action', 'toggle-news');
+            newsCard.setAttribute('data-target', drawerId);
 
                 newsCard.innerHTML = `
-                    <div class="flex items-start justify-between mb-3">
-                        <span class="px-2 py-1 rounded-md bg-purple-600 text-[10px] font-bold text-white uppercase tracking-wider shadow-lg shadow-purple-900/50">Destaque</span>
-                        <span class="text-[10px] text-purple-200 font-medium bg-purple-900/30 px-2 py-0.5 rounded-full border border-purple-500/20">${timeStr}</span>
-                    </div>
+                <div class="flex items-center gap-3 pointer-events-none"> <img src="${faviconUrl}" alt="${sourceName}" 
+                         class="w-10 h-10 rounded-xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto flex-shrink-0"
+                         loading="lazy"
+                         onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
+                    />
                     
-                    <h3 class="text-lg font-bold text-white leading-snug mb-3 group-hover:text-purple-200 transition-colors">
-                        ${article.title}
-                    </h3>
-                    
-                    <div class="flex flex-wrap items-center gap-2 mb-4 pointer-events-auto">
-                        ${tickersHtml}
-                    </div>
-
-                    <div class="flex items-center gap-2 mt-auto opacity-80 border-t border-white/10 pt-3">
-                         <img src="${faviconUrl}" class="w-4 h-4 rounded-full bg-white object-contain" onerror="this.style.display='none'">
-                         <span class="text-xs text-gray-300 font-medium">${sourceName}</span>
-                    </div>
-
-                    <div id="${drawerId}" class="card-drawer pointer-events-auto">
-                        <div class="drawer-content">
-                            ${drawerContentHtml}
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-white line-clamp-2 text-sm leading-tight">${article.title || 'Título indisponível'}</h4>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wide">${sourceName}</span>
+                            <span class="text-[10px] text-gray-600">•</span>
+                            <span class="text-[10px] text-gray-500">${publicationDate}</span>
                         </div>
                     </div>
-                `;
 
-            } else {
-                // --- CARD PADRÃO (LISTA) ---
-                newsCard.className = 'py-4 px-2 border-b border-[#1C1C1E] news-card-interactive group cursor-pointer hover:bg-[#111111] transition-colors rounded-lg mx-1';
-                newsCard.setAttribute('data-action', 'toggle-news');
-                newsCard.setAttribute('data-target', drawerId);
-
-                newsCard.innerHTML = `
-                    <div class="flex gap-3">
-                        <div class="flex-shrink-0 mt-1">
-                            <img src="${faviconUrl}" alt="${sourceName}" 
-                                class="w-8 h-8 rounded-lg bg-[#1C1C1E] object-contain p-0.5 border border-gray-800"
-                                loading="lazy"
-                                onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
-                            />
-                        </div>
-                        
-                        <div class="flex-1 min-w-0">
-                            <div class="flex justify-between items-baseline mb-1">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wide">${sourceName}</span>
-                                <span class="text-[10px] text-gray-600">${timeStr}</span>
-                            </div>
-
-                            <h4 class="text-sm font-semibold text-gray-200 leading-snug group-hover:text-white transition-colors">
-                                ${article.title}
-                            </h4>
-
-                            <div class="flex flex-wrap gap-1 mt-2 pointer-events-auto">
-                                ${tickersHtml}
-                            </div>
-                        </div>
+                    <div class="text-gray-600 pl-1">
+                        <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                        </svg>
                     </div>
-                    
-                    <div id="${drawerId}" class="card-drawer pointer-events-auto pl-0 md:pl-11">
-                        <div class="drawer-content">
-                            ${drawerContentHtml}
-                        </div>
+                </div>
+                
+                <div id="${drawerId}" class="card-drawer pointer-events-auto">
+                    <div class="drawer-content pt-3 mt-2 border-t border-gray-800/50">
+                        ${drawerContentHtml}
                     </div>
-                `;
-            }
-
+                </div>
+            `;
             fragment.appendChild(newsCard);
         });
-        
-        // Espaço final para não cortar atrás da navbar
-        const spacer = document.createElement('div');
-        spacer.className = "h-24";
-        fragment.appendChild(spacer);
-
         fiiNewsList.appendChild(fragment);
     }
 
-function renderizarGraficoAlocacao(dadosGrafico) {
+    function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
-        const legendContainer = document.getElementById('alocacao-legend-container'); // Container da legenda customizada
-        
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         
-        // --- 1. Limpeza se não houver dados ---
         if (dadosGrafico.length === 0) {
             if (alocacaoChartInstance) {
                 alocacaoChartInstance.destroy();
                 alocacaoChartInstance = null; 
             }
-            if (legendContainer) legendContainer.innerHTML = '';
             lastAlocacaoData = null; 
             return;
         }
         
-        // --- 2. Ordenação (Do maior para o menor) ---
-        dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
-
         const labels = dadosGrafico.map(d => d.symbol);
         const data = dadosGrafico.map(d => d.totalPosicao);
         const newDataString = JSON.stringify({ labels, data });
 
-        // Cache simples para evitar re-renderização desnecessária
         if (newDataString === lastAlocacaoData) { return; }
         lastAlocacaoData = newDataString; 
         
         const colors = gerarCores(labels.length);
 
-        // --- 3. GERAÇÃO DA LEGENDA HTML (As Caixinhas) ---
-        if (legendContainer) {
-            const total = data.reduce((a, b) => a + b, 0);
-            
-            legendContainer.innerHTML = labels.map((label, index) => {
-                const color = colors[index % colors.length];
-                const value = data[index];
-                const percent = ((value / total) * 100).toFixed(1);
-                
-                return `
-                    <div class="legend-item">
-                        <span class="legend-color-dot" style="background-color: ${color}"></span>
-                        <span>${label}</span>
-                        <span class="ml-1.5 opacity-60 font-normal">${percent}%</span>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // --- 4. RENDERIZAÇÃO DO GRÁFICO ---
         if (alocacaoChartInstance) {
-            alocacaoChartInstance.destroy();
-        }
-
-        alocacaoChartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: { 
-                labels: labels, 
-                datasets: [{ 
-                    data: data, 
-                    backgroundColor: colors, 
-                    borderWidth: 2, // Separação fina entre fatias
-                    borderColor: document.body.classList.contains('light-mode') ? '#ffffff' : '#000000', 
-                    borderRadius: 4, // Arredondamento suave nas pontas
-                    hoverOffset: 4
-                }] 
-            },
-            options: {
-                responsive: true, 
-                maintainAspectRatio: false, // Importante para ocupar a altura definida no HTML
-                cutout: '70%', // Espessura do anel
-                layout: {
-                    padding: 0 // MUDANÇA: Zero padding para o gráfico ficar maior
+            alocacaoChartInstance.data.labels = labels;
+            alocacaoChartInstance.data.datasets[0].data = data;
+            alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
+            alocacaoChartInstance.update();
+        } else {
+            alocacaoChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: { 
+                    labels: labels, 
+                    datasets: [{ 
+                        data: data, 
+                        backgroundColor: colors, 
+                        borderWidth: 2, 
+                        borderColor: Chart.defaults.borderColor 
+                    }] 
                 },
-                plugins: {
-                    legend: { display: false }, // Desativa legenda nativa (estamos usando a customizada)
-                    tooltip: {
-                        backgroundColor: '#1C1C1E',
-                        bodyColor: '#fff',
-                        borderColor: '#333',
-                        borderWidth: 1,
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                return ` ${formatBRL(context.parsed)}`;
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'bottom', labels: { color: Chart.defaults.color, boxWidth: 12, padding: 15, } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    const percent = ((value / total) * 100).toFixed(2);
+                                    return `${label}: ${formatBRL(value)} (${percent}%)`;
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
     }
     
-function renderizarGraficoHistorico({ labels, data }) {
+    function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1710,7 +1567,6 @@ function renderizarGraficoHistorico({ labels, data }) {
             return;
         }
         
-        // Gradiente original (mais forte/sólido)
         const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
         gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
         gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
@@ -1761,7 +1617,7 @@ function renderizarGraficoHistorico({ labels, data }) {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: { color: '#2A2A2A' }, // Mantém as linhas de grade originais
+                            grid: { color: '#2A2A2A' }, 
                             ticks: { display: false }
                         },
                         x: { grid: { display: false } }
@@ -3648,17 +3504,16 @@ listaCarteira.addEventListener('click', (e) => {
             handleRemoverAtivo(symbol);
         } else if (action === 'details') {
             showDetalhesModal(symbol);
-} else if (action === 'toggle') {
-    const drawer = document.getElementById(`drawer-${symbol}`);
-    
-    // CORREÇÃO: Buscamos o próprio elemento clicável (o cabeçalho da linha)
-    // em vez de buscar pelo card-bg
-    const headerLinha = target.closest('[data-action="toggle"]'); 
-    const icon = headerLinha ? headerLinha.querySelector('.card-arrow-icon') : null;
-    
-    drawer?.classList.toggle('open');
-    icon?.classList.toggle('open');
-}
+        } else if (action === 'toggle') {
+            const drawer = document.getElementById(`drawer-${symbol}`);
+            // Precisamos achar o ícone de seta dentro deste card específico para girá-lo
+            // Como o clique pode vir do Header, procuramos o ícone no card pai
+            const cardPai = target.closest('.card-bg'); 
+            const icon = cardPai.querySelector('.card-arrow-icon');
+            
+            drawer?.classList.toggle('open');
+            icon?.classList.toggle('open');
+        }
     });
     
     listaHistorico.addEventListener('click', (e) => {
@@ -3779,43 +3634,28 @@ const tabDashboard = document.getElementById('tab-dashboard');
         touchMoveY = 0;
     });
 
-fiiNewsList.addEventListener('click', (e) => {
-        // 1. CLIQUE NA ETIQUETA (Ticker Pill) -> Abre Modal do Ativo
-        const pill = e.target.closest('.news-ticker-pill');
-        if (pill) {
-            e.preventDefault();
-            e.stopPropagation(); // Impede de abrir a notícia
-            const symbol = pill.dataset.symbol;
+    fiiNewsList.addEventListener('click', (e) => {
+        const tickerTag = e.target.closest('.news-ticker-tag');
+        if (tickerTag) {
+            e.stopPropagation(); 
+            const symbol = tickerTag.dataset.symbol;
             if (symbol) {
-                // Feedback visual tátil
-                pill.style.transform = 'scale(0.95)';
-                setTimeout(() => pill.style.transform = '', 150);
-                
                 showDetalhesModal(symbol);
             }
             return;
         }
-
-        // 2. CLIQUE NO LINK (Ler na íntegra) -> Deixa o navegador abrir a URL
         if (e.target.closest('a')) {
-            e.stopPropagation(); // Garante que o link funcione
+            e.stopPropagation(); 
             return; 
         }
-
-        // 3. CLIQUE NO CARD -> Expande/Recolhe (Drawer)
         const card = e.target.closest('.news-card-interactive');
         if (card) {
             const targetId = card.dataset.target;
             const drawer = document.getElementById(targetId);
             const icon = card.querySelector('.card-arrow-icon');
             
-            // Fecha outros drawers abertos para focar na leitura atual (Opcional, mas elegante)
-            document.querySelectorAll('.card-drawer.open').forEach(d => {
-                if(d.id !== targetId) d.classList.remove('open');
-            });
-
             drawer?.classList.toggle('open');
-            if (icon) icon.classList.toggle('open');
+            icon?.classList.toggle('open');
         }
     });
     

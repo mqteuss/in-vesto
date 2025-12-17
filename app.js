@@ -1630,6 +1630,7 @@ function renderizarNoticias(articles) {
 }
 
 // --- RENDERIZAR GRÁFICO DE ALOCAÇÃO (VISUAL PREMIUM / ROXOS) ---
+// --- RENDERIZAR GRÁFICO DE ALOCAÇÃO (ANEL MAIS GROSSO E MAIOR) ---
 function renderizarGraficoAlocacao(dadosGrafico) {
     const canvas = document.getElementById('alocacao-chart');
     if (!canvas) return;
@@ -1644,7 +1645,7 @@ function renderizarGraficoAlocacao(dadosGrafico) {
         return;
     }
     
-    // Ordena do maior para o menor para ficar visualmente agradável
+    // Ordena do maior para o menor
     dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
     const labels = dadosGrafico.map(d => d.symbol);
@@ -1654,18 +1655,18 @@ function renderizarGraficoAlocacao(dadosGrafico) {
     if (newDataString === lastAlocacaoData) { return; }
     lastAlocacaoData = newDataString; 
     
-    // PALETA VESTO PREMIUM (Tons de Roxo, Violeta e Índigo escuro)
+    // PALETA VESTO PREMIUM (Roxos/Violetas)
     const gerarPaletaPremium = (num) => {
         const coresBase = [
-            '#7c3aed', // Violet 600 (Principal)
-            '#a855f7', // Purple 500 (Mais claro)
-            '#4c1d95', // Violet 900 (Escuro)
-            '#c084fc', // Purple 400 (Destaque)
+            '#7c3aed', // Violet 600
+            '#a855f7', // Purple 500
+            '#4c1d95', // Violet 900
+            '#c084fc', // Purple 400
             '#5b21b6', // Violet 800
-            '#e879f9', // Fuchsia 400 (Acento sutil)
-            '#2e1065', // Violet 950 (Quase preto)
+            '#e879f9', // Fuchsia 400
+            '#2e1065', // Violet 950
             '#8b5cf6', // Violet 500
-            '#6366f1', // Indigo 500 (Variação fria)
+            '#6366f1', // Indigo 500
             '#312e81'  // Indigo 900
         ];
         let cores = [];
@@ -1690,33 +1691,31 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                 datasets: [{ 
                     data: data, 
                     backgroundColor: colors, 
-                    // Borda preta grossa cria o efeito de "espaço" entre as fatias
-                    borderWidth: 4, 
+                    borderWidth: 3, // Borda um pouco mais fina para não "comer" o gráfico
                     borderColor: '#000000', 
-                    hoverOffset: 10 // Efeito "pop" ao passar o mouse
+                    hoverOffset: 4 
                 }] 
             },
             options: {
                 responsive: true, 
                 maintainAspectRatio: false,
-                cutout: '75%', // Deixa o anel mais fino e elegante
+                // ALTERAÇÃO: 60% deixa o anel mais grosso (era 75%)
+                cutout: '60%', 
                 layout: {
-                    padding: 20
+                    // ALTERAÇÃO: Padding 0 faz o gráfico ocupar todo o espaço disponível
+                    padding: 0
                 },
                 plugins: {
                     legend: { 
                         display: true, 
-                        position: 'bottom', 
+                        position: 'right', // Mudei para a direita para ganhar altura vertical
                         labels: { 
-                            color: '#9ca3af', // Cinza suave
-                            boxWidth: 10, 
-                            boxHeight: 10,
-                            padding: 20,
-                            usePointStyle: true, // Bolinhas em vez de quadrados na legenda
-                            font: {
-                                size: 11,
-                                family: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont'
-                            }
+                            color: '#9ca3af', 
+                            boxWidth: 8, 
+                            boxHeight: 8,
+                            padding: 15,
+                            usePointStyle: true, 
+                            font: { size: 10 }
                         } 
                     },
                     tooltip: {
@@ -1725,15 +1724,15 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                         bodyColor: '#e5e7eb',
                         borderColor: '#374151',
                         borderWidth: 1,
-                        padding: 12,
-                        cornerRadius: 12,
+                        padding: 10,
+                        cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
                                 const label = context.label || '';
                                 const value = context.parsed || 0;
                                 const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
                                 const percent = ((value / total) * 100).toFixed(1);
-                                return ` ${label}: ${percent}% (${formatBRL(value)})`;
+                                return ` ${label}: ${percent}%`;
                             }
                         }
                     }

@@ -1629,66 +1629,119 @@ function renderizarNoticias(articles) {
     fiiNewsList.appendChild(fragment);
 }
 
-    function renderizarGraficoAlocacao(dadosGrafico) {
-        const canvas = document.getElementById('alocacao-chart');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        
-        if (dadosGrafico.length === 0) {
-            if (alocacaoChartInstance) {
-                alocacaoChartInstance.destroy();
-                alocacaoChartInstance = null; 
-            }
-            lastAlocacaoData = null; 
-            return;
-        }
-        
-        const labels = dadosGrafico.map(d => d.symbol);
-        const data = dadosGrafico.map(d => d.totalPosicao);
-        const newDataString = JSON.stringify({ labels, data });
-
-        if (newDataString === lastAlocacaoData) { return; }
-        lastAlocacaoData = newDataString; 
-        
-        const colors = gerarCores(labels.length);
-
+// --- RENDERIZAR GRÁFICO DE ALOCAÇÃO (VISUAL PREMIUM / ROXOS) ---
+function renderizarGraficoAlocacao(dadosGrafico) {
+    const canvas = document.getElementById('alocacao-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    if (dadosGrafico.length === 0) {
         if (alocacaoChartInstance) {
-            alocacaoChartInstance.data.labels = labels;
-            alocacaoChartInstance.data.datasets[0].data = data;
-            alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
-            alocacaoChartInstance.update();
-        } else {
-            alocacaoChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: { 
-                    labels: labels, 
-                    datasets: [{ 
-                        data: data, 
-                        backgroundColor: colors, 
-                        borderWidth: 2, 
-                        borderColor: Chart.defaults.borderColor 
-                    }] 
+            alocacaoChartInstance.destroy();
+            alocacaoChartInstance = null; 
+        }
+        lastAlocacaoData = null; 
+        return;
+    }
+    
+    // Ordena do maior para o menor para ficar visualmente agradável
+    dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
+
+    const labels = dadosGrafico.map(d => d.symbol);
+    const data = dadosGrafico.map(d => d.totalPosicao);
+    const newDataString = JSON.stringify({ labels, data });
+
+    if (newDataString === lastAlocacaoData) { return; }
+    lastAlocacaoData = newDataString; 
+    
+    // PALETA VESTO PREMIUM (Tons de Roxo, Violeta e Índigo escuro)
+    const gerarPaletaPremium = (num) => {
+        const coresBase = [
+            '#7c3aed', // Violet 600 (Principal)
+            '#a855f7', // Purple 500 (Mais claro)
+            '#4c1d95', // Violet 900 (Escuro)
+            '#c084fc', // Purple 400 (Destaque)
+            '#5b21b6', // Violet 800
+            '#e879f9', // Fuchsia 400 (Acento sutil)
+            '#2e1065', // Violet 950 (Quase preto)
+            '#8b5cf6', // Violet 500
+            '#6366f1', // Indigo 500 (Variação fria)
+            '#312e81'  // Indigo 900
+        ];
+        let cores = [];
+        for (let i = 0; i < num; i++) {
+            cores.push(coresBase[i % coresBase.length]);
+        }
+        return cores;
+    };
+
+    const colors = gerarPaletaPremium(labels.length);
+
+    if (alocacaoChartInstance) {
+        alocacaoChartInstance.data.labels = labels;
+        alocacaoChartInstance.data.datasets[0].data = data;
+        alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
+        alocacaoChartInstance.update();
+    } else {
+        alocacaoChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    data: data, 
+                    backgroundColor: colors, 
+                    // Borda preta grossa cria o efeito de "espaço" entre as fatias
+                    borderWidth: 4, 
+                    borderColor: '#000000', 
+                    hoverOffset: 10 // Efeito "pop" ao passar o mouse
+                }] 
+            },
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false,
+                cutout: '75%', // Deixa o anel mais fino e elegante
+                layout: {
+                    padding: 20
                 },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, position: 'bottom', labels: { color: Chart.defaults.color, boxWidth: 12, padding: 15, } },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                    const percent = ((value / total) * 100).toFixed(2);
-                                    return `${label}: ${formatBRL(value)} (${percent}%)`;
-                                }
+                plugins: {
+                    legend: { 
+                        display: true, 
+                        position: 'bottom', 
+                        labels: { 
+                            color: '#9ca3af', // Cinza suave
+                            boxWidth: 10, 
+                            boxHeight: 10,
+                            padding: 20,
+                            usePointStyle: true, // Bolinhas em vez de quadrados na legenda
+                            font: {
+                                size: 11,
+                                family: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont'
+                            }
+                        } 
+                    },
+                    tooltip: {
+                        backgroundColor: '#1C1C1E',
+                        titleColor: '#fff',
+                        bodyColor: '#e5e7eb',
+                        borderColor: '#374151',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percent = ((value / total) * 100).toFixed(1);
+                                return ` ${label}: ${percent}% (${formatBRL(value)})`;
                             }
                         }
                     }
                 }
-            });
-        }
+            }
+        });
     }
+}
     
     function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');

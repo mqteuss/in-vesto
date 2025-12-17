@@ -1521,12 +1521,12 @@ function renderizarHistoricoProventos() {
 
 function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
-        const legendContainer = document.getElementById('alocacao-legend-container'); // O container que adicionamos
+        const legendContainer = document.getElementById('alocacao-legend-container'); // Container da legenda customizada
         
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         
-        // Limpeza se não houver dados
+        // --- 1. Limpeza se não houver dados ---
         if (dadosGrafico.length === 0) {
             if (alocacaoChartInstance) {
                 alocacaoChartInstance.destroy();
@@ -1537,20 +1537,20 @@ function renderizarGraficoAlocacao(dadosGrafico) {
             return;
         }
         
-        // Ordena do maior para o menor
+        // --- 2. Ordenação (Do maior para o menor) ---
         dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
         const labels = dadosGrafico.map(d => d.symbol);
         const data = dadosGrafico.map(d => d.totalPosicao);
         const newDataString = JSON.stringify({ labels, data });
 
-        // Cache simples para não renderizar a toa
+        // Cache simples para evitar re-renderização desnecessária
         if (newDataString === lastAlocacaoData) { return; }
         lastAlocacaoData = newDataString; 
         
         const colors = gerarCores(labels.length);
 
-        // --- 1. GERAR AS CAIXINHAS (LEGENDA HTML) ---
+        // --- 3. GERAÇÃO DA LEGENDA HTML (As Caixinhas) ---
         if (legendContainer) {
             const total = data.reduce((a, b) => a + b, 0);
             
@@ -1559,7 +1559,6 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                 const value = data[index];
                 const percent = ((value / total) * 100).toFixed(1);
                 
-                // Cria a "caixinha" para cada ativo
                 return `
                     <div class="legend-item">
                         <span class="legend-color-dot" style="background-color: ${color}"></span>
@@ -1570,7 +1569,7 @@ function renderizarGraficoAlocacao(dadosGrafico) {
             }).join('');
         }
 
-        // --- 2. DESENHAR O GRÁFICO ---
+        // --- 4. RENDERIZAÇÃO DO GRÁFICO ---
         if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
         }
@@ -1582,21 +1581,21 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                 datasets: [{ 
                     data: data, 
                     backgroundColor: colors, 
-                    borderWidth: 2, 
+                    borderWidth: 2, // Separação fina entre fatias
                     borderColor: document.body.classList.contains('light-mode') ? '#ffffff' : '#000000', 
-                    borderRadius: 4, 
+                    borderRadius: 4, // Arredondamento suave nas pontas
                     hoverOffset: 4
                 }] 
             },
-options: {
+            options: {
                 responsive: true, 
-                maintainAspectRatio: false, 
-                cutout: '70%', // Espessura equilibrada
+                maintainAspectRatio: false, // Importante para ocupar a altura definida no HTML
+                cutout: '70%', // Espessura do anel
                 layout: {
-                    padding: 0 // MUDANÇA: Zero padding para o gráfico crescer
+                    padding: 0 // MUDANÇA: Zero padding para o gráfico ficar maior
                 },
                 plugins: {
-                    legend: { display: false },
+                    legend: { display: false }, // Desativa legenda nativa (estamos usando a customizada)
                     tooltip: {
                         backgroundColor: '#1C1C1E',
                         bodyColor: '#fff',
@@ -1612,6 +1611,8 @@ options: {
                     }
                 }
             }
+        });
+    }
     
 function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');

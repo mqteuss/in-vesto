@@ -1095,42 +1095,46 @@ function hideAddModal() {
         watchlist = await supabaseDB.getWatchlist();
     }
 
+// --- RENDERIZAR WATCHLIST (ESTILO CARTEIRA / MINIMALISTA) ---
 function renderizarWatchlist() {
-        if (!watchlistListaEl) return;
-        watchlistListaEl.innerHTML = ''; 
+    if (!watchlistListaEl) return;
+    watchlistListaEl.innerHTML = ''; 
 
-        if (watchlist.length === 0) {
-            if(watchlistStatusEl) watchlistStatusEl.classList.remove('hidden');
-            return;
-        }
-        
-        if(watchlistStatusEl) watchlistStatusEl.classList.add('hidden');
-        
-        watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
-
-        const fragment = document.createDocumentFragment();
-        watchlist.forEach(item => {
-            const symbol = item.symbol;
-            const el = document.createElement('div');
-            // Mantém a estrutura, alterando apenas o ícone interno
-            el.className = 'flex justify-between items-center p-3 bg-black rounded-2xl border border-[#2C2C2E] hover:border-purple-500/50 transition-colors';
-            
-            // MUDANÇA AQUI: Alterado 'rounded-full' para 'rounded-xl'
-            el.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-xl bg-[#1C1C1E] flex items-center justify-center text-[10px] font-bold text-purple-400">
-                        ${symbol.substring(0, 4)}
-                    </div>
-                    <span class="font-semibold text-white">${symbol}</span>
-                </div>
-                <button class="py-1 px-3 text-xs font-medium text-purple-300 bg-purple-900/50 hover:bg-purple-900/80 rounded-full transition-colors" data-symbol="${symbol}" data-action="details">
-                    Ver
-                </button>
-            `;
-            fragment.appendChild(el);
-        });
-        watchlistListaEl.appendChild(fragment);
+    if (watchlist.length === 0) {
+        if(watchlistStatusEl) watchlistStatusEl.classList.remove('hidden');
+        return;
     }
+    
+    if(watchlistStatusEl) watchlistStatusEl.classList.add('hidden');
+    
+    watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
+
+    const fragment = document.createDocumentFragment();
+    watchlist.forEach(item => {
+        const symbol = item.symbol;
+        const sigla = symbol.substring(0, 2); // Apenas 2 letras
+
+        const el = document.createElement('div');
+        // Container do item: Fundo preto, borda cinza, hover sutil
+        el.className = 'flex justify-between items-center p-3 bg-black rounded-2xl border border-[#2C2C2E] hover:border-neutral-700 transition-colors group';
+        
+        el.innerHTML = `
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 group-hover:border-neutral-700 transition-colors">
+                    <span class="text-sm font-bold text-white tracking-wider">${sigla}</span>
+                </div>
+                
+                <span class="font-bold text-white text-sm tracking-tight">${symbol}</span>
+            </div>
+            
+            <button class="py-1.5 px-4 text-xs font-medium text-gray-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-lg transition-colors" data-symbol="${symbol}" data-action="details">
+                Ver
+            </button>
+        `;
+        fragment.appendChild(el);
+    });
+    watchlistListaEl.appendChild(fragment);
+}
     
     function atualizarIconeFavorito(symbol) {
         if (!symbol || !detalhesFavoritoBtn) return;

@@ -1500,8 +1500,7 @@ function agruparNoticiasPorData(articles) {
     return grupos;
 }
 
-// --- RENDERIZAR NOTÍCIAS (CORRIGIDO) ---
-// --- RENDERIZAR NOTÍCIAS (COM DESTAQUE E LINHAS MAIS FORTES) ---
+// --- RENDERIZAR NOTÍCIAS (VISUAL IDÊNTICO AO HISTÓRICO) ---
 function renderizarNoticias(articles) { 
     fiiNewsSkeleton.classList.add('hidden');
     
@@ -1524,18 +1523,18 @@ function renderizarNoticias(articles) {
     const grupos = agruparNoticiasPorData(sortedArticles);
     
     const fragment = document.createDocumentFragment();
-    // 1. FLAG PARA IDENTIFICAR A PRIMEIRA NOTÍCIA GLOBALMENTE
     let isGlobalFirstItem = true;
 
     Object.keys(grupos).forEach(dataLabel => {
-        // Header da Data
+        // Header
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
         header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${dataLabel}</h3>`;
         fragment.appendChild(header);
 
+        // Lista
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-8'; // Um pouco mais de espaço entre grupos
+        listaGrupo.className = 'mb-8';
 
         grupos[dataLabel].forEach((article, index) => {
             const sourceName = article.sourceName || 'Fonte';
@@ -1545,6 +1544,7 @@ function renderizarNoticias(articles) {
             const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
             const drawerId = `news-drawer-${safeLabel}-${index}`;
             
+            // Tickers
             const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
@@ -1556,25 +1556,19 @@ function renderizarNoticias(articles) {
 
             const item = document.createElement('div');
             
-            // 2. LÓGICA DE ESTILIZAÇÃO CONDICIONAL
+            // Estilos condicionais
             let itemWrapperClass = 'group relative transition-all news-card-interactive ';
             let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
             let badgeDestaque = '';
 
             if (isGlobalFirstItem) {
-                // --- ESTILO DE DESTAQUE (Primeiro Item) ---
-                // Fundo gradiente sutil, borda lateral roxa, sem borda inferior
+                // Destaque
                 itemWrapperClass += 'bg-gradient-to-r from-purple-900/30 to-transparent border-l-[3px] border-purple-500 py-1 my-2 rounded-r-lg';
-                // Título maior
                 titleClass += 'text-lg'; 
-                // Badge de Destaque
                 badgeDestaque = '<span class="inline-block bg-purple-600 text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
-                
-                // Desativa a flag para os próximos
                 isGlobalFirstItem = false;
             } else {
-                // --- ESTILO NORMAL ---
-                // Borda inferior SÓLIDA (removemos o /50 para ficar mais forte)
+                // Normal
                 itemWrapperClass += 'border-b border-neutral-800 last:border-0 hover:bg-neutral-900/40';
                 titleClass += 'text-sm';
             }
@@ -1587,14 +1581,15 @@ function renderizarNoticias(articles) {
                 <div class="flex items-start gap-4 py-4 px-3 cursor-pointer">
                     <div class="flex-shrink-0 mt-1.5">
                         <img src="${faviconUrl}" alt="${sourceName}" 
-                             class="w-8 h-8 rounded-md bg-[#1C1C1E] object-contain p-0.5 border border-neutral-800 grayscale group-hover:grayscale-0 transition-all"
+                             class="w-10 h-10 rounded-2xl bg-[#1C1C1E] object-contain p-2 border border-neutral-800 grayscale transition-all"
                              loading="lazy"
                              onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                         />
                     </div>
                     
                     <div class="flex-1 min-w-0 pointer-events-none">
-                        ${badgeDestaque} <div class="flex items-center gap-2 mb-1.5">
+                        ${badgeDestaque}
+                        <div class="flex items-center gap-2 mb-1.5">
                             <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">${sourceName}</span>
                             <span class="text-[10px] text-neutral-600">•</span>
                             <span class="text-[10px] text-neutral-500">${horaPub}</span>

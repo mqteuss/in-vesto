@@ -1489,124 +1489,66 @@ function renderizarHistoricoProventos() {
         fiiNewsList.appendChild(fragment);
     }
 
-function renderizarGraficoAlocacao(dadosGrafico) {
-    const canvas = document.getElementById('alocacao-chart');
-    const legendContainer = document.getElementById('alocacao-legend');
-    const totalCenter = document.getElementById('alocacao-total-center');
-    
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Se não tiver dados, limpa tudo
-    if (dadosGrafico.length === 0) {
-        if (alocacaoChartInstance) {
-            alocacaoChartInstance.destroy();
-            alocacaoChartInstance = null; 
+    function renderizarGraficoAlocacao(dadosGrafico) {
+        const canvas = document.getElementById('alocacao-chart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        if (dadosGrafico.length === 0) {
+            if (alocacaoChartInstance) {
+                alocacaoChartInstance.destroy();
+                alocacaoChartInstance = null; 
+            }
+            lastAlocacaoData = null; 
+            return;
         }
-        if(legendContainer) legendContainer.innerHTML = '<p class="text-gray-500 text-xs text-center col-span-2 py-4">Carteira vazia</p>';
-        if(totalCenter) totalCenter.textContent = "0%";
-        return;
-    }
-    
-    // Ordena do maior para o menor (fica visualmente mais bonito o arco começar grande)
-    dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
+        
+        const labels = dadosGrafico.map(d => d.symbol);
+        const data = dadosGrafico.map(d => d.totalPosicao);
+        const newDataString = JSON.stringify({ labels, data });
 
-    const labels = dadosGrafico.map(d => d.symbol);
-    const data = dadosGrafico.map(d => d.totalPosicao);
-    const totalCarteira = data.reduce((a, b) => a + b, 0);
-    
-    // Atualiza o texto no centro da Rosca
-    if(totalCenter) totalCenter.textContent = "100%";
+        if (newDataString === lastAlocacaoData) { return; }
+        lastAlocacaoData = newDataString; 
+        
+        const colors = gerarCores(labels.length);
 
-    // Evita re-renderizar se os dados forem idênticos (evita piscada)
-    const newDataString = JSON.stringify({ labels, data });
-    if (newDataString === lastAlocacaoData) return;
-    lastAlocacaoData = newDataString;
-    
-    // Paleta de cores moderna (Vesto Theme)
-    const palette = [
-        '#7c3aed', // Roxo Principal
-        '#2563eb', // Azul Royal
-        '#db2777', // Rosa Pink
-        '#059669', // Verde Esmeralda
-        '#d97706', // Âmbar
-        '#9333ea', // Roxo Secundário
-        '#0891b2', // Ciano
-        '#dc2626'  // Vermelho
-    ];
-
-    // Gerar a Legenda HTML
-    if (legendContainer) {
-        legendContainer.innerHTML = '';
-        dadosGrafico.forEach((d, index) => {
-            const percent = ((d.totalPosicao / totalCarteira) * 100).toFixed(1);
-            const color = palette[index % palette.length];
-            
-            const item = document.createElement('div');
-            // Estilo do item da legenda: Fundo escuro, borda sutil, compacto
-            item.className = 'flex items-center justify-between bg-[#1C1C1E] rounded-lg px-3 py-2 border border-[#2C2C2E]';
-            item.innerHTML = `
-                <div class="flex items-center gap-2 overflow-hidden">
-                    <span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${color}; box-shadow: 0 0 6px ${color}"></span>
-                    <span class="text-xs font-bold text-gray-200 truncate">${d.symbol}</span>
-                </div>
-                <span class="text-xs text-gray-400 font-mono ml-2">${percent}%</span>
-            `;
-            legendContainer.appendChild(item);
-        });
-    }
-
-    // Destrói gráfico anterior para evitar sobreposição de memória
-    if (alocacaoChartInstance) {
-        alocacaoChartInstance.destroy();
-    }
-
-    // Configuração do Chart.js
-    alocacaoChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: { 
-            labels: labels, 
-            datasets: [{ 
-                data: data, 
-                backgroundColor: palette, 
-                borderWidth: 0,       // Remove bordas brancas feias
-                hoverOffset: 4        // Efeito de "pulo" ao passar mouse/dedo
-            }] 
-        },
-        options: {
-            responsive: true, 
-            maintainAspectRatio: false,
-            cutout: '88%',        // ROSCA BEM FINA (Moderno)
-            borderRadius: 20,     // BORDAS ARREDONDADAS nas fatias
-            spacing: 2,           // Espaço mínimo entre fatias
-            plugins: {
-                legend: { display: false }, // Desliga a legenda padrão feia
-                tooltip: {
-                    backgroundColor: '#1C1C1E',
-                    titleColor: '#fff',
-                    bodyColor: '#d1d5db',
-                    borderColor: '#2C2C2E',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.parsed;
-                            const percent = ((value / totalCarteira) * 100).toFixed(1);
-                            // Formata: " R$ 1.000,00 (10.0%)"
-                            return ` ${value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${percent}%)`;
+        if (alocacaoChartInstance) {
+            alocacaoChartInstance.data.labels = labels;
+            alocacaoChartInstance.data.datasets[0].data = data;
+            alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
+            alocacaoChartInstance.update();
+        } else {
+            alocacaoChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: { 
+                    labels: labels, 
+                    datasets: [{ 
+                        data: data, 
+                        backgroundColor: colors, 
+                        borderWidth: 2, 
+                        borderColor: Chart.defaults.borderColor 
+                    }] 
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'bottom', labels: { color: Chart.defaults.color, boxWidth: 12, padding: 15, } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    const percent = ((value / total) * 100).toFixed(2);
+                                    return `${label}: ${formatBRL(value)} (${percent}%)`;
+                                }
+                            }
                         }
                     }
                 }
-            },
-            animation: {
-                animateScale: true,
-                animateRotate: true
-            }
+            });
         }
-    });
-}
+    }
     
     function renderizarGraficoHistorico({ labels, data }) {
         const canvas = document.getElementById('historico-proventos-chart');

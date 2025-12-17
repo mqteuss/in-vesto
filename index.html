@@ -226,22 +226,11 @@
                                         </svg>
                                     </div>
                                 </div>
-                              <div id="alocacao-chart-drawer" class="card-drawer">
-    <div class="drawer-content pt-4 pb-2">
-        <div class="flex flex-col items-center">
-            
-            <div class="relative h-48 w-48 mb-4">
-                <canvas id="alocacao-chart"></canvas>
-                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span class="text-[10px] text-gray-500 uppercase tracking-widest">Total</span>
-                    <span class="text-white font-bold text-lg" id="alocacao-total-center">100%</span>
-                </div>
-            </div>
-            
-            <div id="alocacao-legend" class="w-full grid grid-cols-2 gap-2"></div>
-        </div>
-    </div>
-</div>
+                                <div id="alocacao-chart-drawer" class="card-drawer">
+                                    <div id="grafico-container" class="drawer-content relative h-64 pt-4">
+                                        <canvas id="alocacao-chart"></canvas>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="card-bg p-4 rounded-3xl group cursor-pointer" data-toggle-drawer="proventos-chart-drawer">

@@ -107,24 +107,25 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Ícone Neutro (Iniciais)
-    const initials = ativo.symbol.substring(0, 2);
+    // 1. Tag de Lucro/Prejuízo (L/P)
+    let plTagHtml = '';
+    if (dadoPreco) {
+        plTagHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block tracking-wide">
+            ${lucroPrejuizoPercent.toFixed(1)}%
+        </span>`;
+    }
     
-    // 2. Cor do L/P (Apenas texto)
-    const isLucro = lucroPrejuizo >= 0;
-    const corLPTexto = isLucro ? 'text-green-500' : 'text-red-500';
-
-    // 3. HTML Inicial do Provento (Mesma lógica da atualização para não piscar)
+    // 2. Lógica de Proventos (FIIs) - (Mantida idêntica à original)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-            const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
             
             const foiPago = dataPag <= hoje;
             const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
-            // Lógica exata que você gosta (Cinza se pago, Roxo se futuro)
             const valorClass = foiPago ? "text-gray-400" : "accent-text";
             const sinal = foiPago ? "" : "+";
 
@@ -161,75 +162,72 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 4. Criação do Elemento (Visual LISTA)
+    // 3. ÍCONE NOVO (Letras)
+    // Pega as 2 primeiras letras do ativo (ex: MX de MXRF11)
+    const iconLetters = ativo.symbol.substring(0, 2);
+    
+    const iconHtml = `
+        <div class="w-12 h-12 rounded-xl bg-black border border-[#2C2C2E] flex items-center justify-center shrink-0 transition-transform duration-200 group-active:scale-90">
+            <span class="text-white font-bold text-lg tracking-wide">${iconLetters}</span>
+        </div>
+    `;
+
+    // 4. Criação do Elemento DOM (ESTRUTURA DE LISTA)
     const card = document.createElement('div');
-    card.className = 'group'; // Wrapper sem estilo visual, apenas controle
-    card.setAttribute('data-symbol', ativo.symbol);
+    // Alterado de 'card-bg' para borda inferior e layout de lista
+    card.className = 'border-b border-[#1C1C1E] py-3 px-1 hover:bg-[#111111] transition-colors';
+    card.setAttribute('data-symbol', ativo.symbol); 
 
     card.innerHTML = `
-        <div class="wallet-item-row" data-symbol="${ativo.symbol}" data-action="toggle">
+        <div class="flex justify-between items-center cursor-pointer select-none group py-1" data-symbol="${ativo.symbol}" data-action="toggle">
             
-            <div class="flex items-center min-w-0 gap-4">
-                <div class="wallet-icon-uniform">
-                    ${initials}
-                </div>
-                <div class="min-w-0 flex flex-col">
-                    <h3 class="text-base font-bold text-white leading-tight truncate">${ativo.symbol}</h3>
-                    <span class="text-xs text-gray-500 font-medium mt-0.5" data-field="cota-qtd">${ativo.quantity} cotas</span>
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                ${iconHtml}
+                
+                <div class="min-w-0">
+                    <div class="flex items-baseline gap-2">
+                        <h2 class="text-base font-bold text-white leading-tight truncate">${ativo.symbol}</h2>
+                    </div>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="text-xs text-gray-500 font-medium whitespace-nowrap" data-field="cota-qtd">${ativo.quantity} cota(s)</span>
+                        <div data-field="pl-tag">${plTagHtml}</div>
+                    </div>
                 </div>
             </div>
             
-            <div class="flex items-center gap-3">
-                <div class="flex flex-col items-end">
-                    <span data-field="posicao-valor" class="text-base font-semibold text-white tracking-tight">
-                        ${dadoPreco ? formatBRL(totalPosicao) : '...'}
-                    </span>
-                    
-                    <div class="flex items-center gap-1.5 mt-0.5">
-                        <span data-field="preco-valor" class="text-xs text-gray-500">${precoFormatado}</span>
-                        <span data-field="pl-valor" class="text-[10px] font-bold ${corLPTexto} bg-gray-800 px-1.5 py-0.5 rounded">
-                             ${lucroPrejuizoPercent.toFixed(1)}%
-                        </span>
-                    </div>
+            <div class="flex items-center gap-3 pl-2">
+                <div class="text-right flex-shrink-0">
+                    <p data-field="preco-valor" class="text-white text-base font-bold money-value tracking-tight">${precoFormatado}</p>
+                    <span data-field="variacao-valor" class="${corVariacao} text-xs font-medium block mt-0.5">${dadoPreco ? variacaoFormatada : '...'}</span>
                 </div>
                 
-                <div class="text-gray-600 pl-1">
-                    <svg class="card-arrow-icon w-4 h-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <div class="text-gray-600">
+                    <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                     </svg>
                 </div>
             </div>
         </div>
 
-        <div id="drawer-${ativo.symbol}" class="card-drawer border-b border-[#1C1C1E]">
-            <div class="drawer-content px-2 pb-6 pt-2">
-                
-                <div class="grid grid-cols-2 gap-3 mt-1">
-                    <div class="p-3 rounded-xl bg-[#161618]">
-                        <span class="text-[10px] text-gray-500 block uppercase font-bold">Preço Médio</span>
-                        <span data-field="pm-val" class="text-sm font-semibold text-gray-200">${formatBRL(ativo.precoMedio)}</span>
-                    </div>
-                    <div class="p-3 rounded-xl bg-[#161618]">
-                        <span class="text-[10px] text-gray-500 block uppercase font-bold">Custo Total</span>
-                        <span data-field="custo-valor" class="text-sm font-semibold text-gray-200">${formatBRL(custoTotal)}</span>
-                    </div>
-                    <div class="p-3 rounded-xl bg-[#161618]">
-                        <span class="text-[10px] text-gray-500 block uppercase font-bold">Lucro/Prej. (R$)</span>
-                        <span class="text-sm font-semibold ${corLPTexto}">${formatBRL(lucroPrejuizo)}</span>
-                    </div>
-                    <div class="p-3 rounded-xl bg-[#161618]">
-                        <span class="text-[10px] text-gray-500 block uppercase font-bold">Var. Dia</span>
-                        <span data-field="variacao-valor" class="text-sm font-semibold ${corVariacao}">${dadoPreco ? variacaoFormatada : '-'}</span>
-                    </div>
+        <div id="drawer-${ativo.symbol}" class="card-drawer">
+            <div class="drawer-content space-y-2 pt-3 mt-1 pb-2 pl-14"> <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">Posição</span>
+                    <span data-field="posicao-valor" class="text-sm font-semibold text-white">${dadoPreco ? formatBRL(totalPosicao) : 'A calcular...'}</span>
                 </div>
-
+                <div class="flex justify-between items-center">
+                    <span data-field="pm-label" class="text-xs text-gray-500 font-medium">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
+                    <span data-field="custo-valor" class="text-sm font-semibold text-white">${formatBRL(custoTotal)}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">L/P Total</span>
+                    <span data-field="pl-valor" class="text-sm font-semibold ${corPL}">${dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...'}</span>
+                </div>
                 <div data-field="provento-container">${proventoHtml}</div> 
-
-                <div class="flex justify-end gap-3 pt-5 px-1">
-                    <button class="flex-1 py-2.5 px-4 text-xs font-bold text-gray-300 bg-[#2C2C2E] hover:bg-gray-700 rounded-xl transition-colors" data-symbol="${ativo.symbol}" data-action="details">
-                        Ver Detalhes
+                <div class="flex justify-end gap-3 pt-3">
+                    <button class="py-1.5 px-4 text-xs font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="details">
+                        Detalhes
                     </button>
-                    <button class="py-2.5 px-4 text-xs font-bold text-red-400 bg-red-900/10 hover:bg-red-900/20 border border-red-900/20 rounded-xl transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
+                    <button class="py-1.5 px-4 text-xs font-medium text-red-400 bg-red-900/20 hover:bg-red-900/40 border border-red-900/30 rounded-full transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
                         Remover
                     </button>
                 </div>
@@ -246,35 +244,33 @@ function atualizarCardElemento(card, ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // Atualizações básicas (Compatíveis com a Lista Contínua)
-    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
+    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
     card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
-    card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
+    card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : 'A calcular...';
+    card.querySelector('[data-field="pm-label"]').textContent = `Custo (P.M. ${formatBRL(ativo.precoMedio)})`;
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
-    
-    // Atualiza Preço Médio (se houver mudança)
-    if (card.querySelector('[data-field="pm-val"]')) {
-        card.querySelector('[data-field="pm-val"]').textContent = formatBRL(ativo.precoMedio);
-    }
 
-    // Atualiza a Pill de % (Elemento pequeno ao lado do preço)
-    const plEl = card.querySelector('[data-field="pl-valor"]');
-    if (plEl) {
-        plEl.textContent = `${lucroPrejuizoPercent.toFixed(1)}%`;
-        const isLucro = lucroPrejuizo >= 0;
-        const corLPTexto = isLucro ? 'text-green-500' : 'text-red-500';
-        plEl.className = `text-[10px] font-bold ${corLPTexto} bg-gray-800 px-1.5 py-0.5 rounded`;
-    }
-
-    // Atualiza Variação do Dia (Dentro da gaveta)
+    // Atualiza variação
     const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
-    if (variacaoEl) {
-        variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-        variacaoEl.className = `text-sm font-semibold ${corVariacao}`;
-    }
+    variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
+    variacaoEl.className = `${corVariacao} text-xs font-medium block mt-0.5`; 
 
-    // --- SUA LÓGICA EXATA DE PROVENTOS ---
+    // Atualiza valores L/P Texto
+    const plValorEl = card.querySelector('[data-field="pl-valor"]');
+    plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)} (${lucroPrejuizoPercent.toFixed(2)}%)` : 'A calcular...';
+    plValorEl.className = `text-sm font-semibold ${corPL}`; 
+
+    // Atualiza TAG de L/P
+    let plTagHtml = '';
+    if (dadoPreco) {
+        plTagHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block tracking-wide">
+            ${lucroPrejuizoPercent.toFixed(1)}%
+        </span>`;
+    }
+    card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
+
     if (isFII(ativo.symbol)) { 
+        // Lógica de Proventos interna (Mantida)
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
@@ -284,7 +280,7 @@ function atualizarCardElemento(card, ativo, dados) {
             
             const foiPago = dataPag <= hoje;
             const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
-            const valorClass = foiPago ? "text-gray-400" : "accent-text"; // Usa a cor roxa (definida no CSS) se for futuro
+            const valorClass = foiPago ? "text-gray-400" : "accent-text";
             const sinal = foiPago ? "" : "+";
 
             let valorTexto = '';
@@ -318,10 +314,7 @@ function atualizarCardElemento(card, ativo, dados) {
                 <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
             </div>`;
         }
-        
-        // Injeta o HTML gerado no container da gaveta
-        const container = card.querySelector('[data-field="provento-container"]');
-        if (container) container.innerHTML = proventoHtml;
+        card.querySelector('[data-field="provento-container"]').innerHTML = proventoHtml;
     }
 }
 
@@ -3645,27 +3638,30 @@ function mudarAba(tabId) {
     });
     
 listaCarteira.addEventListener('click', (e) => {
-    // Agora procuramos pelo atributo data-action diretamente
-    const target = e.target.closest('[data-action]'); 
+        // MUDANÇA: Agora procuramos por qualquer elemento com data-action, não só 'button'
+        // Isso permite que a div do header funcione como gatilho
+        const target = e.target.closest('[data-action]'); 
+        
+        if (!target) return;
+        
+        const action = target.dataset.action;
+        const symbol = target.dataset.symbol;
 
-    if (!target) return;
-
-    const action = target.dataset.action;
-    const symbol = target.dataset.symbol;
-
-    if (action === 'remove') {
-        handleRemoverAtivo(symbol);
-    } else if (action === 'details') {
-        showDetalhesModal(symbol);
-    } else if (action === 'toggle') {
-        const drawer = document.getElementById(`drawer-${symbol}`);
-        // Procura a seta dentro da linha clicada
-        const icon = target.querySelector('.card-arrow-icon');
-
-        drawer?.classList.toggle('open');
-        icon?.classList.toggle('open');
-    }
-});
+        if (action === 'remove') {
+            handleRemoverAtivo(symbol);
+        } else if (action === 'details') {
+            showDetalhesModal(symbol);
+        } else if (action === 'toggle') {
+            const drawer = document.getElementById(`drawer-${symbol}`);
+            // Precisamos achar o ícone de seta dentro deste card específico para girá-lo
+            // Como o clique pode vir do Header, procuramos o ícone no card pai
+            const cardPai = target.closest('.card-bg'); 
+            const icon = cardPai.querySelector('.card-arrow-icon');
+            
+            drawer?.classList.toggle('open');
+            icon?.classList.toggle('open');
+        }
+    });
     
     listaHistorico.addEventListener('click', (e) => {
         const target = e.target.closest('button');

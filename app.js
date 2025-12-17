@@ -1588,7 +1588,7 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                     hoverOffset: 4
                 }] 
             },
-            options: {
+options: {
                 responsive: true, 
                 maintainAspectRatio: false, 
                 cutout: '70%', // Espessura equilibrada

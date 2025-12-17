@@ -1278,6 +1278,7 @@ function agruparPorMes(itens, dateField) {
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL CONSISTENTE E ÍCONES ÚNICOS) ---
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (CLIQUE PARA EDITAR) ---
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (ESPAÇAMENTO REDUZIDO / IGUAL PROVENTOS) ---
+// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (COMPACTO E IGUAL PROVENTOS) ---
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
     
@@ -1293,24 +1294,22 @@ function renderizarHistorico() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header do Mês
+        // Header
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
         header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // Lista de Itens
+        // Lista (Espaçamento reduzido para 0.5 - quase colado, igual extrato)
         const listaGrupo = document.createElement('div');
-        // ALTERAÇÃO AQUI: Mudamos de space-y-4 (ou similar) para space-y-1
-        // Isso remove o buraco grande entre os itens
-        listaGrupo.className = 'mb-5 space-y-1'; 
+        listaGrupo.className = 'mb-4 space-y-0.5'; 
 
         grupos[mes].forEach(t => {
             const isVenda = t.type === 'sell';
             const item = document.createElement('div');
             
-            // Container do item (padding e hover)
-            item.className = 'flex items-center justify-between group cursor-pointer py-3 px-2 hover:bg-neutral-900/40 rounded-xl transition-colors relative';
+            // Container do item: Reduzido padding vertical (py-2) para ficar mais compacto
+            item.className = 'flex items-center justify-between group cursor-pointer py-2 px-2 hover:bg-neutral-900/40 rounded-lg transition-colors relative';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
             
@@ -1323,7 +1322,7 @@ function renderizarHistorico() {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             
             item.innerHTML = `
-                <div class="flex items-center gap-4 flex-1 min-w-0">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-10 h-10 rounded-2xl ${corIconeBg} ${corIcone} flex items-center justify-center flex-shrink-0 border border-neutral-800">
                         ${iconSvg}
                     </div>
@@ -1355,8 +1354,7 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
-// --- RENDERIZAR HISTÓRICO DE PROVENTOS (ESTILO FINTECH) ---
-// --- RENDERIZAR HISTÓRICO DE PROVENTOS (VISUAL UNIFICADO) ---
+// --- RENDERIZAR HISTÓRICO DE PROVENTOS (ALINHAMENTO PERFEITO) ---
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1377,15 +1375,15 @@ function renderizarHistoricoProventos() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header (Idêntico ao de Transações)
+        // Header
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
         header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // Lista
+        // Lista (Espaçamento reduzido para 0.5)
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-5 space-y-1';
+        listaGrupo.className = 'mb-4 space-y-0.5';
 
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
@@ -1396,21 +1394,16 @@ function renderizarHistoricoProventos() {
                 const dia = new Date(p.paymentDate).getDate().toString().padStart(2, '0');
                 const item = document.createElement('div');
                 
-                // Mesmo container base
-                item.className = 'flex items-center justify-between group cursor-default py-3 px-2 hover:bg-neutral-900/40 rounded-xl transition-colors';
+                // Item (padding py-2)
+                item.className = 'flex items-center justify-between group cursor-default py-2 px-2 hover:bg-neutral-900/40 rounded-lg transition-colors';
                 
-                // SVG Minimalista (Moeda/Dinheiro)
-                const iconSvg = `
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>`;
+                const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
 
                 item.innerHTML = `
-                    <div class="flex items-center gap-4 flex-1 min-w-0">
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
                         <div class="w-10 h-10 rounded-2xl bg-green-500/10 text-green-500 flex items-center justify-center flex-shrink-0 border border-neutral-800">
                             ${iconSvg}
                         </div>
-                        
                         <div class="flex-1 min-w-0 flex flex-col justify-center">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-semibold text-gray-200 truncate">${p.symbol}</span>

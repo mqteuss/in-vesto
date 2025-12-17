@@ -235,31 +235,71 @@ function atualizarCardElemento(card, ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // Atualiza campos simples
-    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
-    card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
-    card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
-    card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
+    // 1. Atualiza campos básicos (Quantidade, Preço, Posição, Custo)
+    const elQtd = card.querySelector('[data-field="cota-qtd"]');
+    if (elQtd) elQtd.textContent = `${ativo.quantity} cotas`;
 
-    // Atualiza L/P % (Pill pequena)
+    const elPreco = card.querySelector('[data-field="preco-valor"]');
+    if (elPreco) elPreco.textContent = precoFormatado;
+
+    const elPosicao = card.querySelector('[data-field="posicao-valor"]');
+    if (elPosicao) elPosicao.textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
+
+    const elCusto = card.querySelector('[data-field="custo-valor"]');
+    if (elCusto) elCusto.textContent = formatBRL(custoTotal);
+
+    // 2. Atualiza a Badge de Porcentagem (L/P)
+    // No novo layout, é o elemento pequeno ao lado do preço
     const plEl = card.querySelector('[data-field="pl-valor"]');
-    const isLucro = lucroPrejuizo >= 0;
-    const corLP = isLucro ? 'text-green-500' : 'text-red-500';
-    
-    plEl.textContent = `${lucroPrejuizoPercent.toFixed(1)}%`;
-    // Remove classes antigas de cor e adiciona nova
-    plEl.classList.remove('text-green-500', 'text-red-500', 'text-gray-500');
-    plEl.classList.add(corLP);
+    if (plEl) {
+        plEl.textContent = `${lucroPrejuizoPercent.toFixed(1)}%`;
+        
+        // Define a cor baseada no lucro/prejuízo
+        const isLucro = lucroPrejuizo >= 0;
+        const corLPTexto = isLucro ? 'text-green-500' : 'text-red-500';
+        
+        // Redefine as classes mantendo a formatação base (text-[10px], bg-gray, etc)
+        plEl.className = `text-[10px] font-bold ${corLPTexto} bg-gray-800/50 px-1.5 py-0.5 rounded ml-1`;
+    }
 
-    // Atualiza Variação do Dia (Dentro do Drawer)
+    // 3. Atualiza Variação do Dia (Fica dentro do Drawer agora)
     const varEl = card.querySelector('[data-field="variacao-valor"]');
     if (varEl) {
         varEl.textContent = dadoPreco ? variacaoFormatada : '-';
         varEl.className = `text-sm font-semibold ${corVariacao}`;
     }
 
-    // Se tiver lógica de Proventos no futuro (atualização em tempo real), insira aqui.
-    // Como o HTML do provento é recriado no criarCardElemento, aqui geralmente só atualizamos valores.
+    // 4. Lógica de Proventos (Recria o HTML se for FII)
+    if (isFII(ativo.symbol)) {
+        const containerProv = card.querySelector('[data-field="provento-container"]');
+        if (containerProv) {
+            let proventoHtml = '';
+            
+            if (dadoProvento && dadoProvento.value > 0) {
+                const parts = dadoProvento.paymentDate.split('-');
+                const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+                const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+                
+                const foiPago = dataPag <= hoje;
+                const labelTexto = foiPago ? "Último Pag." : "Próximo Pag.";
+                const valorCor = "text-purple-400"; // Mantém roxo para destaque
+
+                proventoHtml = `
+                <div class="mt-3 pt-3 border-t border-gray-800 flex justify-between items-center bg-gray-900/30 p-2 rounded-lg">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold">${labelTexto}</span>
+                        <span class="text-xs text-gray-300">Data Com: ${dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-'}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-sm font-bold ${valorCor}">${formatBRL(proventoReceber)}</span>
+                        <span class="text-[10px] text-gray-500">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
+                    </div>
+                </div>`;
+            }
+            // Se não tiver provento, deixa vazio para não ocupar espaço ou mostra mensagem
+            containerProv.innerHTML = proventoHtml;
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

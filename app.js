@@ -1475,7 +1475,7 @@ function renderizarHistoricoProventos() {
         });
     }
 
-    function renderizarNoticias(articles) { 
+function renderizarNoticias(articles) { 
         fiiNewsSkeleton.classList.add('hidden');
         
         const newSignature = JSON.stringify(articles);
@@ -1494,75 +1494,144 @@ function renderizarHistoricoProventos() {
         }
         
         const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
-        
         const fragment = document.createDocumentFragment();
+        
+        let lastDateHeader = '';
 
         sortedArticles.forEach((article, index) => {
             const sourceName = article.sourceName || 'Fonte';
             const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
-            const publicationDate = article.publicationDate ? formatDate(article.publicationDate, true) : 'Data indisponível';
-            const drawerId = `news-drawer-${index}`;
             
-            const tickerRegex = /[A-Z]{4}11/g;
-            const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
+            const dateObj = new Date(article.publicationDate);
+            const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+            // Agrupamento de Data (Hoje, Ontem, etc.)
+            const hoje = new Date();
+            const ontem = new Date();
+            ontem.setDate(hoje.getDate() - 1);
             
-            let tickersHtml = '';
-            if (foundTickers.length > 0) {
-                foundTickers.forEach(ticker => {
-                    tickersHtml += `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
-                });
+            let dateHeader = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+            if (dateObj.toDateString() === hoje.toDateString()) dateHeader = "Hoje";
+            else if (dateObj.toDateString() === ontem.toDateString()) dateHeader = "Ontem";
+
+            // Insere cabeçalho de data se mudou o dia (exceto antes do destaque/hero)
+            if (index > 0 && dateHeader !== lastDateHeader) {
+                const headerEl = document.createElement('div');
+                headerEl.className = 'news-date-header';
+                headerEl.textContent = dateHeader;
+                fragment.appendChild(headerEl);
+                lastDateHeader = dateHeader;
+            } else if (index === 0) {
+                lastDateHeader = dateHeader;
             }
 
+            // Identificar Tickers no Título para criar etiquetas
+            const tickerRegex = /[A-Z]{4}11/g;
+            const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
+            let tickersHtml = '';
+            
+            if (foundTickers.length > 0) {
+                // Cria as pílulas com data-symbol para abrir o modal
+                tickersHtml = foundTickers.map(t => 
+                    `<span class="news-ticker-pill" data-symbol="${t}" title="Ver detalhes de ${t}">${t}</span>`
+                ).join('');
+            }
+
+            const drawerId = `news-drawer-${index}`;
             const drawerContentHtml = `
-                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3">
-                    ${article.summary ? article.summary : 'Resumo não disponível.'}
+                <div class="text-sm text-gray-300 leading-relaxed mb-4 border-l-2 border-purple-500 pl-3 mt-3">
+                    ${article.summary ? article.summary : 'Toque no link abaixo para ler a matéria completa na fonte original.'}
                 </div>
-                <div class="flex justify-between items-end pt-2 border-t border-gray-800">
-                    <div class="flex flex-wrap gap-2">
-                        ${tickersHtml}
-                    </div>
-                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex-shrink-0">
-                        Ler notícia completa
+                <div class="flex justify-end pt-2 border-t border-gray-800">
+                    <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-purple-400 hover:text-purple-300 hover:underline transition-colors flex items-center gap-1 py-2">
+                        Ler notícia na íntegra 
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                     </a>
                 </div>
             `;
 
             const newsCard = document.createElement('div');
-            newsCard.className = 'card-bg rounded-3xl p-4 space-y-3 news-card-interactive'; 
-            newsCard.setAttribute('data-action', 'toggle-news');
-            newsCard.setAttribute('data-target', drawerId);
+            
+            if (index === 0) {
+                // --- HERO CARD (DESTAQUE) ---
+                newsCard.className = 'news-hero-card news-card-interactive group cursor-pointer';
+                newsCard.setAttribute('data-action', 'toggle-news');
+                newsCard.setAttribute('data-target', drawerId);
 
                 newsCard.innerHTML = `
-                <div class="flex items-center gap-3 pointer-events-none"> <img src="${faviconUrl}" alt="${sourceName}" 
-                         class="w-10 h-10 rounded-xl bg-[#1C1C1E] object-contain p-0.5 shadow-sm border border-gray-700 pointer-events-auto flex-shrink-0"
-                         loading="lazy"
-                         onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
-                    />
+                    <div class="flex items-start justify-between mb-3">
+                        <span class="px-2 py-1 rounded-md bg-purple-600 text-[10px] font-bold text-white uppercase tracking-wider shadow-lg shadow-purple-900/50">Destaque</span>
+                        <span class="text-[10px] text-purple-200 font-medium bg-purple-900/30 px-2 py-0.5 rounded-full border border-purple-500/20">${timeStr}</span>
+                    </div>
                     
-                    <div class="flex-1 min-w-0">
-                        <h4 class="font-bold text-white line-clamp-2 text-sm leading-tight">${article.title || 'Título indisponível'}</h4>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="text-[10px] text-gray-400 font-medium uppercase tracking-wide">${sourceName}</span>
-                            <span class="text-[10px] text-gray-600">•</span>
-                            <span class="text-[10px] text-gray-500">${publicationDate}</span>
-                        </div>
+                    <h3 class="text-lg font-bold text-white leading-snug mb-3 group-hover:text-purple-200 transition-colors">
+                        ${article.title}
+                    </h3>
+                    
+                    <div class="flex flex-wrap items-center gap-2 mb-4 pointer-events-auto">
+                        ${tickersHtml}
                     </div>
 
-                    <div class="text-gray-600 pl-1">
-                        <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                        </svg>
+                    <div class="flex items-center gap-2 mt-auto opacity-80 border-t border-white/10 pt-3">
+                         <img src="${faviconUrl}" class="w-4 h-4 rounded-full bg-white object-contain" onerror="this.style.display='none'">
+                         <span class="text-xs text-gray-300 font-medium">${sourceName}</span>
                     </div>
-                </div>
-                
-                <div id="${drawerId}" class="card-drawer pointer-events-auto">
-                    <div class="drawer-content pt-3 mt-2 border-t border-gray-800/50">
-                        ${drawerContentHtml}
+
+                    <div id="${drawerId}" class="card-drawer pointer-events-auto">
+                        <div class="drawer-content">
+                            ${drawerContentHtml}
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+
+            } else {
+                // --- CARD PADRÃO (LISTA) ---
+                newsCard.className = 'py-4 px-2 border-b border-[#1C1C1E] news-card-interactive group cursor-pointer hover:bg-[#111111] transition-colors rounded-lg mx-1';
+                newsCard.setAttribute('data-action', 'toggle-news');
+                newsCard.setAttribute('data-target', drawerId);
+
+                newsCard.innerHTML = `
+                    <div class="flex gap-3">
+                        <div class="flex-shrink-0 mt-1">
+                            <img src="${faviconUrl}" alt="${sourceName}" 
+                                class="w-8 h-8 rounded-lg bg-[#1C1C1E] object-contain p-0.5 border border-gray-800"
+                                loading="lazy"
+                                onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
+                            />
+                        </div>
+                        
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-baseline mb-1">
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wide">${sourceName}</span>
+                                <span class="text-[10px] text-gray-600">${timeStr}</span>
+                            </div>
+
+                            <h4 class="text-sm font-semibold text-gray-200 leading-snug group-hover:text-white transition-colors">
+                                ${article.title}
+                            </h4>
+
+                            <div class="flex flex-wrap gap-1 mt-2 pointer-events-auto">
+                                ${tickersHtml}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="${drawerId}" class="card-drawer pointer-events-auto pl-0 md:pl-11">
+                        <div class="drawer-content">
+                            ${drawerContentHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
             fragment.appendChild(newsCard);
         });
+        
+        // Espaço final para não cortar atrás da navbar
+        const spacer = document.createElement('div');
+        spacer.className = "h-24";
+        fragment.appendChild(spacer);
+
         fiiNewsList.appendChild(fragment);
     }
 
@@ -3746,28 +3815,43 @@ const tabDashboard = document.getElementById('tab-dashboard');
         touchMoveY = 0;
     });
 
-    fiiNewsList.addEventListener('click', (e) => {
-        const tickerTag = e.target.closest('.news-ticker-tag');
-        if (tickerTag) {
-            e.stopPropagation(); 
-            const symbol = tickerTag.dataset.symbol;
+fiiNewsList.addEventListener('click', (e) => {
+        // 1. CLIQUE NA ETIQUETA (Ticker Pill) -> Abre Modal do Ativo
+        const pill = e.target.closest('.news-ticker-pill');
+        if (pill) {
+            e.preventDefault();
+            e.stopPropagation(); // Impede de abrir a notícia
+            const symbol = pill.dataset.symbol;
             if (symbol) {
+                // Feedback visual tátil
+                pill.style.transform = 'scale(0.95)';
+                setTimeout(() => pill.style.transform = '', 150);
+                
                 showDetalhesModal(symbol);
             }
             return;
         }
+
+        // 2. CLIQUE NO LINK (Ler na íntegra) -> Deixa o navegador abrir a URL
         if (e.target.closest('a')) {
-            e.stopPropagation(); 
+            e.stopPropagation(); // Garante que o link funcione
             return; 
         }
+
+        // 3. CLIQUE NO CARD -> Expande/Recolhe (Drawer)
         const card = e.target.closest('.news-card-interactive');
         if (card) {
             const targetId = card.dataset.target;
             const drawer = document.getElementById(targetId);
             const icon = card.querySelector('.card-arrow-icon');
             
+            // Fecha outros drawers abertos para focar na leitura atual (Opcional, mas elegante)
+            document.querySelectorAll('.card-drawer.open').forEach(d => {
+                if(d.id !== targetId) d.classList.remove('open');
+            });
+
             drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
+            if (icon) icon.classList.toggle('open');
         }
     });
     

@@ -1352,7 +1352,6 @@ function renderizarHistoricoProventos() {
         const hoje = new Date(); 
         hoje.setHours(0,0,0,0);
 
-        // 1. Filtra e Ordena
         const proventosPagos = proventosConhecidos.filter(p => {
             if (!p.paymentDate) return false;
             const parts = p.paymentDate.split('-');
@@ -1372,20 +1371,17 @@ function renderizarHistoricoProventos() {
                 temItem = true;
                 const total = p.value * qtd;
                 
-                // 2. Lógica de Agrupamento de Data
+                // Lógica de Agrupamento de Data
                 const parts = p.paymentDate.split('-');
                 const dateObj = new Date(parts[0], parts[1]-1, parts[2]);
-                
                 const dataHoje = new Date();
                 const dataOntem = new Date();
                 dataOntem.setDate(dataHoje.getDate() - 1);
 
                 let dateHeader = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
-                
                 if (dateObj.toDateString() === dataHoje.toDateString()) dateHeader = "Hoje";
                 else if (dateObj.toDateString() === dataOntem.toDateString()) dateHeader = "Ontem";
 
-                // Insere cabeçalho se mudou a data
                 if (dateHeader !== lastDateHeader) {
                     const headerEl = document.createElement('div');
                     headerEl.className = 'history-date-header';
@@ -1394,23 +1390,26 @@ function renderizarHistoricoProventos() {
                     lastDateHeader = dateHeader;
                 }
 
-                // 3. Cria o Item (Estilo Lista Limpa)
+                // Item da lista
                 const item = document.createElement('div');
                 item.className = 'history-item group';
                 
-                // Ícone: Cifrão ou Seta recebendo (Verde)
+                // Ícone SVG (Cifrão)
                 const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
 
                 item.innerHTML = `
                     <div class="flex items-center flex-1 min-w-0">
-                        <div class="history-icon-circle bg-green-900/20 text-green-500">
+                        <div class="history-icon-circle bg-purple-900/20 text-purple-400">
                             ${iconSvg}
                         </div>
                         
                         <div class="min-w-0 flex-1 pr-4">
                             <div class="flex justify-between items-baseline">
                                 <h3 class="text-base font-semibold text-white truncate">${p.symbol}</h3>
-                                <span class="text-base font-bold text-green-500">+ ${formatBRL(total)}</span>
+                                
+                                <span class="text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600">
+                                    + ${formatBRL(total)}
+                                </span>
                             </div>
                             <div class="flex justify-between items-center mt-0.5">
                                 <p class="text-sm text-gray-500">Rendimento recebido</p>

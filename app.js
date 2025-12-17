@@ -1274,6 +1274,82 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
+function renderizarHistorico() {
+    listaHistorico.innerHTML = '';
+    
+    if (transacoes.length === 0) {
+        historicoStatus.classList.remove('hidden');
+        return;
+    }
+    
+    historicoStatus.classList.add('hidden');
+    
+    const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const grupos = agruparPorMes(transacoesOrdenadas, 'date');
+    const fragment = document.createDocumentFragment();
+
+    Object.keys(grupos).forEach(mes => {
+        // Header
+        const header = document.createElement('div');
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
+        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
+        fragment.appendChild(header);
+
+        // Lista (Espaçamento reduzido para 0.5 - quase colado, igual extrato)
+        const listaGrupo = document.createElement('div');
+        listaGrupo.className = 'mb-4 space-y-0.5'; 
+
+        grupos[mes].forEach(t => {
+            const isVenda = t.type === 'sell';
+            const item = document.createElement('div');
+            
+            // Container do item: Reduzido padding vertical (py-2) para ficar mais compacto
+            item.className = 'flex items-center justify-between group cursor-pointer py-2 px-2 hover:bg-neutral-900/40 rounded-lg transition-colors relative';
+            item.setAttribute('data-action', 'edit-row');
+            item.setAttribute('data-id', t.id);
+            
+            const svgCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>`;
+            const svgVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 8V3h4z" /></svg>`;
+            const iconSvg = isVenda ? svgVenda : svgCompra;
+            
+            const corIconeBg = isVenda ? 'bg-red-500/10' : 'bg-purple-500/10';
+            const corIcone = isVenda ? 'text-red-500' : 'text-purple-400';
+            const dia = new Date(t.date).getDate().toString().padStart(2, '0');
+            
+            item.innerHTML = `
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <div class="w-10 h-10 rounded-2xl ${corIconeBg} ${corIcone} flex items-center justify-center flex-shrink-0 border border-neutral-800">
+                        ${iconSvg}
+                    </div>
+                    <div class="flex-1 min-w-0 flex flex-col justify-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold text-gray-200 truncate">${t.symbol}</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider ${isVenda ? 'text-red-500' : 'text-purple-400'} opacity-80">
+                                ${isVenda ? 'VENDA' : 'COMPRA'}
+                            </span>
+                        </div>
+                        <p class="text-xs text-neutral-500 mt-0.5 font-medium">Dia ${dia} • ${t.quantity} cotas</p>
+                    </div>
+                </div>
+                
+                <div class="text-right pl-3 flex flex-col justify-center items-end h-full">
+                    <p class="text-sm font-semibold text-gray-200 whitespace-nowrap tracking-tight">${formatBRL(t.quantity * t.price)}</p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                         <span class="text-xs text-neutral-500 font-medium">${formatBRL(t.price)}</span>
+                         <button class="p-1.5 -mr-2 text-neutral-600 hover:text-red-500 transition-colors z-20" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                         </button>
+                    </div>
+                </div>
+            `;
+            listaGrupo.appendChild(item);
+        });
+        fragment.appendChild(listaGrupo);
+    });
+    listaHistorico.appendChild(fragment);
+}
+
+// --- RENDERIZAR HISTÓRICO DE PROVENTOS (COM QUANTIDADE DE COTAS) ---
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);

@@ -107,14 +107,11 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Iniciais do Ticker (ex: MXRF11 -> MX) para colocar no quadrado
     const initials = ativo.symbol.substring(0, 2);
-
-    // 2. Cor do texto de L/P (Verde ou Vermelho)
     const isLucro = lucroPrejuizo >= 0;
     const corLPTexto = isLucro ? 'text-green-500' : 'text-red-500';
 
-    // 3. HTML do Provento (FIIs)
+    // HTML do Provento (FIIs)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -125,7 +122,7 @@ function criarCardElemento(ativo, dados) {
             const labelTexto = foiPago ? "Último Pag." : "Próximo Pag.";
             
             proventoHtml = `
-            <div class="mt-4 pt-3 border-t border-gray-800 flex justify-between items-center bg-gray-900/30 p-3 rounded-xl">
+            <div class="mt-3 pt-3 border-t border-gray-800 flex justify-between items-center bg-gray-900/30 p-3 rounded-xl">
                 <div class="flex flex-col">
                     <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wide">${labelTexto}</span>
                     <span class="text-xs text-gray-400 mt-0.5">Data Com: ${dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-'}</span>
@@ -138,16 +135,16 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 4. Criação do Elemento (Layout LISTA)
+    // Criação do Elemento (Container 'group' em vez de 'card-bg')
     const card = document.createElement('div');
-    card.className = 'group'; // Wrapper simples, sem estilo de card
+    card.className = 'group'; 
     card.setAttribute('data-symbol', ativo.symbol);
 
     card.innerHTML = `
         <div class="wallet-item-row" data-symbol="${ativo.symbol}" data-action="toggle">
             
             <div class="flex items-center min-w-0 gap-4">
-                <div class="wallet-icon-uniform">
+                <div class="wallet-icon-uniform shadow-lg">
                     ${initials}
                 </div>
                 
@@ -162,10 +159,9 @@ function criarCardElemento(ativo, dados) {
                     <span data-field="posicao-valor" class="text-base font-semibold text-white tracking-tight">
                         ${dadoPreco ? formatBRL(totalPosicao) : '...'}
                     </span>
-                    
                     <div class="flex items-center gap-1.5 mt-0.5">
                         <span data-field="preco-valor" class="text-xs text-gray-500">${precoFormatado}</span>
-                        <span data-field="pl-valor" class="text-[10px] font-bold ${corLPTexto} bg-gray-800 px-1.5 py-0.5 rounded">
+                        <span data-field="pl-valor" class="text-[10px] font-bold ${corLPTexto} bg-gray-800/80 px-1.5 py-0.5 rounded">
                              ${lucroPrejuizoPercent.toFixed(1)}%
                         </span>
                     </div>
@@ -181,7 +177,6 @@ function criarCardElemento(ativo, dados) {
 
         <div id="drawer-${ativo.symbol}" class="card-drawer border-b border-[#1C1C1E]">
             <div class="drawer-content px-2 pb-6 pt-2">
-                
                 <div class="grid grid-cols-2 gap-3 mt-1">
                     <div class="p-3 rounded-xl bg-[#161618]">
                         <span class="text-[10px] text-gray-500 block uppercase font-bold">Preço Médio</span>
@@ -1976,7 +1971,7 @@ function renderizarCarteiraSkeletons(show) {
         skeletonListaCarteira.classList.add('hidden'); // Garante que o genérico suma
         listaCarteira.classList.remove('hidden');      // Garante que a lista real apareça
 
-        const cards = listaCarteira.querySelectorAll('.card-bg');
+        const cards = listaCarteira.querySelectorAll('.group');
         
         cards.forEach(card => {
             // Selecionamos apenas os elementos que vão mudar de valor
@@ -2166,7 +2161,7 @@ if (card) {
         
         if (carteiraSearchInput && carteiraSearchInput.value) {
             const term = carteiraSearchInput.value.trim().toUpperCase();
-            const cards = listaCarteira.querySelectorAll('.card-bg');
+            const cards = listaCarteira.querySelectorAll('.group');
             cards.forEach(card => {
                 const symbol = card.dataset.symbol;
                 if (symbol && symbol.includes(term)) {
@@ -3585,8 +3580,7 @@ function mudarAba(tabId) {
     });
     
 listaCarteira.addEventListener('click', (e) => {
-        // MUDANÇA: Agora procuramos por qualquer elemento com data-action, não só 'button'
-        // Isso permite que a div do header funcione como gatilho
+        // Busca o elemento clicável (a linha ou um botão)
         const target = e.target.closest('[data-action]'); 
         
         if (!target) return;
@@ -3600,10 +3594,8 @@ listaCarteira.addEventListener('click', (e) => {
             showDetalhesModal(symbol);
         } else if (action === 'toggle') {
             const drawer = document.getElementById(`drawer-${symbol}`);
-            // Precisamos achar o ícone de seta dentro deste card específico para girá-lo
-            // Como o clique pode vir do Header, procuramos o ícone no card pai
-            const cardPai = target.closest('.card-bg'); 
-            const icon = cardPai.querySelector('.card-arrow-icon');
+            // CORREÇÃO: Procuramos o ícone dentro do próprio target (a linha clicada)
+            const icon = target.querySelector('.card-arrow-icon');
             
             drawer?.classList.toggle('open');
             icon?.classList.toggle('open');
@@ -3786,7 +3778,7 @@ fiiNewsList.addEventListener('click', (e) => {
     if (carteiraSearchInput) {
         carteiraSearchInput.addEventListener('input', (e) => {
             const term = e.target.value.trim().toUpperCase();
-            const cards = listaCarteira.querySelectorAll('.card-bg');
+            const cards = listaCarteira.querySelectorAll('.group');
             
             cards.forEach(card => {
                 const symbol = card.dataset.symbol;

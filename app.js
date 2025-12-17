@@ -107,14 +107,14 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Configuração Visual (Ícone Neutro)
+    // 1. Ícone Neutro (Iniciais)
     const initials = ativo.symbol.substring(0, 2);
     
-    // 2. Cor do texto L/P
+    // 2. Cor do L/P (Apenas texto)
     const isLucro = lucroPrejuizo >= 0;
     const corLPTexto = isLucro ? 'text-green-500' : 'text-red-500';
 
-    // 3. Lógica de Proventos (A QUE VOCÊ GOSTA)
+    // 3. HTML Inicial do Provento (Mesma lógica da atualização para não piscar)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -122,49 +122,48 @@ function criarCardElemento(ativo, dados) {
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
             
-            // Verifica se é passado ou futuro para mudar o texto e a cor
             const foiPago = dataPag <= hoje;
             const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
-            const valorClass = foiPago ? "text-gray-400" : "text-purple-400 font-bold";
+            // Lógica exata que você gosta (Cinza se pago, Roxo se futuro)
+            const valorClass = foiPago ? "text-gray-400" : "accent-text";
             const sinal = foiPago ? "" : "+";
 
             let valorTexto = '';
             if (proventoReceber > 0) {
-                 valorTexto = `<span class="text-sm ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
+                 valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
             } else {
                  valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
             }
             
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
 
-            // HTML detalhado do provento
             proventoHtml = `
-            <div class="mt-4 space-y-2 border-t border-gray-800 pt-3">
+            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
                 <div class="flex justify-between items-center">
                     <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
-                    <span class="text-sm font-medium text-gray-300">${formatBRL(dadoProvento.value)}</span>
+                    <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
                 </div>
-                <div class="flex justify-between items-center bg-[#161618] p-2 rounded-lg">
-                    <span class="text-xs text-gray-400 font-bold uppercase">${labelTexto}</span>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
                     ${valorTexto}
                 </div>
-                <div class="flex justify-between items-center px-1"> 
-                    <span class="text-[10px] text-gray-500">Data Com: ${dataComTexto}</span>
-                    <span class="text-[10px] text-gray-500">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
+                <div class="flex justify-between items-center"> 
+                    <span class="text-xs text-gray-500 font-medium" title="Data limite para compra">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
             </div>`;
         } else {
             proventoHtml = `
-            <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-800">
+            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
                 <span class="text-xs text-gray-500 font-medium">Provento</span>
-                <span class="text-sm font-medium text-gray-500">Aguardando anúncio.</span>
+                <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
             </div>`;
         }
     }
 
-    // 4. Criação do Elemento (Layout LISTA LIMPA)
+    // 4. Criação do Elemento (Visual LISTA)
     const card = document.createElement('div');
-    card.className = 'group'; // Wrapper simples
+    card.className = 'group'; // Wrapper sem estilo visual, apenas controle
     card.setAttribute('data-symbol', ativo.symbol);
 
     card.innerHTML = `
@@ -174,7 +173,6 @@ function criarCardElemento(ativo, dados) {
                 <div class="wallet-icon-uniform">
                     ${initials}
                 </div>
-                
                 <div class="min-w-0 flex flex-col">
                     <h3 class="text-base font-bold text-white leading-tight truncate">${ativo.symbol}</h3>
                     <span class="text-xs text-gray-500 font-medium mt-0.5" data-field="cota-qtd">${ativo.quantity} cotas</span>
@@ -205,10 +203,11 @@ function criarCardElemento(ativo, dados) {
 
         <div id="drawer-${ativo.symbol}" class="card-drawer border-b border-[#1C1C1E]">
             <div class="drawer-content px-2 pb-6 pt-2">
+                
                 <div class="grid grid-cols-2 gap-3 mt-1">
                     <div class="p-3 rounded-xl bg-[#161618]">
                         <span class="text-[10px] text-gray-500 block uppercase font-bold">Preço Médio</span>
-                        <span class="text-sm font-semibold text-gray-200">${formatBRL(ativo.precoMedio)}</span>
+                        <span data-field="pm-val" class="text-sm font-semibold text-gray-200">${formatBRL(ativo.precoMedio)}</span>
                     </div>
                     <div class="p-3 rounded-xl bg-[#161618]">
                         <span class="text-[10px] text-gray-500 block uppercase font-bold">Custo Total</span>
@@ -247,20 +246,18 @@ function atualizarCardElemento(card, ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Atualiza campos da Lista
-    const elQtd = card.querySelector('[data-field="cota-qtd"]');
-    if (elQtd) elQtd.textContent = `${ativo.quantity} cotas`;
+    // Atualizações básicas (Compatíveis com a Lista Contínua)
+    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
+    card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
+    card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
+    card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
+    
+    // Atualiza Preço Médio (se houver mudança)
+    if (card.querySelector('[data-field="pm-val"]')) {
+        card.querySelector('[data-field="pm-val"]').textContent = formatBRL(ativo.precoMedio);
+    }
 
-    const elPreco = card.querySelector('[data-field="preco-valor"]');
-    if (elPreco) elPreco.textContent = precoFormatado;
-
-    const elPosicao = card.querySelector('[data-field="posicao-valor"]');
-    if (elPosicao) elPosicao.textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
-
-    const elCusto = card.querySelector('[data-field="custo-valor"]');
-    if (elCusto) elCusto.textContent = formatBRL(custoTotal);
-
-    // 2. Atualiza a Pill de % L/P (Pequena)
+    // Atualiza a Pill de % (Elemento pequeno ao lado do preço)
     const plEl = card.querySelector('[data-field="pl-valor"]');
     if (plEl) {
         plEl.textContent = `${lucroPrejuizoPercent.toFixed(1)}%`;
@@ -269,62 +266,62 @@ function atualizarCardElemento(card, ativo, dados) {
         plEl.className = `text-[10px] font-bold ${corLPTexto} bg-gray-800 px-1.5 py-0.5 rounded`;
     }
 
-    // 3. Atualiza Variação do Dia
-    const varEl = card.querySelector('[data-field="variacao-valor"]');
-    if (varEl) {
-        varEl.textContent = dadoPreco ? variacaoFormatada : '-';
-        varEl.className = `text-sm font-semibold ${corVariacao}`;
+    // Atualiza Variação do Dia (Dentro da gaveta)
+    const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
+    if (variacaoEl) {
+        variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
+        variacaoEl.className = `text-sm font-semibold ${corVariacao}`;
     }
 
-    // 4. Lógica de Proventos (A MESMA do criarCardElemento)
-    if (isFII(ativo.symbol)) {
-        const containerProv = card.querySelector('[data-field="provento-container"]');
-        if (containerProv) {
-            let proventoHtml = '';
+    // --- SUA LÓGICA EXATA DE PROVENTOS ---
+    if (isFII(ativo.symbol)) { 
+        let proventoHtml = '';
+        if (dadoProvento && dadoProvento.value > 0) {
+            const parts = dadoProvento.paymentDate.split('-');
+            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
             
-            if (dadoProvento && dadoProvento.value > 0) {
-                const parts = dadoProvento.paymentDate.split('-');
-                const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-                const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-                
-                const foiPago = dataPag <= hoje;
-                const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
-                const valorClass = foiPago ? "text-gray-400" : "text-purple-400 font-bold";
-                const sinal = foiPago ? "" : "+";
+            const foiPago = dataPag <= hoje;
+            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
+            const valorClass = foiPago ? "text-gray-400" : "accent-text"; // Usa a cor roxa (definida no CSS) se for futuro
+            const sinal = foiPago ? "" : "+";
 
-                let valorTexto = '';
-                if (proventoReceber > 0) {
-                     valorTexto = `<span class="text-sm ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
-                } else {
-                     valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
-                }
-                
-                const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
-
-                proventoHtml = `
-                <div class="mt-4 space-y-2 border-t border-gray-800 pt-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
-                        <span class="text-sm font-medium text-gray-300">${formatBRL(dadoProvento.value)}</span>
-                    </div>
-                    <div class="flex justify-between items-center bg-[#161618] p-2 rounded-lg">
-                        <span class="text-xs text-gray-400 font-bold uppercase">${labelTexto}</span>
-                        ${valorTexto}
-                    </div>
-                    <div class="flex justify-between items-center px-1"> 
-                        <span class="text-[10px] text-gray-500">Data Com: ${dataComTexto}</span>
-                        <span class="text-[10px] text-gray-500">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
-                    </div>
-                </div>`;
+            let valorTexto = '';
+            if (proventoReceber > 0) {
+                 valorTexto = `<span class="text-sm font-semibold ${valorClass}">${sinal}${formatBRL(proventoReceber)}</span>`;
             } else {
-                proventoHtml = `
-                <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-800">
-                    <span class="text-xs text-gray-500 font-medium">Provento</span>
-                    <span class="text-sm font-medium text-gray-500">Aguardando anúncio.</span>
-                </div>`;
+                 valorTexto = `<span class="text-[10px] font-medium text-orange-400 bg-orange-900/30 px-1.5 py-0.5 rounded-full">Sem direito</span>`;
             }
-            containerProv.innerHTML = proventoHtml;
+
+            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : 'N/A';
+            
+            proventoHtml = `
+            <div class="mt-2 space-y-1.5 border-t border-gray-800 pt-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">Valor p/ Cota</span>
+                    <span class="text-sm font-medium text-gray-400">${formatBRL(dadoProvento.value)}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
+                    ${valorTexto}
+                </div>
+                <div class="flex justify-between items-center"> 
+                    <span class="text-xs text-gray-500 font-medium" title="Data limite para compra">Data Com: ${dataComTexto}</span>
+                    <span class="text-xs text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
+                </div>
+            </div>`;
+        } else {
+            proventoHtml = `
+            <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-800">
+                <span class="text-xs text-gray-500 font-medium">Provento</span>
+                <span class="text-sm font-medium text-gray-400">Aguardando anúncio.</span>
+            </div>`;
         }
+        
+        // Injeta o HTML gerado no container da gaveta
+        const container = card.querySelector('[data-field="provento-container"]');
+        if (container) container.innerHTML = proventoHtml;
     }
 }
 
@@ -3648,27 +3645,27 @@ function mudarAba(tabId) {
     });
     
 listaCarteira.addEventListener('click', (e) => {
-        // Agora buscamos o elemento que tem 'data-action', que é a linha inteira ou os botões
-        const target = e.target.closest('[data-action]'); 
-        
-        if (!target) return;
-        
-        const action = target.dataset.action;
-        const symbol = target.dataset.symbol;
+    // Agora procuramos pelo atributo data-action diretamente
+    const target = e.target.closest('[data-action]'); 
 
-        if (action === 'remove') {
-            handleRemoverAtivo(symbol);
-        } else if (action === 'details') {
-            showDetalhesModal(symbol);
-        } else if (action === 'toggle') {
-            const drawer = document.getElementById(`drawer-${symbol}`);
-            // Procura a seta dentro da linha clicada
-            const icon = target.querySelector('.card-arrow-icon');
-            
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        }
-    });
+    if (!target) return;
+
+    const action = target.dataset.action;
+    const symbol = target.dataset.symbol;
+
+    if (action === 'remove') {
+        handleRemoverAtivo(symbol);
+    } else if (action === 'details') {
+        showDetalhesModal(symbol);
+    } else if (action === 'toggle') {
+        const drawer = document.getElementById(`drawer-${symbol}`);
+        // Procura a seta dentro da linha clicada
+        const icon = target.querySelector('.card-arrow-icon');
+
+        drawer?.classList.toggle('open');
+        icon?.classList.toggle('open');
+    }
+});
     
     listaHistorico.addEventListener('click', (e) => {
         const target = e.target.closest('button');

@@ -100,6 +100,7 @@ const CACHE_PROVENTOS = 1000 * 60 * 60 * 12;
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
+// --- CRIAR ITEM DA CARTEIRA (LISTA CONTÍNUA + AVATAR DE LETRAS) ---
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -107,25 +108,24 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Tag de Lucro/Prejuízo Minimalista
+    // 1. Tag de Lucro/Prejuízo (Voltou para a esquerda, visual de pílula pequena)
     let plTagHtml = '';
     if (dadoPreco) {
-        // Mudamos para apenas texto colorido, sem fundo pesado
-        plTagHtml = `<span class="text-xs font-medium ${corPL}">${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%</span>`;
+        // Estilo "Badge" sutil
+        const corTexto = lucroPrejuizo >= 0 ? 'text-green-400' : 'text-red-400';
+        const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-400/10' : 'bg-red-400/10';
+        plTagHtml = `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${bgBadge} ${corTexto}">${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%</span>`;
     }
     
-    // 2. Avatar de 2 Letras (Minimalista)
+    // 2. Avatar de 2 Letras (Estilo Notícias)
     const sigla = ativo.symbol.substring(0, 2);
-    // Adicionei uma pequena bolinha colorida no canto do ícone para indicar L/P discretamente
-    const corIndicador = lucroPrejuizo >= 0 ? 'bg-green-500' : 'bg-red-500';
     const avatarHtml = `
-        <div class="relative w-10 h-10 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 group-hover:border-neutral-700 transition-colors">
+        <div class="w-10 h-10 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0">
             <span class="text-sm font-bold text-white tracking-wider">${sigla}</span>
-            <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${corIndicador} border-2 border-black"></div>
         </div>
     `;
 
-    // 3. Proventos (Ajustado para o Drawer)
+    // 3. Proventos
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -152,14 +152,14 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 4. Container Principal (Lista)
+    // 4. Container Principal
     const card = document.createElement('div');
-    // Removemos card-bg e usamos border-b para efeito de lista
-    card.className = 'group border-b border-neutral-800 last:border-0 relative transition-colors bg-black'; 
+    // Adicionei a classe 'portfolio-item' para o listener encontrar
+    card.className = 'portfolio-item group border-b border-neutral-800 last:border-0 relative transition-colors bg-black'; 
     card.setAttribute('data-symbol', ativo.symbol); 
 
     card.innerHTML = `
-        <div class="flex justify-between items-center cursor-pointer select-none py-3.5 px-2 hover:bg-neutral-900/30 transition-colors rounded-lg mx-1" data-symbol="${ativo.symbol}" data-action="toggle">
+        <div class="flex justify-between items-center cursor-pointer select-none py-3 px-2 hover:bg-neutral-900/30 transition-colors rounded-lg mx-1" data-symbol="${ativo.symbol}" data-action="toggle">
             
             <div class="flex items-center gap-4 flex-1 min-w-0">
                 ${avatarHtml}
@@ -167,19 +167,16 @@ function criarCardElemento(ativo, dados) {
                 <div class="min-w-0">
                     <div class="flex items-center gap-2">
                         <h2 class="text-base font-bold text-white leading-none tracking-tight">${ativo.symbol}</h2>
+                        <span class="text-xs text-gray-500 font-medium whitespace-nowrap" data-field="cota-qtd">${ativo.quantity} cota(s)</span>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1 font-medium" data-field="cota-qtd">${ativo.quantity} cotas</p>
+                    <div class="mt-1.5" data-field="pl-tag">${plTagHtml}</div>
                 </div>
             </div>
             
             <div class="flex items-center gap-3 pl-2">
                 <div class="text-right flex-shrink-0">
-                    <p data-field="preco-valor" class="text-white text-sm font-bold money-value tracking-tight">${precoFormatado}</p>
-                    <div class="flex justify-end items-center gap-1.5 mt-0.5">
-                        <span data-field="variacao-valor" class="${corVariacao} text-[10px] font-medium">${dadoPreco ? variacaoFormatada : '...'}</span>
-                        <span class="text-[10px] text-gray-600">•</span>
-                        <div data-field="pl-tag">${plTagHtml}</div>
-                    </div>
+                    <p data-field="preco-valor" class="text-white text-base font-bold money-value tracking-tight">${precoFormatado}</p>
+                    <span data-field="variacao-valor" class="${corVariacao} text-xs font-medium block mt-0.5">${dadoPreco ? variacaoFormatada : '...'}</span>
                 </div>
                 
                 <div class="text-gray-600 group-hover:text-gray-400 transition-colors">
@@ -211,11 +208,9 @@ function criarCardElemento(ativo, dados) {
                 
                 <div class="flex justify-end gap-3 pt-4 border-t border-neutral-800/50 mt-3">
                     <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-gray-400 hover:text-white hover:bg-neutral-800 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                         Detalhes
                     </button>
                     <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-red-400 hover:bg-red-900/20 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         Remover
                     </button>
                 </div>
@@ -225,7 +220,7 @@ function criarCardElemento(ativo, dados) {
     return card;
 }
 
-// --- ATUALIZAR ELEMENTO DA CARTEIRA (COMPLETO E SEM ABREVIAÇÕES) ---
+// --- ATUALIZAR ELEMENTO (ESTRUTURA RESTAURADA) ---
 function atualizarCardElemento(card, ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -233,41 +228,32 @@ function atualizarCardElemento(card, ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Atualiza textos básicos (Quantidade, Preço, Posição, Custo)
-    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
+    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
     card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
 
-    // 2. Atualiza Variação (Mantém a fonte pequena e ajusta a cor)
+    // Variação (lado direito, embaixo do preço)
     const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
     variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-    variacaoEl.className = `text-[10px] font-medium ${corVariacao}`; 
+    variacaoEl.className = `${corVariacao} text-xs font-medium block mt-0.5`; 
 
-    // 3. Atualiza Valor de Lucro/Prejuízo (R$)
+    // Lucro/Prejuízo R$ (dentro do drawer)
     const plValorEl = card.querySelector('[data-field="pl-valor"]');
     plValorEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
     plValorEl.className = `text-xs font-bold block truncate ${corPL}`; 
 
-    // 4. Atualiza a Tag de % (L/P) - Visual Minimalista
+    // Tag L/P (lado esquerdo, embaixo do símbolo)
     let plTagHtml = '';
     if (dadoPreco) {
-        plTagHtml = `<span class="text-xs font-medium ${corPL}">${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%</span>`;
+        const corTexto = lucroPrejuizo >= 0 ? 'text-green-400' : 'text-red-400';
+        const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-400/10' : 'bg-red-400/10';
+        plTagHtml = `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${bgBadge} ${corTexto}">${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%</span>`;
     }
     card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
-    
-    // 5. Atualiza a "Bolinha" indicadora no Avatar (Verde/Vermelho)
-    const dot = card.querySelector('.absolute.rounded-full');
-    if (dot) {
-        // Verifica se é lucro ou prejuízo para definir a cor da bolinha
-        const corDot = lucroPrejuizo >= 0 ? 'bg-green-500' : 'bg-red-500';
-        dot.className = `absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-black ${corDot}`;
-    }
 
-    // 6. Atualiza a Lógica de Proventos (FIIs) dentro do Drawer
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
-        
         if (dadoProvento && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -278,7 +264,6 @@ function atualizarCardElemento(card, ativo, dados) {
             const labelTexto = foiPago ? "Último Pag." : "Próx. Pagamento";
             const valorClass = foiPago ? "text-gray-400" : "text-green-400";
             
-            // Recria o HTML interno do provento com o novo layout Grid
             proventoHtml = `
             <div class="mt-3 pt-3 border-t border-neutral-800 grid grid-cols-2 gap-4">
                 <div>
@@ -294,7 +279,6 @@ function atualizarCardElemento(card, ativo, dados) {
             proventoHtml = `<p class="text-xs text-gray-600 mt-3 pt-2 border-t border-neutral-800 text-center">Sem proventos anunciados.</p>`;
         }
         
-        // Insere o HTML gerado no container específico
         const containerProv = card.querySelector('[data-field="provento-container"]');
         if (containerProv) {
             containerProv.innerHTML = proventoHtml;
@@ -3589,11 +3573,9 @@ function mudarAba(tabId) {
         handleSalvarTransacao();
     });
     
-listaCarteira.addEventListener('click', (e) => {
-        // MUDANÇA: Agora procuramos por qualquer elemento com data-action, não só 'button'
-        // Isso permite que a div do header funcione como gatilho
-        const target = e.target.closest('[data-action]'); 
-        
+// --- LISTENER DA CARTEIRA (CORRIGIDO PARA O NOVO LAYOUT) ---
+    listaCarteira.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-action]');
         if (!target) return;
         
         const action = target.dataset.action;
@@ -3605,13 +3587,12 @@ listaCarteira.addEventListener('click', (e) => {
             showDetalhesModal(symbol);
         } else if (action === 'toggle') {
             const drawer = document.getElementById(`drawer-${symbol}`);
-            // Precisamos achar o ícone de seta dentro deste card específico para girá-lo
-            // Como o clique pode vir do Header, procuramos o ícone no card pai
-            const cardPai = target.closest('.card-bg'); 
-            const icon = cardPai.querySelector('.card-arrow-icon');
+            // CORREÇÃO: Procura pelo container correto 'portfolio-item'
+            const cardPai = target.closest('.portfolio-item'); 
+            const icon = cardPai ? cardPai.querySelector('.card-arrow-icon') : null;
             
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
+            if (drawer) drawer.classList.toggle('open');
+            if (icon) icon.classList.toggle('open');
         }
     });
     

@@ -1256,66 +1256,96 @@ function calcularCarteira() {
 // Substitua a função inteira em app.js
 
 function renderizarHistorico() {
-    listaHistorico.innerHTML = '';
-    if (transacoes.length === 0) {
-        historicoStatus.classList.remove('hidden');
-        return;
-    }
-    
-    historicoStatus.classList.add('hidden');
-    const fragment = document.createDocumentFragment();
-
-    [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
-        const card = document.createElement('div');
-        // MUDANÇA: py-2.5 px-3 (mais fino), rounded-2xl, mb-2
-        card.className = 'card-bg py-2.5 px-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2';
-        
-        const isVenda = t.type === 'sell';
-        const cor = isVenda ? 'text-red-500' : 'text-green-500';
-        const sinal = isVenda ? '-' : '+';
-        
-        let pathIcone = '';
-        if (isVenda) {
-            pathIcone = 'M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
-        } else {
-            pathIcone = 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
+        listaHistorico.innerHTML = '';
+        if (transacoes.length === 0) {
+            historicoStatus.classList.remove('hidden');
+            return;
         }
-
-        // MUDANÇA: Ícone reduzido para h-5 w-5
-        const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${pathIcone}" /></svg>`;
         
-        card.innerHTML = `
-            <div class="flex items-center gap-3">
-                ${icone}
-                <div>
-                    <h3 class="text-sm font-bold text-white leading-tight">${t.symbol}</h3>
-                    <p class="text-[10px] text-gray-400 font-medium">${formatDate(t.date)}</p>
+        historicoStatus.classList.add('hidden');
+        const fragment = document.createDocumentFragment();
+
+        // 1. Ordenar por data (mais recente primeiro)
+        const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        let lastDateHeader = '';
+
+        transacoesOrdenadas.forEach(t => {
+            // 2. Lógica de Agrupamento de Data
+            const dateObj = new Date(t.date);
+            // Ajuste de fuso horário simples para exibição correta do dia
+            dateObj.setMinutes(dateObj.getMinutes() + dateObj.getTimezoneOffset());
+
+            const hoje = new Date();
+            const ontem = new Date();
+            ontem.setDate(hoje.getDate() - 1);
+
+            let dateHeader = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+            
+            // Verifica "Hoje" e "Ontem"
+            if (dateObj.toDateString() === hoje.toDateString()) dateHeader = "Hoje";
+            else if (dateObj.toDateString() === ontem.toDateString()) dateHeader = "Ontem";
+
+            // Se mudou a data, insere o cabeçalho
+            if (dateHeader !== lastDateHeader) {
+                const headerEl = document.createElement('div');
+                headerEl.className = 'history-date-header';
+                headerEl.textContent = dateHeader;
+                fragment.appendChild(headerEl);
+                lastDateHeader = dateHeader;
+            }
+
+            // 3. Visual do Item (Estilo Nubank)
+            const isVenda = t.type === 'sell';
+            const item = document.createElement('div');
+            item.className = 'history-item group';
+            
+            // Ícones mais conceituais
+            // Compra = Seta para baixo ou sacola / Venda = Seta para cima ou cifrão
+            const iconColor = isVenda ? 'text-gray-400' : 'text-purple-400';
+            const bgIcon = isVenda ? 'bg-gray-800/50' : 'bg-purple-900/20';
+            
+            // Ícone Compra (Seta inclinada recebendo) vs Venda (Seta saindo)
+            const iconSvg = isVenda 
+                ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>` // Gráfico subindo/Saindo
+                : `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>`; // Sacola de compras
+
+            // Valor
+            const valorTotal = t.quantity * t.price;
+            const sinal = isVenda ? '+' : '-'; // Na visão de "caixa" do banco, venda entra dinheiro (+), compra sai (-). Mas para investimentos, geralmente mostramos o valor da operação. Vamos deixar neutro ou usar a lógica de fluxo.
+            // Para carteira de investimentos: 
+            // Compra = Aumentou posição (mas saiu dinheiro). Nubank mostra compra em preto/branco e recebimento em verde.
+            
+            const valorCor = isVenda ? 'text-green-500' : 'text-white'; // Venda = Lucro/Caixa (Verde), Compra = Neutro
+            
+            // Interação: Ao clicar na linha, abre a edição. 
+            // Botão de deletar fica escondido na UI principal para limpar o visual (estará dentro do modal de edição) ou podemos colocar um ícone de lixeira muito sutil na direita.
+            
+            item.innerHTML = `
+                <div class="flex items-center flex-1 min-w-0" onclick="document.querySelector('[data-edit-trigger=\\'${t.id}\\']').click()">
+                    <div class="history-icon-circle ${bgIcon} ${iconColor}">
+                        ${iconSvg}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex justify-between items-baseline pr-2">
+                            <h3 class="text-base font-semibold text-white truncate">${t.symbol}</h3>
+                            <span class="text-base font-bold ${valorCor}">${formatBRL(valorTotal)}</span>
+                        </div>
+                        <div class="flex justify-between items-center pr-2 mt-0.5">
+                            <p class="text-sm text-gray-500">${isVenda ? 'Venda' : 'Compra'} de ${t.quantity} cotas</p>
+                            <p class="text-xs text-gray-600">Unid. ${formatBRL(t.price)}</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <div class="text-right">
-                    <p class="text-sm font-bold ${cor} leading-tight">${sinal}${t.quantity} Cotas</p>
-                    <p class="text-[10px] text-gray-400 font-medium">${formatBRL(t.price)}</p>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <button class="p-0.5 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                          <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                    <button class="p-0.5 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        `;
-        fragment.appendChild(card);
-    });
-    listaHistorico.appendChild(fragment);
-}
+
+                <button data-action="edit" data-id="${t.id}" data-edit-trigger="${t.id}" class="hidden"></button>
+            `;
+            
+            fragment.appendChild(item);
+        });
+
+        listaHistorico.appendChild(fragment);
+    }
 	
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
@@ -1489,7 +1519,7 @@ function renderizarHistoricoProventos() {
         fiiNewsList.appendChild(fragment);
     }
 
-    function renderizarGraficoAlocacao(dadosGrafico) {
+function renderizarGraficoAlocacao(dadosGrafico) {
         const canvas = document.getElementById('alocacao-chart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1503,6 +1533,9 @@ function renderizarHistoricoProventos() {
             return;
         }
         
+        // Ordenar do maior para o menor para ficar visualmente agradável
+        dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
+
         const labels = dadosGrafico.map(d => d.symbol);
         const data = dadosGrafico.map(d => d.totalPosicao);
         const newDataString = JSON.stringify({ labels, data });
@@ -1512,42 +1545,49 @@ function renderizarHistoricoProventos() {
         
         const colors = gerarCores(labels.length);
 
-        if (alocacaoChartInstance) {
-            alocacaoChartInstance.data.labels = labels;
-            alocacaoChartInstance.data.datasets[0].data = data;
-            alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
-            alocacaoChartInstance.update();
-        } else {
-            alocacaoChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: { 
-                    labels: labels, 
-                    datasets: [{ 
-                        data: data, 
-                        backgroundColor: colors, 
-                        borderWidth: 2, 
-                        borderColor: Chart.defaults.borderColor 
-                    }] 
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, position: 'bottom', labels: { color: Chart.defaults.color, boxWidth: 12, padding: 15, } },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                    const percent = ((value / total) * 100).toFixed(2);
-                                    return `${label}: ${formatBRL(value)} (${percent}%)`;
-                                }
+        const config = {
+            type: 'doughnut',
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    data: data, 
+                    backgroundColor: colors, 
+                    borderWidth: 4, // Espaço entre fatias
+                    borderColor: document.body.classList.contains('light-mode') ? '#f3f4f6' : '#000000', // Cor do fundo para "cortar" as fatias
+                    borderRadius: 5, // Bordas arredondadas nas fatias (Moderno)
+                    hoverOffset: 4
+                }] 
+            },
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false,
+                cutout: '75%', // Anel mais fino (Estilo Fintech)
+                plugins: {
+                    legend: { 
+                        display: false // Nubank geralmente não polui o gráfico com legenda, usa lista abaixo. Mas se quiser manter, mude para true.
+                    },
+                    tooltip: {
+                        backgroundColor: '#1C1C1E',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percent = ((value / total) * 100).toFixed(1);
+                                return ` ${label}: ${formatBRL(value)} (${percent}%)`;
                             }
                         }
                     }
                 }
-            });
+            }
+        };
+
+        if (alocacaoChartInstance) {
+            alocacaoChartInstance.destroy(); // Destruir para recriar com novas opções de border
         }
+        alocacaoChartInstance = new Chart(ctx, config);
     }
     
     function renderizarGraficoHistorico({ labels, data }) {

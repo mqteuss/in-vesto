@@ -1,755 +1,1 @@
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    background-color: #000000;
-    background-image: none;
-    color: #f3f4f6;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-smoothing: grayscale;
-    transition: background-color 0.3s ease, color 0.3s ease;
-    /* Evita o "bounce" da página inteira no iOS/Android */
-    overscroll-behavior-y: none;
-}
-
-/* =========================================
-      TEMA CLARO (LIGHT MODE)
-   ========================================= */
-body.light-mode {
-    background-color: #f3f4f6;
-    color: #1f2937;
-}
-
-body.light-mode .card-bg,
-body.light-mode .modal-content,
-body.light-mode .page-content,
-body.light-mode .card-drawer,
-body.light-mode #watchlist-drawer {
-    background-color: #ffffff !important;
-    border-color: #e5e7eb !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-
-body.light-mode .bg-black {
-    background-color: #ffffff !important;
-    border-color: #e5e7eb !important;
-}
-
-body.light-mode .bg-\[\#1C1C1E\], 
-body.light-mode .bg-gray-900,
-body.light-mode .bg-gray-800 {
-    background-color: #f9fafb !important;
-    border-color: #e5e7eb !important;
-    color: #111827 !important;
-}
-
-body.light-mode .bg-neutral-950\/80 {
-    background-color: rgba(255, 255, 255, 0.95) !important;
-    border-color: #e5e7eb !important;
-    color: #111827 !important;
-}
-
-body.light-mode .text-white { color: #111827 !important; }
-body.light-mode .text-gray-100 { color: #1f2937 !important; }
-body.light-mode .text-gray-200 { color: #374151 !important; }
-body.light-mode .text-gray-300 { color: #4b5563 !important; }
-body.light-mode .text-gray-400 { color: #6b7280 !important; }
-body.light-mode .text-gray-500 { color: #6b7280 !important; }
-
-body.light-mode .border-\[\#2C2C2E\],
-body.light-mode .border-gray-800,
-body.light-mode .border-gray-700 {
-    border-color: #e5e7eb !important;
-}
-
-body.light-mode .bottom-nav {
-    background-color: rgba(255, 255, 255, 0.95) !important;
-    border-color: #e5e7eb !important;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-}
-
-body.light-mode input, body.light-mode select, body.light-mode textarea,
-body.light-mode #carteira-search-input {
-    background-color: #f9fafb !important;
-    border-color: #d1d5db !important;
-    color: #111827 !important;
-}
-
-body.light-mode input::placeholder { color: #9ca3af !important; }
-body.light-mode input:focus {
-    background-color: #ffffff !important;
-    border-color: #c084fc !important;
-}
-
-body.light-mode .relative.bg-black.rounded-full.border.border-gray-800 {
-    background-color: #e5e7eb !important;     
-    border-color: #d1d5db !important;
-}
-
-body.light-mode #btn-hist-transacoes.text-gray-500,
-body.light-mode #btn-hist-proventos.text-gray-500 {
-    color: #6b7280 !important;
-}
-
-body.light-mode #btn-hist-transacoes.text-white,
-body.light-mode #btn-hist-proventos.text-white {
-    color: #ffffff !important;
-}
-
-body.light-mode .bg-gray-700 { background-color: #e5e7eb !important; }
-
-body.light-mode .animate-shimmer::before,
-body.light-mode .animate-shimmer-parent .bg-gray-700::before {
-    background: linear-gradient(110deg, transparent 25%, rgba(0, 0, 0, 0.05), transparent 75%);
-}
-
-body.light-mode .card-arrow-icon { color: #9ca3af !important; }
-
-body.light-mode input:-webkit-autofill,
-body.light-mode input:-webkit-autofill:hover, 
-body.light-mode input:-webkit-autofill:focus, 
-body.light-mode input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px #f3f4f6 inset !important;
-    -webkit-text-fill-color: #111827 !important;
-}
-
-/* =========================================
-      ESTILOS GERAIS
-   ========================================= */
-* { -webkit-tap-highlight-color: transparent; }
-
-html, body {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
-
-.card-bg {
-    background-color: #000000;
-    border: 1px solid #2C2C2E;
-    border-radius: 1.5rem;
-    transition: background-color 0.3s ease, border-color 0.3s ease;
-}
-
-.accent-bg {
-    background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);
-    color: #FFF;
-    border-radius: 9999px;
-    background-size: 100% auto;
-    transition: all 0.3s ease-out;
-}
-.accent-bg:hover {
-    background-size: 150% auto;
-    background-position: right center;
-}
-
-.accent-text { color: #c084fc; }
-.hover-accent-text:hover { color: #7c3aed; }
-
-/* --- SISTEMA DE ABAS (CARROSSEL/SLIDER) --- */
-/* Garante que o slider ocupe a tela toda */
-#tabs-slider {
-    width: 100%;
-    height: 100%;
-    /* Performance */
-    will-change: transform;
-}
-
-/* As abas agora estão sempre visíveis para o layout (display: block),
-   mas posicionadas lado a lado pelo Flexbox do pai */
-.tab-content { 
-    display: block !important; 
-    /* Habilita scroll suave e elástico no iOS */
-    -webkit-overflow-scrolling: touch; 
-    /* Evita que o conteúdo vaze horizontalmente */
-    overflow-x: hidden;
-}
-
-/* Animações antigas desativadas pois o slider controla o movimento */
-.tab-content.active {
-   animation: none; 
-}
-
-/* --- ANIMAÇÃO CASCATA (STAGGER) PARA CARDS --- */
-@keyframes slideInStagger {
-   from { 
-        opacity: 0; 
-        transform: translateY(20px); 
-    }
-   to { 
-        opacity: 1; 
-        transform: translateY(0); 
-    }
-}
-
-.card-stagger {
-   opacity: 0; 
-   animation: slideInStagger 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-   will-change: opacity, transform; 
-}
-
-@keyframes newCardIn {
-     from { opacity: 0; transform: scale(0.95) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-.card-animate-in { animation: newCardIn 0.4s ease-out forwards; }
-
-@keyframes gentleFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-}
-
-/* Navegação Inferior */
-.bottom-nav {
-    background-color: rgba(28, 28, 30, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid #2C2C2E;
-    position: fixed;
-    bottom: 1.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90%;
-    max-width: 340px;
-    height: 3.7rem;
-    z-index: 50;
-    border-radius: 9999px;
-    display: flex;
-    justify-content: space-evenly;
-    align-items: center;
-    padding: 0 0.25rem;
-    transition: background-color 0.3s ease, border-color 0.3s ease;
-}
-
-.tab-button {
-    color: #6b7280;     
-    transition: all 0.3s ease-in-out;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    background: transparent;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-}
-
-.tab-button:active { transform: scale(0.90); }
-.tab-button.active {
-   color: #c084fc;
-   transform: translateY(-3px); 
-}
-
-.tab-button.active .tab-button-icon-wrapper {      
-    animation: gentleFloat 1.5s ease-in-out infinite;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.tab-button.active .tab-button-icon-wrapper::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 36px;     
-    height: 36px;
-    background-color: rgba(192, 132, 252, 0.15);
-    border-radius: 9999px;
-    z-index: -1;
-    opacity: 0;
-    animation: fadeInHalo 0.3s ease-out forwards;
-}
-
-@keyframes fadeInHalo {
-    from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-
-.spin-animation { animation: spin 1s linear infinite; }
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Inputs */
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { 
-    -webkit-appearance: none; 
-    margin: 0; 
-}
-input[type=number] { 
-    -moz-appearance: textfield;
-    font-variant-numeric: tabular-nums; /* Dica Pro: Números alinhados */
-}
-
-/* Loaders */
-.loader {
-    position: relative;
-    width: 10px;
-    height: 40px;
-    background: #c084fc;
-    animation: finance-bars 0.5s infinite linear;
-    animation-delay: 0.25s;
-    margin: 0 auto;
-}
-.loader::before, .loader::after {
-    content: '';
-    position: absolute;
-    width: 10px;
-    height: 40px;
-    background: #c084fc;
-    animation: finance-bars 0.5s infinite linear;
-}
-.loader::before { left: -15px; animation-delay: 0s; }
-.loader::after { right: -15px; animation-delay: 0.5s; }
-
-.loader-sm {
-    position: relative;
-    width: 4px;
-    height: 16px;
-    background: #ffffff;
-    animation: finance-bars 0.5s infinite linear;
-    animation-delay: 0.25s;
-    display: inline-block;
-    margin: 0 6px;
-    vertical-align: middle;
-}
-.loader-sm::before, .loader-sm::after {
-    content: '';
-    position: absolute;
-    width: 4px;
-    height: 16px;
-    background: #ffffff;
-    animation: finance-bars 0.5s infinite linear;
-}
-.loader-sm::before { left: -6px; animation-delay: 0s; }
-.loader-sm::after { right: -6px; animation-delay: 0.5s; }
-
-@keyframes finance-bars {
-    0% { transform: scaleY(1); opacity: 1; }
-    50% { transform: scaleY(0.4); opacity: 0.5; }
-    100% { transform: scaleY(1); opacity: 1; }
-}
-
-/* Utils */
-.scrollable-content {
-    max-height: 40vh;     
-    overflow-y: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-.scrollable-content::-webkit-scrollbar { display: none; }
-
-#detalhes-conteudo-scroll {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-#detalhes-conteudo-scroll::-webkit-scrollbar { display: none; }
-
-/* Custom Scroll para as abas */
-.custom-scroll::-webkit-scrollbar {
-   display: none; 
-}
-.custom-scroll {
-   scrollbar-width: none;
-}
-
-/* Modais */
-.custom-modal { display: none; }
-.custom-modal.visible { display: flex; }
-.custom-modal.visible .modal-content {
-    background-color: #000000;
-    border: 1px solid #2C2C2E;
-    animation: modalIn 0.2s ease-out forwards;
-    border-radius: 1.5rem;
-    transition: background-color 0.3s ease, border-color 0.3s ease;
-}
-
-.modal-content.modal-out { animation: modalOut 0.2s ease-in forwards; }
-
-@keyframes modalIn {
-    from { opacity: 0; transform: scale(0.95) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-@keyframes modalOut {
-    from { opacity: 1; transform: scale(1) translateY(0); }
-    to { opacity: 0; transform: scale(0.95) translateY(10px); }
-}
-
-/* Inputs padrão */
-#add-ativo-modal input, #auth-container input,
-#new-password-form input, #change-password-form input,
-#recover-form input, #carteira-search-input {
-    transition: all 0.2s ease-in-out;
-    background-color: #1C1C1E;     
-    border: 1px solid #2C2C2E;
-    color: #ffffff;
-    border-radius: 9999px;
-    outline: none; 
-}
-#add-ativo-modal input:focus, #auth-container input:focus,
-#new-password-form input:focus, #change-password-form input:focus,
-#recover-form input:focus, #carteira-search-input:focus {
-    border-color: #c084fc;
-    box-shadow: none;
-}
-
-/* Page Modal (Detalhes) */
-.page-modal {     
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s ease-in-out;
-    z-index: 70; 
-}
-.page-modal.visible {     
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.page-content {
-    transition: transform 0.4s ease-in-out, background-color 0.3s ease;
-    transform: translateY(100%);
-    background-color: #000000;
-    border-top: 1px solid #2C2C2E;
-    position: fixed;     
-    bottom: 0;
-    left: 0;
-    right: 0;
-    margin: 0 auto;     
-    max-width: 32rem;
-    z-index: 80;
-}
-.page-modal.visible .page-content { transform: translateY(0); }
-.page-content.closing { transform: translateY(100%); }
-
-select {
-   -webkit-appearance: none;
-   appearance: none;
-   border-radius: 9999px; 
-}
-
-/* =========================================
-   GAVETAS (DRAWERS) - CORREÇÃO DE LAG
-   ========================================= */
-.card-drawer {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: max-height; /* Otimização GPU */
-    transform: translateZ(0); /* Força aceleração de hardware */
-}
-
-.card-drawer.open { max-height: 350px; }
-
-.card-drawer .drawer-content {
-    opacity: 0;
-    transform: translateY(-5px);
-    transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s;
-}
-
-.card-drawer.open .drawer-content {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* SETAS */
-.card-arrow-icon { 
-    transition: transform 0.3s ease-in-out; 
-}
-/* Rotação 90 graus (de > para v) */
-.card-arrow-icon.open { 
-    transform: rotate(90deg); 
-}
-
-/* Toasts */
-#toast-notification {
-    opacity: 0;
-    transform: translateY(-100%);
-    transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border-radius: 1.5rem;
-}
-#toast-notification.toast-visible {
-    opacity: 1;
-    transform: translateY(1rem);
-}
-.toast-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-
-@keyframes shake {
-  10%, 90% { transform: translateX(-1%) translateY(1rem); }
-  20%, 80% { transform: translateX(1%) translateY(1rem); }
-  30%, 50%, 70% { transform: translateX(-2%) translateY(1rem); }
-  40%, 60% { transform: translateX(2%) translateY(1rem); }
-}
-
-.news-card-summary { line-height: 1.6; color: #d1d5db; }
-
-.news-ticker-tag {
-    display: inline-block;
-    background-color: #374151;
-    color: #d1d5db;
-    font-size: 0.75rem;
-    font-weight: 500;
-    padding: 2px 10px;
-    border-radius: 9999px;
-    margin-right: 6px;
-    margin-bottom: 6px;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    z-index: 20;     
-    position: relative;
-}
-.news-ticker-tag:hover {
-    background-color: #7c3aed;
-    color: #FFF;
-}
-
-.periodo-selector-btn {
-    background-color: #374151;
-    color: #d1d5db;
-    font-size: 0.875rem;
-    font-weight: 500;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    border-radius: 9999px;
-    transition: all 0.2s ease-in-out;
-}
-.periodo-selector-btn:hover { background-color: #4b5563; }
-
-.periodo-selector-btn.active {
-    background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);
-    color: #ffffff;
-    font-weight: 600;
-}
-
-/* Animações de botão gerais (escala) */
-button:active, .accent-bg:active, 
-#refresh-button:active, #refresh-noticias-button:active, 
-#show-add-modal-btn:active, .periodo-selector-btn:active, 
-.news-ticker-tag:active, #copiar-dados-btn:active, 
-#abrir-importar-modal-btn:active, #logout-btn:active {
-    transform: scale(0.96);
-    transition: transform 0.1s ease-out;
-}
-
-/* IMPORTANTE: Removido o efeito de scale(:active) para os cards da carteira
-   para evitar o "pulo" visual ao tentar clicar na seta ou expandir.
-*/
-
-/* Shimmer */
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-.animate-shimmer {
-    position: relative;
-    overflow: hidden;
-}
-.animate-shimmer::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        110deg,
-        transparent 25%,
-        rgba(255, 255, 255, 0.15),
-        transparent 75%
-    );
-    transform: translateX(-100%);
-    animation: shimmer 1.5s infinite linear;
-}
-
-.animate-shimmer-parent .bg-gray-700 {
-    position: relative;
-    overflow: hidden;
-}
-.animate-shimmer-parent .bg-gray-700::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        110deg,
-        transparent 25%,
-        rgba(255, 255, 255, 0.15),
-        transparent 75%
-    );
-    transform: translateX(-100%);
-    animation: shimmer 1.5s infinite linear;
-}
-
-.hidden { display: none !important; }
-
-.password-toggle {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    padding-right: 0.75rem;
-    display: flex;
-    align-items: center;
-    color: #6b7280;
-    cursor: pointer;
-    transition: color 0.2s ease-in-out;
-}
-.password-toggle:hover { color: #d1d5db; }
-
-/* Autofill Fix */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px #1C1C1E inset !important;
-    -webkit-text-fill-color: white !important;
-    border-radius: 9999px !important;
-    transition: background-color 5000s ease-in-out 0s;
-}
-
-.news-card-interactive { cursor: pointer; }
-
-/* Dica Pro: Números Tabulares para não "dançarem" */
-.money-value, input[type="number"] {
-    font-feature-settings: "tnum";
-    font-variant-numeric: tabular-nums;
-}
-
-/* Modo Privacidade */
-body.privacy-mode [data-privacy="true"],
-body.privacy-mode #total-carteira-valor,
-body.privacy-mode #total-caixa-valor,
-body.privacy-mode #total-proventos,
-body.privacy-mode #total-carteira-custo,
-body.privacy-mode #total-carteira-pl,
-body.privacy-mode .money-value,
-body.privacy-mode [data-field="posicao-valor"],
-body.privacy-mode [data-field="custo-valor"],
-body.privacy-mode [data-field="pl-valor"] {
-    filter: blur(7px) !important;
-    user-select: none;
-    pointer-events: none;
-}
-
-/* Efeito de Skeleton aplicado diretamente no texto */
-.skeleton-text {
-    color: transparent !important; 
-    background-color: #374151;     
-    border-radius: 0.375rem;       
-    user-select: none;             
-    position: relative;
-    overflow: hidden;
-    display: inline-block;
-    min-width: 3rem; 
-    height: 1.2em; 
-    vertical-align: middle;
-}
-
-/* Animação de Shimmer do Skeleton Text */
-.skeleton-text::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    transform: translateX(-100%);
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.1),
-        transparent
-    );
-    animation: shimmer 1.5s infinite;
-}
-
-/* Ajuste do Skeleton para o Light Mode */
-body.light-mode .skeleton-text {
-    background-color: #e5e7eb; 
-}
-body.light-mode .skeleton-text::after {
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.4),
-        transparent
-    );
-}
-/* =========================================
-   ANIMAÇÃO DO BOTÃO ADICIONAR (FAB)
-   ========================================= */
-@keyframes fabPopIn {
-    0% {
-        opacity: 0;
-        transform: scale(0) rotate(-45deg);
-    }
-    70% {
-        opacity: 1;
-        transform: scale(1.1) rotate(5deg);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1) rotate(0deg);
-    }
-}
-
-.fab-animate {
-    animation: fabPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    will-change: transform, opacity;
-}
-/* --- NOTIFICAÇÕES --- */
-
-/* Animação do Sino balançando */
-@keyframes bellShake {
-  0% { transform: rotate(0); }
-  15% { transform: rotate(5deg); }
-  30% { transform: rotate(-5deg); }
-  45% { transform: rotate(4deg); }
-  60% { transform: rotate(-4deg); }
-  75% { transform: rotate(2deg); }
-  85% { transform: rotate(-2deg); }
-  100% { transform: rotate(0); }
-}
-
-.bell-ringing svg {
-  animation: bellShake 2s cubic-bezier(.36,.07,.19,.97) both infinite;
-  color: #c084fc; /* Roxo quando tocando */
-}
-
-/* Card de Pagamento (Verde) */
-.notif-card-payment {
-    background: linear-gradient(to right, rgba(22, 163, 74, 0.1), transparent);
-    border-left: 3px solid #22c55e;
-    padding: 12px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-/* Card de Data Com (Amarelo/Laranja) */
-.notif-card-datacom {
-    background: linear-gradient(to right, rgba(234, 179, 8, 0.1), transparent);
-    border-left: 3px solid #eab308;
-    padding: 12px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-/* Ajuste para tema claro */
-body.light-mode .notif-card-payment {
-    background: #f0fdf4;
-    border-left-color: #16a34a;
-}
-body.light-mode .notif-card-datacom {
-    background: #fefce8;
-    border-left-color: #ca8a04;
-}
+body {    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";    background-color: #000000;    background-image: none;    color: #f3f4f6;    -webkit-font-smoothing: antialiased;    -moz-osx-smoothing: grayscale;    transition: background-color 0.3s ease, color 0.3s ease;    /* Evita o "bounce" da página inteira no iOS/Android */    overscroll-behavior-y: none;}/* =========================================      TEMA CLARO (LIGHT MODE)   ========================================= */body.light-mode {    background-color: #f3f4f6;    color: #1f2937;}body.light-mode .card-bg,body.light-mode .modal-content,body.light-mode .page-content,body.light-mode .card-drawer,body.light-mode #watchlist-drawer {    background-color: #ffffff !important;    border-color: #e5e7eb !important;    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);}body.light-mode .bg-black {    background-color: #ffffff !important;    border-color: #e5e7eb !important;}body.light-mode .bg-\[\#1C1C1E\], body.light-mode .bg-gray-900,body.light-mode .bg-gray-800 {    background-color: #f9fafb !important;    border-color: #e5e7eb !important;    color: #111827 !important;}body.light-mode .bg-neutral-950\/80 {    background-color: rgba(255, 255, 255, 0.95) !important;    border-color: #e5e7eb !important;    color: #111827 !important;}body.light-mode .text-white { color: #111827 !important; }body.light-mode .text-gray-100 { color: #1f2937 !important; }body.light-mode .text-gray-200 { color: #374151 !important; }body.light-mode .text-gray-300 { color: #4b5563 !important; }body.light-mode .text-gray-400 { color: #6b7280 !important; }body.light-mode .text-gray-500 { color: #6b7280 !important; }body.light-mode .border-\[\#2C2C2E\],body.light-mode .border-gray-800,body.light-mode .border-gray-700 {    border-color: #e5e7eb !important;}body.light-mode .bottom-nav {    background-color: rgba(255, 255, 255, 0.95) !important;    border-color: #e5e7eb !important;    box-shadow: 0 -4px 20px rgba(0,0,0,0.05);}body.light-mode input, body.light-mode select, body.light-mode textarea,body.light-mode #carteira-search-input {    background-color: #f9fafb !important;    border-color: #d1d5db !important;    color: #111827 !important;}body.light-mode input::placeholder { color: #9ca3af !important; }body.light-mode input:focus {    background-color: #ffffff !important;    border-color: #c084fc !important;}body.light-mode .relative.bg-black.rounded-full.border.border-gray-800 {    background-color: #e5e7eb !important;         border-color: #d1d5db !important;}body.light-mode #btn-hist-transacoes.text-gray-500,body.light-mode #btn-hist-proventos.text-gray-500 {    color: #6b7280 !important;}body.light-mode #btn-hist-transacoes.text-white,body.light-mode #btn-hist-proventos.text-white {    color: #ffffff !important;}body.light-mode .bg-gray-700 { background-color: #e5e7eb !important; }body.light-mode .animate-shimmer::before,body.light-mode .animate-shimmer-parent .bg-gray-700::before {    background: linear-gradient(110deg, transparent 25%, rgba(0, 0, 0, 0.05), transparent 75%);}body.light-mode .card-arrow-icon { color: #9ca3af !important; }body.light-mode input:-webkit-autofill,body.light-mode input:-webkit-autofill:hover, body.light-mode input:-webkit-autofill:focus, body.light-mode input:-webkit-autofill:active {    -webkit-box-shadow: 0 0 0 30px #f3f4f6 inset !important;    -webkit-text-fill-color: #111827 !important;}/* =========================================      ESTILOS GERAIS   ========================================= */* { -webkit-tap-highlight-color: transparent; }html, body {    scrollbar-width: none;    -ms-overflow-style: none;}html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }.card-bg {    background-color: #000000;    border: 1px solid #2C2C2E;    border-radius: 1.5rem;    transition: background-color 0.3s ease, border-color 0.3s ease;}.accent-bg {    background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);    color: #FFF;    border-radius: 9999px;    background-size: 100% auto;    transition: all 0.3s ease-out;}.accent-bg:hover {    background-size: 150% auto;    background-position: right center;}.accent-text { color: #c084fc; }.hover-accent-text:hover { color: #7c3aed; }/* --- SISTEMA DE ABAS (CARROSSEL/SLIDER) --- *//* Garante que o slider ocupe a tela toda */#tabs-slider {    width: 100%;    height: 100%;    /* Performance */    will-change: transform;}/* As abas agora estão sempre visíveis para o layout (display: block),   mas posicionadas lado a lado pelo Flexbox do pai */.tab-content {     display: block !important;     /* Habilita scroll suave e elástico no iOS */    -webkit-overflow-scrolling: touch;     /* Evita que o conteúdo vaze horizontalmente */    overflow-x: hidden;}/* Animações antigas desativadas pois o slider controla o movimento */.tab-content.active {   animation: none; }/* --- ANIMAÇÃO CASCATA (STAGGER) PARA CARDS --- */@keyframes slideInStagger {   from {         opacity: 0;         transform: translateY(20px);     }   to {         opacity: 1;         transform: translateY(0);     }}.card-stagger {   opacity: 0;    animation: slideInStagger 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;   will-change: opacity, transform; }@keyframes newCardIn {     from { opacity: 0; transform: scale(0.95) translateY(10px); }    to { opacity: 1; transform: scale(1) translateY(0); }}.card-animate-in { animation: newCardIn 0.4s ease-out forwards; }@keyframes gentleFloat {    0%, 100% { transform: translateY(0); }    50% { transform: translateY(-3px); }}/* Navegação Inferior */.bottom-nav {    background-color: rgba(28, 28, 30, 0.85);    backdrop-filter: blur(20px);    -webkit-backdrop-filter: blur(20px);    border: 1px solid #2C2C2E;    position: fixed;    bottom: 1.5rem;    left: 50%;    transform: translateX(-50%);    width: 90%;    max-width: 340px;    height: 3.7rem;    z-index: 50;    border-radius: 9999px;    display: flex;    justify-content: space-evenly;    align-items: center;    padding: 0 0.25rem;    transition: background-color 0.3s ease, border-color 0.3s ease;}.tab-button {    color: #6b7280;         transition: all 0.3s ease-in-out;    flex: 1;    display: flex;    flex-direction: column;    align-items: center;    justify-content: center;    height: 100%;    background: transparent;    border: none;    padding: 0;    cursor: pointer;}.tab-button:active { transform: scale(0.90); }.tab-button.active {   color: #c084fc;   transform: translateY(-3px); }.tab-button.active .tab-button-icon-wrapper {          animation: gentleFloat 1.5s ease-in-out infinite;    position: relative;    display: flex;    align-items: center;    justify-content: center;}.tab-button.active .tab-button-icon-wrapper::before {    content: '';    position: absolute;    top: 50%;    left: 50%;    transform: translate(-50%, -50%);    width: 36px;         height: 36px;    background-color: rgba(192, 132, 252, 0.15);    border-radius: 9999px;    z-index: -1;    opacity: 0;    animation: fadeInHalo 0.3s ease-out forwards;}@keyframes fadeInHalo {    from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }}.spin-animation { animation: spin 1s linear infinite; }@keyframes spin {    from { transform: rotate(0deg); }    to { transform: rotate(360deg); }}/* Inputs */input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button {     -webkit-appearance: none;     margin: 0; }input[type=number] {     -moz-appearance: textfield;    font-variant-numeric: tabular-nums; /* Dica Pro: Números alinhados */}/* Loaders */.loader {    position: relative;    width: 10px;    height: 40px;    background: #c084fc;    animation: finance-bars 0.5s infinite linear;    animation-delay: 0.25s;    margin: 0 auto;}.loader::before, .loader::after {    content: '';    position: absolute;    width: 10px;    height: 40px;    background: #c084fc;    animation: finance-bars 0.5s infinite linear;}.loader::before { left: -15px; animation-delay: 0s; }.loader::after { right: -15px; animation-delay: 0.5s; }.loader-sm {    position: relative;    width: 4px;    height: 16px;    background: #ffffff;    animation: finance-bars 0.5s infinite linear;    animation-delay: 0.25s;    display: inline-block;    margin: 0 6px;    vertical-align: middle;}.loader-sm::before, .loader-sm::after {    content: '';    position: absolute;    width: 4px;    height: 16px;    background: #ffffff;    animation: finance-bars 0.5s infinite linear;}.loader-sm::before { left: -6px; animation-delay: 0s; }.loader-sm::after { right: -6px; animation-delay: 0.5s; }@keyframes finance-bars {    0% { transform: scaleY(1); opacity: 1; }    50% { transform: scaleY(0.4); opacity: 0.5; }    100% { transform: scaleY(1); opacity: 1; }}/* Utils */.scrollable-content {    max-height: 40vh;         overflow-y: auto;    scrollbar-width: none;    -ms-overflow-style: none;}.scrollable-content::-webkit-scrollbar { display: none; }#detalhes-conteudo-scroll {    scrollbar-width: none;    -ms-overflow-style: none;}#detalhes-conteudo-scroll::-webkit-scrollbar { display: none; }/* Custom Scroll para as abas */.custom-scroll::-webkit-scrollbar {   display: none; }.custom-scroll {   scrollbar-width: none;}/* Modais */.custom-modal { display: none; }.custom-modal.visible { display: flex; }.custom-modal.visible .modal-content {    background-color: #000000;    border: 1px solid #2C2C2E;    animation: modalIn 0.2s ease-out forwards;    border-radius: 1.5rem;    transition: background-color 0.3s ease, border-color 0.3s ease;}.modal-content.modal-out { animation: modalOut 0.2s ease-in forwards; }@keyframes modalIn {    from { opacity: 0; transform: scale(0.95) translateY(10px); }    to { opacity: 1; transform: scale(1) translateY(0); }}@keyframes modalOut {    from { opacity: 1; transform: scale(1) translateY(0); }    to { opacity: 0; transform: scale(0.95) translateY(10px); }}/* Inputs padrão */#add-ativo-modal input, #auth-container input,#new-password-form input, #change-password-form input,#recover-form input, #carteira-search-input {    transition: all 0.2s ease-in-out;    background-color: #1C1C1E;         border: 1px solid #2C2C2E;    color: #ffffff;    border-radius: 9999px;    outline: none; }#add-ativo-modal input:focus, #auth-container input:focus,#new-password-form input:focus, #change-password-form input:focus,#recover-form input:focus, #carteira-search-input:focus {    border-color: #c084fc;    box-shadow: none;}/* Page Modal (Detalhes) */.page-modal {         opacity: 0;    pointer-events: none;    transition: opacity 0.4s ease-in-out;    z-index: 70; }.page-modal.visible {         opacity: 1;    pointer-events: auto;}.page-content {    transition: transform 0.4s ease-in-out, background-color 0.3s ease;    transform: translateY(100%);    background-color: #000000;    border-top: 1px solid #2C2C2E;    position: fixed;         bottom: 0;    left: 0;    right: 0;    margin: 0 auto;         max-width: 32rem;    z-index: 80;}.page-modal.visible .page-content { transform: translateY(0); }.page-content.closing { transform: translateY(100%); }select {   -webkit-appearance: none;   appearance: none;   border-radius: 9999px; }/* =========================================   GAVETAS (DRAWERS) - CORREÇÃO DE LAG   ========================================= */.card-drawer {    max-height: 0;    overflow: hidden;    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);    will-change: max-height; /* Otimização GPU */    transform: translateZ(0); /* Força aceleração de hardware */}.card-drawer.open { max-height: 350px; }.card-drawer .drawer-content {    opacity: 0;    transform: translateY(-5px);    transition: opacity 0.3s ease-in-out 0.1s, transform 0.3s ease-in-out 0.1s;}.card-drawer.open .drawer-content {    opacity: 1;    transform: translateY(0);}/* SETAS */.card-arrow-icon {     transition: transform 0.3s ease-in-out; }/* Rotação 90 graus (de > para v) */.card-arrow-icon.open {     transform: rotate(90deg); }/* Toasts */#toast-notification {    opacity: 0;    transform: translateY(-100%);    transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);    border-radius: 1.5rem;}#toast-notification.toast-visible {    opacity: 1;    transform: translateY(1rem);}.toast-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }@keyframes shake {  10%, 90% { transform: translateX(-1%) translateY(1rem); }  20%, 80% { transform: translateX(1%) translateY(1rem); }  30%, 50%, 70% { transform: translateX(-2%) translateY(1rem); }  40%, 60% { transform: translateX(2%) translateY(1rem); }}.news-card-summary { line-height: 1.6; color: #d1d5db; }.news-ticker-tag {    display: inline-block;    background-color: #374151;    color: #d1d5db;    font-size: 0.75rem;    font-weight: 500;    padding: 2px 10px;    border-radius: 9999px;    margin-right: 6px;    margin-bottom: 6px;    transition: all 0.2s ease;    cursor: pointer;    z-index: 20;         position: relative;}.news-ticker-tag:hover {    background-color: #7c3aed;    color: #FFF;}.periodo-selector-btn {    background-color: #374151;    color: #d1d5db;    font-size: 0.875rem;    font-weight: 500;    padding-top: 0.5rem;    padding-bottom: 0.5rem;    border-radius: 9999px;    transition: all 0.2s ease-in-out;}.periodo-selector-btn:hover { background-color: #4b5563; }.periodo-selector-btn.active {    background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);    color: #ffffff;    font-weight: 600;}/* Animações de botão gerais (escala) */button:active, .accent-bg:active, #refresh-button:active, #refresh-noticias-button:active, #show-add-modal-btn:active, .periodo-selector-btn:active, .news-ticker-tag:active, #copiar-dados-btn:active, #abrir-importar-modal-btn:active, #logout-btn:active {    transform: scale(0.96);    transition: transform 0.1s ease-out;}/* IMPORTANTE: Removido o efeito de scale(:active) para os cards da carteira   para evitar o "pulo" visual ao tentar clicar na seta ou expandir.*//* Shimmer */@keyframes shimmer {    0% { transform: translateX(-100%); }    100% { transform: translateX(100%); }}.animate-shimmer {    position: relative;    overflow: hidden;}.animate-shimmer::before {    content: '';    position: absolute;    top: 0;    left: 0;    width: 100%;    height: 100%;    background: linear-gradient(        110deg,        transparent 25%,        rgba(255, 255, 255, 0.15),        transparent 75%    );    transform: translateX(-100%);    animation: shimmer 1.5s infinite linear;}.animate-shimmer-parent .bg-gray-700 {    position: relative;    overflow: hidden;}.animate-shimmer-parent .bg-gray-700::before {    content: '';    position: absolute;    top: 0;    left: 0;    width: 100%;    height: 100%;    background: linear-gradient(        110deg,        transparent 25%,        rgba(255, 255, 255, 0.15),        transparent 75%    );    transform: translateX(-100%);    animation: shimmer 1.5s infinite linear;}.hidden { display: none !important; }.password-toggle {    position: absolute;    top: 0;    right: 0;    bottom: 0;    padding-right: 0.75rem;    display: flex;    align-items: center;    color: #6b7280;    cursor: pointer;    transition: color 0.2s ease-in-out;}.password-toggle:hover { color: #d1d5db; }/* Autofill Fix */input:-webkit-autofill,input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {    -webkit-box-shadow: 0 0 0 30px #1C1C1E inset !important;    -webkit-text-fill-color: white !important;    border-radius: 9999px !important;    transition: background-color 5000s ease-in-out 0s;}.news-card-interactive { cursor: pointer; }/* Dica Pro: Números Tabulares para não "dançarem" */.money-value, input[type="number"] {    font-feature-settings: "tnum";    font-variant-numeric: tabular-nums;}/* Modo Privacidade */body.privacy-mode [data-privacy="true"],body.privacy-mode #total-carteira-valor,body.privacy-mode #total-caixa-valor,body.privacy-mode #total-proventos,body.privacy-mode #total-carteira-custo,body.privacy-mode #total-carteira-pl,body.privacy-mode .money-value,body.privacy-mode [data-field="posicao-valor"],body.privacy-mode [data-field="custo-valor"],body.privacy-mode [data-field="pl-valor"] {    filter: blur(7px) !important;    user-select: none;    pointer-events: none;}/* Efeito de Skeleton aplicado diretamente no texto */.skeleton-text {    color: transparent !important;     background-color: #374151;         border-radius: 0.375rem;           user-select: none;                 position: relative;    overflow: hidden;    display: inline-block;    min-width: 3rem;     height: 1.2em;     vertical-align: middle;}/* Animação de Shimmer do Skeleton Text */.skeleton-text::after {    content: '';    position: absolute;    top: 0;    left: 0;    width: 100%;    height: 100%;    transform: translateX(-100%);    background: linear-gradient(        90deg,        transparent,        rgba(255, 255, 255, 0.1),        transparent    );    animation: shimmer 1.5s infinite;}/* Ajuste do Skeleton para o Light Mode */body.light-mode .skeleton-text {    background-color: #e5e7eb; }body.light-mode .skeleton-text::after {    background: linear-gradient(        90deg,        transparent,        rgba(255, 255, 255, 0.4),        transparent    );}/* =========================================   ANIMAÇÃO DO BOTÃO ADICIONAR (FAB)   ========================================= */@keyframes fabPopIn {    0% {        opacity: 0;        transform: scale(0) rotate(-45deg);    }    70% {        opacity: 1;        transform: scale(1.1) rotate(5deg);    }    100% {        opacity: 1;        transform: scale(1) rotate(0deg);    }}.fab-animate {    animation: fabPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;    will-change: transform, opacity;}/* --- NOTIFICAÇÕES --- *//* Animação do Sino balançando */@keyframes bellShake {  0% { transform: rotate(0); }  15% { transform: rotate(5deg); }  30% { transform: rotate(-5deg); }  45% { transform: rotate(4deg); }  60% { transform: rotate(-4deg); }  75% { transform: rotate(2deg); }  85% { transform: rotate(-2deg); }  100% { transform: rotate(0); }}.bell-ringing svg {  animation: bellShake 2s cubic-bezier(.36,.07,.19,.97) both infinite;  color: #c084fc; /* Roxo quando tocando */}/* Card de Pagamento (Verde) */.notif-card-payment {    background: linear-gradient(to right, rgba(22, 163, 74, 0.1), transparent);    border-left: 3px solid #22c55e;    padding: 12px;    border-radius: 8px;    display: flex;    align-items: center;    gap: 12px;}/* Card de Data Com (Amarelo/Laranja) */.notif-card-datacom {    background: linear-gradient(to right, rgba(234, 179, 8, 0.1), transparent);    border-left: 3px solid #eab308;    padding: 12px;    border-radius: 8px;    display: flex;    align-items: center;    gap: 12px;}/* Ajuste para tema claro */body.light-mode .notif-card-payment {    background: #f0fdf4;    border-left-color: #16a34a;}body.light-mode .notif-card-datacom {    background: #fefce8;    border-left-color: #ca8a04;}/* =========================================   ESTILO NUBANK - HISTÓRICO REFINADO   ========================================= *//* Cabeçalho de data (ex: HOJE, ONTEM) */.history-date-header {    font-size: 0.75rem; /* text-xs */    font-weight: 700;    text-transform: uppercase;    color: #6b7280; /* text-gray-500 */    padding: 1.5rem 0 0.5rem 0.5rem;    letter-spacing: 0.05em;    position: sticky;    top: 0;    background-color: #000000; /* Garante leitura ao rolar */    z-index: 10;}/* Item da lista (Linha) */.history-item {    display: flex;    align-items: center;    justify-content: space-between;    padding: 1rem 0.5rem;    border-bottom: 1px solid #1C1C1E; /* Linha muito sutil */    cursor: pointer;    transition: background-color 0.2s;}.history-item:hover {    background-color: #111111;}.history-item:active {    background-color: #1C1C1E;}/* Ícone circular à esquerda */.history-icon-circle {    width: 3rem;    height: 3rem;    border-radius: 9999px; /* Círculo perfeito */    display: flex;    align-items: center;    justify-content: center;    flex-shrink: 0;    background-color: #1C1C1E;    margin-right: 1rem;}/* Ajustes Light Mode */body.light-mode .history-date-header {    background-color: #f3f4f6;    color: #6b7280;}body.light-mode .history-item {    border-bottom-color: #e5e7eb;}body.light-mode .history-item:hover {    background-color: #ffffff;}body.light-mode .history-icon-circle {    background-color: #e5e7eb;}

@@ -976,14 +976,26 @@ function updateThemeUI() {
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    function gerarCores(num) {
+function gerarCores(num) {
+        // Paleta de Alto Contraste (Estilo Fintech/Dark Mode)
+        // Mistura roxo, ciano, verde, rosa, amarelo e azul para máxima distinção.
         const PALETA_CORES = [
-            '#c084fc', '#7c3aed', '#a855f7', '#8b5cf6',
-            '#6d28d9', '#5b21b6', '#3b82f6', '#22c55e',
-            '#f97316', '#ef4444'
+            '#8b5cf6', // Roxo Vesto (Identidade)
+            '#22d3ee', // Ciano Neon
+            '#34d399', // Verde Menta
+            '#f472b6', // Rosa Chiclete
+            '#facc15', // Amarelo
+            '#60a5fa', // Azul Sky
+            '#fb923c', // Laranja
+            '#a78bfa', // Roxo Claro
+            '#e879f9', // Magenta
+            '#9ca3af'  // Cinza (para os últimos itens)
         ];
+        
         let cores = [];
-        for (let i = 0; i < num; i++) { cores.push(PALETA_CORES[i % PALETA_CORES.length]); }
+        for (let i = 0; i < num; i++) { 
+            cores.push(PALETA_CORES[i % PALETA_CORES.length]); 
+        }
         return cores;
     }
     

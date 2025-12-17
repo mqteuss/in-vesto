@@ -1703,7 +1703,7 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                 cutout: '60%', 
                 layout: {
                     // ALTERAÇÃO: Padding 0 faz o gráfico ocupar todo o espaço disponível
-                    padding: 0
+                    padding: 10
                 },
                 plugins: {
                     legend: { 

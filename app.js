@@ -107,7 +107,7 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // Ícone
+    // Ícone Minimalista (Levemente menor no mobile)
     const iconLetters = ativo.symbol.substring(0, 2);
     const iconHtml = `
         <div class="w-10 h-10 rounded-lg bg-[#1C1C1E] border border-[#2C2C2E] flex items-center justify-center shrink-0 shadow-sm">
@@ -115,7 +115,7 @@ function criarCardElemento(ativo, dados) {
         </div>
     `;
 
-    // Lógica de Proventos (Mantida Compacta)
+    // Cartão de Proventos (Compacto)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -193,28 +193,25 @@ function criarCardElemento(ativo, dados) {
         </div>
 
         <div id="drawer-${ativo.symbol}" class="card-drawer bg-[#09090b]">
-            <div class="drawer-content pl-2 pr-2 pb-3 pt-2 md:pl-[3.5rem] md:pr-4">
+            <div class="drawer-content pl-2 pr-2 pb-3 pt-1 md:pl-[3.5rem] md:pr-4">
                 
-                <div class="flex justify-between items-end mb-3 px-1">
-                    <div>
-                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider block mb-0.5">Seu Patrimônio</span>
-                        <span data-field="posicao-valor" class="text-2xl font-bold text-white tracking-tighter leading-none">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
-                    </div>
-                    
-                    <div data-field="pl-badge" class="flex flex-col items-end">
-                        <div class="flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')} ${corPL}">
-                            <span class="text-[10px] font-bold">${formatBRL(lucroPrejuizo)}</span>
-                            <span class="text-[10px] font-bold opacity-80">(${lucroPrejuizoPercent.toFixed(1)}%)</span>
+                <div class="grid grid-cols-2 gap-2 bg-[#131315] p-2.5 rounded-xl border border-[#1C1C1E]">
+                    <div class="col-span-2 border-b border-[#2C2C2E] pb-2 mb-0.5 flex justify-between items-center">
+                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Patrimônio</span>
+                        <div class="flex items-center gap-2">
+                            <span data-field="posicao-valor" class="text-lg font-bold text-white tracking-tight">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
+                            <div data-field="pl-badge" class="flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')}">
+                                <span class="text-[10px] font-bold">${formatBRL(lucroPrejuizo)}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-2 gap-4 border-t border-[#1C1C1E] pt-2 pb-1 px-1">
-                    <div>
+                    <div class="relative">
                         <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider block">Custo Total</span>
                         <span data-field="custo-valor" class="block text-xs font-semibold text-gray-300 mt-0.5">${formatBRL(custoTotal)}</span>
                     </div>
-                    <div class="text-right">
+
+                    <div class="relative pl-2 border-l border-[#2C2C2E]">
                         <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider block">Preço Médio</span>
                         <span class="block text-xs font-semibold text-gray-300 mt-0.5">${formatBRL(ativo.precoMedio)}</span>
                     </div>
@@ -257,22 +254,18 @@ function atualizarCardElemento(card, ativo, dados) {
         miniTagEl.innerHTML = dadoPreco ? `<span class="text-[10px] font-bold ${corPL}">${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%</span>` : '';
     }
 
-    // Drawer - Dados Principais (Patrimônio agora está solto no topo)
+    // Drawer - Dados Principais
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
 
-    // Badge de Resultado (Reposicionado ao lado do Patrimônio)
+    // Badge de Resultado (Compacto)
     const plBadge = card.querySelector('[data-field="pl-badge"]');
     if (plBadge) {
-        plBadge.innerHTML = `
-            <div class="flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')} ${corPL}">
-                <span class="text-[10px] font-bold">${formatBRL(lucroPrejuizo)}</span>
-                <span class="text-[10px] font-bold opacity-80">(${lucroPrejuizoPercent.toFixed(1)}%)</span>
-            </div>
-        `;
+        plBadge.innerHTML = `<span class="text-[10px] font-bold">${formatBRL(lucroPrejuizo)}</span>`;
+        plBadge.className = `flex items-center gap-1 px-1.5 py-0.5 rounded ${bgPL} border border-opacity-20 ${corPL.replace('text-', 'border-')} ${corPL}`;
     }
 
-    // Proventos (Mantido)
+    // Proventos - Recria o HTML (Versão Compacta)
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {

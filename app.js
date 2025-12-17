@@ -3651,16 +3651,17 @@ listaCarteira.addEventListener('click', (e) => {
             handleRemoverAtivo(symbol);
         } else if (action === 'details') {
             showDetalhesModal(symbol);
-        } else if (action === 'toggle') {
-            const drawer = document.getElementById(`drawer-${symbol}`);
-            // Precisamos achar o ícone de seta dentro deste card específico para girá-lo
-            // Como o clique pode vir do Header, procuramos o ícone no card pai
-            const cardPai = target.closest('.card-bg'); 
-            const icon = cardPai.querySelector('.card-arrow-icon');
-            
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        }
+} else if (action === 'toggle') {
+    const drawer = document.getElementById(`drawer-${symbol}`);
+    
+    // CORREÇÃO: Buscamos o próprio elemento clicável (o cabeçalho da linha)
+    // em vez de buscar pelo card-bg
+    const headerLinha = target.closest('[data-action="toggle"]'); 
+    const icon = headerLinha ? headerLinha.querySelector('.card-arrow-icon') : null;
+    
+    drawer?.classList.toggle('open');
+    icon?.classList.toggle('open');
+}
     });
     
     listaHistorico.addEventListener('click', (e) => {

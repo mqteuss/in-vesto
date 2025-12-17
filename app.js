@@ -1504,22 +1504,34 @@ if (btnHistProventos) {
 
 // --- Listeners do Novo Modal de Detalhes ---
 document.getElementById('btn-close-tx-details').addEventListener('click', closeTransactionDetails);
+
 transactionDetailsModal.addEventListener('click', (e) => {
     if(e.target === transactionDetailsModal) closeTransactionDetails();
 });
 
 document.getElementById('btn-edit-tx').addEventListener('click', () => {
     if (selectedTransactionId) {
+        // CORREÇÃO: Guardamos o ID numa variável local AGORA
+        // antes que o closeTransactionDetails() o limpe.
+        const idParaEditar = selectedTransactionId; 
+        
         closeTransactionDetails();
-        setTimeout(() => handleAbrirModalEdicao(selectedTransactionId), 300);
+        
+        // Usamos a variável local 'idParaEditar' em vez da global
+        setTimeout(() => handleAbrirModalEdicao(idParaEditar), 350); // Aumentei levemente para 350ms para garantir suavidade
     }
 });
 
 document.getElementById('btn-delete-tx').addEventListener('click', () => {
     if (selectedTransactionId) {
+        // CORREÇÃO: Mesmo princípio para o excluir
         const tx = transacoes.find(t => t.id === selectedTransactionId);
+        const idParaExcluir = selectedTransactionId; 
+        const symbolParaExcluir = tx.symbol;
+        
         closeTransactionDetails();
-        setTimeout(() => handleExcluirTransacao(tx.id, tx.symbol), 300);
+        
+        setTimeout(() => handleExcluirTransacao(idParaExcluir, symbolParaExcluir), 350);
     }
 });
 

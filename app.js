@@ -100,7 +100,7 @@ const CACHE_PROVENTOS = 1000 * 60 * 60 * 12;
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
-// --- CRIAR ITEM DA CARTEIRA (VISUAL LIMPO E SEM CARD NO EXPANDIR) ---
+// --- CRIAR ITEM DA CARTEIRA (GRADE NOS DADOS + LISTA NOS PROVENTOS) ---
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -128,7 +128,7 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
 
-    // 3. Proventos (Layout Vertical)
+    // 3. Proventos (Lógica Agendado/Pago/Sem Direito)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -142,10 +142,10 @@ function criarCardElemento(ativo, dados) {
 
             if (proventoReceber > 0) {
                 if (foiPago) {
-                    labelUser = "Pago";
+                    labelUser = "Pago"; // Verde
                     valorUserDisplay = `<span class="text-base font-bold text-green-500">+ ${formatBRL(proventoReceber)}</span>`;
                 } else {
-                    labelUser = "Agendado";
+                    labelUser = "Agendado"; // Amarelo
                     valorUserDisplay = `<span class="text-base font-bold text-yellow-500">+ ${formatBRL(proventoReceber)}</span>`;
                 }
             } else {
@@ -156,17 +156,20 @@ function criarCardElemento(ativo, dados) {
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
             const dataPagTexto = formatDate(dadoProvento.paymentDate);
 
+            // Layout Vertical com Separador
             proventoHtml = `
             <div class="mt-4 pt-3 border-t border-neutral-800 space-y-3">
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-500">Valor p/ Cota</span>
                     <span class="text-base font-medium text-gray-300">${formatBRL(dadoProvento.value)}</span>
                 </div>
+                
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-500">${labelUser}</span>
                     ${valorUserDisplay}
                 </div>
-                <div class="flex justify-between items-center text-xs text-gray-500 pt-1">
+
+                <div class="flex justify-between items-center text-xs text-gray-500 pt-1 font-mono">
                     <span>Com: ${dataComTexto}</span>
                     <span>Pag: ${dataPagTexto}</span>
                 </div>
@@ -212,29 +215,25 @@ function criarCardElemento(ativo, dados) {
         <div id="drawer-${ativo.symbol}" class="card-drawer">
             <div class="drawer-content px-4 pb-4 pt-2">
                 
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-500">Posição</span>
-                        <span class="text-base font-medium text-white" data-field="posicao-valor">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <div class="text-center p-2 bg-neutral-900/40 rounded-lg border border-neutral-800">
+                        <span class="text-[10px] text-gray-500 block mb-0.5">Posição</span>
+                        <span data-field="posicao-valor" class="text-xs font-bold text-white block truncate">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
                     </div>
-                    
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-500" data-field="pm-label">Custo (P.M. ${formatBRL(ativo.precoMedio)})</span>
-                        <span class="text-base font-medium text-white" data-field="custo-valor">${formatBRL(custoTotal)}</span>
+                    <div class="text-center p-2 bg-neutral-900/40 rounded-lg border border-neutral-800">
+                        <span class="text-[10px] text-gray-500 block mb-0.5">Custo</span>
+                        <span data-field="custo-valor" class="text-xs font-bold text-white block truncate">${formatBRL(custoTotal)}</span>
                     </div>
-                    
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-500">L/P Total</span>
-                        <span class="text-base font-bold ${corPL}" data-field="pl-valor">
-                            ${dadoPreco ? `${formatBRL(lucroPrejuizo)}` : '...'}
-                        </span>
+                    <div class="text-center p-2 bg-neutral-900/40 rounded-lg border border-neutral-800">
+                        <span class="text-[10px] text-gray-500 block mb-0.5">L/P R$</span>
+                        <span data-field="pl-valor" class="text-xs font-bold ${corPL} block truncate">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</span>
                     </div>
                 </div>
 
                 <div data-field="provento-container">${proventoHtml}</div> 
                 
-                <div class="flex justify-end gap-3 pt-4 mt-2">
-                    <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-gray-400 bg-gray-800 hover:text-white hover:bg-gray-700 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">
+                <div class="flex justify-end gap-3 pt-4 mt-2 border-t border-neutral-800">
+                    <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-gray-400 bg-neutral-900 hover:text-white hover:bg-neutral-800 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">
                         Detalhes
                     </button>
                     <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-red-400 bg-red-900/10 hover:bg-red-900/30 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
@@ -247,7 +246,7 @@ function criarCardElemento(ativo, dados) {
     return card;
 }
 
-// --- ATUALIZAR ITEM (SEM FUNDO NO DRAWER) ---
+// --- ATUALIZAR ITEM (MANTENDO A ESTRUTURA COM GRADE) ---
 function atualizarCardElemento(card, ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -258,7 +257,6 @@ function atualizarCardElemento(card, ativo, dados) {
     card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
     card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
-    card.querySelector('[data-field="pm-label"]').textContent = `Custo (P.M. ${formatBRL(ativo.precoMedio)})`;
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
 
     const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
@@ -266,8 +264,8 @@ function atualizarCardElemento(card, ativo, dados) {
     variacaoEl.className = `${corVariacao} text-xs font-medium block mt-0.5`; 
 
     const plValorEl = card.querySelector('[data-field="pl-valor"]');
-    plValorEl.textContent = dadoPreco ? `${formatBRL(lucroPrejuizo)}` : '...';
-    plValorEl.className = `text-base font-bold ${corPL}`; 
+    plValorEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
+    plValorEl.className = `text-xs font-bold block truncate ${corPL}`; 
 
     let plTagHtml = '';
     if (dadoPreco) {
@@ -320,7 +318,7 @@ function atualizarCardElemento(card, ativo, dados) {
                     <span class="text-sm text-gray-500">${labelUser}</span>
                     ${valorUserDisplay}
                 </div>
-                <div class="flex justify-between items-center text-xs text-gray-500 pt-1">
+                <div class="flex justify-between items-center text-xs text-gray-500 pt-1 font-mono">
                     <span>Com: ${dataComTexto}</span>
                     <span>Pag: ${dataPagTexto}</span>
                 </div>

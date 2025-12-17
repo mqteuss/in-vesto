@@ -1501,10 +1501,10 @@ function agruparNoticiasPorData(articles) {
 }
 
 // --- RENDERIZAR NOTÍCIAS (CORRIGIDO) ---
+// --- RENDERIZAR NOTÍCIAS (COM DESTAQUE E LINHAS MAIS FORTES) ---
 function renderizarNoticias(articles) { 
     fiiNewsSkeleton.classList.add('hidden');
     
-    // Evita re-renderizar se os dados forem idênticos (performance)
     const newSignature = JSON.stringify(articles);
     if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
         return;
@@ -1520,39 +1520,31 @@ function renderizarNoticias(articles) {
         return;
     }
     
-    // Ordena por data
     const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
     const grupos = agruparNoticiasPorData(sortedArticles);
     
     const fragment = document.createDocumentFragment();
+    // 1. FLAG PARA IDENTIFICAR A PRIMEIRA NOTÍCIA GLOBALMENTE
+    let isGlobalFirstItem = true;
 
     Object.keys(grupos).forEach(dataLabel => {
-        // 1. Cabeçalho
+        // Header da Data
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
         header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${dataLabel}</h3>`;
         fragment.appendChild(header);
 
-        // 2. Lista
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-6';
+        listaGrupo.className = 'mb-8'; // Um pouco mais de espaço entre grupos
 
         grupos[dataLabel].forEach((article, index) => {
             const sourceName = article.sourceName || 'Fonte';
             const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
-            
-            // Tratamento de hora seguro
             let horaPub = '';
-            try {
-                horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' });
-            } catch(e) { horaPub = '--:--'; }
-
-            // Cria ID único para o drawer
-            // Remove espaços e caracteres especiais da label para usar no ID
+            try { horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' }); } catch(e) { horaPub = '--:--'; }
             const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
             const drawerId = `news-drawer-${safeLabel}-${index}`;
             
-            // Tickers
             const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
@@ -1563,52 +1555,76 @@ function renderizarNoticias(articles) {
             }
 
             const item = document.createElement('div');
-            // IMPORTANTE: Adicionei 'news-card-interactive' aqui para o listener antigo funcionar,
-            // ou usamos o 'data-action' no listener novo. Vamos garantir os dois.
-            item.className = 'group border-b border-neutral-800/50 last:border-0 hover:bg-neutral-900/30 transition-colors news-card-interactive';
-            item.setAttribute('data-action', 'toggle-news'); // Novo identificador
+            
+            // 2. LÓGICA DE ESTILIZAÇÃO CONDICIONAL
+            let itemWrapperClass = 'group relative transition-all news-card-interactive ';
+            let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
+            let badgeDestaque = '';
+
+            if (isGlobalFirstItem) {
+                // --- ESTILO DE DESTAQUE (Primeiro Item) ---
+                // Fundo gradiente sutil, borda lateral roxa, sem borda inferior
+                itemWrapperClass += 'bg-gradient-to-r from-purple-900/30 to-transparent border-l-[3px] border-purple-500 py-1 my-2 rounded-r-lg';
+                // Título maior
+                titleClass += 'text-lg'; 
+                // Badge de Destaque
+                badgeDestaque = '<span class="inline-block bg-purple-600 text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
+                
+                // Desativa a flag para os próximos
+                isGlobalFirstItem = false;
+            } else {
+                // --- ESTILO NORMAL ---
+                // Borda inferior SÓLIDA (removemos o /50 para ficar mais forte)
+                itemWrapperClass += 'border-b border-neutral-800 last:border-0 hover:bg-neutral-900/40';
+                titleClass += 'text-sm';
+            }
+
+            item.className = itemWrapperClass;
+            item.setAttribute('data-action', 'toggle-news');
             item.setAttribute('data-target', drawerId);
 
             item.innerHTML = `
-                <div class="flex items-start gap-4 py-4 px-2 cursor-pointer">
-                    <div class="flex-shrink-0 mt-1">
+                <div class="flex items-start gap-4 py-4 px-3 cursor-pointer">
+                    <div class="flex-shrink-0 mt-1.5">
                         <img src="${faviconUrl}" alt="${sourceName}" 
-                             class="w-8 h-8 rounded-lg bg-[#1C1C1E] object-contain p-0.5 border border-neutral-800 grayscale group-hover:grayscale-0 transition-all"
+                             class="w-8 h-8 rounded-md bg-[#1C1C1E] object-contain p-0.5 border border-neutral-800 grayscale group-hover:grayscale-0 transition-all"
                              loading="lazy"
                              onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                         />
                     </div>
                     
-                    <div class="flex-1 min-w-0 pointer-events-none"> <div class="flex items-center gap-2 mb-1">
+                    <div class="flex-1 min-w-0 pointer-events-none">
+                        ${badgeDestaque} <div class="flex items-center gap-2 mb-1.5">
                             <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">${sourceName}</span>
                             <span class="text-[10px] text-neutral-600">•</span>
                             <span class="text-[10px] text-neutral-500">${horaPub}</span>
                         </div>
                         
-                        <h4 class="text-sm font-semibold text-gray-200 leading-snug mb-2 group-hover:text-white transition-colors">
+                        <h4 class="${titleClass}">
                             ${article.title || 'Título indisponível'}
                         </h4>
                         
-                        <div class="pointer-events-auto"> ${tickersHtml ? `<div class="flex flex-wrap">${tickersHtml}</div>` : ''}
+                        <div class="pointer-events-auto mt-2">
+                            ${tickersHtml ? `<div class="flex flex-wrap">${tickersHtml}</div>` : ''}
                         </div>
                     </div>
 
-                    <div class="text-neutral-600 group-hover:text-neutral-400 mt-1 transition-colors">
-                         <svg class="card-arrow-icon w-4 h-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <div class="text-neutral-600 group-hover:text-neutral-400 mt-2 transition-colors">
+                         <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
                     </div>
                 </div>
                 
                 <div id="${drawerId}" class="card-drawer">
-                    <div class="drawer-content px-2 pb-4 pl-14">
-                        <div class="text-sm text-neutral-400 leading-relaxed border-l-2 border-purple-500/50 pl-3">
+                    <div class="drawer-content px-3 pb-5 pl-14">
+                        <div class="text-sm text-neutral-400 leading-relaxed border-l-2 border-neutral-700 pl-4">
                             ${article.summary ? article.summary : 'Resumo não disponível.'}
                         </div>
-                        <div class="mt-3">
-                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors">
+                        <div class="mt-4 pl-4">
+                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors bg-purple-500/10 px-3 py-1.5 rounded-md">
                                 Ler notícia completa
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>
                         </div>
                     </div>

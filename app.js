@@ -1275,6 +1275,7 @@ function agruparPorMes(itens, dateField) {
 }
 
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (ESTILO FINTECH) ---
+// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL CONSISTENTE E ÍCONES ÚNICOS) ---
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
     
@@ -1285,64 +1286,83 @@ function renderizarHistorico() {
     
     historicoStatus.classList.add('hidden');
     
-    // Ordena por data (mais recente primeiro)
     const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date));
     const grupos = agruparPorMes(transacoesOrdenadas, 'date');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // 1. Cabeçalho do Mês (Sticky)
+        // 1. Header do Mês (Sticky)
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
-        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">${mes}</h3>`;
+        // Fonte padronizada: text-xs e tracking-widest para cabeçalhos
+        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // 2. Lista de Itens do Mês
+        // 2. Lista de Itens
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-6 space-y-4'; // Espaçamento entre itens
+        listaGrupo.className = 'mb-5 space-y-1'; // Espaçamento vertical entre itens mais justo
 
         grupos[mes].forEach(t => {
             const isVenda = t.type === 'sell';
             const item = document.createElement('div');
             
-            // Layout de Extrato: Ícone | Info | Valor
-            item.className = 'flex items-center justify-between group cursor-default';
+            // Container do item
+            item.className = 'flex items-center justify-between group cursor-default py-3 px-2 hover:bg-neutral-900/40 rounded-xl transition-colors';
             
-            // Cores e Ícones
-            const corIconeBg = isVenda ? 'bg-red-900/20' : 'bg-neutral-800';
-            const corIcone = isVenda ? 'text-red-500' : 'text-white';
-            const sinal = isVenda ? '+' : ''; // Venda entra dinheiro no caixa (teoricamente), Compra sai. 
-            // Mas em apps de investimento: Compra = Aumento de Posição (Neutro/Bom), Venda = Redução.
-            // Vamos usar: Compra = Ícone Seta Cima (Branco), Venda = Ícone Seta Baixo (Vermelho)
-            
-            // Ícone Fintech (Redondo e minimalista)
-            const iconSvg = isVenda 
-                ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" /></svg>` // Seta/Traço Venda
-                : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`; // Plus Compra
+            // --- ÍCONES SVG MINIMALISTAS ---
+            // Compra: Sacola (Shopping Bag)
+            const svgCompra = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>`;
+                
+            // Venda: Etiqueta (Tag/Sale)
+            const svgVenda = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 8V3h4z" />
+                </svg>`;
 
+            const iconSvg = isVenda ? svgVenda : svgCompra;
+            
+            // Cores dos ícones (Fundo sutil)
+            const corIconeBg = isVenda ? 'bg-red-500/10' : 'bg-purple-500/10';
+            const corIcone = isVenda ? 'text-red-500' : 'text-purple-400';
+            
+            // Formatação de data
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             
             item.innerHTML = `
                 <div class="flex items-center gap-4 flex-1 min-w-0">
-                    <div class="w-10 h-10 rounded-full ${corIconeBg} ${corIcone} flex items-center justify-center flex-shrink-0 border border-neutral-800">
+                    <div class="w-10 h-10 rounded-2xl ${corIconeBg} ${corIcone} flex items-center justify-center flex-shrink-0 border border-neutral-800">
                         ${iconSvg}
                     </div>
-                    <div class="flex-1 min-w-0">
+                    
+                    <div class="flex-1 min-w-0 flex flex-col justify-center">
                         <div class="flex items-center gap-2">
-                            <span class="text-sm font-bold text-white truncate">${t.symbol}</span>
-                            <span class="text-[10px] bg-neutral-900 text-neutral-500 px-1.5 py-0.5 rounded border border-neutral-800">${isVenda ? 'VENDA' : 'COMPRA'}</span>
+                            <span class="text-sm font-semibold text-gray-200 truncate">${t.symbol}</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider ${isVenda ? 'text-red-500' : 'text-purple-400'} opacity-80">
+                                ${isVenda ? 'VENDA' : 'COMPRA'}
+                            </span>
                         </div>
-                        <p class="text-xs text-neutral-500 mt-0.5">Dia ${dia} • ${t.quantity} cotas a ${formatBRL(t.price)}</p>
+                        <p class="text-xs text-neutral-500 mt-0.5 font-medium">
+                            Dia ${dia} • ${t.quantity} cotas
+                        </p>
                     </div>
                 </div>
                 
-                <div class="text-right pl-3">
-                    <p class="text-sm font-bold text-white whitespace-nowrap">${formatBRL(t.quantity * t.price)}</p>
-                    <div class="flex justify-end gap-3 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button class="text-neutral-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}">
+                <div class="text-right pl-3 flex flex-col justify-center h-full">
+                    <p class="text-sm font-semibold text-gray-200 whitespace-nowrap tracking-tight">
+                        ${formatBRL(t.quantity * t.price)}
+                    </p>
+                    <p class="text-xs text-neutral-500 mt-0.5 font-medium">
+                        ${formatBRL(t.price)} un.
+                    </p>
+                    
+                    <div class="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black pl-2 border-l border-neutral-800">
+                         <button class="p-1.5 text-neutral-400 hover:text-white bg-neutral-800 rounded-lg transition-colors" data-action="edit" data-id="${t.id}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
                          </button>
-                         <button class="text-neutral-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                         <button class="p-1.5 text-neutral-400 hover:text-red-500 bg-neutral-800 rounded-lg transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                          </button>
                     </div>

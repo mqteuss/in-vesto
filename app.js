@@ -1461,26 +1461,37 @@ function renderizarHistoricoProventos() {
     }
 
 // --- FUNÇÃO AUXILIAR: Agrupar notícias por dia ---
+// --- FUNÇÃO AUXILIAR: Agrupar notícias (Robusta contra Invalid Date) ---
 function agruparNoticiasPorData(articles) {
     const grupos = {};
-    const hoje = new Date().toISOString().split('T')[0];
-    const ontemData = new Date();
-    ontemData.setDate(ontemData.getDate() - 1);
-    const ontem = ontemData.toISOString().split('T')[0];
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+    
+    const ontem = new Date(hoje);
+    ontem.setDate(ontem.getDate() - 1);
 
     articles.forEach(article => {
-        let dataPub = article.publicationDate ? article.publicationDate.split('T')[0] : hoje;
-        
+        // Tenta criar data. Se falhar, usa "DATA DESCONHECIDA" para não quebrar o app
+        let d = new Date(article.publicationDate);
+        if (isNaN(d.getTime())) {
+            d = new Date(); // Fallback para hoje se a data for inválida
+        }
+
+        const dZero = new Date(d);
+        dZero.setHours(0,0,0,0);
+
         let labelData = '';
-        if (dataPub === hoje) {
+        if (dZero.getTime() === hoje.getTime()) {
             labelData = 'HOJE';
-        } else if (dataPub === ontem) {
+        } else if (dZero.getTime() === ontem.getTime()) {
             labelData = 'ONTEM';
         } else {
             // Formata: "17 DE DEZEMBRO"
-            const parts = dataPub.split('-');
-            const d = new Date(parts[0], parts[1]-1, parts[2]);
             labelData = d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }).toUpperCase();
+            // Adiciona ano se não for o ano atual
+            if (d.getFullYear() !== hoje.getFullYear()) {
+                labelData += ` DE ${d.getFullYear()}`;
+            }
         }
 
         if (!grupos[labelData]) grupos[labelData] = [];
@@ -1489,10 +1500,11 @@ function agruparNoticiasPorData(articles) {
     return grupos;
 }
 
-// --- RENDERIZAR NOTÍCIAS (ESTILO FEED / TIMELINE) ---
+// --- RENDERIZAR NOTÍCIAS (CORRIGIDO) ---
 function renderizarNoticias(articles) { 
     fiiNewsSkeleton.classList.add('hidden');
     
+    // Evita re-renderizar se os dados forem idênticos (performance)
     const newSignature = JSON.stringify(articles);
     if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
         return;
@@ -1508,31 +1520,39 @@ function renderizarNoticias(articles) {
         return;
     }
     
-    // Ordena por data (mais recente primeiro)
+    // Ordena por data
     const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
     const grupos = agruparNoticiasPorData(sortedArticles);
     
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(dataLabel => {
-        // 1. Cabeçalho da Data (Sticky)
+        // 1. Cabeçalho
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
         header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${dataLabel}</h3>`;
         fragment.appendChild(header);
 
-        // 2. Lista de Notícias do Dia
+        // 2. Lista
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-6 space-y-0'; // Sem espaçamento vertical extra, controlado pelo padding do item
+        listaGrupo.className = 'mb-6';
 
         grupos[dataLabel].forEach((article, index) => {
             const sourceName = article.sourceName || 'Fonte';
             const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
-            // Formata hora apenas (já que a data está no header)
-            const horaPub = article.publicationDate ? new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' }) : '';
-            const drawerId = `news-drawer-${dataLabel.replace(/\s/g, '-')}-${index}`;
             
-            // Lógica de Tickers
+            // Tratamento de hora seguro
+            let horaPub = '';
+            try {
+                horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' });
+            } catch(e) { horaPub = '--:--'; }
+
+            // Cria ID único para o drawer
+            // Remove espaços e caracteres especiais da label para usar no ID
+            const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
+            const drawerId = `news-drawer-${safeLabel}-${index}`;
+            
+            // Tickers
             const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
@@ -1543,9 +1563,10 @@ function renderizarNoticias(articles) {
             }
 
             const item = document.createElement('div');
-            // Layout de lista contínua com borda inferior sutil
-            item.className = 'group border-b border-neutral-800/50 last:border-0 hover:bg-neutral-900/30 transition-colors';
-            item.setAttribute('data-action', 'toggle-news');
+            // IMPORTANTE: Adicionei 'news-card-interactive' aqui para o listener antigo funcionar,
+            // ou usamos o 'data-action' no listener novo. Vamos garantir os dois.
+            item.className = 'group border-b border-neutral-800/50 last:border-0 hover:bg-neutral-900/30 transition-colors news-card-interactive';
+            item.setAttribute('data-action', 'toggle-news'); // Novo identificador
             item.setAttribute('data-target', drawerId);
 
             item.innerHTML = `
@@ -1558,8 +1579,7 @@ function renderizarNoticias(articles) {
                         />
                     </div>
                     
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
+                    <div class="flex-1 min-w-0 pointer-events-none"> <div class="flex items-center gap-2 mb-1">
                             <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">${sourceName}</span>
                             <span class="text-[10px] text-neutral-600">•</span>
                             <span class="text-[10px] text-neutral-500">${horaPub}</span>
@@ -1569,7 +1589,8 @@ function renderizarNoticias(articles) {
                             ${article.title || 'Título indisponível'}
                         </h4>
                         
-                        ${tickersHtml ? `<div class="flex flex-wrap">${tickersHtml}</div>` : ''}
+                        <div class="pointer-events-auto"> ${tickersHtml ? `<div class="flex flex-wrap">${tickersHtml}</div>` : ''}
+                        </div>
                     </div>
 
                     <div class="text-neutral-600 group-hover:text-neutral-400 mt-1 transition-colors">
@@ -1580,7 +1601,8 @@ function renderizarNoticias(articles) {
                 </div>
                 
                 <div id="${drawerId}" class="card-drawer">
-                    <div class="drawer-content px-2 pb-4 pl-14"> <div class="text-sm text-neutral-400 leading-relaxed border-l-2 border-purple-500/50 pl-3">
+                    <div class="drawer-content px-2 pb-4 pl-14">
+                        <div class="text-sm text-neutral-400 leading-relaxed border-l-2 border-purple-500/50 pl-3">
                             ${article.summary ? article.summary : 'Resumo não disponível.'}
                         </div>
                         <div class="mt-3">
@@ -3749,7 +3771,9 @@ const tabDashboard = document.getElementById('tab-dashboard');
         touchMoveY = 0;
     });
 
+// --- LISTENER DE NOTÍCIAS (CORRIGIDO PARA O NOVO LAYOUT) ---
     fiiNewsList.addEventListener('click', (e) => {
+        // 1. Verifica se clicou numa TAG de ticker
         const tickerTag = e.target.closest('.news-ticker-tag');
         if (tickerTag) {
             e.stopPropagation(); 
@@ -3759,18 +3783,30 @@ const tabDashboard = document.getElementById('tab-dashboard');
             }
             return;
         }
+
+        // 2. Verifica se clicou no LINK externo
         if (e.target.closest('a')) {
             e.stopPropagation(); 
             return; 
         }
-        const card = e.target.closest('.news-card-interactive');
+
+        // 3. Verifica se clicou no CARD da notícia (para abrir o drawer)
+        // Agora procura por 'data-action="toggle-news"' OU a classe antiga 'news-card-interactive'
+        const card = e.target.closest('[data-action="toggle-news"]') || e.target.closest('.news-card-interactive');
+        
         if (card) {
-            const targetId = card.dataset.target;
+            const targetId = card.dataset.target; // Pega o ID do drawer (ex: news-drawer-HOJE-0)
+            
+            // Como mudamos o ID para ser dinâmico, usamos getElementById
             const drawer = document.getElementById(targetId);
             const icon = card.querySelector('.card-arrow-icon');
             
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
+            if (drawer) {
+                drawer.classList.toggle('open');
+                if (icon) icon.classList.toggle('open');
+            } else {
+                console.error('Drawer não encontrado para o ID:', targetId);
+            }
         }
     });
     

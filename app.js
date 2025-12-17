@@ -1280,43 +1280,42 @@ function calcularCarteira() {
 function renderizarHistorico(filtro = '') {
     listaHistorico.innerHTML = '';
     
-    // 1. Filtrar
+    // Filtragem
     let itensFiltrados = transacoes;
     if (filtro) {
         const f = filtro.toLowerCase();
         itensFiltrados = transacoes.filter(t => t.symbol.toLowerCase().includes(f));
     }
 
-    // 2. Verificar vazio
     if (itensFiltrados.length === 0) {
         historicoStatus.classList.remove('hidden');
-        document.getElementById('historico-mensagem').textContent = filtro ? 'Nenhuma transação encontrada.' : 'Nenhum registro encontrado.';
+        document.getElementById('historico-mensagem').textContent = filtro ? 'Nada encontrado na busca.' : 'Nenhum registro.';
         return;
     }
     
     historicoStatus.classList.add('hidden');
     
-    // 3. Ordenar e Agrupar
+    // Ordenar e Agrupar
     itensFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
     const groups = groupTransactionsByMonth(itensFiltrados, 'date');
 
     const fragment = document.createDocumentFragment();
 
     Object.keys(groups).forEach(month => {
-        // Cabeçalho do Mês
+        // Header do Mês (Sticky)
         const header = document.createElement('div');
-        header.className = 'history-month-header';
+        header.className = 'history-month-header'; // Estilo definido no CSS anterior
         header.textContent = month;
         fragment.appendChild(header);
 
-        // Itens do Mês
         groups[month].forEach(t => {
             const el = document.createElement('div');
             el.className = 'history-item flex items-center justify-between cursor-pointer';
-            el.onclick = () => openTransactionDetails(t); // Abre o novo modal
+            el.onclick = () => openTransactionDetails(t);
 
             const isSell = t.type === 'sell';
-            const avatarClass = isSell ? 'avatar-sell' : 'avatar-buy';
+            // Visual: Compra = Cinza (Neutro), Venda = Vermelho (Saída/Alerta)
+            const avatarClass = isSell ? 'avatar-sell' : 'avatar-buy'; 
             const totalVal = t.price * t.quantity;
 
             el.innerHTML = `
@@ -1345,7 +1344,6 @@ function renderizarHistoricoProventos(filtro = '') {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // 1. Filtra Pagos
     let proventosPagos = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -1353,7 +1351,6 @@ function renderizarHistoricoProventos(filtro = '') {
         return dPag <= hoje;
     });
 
-    // 2. Filtra por Busca
     if (filtro) {
         const f = filtro.toLowerCase();
         proventosPagos = proventosPagos.filter(p => p.symbol.toLowerCase().includes(f));
@@ -1363,7 +1360,7 @@ function renderizarHistoricoProventos(filtro = '') {
 
     proventosPagos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
     
-    // 3. Calcula totais reais
+    // Cálculo de totais
     const listaFinal = [];
     proventosPagos.forEach(p => {
         const dataRef = p.dataCom || p.paymentDate;
@@ -1373,7 +1370,6 @@ function renderizarHistoricoProventos(filtro = '') {
         }
     });
 
-    // 4. Agrupa e Renderiza
     const groups = groupTransactionsByMonth(listaFinal, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
@@ -1412,7 +1408,6 @@ function renderizarHistoricoProventos(filtro = '') {
 function openTransactionDetails(tx) {
     selectedTransactionId = tx.id;
     
-    // Popula dados no modal
     const isSell = tx.type === 'sell';
     const total = tx.price * tx.quantity;
     const dateStr = new Date(tx.date).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -1423,21 +1418,21 @@ function openTransactionDetails(tx) {
     document.getElementById('tx-detail-price').textContent = formatBRL(tx.price);
     document.getElementById('tx-detail-qtd').textContent = tx.quantity;
 
-    // Configura o ícone e a cor
     const iconEl = document.getElementById('tx-detail-icon');
     iconEl.textContent = tx.symbol.substring(0, 2);
     
     if(isSell) {
+        // Venda: Vermelho suave
         iconEl.className = "w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-xl font-bold bg-red-900/20 text-red-400 border border-red-900/40";
         document.getElementById('tx-detail-total').className = "font-bold text-red-400";
     } else {
+        // Compra: Cinza Clean (sem azul/roxo)
         iconEl.className = "w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-xl font-bold bg-gray-800 text-white border border-gray-700";
         document.getElementById('tx-detail-total').className = "font-bold text-white";
     }
 
-    // Abre o modal
     transactionDetailsModal.style.display = 'flex';
-    void transactionDetailsModal.offsetWidth; // Força render
+    void transactionDetailsModal.offsetWidth; 
     transactionDetailsContent.style.transform = 'translateY(0)';
 }
 
@@ -1452,34 +1447,19 @@ function closeTransactionDetails() {
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
 // --- LISTENER DOS BOTÕES DE HISTÓRICO (TOGGLE ANIMADO) ---
 // --- Listeners de Busca e Abas ---
-if (historicoSearchInput) {
-    historicoSearchInput.addEventListener('input', (e) => {
-        const term = e.target.value;
-        const isTransacoes = !listaHistorico.classList.contains('hidden');
-        
-        if (isTransacoes) {
-            renderizarHistorico(term);
-        } else {
-            renderizarHistoricoProventos(term);
-        }
-    });
-}
-
 const toggleBg = document.getElementById('historico-toggle-bg');
 
 if (btnHistTransacoes) {
     btnHistTransacoes.addEventListener('click', () => {
         toggleBg.classList.remove('translate-x-full');
-        toggleBg.classList.add('bg-gray-700'); 
-        toggleBg.classList.remove('bg-purple-600', 'shadow-[0_0_10px_rgba(124,58,237,0.5)]');
-
-        btnHistTransacoes.classList.replace('text-gray-400', 'text-white');
-        btnHistProventos.classList.replace('text-white', 'text-gray-400');
+        // Mantém cinza, apenas move
+        
+        btnHistTransacoes.classList.replace('text-gray-500', 'text-white');
+        btnHistProventos.classList.replace('text-white', 'text-gray-500');
         
         listaHistorico.classList.remove('hidden');
         listaHistoricoProventos.classList.add('hidden');
         
-        // Reseta busca e renderiza
         if(historicoSearchInput) historicoSearchInput.value = '';
         renderizarHistorico();
     });
@@ -1488,11 +1468,10 @@ if (btnHistTransacoes) {
 if (btnHistProventos) {
     btnHistProventos.addEventListener('click', () => {
         toggleBg.classList.add('translate-x-full');
-        toggleBg.classList.remove('bg-gray-700');
-        toggleBg.classList.add('bg-purple-600', 'shadow-[0_0_10px_rgba(124,58,237,0.5)]');
-
-        btnHistProventos.classList.replace('text-gray-400', 'text-white');
-        btnHistTransacoes.classList.replace('text-white', 'text-gray-400');
+        // Mantém cinza, não adiciona roxo
+        
+        btnHistProventos.classList.replace('text-gray-500', 'text-white');
+        btnHistTransacoes.classList.replace('text-white', 'text-gray-500');
 
         listaHistorico.classList.add('hidden');
         listaHistoricoProventos.classList.remove('hidden');
@@ -1502,35 +1481,38 @@ if (btnHistProventos) {
     });
 }
 
-// --- Listeners do Novo Modal de Detalhes ---
-document.getElementById('btn-close-tx-details').addEventListener('click', closeTransactionDetails);
+// Busca
+if (historicoSearchInput) {
+    historicoSearchInput.addEventListener('input', (e) => {
+        const term = e.target.value;
+        const isTransacoes = !listaHistorico.classList.contains('hidden');
+        if (isTransacoes) renderizarHistorico(term);
+        else renderizarHistoricoProventos(term);
+    });
+}
 
+// Ações do Modal (Correção de Race Condition)
+document.getElementById('btn-close-tx-details').addEventListener('click', closeTransactionDetails);
 transactionDetailsModal.addEventListener('click', (e) => {
     if(e.target === transactionDetailsModal) closeTransactionDetails();
 });
 
 document.getElementById('btn-edit-tx').addEventListener('click', () => {
     if (selectedTransactionId) {
-        // CORREÇÃO: Guardamos o ID numa variável local AGORA
-        // antes que o closeTransactionDetails() o limpe.
-        const idParaEditar = selectedTransactionId; 
-        
+        const idParaEditar = selectedTransactionId; // Salva ID
         closeTransactionDetails();
-        
-        // Usamos a variável local 'idParaEditar' em vez da global
-        setTimeout(() => handleAbrirModalEdicao(idParaEditar), 350); // Aumentei levemente para 350ms para garantir suavidade
+        // Delay seguro
+        setTimeout(() => handleAbrirModalEdicao(idParaEditar), 350); 
     }
 });
 
 document.getElementById('btn-delete-tx').addEventListener('click', () => {
     if (selectedTransactionId) {
-        // CORREÇÃO: Mesmo princípio para o excluir
         const tx = transacoes.find(t => t.id === selectedTransactionId);
-        const idParaExcluir = selectedTransactionId; 
+        const idParaExcluir = selectedTransactionId;
         const symbolParaExcluir = tx.symbol;
         
         closeTransactionDetails();
-        
         setTimeout(() => handleExcluirTransacao(idParaExcluir, symbolParaExcluir), 350);
     }
 });

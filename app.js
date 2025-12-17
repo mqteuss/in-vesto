@@ -1275,6 +1275,7 @@ function agruparPorMes(itens, dateField) {
 }
 
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (COMPACTO E IGUAL PROVENTOS) ---
+// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (ALINHAMENTO SINCRONIZADO) ---
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
     
@@ -1296,7 +1297,7 @@ function renderizarHistorico() {
         header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // Lista (Espaçamento reduzido para 0.5 - quase colado, igual extrato)
+        // Lista
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'mb-4 space-y-0.5'; 
 
@@ -1304,8 +1305,8 @@ function renderizarHistorico() {
             const isVenda = t.type === 'sell';
             const item = document.createElement('div');
             
-            // Container do item: Reduzido padding vertical (py-2) para ficar mais compacto
-            item.className = 'flex items-center justify-between group cursor-pointer py-2 px-2 hover:bg-neutral-900/40 rounded-lg transition-colors relative';
+            // Container principal: Altura e Padding sincronizados
+            item.className = 'flex items-center justify-between group cursor-pointer py-3 px-2 hover:bg-neutral-900/40 rounded-lg transition-colors relative';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
             
@@ -1334,7 +1335,7 @@ function renderizarHistorico() {
                 </div>
                 
                 <div class="text-right pl-3 flex flex-col justify-center items-end h-full">
-                    <p class="text-sm font-semibold text-gray-200 whitespace-nowrap tracking-tight">${formatBRL(t.quantity * t.price)}</p>
+                    <p class="text-sm font-semibold text-white whitespace-nowrap tracking-tight">${formatBRL(t.quantity * t.price)}</p>
                     <div class="flex items-center gap-2 mt-0.5">
                          <span class="text-xs text-neutral-500 font-medium">${formatBRL(t.price)}</span>
                          <button class="p-1.5 -mr-2 text-neutral-600 hover:text-red-500 transition-colors z-20" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
@@ -1350,7 +1351,7 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
-// --- RENDERIZAR HISTÓRICO DE PROVENTOS (ALINHAMENTO PERFEITO) ---
+// --- RENDERIZAR HISTÓRICO DE PROVENTOS (VALOR BRANCO E ESPAÇO IGUAL) ---
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1377,7 +1378,7 @@ function renderizarHistoricoProventos() {
         header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // Lista (Espaçamento reduzido para 0.5)
+        // Lista
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'mb-4 space-y-0.5';
 
@@ -1390,8 +1391,8 @@ function renderizarHistoricoProventos() {
                 const dia = new Date(p.paymentDate).getDate().toString().padStart(2, '0');
                 const item = document.createElement('div');
                 
-                // Item (padding py-2)
-                item.className = 'flex items-center justify-between group cursor-default py-2 px-2 hover:bg-neutral-900/40 rounded-lg transition-colors';
+                // Container sincronizado com Transações (py-3)
+                item.className = 'flex items-center justify-between group cursor-default py-3 px-2 hover:bg-neutral-900/40 rounded-lg transition-colors';
                 
                 const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
 
@@ -1411,8 +1412,8 @@ function renderizarHistoricoProventos() {
                         </div>
                     </div>
                     
-                    <div class="text-right pl-3 flex flex-col justify-center h-full">
-                        <p class="text-sm font-semibold text-green-400 whitespace-nowrap tracking-tight">+ ${formatBRL(total)}</p>
+                    <div class="text-right pl-3 flex flex-col justify-center items-end h-full">
+                        <p class="text-sm font-semibold text-white whitespace-nowrap tracking-tight">+ ${formatBRL(total)}</p>
                         <p class="text-xs text-neutral-500 mt-0.5 font-medium">Pago</p>
                     </div>
                 `;

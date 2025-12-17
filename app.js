@@ -103,6 +103,7 @@ const DB_VERSION = 1;
 // --- CRIAR ITEM DA CARTEIRA (LISTA CONTÍNUA + AVATAR DE LETRAS) ---
 // --- CRIAR ITEM DA CARTEIRA (COM LÓGICA DE PROVENTOS RESTAURADA) ---
 // --- CRIAR ITEM DA CARTEIRA (LÓGICA ORIGINAL + VISUAL LIMPO) ---
+// --- CRIAR ITEM DA CARTEIRA (LAYOUT LIMPO + LÓGICA COMPLETA) ---
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -110,23 +111,29 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Tag de Lucro/Prejuízo (Pílula discreta abaixo do nome)
-    let plTagHtml = '';
-    if (dadoPreco) {
-        plTagHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block tracking-wide">
-            ${lucroPrejuizoPercent.toFixed(1)}%
-        </span>`;
-    }
-    
-    // 2. Avatar Minimalista (2 Letras)
+    // 1. Avatar (2 Letras com fundo escuro - Estilo SNAG11 da imagem)
     const sigla = ativo.symbol.substring(0, 2);
+    // Pequeno indicador visual (bolinha) se está no lucro ou prejuízo
+    const corDot = lucroPrejuizo >= 0 ? 'bg-green-500' : 'bg-red-500';
+    
     const avatarHtml = `
-        <div class="w-10 h-10 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0">
+        <div class="relative w-10 h-10 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 group-hover:border-neutral-700 transition-colors">
             <span class="text-sm font-bold text-white tracking-wider">${sigla}</span>
+            <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${corDot} border-2 border-black"></div>
         </div>
     `;
 
-    // 3. Lógica de Proventos (RESTAURADA DO ORIGINAL)
+    // 2. Tag de Lucro/Prejuízo (Pílula discreta abaixo do nome)
+    let plTagHtml = '';
+    if (dadoPreco) {
+        // Cor do fundo da pílula baseada no resultado
+        const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
+        plTagHtml = `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${bgBadge} inline-block">
+            ${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%
+        </span>`;
+    }
+
+    // 3. Seção de Proventos (Lógica "Sem Direito" Restaurada)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -135,39 +142,44 @@ function criarCardElemento(ativo, dados) {
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
             
             const foiPago = dataPag <= hoje;
-            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
+            const labelDireita = foiPago ? "Último Pag." : "Sua Previsão";
             
-            // Lógica visual do valor ou "Sem direito"
-            let valorDisplay = "";
+            // Define o que mostrar na direita: Valor total a receber ou Aviso "Sem direito"
+            let valorDireitaDisplay = "";
+            
             if (proventoReceber > 0) {
-                // Tem direito e vai receber (ou recebeu)
-                const corValor = foiPago ? "text-gray-400" : "text-green-400";
-                const sinal = foiPago ? "" : "+";
-                valorDisplay = `<span class="text-sm font-bold ${corValor}">${sinal}${formatBRL(proventoReceber)}</span>`;
+                const corValor = foiPago ? "text-gray-300" : "text-green-400";
+                const sinal = foiPago ? "" : "+ ";
+                valorDireitaDisplay = `<span class="text-sm font-bold ${corValor}">${sinal}${formatBRL(proventoReceber)}</span>`;
             } else {
-                // Não tem direito (comprou depois da Data Com)
-                valorDisplay = `<span class="text-[10px] font-bold text-orange-400 bg-orange-900/20 px-2 py-1 rounded-full">Sem direito</span>`;
+                // Lógica visual para "Sem direito" (Laranja)
+                valorDireitaDisplay = `<span class="text-[10px] font-bold text-orange-400 bg-orange-900/20 px-2 py-1 rounded-md">Sem direito</span>`;
             }
-            
-            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
 
-            // Layout do Provento (Limpo, sem grades)
+            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
+            const dataPagTexto = formatDate(dadoProvento.paymentDate);
+
+            // Layout inspirado na imagem do SNAG11:
+            // Esquerda: "Anúncio (Valor/cota)" e datas embaixo.
+            // Direita: Título "Sua Previsão" e valor total embaixo.
             proventoHtml = `
             <div class="mt-4 pt-3 border-t border-neutral-800">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="text-xs text-gray-500 font-medium">Anúncio (${formatBRL(dadoProvento.value)}/cota)</span>
-                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
-                </div>
-                <div class="flex justify-between items-center mb-2">
-                    <div class="flex gap-3 text-[10px] text-gray-400">
-                        <span>Com: <b class="text-gray-300">${dataComTexto}</b></span>
-                        <span>Pag: <b class="text-gray-300">${formatDate(dadoProvento.paymentDate)}</b></span>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs text-gray-500 block mb-1">Anúncio (${formatBRL(dadoProvento.value)}/cota)</span>
+                        <div class="text-[10px] text-gray-400 font-mono">
+                            <span class="mr-2">Com: <b class="text-gray-300">${dataComTexto}</b></span>
+                            <span>Pag: <b class="text-gray-300">${dataPagTexto}</b></span>
+                        </div>
                     </div>
-                    ${valorDisplay}
+
+                    <div class="text-right">
+                        <span class="text-xs text-gray-500 block mb-1">${labelDireita}</span>
+                        ${valorDireitaDisplay}
+                    </div>
                 </div>
             </div>`;
         } else {
-            // Sem anúncio
             proventoHtml = `
             <div class="mt-3 pt-2 border-t border-neutral-800 text-center">
                 <p class="text-[10px] text-gray-600 italic">Aguardando anúncio...</p>
@@ -175,14 +187,13 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 4. Container Principal
+    // 4. Container Principal (Lista Contínua)
     const card = document.createElement('div');
-    // Adicionei 'portfolio-item' para garantir que o clique funcione
     card.className = 'portfolio-item group border-b border-neutral-800 last:border-0 relative transition-colors bg-black'; 
     card.setAttribute('data-symbol', ativo.symbol); 
 
     card.innerHTML = `
-        <div class="flex justify-between items-center cursor-pointer select-none py-3 px-2 hover:bg-neutral-900/30 transition-colors rounded-lg mx-1" data-symbol="${ativo.symbol}" data-action="toggle">
+        <div class="flex justify-between items-center cursor-pointer select-none py-3.5 px-2 hover:bg-neutral-900/30 transition-colors rounded-lg mx-1" data-symbol="${ativo.symbol}" data-action="toggle">
             
             <div class="flex items-center gap-4 flex-1 min-w-0">
                 ${avatarHtml}
@@ -211,18 +222,20 @@ function criarCardElemento(ativo, dados) {
         <div id="drawer-${ativo.symbol}" class="card-drawer">
             <div class="drawer-content px-4 pb-4 bg-neutral-900/20 mx-2 mb-2 rounded-xl border border-neutral-800/50">
                 
-                <div class="flex justify-between pt-4 px-1">
+                <div class="flex justify-between items-end pt-4 px-1">
                     <div class="text-left">
-                        <span class="text-[10px] text-gray-500 uppercase tracking-wider font-bold block mb-0.5">Posição</span>
-                        <span data-field="posicao-valor" class="text-sm font-bold text-white block">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Posição</span>
+                        <span data-field="posicao-valor" class="text-sm font-bold text-white">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
                     </div>
+                    
                     <div class="text-center">
-                        <span class="text-[10px] text-gray-500 uppercase tracking-wider font-bold block mb-0.5">Custo</span>
-                        <span data-field="custo-valor" class="text-sm font-bold text-white block">${formatBRL(custoTotal)}</span>
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Custo</span>
+                        <span data-field="custo-valor" class="text-sm font-bold text-white">${formatBRL(custoTotal)}</span>
                     </div>
+                    
                     <div class="text-right">
-                        <span class="text-[10px] text-gray-500 uppercase tracking-wider font-bold block mb-0.5">L/P Total</span>
-                        <span data-field="pl-valor" class="text-sm font-bold ${corPL} block">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</span>
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">L/P Total</span>
+                        <span data-field="pl-valor" class="text-sm font-bold ${corPL}">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</span>
                     </div>
                 </div>
 
@@ -242,7 +255,7 @@ function criarCardElemento(ativo, dados) {
     return card;
 }
 
-// --- ATUALIZAR ITEM (MANTENDO A LÓGICA) ---
+// --- ATUALIZAR ITEM (MANTÉM CONSISTÊNCIA VISUAL E LÓGICA) ---
 function atualizarCardElemento(card, ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -261,21 +274,28 @@ function atualizarCardElemento(card, ativo, dados) {
     variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
     variacaoEl.className = `${corVariacao} text-xs font-medium block mt-0.5`; 
 
-    // Atualiza Lucro/Prejuízo R$
+    // Atualiza L/P Total (R$)
     const plValorEl = card.querySelector('[data-field="pl-valor"]');
     plValorEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
-    plValorEl.className = `text-sm font-bold block ${corPL}`; 
+    plValorEl.className = `text-sm font-bold ${corPL}`; 
 
-    // Atualiza Tag L/P
+    // Atualiza Tag L/P (%)
     let plTagHtml = '';
     if (dadoPreco) {
-        plTagHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${bgPL} ${corPL} inline-block tracking-wide">
-            ${lucroPrejuizoPercent.toFixed(1)}%
+        const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
+        plTagHtml = `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${bgBadge} inline-block">
+            ${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}%
         </span>`;
     }
     card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
+    
+    // Atualiza bolinha do avatar
+    const dot = card.querySelector('.absolute.rounded-full');
+    if (dot) {
+        dot.className = `absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-black ${lucroPrejuizo >= 0 ? 'bg-green-500' : 'bg-red-500'}`;
+    }
 
-    // Atualiza Proventos (Recria o HTML com a lógica restaurada)
+    // Atualiza Proventos (Recria o HTML interno)
     if (isFII(ativo.symbol)) { 
         let proventoHtml = '';
         if (dadoProvento && dadoProvento.value > 0) {
@@ -284,31 +304,34 @@ function atualizarCardElemento(card, ativo, dados) {
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
             
             const foiPago = dataPag <= hoje;
-            const labelTexto = foiPago ? "Último Pag." : "Sua Previsão";
+            const labelDireita = foiPago ? "Último Pag." : "Sua Previsão";
             
-            let valorDisplay = "";
+            let valorDireitaDisplay = "";
             if (proventoReceber > 0) {
-                const corValor = foiPago ? "text-gray-400" : "text-green-400";
-                const sinal = foiPago ? "" : "+";
-                valorDisplay = `<span class="text-sm font-bold ${corValor}">${sinal}${formatBRL(proventoReceber)}</span>`;
+                const corValor = foiPago ? "text-gray-300" : "text-green-400";
+                const sinal = foiPago ? "" : "+ ";
+                valorDireitaDisplay = `<span class="text-sm font-bold ${corValor}">${sinal}${formatBRL(proventoReceber)}</span>`;
             } else {
-                valorDisplay = `<span class="text-[10px] font-bold text-orange-400 bg-orange-900/20 px-2 py-1 rounded-full">Sem direito</span>`;
+                valorDireitaDisplay = `<span class="text-[10px] font-bold text-orange-400 bg-orange-900/20 px-2 py-1 rounded-md">Sem direito</span>`;
             }
             
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
+            const dataPagTexto = formatDate(dadoProvento.paymentDate);
 
             proventoHtml = `
             <div class="mt-4 pt-3 border-t border-neutral-800">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="text-xs text-gray-500 font-medium">Anúncio (${formatBRL(dadoProvento.value)}/cota)</span>
-                    <span class="text-xs text-gray-500 font-medium">${labelTexto}</span>
-                </div>
-                <div class="flex justify-between items-center mb-2">
-                    <div class="flex gap-3 text-[10px] text-gray-400">
-                        <span>Com: <b class="text-gray-300">${dataComTexto}</b></span>
-                        <span>Pag: <b class="text-gray-300">${formatDate(dadoProvento.paymentDate)}</b></span>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs text-gray-500 block mb-1">Anúncio (${formatBRL(dadoProvento.value)}/cota)</span>
+                        <div class="text-[10px] text-gray-400 font-mono">
+                            <span class="mr-2">Com: <b class="text-gray-300">${dataComTexto}</b></span>
+                            <span>Pag: <b class="text-gray-300">${dataPagTexto}</b></span>
+                        </div>
                     </div>
-                    ${valorDisplay}
+                    <div class="text-right">
+                        <span class="text-xs text-gray-500 block mb-1">${labelDireita}</span>
+                        ${valorDireitaDisplay}
+                    </div>
                 </div>
             </div>`;
         } else {

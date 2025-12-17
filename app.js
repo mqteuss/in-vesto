@@ -1255,68 +1255,108 @@ function calcularCarteira() {
 
 // Substitua a função inteira em app.js
 
+// --- FUNÇÃO AUXILIAR PARA AGRUPAR POR MÊS ---
+function agruparPorMes(itens, dateField) {
+    const grupos = {};
+    itens.forEach(item => {
+        if (!item[dateField]) return;
+        
+        // Ajuste de fuso horário simples para garantir o mês correto
+        const dataObj = new Date(item[dateField]);
+        // Formata como "Dezembro 2025"
+        const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        // Capitaliza a primeira letra
+        const chave = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
+        
+        if (!grupos[chave]) grupos[chave] = [];
+        grupos[chave].push(item);
+    });
+    return grupos;
+}
+
+// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (ESTILO FINTECH) ---
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
+    
     if (transacoes.length === 0) {
         historicoStatus.classList.remove('hidden');
         return;
     }
     
     historicoStatus.classList.add('hidden');
+    
+    // Ordena por data (mais recente primeiro)
+    const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const grupos = agruparPorMes(transacoesOrdenadas, 'date');
     const fragment = document.createDocumentFragment();
 
-    [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
-        const card = document.createElement('div');
-        // MUDANÇA: py-2.5 px-3 (mais fino), rounded-2xl, mb-2
-        card.className = 'card-bg py-2.5 px-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2';
-        
-        const isVenda = t.type === 'sell';
-        const cor = isVenda ? 'text-red-500' : 'text-green-500';
-        const sinal = isVenda ? '-' : '+';
-        
-        let pathIcone = '';
-        if (isVenda) {
-            pathIcone = 'M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
-        } else {
-            pathIcone = 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z';
-        }
+    Object.keys(grupos).forEach(mes => {
+        // 1. Cabeçalho do Mês (Sticky)
+        const header = document.createElement('div');
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
+        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">${mes}</h3>`;
+        fragment.appendChild(header);
 
-        // MUDANÇA: Ícone reduzido para h-5 w-5
-        const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${pathIcone}" /></svg>`;
-        
-        card.innerHTML = `
-            <div class="flex items-center gap-3">
-                ${icone}
-                <div>
-                    <h3 class="text-sm font-bold text-white leading-tight">${t.symbol}</h3>
-                    <p class="text-[10px] text-gray-400 font-medium">${formatDate(t.date)}</p>
+        // 2. Lista de Itens do Mês
+        const listaGrupo = document.createElement('div');
+        listaGrupo.className = 'mb-6 space-y-4'; // Espaçamento entre itens
+
+        grupos[mes].forEach(t => {
+            const isVenda = t.type === 'sell';
+            const item = document.createElement('div');
+            
+            // Layout de Extrato: Ícone | Info | Valor
+            item.className = 'flex items-center justify-between group cursor-default';
+            
+            // Cores e Ícones
+            const corIconeBg = isVenda ? 'bg-red-900/20' : 'bg-neutral-800';
+            const corIcone = isVenda ? 'text-red-500' : 'text-white';
+            const sinal = isVenda ? '+' : ''; // Venda entra dinheiro no caixa (teoricamente), Compra sai. 
+            // Mas em apps de investimento: Compra = Aumento de Posição (Neutro/Bom), Venda = Redução.
+            // Vamos usar: Compra = Ícone Seta Cima (Branco), Venda = Ícone Seta Baixo (Vermelho)
+            
+            // Ícone Fintech (Redondo e minimalista)
+            const iconSvg = isVenda 
+                ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" /></svg>` // Seta/Traço Venda
+                : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`; // Plus Compra
+
+            const dia = new Date(t.date).getDate().toString().padStart(2, '0');
+            
+            item.innerHTML = `
+                <div class="flex items-center gap-4 flex-1 min-w-0">
+                    <div class="w-10 h-10 rounded-full ${corIconeBg} ${corIcone} flex items-center justify-center flex-shrink-0 border border-neutral-800">
+                        ${iconSvg}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-white truncate">${t.symbol}</span>
+                            <span class="text-[10px] bg-neutral-900 text-neutral-500 px-1.5 py-0.5 rounded border border-neutral-800">${isVenda ? 'VENDA' : 'COMPRA'}</span>
+                        </div>
+                        <p class="text-xs text-neutral-500 mt-0.5">Dia ${dia} • ${t.quantity} cotas a ${formatBRL(t.price)}</p>
+                    </div>
                 </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <div class="text-right">
-                    <p class="text-sm font-bold ${cor} leading-tight">${sinal}${t.quantity} Cotas</p>
-                    <p class="text-[10px] text-gray-400 font-medium">${formatBRL(t.price)}</p>
+                
+                <div class="text-right pl-3">
+                    <p class="text-sm font-bold text-white whitespace-nowrap">${formatBRL(t.quantity * t.price)}</p>
+                    <div class="flex justify-end gap-3 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button class="text-neutral-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                         </button>
+                         <button class="text-neutral-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                         </button>
+                    </div>
                 </div>
-                <div class="flex flex-col gap-1">
-                    <button class="p-0.5 text-gray-500 hover:text-purple-400 transition-colors" data-action="edit" data-id="${t.id}" title="Editar">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                          <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                    <button class="p-0.5 text-gray-500 hover:text-red-500 transition-colors" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}" title="Excluir">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        `;
-        fragment.appendChild(card);
+            `;
+            listaGrupo.appendChild(item);
+        });
+        fragment.appendChild(listaGrupo);
     });
+
     listaHistorico.appendChild(fragment);
 }
-	
+
+// --- RENDERIZAR HISTÓRICO DE PROVENTOS (ESTILO FINTECH) ---
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1328,40 +1368,63 @@ function renderizarHistoricoProventos() {
         return dPag <= hoje;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
+    if (proventosPagos.length === 0) {
+        listaHistoricoProventos.innerHTML = `<p class="text-center text-neutral-500 mt-10">Nenhum provento recebido ainda.</p>`;
+        return;
+    }
+
+    const grupos = agruparPorMes(proventosPagos, 'paymentDate');
     const fragment = document.createDocumentFragment();
-    let temItem = false;
 
-    proventosPagos.forEach(p => {
-        const dataRef = p.dataCom || p.paymentDate;
-        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+    Object.keys(grupos).forEach(mes => {
+        // 1. Cabeçalho do Mês
+        const header = document.createElement('div');
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
+        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">${mes}</h3>`;
+        fragment.appendChild(header);
 
-        if (qtd > 0) {
-            temItem = true;
-            const total = p.value * qtd;
-            const card = document.createElement('div');
-            // MUDANÇA: Mesmo estilo compacto da função anterior
-            card.className = 'card-bg py-2.5 px-3 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2';
+        // 2. Lista de Itens
+        const listaGrupo = document.createElement('div');
+        listaGrupo.className = 'mb-6 space-y-4';
+
+        grupos[mes].forEach(p => {
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
             
-            card.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <div class="p-1.5 bg-green-900/20 rounded-full text-green-500 border border-green-500/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            if (qtd > 0) {
+                const total = p.value * qtd;
+                const dia = new Date(p.paymentDate).getDate().toString().padStart(2, '0');
+
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between';
+                
+                item.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-green-900/20 text-green-500 flex items-center justify-center flex-shrink-0 border border-green-900/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <span class="text-sm font-bold text-white block">${p.symbol}</span>
+                            <p class="text-xs text-neutral-500">Dia ${dia} • Rendimento</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="text-sm font-bold text-white leading-tight">${p.symbol}</h3>
-                        <p class="text-[10px] text-gray-400 font-medium">Pag: ${formatDate(p.paymentDate)}</p>
+                    <div class="text-right">
+                        <p class="text-sm font-bold text-green-400">+ ${formatBRL(total)}</p>
                     </div>
-                </div>
-                <div class="text-right">
-                    <p class="text-sm font-bold accent-text leading-tight">+ ${formatBRL(total)}</p>
-                    <p class="text-[10px] text-gray-500 font-medium">${formatBRL(p.value)} x ${qtd}</p>
-                </div>
-            `;
-            fragment.appendChild(card);
+                `;
+                listaGrupo.appendChild(item);
+            }
+        });
+        
+        // Só adiciona o grupo se tiver itens dentro (devido ao filtro de qtd > 0)
+        if (listaGrupo.children.length > 0) {
+            fragment.appendChild(listaGrupo);
         }
     });
-    
-    if (temItem) listaHistoricoProventos.appendChild(fragment);
+
+    listaHistoricoProventos.appendChild(fragment);
 }
 
     // --- LISTENER DOS BOTÕES DE HISTÓRICO ---

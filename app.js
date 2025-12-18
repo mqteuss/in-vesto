@@ -121,71 +121,57 @@ function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, dadoProvento, proventoReceber, percentWallet
+        corPL, dadoProvento, proventoReceber, percentWallet // <--- Certifique-se que percentWallet vem do renderizarCarteira
     } = dados;
 
     const sigla = ativo.symbol.substring(0, 2);
     
-    // VISUAL CLEAN: Barra sempre roxa (ou cinza se preferir), sem verde/vermelho gritante
-    const barColor = '#8b5cf6'; // Roxo Vesto
-
-    // Badge de Lucro/Prejuízo (Pequeno e discreto)
+    // Tag de Lucro/Prejuízo (Pill)
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
     const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
     const plTagHtml = dadoPreco 
-        ? `<span class="profit-pill ${bgBadge}">${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%</span>` 
+        ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${bgBadge} border border-white/5 flex items-center gap-1">
+             ${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%
+           </span>` 
         : '';
 
-    // LÓGICA DE PROVENTOS (Pago / Agendado / Sem Direito)
-    let proventoStatusHtml = '';
-    let proventoDetalhesHtml = ''; // HTML para dentro do drawer
-    
-    if (isFII(ativo.symbol)) {
-        if (dadoProvento && dadoProvento.value > 0) {
-            const parts = dadoProvento.paymentDate.split('-');
-            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-            const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-            
-            const isPago = dataPag <= hoje;
-            const statusLabel = isPago ? 'Pago' : 'Agendado';
-            const statusClass = isPago ? 'badge-status-pago' : 'badge-status-agendado';
-            
-            // Texto do topo (Drawer)
-            proventoStatusHtml = `
-                <div class="flex items-center gap-2 mt-3 pt-3 border-t border-[#2C2C2E]">
-                    <div class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${statusClass}">
-                        ${statusLabel}
-                    </div>
-                    <span class="text-xs text-gray-300">
-                        ${isPago ? 'Recebido' : 'Previsto'}: <b>${formatBRL(proventoReceber)}</b>
-                    </span>
-                </div>
-                <div class="flex justify-between text-[10px] text-gray-500 mt-1 pl-1">
-                     <span>Data Com: ${formatDate(dadoProvento.dataCom)}</span>
-                     <span>Pagamento: ${formatDate(dadoProvento.paymentDate)}</span>
-                </div>
-            `;
-        } else {
-            // Caso: Sem Direito / Aguardando
-            proventoStatusHtml = `
-                <div class="flex items-center gap-2 mt-3 pt-3 border-t border-[#2C2C2E]">
-                    <div class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide badge-status-sem-direito">
-                        Sem Direito
-                    </div>
-                    <span class="text-[10px] text-gray-500 italic">Aguardando novo anúncio</span>
-                </div>
-            `;
-        }
+    // Lógica de Proventos (MANTIDA IGUAL AO SEU PRINT)
+    let proventoHtml = '';
+    if (isFII(ativo.symbol) && dadoProvento && dadoProvento.value > 0) {
+        const parts = dadoProvento.paymentDate.split('-');
+        const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+        const foiPago = dataPag <= hoje;
+        
+        // Badges "Old School"
+        let labelBadge = foiPago 
+            ? `<span class="px-2 py-0.5 rounded bg-green-900/20 text-green-500 text-[10px] font-bold border border-green-900/30 uppercase tracking-wide">PAGO</span>`
+            : `<span class="px-2 py-0.5 rounded bg-yellow-900/20 text-yellow-500 text-[10px] font-bold border border-yellow-900/30 uppercase tracking-wide">AGENDADO</span>`;
+        
+        let valorDisplay = proventoReceber > 0
+            ? `<span class="text-base font-bold ${foiPago ? 'text-green-500' : 'text-yellow-500'}">+ ${formatBRL(proventoReceber)}</span>`
+            : `<span class="text-xs font-bold text-gray-500">Sem posição na data com</span>`;
+
+        proventoHtml = `
+        <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] text-gray-500 font-bold uppercase">Provento</span>
+                <span class="text-xs text-gray-400">Com: ${formatDate(dadoProvento.dataCom)} • Pag: ${formatDate(dadoProvento.paymentDate)}</span>
+            </div>
+            <div class="flex justify-between items-center bg-[#111] p-2 rounded-lg border border-[#2C2C2E] mt-2">
+                ${labelBadge}
+                ${valorDisplay}
+            </div>
+        </div>`;
     }
 
+    // CRIAÇÃO DO CARD (ESTRUTURA MODERNA)
     const card = document.createElement('div');
-    card.className = 'wallet-card group cursor-pointer select-none'; // select-none ajuda no mobile
+    card.className = 'wallet-card group cursor-pointer select-none'; // Usa a classe nova do CSS
     card.setAttribute('data-symbol', ativo.symbol);
     
-    // IMPORTANTE: Adicionamos o onclick diretamente aqui para GARANTIR que funcione,
-    // independente dos listeners globais antigos.
+    // Click Listener direto
     card.onclick = function(e) {
-        // Ignora clique se for nos botões de ação (detalhes/remover)
         if (e.target.closest('button')) return;
         toggleDrawer(ativo.symbol);
     };
@@ -197,12 +183,13 @@ function criarCardElemento(ativo, dados) {
                     <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 text-white font-bold text-xs shadow-sm">
                         ${sigla}
                     </div>
+                    
                     <div>
-                        <div class="flex items-center">
-                            <span class="ticker-pill">${ativo.symbol}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-white text-sm tracking-tight">${ativo.symbol}</span>
                             ${plTagHtml}
                         </div>
-                        <div class="text-[11px] text-gray-500 mt-1.5 flex items-center">
+                        <div class="text-[11px] text-gray-500 mt-1 flex items-center">
                             <span data-field="cota-qtd">${ativo.quantity} cotas</span>
                             <span class="mx-1">•</span>
                             <span data-field="preco-unitario" class="font-medium text-gray-400">${precoFormatado}</span>
@@ -210,25 +197,25 @@ function criarCardElemento(ativo, dados) {
                     </div>
                 </div>
 
-                <div class="text-right pt-0.5">
+                <div class="text-right">
                     <p data-field="posicao-valor" class="text-base font-bold text-white tracking-tight money-value">
                         ${dadoPreco ? formatBRL(totalPosicao) : '...'}
                     </p>
-                    <p data-field="variacao-valor" class="text-xs font-medium ${corVariacao} mt-0.5 flex justify-end items-center gap-1">
+                    <p data-field="variacao-valor" class="text-xs font-medium ${corVariacao} mt-0.5">
                         ${dadoPreco ? variacaoFormatada : '0.00%'}
                     </p>
                 </div>
             </div>
             
             <div class="allocation-track">
-                <div class="allocation-bar" style="width: ${percentWallet}%; background-color: ${barColor};"></div>
+                <div class="allocation-bar" style="width: ${percentWallet || 0}%;"></div>
             </div>
         </div>
 
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-            <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f]">
+            <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f] border-t border-[#2C2C2E]">
                 
-                <div class="grid grid-cols-2 gap-4 mt-2">
+                <div class="grid grid-cols-2 gap-4 mt-3">
                     <div>
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Custo Total</span>
                         <p data-field="custo-valor" class="text-sm text-gray-300 font-medium">${formatBRL(custoTotal)}</p>
@@ -240,14 +227,14 @@ function criarCardElemento(ativo, dados) {
                 </div>
                 
                 <div data-field="provento-container">
-                    ${proventoStatusHtml}
+                    ${proventoHtml}
                 </div>
 
-                <div class="flex gap-2 mt-4 pt-2 border-t border-[#2C2C2E] border-opacity-50">
-                     <button class="flex-1 py-2.5 text-xs font-bold text-gray-300 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl hover:bg-[#252525] transition-colors" onclick="abrirDetalhesAtivo('${ativo.symbol}')">
+                <div class="flex gap-2 mt-4 pt-2">
+                     <button class="flex-1 py-2 text-xs font-bold text-gray-300 bg-[#1C1C1E] border border-[#2C2C2E] rounded-lg hover:bg-[#252525]" onclick="window.abrirDetalhesAtivo('${ativo.symbol}')">
                         Ver Detalhes
                     </button>
-                    <button class="py-2.5 px-3 text-red-400 bg-red-900/10 border border-red-900/20 rounded-xl hover:bg-red-900/20 transition-colors" onclick="confirmarExclusao('${ativo.symbol}')">
+                    <button class="py-2 px-3 text-red-400 bg-red-900/10 border border-red-900/20 rounded-lg hover:bg-red-900/20" onclick="window.confirmarExclusao('${ativo.symbol}')">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                 </div>

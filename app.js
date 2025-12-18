@@ -100,6 +100,22 @@ const CACHE_PROVENTOS = 1000 * 60 * 60 * 12;
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
+function toggleDrawer(symbol) {
+    const drawer = document.getElementById(`drawer-${symbol}`);
+    
+    // Fecha outros drawers abertos (efeito sanfona)
+    document.querySelectorAll('.card-drawer.open').forEach(d => {
+        if (d.id !== `drawer-${symbol}`) {
+            d.classList.remove('open');
+        }
+    });
+
+    // Alterna o atual
+    if (drawer) {
+        drawer.classList.toggle('open');
+    }
+}
+
 // --- CRIAR ITEM DA CARTEIRA (TICKETS NO PROVENTO) ---
 function criarCardElemento(ativo, dados) {
     const {
@@ -108,77 +124,74 @@ function criarCardElemento(ativo, dados) {
         corPL, dadoProvento, proventoReceber, percentWallet
     } = dados;
 
-    // Avatar com 2 letras
     const sigla = ativo.symbol.substring(0, 2);
     
-    // Cor da barra de alocação (Verde se lucro, Vermelho se prejuízo)
-    const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
-    
-    // Badge de Lucro/Prejuízo (Pílula com seta)
+    // VISUAL CLEAN: Barra sempre roxa (ou cinza se preferir), sem verde/vermelho gritante
+    const barColor = '#8b5cf6'; // Roxo Vesto
+
+    // Badge de Lucro/Prejuízo (Pequeno e discreto)
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
     const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
-    
     const plTagHtml = dadoPreco 
         ? `<span class="profit-pill ${bgBadge}">${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%</span>` 
         : '';
 
-    // Indicador visual de provento (Ponto Amarelo pulsante no topo)
-    const proventoDot = (proventoReceber > 0) 
-        ? `<div class="absolute top-3 right-3 w-2 h-2 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_8px_rgba(234,179,8,0.6)] z-10"></div>` 
-        : '';
-
-    // HTML do Provento dentro do Drawer
-    let proventoHtml = '';
-    if (isFII(ativo.symbol)) { 
+    // LÓGICA DE PROVENTOS (Pago / Agendado / Sem Direito)
+    let proventoStatusHtml = '';
+    let proventoDetalhesHtml = ''; // HTML para dentro do drawer
+    
+    if (isFII(ativo.symbol)) {
         if (dadoProvento && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-            const foiPago = dataPag <= hoje;
             
-            let labelBadge = foiPago 
-                ? `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide">PAGO</span>`
-                : `<span class="px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">AGENDADO</span>`;
+            const isPago = dataPag <= hoje;
+            const statusLabel = isPago ? 'Pago' : 'Agendado';
+            const statusClass = isPago ? 'badge-status-pago' : 'badge-status-agendado';
             
-            let valorDisplay = proventoReceber > 0
-                ? `<span class="text-base font-bold ${foiPago ? 'text-green-500' : 'text-yellow-500'}">+ ${formatBRL(proventoReceber)}</span>`
-                : `<span class="text-xs font-bold text-orange-400">Sem direito</span>`;
-
-            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
-            const dataPagTexto = formatDate(dadoProvento.paymentDate);
-
-            proventoHtml = `
-            <div class="mt-3 pt-3 border-t border-[#2C2C2E]">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="text-[10px] text-gray-500 uppercase font-bold">Provento</span>
-                    <span class="text-xs font-medium text-gray-300">${formatBRL(dadoProvento.value)}/cota</span>
+            // Texto do topo (Drawer)
+            proventoStatusHtml = `
+                <div class="flex items-center gap-2 mt-3 pt-3 border-t border-[#2C2C2E]">
+                    <div class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${statusClass}">
+                        ${statusLabel}
+                    </div>
+                    <span class="text-xs text-gray-300">
+                        ${isPago ? 'Recebido' : 'Previsto'}: <b>${formatBRL(proventoReceber)}</b>
+                    </span>
                 </div>
-                <div class="flex justify-between items-center text-[10px] text-gray-500 mb-2">
-                    <span>Com: ${dataComTexto}</span>
-                    <span>Pag: ${dataPagTexto}</span>
+                <div class="flex justify-between text-[10px] text-gray-500 mt-1 pl-1">
+                     <span>Data Com: ${formatDate(dadoProvento.dataCom)}</span>
+                     <span>Pagamento: ${formatDate(dadoProvento.paymentDate)}</span>
                 </div>
-                <div class="flex justify-between items-center bg-[#151515] p-2 rounded-lg border border-[#2C2C2E]">
-                    ${labelBadge}
-                    ${valorDisplay}
-                </div>
-            </div>`;
+            `;
         } else {
-            proventoHtml = `
-            <div class="mt-3 pt-2 border-t border-[#2C2C2E] text-center">
-                <p class="text-[10px] text-gray-600 italic">Aguardando anúncio...</p>
-            </div>`;
+            // Caso: Sem Direito / Aguardando
+            proventoStatusHtml = `
+                <div class="flex items-center gap-2 mt-3 pt-3 border-t border-[#2C2C2E]">
+                    <div class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide badge-status-sem-direito">
+                        Sem Direito
+                    </div>
+                    <span class="text-[10px] text-gray-500 italic">Aguardando novo anúncio</span>
+                </div>
+            `;
         }
     }
 
     const card = document.createElement('div');
-    card.className = 'wallet-card group cursor-pointer'; 
-    card.setAttribute('data-symbol', ativo.symbol); 
+    card.className = 'wallet-card group cursor-pointer select-none'; // select-none ajuda no mobile
+    card.setAttribute('data-symbol', ativo.symbol);
+    
+    // IMPORTANTE: Adicionamos o onclick diretamente aqui para GARANTIR que funcione,
+    // independente dos listeners globais antigos.
+    card.onclick = function(e) {
+        // Ignora clique se for nos botões de ação (detalhes/remover)
+        if (e.target.closest('button')) return;
+        toggleDrawer(ativo.symbol);
+    };
 
-    // Estrutura HTML do Card
     card.innerHTML = `
-        <div class="p-3 relative pb-4" data-action="toggle">
-            ${proventoDot}
-            
+        <div class="p-3 relative pb-4">
             <div class="flex justify-between items-start mb-1">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 text-white font-bold text-xs shadow-sm">
@@ -213,7 +226,7 @@ function criarCardElemento(ativo, dados) {
         </div>
 
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-            <div class="drawer-content px-4 pb-4 pt-2 border-t border-[#2C2C2E] bg-[#0f0f0f]">
+            <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f]">
                 
                 <div class="grid grid-cols-2 gap-4 mt-2">
                     <div>
@@ -227,14 +240,14 @@ function criarCardElemento(ativo, dados) {
                 </div>
                 
                 <div data-field="provento-container">
-                    ${proventoHtml}
+                    ${proventoStatusHtml}
                 </div>
 
-                <div class="flex gap-2 mt-4 pt-2">
-                     <button class="flex-1 py-2.5 text-xs font-bold text-gray-300 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl hover:bg-[#252525] hover:text-white transition-colors" data-symbol="${ativo.symbol}" data-action="details">
-                        Ver Detalhes do Ativo
+                <div class="flex gap-2 mt-4 pt-2 border-t border-[#2C2C2E] border-opacity-50">
+                     <button class="flex-1 py-2.5 text-xs font-bold text-gray-300 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl hover:bg-[#252525] transition-colors" onclick="abrirDetalhesAtivo('${ativo.symbol}')">
+                        Ver Detalhes
                     </button>
-                    <button class="py-2.5 px-3 text-red-400 bg-red-900/10 border border-red-900/20 rounded-xl hover:bg-red-900/20 transition-colors" data-symbol="${ativo.symbol}" data-action="remove" title="Remover Ativo">
+                    <button class="py-2.5 px-3 text-red-400 bg-red-900/10 border border-red-900/20 rounded-xl hover:bg-red-900/20 transition-colors" onclick="confirmarExclusao('${ativo.symbol}')">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                 </div>
@@ -3789,29 +3802,6 @@ function mudarAba(tabId) {
         handleSalvarTransacao();
     });
     
-// --- LISTENER DA CARTEIRA (CORRIGIDO PARA O NOVO LAYOUT) ---
-    listaCarteira.addEventListener('click', (e) => {
-        const target = e.target.closest('[data-action]');
-        if (!target) return;
-        
-        const action = target.dataset.action;
-        const symbol = target.dataset.symbol;
-
-        if (action === 'remove') {
-            handleRemoverAtivo(symbol);
-        } else if (action === 'details') {
-            showDetalhesModal(symbol);
-        } else if (action === 'toggle') {
-            const drawer = document.getElementById(`drawer-${symbol}`);
-            // CORREÇÃO: Procura pelo container correto 'portfolio-item'
-            const cardPai = target.closest('.portfolio-item'); 
-            const icon = cardPai ? cardPai.querySelector('.card-arrow-icon') : null;
-            
-            if (drawer) drawer.classList.toggle('open');
-            if (icon) icon.classList.toggle('open');
-        }
-    });
-    
 listaHistorico.addEventListener('click', (e) => {
         // 1. Verifica se clicou no botão de EXCLUIR
         const deleteBtn = e.target.closest('[data-action="delete"]');
@@ -4918,7 +4908,8 @@ if (toggleNotifBtn) {
             }
         });
     }
-	
+	window.confirmarExclusao = handleRemoverAtivo;
+    window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
 
     await init();

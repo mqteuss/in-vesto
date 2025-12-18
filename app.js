@@ -100,13 +100,6 @@ const CACHE_PROVENTOS = 1000 * 60 * 60 * 12;
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
-const separadorSorrisoHtml = `
-<div class="w-full px-3 -mt-[1px] group-last:hidden relative z-0 pointer-events-none opacity-50">
-    <svg width="100%" height="8" viewBox="0 0 100 8" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="display:block;">
-        <path d="M0 0 Q 50 8 100 0" stroke="#333333" stroke-width="1" vector-effect="non-scaling-stroke" />
-    </svg>
-</div>
-`;
 // --- CRIAR ITEM DA CARTEIRA (TICKETS NO PROVENTO) ---
 function criarCardElemento(ativo, dados) {
     const {
@@ -115,6 +108,7 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
+    // 1. Avatar
     const sigla = ativo.symbol.substring(0, 2);
     const corDot = lucroPrejuizo >= 0 ? 'bg-green-500' : 'bg-red-500';
     
@@ -125,6 +119,7 @@ function criarCardElemento(ativo, dados) {
         </div>
     `;
 
+    // 2. Tag L/P
     let plTagHtml = '';
     if (dadoPreco) {
         const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
@@ -133,29 +128,36 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
 
+    // 3. Proventos (COM TICKETS)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+            
             const foiPago = dataPag <= hoje;
-            let labelUser = "STATUS";
+            
+            // Lógica de Tickets (Badges)
+            let labelBadge = "";
             let valorUserDisplay = "";
 
             if (proventoReceber > 0) {
                 if (foiPago) {
-                    labelUser = "PAGO";
+                    // TICKET VERDE (PAGO)
+                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide">PAGO</span>`;
                     valorUserDisplay = `<span class="text-base font-bold text-green-500">+ ${formatBRL(proventoReceber)}</span>`;
                 } else {
-                    labelUser = "AGENDADO";
+                    // TICKET AMARELO (AGENDADO)
+                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">AGENDADO</span>`;
                     valorUserDisplay = `<span class="text-base font-bold text-yellow-500">+ ${formatBRL(proventoReceber)}</span>`;
                 }
             } else {
-                labelUser = "STATUS";
-                valorUserDisplay = `<span class="text-[10px] font-bold text-orange-400 bg-orange-900/20 px-2 py-1 rounded-md">Sem direito</span>`;
+                // TICKET CINZA/LARANJA (STATUS)
+                labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-neutral-800 border border-neutral-700 text-[9px] font-bold text-neutral-400 uppercase tracking-wide">STATUS</span>`;
+                valorUserDisplay = `<span class="text-xs font-bold text-orange-400">Sem direito</span>`;
             }
-            
+
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
             const dataPagTexto = formatDate(dadoProvento.paymentDate);
 
@@ -169,9 +171,11 @@ function criarCardElemento(ativo, dados) {
                     <span>Com: <span class="text-gray-400">${dataComTexto}</span></span>
                     <span>Pag: <span class="text-gray-400">${dataPagTexto}</span></span>
                 </div>
+
                 <div class="border-t border-neutral-800 my-2"></div>
-                <div class="flex justify-between items-center mt-2">
-                    <span class="text-xs text-gray-500 font-bold uppercase tracking-wider">${labelUser}</span>
+
+                <div class="flex justify-between items-center mt-3">
+                    ${labelBadge}
                     ${valorUserDisplay}
                 </div>
             </div>`;
@@ -183,8 +187,9 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
+    // 4. Container
     const card = document.createElement('div');
-    card.className = 'portfolio-item group relative transition-colors bg-black'; 
+    card.className = 'portfolio-item group border-b border-neutral-800 last:border-0 relative transition-colors bg-black'; 
     card.setAttribute('data-symbol', ativo.symbol); 
 
     card.innerHTML = `
@@ -214,6 +219,7 @@ function criarCardElemento(ativo, dados) {
 
         <div id="drawer-${ativo.symbol}" class="card-drawer">
             <div class="drawer-content px-4 pb-4 pt-2">
+                
                 <div class="grid grid-cols-3 gap-4 mb-2 text-center">
                     <div class="flex flex-col">
                         <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Posição</span>
@@ -228,15 +234,19 @@ function criarCardElemento(ativo, dados) {
                         <span data-field="pl-valor" class="text-sm font-bold ${corPL} truncate">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</span>
                     </div>
                 </div>
+
                 <div data-field="provento-container">${proventoHtml}</div> 
+                
                 <div class="flex justify-end gap-3 pt-4 mt-2">
-                    <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-gray-400 bg-neutral-900 hover:text-white hover:bg-neutral-800 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">Detalhes</button>
-                    <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-red-400 bg-red-900/10 hover:bg-red-900/30 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="remove">Remover</button>
+                    <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-gray-400 bg-neutral-900 hover:text-white hover:bg-neutral-800 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">
+                        Detalhes
+                    </button>
+                    <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-red-400 bg-red-900/10 hover:bg-red-900/30 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
+                        Remover
+                    </button>
                 </div>
             </div>
         </div>
-
-        ${separadorSorrisoHtml}
     `;
     return card;
 }

@@ -1267,6 +1267,7 @@ function agruparPorMes(itens, dateField) {
 
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (COMPACTO E IGUAL PROVENTOS) ---
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (ALINHAMENTO SINCRONIZADO) ---
+// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL REFINADO) ---
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
     
@@ -1282,55 +1283,71 @@ function renderizarHistorico() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header
+        // Header do Mês (Mais discreto e elegante)
         const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
-        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-4 px-2 border-b border-[#2C2C2E] mb-2 mt-2';
+        header.innerHTML = `<h3 class="text-[10px] font-bold text-[#666666] uppercase tracking-[0.2em]">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // Lista
+        // Lista de Itens
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-4 space-y-0.5'; 
+        listaGrupo.className = 'mb-6 space-y-3 px-2'; 
 
         grupos[mes].forEach(t => {
             const isVenda = t.type === 'sell';
             const item = document.createElement('div');
             
-            // Container principal: Altura e Padding sincronizados
-            item.className = 'flex items-center justify-between group cursor-pointer py-3 px-2 hover:bg-neutral-900/40 rounded-lg transition-colors relative';
+            // Container
+            item.className = 'flex items-center justify-between group py-1 relative';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
             
-            const svgCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>`;
-            const svgVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 8V3h4z" /></svg>`;
+            // Ícones (Setas em vez de sacola)
+            // Compra: Seta para baixo/entrada (Roxo)
+            const svgCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+            // Venda: Seta para cima/saída (Cinza/Vermelho)
+            const svgVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+            
             const iconSvg = isVenda ? svgVenda : svgCompra;
             
-            const corIconeBg = isVenda ? 'bg-red-500/10' : 'bg-purple-500/10';
+            // Cores do Ícone
+            const corIconeBg = isVenda ? 'bg-[#1C1C1E] border-red-900/30' : 'bg-[#1C1C1E] border-purple-900/30';
             const corIcone = isVenda ? 'text-red-500' : 'text-purple-400';
+            
+            // Badges
+            const badgeCompra = `<span class="px-1.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-[9px] font-bold text-purple-400 uppercase tracking-wide ml-2">Compra</span>`;
+            const badgeVenda = `<span class="px-1.5 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-[9px] font-bold text-red-400 uppercase tracking-wide ml-2">Venda</span>`;
+
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             
             item.innerHTML = `
-                <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-10 h-10 rounded-2xl ${corIconeBg} ${corIcone} flex items-center justify-center flex-shrink-0 border border-neutral-800">
+                <div class="flex items-center gap-4 flex-1 min-w-0">
+                    <div class="w-10 h-10 rounded-xl ${corIconeBg} border flex items-center justify-center flex-shrink-0 shadow-sm ${corIcone}">
                         ${iconSvg}
                     </div>
+                    
                     <div class="flex-1 min-w-0 flex flex-col justify-center">
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm font-semibold text-gray-200 truncate">${t.symbol}</span>
-                            <span class="text-[10px] font-bold uppercase tracking-wider ${isVenda ? 'text-red-500' : 'text-purple-400'} opacity-80">
-                                ${isVenda ? 'VENDA' : 'COMPRA'}
-                            </span>
+                        <div class="flex items-center">
+                            <span class="text-sm font-bold text-white tracking-tight">${t.symbol}</span>
+                            ${isVenda ? badgeVenda : badgeCompra}
                         </div>
-                        <p class="text-xs text-neutral-500 mt-0.5 font-medium">Dia ${dia} • ${t.quantity} cotas</p>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="text-xs text-[#666666] font-medium">Dia ${dia}</span>
+                            <span class="text-[10px] text-[#444444]">•</span>
+                            <span class="text-xs text-[#666666] font-medium">${t.quantity} cotas</span>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="text-right pl-3 flex flex-col justify-center items-end h-full">
-                    <p class="text-sm font-semibold text-white whitespace-nowrap tracking-tight">${formatBRL(t.quantity * t.price)}</p>
-                    <div class="flex items-center gap-2 mt-0.5">
-                         <span class="text-xs text-neutral-500 font-medium">${formatBRL(t.price)}</span>
-                         <button class="p-1.5 -mr-2 text-neutral-600 hover:text-red-500 transition-colors z-20" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                <div class="text-right pl-3 flex flex-col justify-center items-end">
+                    <p class="text-sm font-bold text-white tracking-tight">${formatBRL(t.quantity * t.price)}</p>
+                    <div class="flex items-center gap-3 mt-0.5">
+                         <span class="text-xs text-[#666666]">PM ${formatBRL(t.price)}</span>
+                         
+                         <button class="text-[#444444] hover:text-red-500 transition-colors p-1 -mr-2" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
                          </button>
                     </div>
                 </div>
@@ -1343,6 +1360,7 @@ function renderizarHistorico() {
 }
 
 // --- RENDERIZAR HISTÓRICO DE PROVENTOS (VALOR BRANCO E ESPAÇO IGUAL) ---
+// --- RENDERIZAR HISTÓRICO DE PROVENTOS (VISUAL REFINADO) ---
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1355,7 +1373,13 @@ function renderizarHistoricoProventos() {
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     if (proventosPagos.length === 0) {
-        listaHistoricoProventos.innerHTML = `<p class="text-center text-neutral-500 mt-10 text-sm">Nenhum provento recebido ainda.</p>`;
+        listaHistoricoProventos.innerHTML = `
+            <div class="flex flex-col items-center justify-center mt-12 opacity-50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-sm text-gray-500">Nenhum provento recebido ainda.</p>
+            </div>`;
         return;
     }
 
@@ -1363,15 +1387,14 @@ function renderizarHistoricoProventos() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header
+        // Header do Mês
         const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
-        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>`;
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-4 px-2 border-b border-[#2C2C2E] mb-2 mt-2';
+        header.innerHTML = `<h3 class="text-[10px] font-bold text-[#666666] uppercase tracking-[0.2em]">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // Lista
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-4 space-y-0.5';
+        listaGrupo.className = 'mb-6 space-y-3 px-2';
 
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
@@ -1382,30 +1405,34 @@ function renderizarHistoricoProventos() {
                 const dia = new Date(p.paymentDate).getDate().toString().padStart(2, '0');
                 const item = document.createElement('div');
                 
-                // Container sincronizado com Transações (py-3)
-                item.className = 'flex items-center justify-between group cursor-default py-3 px-2 hover:bg-neutral-900/40 rounded-lg transition-colors';
+                item.className = 'flex items-center justify-between group py-1';
                 
-                const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+                // Ícone de Dinheiro/Recebimento (Verde Neon Suave)
+                const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+
+                // Badge de Provento
+                const badgeProvento = `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide ml-2">Recebido</span>`;
 
                 item.innerHTML = `
-                    <div class="flex items-center gap-3 flex-1 min-w-0">
-                        <div class="w-10 h-10 rounded-2xl bg-green-500/10 text-green-500 flex items-center justify-center flex-shrink-0 border border-neutral-800">
+                    <div class="flex items-center gap-4 flex-1 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] border border-green-900/30 text-green-500 flex items-center justify-center flex-shrink-0 shadow-sm">
                             ${iconSvg}
                         </div>
                         <div class="flex-1 min-w-0 flex flex-col justify-center">
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm font-semibold text-gray-200 truncate">${p.symbol}</span>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-green-500 opacity-80">
-                                    PROVENTO
-                                </span>
+                            <div class="flex items-center">
+                                <span class="text-sm font-bold text-white tracking-tight">${p.symbol}</span>
+                                ${badgeProvento}
                             </div>
-                            <p class="text-xs text-neutral-500 mt-0.5 font-medium">Dia ${dia} • ${formatBRL(p.value)}/cota</p>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <span class="text-xs text-[#666666] font-medium">Dia ${dia}</span>
+                                <span class="text-[10px] text-[#444444]">•</span>
+                                <span class="text-xs text-[#666666] font-medium">${formatBRL(p.value)}/cota</span>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="text-right pl-3 flex flex-col justify-center items-end h-full">
-                        <p class="text-sm font-semibold text-white whitespace-nowrap tracking-tight">+ ${formatBRL(total)}</p>
-                        <p class="text-xs text-neutral-500 mt-0.5 font-medium">Pago</p>
+                    <div class="text-right pl-3">
+                        <p class="text-sm font-bold text-green-400 tracking-tight">+ ${formatBRL(total)}</p>
                     </div>
                 `;
                 listaGrupo.appendChild(item);

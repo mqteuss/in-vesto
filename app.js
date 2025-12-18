@@ -100,6 +100,13 @@ const CACHE_PROVENTOS = 1000 * 60 * 60 * 12;
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
+const separadorSorrisoHtml = `
+<div class="w-full px-3 -mt-[1px] group-last:hidden relative z-0 pointer-events-none opacity-50">
+    <svg width="100%" height="8" viewBox="0 0 100 8" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="display:block;">
+        <path d="M0 0 Q 50 8 100 0" stroke="#333333" stroke-width="1" vector-effect="non-scaling-stroke" />
+    </svg>
+</div>
+`;
 // --- CRIAR ITEM DA CARTEIRA (TICKETS NO PROVENTO) ---
 function criarCardElemento(ativo, dados) {
     const {
@@ -363,13 +370,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastNewsSignature = ''; 
     let lastProventosCalcSignature = ''; 
     let cachedSaldoCaixa = 0;
-	const separadorSorrisoHtml = `
-    <div class="w-full px-3 -mt-[1px] group-last:hidden relative z-0 pointer-events-none opacity-50">
-        <svg width="100%" height="8" viewBox="0 0 100 8" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="display:block;">
-            <path d="M0 0 Q 50 8 100 0" stroke="#333333" stroke-width="1" vector-effect="non-scaling-stroke" />
-        </svg>
-    </div>
-    `;
     // -------------------------------------------
     
     const vestoDB = {

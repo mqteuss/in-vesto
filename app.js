@@ -2604,41 +2604,78 @@ function dismissNotification(id, element) {
 }
 
 // --- FUNÇÃO PRINCIPAL CORRIGIDA ---
+// --- FUNÇÃO DE NOTIFICAÇÕES (VISUAL REMODELADO + LÓGICA MANTIDA) ---
 function verificarNotificacoesFinanceiras() {
     const list = document.getElementById('notifications-list');
     const badge = document.getElementById('notification-badge');
     const emptyState = document.getElementById('notifications-empty');
     const btnNotif = document.getElementById('btn-notifications');
 
-    // 1. LIMPEZA E ESTILO (Adiciona Scrollbar)
+    // 1. Limpeza
     list.innerHTML = '';
-    list.className = 'space-y-2 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar'; 
-    
     let temNotificacao = false;
 
-    // Datas para comparação
+    // 2. Datas para comparação (Mesma lógica do seu código)
     const hoje = new Date();
     const offset = hoje.getTimezoneOffset() * 60000;
     const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
     const hojeDateObj = new Date(hojeLocal + 'T00:00:00'); 
 
-    // Helper para criar o botão "X"
-    const createCloseBtn = (id, container) => {
-        const btn = document.createElement('button');
-        btn.className = 'absolute top-2 right-2 p-1 text-gray-600 hover:text-gray-300 transition-colors z-10';
-        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            dismissNotification(id, container);
-        };
-        return btn;
+    // --- HELPER DE RENDERIZAÇÃO (NOVO DESIGN) ---
+    const renderNotificationItem = (id, type, title, message, highlightColor) => {
+        const div = document.createElement('div');
+        
+        // Configuração de Estilos por Tipo
+        let iconSvg = '';
+        let gradientClass = '';
+        let bgIconClass = '';
+        
+        if (type === 'payment') { // Verde (Pagamento)
+            gradientClass = 'from-green-500 to-emerald-700';
+            bgIconClass = 'text-green-500 bg-green-500/10 border-green-500/20';
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+        } else if (type === 'datacom') { // Amarelo (Data Com)
+            gradientClass = 'from-amber-400 to-orange-600';
+            bgIconClass = 'text-amber-500 bg-amber-500/10 border-amber-500/20';
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+        } else { // Azul (Novo Anúncio)
+            gradientClass = 'from-blue-400 to-indigo-600';
+            bgIconClass = 'text-blue-500 bg-blue-500/10 border-blue-500/20';
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+        }
+
+        // Estrutura HTML Nova (Card Neon)
+        div.className = 'relative group overflow-hidden rounded-2xl bg-[#151515] border border-[#2C2C2E] p-3 transition-all hover:bg-[#1A1A1A] hover:border-neutral-700';
+        div.innerHTML = `
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradientClass}"></div>
+            
+            <div class="flex items-start gap-3 pl-2">
+                <div class="w-8 h-8 rounded-lg ${bgIconClass} border flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        ${iconSvg}
+                    </svg>
+                </div>
+                
+                <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">${title}</p>
+                    <div class="text-sm text-gray-300 leading-snug">
+                        ${message}
+                    </div>
+                </div>
+
+                <button class="text-gray-700 hover:text-white transition-colors p-1 -mt-1 -mr-1" onclick="window.dismissNotificationGlobal('${id}', this)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        `;
+        return div;
     };
 
-    // Helper para normalizar dados (Resolve problema do F5 vs Reload)
+    // Helper de Props (Mantido)
     const getProps = (p) => ({
         paymentDate: p.paymentDate || p.paymentdate,
         dataCom: p.dataCom || p.datacom,
-        createdAt: p.created_at || new Date().toISOString() // Assume hoje se não tiver data (Reload)
+        createdAt: p.created_at || new Date().toISOString()
     });
 
     // --- 1. PAGAMENTOS (Verde) ---
@@ -2657,20 +2694,11 @@ function verificarNotificacoesFinanceiras() {
         if (qtd > 0) {
             temNotificacao = true;
             const totalRecebido = p.value * qtd;
-
-            const div = document.createElement('div');
-            div.className = 'relative flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-green-900/30 shadow-sm group';
-            div.innerHTML = `
-                <div class="p-2 bg-green-900/20 rounded-full text-green-500 flex-shrink-0 border border-green-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <div class="pr-6">
-                    <p class="text-sm font-bold text-gray-200">Proventos Recebidos</p>
-                    <p class="text-xs text-gray-400">Crédito confirmado: <span class="text-green-400 font-bold">${formatBRL(totalRecebido)}</span> de ${p.symbol}.</p>
-                </div>
-            `;
-            div.appendChild(createCloseBtn(notifId, div));
-            list.appendChild(div);
+            // Mensagem com HTML injetado
+            const msg = `<span class="text-white font-bold">${p.symbol}</span> pagou <span class="text-green-400 font-bold">${formatBRL(totalRecebido)}</span>.`;
+            
+            const card = renderNotificationItem(notifId, 'payment', 'Pagamento Recebido', msg);
+            list.appendChild(card);
         }
     });
 
@@ -2685,35 +2713,21 @@ function verificarNotificacoesFinanceiras() {
         if (isNotificationDismissed(notifId)) return;
 
         temNotificacao = true;
+        const msg = `Garanta <span class="text-amber-400 font-bold">${formatBRL(p.value)}</span>/cota de <span class="text-white font-bold">${p.symbol}</span> até hoje.`;
         
-        const div = document.createElement('div');
-        div.className = 'relative flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-yellow-900/30 shadow-sm group';
-        div.innerHTML = `
-            <div class="p-2 bg-yellow-900/20 rounded-full text-yellow-500 flex-shrink-0 border border-yellow-500/20">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-            </div>
-            <div class="pr-6">
-                <p class="text-sm font-bold text-gray-200">Agenda de Dividendos</p>
-                <p class="text-xs text-gray-400">Data Com: Limite hoje para garantir <span class="text-yellow-400 font-bold">${formatBRL(p.value)}</span> de ${p.symbol}.</p>
-            </div>
-        `;
-        div.appendChild(createCloseBtn(notifId, div));
-        list.appendChild(div);
+        const card = renderNotificationItem(notifId, 'datacom', 'Data Com (Limite)', msg);
+        list.appendChild(card);
     });
 
-    // --- 3. NOVOS ANÚNCIOS (Azul) - CORREÇÃO CRÍTICA ---
+    // --- 3. NOVOS ANÚNCIOS (Azul) - LÓGICA CRÍTICA MANTIDA ---
     const novosAnuncios = proventosConhecidos.filter(p => {
         const props = getProps(p);
         
-        // 1. Data de Criação é Hoje?
+        // Mesma lógica de validação que você enviou:
         const dataCriacao = props.createdAt.split('T')[0];
         const isCreatedToday = dataCriacao === hojeLocal;
-
-        // 2. Evita duplicidade (se já é dia de pagamento/com, não mostra aviso de anúncio)
         const isNotDuplicate = props.paymentDate !== hojeLocal && props.dataCom !== hojeLocal;
-
-        // 3. É FUTURO? (Corrige o problema de ver coisas de 2023)
-        // Se a data de pagamento for inválida ou antiga, esconde.
+        
         if (!props.paymentDate) return false;
         const dataPagamentoObj = new Date(props.paymentDate + 'T00:00:00');
         const isFuturo = dataPagamentoObj >= hojeDateObj;
@@ -2726,23 +2740,13 @@ function verificarNotificacoesFinanceiras() {
         if (isNotificationDismissed(notifId)) return;
 
         temNotificacao = true;
+        const msg = `<span class="text-white font-bold">${p.symbol}</span> anunciou <span class="text-blue-400 font-bold">${formatBRL(p.value)}</span> p/ ${formatDate(getProps(p).paymentDate)}.`;
 
-        const div = document.createElement('div');
-        div.className = 'relative flex items-center gap-3 p-3 bg-[#1C1C1E] rounded-2xl border border-blue-900/30 shadow-sm group';
-        div.innerHTML = `
-            <div class="p-2 bg-blue-900/20 rounded-full text-blue-500 flex-shrink-0 border border-blue-500/20">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-            </div>
-            <div class="pr-6">
-                <p class="text-sm font-bold text-gray-200">Novo Comunicado</p>
-                <p class="text-xs text-gray-400">${p.symbol} informou distribuição de <span class="text-blue-400 font-bold">${formatBRL(p.value)}</span>.</p>
-            </div>
-        `;
-        div.appendChild(createCloseBtn(notifId, div));
-        list.appendChild(div);
+        const card = renderNotificationItem(notifId, 'news', 'Novo Anúncio', msg);
+        list.appendChild(card);
     });
 
-    // Atualiza estado vazio
+    // Atualiza badges
     if (temNotificacao) {
         badge.classList.remove('hidden');
         btnNotif.classList.add('bell-ringing');
@@ -4730,7 +4734,10 @@ let swipeStartX = 0;
         }
     }, { passive: true });
 	
-if (btnNotifications) {
+// --- LÓGICA DE EVENTOS DAS NOTIFICAÇÕES (SUBSTITUIR ESTE BLOCO) ---
+
+    // 1. Abrir/Fechar ao clicar no Sininho
+    if (btnNotifications) {
         btnNotifications.addEventListener('click', () => {
             notificationsDrawer.classList.toggle('open');
             
@@ -4741,8 +4748,17 @@ if (btnNotifications) {
         });
     }
 
-    // Fechar a gaveta de notificações se clicar fora dela
-document.addEventListener('click', (e) => {
+    // 2. Fechar ao clicar no botão "X" interno (NOVO)
+    const closeNotifDrawerBtn = document.getElementById('close-notif-drawer-btn');
+    if (closeNotifDrawerBtn) {
+        closeNotifDrawerBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Evita conflitos de clique
+            notificationsDrawer.classList.remove('open');
+        });
+    }
+
+    // 3. Fechar a gaveta de notificações se clicar fora dela
+    document.addEventListener('click', (e) => {
         if (notificationsDrawer && notificationsDrawer.classList.contains('open') && 
             !notificationsDrawer.contains(e.target) && 
             !btnNotifications.contains(e.target)) {

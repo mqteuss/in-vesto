@@ -137,15 +137,29 @@
                                 </button>
                             </div>
 
-                            <div id="notifications-drawer" class="card-drawer mt-2">
-                                <div class="drawer-content p-4 bg-[#1C1C1E] rounded-3xl border border-[#2C2C2E] shadow-xl">
-                                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">Avisos de Hoje</h3>
-                                    
-                                    <div id="notifications-list" class="space-y-2"></div>
-                                    
-                                    <p id="notifications-empty" class="text-sm text-gray-500 text-center py-2 hidden">Nenhuma novidade financeira para hoje.</p>
-                                </div>
-                            </div>
+<div id="notifications-drawer" class="card-drawer mt-2 absolute top-14 right-0 w-80 z-50">
+    <div class="drawer-content bg-[#0a0a0a] rounded-3xl border border-[#2C2C2E] shadow-[0_20px_50px_rgba(0,0,0,0.9)] overflow-hidden">
+        
+        <div class="flex justify-between items-center p-4 border-b border-[#2C2C2E] bg-black/50 backdrop-blur-md">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" /></svg>
+                Central de Avisos
+            </h3>
+            <button id="close-notif-drawer-btn" class="text-gray-600 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+        
+        <div id="notifications-list" class="max-h-[60vh] overflow-y-auto p-2 space-y-2 custom-scroll"></div>
+        
+        <div id="notifications-empty" class="hidden py-8 text-center">
+            <div class="w-12 h-12 bg-[#151515] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#2C2C2E]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <p class="text-xs text-gray-500 font-medium">Tudo em dia por aqui.</p>
+        </div>
+    </div>
+</div>
                         </div>
                         <div id="resumo-carteira-card" class="card-bg rounded-3xl mb-6 overflow-hidden">
                             <div class="p-5 text-center bg-gradient-to-b from-purple-900/20 to-transparent">

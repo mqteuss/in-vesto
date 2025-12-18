@@ -1323,10 +1323,8 @@ function renderizarHistorico() {
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
         
-        // Total do mês
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
         
-        // CORREÇÃO: Texto 'Movimentado' agora é text-gray-400 (mais claro)
         header.innerHTML = `
             <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-purple-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
@@ -1348,17 +1346,15 @@ function renderizarHistorico() {
             const totalTransacao = t.quantity * t.price;
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             
-            // Definições visuais
             const labelTipo = isVenda ? 'VENDA' : 'COMPRA';
-            // Badges sutis, sem borda forte, fundo transparente com cor no texto
             const badgeBg = isVenda 
                 ? 'bg-red-900/20 text-red-400 border border-red-500/20' 
                 : 'bg-purple-900/20 text-purple-400 border border-purple-500/20';
 
             const sigla = t.symbol.substring(0, 2);
 
-            // CORREÇÃO: py-2.5 para diminuir a altura do card (era p-3) e removida a indicator-bar
-            item.className = 'history-card flex items-center justify-between py-2.5 px-3 relative group';
+            // AQUI: Mudado de py-2.5 para py-3 (Aumenta levemente a altura interna)
+            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
 
@@ -1406,7 +1402,6 @@ function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // Filtra apenas pagos
     const proventosPagos = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -1429,7 +1424,6 @@ function renderizarHistoricoProventos() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // 1. Total do mês
         let totalMes = 0;
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
@@ -1437,7 +1431,6 @@ function renderizarHistoricoProventos() {
             if (qtd > 0) totalMes += (p.value * qtd);
         });
 
-        // 2. Header Sticky
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
         header.innerHTML = `
@@ -1451,7 +1444,6 @@ function renderizarHistoricoProventos() {
         `;
         fragment.appendChild(header);
 
-        // 3. Lista de Cards
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1466,9 +1458,9 @@ function renderizarHistoricoProventos() {
                 const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';
 
                 const item = document.createElement('div');
-                item.className = 'history-card flex items-center justify-between py-2.5 px-3 relative group';
+                // AQUI: Mudado de py-2.5 para py-3
+                item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
 
-                // ALTERAÇÃO: Movi a qtd de cotas para a linha do subtítulo e removi do lado direito
                 item.innerHTML = `
                     <div class="flex items-center gap-3 flex-1 min-w-0">
                         <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">

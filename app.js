@@ -1265,9 +1265,7 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
-// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (COMPACTO E IGUAL PROVENTOS) ---
-// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (ALINHAMENTO SINCRONIZADO) ---
-// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL REFINADO) ---
+// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL LIMPO E UNIFORME) ---
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
     
@@ -1283,41 +1281,33 @@ function renderizarHistorico() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header do Mês (Mais discreto e elegante)
+        // Header
         const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-4 px-2 border-b border-[#2C2C2E] mb-2 mt-2';
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-2 border-b border-[#2C2C2E] mb-2 mt-2';
         header.innerHTML = `<h3 class="text-[10px] font-bold text-[#666666] uppercase tracking-[0.2em]">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // Lista de Itens
+        // Lista
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-6 space-y-3 px-2'; 
+        listaGrupo.className = 'mb-6 space-y-1 px-2'; // Espaçamento padronizado (space-y-1)
 
         grupos[mes].forEach(t => {
             const isVenda = t.type === 'sell';
             const item = document.createElement('div');
             
-            // Container
-            item.className = 'flex items-center justify-between group py-1 relative';
+            // Container idêntico ao de proventos
+            item.className = 'flex items-center justify-between group py-2 relative';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
             
-            // Ícones (Setas em vez de sacola)
-            // Compra: Seta para baixo/entrada (Roxo)
+            // Ícones
             const svgCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            // Venda: Seta para cima/saída (Cinza/Vermelho)
             const svgVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
             
             const iconSvg = isVenda ? svgVenda : svgCompra;
-            
-            // Cores do Ícone
             const corIconeBg = isVenda ? 'bg-[#1C1C1E] border-red-900/30' : 'bg-[#1C1C1E] border-purple-900/30';
             const corIcone = isVenda ? 'text-red-500' : 'text-purple-400';
             
-            // Badges
-            const badgeCompra = `<span class="px-1.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-[9px] font-bold text-purple-400 uppercase tracking-wide ml-2">Compra</span>`;
-            const badgeVenda = `<span class="px-1.5 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-[9px] font-bold text-red-400 uppercase tracking-wide ml-2">Venda</span>`;
-
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             
             item.innerHTML = `
@@ -1329,7 +1319,6 @@ function renderizarHistorico() {
                     <div class="flex-1 min-w-0 flex flex-col justify-center">
                         <div class="flex items-center">
                             <span class="text-sm font-bold text-white tracking-tight">${t.symbol}</span>
-                            ${isVenda ? badgeVenda : badgeCompra}
                         </div>
                         <div class="flex items-center gap-1.5 mt-0.5">
                             <span class="text-xs text-[#666666] font-medium">Dia ${dia}</span>
@@ -1343,7 +1332,6 @@ function renderizarHistorico() {
                     <p class="text-sm font-bold text-white tracking-tight">${formatBRL(t.quantity * t.price)}</p>
                     <div class="flex items-center gap-3 mt-0.5">
                          <span class="text-xs text-[#666666]">PM ${formatBRL(t.price)}</span>
-                         
                          <button class="text-[#444444] hover:text-red-500 transition-colors p-1 -mr-2" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
@@ -1359,8 +1347,7 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
-// --- RENDERIZAR HISTÓRICO DE PROVENTOS (VALOR BRANCO E ESPAÇO IGUAL) ---
-// --- RENDERIZAR HISTÓRICO DE PROVENTOS (VISUAL REFINADO) ---
+// --- RENDERIZAR HISTÓRICO DE PROVENTOS (SEM VERDE, SEM ETIQUETAS) ---
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1387,14 +1374,15 @@ function renderizarHistoricoProventos() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header do Mês
+        // Header
         const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-4 px-2 border-b border-[#2C2C2E] mb-2 mt-2';
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-2 border-b border-[#2C2C2E] mb-2 mt-2';
         header.innerHTML = `<h3 class="text-[10px] font-bold text-[#666666] uppercase tracking-[0.2em]">${mes}</h3>`;
         fragment.appendChild(header);
 
+        // Lista
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-6 space-y-3 px-2';
+        listaGrupo.className = 'mb-6 space-y-1 px-2'; // Espaçamento padronizado (space-y-1)
 
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
@@ -1405,13 +1393,10 @@ function renderizarHistoricoProventos() {
                 const dia = new Date(p.paymentDate).getDate().toString().padStart(2, '0');
                 const item = document.createElement('div');
                 
-                item.className = 'flex items-center justify-between group py-1';
+                // Container idêntico ao de transações
+                item.className = 'flex items-center justify-between group py-2';
                 
-                // Ícone de Dinheiro/Recebimento (Verde Neon Suave)
                 const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-
-                // Badge de Provento
-                const badgeProvento = `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide ml-2">Recebido</span>`;
 
                 item.innerHTML = `
                     <div class="flex items-center gap-4 flex-1 min-w-0">
@@ -1421,7 +1406,6 @@ function renderizarHistoricoProventos() {
                         <div class="flex-1 min-w-0 flex flex-col justify-center">
                             <div class="flex items-center">
                                 <span class="text-sm font-bold text-white tracking-tight">${p.symbol}</span>
-                                ${badgeProvento}
                             </div>
                             <div class="flex items-center gap-1.5 mt-0.5">
                                 <span class="text-xs text-[#666666] font-medium">Dia ${dia}</span>
@@ -1432,7 +1416,7 @@ function renderizarHistoricoProventos() {
                     </div>
                     
                     <div class="text-right pl-3">
-                        <p class="text-sm font-bold text-green-400 tracking-tight">+ ${formatBRL(total)}</p>
+                        <p class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</p>
                     </div>
                 `;
                 listaGrupo.appendChild(item);

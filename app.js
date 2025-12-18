@@ -1348,6 +1348,7 @@ function renderizarHistorico() {
 }
 
 // --- RENDERIZAR HISTÓRICO DE PROVENTOS (ESPAÇAMENTO OTIMIZADO) ---
+// --- RENDERIZAR HISTÓRICO DE PROVENTOS (QTD À DIREITA, ABAIXO DO TOTAL) ---
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1380,7 +1381,7 @@ function renderizarHistoricoProventos() {
         header.innerHTML = `<h3 class="text-[10px] font-bold text-[#666666] uppercase tracking-[0.2em]">${mes}</h3>`;
         fragment.appendChild(header);
 
-        // Lista (Ajustado de space-y-2 para space-y-3)
+        // Lista
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'mb-6 space-y-3 px-2'; 
 
@@ -1402,8 +1403,9 @@ function renderizarHistoricoProventos() {
                         <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] border border-green-900/30 text-green-500 flex items-center justify-center flex-shrink-0 shadow-sm">
                             ${iconSvg}
                         </div>
+                        
                         <div class="flex-1 min-w-0 flex flex-col justify-center">
-                            <div class="flex items-center">
+                            <div class="flex items-center h-5">
                                 <span class="text-sm font-bold text-white tracking-tight">${p.symbol}</span>
                             </div>
                             <div class="flex items-center gap-1.5 mt-0.5">
@@ -1414,8 +1416,13 @@ function renderizarHistoricoProventos() {
                         </div>
                     </div>
                     
-                    <div class="text-right pl-3">
-                        <p class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</p>
+                    <div class="text-right pl-3 flex flex-col justify-center items-end h-full">
+                        <div class="h-5 flex items-center">
+                            <p class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</p>
+                        </div>
+                        <div class="mt-0.5">
+                            <p class="text-xs text-[#666666] font-medium">${qtd} cotas</p>
+                        </div>
                     </div>
                 `;
                 listaGrupo.appendChild(item);

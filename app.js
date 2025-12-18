@@ -1276,6 +1276,8 @@ function agruparPorMes(itens, dateField) {
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL LIMPO E UNIFORME) ---
 // Em app.js
 
+// Substitua a função renderizarHistorico existente em app.js
+
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
     
@@ -1291,25 +1293,28 @@ function renderizarHistorico() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // 1. Header Sticky Moderno
+        // 1. Header Sticky
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
         
-        // Calcula o total investido naquele mês (Opcional, mas legal para UX)
+        // Total do mês
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
         
+        // CORREÇÃO: Texto 'Movimentado' agora é text-gray-400 (mais claro)
         header.innerHTML = `
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
+            <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-purple-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
                 ${mes}
             </h3>
-            <span class="text-[10px] font-mono text-gray-600">Movimentado: ${formatBRL(totalMes)}</span>
+            <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+                Mov: ${formatBRL(totalMes)}
+            </span>
         `;
         fragment.appendChild(header);
 
         // 2. Lista de Cards
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'px-3 pb-4'; 
+        listaGrupo.className = 'px-3 pb-2'; 
 
         grupos[mes].forEach(t => {
             const isVenda = t.type === 'sell';
@@ -1317,40 +1322,32 @@ function renderizarHistorico() {
             const totalTransacao = t.quantity * t.price;
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             
-            // Definições de Cor e Ícone baseadas no tipo
-            const colorClass = isVenda ? 'red' : 'purple'; // Usando classes do Tailwind logicamente
-            const textPriceColor = isVenda ? 'text-red-400' : 'text-purple-400';
-            const barColor = isVenda ? 'bg-red-500' : 'bg-purple-500';
-            const bgIcon = isVenda ? 'bg-red-500/10 text-red-500' : 'bg-purple-500/10 text-purple-400';
+            // Definições visuais
             const labelTipo = isVenda ? 'VENDA' : 'COMPRA';
-            const badgeBg = isVenda ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+            // Badges sutis, sem borda forte, fundo transparente com cor no texto
+            const badgeBg = isVenda 
+                ? 'bg-red-900/20 text-red-400 border border-red-500/20' 
+                : 'bg-purple-900/20 text-purple-400 border border-purple-500/20';
 
-            // Ícone SVG (Seta ou Carrinho)
-            const iconSvg = isVenda 
-                ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>` // Seta subindo (Venda/Lucro visual) ou descendo dependendo da logica
-                : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>`; // Sacola de compras
-
-            // Avatar com as iniciais (Estilo Carteira)
             const sigla = t.symbol.substring(0, 2);
 
-            item.className = 'history-card flex items-center justify-between p-3 relative group';
+            // CORREÇÃO: py-2.5 para diminuir a altura do card (era p-3) e removida a indicator-bar
+            item.className = 'history-card flex items-center justify-between py-2.5 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
 
             item.innerHTML = `
-                <div class="indicator-bar ${barColor}"></div>
-
-                <div class="flex items-center gap-3 pl-2 flex-1 min-w-0">
-                    <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
-                        <span class="text-xs font-bold text-white tracking-wider">${sigla}</span>
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
+                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
                     </div>
                     
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <h4 class="text-sm font-bold text-white tracking-tight">${t.symbol}</h4>
+                            <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${t.symbol}</h4>
                             <span class="badge-type ${badgeBg}">${labelTipo}</span>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
+                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>
                             <span>${t.quantity} cotas a ${formatBRL(t.price)}</span>
@@ -1358,10 +1355,10 @@ function renderizarHistorico() {
                     </div>
                 </div>
                 
-                <div class="text-right flex flex-col items-end gap-1">
-                    <span class="text-sm font-bold text-white">${formatBRL(totalTransacao)}</span>
+                <div class="text-right flex flex-col items-end justify-center">
+                    <span class="text-sm font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
                     
-                    <button class="p-1.5 -mr-2 text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                    <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/80 text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -1375,12 +1372,13 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
-// --- RENDERIZAR HISTÓRICO DE PROVENTOS (ESPAÇAMENTO OTIMIZADO) ---
-// --- RENDERIZAR HISTÓRICO DE PROVENTOS (QTD À DIREITA, ABAIXO DO TOTAL) ---
+// Substitua a função renderizarHistoricoProventos existente em app.js
+
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
+    // Filtra apenas pagos
     const proventosPagos = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -1391,10 +1389,10 @@ function renderizarHistoricoProventos() {
     if (proventosPagos.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p class="text-sm text-gray-500">Nenhum provento recebido ainda.</p>
+                <p class="text-xs text-gray-500">Nenhum provento recebido ainda.</p>
             </div>`;
         return;
     }
@@ -1403,15 +1401,31 @@ function renderizarHistoricoProventos() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header
+        // 1. Calcular total do mês para o Header
+        let totalMes = 0;
+        grupos[mes].forEach(p => {
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+            if (qtd > 0) totalMes += (p.value * qtd);
+        });
+
+        // 2. Header Sticky (Igual transações)
         const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-2 border-b border-[#2C2C2E] mb-2 mt-2';
-        header.innerHTML = `<h3 class="text-[10px] font-bold text-[#666666] uppercase tracking-[0.2em]">${mes}</h3>`;
+        header.className = 'history-header-sticky';
+        header.innerHTML = `
+            <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                ${mes}
+            </h3>
+            <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+                Recebido: ${formatBRL(totalMes)}
+            </span>
+        `;
         fragment.appendChild(header);
 
-        // Lista
+        // 3. Lista de Cards
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-6 space-y-3 px-2'; 
+        listaGrupo.className = 'px-3 pb-2'; 
 
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
@@ -1420,37 +1434,36 @@ function renderizarHistoricoProventos() {
             if (qtd > 0) {
                 const total = p.value * qtd;
                 const dia = new Date(p.paymentDate).getDate().toString().padStart(2, '0');
+                const sigla = p.symbol.substring(0, 2);
+                
+                // Badge Verde para Proventos
+                const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';
+
                 const item = document.createElement('div');
-                
-                item.className = 'flex items-center justify-between group py-2';
-                
-                const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+                item.className = 'history-card flex items-center justify-between py-2.5 px-3 relative group';
 
                 item.innerHTML = `
-                    <div class="flex items-center gap-4 flex-1 min-w-0">
-                        <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] border border-green-900/30 text-green-500 flex items-center justify-center flex-shrink-0 shadow-sm">
-                            ${iconSvg}
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
+                            <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
                         </div>
                         
-                        <div class="flex-1 min-w-0 flex flex-col justify-center">
-                            <div class="flex items-center h-5">
-                                <span class="text-sm font-bold text-white tracking-tight">${p.symbol}</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
+                                <span class="badge-type ${badgeBg}">PAGO</span>
                             </div>
-                            <div class="flex items-center gap-1.5 mt-0.5">
-                                <span class="text-xs text-[#666666] font-medium">Dia ${dia}</span>
-                                <span class="text-[10px] text-[#444444]">•</span>
-                                <span class="text-xs text-[#666666] font-medium">${formatBRL(p.value)}/cota</span>
+                            <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
+                                <span class="font-medium text-gray-400">Dia ${dia}</span>
+                                <span>•</span>
+                                <span>${formatBRL(p.value)}/cota</span>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="text-right pl-3 flex flex-col justify-center items-end h-full">
-                        <div class="h-5 flex items-center">
-                            <p class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</p>
-                        </div>
-                        <div class="mt-0.5">
-                            <p class="text-xs text-[#666666] font-medium">${qtd} cotas</p>
-                        </div>
+                    <div class="text-right flex flex-col items-end justify-center">
+                        <span class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
+                        <span class="text-[10px] text-gray-600 mt-0.5">${qtd} cotas</span>
                     </div>
                 `;
                 listaGrupo.appendChild(item);

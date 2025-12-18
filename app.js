@@ -1124,57 +1124,18 @@ window.toggleWatchlistDrawer = function() {
 
 // 2. SUBSTITUA A FUNÇÃO renderizarWatchlist ATUAL POR ESTA:
 function renderizarWatchlist() {
-    // Lógica da lista vertical (Drawer) - Mantida
-    if (watchlistListaEl) {
-        watchlistListaEl.innerHTML = '';
-        if (watchlist.length === 0) {
-            if(watchlistStatusEl) watchlistStatusEl.classList.remove('hidden');
-        } else {
-            if(watchlistStatusEl) watchlistStatusEl.classList.add('hidden');
-            watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
-            const fragment = document.createDocumentFragment();
-            
-            const precosMapVertical = new Map(precosAtuais.map(p => [p.symbol, p]));
-
-            watchlist.forEach(item => {
-                const symbol = item.symbol;
-                const sigla = symbol.substring(0, 2);
-                const dadoPreco = precosMapVertical.get(symbol);
-                // Lógica de preço limpa para a lista vertical também
-                let preco = ''; 
-                if (dadoPreco) preco = formatBRL(dadoPreco.regularMarketPrice);
-
-                const el = document.createElement('div');
-                el.className = 'flex justify-between items-center p-3 bg-[#111] rounded-2xl border border-[#2C2C2E] mb-2 cursor-pointer hover:bg-[#151515] transition-colors';
-                el.onclick = () => window.abrirDetalhesAtivo(symbol);
-                el.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] border border-[#333] flex items-center justify-center flex-shrink-0 text-white font-bold text-xs">
-                            ${sigla}
-                        </div>
-                        <span class="font-bold text-white text-sm">${symbol}</span>
-                    </div>
-                    <div class="text-right">
-                         <span class="font-bold text-white text-sm block">${preco}</span>
-                    </div>
-                `;
-                fragment.appendChild(el);
-            });
-            watchlistListaEl.appendChild(fragment);
-        }
-    }
-
-    // Lógica do Carrossel Horizontal (Dashboard)
+    // Apenas Carrossel Horizontal
     const carouselEl = document.getElementById('dashboard-favorites-list');
     if (!carouselEl) return;
     
     carouselEl.innerHTML = '';
 
+    // Card de "Adicionar" se estiver vazio
     if (watchlist.length === 0) {
         carouselEl.innerHTML = `
             <div onclick="document.getElementById('carteira-search-input').focus(); mudarAba('tab-carteira');" class="fav-card border-dashed border-gray-700 cursor-pointer opacity-70">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                <span class="text-[10px] text-gray-500 font-bold uppercase">Adicionar</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                <span class="text-[9px] text-gray-500 font-bold uppercase">Add</span>
             </div>`;
         return;
     }
@@ -1185,23 +1146,23 @@ function renderizarWatchlist() {
         const symbol = item.symbol;
         const dadoPreco = precosMap.get(symbol);
         
-        // CORREÇÃO 2: Removemos o '---'. Se não tiver preço, fica vazio.
-        let preco = ''; 
+        let preco = '---';
         if (dadoPreco) {
             preco = formatBRL(dadoPreco.regularMarketPrice);
         }
 
         const card = document.createElement('div');
+        // Usa a classe CSS ajustada
         card.className = 'fav-card cursor-pointer group select-none relative';
         card.onclick = () => window.abrirDetalhesAtivo(symbol);
 
-        // CORREÇÃO 3: text-white no ticker (era text-gray-500)
+        // Layout Compacto: Ticker Branco (topo) e Preço (meio)
         card.innerHTML = `
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             
-            <span class="text-[10px] font-bold text-white mb-1.5 tracking-wider uppercase border border-[#222] px-1.5 py-0.5 rounded bg-[#111] shadow-sm">${symbol}</span>
+            <span class="text-[10px] font-bold text-white mb-0.5 tracking-wider uppercase">${symbol}</span>
             
-            <span class="text-base font-bold text-white tracking-tight">${preco}</span>
+            <span class="text-sm font-bold text-gray-300 tracking-tight">${preco}</span>
         `;
         carouselEl.appendChild(card);
     });
@@ -4684,6 +4645,15 @@ async function init() {
             } else {
                 mudarAba('tab-dashboard'); 
             }
+
+// --- BLOQUEIO DE SWIPE NO CARROSSEL (FIX DEFINITIVO) ---
+    const carouselWrapper = document.getElementById('carousel-wrapper');
+    if (carouselWrapper) {
+        // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
+        carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+        carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+        carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
+    }
 
             await carregarDadosIniciais();
 

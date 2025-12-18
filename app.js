@@ -1274,6 +1274,8 @@ function agruparPorMes(itens, dateField) {
 }
 
 // --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL LIMPO E UNIFORME) ---
+// Em app.js
+
 function renderizarHistorico() {
     listaHistorico.innerHTML = '';
     
@@ -1289,63 +1291,81 @@ function renderizarHistorico() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header
+        // 1. Header Sticky Moderno
         const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-2 border-b border-[#2C2C2E] mb-2 mt-2';
-        header.innerHTML = `<h3 class="text-[10px] font-bold text-[#666666] uppercase tracking-[0.2em]">${mes}</h3>`;
+        header.className = 'history-header-sticky';
+        
+        // Calcula o total investido naquele mês (Opcional, mas legal para UX)
+        const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
+        
+        header.innerHTML = `
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
+                ${mes}
+            </h3>
+            <span class="text-[10px] font-mono text-gray-600">Movimentado: ${formatBRL(totalMes)}</span>
+        `;
         fragment.appendChild(header);
 
-        // Lista
+        // 2. Lista de Cards
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-6 space-y-1 px-2'; // Espaçamento padronizado (space-y-1)
+        listaGrupo.className = 'px-3 pb-4'; 
 
         grupos[mes].forEach(t => {
             const isVenda = t.type === 'sell';
             const item = document.createElement('div');
-            
-            // Container idêntico ao de proventos
-            item.className = 'flex items-center justify-between group py-2 relative';
-            item.setAttribute('data-action', 'edit-row');
-            item.setAttribute('data-id', t.id);
-            
-            // Ícones
-            const svgCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            const svgVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
-            
-            const iconSvg = isVenda ? svgVenda : svgCompra;
-            const corIconeBg = isVenda ? 'bg-[#1C1C1E] border-red-900/30' : 'bg-[#1C1C1E] border-purple-900/30';
-            const corIcone = isVenda ? 'text-red-500' : 'text-purple-400';
-            
+            const totalTransacao = t.quantity * t.price;
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             
+            // Definições de Cor e Ícone baseadas no tipo
+            const colorClass = isVenda ? 'red' : 'purple'; // Usando classes do Tailwind logicamente
+            const textPriceColor = isVenda ? 'text-red-400' : 'text-purple-400';
+            const barColor = isVenda ? 'bg-red-500' : 'bg-purple-500';
+            const bgIcon = isVenda ? 'bg-red-500/10 text-red-500' : 'bg-purple-500/10 text-purple-400';
+            const labelTipo = isVenda ? 'VENDA' : 'COMPRA';
+            const badgeBg = isVenda ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+
+            // Ícone SVG (Seta ou Carrinho)
+            const iconSvg = isVenda 
+                ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>` // Seta subindo (Venda/Lucro visual) ou descendo dependendo da logica
+                : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>`; // Sacola de compras
+
+            // Avatar com as iniciais (Estilo Carteira)
+            const sigla = t.symbol.substring(0, 2);
+
+            item.className = 'history-card flex items-center justify-between p-3 relative group';
+            item.setAttribute('data-action', 'edit-row');
+            item.setAttribute('data-id', t.id);
+
             item.innerHTML = `
-                <div class="flex items-center gap-4 flex-1 min-w-0">
-                    <div class="w-10 h-10 rounded-xl ${corIconeBg} border flex items-center justify-center flex-shrink-0 shadow-sm ${corIcone}">
-                        ${iconSvg}
+                <div class="indicator-bar ${barColor}"></div>
+
+                <div class="flex items-center gap-3 pl-2 flex-1 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
+                        <span class="text-xs font-bold text-white tracking-wider">${sigla}</span>
                     </div>
                     
-                    <div class="flex-1 min-w-0 flex flex-col justify-center">
-                        <div class="flex items-center">
-                            <span class="text-sm font-bold text-white tracking-tight">${t.symbol}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-sm font-bold text-white tracking-tight">${t.symbol}</h4>
+                            <span class="badge-type ${badgeBg}">${labelTipo}</span>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-0.5">
-                            <span class="text-xs text-[#666666] font-medium">Dia ${dia}</span>
-                            <span class="text-[10px] text-[#444444]">•</span>
-                            <span class="text-xs text-[#666666] font-medium">${t.quantity} cotas</span>
+                        <div class="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
+                            <span class="font-medium text-gray-400">Dia ${dia}</span>
+                            <span>•</span>
+                            <span>${t.quantity} cotas a ${formatBRL(t.price)}</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="text-right pl-3 flex flex-col justify-center items-end">
-                    <p class="text-sm font-bold text-white tracking-tight">${formatBRL(t.quantity * t.price)}</p>
-                    <div class="flex items-center gap-3 mt-0.5">
-                         <span class="text-xs text-[#666666]">PM ${formatBRL(t.price)}</span>
-                         <button class="text-[#444444] hover:text-red-500 transition-colors p-1 -mr-2" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                         </button>
-                    </div>
+                <div class="text-right flex flex-col items-end gap-1">
+                    <span class="text-sm font-bold text-white">${formatBRL(totalTransacao)}</span>
+                    
+                    <button class="p-1.5 -mr-2 text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
                 </div>
             `;
             listaGrupo.appendChild(item);

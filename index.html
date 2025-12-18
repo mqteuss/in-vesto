@@ -638,25 +638,25 @@
         </div>
 
 <div id="add-ativo-modal" class="custom-modal fixed inset-0 z-[60] items-center justify-center p-4 bg-black/80 backdrop-blur-sm" aria-labelledby="add-modal-title" role="dialog" aria-modal="true">
-    <div id="add-ativo-modal-content" class="modal-content card-bg rounded-[2rem] p-6 w-full max-w-sm shadow-2xl transition-all border border-[#2C2C2E]" style="opacity: 0; transform: scale(0.95);">
+    <div id="add-ativo-modal-content" class="modal-content card-bg rounded-3xl p-5 w-full max-w-sm shadow-2xl transition-all border border-[#2C2C2E]" style="opacity: 0; transform: scale(0.95);">
         
-        <h3 id="add-modal-title" class="text-lg font-bold text-white mb-6 text-center tracking-wide">Nova Transação</h3>
+        <h3 id="add-modal-title" class="text-base font-bold text-white mb-4 text-center tracking-wide">Nova Transação</h3>
         
         <form id="add-ativo-form">
             <input type="hidden" id="transacao-id-input">
             
-            <div class="space-y-5">
+            <div class="space-y-3">
                 
-                <div class="relative bg-black rounded-xl p-1 border border-[#2C2C2E] flex h-12 w-full">
-                    <div id="transacao-toggle-bg" class="absolute left-1 top-1 bottom-1 w-[calc(50%-4px)] bg-green-600 rounded-lg shadow-[0_0_15px_rgba(22,163,74,0.4)] transition-transform duration-300 ease-out translate-x-0"></div>
+                <div class="relative bg-black rounded-lg p-1 border border-[#2C2C2E] flex h-10 w-full">
+                    <div id="transacao-toggle-bg" class="absolute left-1 top-1 bottom-1 w-[calc(50%-4px)] bg-green-600 rounded-md shadow-[0_0_10px_rgba(22,163,74,0.4)] transition-transform duration-300 ease-out translate-x-0"></div>
 
-                    <button type="button" id="btn-opt-compra" class="relative z-10 w-1/2 text-sm font-bold text-white transition-colors duration-300 focus:outline-none flex items-center justify-center gap-2" data-value="buy">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                    <button type="button" id="btn-opt-compra" class="relative z-10 w-1/2 text-xs font-bold text-white transition-colors duration-300 focus:outline-none flex items-center justify-center gap-1.5" data-value="buy">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
                         Compra
                     </button>
 
-                    <button type="button" id="btn-opt-venda" class="relative z-10 w-1/2 text-sm font-bold text-gray-500 transition-colors duration-300 focus:outline-none flex items-center justify-center gap-2" data-value="sell">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" /></svg>
+                    <button type="button" id="btn-opt-venda" class="relative z-10 w-1/2 text-xs font-bold text-gray-500 transition-colors duration-300 focus:outline-none flex items-center justify-center gap-1.5" data-value="sell">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" /></svg>
                         Venda
                     </button>
                     
@@ -664,45 +664,45 @@
                 </div>
 
                 <div class="relative group">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 group-focus-within:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 group-focus-within:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
-                    <input type="text" id="ticker-input" placeholder="Código do Ativo (ex: MXRF11)" class="w-full py-3.5 pl-11 pr-4 bg-[#151515] border border-[#2C2C2E] rounded-xl focus:outline-none focus:border-purple-500 focus:bg-black transition-all text-white placeholder-gray-600 font-medium uppercase">
+                    <input type="text" id="ticker-input" placeholder="ATIVO (EX: MXRF11)" class="w-full py-2.5 pl-9 pr-3 bg-[#151515] border border-[#2C2C2E] rounded-xl focus:outline-none focus:border-purple-500 focus:bg-black transition-all text-white placeholder-gray-600 text-sm font-bold uppercase">
                 </div>
 
                 <div class="relative group">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 group-focus-within:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 group-focus-within:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     </div>
-                    <input type="date" id="date-input" class="w-full py-3.5 pl-11 pr-4 bg-[#151515] border border-[#2C2C2E] rounded-xl focus:outline-none focus:border-purple-500 focus:bg-black transition-all text-white font-medium" style="color-scheme: dark;">
+                    <input type="date" id="date-input" class="w-full py-2.5 pl-9 pr-3 bg-[#151515] border border-[#2C2C2E] rounded-xl focus:outline-none focus:border-purple-500 focus:bg-black transition-all text-white text-sm font-medium" style="color-scheme: dark;">
                 </div>
 
-                <div class="flex gap-3">
+                <div class="flex gap-2">
                     <div class="relative group w-1/2">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span class="text-gray-500 font-bold group-focus-within:text-purple-400 text-xs">#</span>
                         </div>
-                        <input type="number" id="quantity-input" placeholder="Qtd" class="w-full py-3.5 pl-8 pr-3 bg-[#151515] border border-[#2C2C2E] rounded-xl focus:outline-none focus:border-purple-500 focus:bg-black transition-all text-white font-medium text-center">
+                        <input type="number" id="quantity-input" placeholder="Qtd" class="w-full py-2.5 pl-7 pr-2 bg-[#151515] border border-[#2C2C2E] rounded-xl focus:outline-none focus:border-purple-500 focus:bg-black transition-all text-white text-sm font-bold text-center">
                     </div>
                     
                     <div class="relative group w-1/2">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span class="text-gray-500 font-bold group-focus-within:text-purple-400 text-xs">R$</span>
                         </div>
-                        <input type="number" id="preco-medio-input" placeholder="Preço" step="0.01" class="w-full py-3.5 pl-8 pr-3 bg-[#151515] border border-[#2C2C2E] rounded-xl focus:outline-none focus:border-purple-500 focus:bg-black transition-all text-white font-medium text-center">
+                        <input type="number" id="preco-medio-input" placeholder="Preço" step="0.01" class="w-full py-2.5 pl-7 pr-2 bg-[#151515] border border-[#2C2C2E] rounded-xl focus:outline-none focus:border-purple-500 focus:bg-black transition-all text-white text-sm font-bold text-center">
                     </div>
                 </div>
 
                 <div class="flex justify-between items-center px-2 pt-2 border-t border-[#2C2C2E] border-dashed">
-                    <span class="text-xs text-gray-500 font-bold uppercase tracking-wider">Total Estimado</span>
-                    <span id="total-transacao-preview" class="text-lg font-bold text-white">R$ 0,00</span>
+                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total</span>
+                    <span id="total-transacao-preview" class="text-sm font-bold text-white">R$ 0,00</span>
                 </div>
 
             </div>
 
-            <div class="flex gap-3 mt-8">
-                <button id="add-ativo-cancel-btn" type="button" class="flex-1 py-3.5 bg-[#1C1C1E] hover:bg-[#2C2C2E] text-gray-300 font-medium rounded-xl transition-colors">Cancelar</button>
-                <button id="add-button" type="submit" class="flex-1 py-3.5 accent-bg text-white font-bold rounded-xl shadow-lg shadow-purple-900/20 transition-transform active:scale-95 hover:scale-105">Salvar</button>
+            <div class="flex gap-2 mt-5">
+                <button id="add-ativo-cancel-btn" type="button" class="flex-1 py-2.5 bg-[#1C1C1E] hover:bg-[#2C2C2E] text-gray-400 text-xs font-bold rounded-xl transition-colors">Cancelar</button>
+                <button id="add-button" type="submit" class="flex-1 py-2.5 accent-bg text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-900/20 transition-transform active:scale-95 hover:scale-105">Salvar</button>
             </div>
         </form>
     </div>

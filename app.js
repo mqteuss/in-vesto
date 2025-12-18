@@ -4326,7 +4326,7 @@ if (clearCacheBtn) {
     }
 	
 	// --- LÓGICA DO MODAL DE TRANSAÇÃO (Cole aqui) ---
-    function setupTransactionModalLogic() {
+function setupTransactionModalLogic() {
         const btnCompra = document.getElementById('btn-opt-compra');
         const btnVenda = document.getElementById('btn-opt-venda');
         const toggleBg = document.getElementById('transacao-toggle-bg');
@@ -4336,12 +4336,12 @@ if (clearCacheBtn) {
         const inputPreco = document.getElementById('preco-medio-input');
         const totalPreview = document.getElementById('total-transacao-preview');
 
-        // 1. Toggle Compra/Venda
+        // Toggle Compra/Venda
         if (btnCompra && btnVenda) {
             btnCompra.addEventListener('click', () => {
                 inputOperacao.value = 'buy';
-                toggleBg.classList.remove('translate-x-full', 'bg-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.4)]');
-                toggleBg.classList.add('bg-green-600', 'shadow-[0_0_15px_rgba(22,163,74,0.4)]');
+                toggleBg.classList.remove('translate-x-full', 'bg-red-600', 'shadow-[0_0_10px_rgba(220,38,38,0.4)]');
+                toggleBg.classList.add('bg-green-600', 'shadow-[0_0_10px_rgba(22,163,74,0.4)]');
                 
                 btnCompra.classList.replace('text-gray-500', 'text-white');
                 btnVenda.classList.replace('text-white', 'text-gray-500');
@@ -4349,20 +4349,20 @@ if (clearCacheBtn) {
 
             btnVenda.addEventListener('click', () => {
                 inputOperacao.value = 'sell';
-                toggleBg.classList.remove('bg-green-600', 'shadow-[0_0_15px_rgba(22,163,74,0.4)]');
-                toggleBg.classList.add('translate-x-full', 'bg-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.4)]');
+                toggleBg.classList.remove('bg-green-600', 'shadow-[0_0_10px_rgba(22,163,74,0.4)]');
+                toggleBg.classList.add('translate-x-full', 'bg-red-600', 'shadow-[0_0_10px_rgba(220,38,38,0.4)]');
                 
                 btnVenda.classList.replace('text-gray-500', 'text-white');
                 btnCompra.classList.replace('text-white', 'text-gray-500');
             });
         }
 
-        // 2. Cálculo Automático do Total
+        // Cálculo Automático
         function calcularTotal() {
             const qtd = parseFloat(inputQtd.value) || 0;
             const preco = parseFloat(inputPreco.value) || 0;
             const total = qtd * preco;
-            totalPreview.textContent = formatBRL(total);
+            if(totalPreview) totalPreview.textContent = formatBRL(total);
         }
 
         if (inputQtd && inputPreco) {

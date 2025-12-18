@@ -1105,34 +1105,48 @@ function hideAddModal() {
 // --- RENDERIZAR WATCHLIST (ESTILO CARTEIRA / MINIMALISTA) ---
 // Substitua a função renderizarWatchlist inteira em app.js
 
-function renderizarWatchlist() {
-    const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
+// 1. ADICIONE ESTA NOVA FUNÇÃO GLOBAL (Pode ser no início ou fim do arquivo)
+window.toggleWatchlistDrawer = function() {
+    const drawer = document.getElementById('watchlist-drawer');
+    const btn = document.getElementById('btn-toggle-watchlist');
+    
+    if (drawer && btn) {
+        drawer.classList.toggle('open');
+        
+        // Lógica de troca de texto
+        if (drawer.classList.contains('open')) {
+            btn.innerText = 'Fechar Lista';
+        } else {
+            btn.innerText = 'Abrir Lista';
+        }
+    }
+}
 
-    // 1. Renderiza a lista vertical (Drawer) - LIMPA
+// 2. SUBSTITUA A FUNÇÃO renderizarWatchlist ATUAL POR ESTA:
+function renderizarWatchlist() {
+    // Lógica da lista vertical (Drawer) - Mantida
     if (watchlistListaEl) {
         watchlistListaEl.innerHTML = '';
         if (watchlist.length === 0) {
             if(watchlistStatusEl) watchlistStatusEl.classList.remove('hidden');
         } else {
             if(watchlistStatusEl) watchlistStatusEl.classList.add('hidden');
-            
-            const fragment = document.createDocumentFragment();
             watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
+            const fragment = document.createDocumentFragment();
             
+            const precosMapVertical = new Map(precosAtuais.map(p => [p.symbol, p]));
+
             watchlist.forEach(item => {
                 const symbol = item.symbol;
                 const sigla = symbol.substring(0, 2);
-                const dadoPreco = precosMap.get(symbol);
-                let preco = '---';
-                if (dadoPreco) {
-                    preco = formatBRL(dadoPreco.regularMarketPrice);
-                }
+                const dadoPreco = precosMapVertical.get(symbol);
+                // Lógica de preço limpa para a lista vertical também
+                let preco = ''; 
+                if (dadoPreco) preco = formatBRL(dadoPreco.regularMarketPrice);
 
                 const el = document.createElement('div');
-                // Layout ajustado: Ticker na esquerda, Preço na direita. Sem variação.
                 el.className = 'flex justify-between items-center p-3 bg-[#111] rounded-2xl border border-[#2C2C2E] mb-2 cursor-pointer hover:bg-[#151515] transition-colors';
                 el.onclick = () => window.abrirDetalhesAtivo(symbol);
-                
                 el.innerHTML = `
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] border border-[#333] flex items-center justify-center flex-shrink-0 text-white font-bold text-xs">
@@ -1150,13 +1164,12 @@ function renderizarWatchlist() {
         }
     }
 
-    // 2. Renderiza o Carrossel Horizontal (Dashboard) - LIMPO
+    // Lógica do Carrossel Horizontal (Dashboard)
     const carouselEl = document.getElementById('dashboard-favorites-list');
     if (!carouselEl) return;
     
     carouselEl.innerHTML = '';
 
-    // Card de "Adicionar" se vazio
     if (watchlist.length === 0) {
         carouselEl.innerHTML = `
             <div onclick="document.getElementById('carteira-search-input').focus(); mudarAba('tab-carteira');" class="fav-card border-dashed border-gray-700 cursor-pointer opacity-70">
@@ -1166,26 +1179,27 @@ function renderizarWatchlist() {
         return;
     }
 
+    const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
+
     watchlist.forEach(item => {
         const symbol = item.symbol;
         const dadoPreco = precosMap.get(symbol);
-        let preco = '---';
         
+        // CORREÇÃO 2: Removemos o '---'. Se não tiver preço, fica vazio.
+        let preco = ''; 
         if (dadoPreco) {
             preco = formatBRL(dadoPreco.regularMarketPrice);
         }
-
-        // REMOVIDO: Toda a lógica de varPercent, corVar e icon
 
         const card = document.createElement('div');
         card.className = 'fav-card cursor-pointer group select-none relative';
         card.onclick = () => window.abrirDetalhesAtivo(symbol);
 
-        // HTML do card simplificado: Apenas Ticker e Preço (maior)
+        // CORREÇÃO 3: text-white no ticker (era text-gray-500)
         card.innerHTML = `
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             
-            <span class="text-[10px] font-bold text-gray-500 mb-2 tracking-wider uppercase border border-[#222] px-1.5 py-0.5 rounded bg-[#111]">${symbol}</span>
+            <span class="text-[10px] font-bold text-white mb-1.5 tracking-wider uppercase border border-[#222] px-1.5 py-0.5 rounded bg-[#111] shadow-sm">${symbol}</span>
             
             <span class="text-base font-bold text-white tracking-tight">${preco}</span>
         `;

@@ -197,23 +197,23 @@
                         
 <div class="flex justify-between items-center px-2 mb-2 mt-6">
     <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Meus Favoritos</h3>
-    <button onclick="document.getElementById('watchlist-drawer').classList.toggle('open')" class="text-xs text-purple-400 font-bold hover:text-white transition-colors">
-        Ver Lista
+    <button id="btn-toggle-watchlist" onclick="window.toggleWatchlistDrawer()" class="text-xs text-purple-400 font-bold hover:text-white transition-colors">
+        Abrir Lista
     </button>
 </div>
 
 <div class="w-full overflow-x-auto pb-2 hide-scrollbar" style="-webkit-overflow-scrolling: touch;">
     <div id="dashboard-favorites-list" class="flex gap-3 px-1 min-w-min">
-        <div class="fav-card-skeleton w-28 h-24 rounded-2xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 animate-pulse">
+        <div class="fav-card-skeleton w-24 h-20 rounded-2xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 animate-pulse">
             <div class="w-8 h-8 bg-gray-800 rounded-lg"></div>
         </div>
     </div>
 </div>
 
 <div id="watchlist-drawer" class="card-drawer">
-<div class="drawer-content pt-4 space-y-3 px-2 max-h-[60vh] overflow-y-auto custom-scroll">
-    <div id="watchlist-lista" class="space-y-3 pb-4"></div>
-</div>
+    <div class="drawer-content pt-4 space-y-3 px-2 max-h-[60vh] overflow-y-auto custom-scroll">
+        <div id="watchlist-lista" class="space-y-3 pb-8"></div>
+    </div>
 </div>
 
 <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider px-2 mb-3 mt-4">Análises</h3>

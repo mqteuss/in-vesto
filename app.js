@@ -105,149 +105,143 @@ function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, bgPL, dadoProvento, proventoReceber
+        corPL, dadoProvento, proventoReceber, percentWallet
     } = dados;
 
-    // 1. Avatar
+    // Avatar com 2 letras
     const sigla = ativo.symbol.substring(0, 2);
-    const corDot = lucroPrejuizo >= 0 ? 'bg-green-500' : 'bg-red-500';
     
-    const avatarHtml = `
-        <div class="relative w-10 h-10 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 group-hover:border-neutral-700 transition-colors">
-            <span class="text-sm font-bold text-white tracking-wider">${sigla}</span>
-            <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${corDot} border-2 border-black"></div>
-        </div>
-    `;
+    // Cor da barra de alocação (Verde se lucro, Vermelho se prejuízo)
+    const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
+    
+    // Badge de Lucro/Prejuízo (Pílula com seta)
+    const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
+    const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
+    
+    const plTagHtml = dadoPreco 
+        ? `<span class="profit-pill ${bgBadge}">${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%</span>` 
+        : '';
 
-    // 2. Tag L/P
-    let plTagHtml = '';
-    if (dadoPreco) {
-        const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
-        plTagHtml = `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${bgBadge} inline-block">
-            ${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}% L/P
-        </span>`;
-    }
+    // Indicador visual de provento (Ponto Amarelo pulsante no topo)
+    const proventoDot = (proventoReceber > 0) 
+        ? `<div class="absolute top-3 right-3 w-2 h-2 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_8px_rgba(234,179,8,0.6)] z-10"></div>` 
+        : '';
 
-    // 3. Proventos (COM TICKETS)
+    // HTML do Provento dentro do Drawer
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-            
             const foiPago = dataPag <= hoje;
             
-            // Lógica de Tickets (Badges)
-            let labelBadge = "";
-            let valorUserDisplay = "";
-
-            if (proventoReceber > 0) {
-                if (foiPago) {
-                    // TICKET VERDE (PAGO)
-                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide">PAGO</span>`;
-                    valorUserDisplay = `<span class="text-base font-bold text-green-500">+ ${formatBRL(proventoReceber)}</span>`;
-                } else {
-                    // TICKET AMARELO (AGENDADO)
-                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">AGENDADO</span>`;
-                    valorUserDisplay = `<span class="text-base font-bold text-yellow-500">+ ${formatBRL(proventoReceber)}</span>`;
-                }
-            } else {
-                // TICKET CINZA/LARANJA (STATUS)
-                labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-neutral-800 border border-neutral-700 text-[9px] font-bold text-neutral-400 uppercase tracking-wide">STATUS</span>`;
-                valorUserDisplay = `<span class="text-xs font-bold text-orange-400">Sem direito</span>`;
-            }
+            let labelBadge = foiPago 
+                ? `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide">PAGO</span>`
+                : `<span class="px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">AGENDADO</span>`;
+            
+            let valorDisplay = proventoReceber > 0
+                ? `<span class="text-base font-bold ${foiPago ? 'text-green-500' : 'text-yellow-500'}">+ ${formatBRL(proventoReceber)}</span>`
+                : `<span class="text-xs font-bold text-orange-400">Sem direito</span>`;
 
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
             const dataPagTexto = formatDate(dadoProvento.paymentDate);
 
             proventoHtml = `
-            <div class="mt-4 pt-3 border-t border-neutral-800">
+            <div class="mt-3 pt-3 border-t border-[#2C2C2E]">
                 <div class="flex justify-between items-center mb-1">
-                    <span class="text-xs text-gray-500">Anúncio</span>
-                    <span class="text-sm font-medium text-gray-300">${formatBRL(dadoProvento.value)}/cota</span>
+                    <span class="text-[10px] text-gray-500 uppercase font-bold">Provento</span>
+                    <span class="text-xs font-medium text-gray-300">${formatBRL(dadoProvento.value)}/cota</span>
                 </div>
-                <div class="flex justify-between items-center text-xs text-gray-500 mb-3">
-                    <span>Com: <span class="text-gray-400">${dataComTexto}</span></span>
-                    <span>Pag: <span class="text-gray-400">${dataPagTexto}</span></span>
+                <div class="flex justify-between items-center text-[10px] text-gray-500 mb-2">
+                    <span>Com: ${dataComTexto}</span>
+                    <span>Pag: ${dataPagTexto}</span>
                 </div>
-
-                <div class="border-t border-neutral-800 my-2"></div>
-
-                <div class="flex justify-between items-center mt-3">
+                <div class="flex justify-between items-center bg-[#151515] p-2 rounded-lg border border-[#2C2C2E]">
                     ${labelBadge}
-                    ${valorUserDisplay}
+                    ${valorDisplay}
                 </div>
             </div>`;
         } else {
             proventoHtml = `
-            <div class="mt-3 pt-2 border-t border-neutral-800 text-center">
-                <p class="text-xs text-gray-600 italic">Aguardando anúncio...</p>
+            <div class="mt-3 pt-2 border-t border-[#2C2C2E] text-center">
+                <p class="text-[10px] text-gray-600 italic">Aguardando anúncio...</p>
             </div>`;
         }
     }
 
-    // 4. Container
     const card = document.createElement('div');
-    card.className = 'portfolio-item group border-b border-neutral-800 last:border-0 relative transition-colors bg-black'; 
+    card.className = 'wallet-card group cursor-pointer'; 
     card.setAttribute('data-symbol', ativo.symbol); 
 
+    // Estrutura HTML do Card
     card.innerHTML = `
-        <div class="flex justify-between items-center cursor-pointer select-none py-3.5 px-2 hover:bg-neutral-900/30 transition-colors rounded-lg mx-1" data-symbol="${ativo.symbol}" data-action="toggle">
-            <div class="flex items-center gap-4 flex-1 min-w-0">
-                ${avatarHtml}
-                <div class="min-w-0">
-                    <div class="flex items-center gap-2">
-                        <h2 class="text-base font-bold text-white leading-none tracking-tight">${ativo.symbol}</h2>
-                        <span class="text-xs text-gray-500 font-medium whitespace-nowrap" data-field="cota-qtd">${ativo.quantity} cota(s)</span>
+        <div class="p-3 relative pb-4" data-action="toggle">
+            ${proventoDot}
+            
+            <div class="flex justify-between items-start mb-1">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 text-white font-bold text-xs shadow-sm">
+                        ${sigla}
                     </div>
-                    <div class="mt-1.5" data-field="pl-tag">${plTagHtml}</div>
+                    <div>
+                        <div class="flex items-center">
+                            <span class="ticker-pill">${ativo.symbol}</span>
+                            ${plTagHtml}
+                        </div>
+                        <div class="text-[11px] text-gray-500 mt-1.5 flex items-center">
+                            <span data-field="cota-qtd">${ativo.quantity} cotas</span>
+                            <span class="mx-1">•</span>
+                            <span data-field="preco-unitario" class="font-medium text-gray-400">${precoFormatado}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-right pt-0.5">
+                    <p data-field="posicao-valor" class="text-base font-bold text-white tracking-tight money-value">
+                        ${dadoPreco ? formatBRL(totalPosicao) : '...'}
+                    </p>
+                    <p data-field="variacao-valor" class="text-xs font-medium ${corVariacao} mt-0.5 flex justify-end items-center gap-1">
+                        ${dadoPreco ? variacaoFormatada : '0.00%'}
+                    </p>
                 </div>
             </div>
-            <div class="flex items-center gap-3 pl-2">
-                <div class="text-right flex-shrink-0">
-                    <p data-field="preco-valor" class="text-white text-base font-bold money-value tracking-tight">${precoFormatado}</p>
-                    <span data-field="variacao-valor" class="${corVariacao} text-xs font-medium block mt-0.5">${dadoPreco ? variacaoFormatada : '...'}</span>
-                </div>
-                <div class="text-gray-600 group-hover:text-gray-400 transition-colors">
-                    <svg class="card-arrow-icon w-4 h-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                    </svg>
-                </div>
+            
+            <div class="allocation-track">
+                <div class="allocation-bar" style="width: ${percentWallet}%; background-color: ${barColor};"></div>
             </div>
         </div>
 
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-            <div class="drawer-content px-4 pb-4 pt-2">
+            <div class="drawer-content px-4 pb-4 pt-2 border-t border-[#2C2C2E] bg-[#0f0f0f]">
                 
-                <div class="grid grid-cols-3 gap-4 mb-2 text-center">
-                    <div class="flex flex-col">
-                        <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Posição</span>
-                        <span data-field="posicao-valor" class="text-sm font-bold text-white truncate">${dadoPreco ? formatBRL(totalPosicao) : '...'}</span>
+                <div class="grid grid-cols-2 gap-4 mt-2">
+                    <div>
+                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Custo Total</span>
+                        <p data-field="custo-valor" class="text-sm text-gray-300 font-medium">${formatBRL(custoTotal)}</p>
                     </div>
-                    <div class="flex flex-col">
-                        <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Custo</span>
-                        <span data-field="custo-valor" class="text-sm font-bold text-white truncate">${formatBRL(custoTotal)}</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">L/P Total</span>
-                        <span data-field="pl-valor" class="text-sm font-bold ${corPL} truncate">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</span>
+                    <div class="text-right">
+                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Lucro/Prejuízo</span>
+                         <p data-field="pl-valor" class="text-sm font-bold ${corPL}">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</p>
                     </div>
                 </div>
-
-                <div data-field="provento-container">${proventoHtml}</div> 
                 
-                <div class="flex justify-end gap-3 pt-4 mt-2">
-                    <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-gray-400 bg-neutral-900 hover:text-white hover:bg-neutral-800 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="details">
-                        Detalhes
+                <div data-field="provento-container">
+                    ${proventoHtml}
+                </div>
+
+                <div class="flex gap-2 mt-4 pt-2">
+                     <button class="flex-1 py-2.5 text-xs font-bold text-gray-300 bg-[#1C1C1E] border border-[#2C2C2E] rounded-xl hover:bg-[#252525] hover:text-white transition-colors" data-symbol="${ativo.symbol}" data-action="details">
+                        Ver Detalhes do Ativo
                     </button>
-                    <button class="flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-red-400 bg-red-900/10 hover:bg-red-900/30 rounded-md transition-colors" data-symbol="${ativo.symbol}" data-action="remove">
-                        Remover
+                    <button class="py-2.5 px-3 text-red-400 bg-red-900/10 border border-red-900/20 rounded-xl hover:bg-red-900/20 transition-colors" data-symbol="${ativo.symbol}" data-action="remove" title="Remover Ativo">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                 </div>
             </div>
         </div>
     `;
+
     return card;
 }
 
@@ -256,91 +250,96 @@ function atualizarCardElemento(card, ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, bgPL, dadoProvento, proventoReceber
+        corPL, dadoProvento, proventoReceber, percentWallet
     } = dados;
 
-    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cota(s)`;
-    card.querySelector('[data-field="preco-valor"]').textContent = precoFormatado;
+    // 1. Atualiza Textos Básicos da Lista Principal
+    card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
+    card.querySelector('[data-field="preco-unitario"]').textContent = precoFormatado;
+    
+    // 2. Atualiza o Destaque (Total da Posição)
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
+    
+    // 3. Atualiza Variação (Texto e Cor)
+    const varEl = card.querySelector('[data-field="variacao-valor"]');
+    varEl.className = `text-xs font-medium ${corVariacao} mt-0.5 flex justify-end items-center gap-1`;
+    varEl.textContent = dadoPreco ? variacaoFormatada : '0.00%';
+
+    // 4. Atualiza Drawer (Custo e PL)
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
+    
+    const plEl = card.querySelector('[data-field="pl-valor"]');
+    plEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
+    plEl.className = `text-sm font-bold ${corPL}`;
 
-    const variacaoEl = card.querySelector('[data-field="variacao-valor"]');
-    variacaoEl.textContent = dadoPreco ? variacaoFormatada : '...';
-    variacaoEl.className = `${corVariacao} text-xs font-medium block mt-0.5`; 
+    // 5. Atualiza Barra de Alocação (Largura e Cor)
+    const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
+    const barEl = card.querySelector('.allocation-bar');
+    if(barEl) {
+        barEl.style.width = `${percentWallet}%`;
+        barEl.style.backgroundColor = barColor;
+    }
 
-    const plValorEl = card.querySelector('[data-field="pl-valor"]');
-    plValorEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
-    plValorEl.className = `text-sm font-bold ${corPL} truncate`; 
-
-    let plTagHtml = '';
+    // 6. Atualiza Badge de % L/P ao lado do ticker
+    // Selecionamos o elemento da pílula de lucro, se existir, e recriamos
+    const plTagContainer = card.querySelector('.profit-pill');
     if (dadoPreco) {
         const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
-        plTagHtml = `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${bgBadge} inline-block">
-            ${lucroPrejuizoPercent > 0 ? '+' : ''}${lucroPrejuizoPercent.toFixed(1)}% L/P
-        </span>`;
-    }
-    card.querySelector('[data-field="pl-tag"]').innerHTML = plTagHtml;
-    
-    const dot = card.querySelector('.absolute.rounded-full');
-    if (dot) {
-        dot.className = `absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-black ${lucroPrejuizo >= 0 ? 'bg-green-500' : 'bg-red-500'}`;
+        const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
+        const novoHtml = `${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%`;
+        
+        if (plTagContainer) {
+            // Se já existe, atualiza classes e texto
+            plTagContainer.className = `profit-pill ${bgBadge}`;
+            plTagContainer.innerHTML = novoHtml;
+        } else {
+            // Se não existe (ex: carregou preço depois), insere após o ticker
+            const tickerPill = card.querySelector('.ticker-pill');
+            if (tickerPill) {
+                const span = document.createElement('span');
+                span.className = `profit-pill ${bgBadge}`;
+                span.innerHTML = novoHtml;
+                tickerPill.parentNode.insertBefore(span, tickerPill.nextSibling);
+            }
+        }
     }
 
-    if (isFII(ativo.symbol)) { 
-        let proventoHtml = '';
-        if (dadoProvento && dadoProvento.value > 0) {
+    // 7. Atualiza HTML de Proventos (Re-inject)
+    // Se for FII e tiver dados, recriamos o bloco de proventos para garantir status atualizado
+    if (isFII(ativo.symbol) && dadoProvento) {
+        const proventoContainer = card.querySelector('[data-field="provento-container"]');
+        if (proventoContainer && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
             const foiPago = dataPag <= hoje;
             
-            // Lógica de Tickets (Badges)
-            let labelBadge = "";
-            let valorUserDisplay = "";
-
-            if (proventoReceber > 0) {
-                if (foiPago) {
-                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide">PAGO</span>`;
-                    valorUserDisplay = `<span class="text-base font-bold text-green-500">+ ${formatBRL(proventoReceber)}</span>`;
-                } else {
-                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">AGENDADO</span>`;
-                    valorUserDisplay = `<span class="text-base font-bold text-yellow-500">+ ${formatBRL(proventoReceber)}</span>`;
-                }
-            } else {
-                labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-neutral-800 border border-neutral-700 text-[9px] font-bold text-neutral-400 uppercase tracking-wide">STATUS</span>`;
-                valorUserDisplay = `<span class="text-xs font-bold text-orange-400">Sem direito</span>`;
-            }
+            let labelBadge = foiPago 
+                ? `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide">PAGO</span>`
+                : `<span class="px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">AGENDADO</span>`;
             
+            let valorDisplay = proventoReceber > 0
+                ? `<span class="text-base font-bold ${foiPago ? 'text-green-500' : 'text-yellow-500'}">+ ${formatBRL(proventoReceber)}</span>`
+                : `<span class="text-xs font-bold text-orange-400">Sem direito</span>`;
+
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
             const dataPagTexto = formatDate(dadoProvento.paymentDate);
 
-            proventoHtml = `
-            <div class="mt-4 pt-3 border-t border-neutral-800">
+            proventoContainer.innerHTML = `
+            <div class="mt-3 pt-3 border-t border-[#2C2C2E]">
                 <div class="flex justify-between items-center mb-1">
-                    <span class="text-xs text-gray-500">Anúncio</span>
-                    <span class="text-sm font-medium text-gray-300">${formatBRL(dadoProvento.value)}/cota</span>
+                    <span class="text-[10px] text-gray-500 uppercase font-bold">Provento</span>
+                    <span class="text-xs font-medium text-gray-300">${formatBRL(dadoProvento.value)}/cota</span>
                 </div>
-                <div class="flex justify-between items-center text-xs text-gray-500 mb-3">
-                    <span>Com: <span class="text-gray-400">${dataComTexto}</span></span>
-                    <span>Pag: <span class="text-gray-400">${dataPagTexto}</span></span>
+                <div class="flex justify-between items-center text-[10px] text-gray-500 mb-2">
+                    <span>Com: ${dataComTexto}</span>
+                    <span>Pag: ${dataPagTexto}</span>
                 </div>
-                <div class="border-t border-neutral-800 my-2"></div>
-                
-                <div class="flex justify-between items-center mt-3">
+                <div class="flex justify-between items-center bg-[#151515] p-2 rounded-lg border border-[#2C2C2E]">
                     ${labelBadge}
-                    ${valorUserDisplay}
+                    ${valorDisplay}
                 </div>
             </div>`;
-        } else {
-            proventoHtml = `
-            <div class="mt-3 pt-2 border-t border-neutral-800 text-center">
-                <p class="text-xs text-gray-600 italic">Aguardando anúncio...</p>
-            </div>`;
-        }
-        
-        const containerProv = card.querySelector('[data-field="provento-container"]');
-        if (containerProv) {
-            containerProv.innerHTML = proventoHtml;
         }
     }
 }
@@ -2185,156 +2184,184 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
         }, 0);
     }
 
- async function renderizarCarteira() {
-        renderizarCarteiraSkeletons(false);
+async function renderizarCarteira() {
+    // Esconde os skeletons de carregamento
+    renderizarCarteiraSkeletons(false);
 
-        const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-        const proventosOrdenados = [...proventosAtuais].sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-        const proventosMap = new Map(proventosOrdenados.map(p => [p.symbol, p]));
+    // Cria Mapas para acesso rápido a preços e proventos
+    const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
+    const proventosOrdenados = [...proventosAtuais].sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+    const proventosMap = new Map(proventosOrdenados.map(p => [p.symbol, p]));
+    
+    // Ordena a carteira alfabeticamente
+    const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
+
+    let totalValorCarteira = 0;
+    let totalCustoCarteira = 0;
+    let dadosGrafico = [];
+
+    // PASS 1: Calcular totais globais da carteira (necessário para a % de alocação)
+    carteiraOrdenada.forEach(ativo => {
+        const dadoPreco = precosMap.get(ativo.symbol);
+        const precoAtual = dadoPreco ? (dadoPreco.regularMarketPrice ?? 0) : 0;
         
-        const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
+        totalValorCarteira += (precoAtual * ativo.quantity);
+        totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
+    });
 
-        let totalValorCarteira = 0;
-        let totalCustoCarteira = 0;
-        let dadosGrafico = [];
-
-        if (carteiraOrdenada.length === 0) {
-            listaCarteira.innerHTML = ''; 
-            carteiraStatus.classList.remove('hidden');
-            renderizarDashboardSkeletons(false);
-            totalCarteiraValor.textContent = formatBRL(0);
-            totalCaixaValor.textContent = formatBRL(saldoCaixa);
-            totalCarteiraCusto.textContent = formatBRL(0);
-            totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
-            totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
-            dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
-            dashboardLoading.classList.add('hidden');
-            dashboardStatus.classList.remove('hidden');
-            renderizarGraficoAlocacao([]);
-            renderizarGraficoHistorico({ labels: [], data: [] });
-            await salvarSnapshotPatrimonio(saldoCaixa);
-            renderizarGraficoPatrimonio();
-            return; 
-        } else {
-            carteiraStatus.classList.add('hidden');
-            dashboardStatus.classList.add('hidden');
-        }
-
-        const symbolsNaCarteira = new Set(carteiraOrdenada.map(a => a.symbol));
-
-        const cardsNaTela = listaCarteira.querySelectorAll('[data-symbol]');
-        cardsNaTela.forEach(card => {
-            const symbol = card.dataset.symbol;
-            if (!symbolsNaCarteira.has(symbol)) {
-                card.remove();
-            }
-        });
-
-        // --- AQUI COMEÇA A MÁGICA DA CASCATA ---
-        carteiraOrdenada.forEach((ativo, index) => { // Adicionamos 'index' aqui
-            const dadoPreco = precosMap.get(ativo.symbol);
-            const dadoProvento = proventosMap.get(ativo.symbol);
-
-            let precoAtual = 0, variacao = 0, precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
-            if (dadoPreco) {
-                precoAtual = dadoPreco.regularMarketPrice ?? 0;
-                variacao = dadoPreco.regularMarketChangePercent ?? 0;
-                precoFormatado = formatBRL(precoAtual);
-                variacaoFormatada = formatPercent(variacao);
-                corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
-            } else {
-                precoFormatado = '...';
-                corVariacao = 'text-yellow-500';
-            }
-            
-            const totalPosicao = precoAtual * ativo.quantity;
-            const custoTotal = ativo.precoMedio * ativo.quantity;
-            const lucroPrejuizo = totalPosicao - custoTotal;
-            const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
-            
-            let corPL = 'text-gray-500', bgPL = 'bg-gray-800';
-            if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; bgPL = 'bg-green-900/50'; }
-            else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; bgPL = 'bg-red-900/50'; }
-
-            let proventoReceber = 0;
-            if (dadoProvento && dadoProvento.value > 0) {
-                 const dataReferencia = dadoProvento.dataCom || dadoProvento.paymentDate;
-                 const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
-                 proventoReceber = qtdElegivel * dadoProvento.value;
-            }
-
-            const dadosRender = {
-                dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
-                totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-                corPL, bgPL, dadoProvento, proventoReceber
-            };
-
-            totalValorCarteira += totalPosicao;
-            totalCustoCarteira += custoTotal;
-            if (totalPosicao > 0) { dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); }
-
-            let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
-            
-if (card) {
-                // Se o card já existe, apenas atualiza (SEM animação)
-                atualizarCardElemento(card, ativo, dadosRender);
-            } else {
-                // Se é NOVO, cria e anima
-                card = criarCardElemento(ativo, dadosRender);
-                
-                // Adiciona a animação de entrada
-                card.classList.add('card-stagger');
-                const delay = Math.min(index * 50, 500); 
-                card.style.animationDelay = `${delay}ms`;
-                
-                // IMPORTANTE: Remove a classe assim que terminar. 
-                // Isso impede que anime de novo ao trocar de aba.
-                card.addEventListener('animationend', () => {
-                    card.classList.remove('card-stagger');
-                    card.style.animationDelay = '';
-                    card.style.opacity = '1';
-                }, { once: true });
-                
-                listaCarteira.appendChild(card);
-            }
-        });
-
-        if (carteiraOrdenada.length > 0) {
-            const patrimonioTotalAtivos = totalValorCarteira;
-            const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
-            const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
-            
-            let corPLTotal = 'text-gray-500';
-            if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
-            else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
-            
-            renderizarDashboardSkeletons(false);
-            totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
-            totalCaixaValor.textContent = formatBRL(saldoCaixa);
-            totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
-            totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
-            totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
-            
-            const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
-            await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
-        }
+    // Verifica se a carteira está vazia
+    if (carteiraOrdenada.length === 0) {
+        listaCarteira.innerHTML = ''; 
+        carteiraStatus.classList.remove('hidden');
+        renderizarDashboardSkeletons(false);
         
-        renderizarGraficoAlocacao(dadosGrafico);
+        // Zera os valores do Dashboard
+        totalCarteiraValor.textContent = formatBRL(0);
+        totalCaixaValor.textContent = formatBRL(saldoCaixa);
+        totalCarteiraCusto.textContent = formatBRL(0);
+        totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
+        totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
+        
+        dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
+        dashboardLoading.classList.add('hidden');
+        dashboardStatus.classList.remove('hidden');
+        
+        renderizarGraficoAlocacao([]);
+        renderizarGraficoHistorico({ labels: [], data: [] });
+        await salvarSnapshotPatrimonio(saldoCaixa);
         renderizarGraficoPatrimonio();
-        
-        if (carteiraSearchInput && carteiraSearchInput.value) {
-            const term = carteiraSearchInput.value.trim().toUpperCase();
-            const cards = listaCarteira.querySelectorAll('.card-bg');
-            cards.forEach(card => {
-                const symbol = card.dataset.symbol;
-                if (symbol && symbol.includes(term)) {
-                    card.classList.remove('hidden');
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
-        }
+        return; 
+    } else {
+        carteiraStatus.classList.add('hidden');
+        dashboardStatus.classList.add('hidden');
     }
+
+    // Limpeza de cards que foram removidos (Garbage Collection visual)
+    const symbolsNaCarteira = new Set(carteiraOrdenada.map(a => a.symbol));
+    const cardsNaTela = listaCarteira.querySelectorAll('[data-symbol]');
+    cardsNaTela.forEach(card => {
+        const symbol = card.dataset.symbol;
+        if (!symbolsNaCarteira.has(symbol)) {
+            card.remove();
+        }
+    });
+
+    // PASS 2: Renderizar ou Atualizar cada Card
+    carteiraOrdenada.forEach((ativo, index) => { 
+        const dadoPreco = precosMap.get(ativo.symbol);
+        const dadoProvento = proventosMap.get(ativo.symbol);
+
+        // Dados de Mercado
+        let precoAtual = 0, variacao = 0;
+        let precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
+        
+        if (dadoPreco) {
+            precoAtual = dadoPreco.regularMarketPrice ?? 0;
+            variacao = dadoPreco.regularMarketChangePercent ?? 0;
+            precoFormatado = formatBRL(precoAtual);
+            variacaoFormatada = formatPercent(variacao);
+            corVariacao = variacao > 0 ? 'text-green-500' : (variacao < 0 ? 'text-red-500' : 'text-gray-500');
+        } else {
+            precoFormatado = '...';
+            corVariacao = 'text-yellow-500';
+        }
+        
+        // Cálculos Financeiros do Ativo
+        const totalPosicao = precoAtual * ativo.quantity;
+        const custoTotal = ativo.precoMedio * ativo.quantity;
+        const lucroPrejuizo = totalPosicao - custoTotal;
+        const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
+        
+        // Cálculo da Alocação (%)
+        const percentWallet = totalValorCarteira > 0 ? (totalPosicao / totalValorCarteira) * 100 : 0;
+
+        // Estilos de Lucro/Prejuízo
+        let corPL = 'text-gray-500';
+        if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; }
+        else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; }
+
+        // Proventos Futuros
+        let proventoReceber = 0;
+        if (dadoProvento && dadoProvento.value > 0) {
+             const dataReferencia = dadoProvento.dataCom || dadoProvento.paymentDate;
+             const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
+             proventoReceber = qtdElegivel * dadoProvento.value;
+        }
+
+        const dadosRender = {
+            dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
+            totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
+            corPL, dadoProvento, proventoReceber, percentWallet
+        };
+
+        // Popula dados para o gráfico de rosca
+        if (totalPosicao > 0) { 
+            dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); 
+        }
+
+        // DOM: Cria ou Atualiza
+        let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
+        
+        if (card) {
+            atualizarCardElemento(card, ativo, dadosRender);
+        } else {
+            card = criarCardElemento(ativo, dadosRender);
+            
+            // Animação de entrada (Stagger)
+            card.classList.add('card-stagger');
+            const delay = Math.min(index * 50, 500); 
+            card.style.animationDelay = `${delay}ms`;
+            
+            card.addEventListener('animationend', () => {
+                card.classList.remove('card-stagger');
+                card.style.animationDelay = '';
+                card.style.opacity = '1';
+            }, { once: true });
+            
+            listaCarteira.appendChild(card);
+        }
+    });
+
+    // Atualiza Totais do Dashboard
+    if (carteiraOrdenada.length > 0) {
+        const patrimonioTotalAtivos = totalValorCarteira;
+        const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
+        const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
+        
+        let corPLTotal = 'text-gray-500';
+        if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
+        else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
+        
+        renderizarDashboardSkeletons(false);
+        totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
+        totalCaixaValor.textContent = formatBRL(saldoCaixa);
+        totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
+        totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
+        totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
+        
+        // Salva Snapshot para o gráfico de histórico
+        const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
+        await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
+    }
+    
+    // Renderiza Gráficos
+    renderizarGraficoAlocacao(dadosGrafico);
+    renderizarGraficoPatrimonio();
+    
+    // Filtro de Busca (caso o usuário esteja digitando)
+    if (carteiraSearchInput && carteiraSearchInput.value) {
+        const term = carteiraSearchInput.value.trim().toUpperCase();
+        const cards = listaCarteira.querySelectorAll('.wallet-card'); // Atualizado class name
+        cards.forEach(card => {
+            const symbol = card.dataset.symbol;
+            if (symbol && symbol.includes(term)) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+    }
+}
 
     function renderizarProventos() {
         let totalEstimado = 0;

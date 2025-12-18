@@ -3246,22 +3246,37 @@ async function handleMostrarDetalhes(symbol) {
     detalhesPreco.innerHTML = '';
     detalhesAiProvento.innerHTML = ''; 
     detalhesHistoricoContainer.classList.add('hidden');
+    
+    // --- 1. INJEÇÃO DO ÍCONE E TÍTULO (NOVO) ---
+    const iconContainer = document.getElementById('detalhes-icone-container');
+    const sigla = symbol.substring(0, 2);
+    
+    if (iconContainer) {
+        iconContainer.innerHTML = `
+            <div class="w-12 h-12 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <span class="text-base font-bold text-white tracking-wider">${sigla}</span>
+            </div>
+        `;
+    }
+    
     detalhesTituloTexto.textContent = symbol;
-    detalhesNomeLongo.textContent = 'A carregar...';
+    detalhesNomeLongo.textContent = 'Carregando...';
     
     currentDetalhesSymbol = symbol;
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
+    // --- 2. ATUALIZAÇÃO DAS CORES DOS BOTÕES (NOVO ESTILO NEUTRO) ---
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
-        btn.className = `periodo-selector-btn py-1 px-4 rounded-full text-xs font-bold transition-all duration-200 border ${
+        // Estilo Inativo: Fundo Escuro (#1C1C1E), Texto Cinza Neutro, Borda Sutil
+        // Estilo Ativo: Roxo Vesto
+        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
             isActive 
-            ? 'bg-purple-600 border-purple-600 text-white shadow-[0_0_10px_rgba(124,58,237,0.3)] active' 
-            : 'bg-transparent border-[#2C2C2E] text-gray-500 hover:text-gray-300 hover:border-gray-600'
+            ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
+            : 'bg-[#1C1C1E] border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
         }`;
-        if(isActive) btn.classList.add('active');
     });
     
     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
@@ -3449,7 +3464,7 @@ async function handleMostrarDetalhes(symbol) {
                     </div>
                 </div>
                 
-<h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
                 
                 <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
                     ${renderRow('Segmento', dados.segmento)}
@@ -3914,29 +3929,27 @@ const tabDashboard = document.getElementById('tab-dashboard');
         });
     }
     
-    periodoSelectorGroup.addEventListener('click', (e) => {
-        const target = e.target.closest('.periodo-selector-btn');
-        if (!target) return;
+periodoSelectorGroup.addEventListener('click', (e) => {
+    const target = e.target.closest('.periodo-selector-btn');
+    if (!target) return;
 
-        const meses = parseInt(target.dataset.meses, 10);
-        
-        if (meses === currentDetalhesMeses) return;
+    const meses = parseInt(target.dataset.meses, 10);
+    if (meses === currentDetalhesMeses) return;
 
-        currentDetalhesMeses = meses;
-        
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            const isTarget = btn === target;
-            btn.className = `periodo-selector-btn py-1 px-4 rounded-full text-xs font-bold transition-all duration-200 border ${
-                isTarget
-                ? 'bg-purple-600 border-purple-600 text-white shadow-[0_0_10px_rgba(124,58,237,0.3)] active' 
-                : 'bg-transparent border-[#2C2C2E] text-gray-500 hover:text-gray-300 hover:border-gray-600'
-            }`;
-            if (isTarget) btn.classList.add('active');
-            else btn.classList.remove('active');
-        });
-
-        renderHistoricoIADetalhes(currentDetalhesMeses);
+    currentDetalhesMeses = meses;
+    
+    periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
+        const isTarget = btn === target;
+        // Mesma lógica de classes da função handleMostrarDetalhes
+        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
+            isTarget
+            ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
+            : 'bg-[#1C1C1E] border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
+        }`;
     });
+
+    renderHistoricoIADetalhes(currentDetalhesMeses);
+});
 
     if (toggleBioBtn) {
         toggleBioBtn.addEventListener('click', () => {

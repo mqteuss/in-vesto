@@ -100,7 +100,7 @@ const CACHE_PROVENTOS = 1000 * 60 * 60 * 12;
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
 
-// --- CRIAR ITEM DA CARTEIRA (LAYOUT IDÊNTICO À FOTO ENVIADA) ---
+// --- CRIAR ITEM DA CARTEIRA (TICKETS NO PROVENTO) ---
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -108,7 +108,7 @@ function criarCardElemento(ativo, dados) {
         corPL, bgPL, dadoProvento, proventoReceber
     } = dados;
 
-    // 1. Avatar (2 Letras)
+    // 1. Avatar
     const sigla = ativo.symbol.substring(0, 2);
     const corDot = lucroPrejuizo >= 0 ? 'bg-green-500' : 'bg-red-500';
     
@@ -119,7 +119,7 @@ function criarCardElemento(ativo, dados) {
         </div>
     `;
 
-    // 2. Tag L/P (Pílula)
+    // 2. Tag L/P
     let plTagHtml = '';
     if (dadoPreco) {
         const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
@@ -128,7 +128,7 @@ function criarCardElemento(ativo, dados) {
         </span>`;
     }
 
-    // 3. Proventos (Visual da Foto: Anúncio -> Linha -> Status/Valor)
+    // 3. Proventos (COM TICKETS)
     let proventoHtml = '';
     if (isFII(ativo.symbol)) { 
         if (dadoProvento && dadoProvento.value > 0) {
@@ -138,20 +138,24 @@ function criarCardElemento(ativo, dados) {
             
             const foiPago = dataPag <= hoje;
             
-            let labelUser = "STATUS";
+            // Lógica de Tickets (Badges)
+            let labelBadge = "";
             let valorUserDisplay = "";
 
             if (proventoReceber > 0) {
                 if (foiPago) {
-                    labelUser = "PAGO";
+                    // TICKET VERDE (PAGO)
+                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide">PAGO</span>`;
                     valorUserDisplay = `<span class="text-base font-bold text-green-500">+ ${formatBRL(proventoReceber)}</span>`;
                 } else {
-                    labelUser = "AGENDADO";
+                    // TICKET AMARELO (AGENDADO)
+                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">AGENDADO</span>`;
                     valorUserDisplay = `<span class="text-base font-bold text-yellow-500">+ ${formatBRL(proventoReceber)}</span>`;
                 }
             } else {
-                labelUser = "STATUS";
-                valorUserDisplay = `<span class="text-[10px] font-bold text-orange-400 bg-orange-900/20 px-2 py-1 rounded-md">Sem direito</span>`;
+                // TICKET CINZA/LARANJA (STATUS)
+                labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-neutral-800 border border-neutral-700 text-[9px] font-bold text-neutral-400 uppercase tracking-wide">STATUS</span>`;
+                valorUserDisplay = `<span class="text-xs font-bold text-orange-400">Sem direito</span>`;
             }
 
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
@@ -170,8 +174,8 @@ function criarCardElemento(ativo, dados) {
 
                 <div class="border-t border-neutral-800 my-2"></div>
 
-                <div class="flex justify-between items-center mt-2">
-                    <span class="text-xs text-gray-500 font-bold uppercase tracking-wider">${labelUser}</span>
+                <div class="flex justify-between items-center mt-3">
+                    ${labelBadge}
                     ${valorUserDisplay}
                 </div>
             </div>`;
@@ -183,7 +187,7 @@ function criarCardElemento(ativo, dados) {
         }
     }
 
-    // 4. Container Principal
+    // 4. Container
     const card = document.createElement('div');
     card.className = 'portfolio-item group border-b border-neutral-800 last:border-0 relative transition-colors bg-black'; 
     card.setAttribute('data-symbol', ativo.symbol); 
@@ -247,7 +251,7 @@ function criarCardElemento(ativo, dados) {
     return card;
 }
 
-// --- ATUALIZAR ITEM (SINCRO COM O LAYOUT NOVO) ---
+// --- ATUALIZAR ITEM (TICKETS NO PROVENTO) ---
 function atualizarCardElemento(card, ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -290,20 +294,21 @@ function atualizarCardElemento(card, ativo, dados) {
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
             const foiPago = dataPag <= hoje;
             
-            let labelUser = "STATUS";
+            // Lógica de Tickets (Badges)
+            let labelBadge = "";
             let valorUserDisplay = "";
 
             if (proventoReceber > 0) {
                 if (foiPago) {
-                    labelUser = "PAGO";
+                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-400 uppercase tracking-wide">PAGO</span>`;
                     valorUserDisplay = `<span class="text-base font-bold text-green-500">+ ${formatBRL(proventoReceber)}</span>`;
                 } else {
-                    labelUser = "AGENDADO";
+                    labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">AGENDADO</span>`;
                     valorUserDisplay = `<span class="text-base font-bold text-yellow-500">+ ${formatBRL(proventoReceber)}</span>`;
                 }
             } else {
-                labelUser = "STATUS";
-                valorUserDisplay = `<span class="text-[10px] font-bold text-orange-400 bg-orange-900/20 px-2 py-1 rounded-md">Sem direito</span>`;
+                labelBadge = `<span class="px-1.5 py-0.5 rounded-md bg-neutral-800 border border-neutral-700 text-[9px] font-bold text-neutral-400 uppercase tracking-wide">STATUS</span>`;
+                valorUserDisplay = `<span class="text-xs font-bold text-orange-400">Sem direito</span>`;
             }
             
             const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
@@ -320,8 +325,9 @@ function atualizarCardElemento(card, ativo, dados) {
                     <span>Pag: <span class="text-gray-400">${dataPagTexto}</span></span>
                 </div>
                 <div class="border-t border-neutral-800 my-2"></div>
-                <div class="flex justify-between items-center mt-2">
-                    <span class="text-xs text-gray-500 font-bold uppercase tracking-wider">${labelUser}</span>
+                
+                <div class="flex justify-between items-center mt-3">
+                    ${labelBadge}
                     ${valorUserDisplay}
                 </div>
             </div>`;

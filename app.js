@@ -177,7 +177,6 @@ function criarCardElemento(ativo, dados) {
     }
 
     const card = document.createElement('div');
-    // REMOVIDO: 'border-b border-neutral-800'
     card.className = 'portfolio-item group relative transition-colors bg-black'; 
     card.setAttribute('data-symbol', ativo.symbol); 
 
@@ -230,7 +229,7 @@ function criarCardElemento(ativo, dados) {
             </div>
         </div>
 
-        <div class="mx-3 h-[5px] border-b border-[#2C2C2E] rounded-b-[50%] opacity-60 group-last:hidden pointer-events-none"></div>
+        ${separadorSorrisoHtml}
     `;
     return card;
 }
@@ -364,6 +363,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastNewsSignature = ''; 
     let lastProventosCalcSignature = ''; 
     let cachedSaldoCaixa = 0;
+	const separadorSorrisoHtml = `
+    <div class="w-full px-3 -mt-[1px] group-last:hidden relative z-0 pointer-events-none opacity-50">
+        <svg width="100%" height="8" viewBox="0 0 100 8" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="display:block;">
+            <path d="M0 0 Q 50 8 100 0" stroke="#333333" stroke-width="1" vector-effect="non-scaling-stroke" />
+        </svg>
+    </div>
+    `;
     // -------------------------------------------
     
     const vestoDB = {

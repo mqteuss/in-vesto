@@ -1103,44 +1103,97 @@ function hideAddModal() {
     }
 
 // --- RENDERIZAR WATCHLIST (ESTILO CARTEIRA / MINIMALISTA) ---
-function renderizarWatchlist() {
-    if (!watchlistListaEl) return;
-    watchlistListaEl.innerHTML = ''; 
+// Substitua a função renderizarWatchlist inteira em app.js
 
+function renderizarWatchlist() {
+    // 1. Lógica antiga (Drawer vertical) - Mantida caso você abra a lista completa
+    if (watchlistListaEl) {
+        watchlistListaEl.innerHTML = '';
+        if (watchlist.length === 0) {
+            if(watchlistStatusEl) watchlistStatusEl.classList.remove('hidden');
+        } else {
+            if(watchlistStatusEl) watchlistStatusEl.classList.add('hidden');
+            watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
+            const fragment = document.createDocumentFragment();
+            watchlist.forEach(item => {
+                const symbol = item.symbol;
+                const sigla = symbol.substring(0, 2);
+                const el = document.createElement('div');
+                el.className = 'flex justify-between items-center p-3 bg-black rounded-2xl border border-[#2C2C2E] hover:border-neutral-700 transition-colors group';
+                el.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 group-hover:border-neutral-700 transition-colors">
+                            <span class="text-sm font-bold text-white tracking-wider">${sigla}</span>
+                        </div>
+                        <span class="font-bold text-white text-sm tracking-tight">${symbol}</span>
+                    </div>
+                    <button class="py-1.5 px-4 text-xs font-medium text-gray-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-lg transition-colors" onclick="window.abrirDetalhesAtivo('${symbol}')">
+                        Ver
+                    </button>
+                `;
+                fragment.appendChild(el);
+            });
+            watchlistListaEl.appendChild(fragment);
+        }
+    }
+
+    // 2. NOVO: Renderiza o Carrossel Horizontal
+    const carouselEl = document.getElementById('dashboard-favorites-list');
+    if (!carouselEl) return;
+    
+    carouselEl.innerHTML = '';
+
+    // Card de "Adicionar" se estiver vazio
     if (watchlist.length === 0) {
-        if(watchlistStatusEl) watchlistStatusEl.classList.remove('hidden');
+        carouselEl.innerHTML = `
+            <div onclick="document.getElementById('carteira-search-input').focus(); mudarAba('tab-carteira');" class="fav-card border-dashed border-gray-700 cursor-pointer opacity-70">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                <span class="text-[10px] text-gray-500 font-bold uppercase">Adicionar</span>
+            </div>`;
         return;
     }
-    
-    if(watchlistStatusEl) watchlistStatusEl.classList.add('hidden');
-    
-    watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-    const fragment = document.createDocumentFragment();
+    // Mapa de preços para acesso rápido
+    const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
+
     watchlist.forEach(item => {
         const symbol = item.symbol;
-        const sigla = symbol.substring(0, 2); // Apenas 2 letras
-
-        const el = document.createElement('div');
-        // Container do item: Fundo preto, borda cinza, hover sutil
-        el.className = 'flex justify-between items-center p-3 bg-black rounded-2xl border border-[#2C2C2E] hover:border-neutral-700 transition-colors group';
+        const dadoPreco = precosMap.get(symbol);
         
-        el.innerHTML = `
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 group-hover:border-neutral-700 transition-colors">
-                    <span class="text-sm font-bold text-white tracking-wider">${sigla}</span>
-                </div>
-                
-                <span class="font-bold text-white text-sm tracking-tight">${symbol}</span>
-            </div>
+        let preco = '---';
+        let varPercent = 0;
+        let corVar = 'text-gray-500';
+        let icon = '';
+
+        if (dadoPreco) {
+            preco = formatBRL(dadoPreco.regularMarketPrice);
+            varPercent = dadoPreco.regularMarketChangePercent || 0;
+            if (varPercent > 0.001) {
+                corVar = 'text-green-500';
+                icon = '▲';
+            } else if (varPercent < -0.001) {
+                corVar = 'text-red-500';
+                icon = '▼';
+            }
+        }
+
+        const card = document.createElement('div');
+        card.className = 'fav-card cursor-pointer group select-none';
+        card.onclick = () => window.abrirDetalhesAtivo(symbol);
+
+        card.innerHTML = `
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             
-            <button class="py-1.5 px-4 text-xs font-medium text-gray-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-lg transition-colors" data-symbol="${symbol}" data-action="details">
-                Ver
-            </button>
+            <span class="text-xs font-bold text-gray-300 mb-1.5 tracking-wider bg-[#151515] px-2 py-0.5 rounded border border-[#222]">${symbol}</span>
+            
+            <span class="text-sm font-bold text-white tracking-tight leading-none mb-1">${preco}</span>
+            
+            <span class="text-[9px] font-bold ${corVar} flex items-center gap-0.5">
+                ${icon} ${Math.abs(varPercent).toFixed(2)}%
+            </span>
         `;
-        fragment.appendChild(el);
+        carouselEl.appendChild(card);
     });
-    watchlistListaEl.appendChild(fragment);
 }
     
     function atualizarIconeFavorito(symbol) {

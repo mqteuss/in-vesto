@@ -1374,6 +1374,8 @@ function renderizarHistorico() {
 
 // Substitua a função renderizarHistoricoProventos existente em app.js
 
+// Substitua a função renderizarHistoricoProventos existente em app.js
+
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1401,7 +1403,7 @@ function renderizarHistoricoProventos() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // 1. Calcular total do mês para o Header
+        // 1. Total do mês
         let totalMes = 0;
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
@@ -1409,7 +1411,7 @@ function renderizarHistoricoProventos() {
             if (qtd > 0) totalMes += (p.value * qtd);
         });
 
-        // 2. Header Sticky (Igual transações)
+        // 2. Header Sticky
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
         header.innerHTML = `
@@ -1435,13 +1437,12 @@ function renderizarHistoricoProventos() {
                 const total = p.value * qtd;
                 const dia = new Date(p.paymentDate).getDate().toString().padStart(2, '0');
                 const sigla = p.symbol.substring(0, 2);
-                
-                // Badge Verde para Proventos
                 const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';
 
                 const item = document.createElement('div');
                 item.className = 'history-card flex items-center justify-between py-2.5 px-3 relative group';
 
+                // ALTERAÇÃO: Movi a qtd de cotas para a linha do subtítulo e removi do lado direito
                 item.innerHTML = `
                     <div class="flex items-center gap-3 flex-1 min-w-0">
                         <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
@@ -1456,14 +1457,15 @@ function renderizarHistoricoProventos() {
                             <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                                 <span class="font-medium text-gray-400">Dia ${dia}</span>
                                 <span>•</span>
-                                <span>${formatBRL(p.value)}/cota</span>
+                                <span>${qtd} cotas</span>
+                                <span>•</span>
+                                <span>${formatBRL(p.value)}</span>
                             </div>
                         </div>
                     </div>
                     
                     <div class="text-right flex flex-col items-end justify-center">
                         <span class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
-                        <span class="text-[10px] text-gray-600 mt-0.5">${qtd} cotas</span>
                     </div>
                 `;
                 listaGrupo.appendChild(item);

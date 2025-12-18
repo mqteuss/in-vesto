@@ -3247,7 +3247,7 @@ async function handleMostrarDetalhes(symbol) {
     detalhesAiProvento.innerHTML = ''; 
     detalhesHistoricoContainer.classList.add('hidden');
     
-    // --- 1. INJEÇÃO DO ÍCONE E TÍTULO (NOVO) ---
+    // --- 1. INJEÇÃO DO ÍCONE ---
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
     
@@ -3266,16 +3266,15 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // --- 2. ATUALIZAÇÃO DAS CORES DOS BOTÕES (NOVO ESTILO NEUTRO) ---
+    // --- 2. CORES DOS BOTÕES (NEUTRO ABSOLUTO) ---
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
-        // Estilo Inativo: Fundo Escuro (#1C1C1E), Texto Cinza Neutro, Borda Sutil
-        // Estilo Ativo: Roxo Vesto
+        // Fundo preto puro, borda cinza escura neutra, texto cinza neutro
         btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
             isActive 
             ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
-            : 'bg-[#1C1C1E] border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
+            : 'bg-black border-[#2C2C2E] text-[#888888] hover:text-white hover:border-[#444]'
         }`;
     });
     
@@ -3325,7 +3324,7 @@ async function handleMostrarDetalhes(symbol) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         
         const varPercent = precoData.regularMarketChangePercent || 0;
-        let variacaoCor = 'text-gray-500';
+        let variacaoCor = 'text-[#888888]';
         let variacaoIcone = '';
         const arrowUp = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>`;
         const arrowDown = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>`;
@@ -3333,6 +3332,7 @@ async function handleMostrarDetalhes(symbol) {
         if (varPercent > 0) { variacaoCor = 'text-green-500'; variacaoIcone = arrowUp; } 
         else if (varPercent < 0) { variacaoCor = 'text-red-500'; variacaoIcone = arrowDown; }
         
+        // Posição do Usuário
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
@@ -3340,16 +3340,17 @@ async function handleMostrarDetalhes(symbol) {
             userPosHtml = `
                 <div class="w-full p-4 bg-black border border-[#2C2C2E] rounded-2xl flex justify-between items-center shadow-sm">
                     <div class="text-left">
-                        <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sua Posição</span>
+                        <span class="text-[10px] text-[#666666] uppercase tracking-widest font-bold">Sua Posição</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
                             <p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p>
-                            <span class="text-xs text-gray-400 font-medium">(${ativoCarteira.quantity} cotas)</span>
+                            <span class="text-xs text-[#888888] font-medium">(${ativoCarteira.quantity} cotas)</span>
                         </div>
                     </div>
                 </div>
             `;
         }
 
+        // --- 3. CORREÇÃO DA LINHA DO PROVENTO ---
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
@@ -3363,22 +3364,23 @@ async function handleMostrarDetalhes(symbol) {
             }
             const tituloCard = isFuturo ? "Próximo Pagamento" : "Último Anúncio";
             const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
-            const textClass = isFuturo ? "text-green-400" : "text-gray-400";
+            const textClass = isFuturo ? "text-green-400" : "text-[#666666]";
 
+            // AQUI: border-b border-[#2C2C2E] (Cinza Neutro, sem azul)
             proximoProventoHtml = `
                 <div class="w-full p-3 rounded-2xl border ${borderClass} flex flex-col gap-2 shadow-sm">
-                    <div class="flex justify-between items-center border-b border-gray-800 pb-2 mb-1">
+                    <div class="flex justify-between items-center border-b border-[#2C2C2E] pb-2 mb-1">
                         <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${tituloCard}</span>
                         <span class="text-lg font-bold text-white">${formatBRL(nextProventoData.value)}</span>
                     </div>
                     <div class="flex justify-between text-xs">
                         <div class="text-center">
-                            <span class="block text-gray-500 mb-0.5">Data Com</span>
-                            <span class="text-gray-300 font-medium">${dataComFmt}</span>
+                            <span class="block text-[#666666] mb-0.5">Data Com</span>
+                            <span class="text-[#cccccc] font-medium">${dataComFmt}</span>
                         </div>
                         <div class="text-center">
-                            <span class="block text-gray-500 mb-0.5">Pagamento</span>
-                            <span class="text-gray-300 font-medium">${dataPagFmt}</span>
+                            <span class="block text-[#666666] mb-0.5">Pagamento</span>
+                            <span class="text-[#cccccc] font-medium">${dataPagFmt}</span>
                         </div>
                     </div>
                 </div>
@@ -3406,7 +3408,7 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-' 
         };
         
-        let corVar12m = 'text-gray-400'; let icon12m = '';
+        let corVar12m = 'text-[#888888]'; let icon12m = '';
         if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
             corVar12m = 'text-red-500'; icon12m = arrowDown;
         } else if (dados.variacao_12m !== '0.00%' && dados.variacao_12m !== '-') {
@@ -3415,8 +3417,8 @@ async function handleMostrarDetalhes(symbol) {
 
         const renderRow = (label, value, isLast = false) => `
             <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
-                <span class="text-sm text-gray-400 font-medium">${label}</span>
-                <span class="text-sm font-semibold text-gray-200 text-right max-w-[60%] truncate">${value}</span>
+                <span class="text-sm text-[#888888] font-medium">${label}</span>
+                <span class="text-sm font-semibold text-[#e5e5e5] text-right max-w-[60%] truncate">${value}</span>
             </div>
         `;
 
@@ -3437,15 +3439,15 @@ async function handleMostrarDetalhes(symbol) {
 
                 <div class="grid grid-cols-3 gap-3 w-full">
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">DY (12m)</span>
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
                         <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
                     </div>
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">P/VP</span>
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
                         <span class="text-lg font-bold text-white">${dados.pvp}</span>
                     </div>
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
                         <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
                     </div>
                 </div>
@@ -3457,14 +3459,14 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                     ${renderRow('Vacância', dados.vacancia)}
                     <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm text-gray-400 font-medium">Var. 12 Meses</span>
+                        <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
                         <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
                             ${icon12m} ${dados.variacao_12m}
                         </span>
                     </div>
                 </div>
                 
-                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
+                <h3 class="text-sm font-bold text-[#666666] uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
                 
                 <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
                     ${renderRow('Segmento', dados.segmento)}
@@ -3476,8 +3478,8 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Cotistas', dados.num_cotistas)}
                     ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
                     <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm text-gray-400 font-medium">CNPJ</span>
-                        <span class="text-xs font-mono text-gray-500 select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
+                        <span class="text-sm text-[#888888] font-medium">CNPJ</span>
+                        <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
                     </div>
                 </div>
 
@@ -3940,11 +3942,11 @@ periodoSelectorGroup.addEventListener('click', (e) => {
     
     periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
         const isTarget = btn === target;
-        // Mesma lógica de classes da função handleMostrarDetalhes
+        // Mesma lógica neutra
         btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
             isTarget
             ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
-            : 'bg-[#1C1C1E] border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
+            : 'bg-black border-[#2C2C2E] text-[#888888] hover:text-white hover:border-[#444]'
         }`;
     });
 

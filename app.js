@@ -1008,32 +1008,34 @@ function updateThemeUI() {
     }
     
 function hideAddModal() {
-        addAtivoModalContent.classList.add('modal-out');
-        setTimeout(() => {
-            addAtivoModal.classList.remove('visible');
-            addAtivoModalContent.classList.remove('modal-out');
-            
-            tickerInput.value = '';
-            quantityInput.value = '';
-            precoMedioInput.value = '';
-            dateInput.value = '';
-            transacaoIdInput.value = '';
-            
-            // CORREÇÃO: Reseta o rádio para "Compra" (padrão)
-            const buyRadio = document.querySelector('input[name="tipo-operacao"][value="buy"]');
-            if (buyRadio) buyRadio.checked = true;
-            
-            transacaoEmEdicao = null;
-            tickerInput.disabled = false;
-            addModalTitle.textContent = 'Adicionar Compra';
-            addButton.textContent = 'Adicionar';
-            
-            tickerInput.classList.remove('border-red-500');
-            quantityInput.classList.remove('border-red-500');
-            precoMedioInput.classList.remove('border-red-500');
-            dateInput.classList.remove('border-red-500');
-        }, 200);
-    }
+    addAtivoModalContent.classList.add('modal-out');
+    setTimeout(() => {
+        addAtivoModal.classList.remove('visible');
+        addAtivoModalContent.classList.remove('modal-out');
+        
+        tickerInput.value = '';
+        quantityInput.value = '';
+        precoMedioInput.value = '';
+        dateInput.value = '';
+        transacaoIdInput.value = '';
+        
+        // Reset do Total
+        document.getElementById('total-transacao-preview').textContent = "R$ 0,00";
+
+        // Reset do Toggle para Compra
+        const btnCompra = document.getElementById('btn-opt-compra');
+        if(btnCompra) btnCompra.click(); // Simula clique para resetar animação e valor
+        
+        transacaoEmEdicao = null;
+        tickerInput.disabled = false;
+        addModalTitle.textContent = 'Nova Transação'; // Texto genérico melhor
+        addButton.textContent = 'Salvar';
+        
+        // Remove erros visuais
+        tickerInput.parentElement.classList.remove('ring-2', 'ring-red-500');
+        // ...
+    }, 200);
+}
     
     function showDetalhesModal(symbol) {
         detalhesPageContent.style.transform = ''; 
@@ -2981,7 +2983,7 @@ async function handleSalvarTransacao() {
         let transacaoID = transacaoIdInput.value;
 
         // Captura o valor do botão de rádio selecionado (buy ou sell)
-        const tipoOperacao = document.querySelector('input[name="tipo-operacao"]:checked').value;
+        const tipoOperacao = document.getElementById('tipo-operacao-input').value;
 
         if (ticker.endsWith('.SA')) ticker = ticker.replace('.SA', '');
 
@@ -3111,34 +3113,33 @@ async function handleSalvarTransacao() {
     }
     
 function handleAbrirModalEdicao(id) {
-        const tx = transacoes.find(t => t.id === id);
-        if (!tx) {
-            showToast("Erro: Transação não encontrada.");
-            return;
-        }
-        
-        transacaoEmEdicao = tx;
-        
-        // Ajusta o título dependendo do tipo
-        addModalTitle.textContent = tx.type === 'sell' ? 'Editar Venda' : 'Editar Compra';
-        
-        transacaoIdInput.value = tx.id;
-        tickerInput.value = tx.symbol;
-        tickerInput.disabled = true;
-        dateInput.value = formatDateToInput(tx.date);
-        quantityInput.value = tx.quantity;
-        precoMedioInput.value = tx.price;
-        
-        // CORREÇÃO: Marca o rádio button correto (buy ou sell) baseado na transação
-        const radioBtn = document.querySelector(`input[name="tipo-operacao"][value="${tx.type}"]`);
-        if (radioBtn) {
-            radioBtn.checked = true;
-        }
+    const tx = transacoes.find(t => t.id === id);
+    if (!tx) { showToast("Erro: Transação não encontrada."); return; }
+    
+    transacaoEmEdicao = tx;
+    addModalTitle.textContent = tx.type === 'sell' ? 'Editar Venda' : 'Editar Compra';
+    
+    transacaoIdInput.value = tx.id;
+    tickerInput.value = tx.symbol;
+    tickerInput.disabled = true;
+    dateInput.value = formatDateToInput(tx.date);
+    quantityInput.value = tx.quantity;
+    precoMedioInput.value = tx.price;
+    
+    // Atualiza Total Inicial
+    const totalPreview = document.getElementById('total-transacao-preview');
+    if(totalPreview) totalPreview.textContent = formatBRL(tx.quantity * tx.price);
 
-        addButton.textContent = 'Salvar';
-        
-        showAddModal();
+    // ALTERAÇÃO: Aciona o botão correto para animar o toggle
+    if (tx.type === 'sell') {
+        document.getElementById('btn-opt-venda').click();
+    } else {
+        document.getElementById('btn-opt-compra').click();
     }
+
+    addButton.textContent = 'Atualizar';
+    showAddModal();
+}
     
     function handleExcluirTransacao(id, symbol) {
         const tx = transacoes.find(t => t.id === id);
@@ -4323,6 +4324,52 @@ if (clearCacheBtn) {
             showToast("Erro ao desativar notificações.");
         }
     }
+	
+	// --- LÓGICA DO MODAL DE TRANSAÇÃO (Cole aqui) ---
+    function setupTransactionModalLogic() {
+        const btnCompra = document.getElementById('btn-opt-compra');
+        const btnVenda = document.getElementById('btn-opt-venda');
+        const toggleBg = document.getElementById('transacao-toggle-bg');
+        const inputOperacao = document.getElementById('tipo-operacao-input');
+        
+        const inputQtd = document.getElementById('quantity-input');
+        const inputPreco = document.getElementById('preco-medio-input');
+        const totalPreview = document.getElementById('total-transacao-preview');
+
+        // 1. Toggle Compra/Venda
+        if (btnCompra && btnVenda) {
+            btnCompra.addEventListener('click', () => {
+                inputOperacao.value = 'buy';
+                toggleBg.classList.remove('translate-x-full', 'bg-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.4)]');
+                toggleBg.classList.add('bg-green-600', 'shadow-[0_0_15px_rgba(22,163,74,0.4)]');
+                
+                btnCompra.classList.replace('text-gray-500', 'text-white');
+                btnVenda.classList.replace('text-white', 'text-gray-500');
+            });
+
+            btnVenda.addEventListener('click', () => {
+                inputOperacao.value = 'sell';
+                toggleBg.classList.remove('bg-green-600', 'shadow-[0_0_15px_rgba(22,163,74,0.4)]');
+                toggleBg.classList.add('translate-x-full', 'bg-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.4)]');
+                
+                btnVenda.classList.replace('text-gray-500', 'text-white');
+                btnCompra.classList.replace('text-white', 'text-gray-500');
+            });
+        }
+
+        // 2. Cálculo Automático do Total
+        function calcularTotal() {
+            const qtd = parseFloat(inputQtd.value) || 0;
+            const preco = parseFloat(inputPreco.value) || 0;
+            const total = qtd * preco;
+            totalPreview.textContent = formatBRL(total);
+        }
+
+        if (inputQtd && inputPreco) {
+            inputQtd.addEventListener('input', calcularTotal);
+            inputPreco.addEventListener('input', calcularTotal);
+        }
+    }
     
 async function init() {
         try {
@@ -4809,6 +4856,8 @@ if (toggleNotifBtn) {
             }
         });
     }
+	
+	setupTransactionModalLogic();
 
     await init();
 });

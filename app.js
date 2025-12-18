@@ -1708,7 +1708,7 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                 plugins: {
                     legend: { 
                         display: true, 
-                        position: 'right', // Mudei para a direita para ganhar altura vertical
+                        position: 'bottom', // Mudei para a direita para ganhar altura vertical
                         labels: { 
                             color: '#9ca3af', 
                             boxWidth: 8, 

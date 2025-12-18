@@ -2133,7 +2133,7 @@ function renderizarCarteiraSkeletons(show) {
         skeletonListaCarteira.classList.add('hidden'); // Garante que o genérico suma
         listaCarteira.classList.remove('hidden');      // Garante que a lista real apareça
 
-        const cards = listaCarteira.querySelectorAll('.card-bg');
+        const cards = listaCarteira.querySelectorAll('.wallet-card');
         
         cards.forEach(card => {
             // Selecionamos apenas os elementos que vão mudar de valor
@@ -3968,7 +3968,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
     if (carteiraSearchInput) {
         carteiraSearchInput.addEventListener('input', (e) => {
             const term = e.target.value.trim().toUpperCase();
-            const cards = listaCarteira.querySelectorAll('.card-bg');
+            const cards = listaCarteira.querySelectorAll('.wallet-card');
             
             cards.forEach(card => {
                 const symbol = card.dataset.symbol;

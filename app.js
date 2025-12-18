@@ -1124,7 +1124,7 @@ window.toggleWatchlistDrawer = function() {
 
 // 2. SUBSTITUA A FUNÇÃO renderizarWatchlist ATUAL POR ESTA:
 function renderizarWatchlist() {
-    // Apenas Carrossel Horizontal
+    // 1. Apenas Carrossel Horizontal
     const carouselEl = document.getElementById('dashboard-favorites-list');
     if (!carouselEl) return;
     
@@ -1146,17 +1146,19 @@ function renderizarWatchlist() {
         const symbol = item.symbol;
         const dadoPreco = precosMap.get(symbol);
         
-        let preco = '---';
+        // CORREÇÃO: Começa com vazio ('') em vez de '---'
+        // Se não tiver preço carregado, ficará um espaço em branco limpo.
+        let preco = ''; 
         if (dadoPreco) {
             preco = formatBRL(dadoPreco.regularMarketPrice);
         }
 
         const card = document.createElement('div');
-        // Usa a classe CSS ajustada
+        // Usa a classe CSS fav-card
         card.className = 'fav-card cursor-pointer group select-none relative';
         card.onclick = () => window.abrirDetalhesAtivo(symbol);
 
-        // Layout Compacto: Ticker Branco (topo) e Preço (meio)
+        // HTML LIMPO: Ticker Branco e Preço (ou vazio)
         card.innerHTML = `
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             

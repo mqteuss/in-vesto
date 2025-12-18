@@ -4850,13 +4850,20 @@ function saveSearchHistory(term) {
 let swipeStartX = 0;
     let swipeStartY = 0;
 
-    document.addEventListener('touchstart', (e) => {
+document.addEventListener('touchstart', (e) => {
         // Bloqueia se houver modal aberto
         if (document.querySelector('.custom-modal.visible') || 
             document.querySelector('.page-modal.visible') || 
             document.querySelector('#ai-modal.visible')) {
             return;
         }
+        
+        // --- NOVA CORREÇÃO: Bloqueia swipe se tocar no carrossel de favoritos ---
+        if (e.target.closest('.overflow-x-auto') || e.target.closest('#dashboard-favorites-list')) {
+            return; 
+        }
+        // -----------------------------------------------------------------------
+
         swipeStartX = e.changedTouches[0].screenX;
         swipeStartY = e.changedTouches[0].screenY;
     }, { passive: true });

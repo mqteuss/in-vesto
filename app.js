@@ -117,14 +117,18 @@ function toggleDrawer(symbol) {
 }
 
 // --- CRIAR ITEM DA CARTEIRA (TICKETS NO PROVENTO) ---
+// --- CRIAR ITEM DA CARTEIRA (CORRIGIDO) ---
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, dadoProvento, proventoReceber, percentWallet // <--- Certifique-se que percentWallet vem do renderizarCarteira
+        corPL, dadoProvento, proventoReceber, percentWallet
     } = dados;
 
     const sigla = ativo.symbol.substring(0, 2);
+    
+    // CORREÇÃO: Definindo a cor da barra baseada no lucro/prejuízo
+    const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
     
     // Tag de Lucro/Prejuízo (Pill)
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
@@ -135,7 +139,7 @@ function criarCardElemento(ativo, dados) {
            </span>` 
         : '';
 
-    // Lógica de Proventos (MANTIDA IGUAL AO SEU PRINT)
+    // Lógica de Proventos
     let proventoHtml = '';
     if (isFII(ativo.symbol) && dadoProvento && dadoProvento.value > 0) {
         const parts = dadoProvento.paymentDate.split('-');
@@ -143,7 +147,6 @@ function criarCardElemento(ativo, dados) {
         const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
         const foiPago = dataPag <= hoje;
         
-        // Badges "Old School"
         let labelBadge = foiPago 
             ? `<span class="px-2 py-0.5 rounded bg-green-900/20 text-green-500 text-[10px] font-bold border border-green-900/30 uppercase tracking-wide">PAGO</span>`
             : `<span class="px-2 py-0.5 rounded bg-yellow-900/20 text-yellow-500 text-[10px] font-bold border border-yellow-900/30 uppercase tracking-wide">AGENDADO</span>`;
@@ -165,18 +168,16 @@ function criarCardElemento(ativo, dados) {
         </div>`;
     }
 
-    // CRIAÇÃO DO CARD (ESTRUTURA MODERNA)
     const card = document.createElement('div');
-    card.className = 'wallet-card group cursor-pointer select-none'; // Usa a classe nova do CSS
+    card.className = 'wallet-card group cursor-pointer select-none';
     card.setAttribute('data-symbol', ativo.symbol);
     
-    // Click Listener direto
     card.onclick = function(e) {
         if (e.target.closest('button')) return;
         toggleDrawer(ativo.symbol);
     };
 
-card.innerHTML = `
+    card.innerHTML = `
         <div class="p-3 relative pb-4">
             <div class="flex justify-between items-start mb-1">
                 <div class="flex items-center gap-3">

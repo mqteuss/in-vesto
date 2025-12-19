@@ -1034,15 +1034,6 @@ function hideAddModal() {
     }, 200);
 }
     
-    function showDetalhesModal(symbol) {
-        detalhesPageContent.style.transform = ''; 
-        detalhesPageContent.classList.remove('closing'); 
-        detalhesPageModal.classList.add('visible'); 
-        document.body.style.overflow = 'hidden'; 
-        detalhesConteudoScroll.scrollTop = 0; 
-        handleMostrarDetalhes(symbol); 
-    }
-    
     function hideDetalhesModal() {
         detalhesPageContent.style.transform = ''; 
         detalhesPageContent.classList.add('closing'); 
@@ -3327,46 +3318,77 @@ function handleAbrirModalEdicao(id) {
         });
     }
     
-async function handleMostrarDetalhes(symbol) {
-    detalhesMensagem.classList.add('hidden');
-    detalhesLoading.classList.remove('hidden');
-    detalhesPreco.innerHTML = '';
-    detalhesAiProvento.innerHTML = ''; 
-    detalhesHistoricoContainer.classList.add('hidden');
+// =============================================================
+//  MODAL DE DETALHES (LÓGICA ORIGINAL + VISUAL CARTEIRA)
+// =============================================================
+
+async function showDetalhesModal(symbol) {
+    // 1. PREPARAÇÃO DO MODAL (Mantendo sua lógica de abertura)
+    const modal = document.getElementById('detalhes-page-modal') || document.getElementById('modal-detalhes');
+    const content = document.getElementById('detalhes-page-content') || modal.querySelector('.modal-content');
+    const scrollContainer = document.getElementById('detalhes-conteudo-scroll') || modal;
     
-    // --- 1. INJEÇÃO DO ÍCONE ---
+    // Elementos internos (Seus IDs originais)
+    const detalhesPreco = document.getElementById('detalhes-preco');
+    const detalhesLoading = document.getElementById('detalhes-loading');
+    const detalhesMensagem = document.getElementById('detalhes-mensagem');
+    const detalhesNomeLongo = document.getElementById('detalhes-nome-longo');
+    const detalhesTitulo = document.getElementById('detalhes-titulo-texto');
     const iconContainer = document.getElementById('detalhes-icone-container');
-    const sigla = symbol.substring(0, 2);
+    const historicoContainer = document.getElementById('detalhes-historico-container');
     
+    // Reset visual
+    if(content) {
+        content.style.transform = '';
+        content.classList.remove('closing');
+    }
+    modal.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+    if(scrollContainer) scrollContainer.scrollTop = 0;
+
+    // Estados de Loading
+    if(detalhesMensagem) detalhesMensagem.classList.add('hidden');
+    if(detalhesLoading) detalhesLoading.classList.remove('hidden');
+    if(historicoContainer) historicoContainer.classList.add('hidden');
+    
+    // Limpa conteúdo anterior
+    if(detalhesPreco) detalhesPreco.innerHTML = '';
+    
+    // Variáveis Globais (Mantendo sua lógica)
+    if(typeof currentDetalhesSymbol !== 'undefined') currentDetalhesSymbol = symbol;
+    if(typeof currentDetalhesMeses !== 'undefined') currentDetalhesMeses = 3;
+    if(typeof currentDetalhesHistoricoJSON !== 'undefined') currentDetalhesHistoricoJSON = null;
+
+    // --- 2. RENDERIZAÇÃO DO ÍCONE E CABEÇALHO ---
+    const sigla = symbol.substring(0, 2);
     if (iconContainer) {
         iconContainer.innerHTML = `
-            <div class="w-12 h-12 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 shadow-sm">
+            <div class="w-12 h-12 rounded-2xl bg-[#1C1C1E] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm">
                 <span class="text-base font-bold text-white tracking-wider">${sigla}</span>
             </div>
         `;
     }
-    
-    detalhesTituloTexto.textContent = symbol;
-    detalhesNomeLongo.textContent = 'Carregando...';
-    
-    currentDetalhesSymbol = symbol;
-    currentDetalhesMeses = 3; 
-    currentDetalhesHistoricoJSON = null; 
-    
-    // --- 2. CORES DOS BOTÕES (NEUTRO ABSOLUTO) ---
-    const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
-    btnsPeriodo.forEach(btn => {
-        const isActive = btn.dataset.meses === '3';
-        // Fundo preto puro, borda cinza escura neutra, texto cinza neutro
-        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
-            isActive 
-            ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
-            : 'bg-black border-[#2C2C2E] text-[#888888] hover:text-white hover:border-[#444]'
-        }`;
-    });
-    
-    const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
+    if(detalhesTitulo) detalhesTitulo.textContent = symbol;
+    if(detalhesNomeLongo) detalhesNomeLongo.textContent = 'Carregando...';
+
+    // --- 3. ESTILIZAÇÃO DOS BOTÕES (Seu código original de cores) ---
+    const periodoSelectorGroup = document.getElementById('periodo-selector-group');
+    if(periodoSelectorGroup) {
+        const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
+        btnsPeriodo.forEach(btn => {
+            const isActive = btn.dataset.meses === '3';
+            btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
+                isActive 
+                ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
+                : 'bg-black border-[#2C2C2E] text-[#888888] hover:text-white hover:border-[#444]'
+            }`;
+        });
+    }
+
+    // --- 4. BUSCA DE DADOS (Mantendo TODA sua lógica de Cache/API/Scraper) ---
+    const tickerParaApi = (typeof isFII === 'function' && isFII(symbol)) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
+    
     let precoData = await getCache(cacheKeyPreco);
     
     if (!precoData) {
@@ -3380,16 +3402,17 @@ async function handleMostrarDetalhes(symbol) {
             else throw new Error(precoData?.error || 'Ativo não encontrado');
         } catch (e) { 
             precoData = null; 
-            showToast("Erro ao buscar preço."); 
+            if(typeof showToast === 'function') showToast("Erro ao buscar preço."); 
         }
     }
 
     let fundamentos = {};
     let nextProventoData = null;
 
-    if (isFII(symbol)) {
-        detalhesHistoricoContainer.classList.remove('hidden'); 
-        fetchHistoricoScraper(symbol);
+    // Lógica Específica de FIIs (Scraper)
+    if (typeof isFII === 'function' && isFII(symbol)) {
+        if(historicoContainer) historicoContainer.classList.remove('hidden'); 
+        if(typeof fetchHistoricoScraper === 'function') fetchHistoricoScraper(symbol);
         
         try {
             const [fundData, provData] = await Promise.all([
@@ -3405,27 +3428,29 @@ async function handleMostrarDetalhes(symbol) {
         } catch(e) {}
     }
     
-    detalhesLoading.classList.add('hidden');
+    if(detalhesLoading) detalhesLoading.classList.add('hidden');
 
-    if (precoData) {
-        detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
+    // --- 5. GERAÇÃO DO HTML (AQUI MUDAMOS O VISUAL PARA CARDS) ---
+    if (precoData && detalhesPreco) {
+        if(detalhesNomeLongo) detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         
+        // Variação e Cores
         const varPercent = precoData.regularMarketChangePercent || 0;
         let variacaoCor = 'text-[#888888]';
         let variacaoIcone = '';
-        const arrowUp = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>`;
-        const arrowDown = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>`;
+        const arrowUp = `▲`;
+        const arrowDown = `▼`;
 
         if (varPercent > 0) { variacaoCor = 'text-green-500'; variacaoIcone = arrowUp; } 
         else if (varPercent < 0) { variacaoCor = 'text-red-500'; variacaoIcone = arrowDown; }
         
-        // Posição do Usuário
+        // A. CARD: SUA POSIÇÃO (Mantido)
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
             userPosHtml = `
-                <div class="w-full p-4 bg-black border border-[#2C2C2E] rounded-2xl flex justify-between items-center shadow-sm">
+                <div class="col-span-2 w-full p-4 bg-[#0a0a0a] border border-[#2C2C2E] rounded-2xl flex justify-between items-center shadow-sm mb-2">
                     <div class="text-left">
                         <span class="text-[10px] text-[#666666] uppercase tracking-widest font-bold">Sua Posição</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
@@ -3437,7 +3462,7 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- 3. CORREÇÃO DA LINHA DO PROVENTO ---
+        // B. CARD: PRÓXIMO PROVENTO (Mantido e ajustado visualmente)
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
@@ -3450,14 +3475,14 @@ async function handleMostrarDetalhes(symbol) {
                 if(pDate >= hoje) isFuturo = true;
             }
             const tituloCard = isFuturo ? "Próximo Pagamento" : "Último Anúncio";
-            const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
-            const textClass = isFuturo ? "text-green-400" : "text-[#666666]";
+            // Visual levemente esverdeado se for futuro, senão neutro
+            const bgClass = isFuturo ? "bg-green-900/10 border-green-500/30" : "bg-[#0a0a0a] border-[#2C2C2E]";
+            const textTitleClass = isFuturo ? "text-green-400" : "text-[#666666]";
 
-            // AQUI: border-b border-[#2C2C2E] (Cinza Neutro, sem azul)
             proximoProventoHtml = `
-                <div class="w-full p-3 rounded-2xl border ${borderClass} flex flex-col gap-2 shadow-sm">
+                <div class="col-span-2 w-full p-3 rounded-2xl border ${bgClass} flex flex-col gap-2 shadow-sm mb-2">
                     <div class="flex justify-between items-center border-b border-[#2C2C2E] pb-2 mb-1">
-                        <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${tituloCard}</span>
+                        <span class="text-[10px] uppercase tracking-widest font-bold ${textTitleClass}">${tituloCard}</span>
                         <span class="text-lg font-bold text-white">${formatBRL(nextProventoData.value)}</span>
                     </div>
                     <div class="flex justify-between text-xs">
@@ -3474,12 +3499,13 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
+        // Objeto de Dados completo (Seus dados originais)
         const dados = { 
             pvp: fundamentos.pvp || '-', 
             dy: fundamentos.dy || '-', 
             segmento: fundamentos.segmento || '-', 
             mandato: fundamentos.mandato || '-',          
-            tipo_fundo: fundamentos.tipo_fundo || '-',    
+            tipo_fundo: fundamentos.tipo_fundo || '-',     
             vacancia: fundamentos.vacancia || '-', 
             vp_cota: fundamentos.vp_cota || '-', 
             liquidez: fundamentos.liquidez || '-', 
@@ -3491,7 +3517,7 @@ async function handleMostrarDetalhes(symbol) {
             num_cotistas: fundamentos.num_cotistas || '-', 
             tipo_gestao: fundamentos.tipo_gestao || '-',
             prazo_duracao: fundamentos.prazo_duracao || '-', 
-            taxa_adm: fundamentos.taxa_adm || '-',           
+            taxa_adm: fundamentos.taxa_adm || '-',            
             cotas_emitidas: fundamentos.cotas_emitidas || '-' 
         };
         
@@ -3502,6 +3528,15 @@ async function handleMostrarDetalhes(symbol) {
             corVar12m = 'text-green-500'; icon12m = arrowUp;
         }
 
+        // Função Helper para criar Cards do Grid
+        const renderStatCard = (label, value, colorClass = 'text-white') => `
+            <div class="p-3 bg-[#0a0a0a] border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-start shadow-sm h-20">
+                <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-auto">${label}</span>
+                <span class="text-base font-bold ${colorClass} mt-1 truncate w-full">${value}</span>
+            </div>
+        `;
+
+        // Função Helper para criar Linhas da Lista Geral
         const renderRow = (label, value, isLast = false) => `
             <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
                 <span class="text-sm text-[#888888] font-medium">${label}</span>
@@ -3509,53 +3544,41 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
+        // INJEÇÃO DO HTML FINAL (Grid System)
         detalhesPreco.innerHTML = `
-            <div class="col-span-12 w-full flex flex-col gap-3">
+            <div class="col-span-12 w-full flex flex-col gap-4">
                 
-                <div class="text-center pb-4 pt-2">
+                <div class="text-center pb-2 pt-2">
                     <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
-                    <span class="text-lg font-bold ${variacaoCor} mt-1 flex items-center justify-center gap-0.5 tracking-tight">
-                        ${variacaoIcone}
-                        ${formatPercent(precoData.regularMarketChangePercent)} Hoje
+                    <span class="text-lg font-bold ${variacaoCor} mt-1 flex items-center justify-center gap-1 tracking-tight">
+                        ${variacaoIcone} ${formatPercent(precoData.regularMarketChangePercent)} Hoje
                     </span>
                 </div>
 
                 ${userPosHtml}
-                
                 ${proximoProventoHtml} 
 
-                <div class="grid grid-cols-3 gap-3 w-full">
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                        <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
-                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
-                    </div>
+                <div class="grid grid-cols-2 gap-3 w-full">
+                    ${renderStatCard('Dividend Yield (12m)', dados.dy, 'text-purple-400')}
+                    ${renderStatCard('P/VP', dados.pvp)}
+                    ${renderStatCard('Últ. Rendimento', dados.ultimo_rendimento, 'text-green-400')}
+                    ${renderStatCard('Liquidez Diária', dados.liquidez)}
+                    ${renderStatCard('VP por Cota', dados.vp_cota)}
+                    ${renderStatCard('Val. Mercado', dados.val_mercado)}
+                    ${renderStatCard('Patrimônio Líq.', dados.patrimonio_liquido)}
+                    ${renderStatCard('Vacância', dados.vacancia)}
                 </div>
 
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
-                    ${renderRow('Liquidez Diária', dados.liquidez)}
-                    ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
-                    ${renderRow('VP por Cota', dados.vp_cota)}
-                    ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${renderRow('Vacância', dados.vacancia)}
-                    <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
-                        <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
-                            ${icon12m} ${dados.variacao_12m}
-                        </span>
-                    </div>
+                <div class="w-full bg-[#0a0a0a] border border-[#2C2C2E] rounded-2xl p-3 flex justify-between items-center">
+                     <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider">Variação (12m)</span>
+                     <span class="text-base font-bold ${corVar12m} flex items-center gap-1">
+                        ${icon12m} ${dados.variacao_12m}
+                     </span>
                 </div>
                 
-                <h3 class="text-sm font-bold text-[#666666] uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
+                <h3 class="text-xs font-bold text-[#666666] uppercase tracking-wider mt-4 ml-1">Informações do Fundo</h3>
                 
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
+                <div class="w-full bg-[#0a0a0a] border border-[#2C2C2E] rounded-2xl px-4 pt-1 mb-6">
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Tipo de Fundo', dados.tipo_fundo)}
                     ${renderRow('Mandato', dados.mandato)}
@@ -3564,6 +3587,7 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('Cotistas', dados.num_cotistas)}
                     ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
+                    
                     <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm text-[#888888] font-medium">CNPJ</span>
                         <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
@@ -3574,11 +3598,12 @@ async function handleMostrarDetalhes(symbol) {
         `;
 
     } else {
-        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
+        if(detalhesPreco) detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }
     
-    renderizarTransacoesDetalhes(symbol);
-    atualizarIconeFavorito(symbol);
+    // --- 6. CHAMADAS FINAIS (Transações e Favoritos) ---
+    if(typeof renderizarTransacoesDetalhes === 'function') renderizarTransacoesDetalhes(symbol);
+    if(typeof atualizarIconeFavorito === 'function') atualizarIconeFavorito(symbol);
 }
 
 

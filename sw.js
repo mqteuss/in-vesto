@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesto-cache-v13'; // Atualizado para v12 (Força limpeza do cache antigo)
+const CACHE_NAME = 'vesto-cache-v1'; // Atualizado para v12 (Força limpeza do cache antigo)
 
 // Lista unificada de todos os arquivos que o App precisa para funcionar offline
 const APP_FILES = [

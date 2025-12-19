@@ -347,6 +347,8 @@ function atualizarCardElemento(card, ativo, dados) {
 document.addEventListener('DOMContentLoaded', async () => {
 	
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
+	let histFilterType = 'all'; // 'all', 'buy', 'sell'
+    let histSearchTerm = '';
     let currentUserId = null;
     let transacoes = [];        
     let carteiraCalculada = []; 
@@ -1283,24 +1285,47 @@ function agruparPorMes(itens, dateField) {
 // Substitua a função renderizarHistorico existente em app.js
 
 function renderizarHistorico() {
+    const listaHistorico = document.getElementById('lista-historico');
+    const historicoStatus = document.getElementById('historico-status');
+    const historicoMensagem = document.getElementById('historico-mensagem');
+
     listaHistorico.innerHTML = '';
     
-    if (transacoes.length === 0) {
+    // 1. Filtragem dos Dados
+    let dadosFiltrados = transacoes.filter(t => {
+        // Filtro por Tipo (Compra/Venda)
+        const matchType = histFilterType === 'all' || t.type === histFilterType;
+        
+        // Filtro por Busca (Ticker)
+        const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
+        
+        return matchType && matchSearch;
+    });
+
+    // 2. Verifica se sobrou algo
+    if (dadosFiltrados.length === 0) {
         historicoStatus.classList.remove('hidden');
+        if (transacoes.length > 0) {
+            historicoMensagem.textContent = "Nenhum resultado para o filtro.";
+        } else {
+            historicoMensagem.textContent = "Nenhum registro encontrado.";
+        }
         return;
     }
     
     historicoStatus.classList.add('hidden');
     
-    const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date));
-    const grupos = agruparPorMes(transacoesOrdenadas, 'date');
+    // 3. Ordenação e Agrupamento
+    dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const grupos = agruparPorMes(dadosFiltrados, 'date');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // 1. Header Sticky
+        // Header do Mês
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
         
+        // Soma apenas o que está visível no filtro
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
         
         header.innerHTML = `
@@ -1314,7 +1339,7 @@ function renderizarHistorico() {
         `;
         fragment.appendChild(header);
 
-        // 2. Lista de Cards
+        // Lista de Cards
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1331,7 +1356,6 @@ function renderizarHistorico() {
 
             const sigla = t.symbol.substring(0, 2);
 
-            // AQUI: Mudado de py-2.5 para py-3 (Aumenta levemente a altura interna)
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
@@ -1371,10 +1395,6 @@ function renderizarHistorico() {
     });
     listaHistorico.appendChild(fragment);
 }
-
-// Substitua a função renderizarHistoricoProventos existente em app.js
-
-// Substitua a função renderizarHistoricoProventos existente em app.js
 
 function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
@@ -1475,40 +1495,59 @@ function renderizarHistoricoProventos() {
 
     listaHistoricoProventos.appendChild(fragment);
 }
-
-    // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
-// --- LISTENER DOS BOTÕES DE HISTÓRICO (TOGGLE ANIMADO) ---
+    
+    // 1. Alternar entre Abas (Transações vs Proventos)
     if (btnHistTransacoes && btnHistProventos) {
-        const toggleBg = document.getElementById('historico-toggle-bg');
+        const viewTransacoes = document.getElementById('view-transacoes');
+        const viewProventos = document.getElementById('view-proventos');
 
         btnHistTransacoes.addEventListener('click', () => {
-            // Move a pílula para a esquerda (remove o translate)
-            toggleBg.classList.remove('translate-x-full');
+            btnHistTransacoes.classList.add('active');
+            btnHistProventos.classList.remove('active');
             
-            // Ajusta as cores do texto
-            btnHistTransacoes.classList.replace('text-gray-500', 'text-white');
-            btnHistProventos.classList.replace('text-white', 'text-gray-500');
+            viewTransacoes.classList.remove('hidden');
+            viewProventos.classList.add('hidden');
             
-            // Troca o conteúdo da lista
-            listaHistorico.classList.remove('hidden');
-            listaHistoricoProventos.classList.add('hidden');
+            // Garante que o status hidden seja gerenciado pelo renderizar
+            document.getElementById('historico-status').classList.add('hidden');
             renderizarHistorico();
         });
 
         btnHistProventos.addEventListener('click', () => {
-            // Move a pílula para a direita (adiciona translate de 100% da largura dela)
-            toggleBg.classList.add('translate-x-full');
+            btnHistProventos.classList.add('active');
+            btnHistTransacoes.classList.remove('active');
 
-            // Ajusta as cores do texto
-            btnHistProventos.classList.replace('text-gray-500', 'text-white');
-            btnHistTransacoes.classList.replace('text-white', 'text-gray-500');
-
-            // Troca o conteúdo da lista
-            listaHistorico.classList.add('hidden');
-            listaHistoricoProventos.classList.remove('hidden');
+            viewTransacoes.classList.add('hidden');
+            viewProventos.classList.remove('hidden');
+            
+            document.getElementById('historico-status').classList.add('hidden');
             renderizarHistoricoProventos();
         });
     }
+
+    // 2. Busca no Histórico
+    const histSearchInput = document.getElementById('historico-search-input');
+    if (histSearchInput) {
+        histSearchInput.addEventListener('input', (e) => {
+            histSearchTerm = e.target.value.trim().toUpperCase();
+            renderizarHistorico();
+        });
+    }
+
+    // 3. Filtros (Chips: Todos, Compra, Venda)
+    const filterChips = document.querySelectorAll('.filter-chip');
+    filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            // Remove active de todos
+            filterChips.forEach(c => c.classList.remove('active'));
+            // Adiciona no clicado
+            chip.classList.add('active');
+            
+            // Atualiza estado e renderiza
+            histFilterType = chip.dataset.filter; // 'all', 'buy', 'sell'
+            renderizarHistorico();
+        });
+    });
 
 // --- FUNÇÃO AUXILIAR: Agrupar notícias por dia ---
 // --- FUNÇÃO AUXILIAR: Agrupar notícias (Robusta contra Invalid Date) ---

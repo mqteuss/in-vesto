@@ -1495,11 +1495,12 @@ function renderizarHistoricoProventos() {
 
     listaHistoricoProventos.appendChild(fragment);
 }
-    
+
     // 1. Alternar entre Abas (Transações vs Proventos)
     if (btnHistTransacoes && btnHistProventos) {
         const viewTransacoes = document.getElementById('view-transacoes');
         const viewProventos = document.getElementById('view-proventos');
+        const statusEl = document.getElementById('historico-status');
 
         btnHistTransacoes.addEventListener('click', () => {
             btnHistTransacoes.classList.add('active');
@@ -1508,8 +1509,7 @@ function renderizarHistoricoProventos() {
             viewTransacoes.classList.remove('hidden');
             viewProventos.classList.add('hidden');
             
-            // Garante que o status hidden seja gerenciado pelo renderizar
-            document.getElementById('historico-status').classList.add('hidden');
+            if(statusEl) statusEl.classList.add('hidden');
             renderizarHistorico();
         });
 
@@ -1520,7 +1520,7 @@ function renderizarHistoricoProventos() {
             viewTransacoes.classList.add('hidden');
             viewProventos.classList.remove('hidden');
             
-            document.getElementById('historico-status').classList.add('hidden');
+            if(statusEl) statusEl.classList.add('hidden');
             renderizarHistoricoProventos();
         });
     }
@@ -1534,7 +1534,7 @@ function renderizarHistoricoProventos() {
         });
     }
 
-    // 3. Filtros (Chips: Todos, Compra, Venda)
+    // 3. NOVO: Lógica do Menu de Filtro (Funil) - Substitui os Chips antigos
     const btnFilter = document.getElementById('btn-history-filter');
     const filterMenu = document.getElementById('history-filter-menu');
     const filterItems = document.querySelectorAll('.filter-dropdown-item');
@@ -1551,19 +1551,21 @@ function renderizarHistoricoProventos() {
             item.addEventListener('click', () => {
                 const value = item.dataset.value; // 'all', 'buy', 'sell'
                 
-                // Atualiza ícones de check
+                // Atualiza visual (Check icon)
                 filterItems.forEach(i => {
                     i.classList.remove('selected');
+                    i.querySelector('.check-icon').classList.remove('opacity-100');
                     i.querySelector('.check-icon').classList.add('opacity-0');
                 });
                 item.classList.add('selected');
                 item.querySelector('.check-icon').classList.remove('opacity-0');
+                item.querySelector('.check-icon').classList.add('opacity-100');
 
                 // Atualiza variável global e renderiza
                 histFilterType = value;
                 renderizarHistorico();
 
-                // Muda a cor do funil se tiver filtro
+                // Muda a cor do funil se tiver filtro ativo
                 if (value !== 'all') {
                     btnFilter.classList.add('has-filter');
                 } else {

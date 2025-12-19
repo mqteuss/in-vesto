@@ -405,17 +405,17 @@
 <div id="tab-config" class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll">
     <div class="p-5">
         
-        <div class="flex flex-col mb-8">
-            <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase mb-6">Ajustes</h1>
-            
-            <div class="flex items-center gap-4 p-4 bg-[#0a0a0a] border border-[#2C2C2E] rounded-2xl">
-                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xl border-2 border-[#1C1C1E] shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
-                </div>
-                <div>
-                    <span class="text-white font-bold text-lg block leading-tight">Minha Conta</span>
-                    <span id="user-email-display" class="text-xs text-gray-500 font-medium">Configurações do Usuário</span>
-                </div>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-4xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-violet-600 uppercase">Ajustes</h1>
+        </div>
+
+        <div class="flex items-center gap-4 p-4 bg-[#0a0a0a] border border-[#2C2C2E] rounded-2xl mb-8">
+            <div class="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-lg border-2 border-[#151515] shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+            </div>
+            <div>
+                <span class="text-white font-bold text-base block leading-tight">Minha Conta</span>
+                <span id="user-email-display" class="text-xs text-gray-500 font-medium">Usuário Vesto</span>
             </div>
         </div>
 
@@ -443,7 +443,7 @@
                     </div>
                     <div>
                         <span class="settings-label">Modo Privacidade</span>
-                        <p class="settings-sub">Ocultar valores monetários</p>
+                        <p class="settings-sub">Ocultar valores</p>
                     </div>
                 </div>
                 <button id="toggle-privacy-btn" class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-700 transition-colors focus:outline-none">
@@ -525,7 +525,7 @@
                     </div>
                     <div>
                         <span class="settings-label">Limpar Cache</span>
-                        <p class="settings-sub">Corrigir problemas</p>
+                        <p class="settings-sub">Reparar erros</p>
                     </div>
                 </div>
             </button>
@@ -538,7 +538,7 @@
 
         <div class="text-center pb-6">
              <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto" class="h-6 mx-auto opacity-30 grayscale">
-             <p class="text-[10px] text-gray-700 mt-2 font-mono">v1.7.0</p>
+             <p class="text-[10px] text-gray-700 mt-2 font-mono">v1.7.2</p>
         </div>
 
     </div>

@@ -4575,11 +4575,19 @@ async function init() {
         });
 
         // LÓGICA DE SESSÃO E ROTEAMENTO
+// LÓGICA DE SESSÃO E ROTEAMENTO
         if (session) {
-			await verificarStatusPush();
+            await verificarStatusPush();
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
+            
+            // --- NOVO: Preencher o email na tela de Ajustes ---
+            const userEmailDisplay = document.getElementById('user-email-display');
+            if (userEmailDisplay && session.user.email) {
+                userEmailDisplay.textContent = session.user.email;
+            }
+            // -------------------------------------------------
             
             await verificarStatusBiometria();
             
@@ -4596,14 +4604,14 @@ async function init() {
                 mudarAba('tab-dashboard'); 
             }
 
-// --- BLOQUEIO DE SWIPE NO CARROSSEL (FIX DEFINITIVO) ---
-    const carouselWrapper = document.getElementById('carousel-wrapper');
-    if (carouselWrapper) {
-        // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
-        carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
-        carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
-        carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
-    }
+            // --- BLOQUEIO DE SWIPE NO CARROSSEL (FIX DEFINITIVO) ---
+            const carouselWrapper = document.getElementById('carousel-wrapper');
+            if (carouselWrapper) {
+                // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
+                carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+                carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+                carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
+            }
 
             await carregarDadosIniciais();
 
@@ -4620,15 +4628,6 @@ async function init() {
                 }, 800);
             }
             
-        } else {
-            // Caso NÃO tenha sessão
-            appWrapper.classList.add('hidden');      
-            authContainer.classList.remove('hidden'); 
-            
-            if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) {
-                loginForm.classList.remove('hidden');
-            }
-            showAuthLoading(false);                 
         }
     }
     

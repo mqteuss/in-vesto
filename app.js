@@ -1028,7 +1028,7 @@ function hideAddModal() {
         
         transacaoEmEdicao = null;
         tickerInput.disabled = false;
-        addModalTitle.textContent = 'Registrar Operação'; // Texto genérico melhor
+        addModalTitle.textContent = 'Nova Transação'; // Texto genérico melhor
         addButton.textContent = 'Salvar';
         
         // Remove erros visuais
@@ -3279,7 +3279,7 @@ function handleAbrirModalEdicao(id) {
     if (!tx) { showToast("Erro: Transação não encontrada."); return; }
     
     transacaoEmEdicao = tx;
-    addModalTitle.textContent = tx.type === 'sell' ? 'Editar Saída' : 'Editar Aporte';
+    addModalTitle.textContent = tx.type === 'sell' ? 'Editar Venda' : 'Editar Compra';
     
     transacaoIdInput.value = tx.id;
     tickerInput.value = tx.symbol;

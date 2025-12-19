@@ -2477,8 +2477,8 @@ async function renderizarCarteira() {
         totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
         totalCaixaValor.textContent = formatBRL(saldoCaixa);
         totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
-        totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
-        totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
+        totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-sm font-medium opacity-80">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
+        totalCarteiraPL.className = `text-lg font-bold ${corPLTotal} mt-0.5`;
         
         // Salva Snapshot para o gráfico de histórico
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 

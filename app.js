@@ -1535,19 +1535,53 @@ function renderizarHistoricoProventos() {
     }
 
     // 3. Filtros (Chips: Todos, Compra, Venda)
-    const filterChips = document.querySelectorAll('.filter-chip');
-    filterChips.forEach(chip => {
-        chip.addEventListener('click', () => {
-            // Remove active de todos
-            filterChips.forEach(c => c.classList.remove('active'));
-            // Adiciona no clicado
-            chip.classList.add('active');
-            
-            // Atualiza estado e renderiza
-            histFilterType = chip.dataset.filter; // 'all', 'buy', 'sell'
-            renderizarHistorico();
+    const btnFilter = document.getElementById('btn-history-filter');
+    const filterMenu = document.getElementById('history-filter-menu');
+    const filterItems = document.querySelectorAll('.filter-dropdown-item');
+
+    if (btnFilter && filterMenu) {
+        // Abrir/Fechar Menu
+        btnFilter.addEventListener('click', (e) => {
+            e.stopPropagation();
+            filterMenu.classList.toggle('visible');
         });
-    });
+
+        // Clique nas opções do menu
+        filterItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const value = item.dataset.value; // 'all', 'buy', 'sell'
+                
+                // Atualiza ícones de check
+                filterItems.forEach(i => {
+                    i.classList.remove('selected');
+                    i.querySelector('.check-icon').classList.add('opacity-0');
+                });
+                item.classList.add('selected');
+                item.querySelector('.check-icon').classList.remove('opacity-0');
+
+                // Atualiza variável global e renderiza
+                histFilterType = value;
+                renderizarHistorico();
+
+                // Muda a cor do funil se tiver filtro
+                if (value !== 'all') {
+                    btnFilter.classList.add('has-filter');
+                } else {
+                    btnFilter.classList.remove('has-filter');
+                }
+
+                // Fecha o menu
+                filterMenu.classList.remove('visible');
+            });
+        });
+
+        // Fechar ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (filterMenu.classList.contains('visible') && !filterMenu.contains(e.target) && !btnFilter.contains(e.target)) {
+                filterMenu.classList.remove('visible');
+            }
+        });
+    }
 
 // --- FUNÇÃO AUXILIAR: Agrupar notícias por dia ---
 // --- FUNÇÃO AUXILIAR: Agrupar notícias (Robusta contra Invalid Date) ---

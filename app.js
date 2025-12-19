@@ -2,6 +2,35 @@
 
 import * as supabaseDB from './supabase.js';
 
+// --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
+window.dismissNotificationGlobal = function(id, btnElement) {
+    // 1. Salva no localStorage para não voltar
+    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
+    if (!dismissed.includes(id)) {
+        dismissed.push(id);
+        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify(dismissed));
+    }
+    
+    // 2. Animação de saída
+    const card = btnElement.closest('.notif-card'); // Pega o pai correto
+    if (card) {
+        card.style.transition = 'all 0.3s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(20px)';
+        
+        setTimeout(() => {
+            card.remove();
+            // Verifica se a lista ficou vazia
+            const list = document.getElementById('notifications-list');
+            if (!list || list.children.length === 0) {
+                document.getElementById('notification-badge').classList.add('hidden');
+                document.getElementById('notifications-empty').classList.remove('hidden');
+                document.getElementById('btn-notifications').classList.remove('bell-ringing');
+            }
+        }, 300);
+    }
+};
+
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -2791,87 +2820,78 @@ function dismissNotification(id, element) {
     }, 300);
 }
 
-// --- FUNÇÃO PRINCIPAL CORRIGIDA ---
-// --- FUNÇÃO DE NOTIFICAÇÕES (VISUAL REMODELADO + LÓGICA MANTIDA) ---
+// --- FUNÇÃO DE NOTIFICAÇÕES (REMODELADA: CLEAN & PREMIUM) ---
 function verificarNotificacoesFinanceiras() {
     const list = document.getElementById('notifications-list');
     const badge = document.getElementById('notification-badge');
     const emptyState = document.getElementById('notifications-empty');
     const btnNotif = document.getElementById('btn-notifications');
 
-    // 1. Limpeza
+    // Limpeza inicial
     list.innerHTML = '';
     let temNotificacao = false;
 
-    // 2. Datas para comparação (Mesma lógica do seu código)
+    // Datas
     const hoje = new Date();
     const offset = hoje.getTimezoneOffset() * 60000;
     const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
     const hojeDateObj = new Date(hojeLocal + 'T00:00:00'); 
 
-    // --- HELPER DE RENDERIZAÇÃO (NOVO DESIGN) ---
-    const renderNotificationItem = (id, type, title, message, highlightColor) => {
+    // --- RENDERIZADOR DO CARD (NOVO DESIGN) ---
+    const renderNotificationItem = (id, type, title, message) => {
         const div = document.createElement('div');
+        div.className = 'notif-card relative bg-[#151515] border border-[#2C2C2E] p-3 rounded-2xl mb-2 flex items-start gap-3 transition-all hover:bg-[#1A1A1A] group';
         
-        // Configuração de Estilos por Tipo
-        let iconSvg = '';
-        let gradientClass = '';
-        let bgIconClass = '';
-        
-        if (type === 'payment') { // Verde (Pagamento)
-            gradientClass = 'from-green-500 to-emerald-700';
-            bgIconClass = 'text-green-500 bg-green-500/10 border-green-500/20';
-            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />`;
-        } else if (type === 'datacom') { // Amarelo (Data Com)
-            gradientClass = 'from-amber-400 to-orange-600';
-            bgIconClass = 'text-amber-500 bg-amber-500/10 border-amber-500/20';
-            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />`;
-        } else { // Azul (Novo Anúncio)
-            gradientClass = 'from-blue-400 to-indigo-600';
-            bgIconClass = 'text-blue-500 bg-blue-500/10 border-blue-500/20';
-            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+        // Definição de Ícones e Cores Clean
+        let iconHtml = '';
+        let accentColor = ''; // Apenas para detalhes sutis
+
+        if (type === 'payment') { 
+            // Pagamento (Verde)
+            accentColor = 'text-green-500';
+            iconHtml = `
+            <div class="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0 text-green-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+            </div>`;
+        } else if (type === 'datacom') { 
+            // Data Com (Amarelo)
+            accentColor = 'text-yellow-500';
+            iconHtml = `
+            <div class="w-8 h-8 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0 text-yellow-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>`;
+        } else { 
+            // News/Anúncio (Azul/Roxo)
+            accentColor = 'text-purple-400';
+            iconHtml = `
+            <div class="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0 text-purple-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9" /></svg>
+            </div>`;
         }
 
-        // Estrutura HTML Nova (Card Neon)
-        div.className = 'relative group overflow-hidden rounded-2xl bg-[#151515] border border-[#2C2C2E] p-3 transition-all hover:bg-[#1A1A1A] hover:border-neutral-700';
         div.innerHTML = `
-            <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradientClass}"></div>
-            
-            <div class="flex items-start gap-3 pl-2">
-                <div class="w-8 h-8 rounded-lg ${bgIconClass} border flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        ${iconSvg}
-                    </svg>
-                </div>
-                
-                <div class="flex-1 min-w-0">
-                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">${title}</p>
-                    <div class="text-sm text-gray-300 leading-snug">
-                        ${message}
-                    </div>
-                </div>
-
-                <button class="text-gray-700 hover:text-white transition-colors p-1 -mt-1 -mr-1" onclick="window.dismissNotificationGlobal('${id}', this)">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+            ${iconHtml}
+            <div class="flex-1 min-w-0 pt-0.5">
+                <h4 class="text-[11px] font-bold text-gray-400 uppercase tracking-wide leading-tight mb-1">${title}</h4>
+                <div class="text-sm text-gray-200 leading-snug">${message}</div>
             </div>
+            <button onclick="window.dismissNotificationGlobal('${id}', this)" class="text-gray-600 hover:text-red-400 p-1 rounded-md hover:bg-white/5 transition-colors -mr-1 -mt-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
         `;
         return div;
     };
 
-    // Helper de Props (Mantido)
     const getProps = (p) => ({
         paymentDate: p.paymentDate || p.paymentdate,
         dataCom: p.dataCom || p.datacom,
         createdAt: p.created_at || new Date().toISOString()
     });
 
-    // --- 1. PAGAMENTOS (Verde) ---
-    const pagamentosHoje = proventosConhecidos.filter(p => {
-        const props = getProps(p);
-        return props.paymentDate === hojeLocal;
-    });
-
+    // 1. Pagamentos
+    const pagamentosHoje = proventosConhecidos.filter(p => getProps(p).paymentDate === hojeLocal);
     pagamentosHoje.forEach(p => {
         const notifId = `pay_${p.id || p.symbol + Date.now()}`;
         if (isNotificationDismissed(notifId)) return;
@@ -2881,46 +2901,31 @@ function verificarNotificacoesFinanceiras() {
         
         if (qtd > 0) {
             temNotificacao = true;
-            const totalRecebido = p.value * qtd;
-            // Mensagem com HTML injetado
-            const msg = `<span class="text-white font-bold">${p.symbol}</span> pagou <span class="text-green-400 font-bold">${formatBRL(totalRecebido)}</span>.`;
-            
-            const card = renderNotificationItem(notifId, 'payment', 'Pagamento Recebido', msg);
-            list.appendChild(card);
+            const msg = `<span class="font-bold text-white">${p.symbol}</span> pagou <span class="font-bold text-green-400">${formatBRL(p.value * qtd)}</span> hoje.`;
+            list.appendChild(renderNotificationItem(notifId, 'payment', 'Caiu na Conta', msg));
         }
     });
 
-    // --- 2. DATA COM (Amarelo) ---
-    const dataComHoje = proventosConhecidos.filter(p => {
-        const props = getProps(p);
-        return props.dataCom === hojeLocal;
-    });
-    
+    // 2. Data Com
+    const dataComHoje = proventosConhecidos.filter(p => getProps(p).dataCom === hojeLocal);
     dataComHoje.forEach(p => {
         const notifId = `com_${p.id || p.symbol + 'com'}`;
         if (isNotificationDismissed(notifId)) return;
 
         temNotificacao = true;
-        const msg = `Garanta <span class="text-amber-400 font-bold">${formatBRL(p.value)}</span>/cota de <span class="text-white font-bold">${p.symbol}</span> até hoje.`;
-        
-        const card = renderNotificationItem(notifId, 'datacom', 'Data Com (Limite)', msg);
-        list.appendChild(card);
+        const msg = `<span class="font-bold text-white">${p.symbol}</span> fecha data-com hoje. <span class="text-yellow-500 font-bold">${formatBRL(p.value)}</span>/cota.`;
+        list.appendChild(renderNotificationItem(notifId, 'datacom', 'Data de Corte', msg));
     });
 
-    // --- 3. NOVOS ANÚNCIOS (Azul) - LÓGICA CRÍTICA MANTIDA ---
+    // 3. Novos Anúncios
     const novosAnuncios = proventosConhecidos.filter(p => {
         const props = getProps(p);
-        
-        // Mesma lógica de validação que você enviou:
         const dataCriacao = props.createdAt.split('T')[0];
-        const isCreatedToday = dataCriacao === hojeLocal;
-        const isNotDuplicate = props.paymentDate !== hojeLocal && props.dataCom !== hojeLocal;
+        if (dataCriacao !== hojeLocal) return false;
+        if (props.paymentDate === hojeLocal || props.dataCom === hojeLocal) return false; 
         
-        if (!props.paymentDate) return false;
-        const dataPagamentoObj = new Date(props.paymentDate + 'T00:00:00');
-        const isFuturo = dataPagamentoObj >= hojeDateObj;
-
-        return isCreatedToday && isNotDuplicate && isFuturo;
+        const dataPagamentoObj = new Date((props.paymentDate || '') + 'T00:00:00');
+        return dataPagamentoObj >= hojeDateObj;
     });
 
     novosAnuncios.forEach(p => {
@@ -2928,13 +2933,10 @@ function verificarNotificacoesFinanceiras() {
         if (isNotificationDismissed(notifId)) return;
 
         temNotificacao = true;
-        const msg = `<span class="text-white font-bold">${p.symbol}</span> anunciou <span class="text-blue-400 font-bold">${formatBRL(p.value)}</span> p/ ${formatDate(getProps(p).paymentDate)}.`;
-
-        const card = renderNotificationItem(notifId, 'news', 'Novo Anúncio', msg);
-        list.appendChild(card);
+        const msg = `<span class="font-bold text-white">${p.symbol}</span> anunciou <span class="font-bold text-purple-400">${formatBRL(p.value)}</span> para ${formatDate(getProps(p).paymentDate)}.`;
+        list.appendChild(renderNotificationItem(notifId, 'news', 'Novo Anúncio', msg));
     });
 
-    // Atualiza badges
     if (temNotificacao) {
         badge.classList.remove('hidden');
         btnNotif.classList.add('bell-ringing');

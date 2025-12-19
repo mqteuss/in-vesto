@@ -125,19 +125,19 @@
                 <div id="tab-dashboard" class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll active">
                     <div class="p-4">
                         <div class="flex flex-col mb-6">
-<div class="flex justify-between items-center relative z-20">
-    <div>
-        <h1 class="app-page-title">Dashboard</h1>
-        <p class="text-xs text-gray-500 font-medium mt-1">Visão Geral</p>
-    </div>
-    
-    <button id="btn-notifications" class="relative p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-800 focus:outline-none" title="Notificações">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-        <span id="notification-badge" class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-black hidden animate-pulse"></span>
-    </button>
-</div>
+<div class="flex justify-between items-center mb-6 px-1 relative z-20">
+                            <div>
+                                <h1 class="app-page-title">Dashboard</h1>
+                                <p class="text-xs text-gray-500 font-medium mt-1">Visão Geral</p>
+                            </div>
+                            
+                            <button id="btn-notifications" class="relative p-2.5 rounded-xl bg-[#151515] border border-[#2C2C2E] text-gray-400 hover:text-white transition-colors focus:outline-none" title="Notificações">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                <span id="notification-badge" class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-[#151515] hidden"></span>
+                            </button>
+                        </div>
 
 <div id="notifications-drawer" class="card-drawer mt-2 absolute top-14 right-0 w-80 z-50">
     <div class="drawer-content bg-[#0a0a0a] rounded-3xl border border-[#2C2C2E] shadow-[0_20px_50px_rgba(0,0,0,0.9)] overflow-hidden">

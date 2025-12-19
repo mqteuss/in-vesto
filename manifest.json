@@ -1,65 +1,49 @@
 {
-  "name": "Vesto",
-  "short_name": "Vesto",
-  "description": "Vesto - Gestão Inteligente de FIIs e Dividendos.",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "orientation": "portrait-primary",
-  "icons": [
-    {
-      "src": "icons/icon-192x192.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-512x512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Portfólio",
-      "short_name": "Portfólio",
-      "description": "Minha Carteira de Ativos",
-      "url": "/?tab=tab-carteira",
-      "icons": [
-        {
-          "src": "icons/carteira.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Extrato",
-      "short_name": "Extrato",
-      "description": "Histórico de Proventos",
-      "url": "/?tab=tab-historico",
-      "icons": [
-        {
-          "src": "icons/historico.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Mercado",
-      "short_name": "Mercado",
-      "description": "Notícias e FIIs",
-      "url": "/?tab=tab-noticias",
-      "icons": [
-        {
-          "src": "icons/noticias.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    }
-  ]
+  "name": "Vesto",
+  "short_name": "Vesto",
+  "description": "Vesto - Seu rastreador de carteira de investimentos e proventos.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Carteira",
+      "short_name": "Carteira",
+      "description": "Minha Carteira",
+      "url": "/?tab=tab-carteira",
+      "icons": [{ "src": "icons/carteira.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Histórico",
+      "short_name": "Histórico",
+      "description": "Histórico de Transações",
+      "url": "/?tab=tab-historico",
+      "icons": [{ "src": "icons/historico.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Notícias",
+      "short_name": "Notícias",
+      "description": "Notícias FIIs",
+      "url": "/?tab=tab-noticias",
+      "icons": [{ "src": "icons/noticias.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
 }
+
+não mude o nome dos icones.png

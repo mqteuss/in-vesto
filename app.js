@@ -176,7 +176,7 @@ function criarCardElemento(ativo, dados) {
         toggleDrawer(ativo.symbol);
     };
 
-    card.innerHTML = `
+card.innerHTML = `
         <div class="p-3 relative pb-4">
             <div class="flex justify-between items-start mb-1">
                 <div class="flex items-center gap-3">
@@ -208,12 +208,12 @@ function criarCardElemento(ativo, dados) {
             </div>
             
             <div class="allocation-track">
-                <div class="allocation-bar" style="width: ${percentWallet || 0}%;"></div>
+                <div class="allocation-bar" style="width: ${percentWallet || 0}%; background-color: ${barColor};"></div>
             </div>
         </div>
-
+        
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-            <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f] border-t border-[#2C2C2E]">
+             <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f] border-t border-[#2C2C2E]">
                 
                 <div class="grid grid-cols-2 gap-4 mt-3">
                     <div>

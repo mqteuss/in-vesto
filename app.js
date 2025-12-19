@@ -1497,15 +1497,24 @@ function renderizarHistoricoProventos() {
 }
 
     // 1. Alternar entre Abas (Transações vs Proventos)
+// 1. Alternar entre Abas (Transações vs Proventos)
     if (btnHistTransacoes && btnHistProventos) {
         const viewTransacoes = document.getElementById('view-transacoes');
         const viewProventos = document.getElementById('view-proventos');
         const statusEl = document.getElementById('historico-status');
+        
+        // NOVO: Elemento da linha deslizante
+        const tabIndicator = document.getElementById('tab-indicator');
 
         btnHistTransacoes.addEventListener('click', () => {
+            // Atualiza botões
             btnHistTransacoes.classList.add('active');
             btnHistProventos.classList.remove('active');
             
+            // Move a linha para a ESQUERDA (remove a classe que joga p/ direita)
+            if(tabIndicator) tabIndicator.classList.remove('indicator-right');
+            
+            // Troca views
             viewTransacoes.classList.remove('hidden');
             viewProventos.classList.add('hidden');
             
@@ -1514,9 +1523,14 @@ function renderizarHistoricoProventos() {
         });
 
         btnHistProventos.addEventListener('click', () => {
+            // Atualiza botões
             btnHistProventos.classList.add('active');
             btnHistTransacoes.classList.remove('active');
 
+            // Move a linha para a DIREITA
+            if(tabIndicator) tabIndicator.classList.add('indicator-right');
+
+            // Troca views
             viewTransacoes.classList.add('hidden');
             viewProventos.classList.remove('hidden');
             

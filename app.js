@@ -347,8 +347,9 @@ function atualizarCardElemento(card, ativo, dados) {
 document.addEventListener('DOMContentLoaded', async () => {
 	
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
-	let histFilterType = 'all'; // 'all', 'buy', 'sell'
+	let histFilterType = 'all';
     let histSearchTerm = '';
+	let provSearchTerm = '';
     let currentUserId = null;
     let transacoes = [];        
     let carteiraCalculada = []; 
@@ -1397,32 +1398,46 @@ function renderizarHistorico() {
 }
 
 function renderizarHistoricoProventos() {
+    const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     listaHistoricoProventos.innerHTML = '';
+    
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    const proventosPagos = proventosConhecidos.filter(p => {
+    // 1. Filtra por Data (Pagos) E pelo Termo de Busca
+    const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
+        
+        // Verificação de Data
         const parts = p.paymentDate.split('-');
         const dPag = new Date(parts[0], parts[1]-1, parts[2]);
-        return dPag <= hoje;
+        const dataValida = dPag <= hoje;
+        
+        // Verificação da Busca
+        const buscaValida = provSearchTerm === '' || p.symbol.includes(provSearchTerm);
+
+        return dataValida && buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    if (proventosPagos.length === 0) {
+    // 2. Verifica se está vazio
+    if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p class="text-xs text-gray-500">Nenhum provento recebido ainda.</p>
+                <p class="text-xs text-gray-500">Nenhum provento encontrado.</p>
             </div>`;
         return;
     }
 
-    const grupos = agruparPorMes(proventosPagos, 'paymentDate');
+    // 3. Agrupamento e Renderização (MANTIDO IGUAL)
+    const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
+        
+        // Calcula total apenas dos itens visíveis/filtrados
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1456,7 +1471,6 @@ function renderizarHistoricoProventos() {
                 const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';
 
                 const item = document.createElement('div');
-                // AQUI: Mudado de py-2.5 para py-3
                 item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
 
                 item.innerHTML = `

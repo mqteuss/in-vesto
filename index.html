@@ -424,8 +424,18 @@
             <div id="lista-historico" class="px-4 pt-2 pb-20"></div>
         </div>
 
-        <div id="view-proventos" class="hidden">
-            <div id="lista-historico-proventos" class="px-4 pt-4 pb-20"></div>
+<div id="view-proventos" class="hidden">
+            
+            <div class="history-tools-container">
+                <div class="compact-search-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="compact-search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" id="proventos-search-input" placeholder="Filtrar por ativo..." class="compact-search-input">
+                </div>
+            </div>
+
+            <div id="lista-historico-proventos" class="px-4 pt-2 pb-20"></div>
         </div>
 
         <div id="historico-status" class="text-center text-gray-500 mt-12 hidden px-4">

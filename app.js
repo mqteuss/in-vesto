@@ -1591,6 +1591,17 @@ function renderizarHistoricoProventos() {
             renderizarHistorico();
         });
     }
+	
+	// 2.1 Busca nos Proventos (Faltava este bloco)
+    const provSearchInput = document.getElementById('proventos-search-input');
+    if (provSearchInput) {
+        provSearchInput.addEventListener('input', (e) => {
+            // Atualiza a variável global definida no início do arquivo
+            provSearchTerm = e.target.value.trim().toUpperCase();
+            // Chama a renderização novamente para aplicar o filtro
+            renderizarHistoricoProventos();
+        });
+    }
 
     // 3. NOVO: Lógica do Menu de Filtro (Funil) - Substitui os Chips antigos
     const btnFilter = document.getElementById('btn-history-filter');

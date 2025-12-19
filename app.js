@@ -562,9 +562,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn');
 	const detalhesShareBtn = document.getElementById('detalhes-share-btn');
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
-    const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled'); 
-    const watchlistListaEl = document.getElementById('watchlist-lista'); 
-    const watchlistStatusEl = document.getElementById('watchlist-status');   
+    const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled');  
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
@@ -1101,26 +1099,6 @@ function hideAddModal() {
     async function carregarWatchlist() {
         watchlist = await supabaseDB.getWatchlist();
     }
-
-// --- RENDERIZAR WATCHLIST (ESTILO CARTEIRA / MINIMALISTA) ---
-// Substitua a função renderizarWatchlist inteira em app.js
-
-// 1. ADICIONE ESTA NOVA FUNÇÃO GLOBAL (Pode ser no início ou fim do arquivo)
-window.toggleWatchlistDrawer = function() {
-    const drawer = document.getElementById('watchlist-drawer');
-    const btn = document.getElementById('btn-toggle-watchlist');
-    
-    if (drawer && btn) {
-        drawer.classList.toggle('open');
-        
-        // Lógica de troca de texto
-        if (drawer.classList.contains('open')) {
-            btn.innerText = 'Fechar Lista';
-        } else {
-            btn.innerText = 'Abrir Lista';
-        }
-    }
-}
 
 // 2. SUBSTITUA A FUNÇÃO renderizarWatchlist ATUAL POR ESTA:
 function renderizarWatchlist() {
@@ -3861,19 +3839,6 @@ const tabDashboard = document.getElementById('tab-dashboard');
         });
     }
 
-    const watchlistToggleBtn = document.querySelector('[data-target-drawer="watchlist-drawer"]');
-    if (watchlistToggleBtn) {
-        watchlistToggleBtn.addEventListener('click', (e) => {
-            const target = e.currentTarget; 
-            const drawerId = target.dataset.targetDrawer;
-            const drawer = document.getElementById(drawerId);
-            const icon = target.querySelector('.card-arrow-icon');
-            
-            drawer?.classList.toggle('open');
-            icon?.classList.toggle('open');
-        });
-    }
-
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             mudarAba(button.dataset.tab);
@@ -3970,15 +3935,6 @@ const tabDashboard = document.getElementById('tab-dashboard');
     });
     
     detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
-
-    if (watchlistListaEl) {
-        watchlistListaEl.addEventListener('click', (e) => {
-            const target = e.target.closest('button');
-            if (target && target.dataset.action === 'details' && target.dataset.symbol) {
-                showDetalhesModal(target.dataset.symbol);
-            }
-        });
-    }
 	
 	if (detalhesShareBtn) {
         detalhesShareBtn.addEventListener('click', handleCompartilharAtivo);

@@ -3710,55 +3710,109 @@ async function handleMostrarDetalhes(symbol) {
 
 // Substitua a função inteira em app.js
 
+// EM app.js - Substitua a função renderizarTransacoesDetalhes por esta versão:
+
 function renderizarTransacoesDetalhes(symbol) {
-        const listaContainer = document.getElementById('detalhes-lista-transacoes');
-        const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
-        const container = document.getElementById('detalhes-transacoes-container');
+    const listaContainer = document.getElementById('detalhes-lista-transacoes');
+    const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
+    const container = document.getElementById('detalhes-transacoes-container');
+
+    listaContainer.innerHTML = '';
     
-        listaContainer.innerHTML = '';
+    // 1. Filtra e Ordena
+    const txsDoAtivo = transacoes
+        .filter(t => t.symbol === symbol)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (txsDoAtivo.length === 0) {
+        vazioMsg.classList.remove('hidden');
+        listaContainer.classList.add('hidden');
+        container.classList.remove('hidden'); // Garante que o container pai apareça para mostrar a msg vazio
+        return;
+    } 
+    
+    vazioMsg.classList.add('hidden');
+    listaContainer.classList.remove('hidden');
+    container.classList.remove('hidden');
+
+    // 2. Agrupa por Mês (Mesma lógica do Extrato)
+    const grupos = agruparPorMes(txsDoAtivo, 'date');
+    const fragment = document.createDocumentFragment();
+
+    Object.keys(grupos).forEach(mes => {
+        // Soma do valor movimentado no mês para este ativo
+        const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
+
+        // --- HEADER DO MÊS (Sticky) ---
+        const header = document.createElement('div');
+        // Ajuste de estilo inline para garantir que fique bonito dentro do padding do modal
+        header.className = 'history-header-sticky'; 
+        header.style.top = '-1px'; // Ajuste fino para colar no topo do container scrollavel
+        header.style.margin = '0 -8px 8px -8px'; // Margem negativa para alinhar com as bordas
+        header.style.borderRadius = '12px'; // Leve arredondamento
         
-        const txsDoAtivo = transacoes
-            .filter(t => t.symbol === symbol)
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-        if (txsDoAtivo.length === 0) {
-            vazioMsg.classList.remove('hidden');
-            listaContainer.classList.add('hidden');
-        } else {
-            vazioMsg.classList.add('hidden');
-            listaContainer.classList.remove('hidden');
+        header.innerHTML = `
+            <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-purple-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
+                ${mes}
+            </h3>
+            <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+                Mov: ${formatBRL(totalMes)}
+            </span>
+        `;
+        fragment.appendChild(header);
+
+        // --- LISTA DE CARDS ---
+        const listaGrupo = document.createElement('div');
+        listaGrupo.className = 'pb-2'; 
+
+        grupos[mes].forEach(t => {
+            const isVenda = t.type === 'sell';
+            const totalTransacao = t.quantity * t.price;
+            const dia = new Date(t.date).getDate().toString().padStart(2, '0');
+            const sigla = t.symbol.substring(0, 2);
             
-            txsDoAtivo.forEach(t => {
-                const card = document.createElement('div');
-                
-                // USANDO AS MESMAS CLASSES DA ABA EXTRATO:
-                card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between'; 
-                
-                const cor = 'text-green-500';
-                const sinal = '+';
-                
-                // Ícone idêntico ao do Extrato (sem o círculo de fundo extra, direto o SVG)
-                const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-                
-                card.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        ${icone}
-                        <div>
-                            <h3 class="text-base font-semibold text-white">Compra</h3>
-                            <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
+            const labelTipo = isVenda ? 'VENDA' : 'COMPRA';
+            const badgeBg = isVenda 
+                ? 'bg-red-900/20 text-red-400 border border-red-500/20' 
+                : 'bg-purple-900/20 text-purple-400 border border-purple-500/20';
+
+            const item = document.createElement('div');
+            // Reutiliza a classe 'history-card' do CSS global para garantir identidade visual
+            item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 relative group';
+            
+            // Nota: Removemos os botões de ação (editar/excluir) aqui para manter o modal limpo,
+            // já que a gestão principal é feita na aba Extrato.
+            item.innerHTML = `
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
+                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
+                    </div>
+                    
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="badge-type ${badgeBg}">${labelTipo}</span>
+                            <span class="text-[10px] font-medium text-gray-500">Dia ${dia}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-0.5 text-xs text-gray-300 leading-none">
+                            <span>${t.quantity} cotas</span>
+                            <span class="text-gray-600">•</span>
+                            <span>${formatBRL(t.price)}</span>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                        <p class="text-sm text-gray-400">${formatBRL(t.price)}</p>
-                    </div>
-                `;
-                listaContainer.appendChild(card);
-            });
-        }
-        
-        container.classList.remove('hidden');
-    }
+                </div>
+                
+                <div class="text-right flex flex-col items-end justify-center">
+                    <span class="text-sm font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
+                </div>
+            `;
+            listaGrupo.appendChild(item);
+        });
+        fragment.appendChild(listaGrupo);
+    });
+
+    listaContainer.appendChild(fragment);
+}
     
     async function fetchHistoricoScraper(symbol) {
         detalhesAiProvento.innerHTML = `

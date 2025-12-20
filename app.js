@@ -3717,7 +3717,6 @@ function renderizarTransacoesDetalhes(symbol) {
     
         listaContainer.innerHTML = '';
         
-        // Filtra e ordena (mais recentes primeiro)
         const txsDoAtivo = transacoes
             .filter(t => t.symbol === symbol)
             .sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -3732,29 +3731,26 @@ function renderizarTransacoesDetalhes(symbol) {
             txsDoAtivo.forEach(t => {
                 const card = document.createElement('div');
                 
-                // MUDANÇA: Usei 'p-4 rounded-2xl' para ficar idêntico ao card da aba Histórico
-                // Adicionei também um hover sutil para interatividade
-                card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between transition-colors hover:bg-white/5'; 
+                // USANDO AS MESMAS CLASSES DA ABA EXTRATO:
+                card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between'; 
                 
                 const cor = 'text-green-500';
                 const sinal = '+';
                 
-                // MUDANÇA: Adicionei o container do ícone com fundo sutil para destaque (estilo iOS)
+                // Ícone idêntico ao do Extrato (sem o círculo de fundo extra, direto o SVG)
+                const icone = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+                
                 card.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <div class="p-2.5 rounded-full bg-gray-800/50 border border-gray-700/30 flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
+                    <div class="flex items-center gap-3">
+                        ${icone}
                         <div>
-                            <p class="text-base font-semibold text-white leading-tight">Compra</p>
-                            <p class="text-xs text-gray-400 mt-0.5 font-medium">${formatDate(t.date)}</p>
+                            <h3 class="text-base font-semibold text-white">Compra</h3>
+                            <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
                         </div>
                     </div>
                     <div class="text-right">
                         <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
-                        <p class="text-sm text-gray-400 font-medium">${formatBRL(t.price)}</p>
+                        <p class="text-sm text-gray-400">${formatBRL(t.price)}</p>
                     </div>
                 `;
                 listaContainer.appendChild(card);

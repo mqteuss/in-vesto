@@ -1101,20 +1101,29 @@ function hideAddModal() {
          }
     }
     
-    async function salvarSnapshotPatrimonio(totalValor) {
-        if (totalValor <= 0 && patrimonio.length === 0) return; 
-        const today = new Date().toISOString().split('T')[0];
-        
-        const snapshot = { date: today, value: totalValor };
-        await supabaseDB.savePatrimonioSnapshot(snapshot);
-        
-        const index = patrimonio.findIndex(p => p.date === today);
-        if (index > -1) {
-            patrimonio[index].value = totalValor;
-        } else {
-            patrimonio.push(snapshot);
-        }
+async function salvarSnapshotPatrimonio(totalValor) {
+    if (totalValor <= 0 && patrimonio.length === 0) return; 
+    
+    // Pega a data local do usuário (Brasil) em vez de UTC
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`; // Formato YYYY-MM-DD
+    
+    const snapshot = { date: today, value: totalValor };
+    
+    // Salva no banco
+    await supabaseDB.savePatrimonioSnapshot(snapshot);
+    
+    // Atualiza o gráfico localmente sem precisar recarregar
+    const index = patrimonio.findIndex(p => p.date === today);
+    if (index > -1) {
+        patrimonio[index].value = totalValor;
+    } else {
+        patrimonio.push(snapshot);
     }
+}
 
     async function carregarCaixa() {
         const caixaState = await supabaseDB.getAppState('saldoCaixa');

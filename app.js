@@ -3711,67 +3711,58 @@ async function handleMostrarDetalhes(symbol) {
 // Substitua a função inteira em app.js
 
 function renderizarTransacoesDetalhes(symbol) {
-    const listaContainer = document.getElementById('detalhes-lista-transacoes');
-    const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
-    const container = document.getElementById('detalhes-transacoes-container');
-
-    listaContainer.innerHTML = '';
+        const listaContainer = document.getElementById('detalhes-lista-transacoes');
+        const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
+        const container = document.getElementById('detalhes-transacoes-container');
     
-    const txsDoAtivo = transacoes
-        .filter(t => t.symbol === symbol)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    if (txsDoAtivo.length === 0) {
-        vazioMsg.classList.remove('hidden');
-        listaContainer.classList.add('hidden');
-    } else {
-        vazioMsg.classList.add('hidden');
-        listaContainer.classList.remove('hidden');
+        listaContainer.innerHTML = '';
         
-        const fragment = document.createDocumentFragment();
-
-        txsDoAtivo.forEach(t => {
-            const card = document.createElement('div');
-            // Estilo do card
-            card.className = 'bg-black p-3.5 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2 shadow-sm w-full'; 
-            
-            // --- LÓGICA VISUAL ---
-            const isVenda = t.type === 'sell';
-            const cor = isVenda ? 'text-red-500' : 'text-green-500'; // Vermelho/Verde
-            const sinal = isVenda ? '-' : '+';
-            const textoTipo = isVenda ? 'Venda' : 'Compra';
-            
-            // Ícone: seta pra baixo (venda) ou seta pra cima/plus (compra)
-            const svgContent = isVenda 
-                ? '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" />' // Menos
-                : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />'; // Mais
-
-            // ---------------------------
-
-            card.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-[#1A1A1A] rounded-full ${cor} flex-shrink-0 border border-[#2C2C2E]">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            ${svgContent}
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-gray-200">${textoTipo}</p>
-                        <p class="text-xs text-gray-500 font-medium">${formatDate(t.date)}</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="text-sm font-bold ${cor}">${sinal}${t.quantity} Cotas</p>
-                    <p class="text-xs text-gray-400 font-medium">${formatBRL(t.price)}</p>
-                </div>
-            `;
-            fragment.appendChild(card);
-        });
-        listaContainer.appendChild(fragment);
-    }
+        // Filtra e ordena (mais recentes primeiro)
+        const txsDoAtivo = transacoes
+            .filter(t => t.symbol === symbol)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    container.classList.remove('hidden');
-}
+        if (txsDoAtivo.length === 0) {
+            vazioMsg.classList.remove('hidden');
+            listaContainer.classList.add('hidden');
+        } else {
+            vazioMsg.classList.add('hidden');
+            listaContainer.classList.remove('hidden');
+            
+            txsDoAtivo.forEach(t => {
+                const card = document.createElement('div');
+                
+                // MUDANÇA: Usei 'p-4 rounded-2xl' para ficar idêntico ao card da aba Histórico
+                // Adicionei também um hover sutil para interatividade
+                card.className = 'card-bg p-4 rounded-2xl flex items-center justify-between transition-colors hover:bg-white/5'; 
+                
+                const cor = 'text-green-500';
+                const sinal = '+';
+                
+                // MUDANÇA: Adicionei o container do ícone com fundo sutil para destaque (estilo iOS)
+                card.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="p-2.5 rounded-full bg-gray-800/50 border border-gray-700/30 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${cor}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-base font-semibold text-white leading-tight">Compra</p>
+                            <p class="text-xs text-gray-400 mt-0.5 font-medium">${formatDate(t.date)}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-base font-semibold ${cor}">${sinal}${t.quantity} Cotas</p>
+                        <p class="text-sm text-gray-400 font-medium">${formatBRL(t.price)}</p>
+                    </div>
+                `;
+                listaContainer.appendChild(card);
+            });
+        }
+        
+        container.classList.remove('hidden');
+    }
     
     async function fetchHistoricoScraper(symbol) {
         detalhesAiProvento.innerHTML = `

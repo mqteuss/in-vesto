@@ -890,6 +890,27 @@
     <script src="supabase.js" type="module"></script>
     <script src="app.js" type="module"></script>
 
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      for(let registration of registrations) {
+        console.log('Service Worker encontrado e removido:', registration);
+        registration.unregister();
+      }
+      // Se encontrou algo, recarrega a página sozinho
+      if(registrations.length > 0) {
+         window.location.reload(); 
+      }
+    });
+    
+    // Limpa caches de arquivos também
+    caches.keys().then(function(names) {
+        for (let name of names)
+            caches.delete(name);
+    });
+  }
+</script>
+
 </body>
 
 </html>

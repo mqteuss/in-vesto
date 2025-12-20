@@ -1090,17 +1090,12 @@ function hideAddModal() {
         transacoes = await supabaseDB.getTransacoes();
     }
     
-async function carregarPatrimonio() {
-         let allPatrimonio = await vestoDB.getAll('patrimonio');
+    async function carregarPatrimonio() {
+         let allPatrimonio = await supabaseDB.getPatrimonio();
          allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
          
-         // MUDANÇA AQUI: De 365 para 30
-         if (allPatrimonio.length > 30) { 
-            const toDelete = allPatrimonio.slice(0, allPatrimonio.length - 30);
-            for (const item of toDelete) {
-                await vestoDB.delete('patrimonio', item.date);
-            }
-            patrimonio = allPatrimonio.slice(allPatrimonio.length - 30);
+         if (allPatrimonio.length > 365) {
+            patrimonio = allPatrimonio.slice(allPatrimonio.length - 365);
          } else {
             patrimonio = allPatrimonio;
          }

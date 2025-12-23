@@ -2,35 +2,6 @@
 
 import * as supabaseDB from './supabase.js';
 
-// --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
-window.dismissNotificationGlobal = function(id, btnElement) {
-    // 1. Salva no localStorage para não voltar
-    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
-    if (!dismissed.includes(id)) {
-        dismissed.push(id);
-        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify(dismissed));
-    }
-    
-    // 2. Animação de saída
-    const card = btnElement.closest('.notif-card'); // Pega o pai correto
-    if (card) {
-        card.style.transition = 'all 0.3s ease';
-        card.style.opacity = '0';
-        card.style.transform = 'translateX(20px)';
-        
-        setTimeout(() => {
-            card.remove();
-            // Verifica se a lista ficou vazia
-            const list = document.getElementById('notifications-list');
-            if (!list || list.children.length === 0) {
-                document.getElementById('notification-badge').classList.add('hidden');
-                document.getElementById('notifications-empty').classList.remove('hidden');
-                document.getElementById('btn-notifications').classList.remove('bell-ringing');
-            }
-        }, 300);
-    }
-};
-
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -146,18 +117,14 @@ function toggleDrawer(symbol) {
 }
 
 // --- CRIAR ITEM DA CARTEIRA (TICKETS NO PROVENTO) ---
-// --- CRIAR ITEM DA CARTEIRA (CORRIGIDO) ---
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, dadoProvento, proventoReceber, percentWallet
+        corPL, dadoProvento, proventoReceber, percentWallet // <--- Certifique-se que percentWallet vem do renderizarCarteira
     } = dados;
 
     const sigla = ativo.symbol.substring(0, 2);
-    
-    // CORREÇÃO: Definindo a cor da barra baseada no lucro/prejuízo
-    const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
     
     // Tag de Lucro/Prejuízo (Pill)
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
@@ -168,7 +135,7 @@ function criarCardElemento(ativo, dados) {
            </span>` 
         : '';
 
-    // Lógica de Proventos
+    // Lógica de Proventos (MANTIDA IGUAL AO SEU PRINT)
     let proventoHtml = '';
     if (isFII(ativo.symbol) && dadoProvento && dadoProvento.value > 0) {
         const parts = dadoProvento.paymentDate.split('-');
@@ -176,6 +143,7 @@ function criarCardElemento(ativo, dados) {
         const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
         const foiPago = dataPag <= hoje;
         
+        // Badges "Old School"
         let labelBadge = foiPago 
             ? `<span class="px-2 py-0.5 rounded bg-green-900/20 text-green-500 text-[10px] font-bold border border-green-900/30 uppercase tracking-wide">PAGO</span>`
             : `<span class="px-2 py-0.5 rounded bg-yellow-900/20 text-yellow-500 text-[10px] font-bold border border-yellow-900/30 uppercase tracking-wide">AGENDADO</span>`;
@@ -197,10 +165,12 @@ function criarCardElemento(ativo, dados) {
         </div>`;
     }
 
+    // CRIAÇÃO DO CARD (ESTRUTURA MODERNA)
     const card = document.createElement('div');
-    card.className = 'wallet-card group cursor-pointer select-none';
+    card.className = 'wallet-card group cursor-pointer select-none'; // Usa a classe nova do CSS
     card.setAttribute('data-symbol', ativo.symbol);
     
+    // Click Listener direto
     card.onclick = function(e) {
         if (e.target.closest('button')) return;
         toggleDrawer(ativo.symbol);
@@ -238,12 +208,12 @@ function criarCardElemento(ativo, dados) {
             </div>
             
             <div class="allocation-track">
-                <div class="allocation-bar" style="width: ${percentWallet || 0}%; background-color: ${barColor};"></div>
+                <div class="allocation-bar" style="width: ${percentWallet || 0}%;"></div>
             </div>
         </div>
-        
+
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-             <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f] border-t border-[#2C2C2E]">
+            <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f] border-t border-[#2C2C2E]">
                 
                 <div class="grid grid-cols-2 gap-4 mt-3">
                     <div>
@@ -377,9 +347,6 @@ function atualizarCardElemento(card, ativo, dados) {
 document.addEventListener('DOMContentLoaded', async () => {
 	
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
-	let histFilterType = 'all';
-    let histSearchTerm = '';
-	let provSearchTerm = '';
     let currentUserId = null;
     let transacoes = [];        
     let carteiraCalculada = []; 
@@ -587,6 +554,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const precoMedioInput = document.getElementById('preco-medio-input'); 
     const dateInput = document.getElementById('date-input');
     const addButton = document.getElementById('add-button');
+    const updateNotification = document.getElementById('update-notification');
+    const updateButton = document.getElementById('update-button');
 	const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     const btnHistTransacoes = document.getElementById('btn-hist-transacoes');
     const btnHistProventos = document.getElementById('btn-hist-proventos');
@@ -918,6 +887,14 @@ function updateThemeUI() {
             });
         });
 
+        updateButton.addEventListener('click', () => {
+            updateButton.textContent = 'A atualizar...';
+            updateButton.disabled = true;
+            if (newWorker) {
+                newWorker.postMessage({ action: 'SKIP_WAITING' });
+            }
+        });
+
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             window.location.reload();
         });
@@ -1091,29 +1068,20 @@ function hideAddModal() {
          }
     }
     
-async function salvarSnapshotPatrimonio(totalValor) {
-    if (totalValor <= 0 && patrimonio.length === 0) return; 
-    
-    // Pega a data local do usuário (Brasil) em vez de UTC
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const today = `${year}-${month}-${day}`; // Formato YYYY-MM-DD
-    
-    const snapshot = { date: today, value: totalValor };
-    
-    // Salva no banco
-    await supabaseDB.savePatrimonioSnapshot(snapshot);
-    
-    // Atualiza o gráfico localmente sem precisar recarregar
-    const index = patrimonio.findIndex(p => p.date === today);
-    if (index > -1) {
-        patrimonio[index].value = totalValor;
-    } else {
-        patrimonio.push(snapshot);
+    async function salvarSnapshotPatrimonio(totalValor) {
+        if (totalValor <= 0 && patrimonio.length === 0) return; 
+        const today = new Date().toISOString().split('T')[0];
+        
+        const snapshot = { date: today, value: totalValor };
+        await supabaseDB.savePatrimonioSnapshot(snapshot);
+        
+        const index = patrimonio.findIndex(p => p.date === today);
+        if (index > -1) {
+            patrimonio[index].value = totalValor;
+        } else {
+            patrimonio.push(snapshot);
+        }
     }
-}
 
     async function carregarCaixa() {
         const caixaState = await supabaseDB.getAppState('saldoCaixa');
@@ -1315,47 +1283,24 @@ function agruparPorMes(itens, dateField) {
 // Substitua a função renderizarHistorico existente em app.js
 
 function renderizarHistorico() {
-    const listaHistorico = document.getElementById('lista-historico');
-    const historicoStatus = document.getElementById('historico-status');
-    const historicoMensagem = document.getElementById('historico-mensagem');
-
     listaHistorico.innerHTML = '';
     
-    // 1. Filtragem dos Dados
-    let dadosFiltrados = transacoes.filter(t => {
-        // Filtro por Tipo (Compra/Venda)
-        const matchType = histFilterType === 'all' || t.type === histFilterType;
-        
-        // Filtro por Busca (Ticker)
-        const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
-        
-        return matchType && matchSearch;
-    });
-
-    // 2. Verifica se sobrou algo
-    if (dadosFiltrados.length === 0) {
+    if (transacoes.length === 0) {
         historicoStatus.classList.remove('hidden');
-        if (transacoes.length > 0) {
-            historicoMensagem.textContent = "Nenhum resultado para o filtro.";
-        } else {
-            historicoMensagem.textContent = "Nenhum registro encontrado.";
-        }
         return;
     }
     
     historicoStatus.classList.add('hidden');
     
-    // 3. Ordenação e Agrupamento
-    dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
-    const grupos = agruparPorMes(dadosFiltrados, 'date');
+    const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const grupos = agruparPorMes(transacoesOrdenadas, 'date');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header do Mês
+        // 1. Header Sticky
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
         
-        // Soma apenas o que está visível no filtro
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
         
         header.innerHTML = `
@@ -1369,7 +1314,7 @@ function renderizarHistorico() {
         `;
         fragment.appendChild(header);
 
-        // Lista de Cards
+        // 2. Lista de Cards
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1386,6 +1331,7 @@ function renderizarHistorico() {
 
             const sigla = t.symbol.substring(0, 2);
 
+            // AQUI: Mudado de py-2.5 para py-3 (Aumenta levemente a altura interna)
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
@@ -1426,47 +1372,37 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
+// Substitua a função renderizarHistoricoProventos existente em app.js
+
+// Substitua a função renderizarHistoricoProventos existente em app.js
+
 function renderizarHistoricoProventos() {
-    const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     listaHistoricoProventos.innerHTML = '';
-    
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // 1. Filtra por Data (Pagos) E pelo Termo de Busca
-    const proventosFiltrados = proventosConhecidos.filter(p => {
+    const proventosPagos = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
-        
-        // Verificação de Data
         const parts = p.paymentDate.split('-');
         const dPag = new Date(parts[0], parts[1]-1, parts[2]);
-        const dataValida = dPag <= hoje;
-        
-        // Verificação da Busca
-        const buscaValida = provSearchTerm === '' || p.symbol.includes(provSearchTerm);
-
-        return dataValida && buscaValida;
+        return dPag <= hoje;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    // 2. Verifica se está vazio
-    if (proventosFiltrados.length === 0) {
+    if (proventosPagos.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p class="text-xs text-gray-500">Nenhum provento encontrado.</p>
+                <p class="text-xs text-gray-500">Nenhum provento recebido ainda.</p>
             </div>`;
         return;
     }
 
-    // 3. Agrupamento e Renderização (MANTIDO IGUAL)
-    const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
+    const grupos = agruparPorMes(proventosPagos, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
-        
-        // Calcula total apenas dos itens visíveis/filtrados
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1500,6 +1436,7 @@ function renderizarHistoricoProventos() {
                 const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';
 
                 const item = document.createElement('div');
+                // AQUI: Mudado de py-2.5 para py-3
                 item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
 
                 item.innerHTML = `
@@ -1539,117 +1476,37 @@ function renderizarHistoricoProventos() {
     listaHistoricoProventos.appendChild(fragment);
 }
 
-    // 1. Alternar entre Abas (Transações vs Proventos)
-// 1. Alternar entre Abas (Transações vs Proventos)
+    // --- LISTENER DOS BOTÕES DE HISTÓRICO ---
+// --- LISTENER DOS BOTÕES DE HISTÓRICO (TOGGLE ANIMADO) ---
     if (btnHistTransacoes && btnHistProventos) {
-        const viewTransacoes = document.getElementById('view-transacoes');
-        const viewProventos = document.getElementById('view-proventos');
-        const statusEl = document.getElementById('historico-status');
-        
-        // NOVO: Elemento da linha deslizante
-        const tabIndicator = document.getElementById('tab-indicator');
+        const toggleBg = document.getElementById('historico-toggle-bg');
 
         btnHistTransacoes.addEventListener('click', () => {
-            // Atualiza botões
-            btnHistTransacoes.classList.add('active');
-            btnHistProventos.classList.remove('active');
+            // Move a pílula para a esquerda (remove o translate)
+            toggleBg.classList.remove('translate-x-full');
             
-            // Move a linha para a ESQUERDA (remove a classe que joga p/ direita)
-            if(tabIndicator) tabIndicator.classList.remove('indicator-right');
+            // Ajusta as cores do texto
+            btnHistTransacoes.classList.replace('text-gray-500', 'text-white');
+            btnHistProventos.classList.replace('text-white', 'text-gray-500');
             
-            // Troca views
-            viewTransacoes.classList.remove('hidden');
-            viewProventos.classList.add('hidden');
-            
-            if(statusEl) statusEl.classList.add('hidden');
+            // Troca o conteúdo da lista
+            listaHistorico.classList.remove('hidden');
+            listaHistoricoProventos.classList.add('hidden');
             renderizarHistorico();
         });
 
         btnHistProventos.addEventListener('click', () => {
-            // Atualiza botões
-            btnHistProventos.classList.add('active');
-            btnHistTransacoes.classList.remove('active');
+            // Move a pílula para a direita (adiciona translate de 100% da largura dela)
+            toggleBg.classList.add('translate-x-full');
 
-            // Move a linha para a DIREITA
-            if(tabIndicator) tabIndicator.classList.add('indicator-right');
+            // Ajusta as cores do texto
+            btnHistProventos.classList.replace('text-gray-500', 'text-white');
+            btnHistTransacoes.classList.replace('text-white', 'text-gray-500');
 
-            // Troca views
-            viewTransacoes.classList.add('hidden');
-            viewProventos.classList.remove('hidden');
-            
-            if(statusEl) statusEl.classList.add('hidden');
+            // Troca o conteúdo da lista
+            listaHistorico.classList.add('hidden');
+            listaHistoricoProventos.classList.remove('hidden');
             renderizarHistoricoProventos();
-        });
-    }
-
-    // 2. Busca no Histórico
-    const histSearchInput = document.getElementById('historico-search-input');
-    if (histSearchInput) {
-        histSearchInput.addEventListener('input', (e) => {
-            histSearchTerm = e.target.value.trim().toUpperCase();
-            renderizarHistorico();
-        });
-    }
-	
-	// 2.1 Busca nos Proventos (Faltava este bloco)
-    const provSearchInput = document.getElementById('proventos-search-input');
-    if (provSearchInput) {
-        provSearchInput.addEventListener('input', (e) => {
-            // Atualiza a variável global definida no início do arquivo
-            provSearchTerm = e.target.value.trim().toUpperCase();
-            // Chama a renderização novamente para aplicar o filtro
-            renderizarHistoricoProventos();
-        });
-    }
-
-    // 3. NOVO: Lógica do Menu de Filtro (Funil) - Substitui os Chips antigos
-    const btnFilter = document.getElementById('btn-history-filter');
-    const filterMenu = document.getElementById('history-filter-menu');
-    const filterItems = document.querySelectorAll('.filter-dropdown-item');
-
-    if (btnFilter && filterMenu) {
-        // Abrir/Fechar Menu
-        btnFilter.addEventListener('click', (e) => {
-            e.stopPropagation();
-            filterMenu.classList.toggle('visible');
-        });
-
-        // Clique nas opções do menu
-        filterItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const value = item.dataset.value; // 'all', 'buy', 'sell'
-                
-                // Atualiza visual (Check icon)
-                filterItems.forEach(i => {
-                    i.classList.remove('selected');
-                    i.querySelector('.check-icon').classList.remove('opacity-100');
-                    i.querySelector('.check-icon').classList.add('opacity-0');
-                });
-                item.classList.add('selected');
-                item.querySelector('.check-icon').classList.remove('opacity-0');
-                item.querySelector('.check-icon').classList.add('opacity-100');
-
-                // Atualiza variável global e renderiza
-                histFilterType = value;
-                renderizarHistorico();
-
-                // Muda a cor do funil se tiver filtro ativo
-                if (value !== 'all') {
-                    btnFilter.classList.add('has-filter');
-                } else {
-                    btnFilter.classList.remove('has-filter');
-                }
-
-                // Fecha o menu
-                filterMenu.classList.remove('visible');
-            });
-        });
-
-        // Fechar ao clicar fora
-        document.addEventListener('click', (e) => {
-            if (filterMenu.classList.contains('visible') && !filterMenu.contains(e.target) && !btnFilter.contains(e.target)) {
-                filterMenu.classList.remove('visible');
-            }
         });
     }
 
@@ -2476,8 +2333,8 @@ async function renderizarCarteira() {
         totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
         totalCaixaValor.textContent = formatBRL(saldoCaixa);
         totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
-        totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-sm font-medium opacity-80">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
-        totalCarteiraPL.className = `text-lg font-bold ${corPLTotal} mt-0.5`;
+        totalCarteiraPL.textContent = `${formatBRL(totalLucroPrejuizo)} (${totalLucroPrejuizoPercent.toFixed(2)}%)`;
+        totalCarteiraPL.className = `text-lg font-semibold ${corPLTotal}`;
         
         // Salva Snapshot para o gráfico de histórico
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
@@ -2830,78 +2687,87 @@ function dismissNotification(id, element) {
     }, 300);
 }
 
-// --- FUNÇÃO DE NOTIFICAÇÕES (REMODELADA: CLEAN & PREMIUM) ---
+// --- FUNÇÃO PRINCIPAL CORRIGIDA ---
+// --- FUNÇÃO DE NOTIFICAÇÕES (VISUAL REMODELADO + LÓGICA MANTIDA) ---
 function verificarNotificacoesFinanceiras() {
     const list = document.getElementById('notifications-list');
     const badge = document.getElementById('notification-badge');
     const emptyState = document.getElementById('notifications-empty');
     const btnNotif = document.getElementById('btn-notifications');
 
-    // Limpeza inicial
+    // 1. Limpeza
     list.innerHTML = '';
     let temNotificacao = false;
 
-    // Datas
+    // 2. Datas para comparação (Mesma lógica do seu código)
     const hoje = new Date();
     const offset = hoje.getTimezoneOffset() * 60000;
     const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
     const hojeDateObj = new Date(hojeLocal + 'T00:00:00'); 
 
-    // --- RENDERIZADOR DO CARD (NOVO DESIGN) ---
-    const renderNotificationItem = (id, type, title, message) => {
+    // --- HELPER DE RENDERIZAÇÃO (NOVO DESIGN) ---
+    const renderNotificationItem = (id, type, title, message, highlightColor) => {
         const div = document.createElement('div');
-        div.className = 'notif-card relative bg-[#151515] border border-[#2C2C2E] p-3 rounded-2xl mb-2 flex items-start gap-3 transition-all hover:bg-[#1A1A1A] group';
         
-        // Definição de Ícones e Cores Clean
-        let iconHtml = '';
-        let accentColor = ''; // Apenas para detalhes sutis
-
-        if (type === 'payment') { 
-            // Pagamento (Verde)
-            accentColor = 'text-green-500';
-            iconHtml = `
-            <div class="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0 text-green-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-            </div>`;
-        } else if (type === 'datacom') { 
-            // Data Com (Amarelo)
-            accentColor = 'text-yellow-500';
-            iconHtml = `
-            <div class="w-8 h-8 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0 text-yellow-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>`;
-        } else { 
-            // News/Anúncio (Azul/Roxo)
-            accentColor = 'text-purple-400';
-            iconHtml = `
-            <div class="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0 text-purple-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9" /></svg>
-            </div>`;
+        // Configuração de Estilos por Tipo
+        let iconSvg = '';
+        let gradientClass = '';
+        let bgIconClass = '';
+        
+        if (type === 'payment') { // Verde (Pagamento)
+            gradientClass = 'from-green-500 to-emerald-700';
+            bgIconClass = 'text-green-500 bg-green-500/10 border-green-500/20';
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+        } else if (type === 'datacom') { // Amarelo (Data Com)
+            gradientClass = 'from-amber-400 to-orange-600';
+            bgIconClass = 'text-amber-500 bg-amber-500/10 border-amber-500/20';
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+        } else { // Azul (Novo Anúncio)
+            gradientClass = 'from-blue-400 to-indigo-600';
+            bgIconClass = 'text-blue-500 bg-blue-500/10 border-blue-500/20';
+            iconSvg = `<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />`;
         }
 
+        // Estrutura HTML Nova (Card Neon)
+        div.className = 'relative group overflow-hidden rounded-2xl bg-[#151515] border border-[#2C2C2E] p-3 transition-all hover:bg-[#1A1A1A] hover:border-neutral-700';
         div.innerHTML = `
-            ${iconHtml}
-            <div class="flex-1 min-w-0 pt-0.5">
-                <h4 class="text-[11px] font-bold text-gray-400 uppercase tracking-wide leading-tight mb-1">${title}</h4>
-                <div class="text-sm text-gray-200 leading-snug">${message}</div>
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradientClass}"></div>
+            
+            <div class="flex items-start gap-3 pl-2">
+                <div class="w-8 h-8 rounded-lg ${bgIconClass} border flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        ${iconSvg}
+                    </svg>
+                </div>
+                
+                <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">${title}</p>
+                    <div class="text-sm text-gray-300 leading-snug">
+                        ${message}
+                    </div>
+                </div>
+
+                <button class="text-gray-700 hover:text-white transition-colors p-1 -mt-1 -mr-1" onclick="window.dismissNotificationGlobal('${id}', this)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
             </div>
-            <button onclick="window.dismissNotificationGlobal('${id}', this)" class="text-gray-600 hover:text-red-400 p-1 rounded-md hover:bg-white/5 transition-colors -mr-1 -mt-1">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-            </button>
         `;
         return div;
     };
 
+    // Helper de Props (Mantido)
     const getProps = (p) => ({
         paymentDate: p.paymentDate || p.paymentdate,
         dataCom: p.dataCom || p.datacom,
         createdAt: p.created_at || new Date().toISOString()
     });
 
-    // 1. Pagamentos
-    const pagamentosHoje = proventosConhecidos.filter(p => getProps(p).paymentDate === hojeLocal);
+    // --- 1. PAGAMENTOS (Verde) ---
+    const pagamentosHoje = proventosConhecidos.filter(p => {
+        const props = getProps(p);
+        return props.paymentDate === hojeLocal;
+    });
+
     pagamentosHoje.forEach(p => {
         const notifId = `pay_${p.id || p.symbol + Date.now()}`;
         if (isNotificationDismissed(notifId)) return;
@@ -2911,31 +2777,46 @@ function verificarNotificacoesFinanceiras() {
         
         if (qtd > 0) {
             temNotificacao = true;
-            const msg = `<span class="font-bold text-white">${p.symbol}</span> pagou <span class="font-bold text-green-400">${formatBRL(p.value * qtd)}</span> hoje.`;
-            list.appendChild(renderNotificationItem(notifId, 'payment', 'Caiu na Conta', msg));
+            const totalRecebido = p.value * qtd;
+            // Mensagem com HTML injetado
+            const msg = `<span class="text-white font-bold">${p.symbol}</span> pagou <span class="text-green-400 font-bold">${formatBRL(totalRecebido)}</span>.`;
+            
+            const card = renderNotificationItem(notifId, 'payment', 'Pagamento Recebido', msg);
+            list.appendChild(card);
         }
     });
 
-    // 2. Data Com
-    const dataComHoje = proventosConhecidos.filter(p => getProps(p).dataCom === hojeLocal);
+    // --- 2. DATA COM (Amarelo) ---
+    const dataComHoje = proventosConhecidos.filter(p => {
+        const props = getProps(p);
+        return props.dataCom === hojeLocal;
+    });
+    
     dataComHoje.forEach(p => {
         const notifId = `com_${p.id || p.symbol + 'com'}`;
         if (isNotificationDismissed(notifId)) return;
 
         temNotificacao = true;
-        const msg = `<span class="font-bold text-white">${p.symbol}</span> fecha data-com hoje. <span class="text-yellow-500 font-bold">${formatBRL(p.value)}</span>/cota.`;
-        list.appendChild(renderNotificationItem(notifId, 'datacom', 'Data de Corte', msg));
+        const msg = `Garanta <span class="text-amber-400 font-bold">${formatBRL(p.value)}</span>/cota de <span class="text-white font-bold">${p.symbol}</span> até hoje.`;
+        
+        const card = renderNotificationItem(notifId, 'datacom', 'Data Com (Limite)', msg);
+        list.appendChild(card);
     });
 
-    // 3. Novos Anúncios
+    // --- 3. NOVOS ANÚNCIOS (Azul) - LÓGICA CRÍTICA MANTIDA ---
     const novosAnuncios = proventosConhecidos.filter(p => {
         const props = getProps(p);
-        const dataCriacao = props.createdAt.split('T')[0];
-        if (dataCriacao !== hojeLocal) return false;
-        if (props.paymentDate === hojeLocal || props.dataCom === hojeLocal) return false; 
         
-        const dataPagamentoObj = new Date((props.paymentDate || '') + 'T00:00:00');
-        return dataPagamentoObj >= hojeDateObj;
+        // Mesma lógica de validação que você enviou:
+        const dataCriacao = props.createdAt.split('T')[0];
+        const isCreatedToday = dataCriacao === hojeLocal;
+        const isNotDuplicate = props.paymentDate !== hojeLocal && props.dataCom !== hojeLocal;
+        
+        if (!props.paymentDate) return false;
+        const dataPagamentoObj = new Date(props.paymentDate + 'T00:00:00');
+        const isFuturo = dataPagamentoObj >= hojeDateObj;
+
+        return isCreatedToday && isNotDuplicate && isFuturo;
     });
 
     novosAnuncios.forEach(p => {
@@ -2943,10 +2824,13 @@ function verificarNotificacoesFinanceiras() {
         if (isNotificationDismissed(notifId)) return;
 
         temNotificacao = true;
-        const msg = `<span class="font-bold text-white">${p.symbol}</span> anunciou <span class="font-bold text-purple-400">${formatBRL(p.value)}</span> para ${formatDate(getProps(p).paymentDate)}.`;
-        list.appendChild(renderNotificationItem(notifId, 'news', 'Novo Anúncio', msg));
+        const msg = `<span class="text-white font-bold">${p.symbol}</span> anunciou <span class="text-blue-400 font-bold">${formatBRL(p.value)}</span> p/ ${formatDate(getProps(p).paymentDate)}.`;
+
+        const card = renderNotificationItem(notifId, 'news', 'Novo Anúncio', msg);
+        list.appendChild(card);
     });
 
+    // Atualiza badges
     if (temNotificacao) {
         badge.classList.remove('hidden');
         btnNotif.classList.add('bell-ringing');
@@ -3700,8 +3584,6 @@ async function handleMostrarDetalhes(symbol) {
 
 // Substitua a função inteira em app.js
 
-// EM app.js - Substitua a função renderizarTransacoesDetalhes por esta versão:
-
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');
     const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
@@ -3709,7 +3591,6 @@ function renderizarTransacoesDetalhes(symbol) {
 
     listaContainer.innerHTML = '';
     
-    // 1. Filtra e Ordena
     const txsDoAtivo = transacoes
         .filter(t => t.symbol === symbol)
         .sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -3717,91 +3598,53 @@ function renderizarTransacoesDetalhes(symbol) {
     if (txsDoAtivo.length === 0) {
         vazioMsg.classList.remove('hidden');
         listaContainer.classList.add('hidden');
-        container.classList.remove('hidden'); // Garante que o container pai apareça para mostrar a msg vazio
-        return;
-    } 
-    
-    vazioMsg.classList.add('hidden');
-    listaContainer.classList.remove('hidden');
-    container.classList.remove('hidden');
-
-    // 2. Agrupa por Mês (Mesma lógica do Extrato)
-    const grupos = agruparPorMes(txsDoAtivo, 'date');
-    const fragment = document.createDocumentFragment();
-
-    Object.keys(grupos).forEach(mes => {
-        // Soma do valor movimentado no mês para este ativo
-        const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
-
-        // --- HEADER DO MÊS (Sticky) ---
-        const header = document.createElement('div');
-        // Ajuste de estilo inline para garantir que fique bonito dentro do padding do modal
-        header.className = 'history-header-sticky'; 
-        header.style.top = '-1px'; // Ajuste fino para colar no topo do container scrollavel
-        header.style.margin = '0 -8px 8px -8px'; // Margem negativa para alinhar com as bordas
-        header.style.borderRadius = '12px'; // Leve arredondamento
+    } else {
+        vazioMsg.classList.add('hidden');
+        listaContainer.classList.remove('hidden');
         
-        header.innerHTML = `
-            <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-purple-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
-                ${mes}
-            </h3>
-            <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
-                Mov: ${formatBRL(totalMes)}
-            </span>
-        `;
-        fragment.appendChild(header);
+        const fragment = document.createDocumentFragment();
 
-        // --- LISTA DE CARDS ---
-        const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'pb-2'; 
-
-        grupos[mes].forEach(t => {
+        txsDoAtivo.forEach(t => {
+            const card = document.createElement('div');
+            // Estilo do card
+            card.className = 'bg-black p-3.5 rounded-2xl flex items-center justify-between border border-[#2C2C2E] mb-2 shadow-sm w-full'; 
+            
+            // --- LÓGICA VISUAL ---
             const isVenda = t.type === 'sell';
-            const totalTransacao = t.quantity * t.price;
-            const dia = new Date(t.date).getDate().toString().padStart(2, '0');
-            const sigla = t.symbol.substring(0, 2);
+            const cor = isVenda ? 'text-red-500' : 'text-green-500'; // Vermelho/Verde
+            const sinal = isVenda ? '-' : '+';
+            const textoTipo = isVenda ? 'Venda' : 'Compra';
             
-            const labelTipo = isVenda ? 'VENDA' : 'COMPRA';
-            const badgeBg = isVenda 
-                ? 'bg-red-900/20 text-red-400 border border-red-500/20' 
-                : 'bg-purple-900/20 text-purple-400 border border-purple-500/20';
+            // Ícone: seta pra baixo (venda) ou seta pra cima/plus (compra)
+            const svgContent = isVenda 
+                ? '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" />' // Menos
+                : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />'; // Mais
 
-            const item = document.createElement('div');
-            // Reutiliza a classe 'history-card' do CSS global para garantir identidade visual
-            item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 relative group';
-            
-            // Nota: Removemos os botões de ação (editar/excluir) aqui para manter o modal limpo,
-            // já que a gestão principal é feita na aba Extrato.
-            item.innerHTML = `
-                <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
-                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
+            // ---------------------------
+
+            card.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-[#1A1A1A] rounded-full ${cor} flex-shrink-0 border border-[#2C2C2E]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            ${svgContent}
+                        </svg>
                     </div>
-                    
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="badge-type ${badgeBg}">${labelTipo}</span>
-                            <span class="text-[10px] font-medium text-gray-500">Dia ${dia}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 mt-0.5 text-xs text-gray-300 leading-none">
-                            <span>${t.quantity} cotas</span>
-                            <span class="text-gray-600">•</span>
-                            <span>${formatBRL(t.price)}</span>
-                        </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-200">${textoTipo}</p>
+                        <p class="text-xs text-gray-500 font-medium">${formatDate(t.date)}</p>
                     </div>
                 </div>
-                
-                <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-sm font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
+                <div class="text-right">
+                    <p class="text-sm font-bold ${cor}">${sinal}${t.quantity} Cotas</p>
+                    <p class="text-xs text-gray-400 font-medium">${formatBRL(t.price)}</p>
                 </div>
             `;
-            listaGrupo.appendChild(item);
+            fragment.appendChild(card);
         });
-        fragment.appendChild(listaGrupo);
-    });
-
-    listaContainer.appendChild(fragment);
+        listaContainer.appendChild(fragment);
+    }
+    
+    container.classList.remove('hidden');
 }
     
     async function fetchHistoricoScraper(symbol) {
@@ -4732,19 +4575,11 @@ async function init() {
         });
 
         // LÓGICA DE SESSÃO E ROTEAMENTO
-// LÓGICA DE SESSÃO E ROTEAMENTO
         if (session) {
-            await verificarStatusPush();
+			await verificarStatusPush();
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
-            
-            // --- NOVO: Preencher o email na tela de Ajustes ---
-            const userEmailDisplay = document.getElementById('user-email-display');
-            if (userEmailDisplay && session.user.email) {
-                userEmailDisplay.textContent = session.user.email;
-            }
-            // -------------------------------------------------
             
             await verificarStatusBiometria();
             
@@ -4761,14 +4596,14 @@ async function init() {
                 mudarAba('tab-dashboard'); 
             }
 
-            // --- BLOQUEIO DE SWIPE NO CARROSSEL (FIX DEFINITIVO) ---
-            const carouselWrapper = document.getElementById('carousel-wrapper');
-            if (carouselWrapper) {
-                // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
-                carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
-                carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
-                carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
-            }
+// --- BLOQUEIO DE SWIPE NO CARROSSEL (FIX DEFINITIVO) ---
+    const carouselWrapper = document.getElementById('carousel-wrapper');
+    if (carouselWrapper) {
+        // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
+        carouselWrapper.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+        carouselWrapper.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+        carouselWrapper.addEventListener('touchend', (e) => e.stopPropagation(), { passive: true });
+    }
 
             await carregarDadosIniciais();
 
@@ -4785,6 +4620,15 @@ async function init() {
                 }, 800);
             }
             
+        } else {
+            // Caso NÃO tenha sessão
+            appWrapper.classList.add('hidden');      
+            authContainer.classList.remove('hidden'); 
+            
+            if (recoverForm.classList.contains('hidden') && signupForm.classList.contains('hidden')) {
+                loginForm.classList.remove('hidden');
+            }
+            showAuthLoading(false);                 
         }
     }
     

@@ -474,6 +474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     
 	const btnNotifications = document.getElementById('btn-notifications');
+	const updateNotification = document.getElementById('update-notification');
     const notificationBadge = document.getElementById('notification-badge');
     const notificationsDrawer = document.getElementById('notifications-drawer');
     const notificationsList = document.getElementById('notifications-list');

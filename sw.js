@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesto-cache-v16'; // Incrementei a versão para limpar o antigo
+const CACHE_NAME = 'vesto-cache-v17'; // Incrementei a versão para limpar o antigo
 const CRITICAL_FILES = [
   '/',
   '/index.html',

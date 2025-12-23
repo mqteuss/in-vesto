@@ -1,7 +1,6 @@
 const CACHE_NAME = 'vesto-cache-v16'; // Incrementei a versão para limpar o antigo
 const CRITICAL_FILES = [
   '/',
-  '/manifest.json',
   '/index.html',
   '/app.js',
   '/supabase.js',
@@ -10,6 +9,7 @@ const CRITICAL_FILES = [
 ];
 
 const ASSETS_FILES = [
+  '/manifest.json',
   '/icons/carteira.png',
   '/icons/noticias.png',
   '/icons/historico.png',

@@ -5053,6 +5053,23 @@ if (toggleNotifBtn) {
 	window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
+	
+	window.confirmarExclusao = handleRemoverAtivo;
+    window.abrirDetalhesAtivo = showDetalhesModal;
+	setupTransactionModalLogic();
+
+    // --- CORREÇÃO DE PERFORMANCE: FAST BOOT BIOMETRIA ---
+    // Chama a biometria imediatamente, sem esperar o Supabase ou IndexedDB carregarem
+    const fastBioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
+    const fastJustLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
+    
+    // Se a biometria estiver ativa e o usuário não acabou de sair, chama o prompt agora
+    if (fastBioEnabled && !fastJustLoggedOut) {
+        // Não usamos 'await' aqui para que o init() comece a carregar os dados em paralelo
+        // enquanto o usuário coloca o dedo no sensor
+        autenticarBiometria().catch(err => console.warn("Fast boot bio falhou, aguardando init normal", err));
+    }
+    // -----------------------------------------------------
 
     await init();
 });

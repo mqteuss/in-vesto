@@ -9,7 +9,7 @@
   "dependencies": {
     "@vercel/kv": "^2.0.0",
     "uuid": "^10.0.0",
-    "@supabase/supabase-js": "^2.43.5",
+    "@supabase/supabase-js": "^2.89.0",
     "rss-parser": "^3.13.0",
     "axios": "^1.7.0",
     "cheerio": "^1.0.0-rc.12",

@@ -918,14 +918,6 @@ function updateThemeUI() {
             });
         });
 
-        updateButton.addEventListener('click', () => {
-            updateButton.textContent = 'A atualizar...';
-            updateButton.disabled = true;
-            if (newWorker) {
-                newWorker.postMessage({ action: 'SKIP_WAITING' });
-            }
-        });
-
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             window.location.reload();
         });

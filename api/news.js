@@ -1,8 +1,23 @@
-import axios from 'axios';
-import { load } from 'cheerio';
+import Parser from 'rss-parser';
+
+// --- SILENCIADOR DE AVISO (FIX) ---
+// Isso intercepta o aviso "DeprecationWarning: url.parse()" e impede que ele apareça nos logs
+const originalEmit = process.emit;
+process.emit = function (name, data, ...args) {
+    if (
+        name === 'warning' &&
+        typeof data === 'object' &&
+        data.name === 'DeprecationWarning' &&
+        data.message && data.message.includes('url.parse')
+    ) {
+        return false;
+    }
+    return originalEmit.apply(process, [name, data, ...args]);
+};
+// ----------------------------------
 
 export default async function handler(request, response) {
-    // --- Configuração de Headers e CORS (Mantido igual) ---
+
     response.setHeader('Access-Control-Allow-Credentials', true);
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -17,7 +32,16 @@ export default async function handler(request, response) {
         return response.status(200).end();
     }
 
-    // --- Lista de Fontes Conhecidas (Mantido igual) ---
+    const parser = new Parser({
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        },
+        timeout: 10000,
+        customFields: {
+            item: [['source', 'sourceObj']], 
+        },
+    });
+
     const knownSources = {
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
@@ -41,56 +65,38 @@ export default async function handler(request, response) {
 
     try {
         const { q } = request.query;
+
         const queryTerm = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
         
-        // Google News RSS URL
         const fullQuery = `${queryTerm} when:5d`; 
+        
         const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 
-        // 1. Fetch usando AXIOS (substitui o parser.parseURL)
-        const { data: xmlData } = await axios.get(feedUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            },
-            timeout: 10000
-        });
+        const feed = await parser.parseURL(feedUrl);
 
-        // 2. Parse usando CHEERIO (modo XML)
-        const $ = load(xmlData, { xmlMode: true });
         const seenTitles = new Set();
-        const articles = [];
 
-        // Itera sobre cada tag <item> do XML
-        $('item').each((_, element) => {
-            const item = $(element);
-            
-            // Extrai dados brutos
-            const titleRaw = item.find('title').text() || 'Sem título';
-            const link = item.find('link').text();
-            const pubDate = item.find('pubDate').text();
-            const description = item.find('description').text(); // Google joga o snippet aqui muitas vezes
-            
-            // Tenta pegar a fonte da tag <source> ou do título
-            let rawSourceName = item.find('source').text();
-            let cleanTitle = titleRaw;
+        const articles = feed.items.map((item) => {
+            let rawSourceName = '';
+            let cleanTitle = item.title || 'Sem título';
 
-            // Fallback: se não achou na tag <source>, tenta regex no título
-            if (!rawSourceName) {
+            if (item.sourceObj && (item.sourceObj._ || item.sourceObj.content)) {
+                rawSourceName = item.sourceObj._ || item.sourceObj.content || item.sourceObj;
+            } 
+            else {
                 const sourcePattern = /(?: - | \| )([^-|]+)$/; 
-                const match = titleRaw.match(sourcePattern);
+                const match = item.title.match(sourcePattern);
                 if (match) {
                     rawSourceName = match[1];
                 }
             }
 
-            // Limpeza do título (remove o nome da fonte do final)
             if (rawSourceName) {
                 cleanTitle = cleanTitle.replace(new RegExp(`(?: - | \\| )\\s*${escapeRegExp(rawSourceName)}$`), '').trim();
             }
 
-            if (!rawSourceName) return; // return no .each funciona como continue
+            if (!rawSourceName) return null;
 
-            // Validação da Fonte (Lógica original mantida)
             const keyToCheck = rawSourceName.toLowerCase().trim();
             let known = null;
 
@@ -101,44 +107,33 @@ export default async function handler(request, response) {
                 if (foundKey) known = knownSources[foundKey];
             }
 
-            if (!known) return; 
+            if (!known) return null; 
 
-            // Deduplicação
-            if (seenTitles.has(cleanTitle)) return;
+            if (seenTitles.has(cleanTitle)) return null;
             seenTitles.add(cleanTitle);
 
-            articles.push({
+            return {
                 title: cleanTitle,
-                link: link,
-                publicationDate: pubDate, 
+                link: item.link,
+                publicationDate: item.pubDate, 
                 sourceName: known.name,
                 sourceHostname: known.domain,
                 favicon: `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`,
-                summary: extractSummary(description) // Função helper abaixo
-            });
-        });
-
-        // Ordenação por data
-        articles.sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+                summary: item.contentSnippet || '',
+            };
+        })
+        .filter(item => item !== null)
+        .sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate)); 
 
         return response.status(200).json(articles);
 
     } catch (error) {
         console.error('CRITICAL ERROR API NEWS:', error);
+        // Retorna array vazio em caso de erro para não quebrar o front
         return response.status(200).json([]); 
     }
 }
 
-// --- Funções Auxiliares ---
-
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
-}
-
-// O Google News RSS coloca HTML dentro da description. 
-// Essa função limpa tags simples para pegar o texto, se necessário.
-function extractSummary(htmlContent) {
-    if (!htmlContent) return '';
-    // Remove tags HTML básicas se vierem no description
-    return htmlContent.replace(/<[^>]*>?/gm, '').trim(); 
 }

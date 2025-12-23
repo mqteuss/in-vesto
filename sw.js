@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesto-cache-v14'; // Atualizado para v12 (Força limpeza do cache antigo)
+const CACHE_NAME = 'vesto-cache-v15'; // Incrementado para v15 para forçar atualização
 
 // Lista unificada de todos os arquivos que o App precisa para funcionar offline
 const APP_FILES = [
@@ -15,7 +15,6 @@ const APP_FILES = [
   '/logo-vesto.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
-  // REMOVIDO: 'https://cdn.tailwindcss.com', (Não precisamos mais baixar 3MB!)
   'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
   'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
@@ -23,7 +22,7 @@ const APP_FILES = [
 
 // 1. INSTALAÇÃO: Baixa e salva tudo no cache inicial
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Força o SW a ativar imediatamente
+  self.skipWaiting(); // Força o SW a ativar imediatamente (Atualização Automática)
 
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
@@ -33,10 +32,10 @@ self.addEventListener('install', event => {
 
       const externalPromise = Promise.all(
         externalFiles.map(url => {
-            const request = new Request(url, { mode: 'no-cors' });
-            return fetch(request)
-              .then(response => cache.put(request, response))
-              .catch(console.warn);
+          const request = new Request(url, { mode: 'no-cors' });
+          return fetch(request)
+            .then(response => cache.put(request, response))
+            .catch(console.warn);
         })
       );
 
@@ -100,16 +99,9 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// Listener para forçar atualização caso o usuário clique no botão "Atualizar"
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.action === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
 // --- NOTIFICAÇÕES PUSH ---
 
-// 1. Receber a notificação do servidor (Vercel Cron)
+// 1. Receber a notificação do servidor
 self.addEventListener('push', function(event) {
   if (event.data) {
     const data = event.data.json();

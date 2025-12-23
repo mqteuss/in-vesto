@@ -1,7 +1,7 @@
 {
   "name": "Vesto",
   "short_name": "Vesto",
-  "description": "Vesto - Gestão Inteligente de FIIs e Dividendos.",
+  "description": "Vesto - Seu rastreador de carteira de investimentos e proventos.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#000000",
@@ -12,74 +12,36 @@
       "src": "icons/icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "icons/icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "icons/icon-512x512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "screenshots/mobile-screenshot.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "screenshots/desktop-screenshot.png",
-      "sizes": "1920x1080",
-      "type": "image/png",
-      "form_factor": "wide"
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [
     {
-      "name": "Portfólio",
-      "short_name": "Portfólio",
-      "description": "Minha Carteira de Ativos",
+      "name": "Carteira",
+      "short_name": "Carteira",
+      "description": "Minha Carteira",
       "url": "/?tab=tab-carteira",
-      "icons": [
-        {
-          "src": "icons/carteira.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "icons": [{ "src": "icons/carteira.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "name": "Extrato",
-      "short_name": "Extrato",
-      "description": "Histórico de Proventos",
+      "name": "Histórico",
+      "short_name": "Histórico",
+      "description": "Histórico de Transações",
       "url": "/?tab=tab-historico",
-      "icons": [
-        {
-          "src": "icons/historico.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "icons": [{ "src": "icons/historico.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "name": "Mercado",
-      "short_name": "Mercado",
-      "description": "Notícias e FIIs",
+      "name": "Notícias",
+      "short_name": "Notícias",
+      "description": "Notícias FIIs",
       "url": "/?tab=tab-noticias",
-      "icons": [
-        {
-          "src": "icons/noticias.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "icons": [{ "src": "icons/noticias.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

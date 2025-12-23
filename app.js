@@ -412,7 +412,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastNewsSignature = ''; 
     let lastProventosCalcSignature = ''; 
     let cachedSaldoCaixa = 0;
-
     // -------------------------------------------
     
     const vestoDB = {
@@ -602,16 +601,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnSairLock = document.getElementById('btn-sair-lock');
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
-	
-	// --- MOVA ESTE BLOCO ---
-const bioLockVisible = !document.getElementById('biometric-lock-screen').classList.contains('hidden');
-const bioEnabledLocal = localStorage.getItem('vesto_bio_enabled') === 'true';
-
-if (bioEnabledLocal && bioLockVisible) {
-    // Não esperamos o Supabase, chamamos direto
-    autenticarBiometria(); 
-}
-// -----------------------
 
     function verificarStatusInstalacao() {
         if (deferredPrompt) {
@@ -802,9 +791,9 @@ function updateThemeUI() {
             }
         }
 
-        if (bioEnabled && !biometricLockScreen.classList.contains('hidden')) {
-        document.body.style.overflow = 'hidden';
-        autenticarBiometria();
+        if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => autenticarBiometria(), 500);
         }
     }
 
@@ -4766,7 +4755,7 @@ async function init() {
                 userEmailDisplay.textContent = session.user.email;
             }
             // -------------------------------------------------
-            currentUserId = session.user.id;
+            
             await verificarStatusBiometria();
             
             // 1. Captura parâmetros da URL (Atalhos e Compartilhamento)

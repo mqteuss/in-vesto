@@ -843,62 +843,44 @@ function updateThemeUI() {
         }
     }
 
-let isBioAuthenticating = false;
-
-async function autenticarBiometria() {
-    // 1. Previne chamada duplicada
-    if (isBioAuthenticating) return; 
-    
-    if (!window.PublicKeyCredential) return;
-    
-    const savedCredId = localStorage.getItem('vesto_bio_id');
-    if (!savedCredId) {
-        console.warn("Nenhuma credencial salva encontrada.");
-        desativarBiometria();
-        return;
-    }
-
-    // 2. Bloqueia novas chamadas
-    isBioAuthenticating = true; 
-
-    try {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-
-        const publicKey = {
-            challenge: challenge,
-            timeout: 60000,
-            userVerification: "required",
-            allowCredentials: [{
-                id: base64ToBuffer(savedCredId),
-                type: 'public-key',
-                transports: ['internal']
-            }]
-        };
-
-        const assertion = await navigator.credentials.get({ publicKey });
-
-        if (assertion) {
-            biometricLockScreen.classList.add('hidden');
-            document.body.style.overflow = '';
-        }
-    } catch (e) {
-        console.warn("Biometria status:", e.name);
+    async function autenticarBiometria() {
+        if (!window.PublicKeyCredential) return;
+        const savedCredId = localStorage.getItem('vesto_bio_id');
         
-        // 3. LISTA DE ERROS PARA IGNORAR (Não mostrar Toast)
-        // NotAllowedError: Usuário cancelou ou fechou o prompt
-        // AbortError: O navegador cancelou a operação
-        // InvalidStateError: Já existe uma autenticação em andamento (o conflito que está ocorrendo)
-        const errosIgnoraveis = ['NotAllowedError', 'AbortError', 'InvalidStateError', 'DOMException'];
-        
-        if (!errosIgnoraveis.includes(e.name)) {
-             showToast("Falha na leitura biométrica.");
+        if (!savedCredId) {
+            console.warn("Nenhuma credencial salva encontrada.");
+            desativarBiometria();
+            return;
         }
-    } finally {
-        // 4. Libera para tentar novamente
-        isBioAuthenticating = false; 
+
+        try {
+            const challenge = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge);
+
+            const publicKey = {
+                challenge: challenge,
+                timeout: 60000,
+                userVerification: "required",
+                allowCredentials: [{
+                    id: base64ToBuffer(savedCredId),
+                    type: 'public-key',
+                    transports: ['internal']
+                }]
+            };
+
+            const assertion = await navigator.credentials.get({ publicKey });
+
+            if (assertion) {
+                biometricLockScreen.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        } catch (e) {
+            console.warn("Biometria cancelada ou falhou:", e);
+            if (e.name !== 'NotAllowedError') {
+                 showToast("Falha na leitura biométrica.");
+            }
+        }
     }
-}
 
     function desativarBiometria() {
         localStorage.removeItem('vesto_bio_enabled');
@@ -5071,23 +5053,6 @@ if (toggleNotifBtn) {
 	window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
-	
-	window.confirmarExclusao = handleRemoverAtivo;
-    window.abrirDetalhesAtivo = showDetalhesModal;
-	setupTransactionModalLogic();
-
-    // --- CORREÇÃO DE PERFORMANCE: FAST BOOT BIOMETRIA ---
-    // Chama a biometria imediatamente, sem esperar o Supabase ou IndexedDB carregarem
-    const fastBioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
-    const fastJustLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
-    
-    // Se a biometria estiver ativa e o usuário não acabou de sair, chama o prompt agora
-    if (fastBioEnabled && !fastJustLoggedOut) {
-        // Não usamos 'await' aqui para que o init() comece a carregar os dados em paralelo
-        // enquanto o usuário coloca o dedo no sensor
-        autenticarBiometria().catch(err => console.warn("Fast boot bio falhou, aguardando init normal", err));
-    }
-    // -----------------------------------------------------
 
     await init();
 });

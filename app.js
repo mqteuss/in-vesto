@@ -4733,6 +4733,7 @@ async function init() {
 
         // LÓGICA DE SESSÃO E ROTEAMENTO
 // LÓGICA DE SESSÃO E ROTEAMENTO
+// LÓGICA DE SESSÃO E ROTEAMENTO
         if (session) {
             await verificarStatusPush();
             currentUserId = session.user.id;
@@ -4785,8 +4786,14 @@ async function init() {
                 }, 800);
             }
             
+        } else {
+            // --- CORREÇÃO: Se não há sessão, remove o loading e mostra o login ---
+            showAuthLoading(false);
+            loginForm.classList.remove('hidden');
         }
     }
+	
+	
     
     const STORAGE_KEY_SEARCH = 'vesto_search_history';
     const MAX_HISTORY_ITEMS = 5;

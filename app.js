@@ -145,68 +145,32 @@ function toggleDrawer(symbol) {
     }
 }
 
-// EM app.js - Substitua a função criarCardElemento inteira
-
+// --- CRIAR ITEM DA CARTEIRA (TICKETS NO PROVENTO) ---
+// --- CRIAR ITEM DA CARTEIRA (CORRIGIDO) ---
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, dadoProvento, proventoReceber, percentWallet,
-        magicNumber, magicProgress, magicNeeded // <--- NOVOS DADOS
+        corPL, dadoProvento, proventoReceber, percentWallet
     } = dados;
 
     const sigla = ativo.symbol.substring(0, 2);
+    
+    // CORREÇÃO: Definindo a cor da barra baseada no lucro/prejuízo
     const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
     
-    // Tag de Lucro/Prejuízo
+    // Tag de Lucro/Prejuízo (Pill)
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
     const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
     const plTagHtml = dadoPreco 
-        ? `<span class="profit-pill px-1.5 py-0.5 rounded text-[10px] font-bold ${bgBadge} border border-white/5 flex items-center gap-1">
+        ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${bgBadge} border border-white/5 flex items-center gap-1">
              ${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%
            </span>` 
         : '';
 
-    // Lógica de HTML do Número Mágico (Novo Design para Gaveta)
-    let magicNumberHtml = '';
-    if (magicNumber > 0) {
-        const isReached = ativo.quantity >= magicNumber;
-        const progressColor = isReached 
-            ? 'bg-gradient-to-r from-yellow-500 to-yellow-300' 
-            : 'bg-gradient-to-r from-purple-600 to-purple-400';
-        
-        const statusIcon = isReached ? '🏆' : '🎯';
-        const msgTexto = isReached 
-            ? '<span class="text-yellow-400 font-bold text-[10px]">Atingido!</span>' 
-            : `<span class="text-gray-400 text-[10px]">Faltam <b class="text-white">${magicNeeded}</b></span>`;
-
-        magicNumberHtml = `
-        <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
-            <div class="flex justify-between items-end mb-1">
-                <div class="flex items-center gap-1.5">
-                    <span class="text-xs">${statusIcon}</span>
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Número Mágico</span>
-                </div>
-                <div class="text-right">
-                    ${msgTexto}
-                </div>
-            </div>
-            
-            <div class="relative w-full h-2 bg-[#151515] rounded-full overflow-hidden border border-[#2C2C2E]">
-                <div class="absolute top-0 left-0 h-full ${progressColor} transition-all duration-1000" style="width: ${Math.min(magicProgress, 100)}%"></div>
-            </div>
-            
-            <div class="flex justify-between items-center mt-1">
-                <span class="text-[9px] text-gray-600">Atual: ${ativo.quantity}</span>
-                <span class="text-[9px] text-gray-500 font-bold">Meta: ${magicNumber}</span>
-            </div>
-        </div>`;
-    }
-
-    // Lógica de Proventos (Mantida e Ajustada)
+    // Lógica de Proventos
     let proventoHtml = '';
     if (isFII(ativo.symbol) && dadoProvento && dadoProvento.value > 0) {
-        // ... (Lógica existente de datas mantida)
         const parts = dadoProvento.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -217,16 +181,16 @@ function criarCardElemento(ativo, dados) {
             : `<span class="px-2 py-0.5 rounded bg-yellow-900/20 text-yellow-500 text-[10px] font-bold border border-yellow-900/30 uppercase tracking-wide">AGENDADO</span>`;
         
         let valorDisplay = proventoReceber > 0
-            ? `<span class="text-sm font-bold ${foiPago ? 'text-green-500' : 'text-yellow-500'}">+ ${formatBRL(proventoReceber)}</span>`
-            : `<span class="text-[10px] font-bold text-gray-500">Data-com passou</span>`;
+            ? `<span class="text-base font-bold ${foiPago ? 'text-green-500' : 'text-yellow-500'}">+ ${formatBRL(proventoReceber)}</span>`
+            : `<span class="text-xs font-bold text-gray-500">Sem posição na data com</span>`;
 
         proventoHtml = `
-        <div class="mt-3 pt-3 border-t border-[#2C2C2E]">
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-[10px] text-gray-500 font-bold uppercase">Próximo Provento</span>
-                <span class="text-[10px] text-gray-400">Pag: ${formatDate(dadoProvento.paymentDate)}</span>
+        <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] text-gray-500 font-bold uppercase">Provento</span>
+                <span class="text-xs text-gray-400">Com: ${formatDate(dadoProvento.dataCom)} • Pag: ${formatDate(dadoProvento.paymentDate)}</span>
             </div>
-            <div class="flex justify-between items-center bg-[#111] p-2 rounded-lg border border-[#2C2C2E]">
+            <div class="flex justify-between items-center bg-[#111] p-2 rounded-lg border border-[#2C2C2E] mt-2">
                 ${labelBadge}
                 ${valorDisplay}
             </div>
@@ -292,10 +256,6 @@ function criarCardElemento(ativo, dados) {
                     </div>
                 </div>
                 
-                <div data-field="magic-number-container">
-                    ${magicNumberHtml}
-                </div>
-
                 <div data-field="provento-container">
                     ${proventoHtml}
                 </div>
@@ -316,31 +276,33 @@ function criarCardElemento(ativo, dados) {
 }
 
 // --- ATUALIZAR ITEM (TICKETS NO PROVENTO) ---
-// EM app.js - Substitua a função atualizarCardElemento inteira
-
 function atualizarCardElemento(card, ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-        corPL, dadoProvento, proventoReceber, percentWallet,
-        magicNumber, magicProgress, magicNeeded // <--- NOVOS DADOS
+        corPL, dadoProvento, proventoReceber, percentWallet
     } = dados;
 
-    // Atualizações básicas existentes
+    // 1. Atualiza Textos Básicos da Lista Principal
     card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
     card.querySelector('[data-field="preco-unitario"]').textContent = precoFormatado;
+    
+    // 2. Atualiza o Destaque (Total da Posição)
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
     
+    // 3. Atualiza Variação (Texto e Cor)
     const varEl = card.querySelector('[data-field="variacao-valor"]');
     varEl.className = `text-xs font-medium ${corVariacao} mt-0.5 flex justify-end items-center gap-1`;
     varEl.textContent = dadoPreco ? variacaoFormatada : '0.00%';
 
+    // 4. Atualiza Drawer (Custo e PL)
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
     
     const plEl = card.querySelector('[data-field="pl-valor"]');
     plEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
     plEl.className = `text-sm font-bold ${corPL}`;
 
+    // 5. Atualiza Barra de Alocação (Largura e Cor)
     const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
     const barEl = card.querySelector('.allocation-bar');
     if(barEl) {
@@ -348,6 +310,8 @@ function atualizarCardElemento(card, ativo, dados) {
         barEl.style.backgroundColor = barColor;
     }
 
+    // 6. Atualiza Badge de % L/P ao lado do ticker
+    // Selecionamos o elemento da pílula de lucro, se existir, e recriamos
     const plTagContainer = card.querySelector('.profit-pill');
     if (dadoPreco) {
         const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
@@ -355,60 +319,23 @@ function atualizarCardElemento(card, ativo, dados) {
         const novoHtml = `${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%`;
         
         if (plTagContainer) {
-            plTagContainer.className = `profit-pill ${bgBadge} px-1.5 py-0.5 rounded text-[10px] font-bold border border-white/5 flex items-center gap-1`;
+            // Se já existe, atualiza classes e texto
+            plTagContainer.className = `profit-pill ${bgBadge}`;
             plTagContainer.innerHTML = novoHtml;
         } else {
-            const tickerPill = card.querySelector('.font-bold.text-white'); 
-            if (tickerPill && tickerPill.parentNode) {
+            // Se não existe (ex: carregou preço depois), insere após o ticker
+            const tickerPill = card.querySelector('.ticker-pill');
+            if (tickerPill) {
                 const span = document.createElement('span');
-                span.className = `profit-pill ${bgBadge} px-1.5 py-0.5 rounded text-[10px] font-bold border border-white/5 flex items-center gap-1`;
+                span.className = `profit-pill ${bgBadge}`;
                 span.innerHTML = novoHtml;
-                tickerPill.parentNode.appendChild(span);
+                tickerPill.parentNode.insertBefore(span, tickerPill.nextSibling);
             }
         }
     }
 
-    // --- ATUALIZAÇÃO DO MAGIC NUMBER (NOVO) ---
-    const magicContainer = card.querySelector('[data-field="magic-number-container"]');
-    if (magicContainer) {
-        if (magicNumber > 0) {
-            const isReached = ativo.quantity >= magicNumber;
-            const progressColor = isReached 
-                ? 'bg-gradient-to-r from-yellow-500 to-yellow-300' 
-                : 'bg-gradient-to-r from-purple-600 to-purple-400';
-            
-            const statusIcon = isReached ? '🏆' : '🎯';
-            const msgTexto = isReached 
-                ? '<span class="text-yellow-400 font-bold text-[10px]">Atingido!</span>' 
-                : `<span class="text-gray-400 text-[10px]">Faltam <b class="text-white">${magicNeeded}</b></span>`;
-
-            magicContainer.innerHTML = `
-            <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
-                <div class="flex justify-between items-end mb-1">
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-xs">${statusIcon}</span>
-                        <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Número Mágico</span>
-                    </div>
-                    <div class="text-right">
-                        ${msgTexto}
-                    </div>
-                </div>
-                
-                <div class="relative w-full h-2 bg-[#151515] rounded-full overflow-hidden border border-[#2C2C2E]">
-                    <div class="absolute top-0 left-0 h-full ${progressColor} transition-all duration-1000" style="width: ${Math.min(magicProgress, 100)}%"></div>
-                </div>
-                
-                <div class="flex justify-between items-center mt-1">
-                    <span class="text-[9px] text-gray-600">Atual: ${ativo.quantity}</span>
-                    <span class="text-[9px] text-gray-500 font-bold">Meta: ${magicNumber}</span>
-                </div>
-            </div>`;
-        } else {
-            magicContainer.innerHTML = ''; // Limpa se não tiver dados
-        }
-    }
-
-    // --- ATUALIZAÇÃO DE PROVENTOS (MANTIDA) ---
+    // 7. Atualiza HTML de Proventos (Re-inject)
+    // Se for FII e tiver dados, recriamos o bloco de proventos para garantir status atualizado
     if (isFII(ativo.symbol) && dadoProvento) {
         const proventoContainer = card.querySelector('[data-field="provento-container"]');
         if (proventoContainer && dadoProvento.value > 0) {
@@ -422,16 +349,21 @@ function atualizarCardElemento(card, ativo, dados) {
                 : `<span class="px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-[9px] font-bold text-yellow-400 uppercase tracking-wide">AGENDADO</span>`;
             
             let valorDisplay = proventoReceber > 0
-                ? `<span class="text-sm font-bold ${foiPago ? 'text-green-500' : 'text-yellow-500'}">+ ${formatBRL(proventoReceber)}</span>`
+                ? `<span class="text-base font-bold ${foiPago ? 'text-green-500' : 'text-yellow-500'}">+ ${formatBRL(proventoReceber)}</span>`
                 : `<span class="text-xs font-bold text-orange-400">Sem direito</span>`;
 
+            const dataComTexto = dadoProvento.dataCom ? formatDate(dadoProvento.dataCom) : '-';
             const dataPagTexto = formatDate(dadoProvento.paymentDate);
 
             proventoContainer.innerHTML = `
             <div class="mt-3 pt-3 border-t border-[#2C2C2E]">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-[10px] text-gray-500 uppercase font-bold">Próximo Provento</span>
-                    <span class="text-[10px] font-medium text-gray-400">Pag: ${dataPagTexto}</span>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[10px] text-gray-500 uppercase font-bold">Provento</span>
+                    <span class="text-xs font-medium text-gray-300">${formatBRL(dadoProvento.value)}/cota</span>
+                </div>
+                <div class="flex justify-between items-center text-[10px] text-gray-500 mb-2">
+                    <span>Com: ${dataComTexto}</span>
+                    <span>Pag: ${dataPagTexto}</span>
                 </div>
                 <div class="flex justify-between items-center bg-[#151515] p-2 rounded-lg border border-[#2C2C2E]">
                     ${labelBadge}
@@ -2645,6 +2577,7 @@ async function renderizarCarteira() {
         }
     });
 
+    // PASS 2: Renderizar ou Atualizar cada Card
     carteiraOrdenada.forEach((ativo, index) => { 
         const dadoPreco = precosMap.get(ativo.symbol);
         const dadoProvento = proventosMap.get(ativo.symbol);
@@ -2670,8 +2603,10 @@ async function renderizarCarteira() {
         const lucroPrejuizo = totalPosicao - custoTotal;
         const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
         
+        // Cálculo da Alocação (%)
         const percentWallet = totalValorCarteira > 0 ? (totalPosicao / totalValorCarteira) * 100 : 0;
 
+        // Estilos de Lucro/Prejuízo
         let corPL = 'text-gray-500';
         if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; }
         else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; }
@@ -2684,29 +2619,18 @@ async function renderizarCarteira() {
              proventoReceber = qtdElegivel * dadoProvento.value;
         }
 
-        // --- CÁLCULO NÚMERO MÁGICO (NOVO) ---
-        let magicNumber = 0;
-        let magicProgress = 0;
-        let magicNeeded = 0;
-
-        // Só calcula se for FII, tiver preço e tiver informação de provento (da lista de proventos conhecidos)
-        if (isFII(ativo.symbol) && precoAtual > 0 && dadoProvento && dadoProvento.value > 0) {
-            magicNumber = Math.ceil(precoAtual / dadoProvento.value);
-            magicProgress = (ativo.quantity / magicNumber) * 100;
-            magicNeeded = Math.max(magicNumber - ativo.quantity, 0);
-        }
-
         const dadosRender = {
             dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
             totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-            corPL, dadoProvento, proventoReceber, percentWallet,
-            magicNumber, magicProgress, magicNeeded // Passando para o renderizador
+            corPL, dadoProvento, proventoReceber, percentWallet
         };
 
+        // Popula dados para o gráfico de rosca
         if (totalPosicao > 0) { 
             dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); 
         }
 
+        // DOM: Cria ou Atualiza
         let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
         
         if (card) {
@@ -2714,6 +2638,7 @@ async function renderizarCarteira() {
         } else {
             card = criarCardElemento(ativo, dadosRender);
             
+            // Animação de entrada (Stagger)
             card.classList.add('card-stagger');
             const delay = Math.min(index * 50, 500); 
             card.style.animationDelay = `${delay}ms`;

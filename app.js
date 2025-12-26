@@ -1839,24 +1839,32 @@ function renderizarNoticias(articles) {
     fiiNewsList.appendChild(fragment);
 }
 
-// --- RENDERIZAR GRÁFICO DE ALOCAÇÃO (VISUAL PREMIUM / ROXOS) ---
-// --- RENDERIZAR GRÁFICO DE ALOCAÇÃO (ANEL MAIS GROSSO E MAIOR) ---
+// EM app.js
+
 function renderizarGraficoAlocacao(dadosGrafico) {
     const canvas = document.getElementById('alocacao-chart');
+    const centerValueEl = document.getElementById('center-chart-value'); // Elemento do texto central
+    
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
+    // Se não tiver dados, limpa tudo
     if (dadosGrafico.length === 0) {
         if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
             alocacaoChartInstance = null; 
         }
         lastAlocacaoData = null; 
+        if(centerValueEl) centerValueEl.textContent = 'R$ 0,00';
         return;
     }
     
     // Ordena do maior para o menor
     dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
+
+    // Calcula o total para exibir no centro
+    const totalGeral = dadosGrafico.reduce((acc, curr) => acc + curr.totalPosicao, 0);
+    if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral); // Atualiza o HTML central
 
     const labels = dadosGrafico.map(d => d.symbol);
     const data = dadosGrafico.map(d => d.totalPosicao);
@@ -1865,19 +1873,17 @@ function renderizarGraficoAlocacao(dadosGrafico) {
     if (newDataString === lastAlocacaoData) { return; }
     lastAlocacaoData = newDataString; 
     
-    // PALETA VESTO PREMIUM (Roxos/Violetas)
+    // PALETA VESTO PREMIUM (Ajustada para contraste)
     const gerarPaletaPremium = (num) => {
         const coresBase = [
-            '#7c3aed', // Violet 600
-            '#a855f7', // Purple 500
-            '#4c1d95', // Violet 900
-            '#c084fc', // Purple 400
+            '#7c3aed', // Roxo Principal (Violet 600)
+            '#a78bfa', // Roxo Claro (Violet 400) - Contraste
+            '#4c1d95', // Roxo Escuro (Violet 900) - Fundo
+            '#d8b4fe', // Lilás (Violet 300) - Destaque
+            '#6d28d9', // Roxo Médio (Violet 700)
+            '#2e1065', // Quase Preto (Violet 950)
+            '#c4b5fd', // Violet 200
             '#5b21b6', // Violet 800
-            '#e879f9', // Fuchsia 400
-            '#2e1065', // Violet 950
-            '#8b5cf6', // Violet 500
-            '#6366f1', // Indigo 500
-            '#312e81'  // Indigo 900
         ];
         let cores = [];
         for (let i = 0; i < num; i++) {
@@ -1887,11 +1893,13 @@ function renderizarGraficoAlocacao(dadosGrafico) {
     };
 
     const colors = gerarPaletaPremium(labels.length);
+    const bgColor = document.body.classList.contains('light-mode') ? '#ffffff' : '#0f0f0f'; // Cor do fundo do card para a borda
 
     if (alocacaoChartInstance) {
         alocacaoChartInstance.data.labels = labels;
         alocacaoChartInstance.data.datasets[0].data = data;
         alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
+        alocacaoChartInstance.data.datasets[0].borderColor = bgColor; // Atualiza borda se mudar tema
         alocacaoChartInstance.update();
     } else {
         alocacaoChartInstance = new Chart(ctx, {
@@ -1901,51 +1909,65 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                 datasets: [{ 
                     data: data, 
                     backgroundColor: colors, 
-                    borderWidth: 3, // Borda um pouco mais fina para não "comer" o gráfico
-                    borderColor: '#000000', 
-                    hoverOffset: 4 
+                    
+                    // --- MELHORIA VISUAL AQUI ---
+                    borderWidth: 4,          // Borda mais grossa
+                    borderColor: bgColor,    // Cor do fundo (cria o "gap")
+                    borderRadius: 20,        // Arredonda as pontas das fatias
+                    borderAlign: 'inner',    // Mantém o tamanho consistente
+                    hoverOffset: 15,         // Fatia "pula" para fora ao passar o mouse
+                    spacing: 2               // Espaço extra leve entre fatias
+                    // ---------------------------
                 }] 
             },
             options: {
                 responsive: true, 
                 maintainAspectRatio: false,
-                // ALTERAÇÃO: 60% deixa o anel mais grosso (era 75%)
-                cutout: '60%', 
+                cutout: '75%', // Buraco maior para caber o texto (era 60%)
                 layout: {
-                    // ALTERAÇÃO: Padding 0 faz o gráfico ocupar todo o espaço disponível
-                    padding: 10
+                    padding: 20 // Espaço para o hoverOffset não cortar
                 },
                 plugins: {
                     legend: { 
                         display: true, 
-                        position: 'bottom', // Mudei para a direita para ganhar altura vertical
+                        position: 'bottom',
                         labels: { 
                             color: '#9ca3af', 
-                            boxWidth: 8, 
-                            boxHeight: 8,
-                            padding: 15,
+                            boxWidth: 10, 
+                            boxHeight: 10,
+                            padding: 20,
                             usePointStyle: true, 
-                            font: { size: 10 }
+                            pointStyle: 'circle', // Bolinhas redondas na legenda
+                            font: { size: 11, weight: '600' }
                         } 
                     },
                     tooltip: {
-                        backgroundColor: '#1C1C1E',
+                        backgroundColor: 'rgba(20, 20, 20, 0.9)',
                         titleColor: '#fff',
                         bodyColor: '#e5e7eb',
-                        borderColor: '#374151',
+                        borderColor: '#333',
                         borderWidth: 1,
-                        padding: 10,
-                        cornerRadius: 8,
+                        padding: 12,
+                        cornerRadius: 12,
+                        displayColors: true,
+                        boxPadding: 4,
                         callbacks: {
                             label: function(context) {
                                 const label = context.label || '';
                                 const value = context.parsed || 0;
                                 const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
                                 const percent = ((value / total) * 100).toFixed(1);
-                                return ` ${label}: ${percent}%`;
+                                return ` ${label}: ${percent}% (${formatBRL(value)})`;
                             }
                         }
                     }
+                },
+                // Animação inicial suave
+                animation: {
+                    animateScale: true,
+                    animateRotate: true,
+                    duration: 1500,
+                    easing: 'easeOutQuart'
                 }
             }
         });

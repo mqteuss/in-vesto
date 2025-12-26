@@ -1843,12 +1843,13 @@ function renderizarNoticias(articles) {
 
 function renderizarGraficoAlocacao(dadosGrafico) {
     const canvas = document.getElementById('alocacao-chart');
-    const centerValueEl = document.getElementById('center-chart-value'); // Elemento do texto central
+    const centerValueEl = document.getElementById('center-chart-value');
+    const legendContainer = document.getElementById('alocacao-legend'); // Referência para a legenda nova
     
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
-    // Se não tiver dados, limpa tudo
+    // 1. Limpeza se não houver dados
     if (dadosGrafico.length === 0) {
         if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
@@ -1856,99 +1857,86 @@ function renderizarGraficoAlocacao(dadosGrafico) {
         }
         lastAlocacaoData = null; 
         if(centerValueEl) centerValueEl.textContent = 'R$ 0,00';
+        if(legendContainer) legendContainer.innerHTML = ''; // Limpa legenda
         return;
     }
     
-    // Ordena do maior para o menor
     dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
-    // Calcula o total para exibir no centro
+    // Atualiza o valor central
     const totalGeral = dadosGrafico.reduce((acc, curr) => acc + curr.totalPosicao, 0);
-    if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral); // Atualiza o HTML central
+    if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
 
     const labels = dadosGrafico.map(d => d.symbol);
     const data = dadosGrafico.map(d => d.totalPosicao);
+    
+    // Gerador de Cores
+    const gerarPaletaPremium = (num) => {
+        const coresBase = [
+            '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
+            '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'
+        ];
+        return Array.from({length: num}, (_, i) => coresBase[i % coresBase.length]);
+    };
+
+    const colors = gerarPaletaPremium(labels.length);
     const newDataString = JSON.stringify({ labels, data });
+
+    // --- CRIAÇÃO DA LEGENDA EXTERNA ---
+    // Isso garante que o gráfico fique centralizado e a legenda fique embaixo
+    if(legendContainer) {
+        legendContainer.innerHTML = labels.map((label, i) => `
+            <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${colors[i]}"></span>
+                <span class="text-[11px] font-bold text-gray-400 tracking-wide">${label}</span>
+            </div>
+        `).join('');
+    }
+    // ----------------------------------
 
     if (newDataString === lastAlocacaoData) { return; }
     lastAlocacaoData = newDataString; 
     
-    // PALETA VESTO PREMIUM (Ajustada para contraste)
-    const gerarPaletaPremium = (num) => {
-        const coresBase = [
-            '#7c3aed', // Roxo Principal (Violet 600)
-            '#a78bfa', // Roxo Claro (Violet 400) - Contraste
-            '#4c1d95', // Roxo Escuro (Violet 900) - Fundo
-            '#d8b4fe', // Lilás (Violet 300) - Destaque
-            '#6d28d9', // Roxo Médio (Violet 700)
-            '#2e1065', // Quase Preto (Violet 950)
-            '#c4b5fd', // Violet 200
-            '#5b21b6', // Violet 800
-        ];
-        let cores = [];
-        for (let i = 0; i < num; i++) {
-            cores.push(coresBase[i % coresBase.length]);
-        }
-        return cores;
-    };
-
-    const colors = gerarPaletaPremium(labels.length);
-    const bgColor = document.body.classList.contains('light-mode') ? '#ffffff' : '#0f0f0f'; // Cor do fundo do card para a borda
+    const bgColor = document.body.classList.contains('light-mode') ? '#ffffff' : '#0f0f0f';
 
     if (alocacaoChartInstance) {
         alocacaoChartInstance.data.labels = labels;
         alocacaoChartInstance.data.datasets[0].data = data;
         alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
-        alocacaoChartInstance.data.datasets[0].borderColor = bgColor; // Atualiza borda se mudar tema
         alocacaoChartInstance.update();
     } else {
         alocacaoChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: { 
                 labels: labels, 
-datasets: [{ 
-    data: data, 
-    backgroundColor: colors, 
-    
-    // --- CORREÇÃO DO VISUAL ---
-    borderWidth: 0,          // Remove a linha preta (borda)
-    spacing: 6,              // Empurra as fatias para criar o espaço vazio real
-    borderRadius: 20,        // Mantém o arredondamento
-    hoverOffset: 15          // Mantém a animação ao passar o mouse
-    // -------------------------
-}] 
+                datasets: [{ 
+                    data: data, 
+                    backgroundColor: colors, 
+                    borderWidth: 0,          // Sem borda preta
+                    spacing: 5,              // Espaçamento real
+                    borderRadius: 20,
+                    hoverOffset: 10
+                }] 
             },
-options: {
-    responsive: true, 
-    maintainAspectRatio: false,
-    cutout: '80%', // Mudei de 75% para 80% (buraco maior)
-    layout: {
-        padding: 10 // Reduzi de 20 para 10 para ganhar espaço lateral
-    },
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false,
+                cutout: '85%', // Anel fino e moderno
+                layout: {
+                    padding: 10
+                },
                 plugins: {
                     legend: { 
-                        display: true, 
-                        position: 'bottom',
-                        labels: { 
-                            color: '#9ca3af', 
-                            boxWidth: 10, 
-                            boxHeight: 10,
-                            padding: 20,
-                            usePointStyle: true, 
-                            pointStyle: 'circle', // Bolinhas redondas na legenda
-                            font: { size: 11, weight: '600' }
-                        } 
+                        display: false // <--- O SEGREDO: Desliga a legenda interna para centralizar o anel
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(20, 20, 20, 0.9)',
+                        backgroundColor: 'rgba(20, 20, 20, 0.95)',
                         titleColor: '#fff',
                         bodyColor: '#e5e7eb',
                         borderColor: '#333',
                         borderWidth: 1,
                         padding: 12,
                         cornerRadius: 12,
-                        displayColors: true,
-                        boxPadding: 4,
                         callbacks: {
                             label: function(context) {
                                 const label = context.label || '';
@@ -1959,13 +1947,6 @@ options: {
                             }
                         }
                     }
-                },
-                // Animação inicial suave
-                animation: {
-                    animateScale: true,
-                    animateRotate: true,
-                    duration: 1500,
-                    easing: 'easeOutQuart'
                 }
             }
         });

@@ -1906,19 +1906,17 @@ function renderizarGraficoAlocacao(dadosGrafico) {
             type: 'doughnut',
             data: { 
                 labels: labels, 
-                datasets: [{ 
-                    data: data, 
-                    backgroundColor: colors, 
-                    
-                    // --- MELHORIA VISUAL AQUI ---
-                    borderWidth: 4,          // Borda mais grossa
-                    borderColor: bgColor,    // Cor do fundo (cria o "gap")
-                    borderRadius: 20,        // Arredonda as pontas das fatias
-                    borderAlign: 'inner',    // Mantém o tamanho consistente
-                    hoverOffset: 15,         // Fatia "pula" para fora ao passar o mouse
-                    spacing: 2               // Espaço extra leve entre fatias
-                    // ---------------------------
-                }] 
+datasets: [{ 
+    data: data, 
+    backgroundColor: colors, 
+    
+    // --- CORREÇÃO DO VISUAL ---
+    borderWidth: 0,          // Remove a linha preta (borda)
+    spacing: 6,              // Empurra as fatias para criar o espaço vazio real
+    borderRadius: 20,        // Mantém o arredondamento
+    hoverOffset: 15          // Mantém a animação ao passar o mouse
+    // -------------------------
+}] 
             },
             options: {
                 responsive: true, 

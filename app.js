@@ -2359,10 +2359,10 @@ function renderizarMetaFinanceira(patrimonioAtual) {
         }, 100);
 
         if (falta <= 0) {
-            faltanteTexto.textContent = "Meta atingida! 🚀";
+            faltanteTexto.textContent = "Meta atingida! ";
             progressBar.classList.add('bg-green-500'); // Fica verde se atingiu
         } else {
-            faltanteTexto.textContent = `Faltam ${formatBRL(falta)} para atingir`;
+            faltanteTexto.textContent = `Faltam ${formatBRL(falta)} `;
             progressBar.classList.remove('bg-green-500');
         }
 

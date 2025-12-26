@@ -3638,6 +3638,8 @@ function handleAbrirModalEdicao(id) {
         });
     }
     
+// [Existing imports and code...]
+
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
@@ -3664,11 +3666,9 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // --- 2. CORES DOS BOTÕES (NEUTRO ABSOLUTO) ---
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
-        // Fundo preto puro, borda cinza escura neutra, texto cinza neutro
         btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
             isActive 
             ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
@@ -3730,7 +3730,7 @@ async function handleMostrarDetalhes(symbol) {
         if (varPercent > 0) { variacaoCor = 'text-green-500'; variacaoIcone = arrowUp; } 
         else if (varPercent < 0) { variacaoCor = 'text-red-500'; variacaoIcone = arrowDown; }
         
-        // Posição do Usuário
+        // --- 2. POSIÇÃO DO USUÁRIO ---
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
@@ -3748,8 +3748,20 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- 3. CORREÇÃO DA LINHA DO PROVENTO ---
+        // --- 3. PROVENTOS (Próximo ou Último) ---
         let proximoProventoHtml = '';
+        let lastDividendValue = 0; // Guardar valor para o Magic Number
+
+        // Tenta pegar o valor do provento futuro ou do scraper
+        if (nextProventoData && nextProventoData.value > 0) {
+            lastDividendValue = nextProventoData.value;
+        } else if (fundamentos.ultimo_rendimento && fundamentos.ultimo_rendimento !== '-') {
+            // Fallback: Tenta limpar a string "R$ 0,10" para float
+            try {
+                lastDividendValue = parseFloat(fundamentos.ultimo_rendimento.replace('R$','').replace(',','.').trim());
+            } catch(e) { lastDividendValue = 0; }
+        }
+
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
             const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
@@ -3764,7 +3776,6 @@ async function handleMostrarDetalhes(symbol) {
             const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
             const textClass = isFuturo ? "text-green-400" : "text-[#666666]";
 
-            // AQUI: border-b border-[#2C2C2E] (Cinza Neutro, sem azul)
             proximoProventoHtml = `
                 <div class="w-full p-3 rounded-2xl border ${borderClass} flex flex-col gap-2 shadow-sm">
                     <div class="flex justify-between items-center border-b border-[#2C2C2E] pb-2 mb-1">
@@ -3784,6 +3795,59 @@ async function handleMostrarDetalhes(symbol) {
                 </div>
             `;
         }
+
+        // --- 4. NOVO: NÚMERO MÁGICO ---
+        let magicNumberHtml = '';
+        if (isFII(symbol) && precoData.regularMarketPrice > 0 && lastDividendValue > 0) {
+            // Fórmula: Preço / Dividendo (Arredondado para cima)
+            const magicNumber = Math.ceil(precoData.regularMarketPrice / lastDividendValue);
+            const userQtd = ativoCarteira ? ativoCarteira.quantity : 0;
+            
+            const progress = Math.min((userQtd / magicNumber) * 100, 100);
+            const falta = Math.max(magicNumber - userQtd, 0);
+            
+            // Texto dinâmico
+            let statusText = '';
+            let barColor = 'bg-gradient-to-r from-yellow-600 to-yellow-400';
+            
+            if (userQtd >= magicNumber) {
+                statusText = '<span class="text-yellow-400 font-bold">Objetivo Alcançado! 🏆</span>';
+            } else {
+                statusText = `Faltam <span class="text-white font-bold">${falta}</span> cotas`;
+                barColor = 'bg-gradient-to-r from-purple-800 to-purple-500';
+            }
+
+            magicNumberHtml = `
+                <div class="w-full p-4 bg-[#151515] border border-[#2C2C2E] rounded-2xl relative overflow-hidden group">
+                     <div class="absolute top-0 right-0 w-20 h-20 bg-purple-500/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+
+                    <div class="flex justify-between items-end mb-2 relative z-10">
+                        <div>
+                            <div class="flex items-center gap-1.5 mb-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                                <span class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Número Mágico</span>
+                            </div>
+                            <span class="text-2xl font-bold text-white tracking-tight">${magicNumber}</span>
+                            <span class="text-xs text-gray-500 font-medium ml-1">cotas</span>
+                        </div>
+                        <div class="text-right text-xs text-gray-500">
+                             ${statusText}
+                        </div>
+                    </div>
+                    
+                    <div class="h-2 w-full bg-gray-800 rounded-full overflow-hidden relative z-10">
+                        <div class="h-full ${barColor} transition-all duration-1000 ease-out" style="width: ${progress}%"></div>
+                    </div>
+                    
+                    <p class="text-[9px] text-gray-600 mt-2 leading-tight relative z-10">
+                        Com ${magicNumber} cotas, os rendimentos compram 1 nova cota/mês (base: ${formatBRL(lastDividendValue)}).
+                    </p>
+                </div>
+            `;
+        }
+        // ------------------------------------
 
         const dados = { 
             pvp: fundamentos.pvp || '-', 
@@ -3833,7 +3897,7 @@ async function handleMostrarDetalhes(symbol) {
 
                 ${userPosHtml}
                 
-                ${proximoProventoHtml} 
+                ${magicNumberHtml} ${proximoProventoHtml} 
 
                 <div class="grid grid-cols-3 gap-3 w-full">
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
@@ -3891,11 +3955,6 @@ async function handleMostrarDetalhes(symbol) {
     renderizarTransacoesDetalhes(symbol);
     atualizarIconeFavorito(symbol);
 }
-
-
-// Substitua a função inteira em app.js
-
-// EM app.js - Substitua a função renderizarTransacoesDetalhes por esta versão:
 
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');

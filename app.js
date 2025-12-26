@@ -1918,13 +1918,13 @@ datasets: [{
     // -------------------------
 }] 
             },
-            options: {
-                responsive: true, 
-                maintainAspectRatio: false,
-                cutout: '75%', // Buraco maior para caber o texto (era 60%)
-                layout: {
-                    padding: 20 // Espaço para o hoverOffset não cortar
-                },
+options: {
+    responsive: true, 
+    maintainAspectRatio: false,
+    cutout: '80%', // Mudei de 75% para 80% (buraco maior)
+    layout: {
+        padding: 10 // Reduzi de 20 para 10 para ganhar espaço lateral
+    },
                 plugins: {
                     legend: { 
                         display: true, 

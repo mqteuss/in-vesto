@@ -2119,25 +2119,43 @@ function renderizarGraficoPatrimonio() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // 1. Definição do Período de Corte
+    // 1. Definição do Período de Corte (LÓGICA CORRIGIDA)
     const hoje = new Date();
-    let dataCorte = new Date('2000-01-01'); // Data muito antiga (padrão ALL)
+    // Definimos 'hoje' como o final do dia atual para garantir a subtração correta
+    hoje.setHours(23, 59, 59, 999);
+    
+    let dataCorte;
 
+    // Cria uma CÓPIA da data de hoje antes de subtrair
     if (currentPatrimonioRange === '1M') {
+        dataCorte = new Date(hoje);
         dataCorte.setDate(hoje.getDate() - 30);
     } else if (currentPatrimonioRange === '6M') {
+        dataCorte = new Date(hoje);
         dataCorte.setMonth(hoje.getMonth() - 6);
     } else if (currentPatrimonioRange === '1Y') {
+        dataCorte = new Date(hoje);
         dataCorte.setFullYear(hoje.getFullYear() - 1);
+    } else {
+        // Padrão ALL (Tudo)
+        dataCorte = new Date('2000-01-01');
     }
+    
+    // Normaliza a data de corte para o início do dia (00:00:00)
+    dataCorte.setHours(0, 0, 0, 0);
 
     // 2. Filtragem e Ordenação dos Dados
-    // Filtramos o array de patrimônio PARA EXIBIÇÃO, mas mantemos o histórico de transações global
     const dadosOrdenados = [...patrimonio]
-        .filter(p => new Date(p.date) >= dataCorte) // Aplica o filtro de data
+        .filter(p => {
+             // CORREÇÃO DE FUSO: Interpreta 'YYYY-MM-DD' como data local
+             const parts = p.date.split('-'); // [2023, 12, 25]
+             const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
+             
+             return dataPonto >= dataCorte;
+        })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Se não houver dados no período, limpa ou mostra vazio
+    // Se não houver dados no período, limpa
     if (dadosOrdenados.length === 0) {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.destroy();
@@ -2146,23 +2164,18 @@ function renderizarGraficoPatrimonio() {
         return;
     }
 
-    // 3. Prepara Labels (Eixo X) e Dados de Valor (Eixo Y1)
-    const labels = dadosOrdenados.map(p => formatDate(p.date).substring(0, 5)); // Mostra apenas DD/MM para economizar espaço
+    // 3. Prepara Labels e Valores
+    const labels = dadosOrdenados.map(p => formatDate(p.date).substring(0, 5));
     const dataValor = dadosOrdenados.map(p => p.value);
 
-    // 4. Cálculo de Custo (Otimizado para o período visível)
+    // 4. Cálculo de Custo (Mantém lógica global para precisão)
     const dataCusto = dadosOrdenados.map(p => {
         const dataSnapshot = new Date(p.date + 'T23:59:59');
-
-        // IMPORTANTE: Aqui usamos TODAS as transações globais, não apenas as do período.
-        // O custo histórico depende de compras feitas há 5 anos, mesmo que o gráfico mostre só 30 dias.
         const transacoesAteData = transacoes.filter(t => new Date(t.date) <= dataSnapshot);
-
         const carteiraTemp = new Map();
 
         transacoesAteData.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(t => {
             let ativo = carteiraTemp.get(t.symbol) || { qtd: 0, custoTotal: 0 };
-
             if (t.type === 'buy') {
                 ativo.qtd += t.quantity;
                 ativo.custoTotal += (t.quantity * t.price);
@@ -2185,29 +2198,28 @@ function renderizarGraficoPatrimonio() {
         return custoTotalDia;
     });
 
-    // 5. Configuração Visual
-    // Adicionamos o Range ao cache key para forçar atualização se mudar o botão
+    // 5. Cache Visual (Evita piscar se não mudou)
     const newDataString = JSON.stringify({ labels, dataValor, dataCusto, range: currentPatrimonioRange });
     if (newDataString === lastPatrimonioData) { return; }
     lastPatrimonioData = newDataString;
 
+    const isLight = document.body.classList.contains('light-mode');
+    const textColor = isLight ? '#374151' : '#9ca3af';
+
+    // 6. Criação do Gradiente Roxo
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(124, 58, 237, 0.5)'); 
     gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
 
-    const isLight = document.body.classList.contains('light-mode');
-    const textColor = isLight ? '#374151' : '#9ca3af';
-    const gridColor = isLight ? '#e5e7eb' : '#2A2A2A';
-
-    // 6. Criação/Atualização do Chart
+    // 7. Configuração do Gráfico
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
         
-        // Garante que o dataset 1 (custo) exista
+        // Atualiza ou cria dataset de Custo
         if (!patrimonioChartInstance.data.datasets[1]) {
              patrimonioChartInstance.data.datasets.push({
-                label: 'Custo Investido',
+                label: 'Investido',
                 data: dataCusto,
                 borderColor: '#6b7280',
                 borderWidth: 2,
@@ -2219,7 +2231,6 @@ function renderizarGraficoPatrimonio() {
         } else {
             patrimonioChartInstance.data.datasets[1].data = dataCusto;
         }
-        
         patrimonioChartInstance.update();
     } else {
         patrimonioChartInstance = new Chart(ctx, {
@@ -2260,7 +2271,7 @@ function renderizarGraficoPatrimonio() {
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: { display: false }, // Ocultamos a legenda para limpar o visual com os botões
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : '#1C1C1E',
                         titleColor: isLight ? '#111' : '#fff',
@@ -2275,15 +2286,12 @@ function renderizarGraficoPatrimonio() {
                     }
                 },
                 scales: {
-                    y: {
-                        display: false, // Oculta o eixo Y para ficar "clean" (estilo mobile banking)
-                        beginAtZero: false 
-                    },
+                    y: { display: false },
                     x: {
                         grid: { display: false },
                         ticks: { 
-                            display: true, // Mostra datas no eixo X
-                            maxTicksLimit: 5, // Limita para não aglomerar (mostra ~5 datas dependendo do range)
+                            display: true,
+                            maxTicksLimit: 5,
                             color: textColor,
                             font: { size: 9 }
                         } 

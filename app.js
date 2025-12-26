@@ -2121,7 +2121,6 @@ function renderizarGraficoPatrimonio() {
 
     // 1. DATA DE CORTE
     const hoje = new Date();
-    // Ajusta para o final do dia para garantir comparações corretas
     hoje.setHours(23, 59, 59, 999);
     
     let dataCorte;
@@ -2136,41 +2135,34 @@ function renderizarGraficoPatrimonio() {
         dataCorte = new Date(hoje);
         dataCorte.setFullYear(hoje.getFullYear() - 1);
     } else {
-        // ALL
+        // ALL (Tudo) - Pega desde o ano 2000
         dataCorte = new Date('2000-01-01');
     }
     
-    // Zera horas da data de corte
     dataCorte.setHours(0, 0, 0, 0);
 
     // 2. FILTRAGEM INICIAL (Por Data)
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
-             const parts = p.date.split('-'); // YYYY-MM-DD
+             const parts = p.date.split('-'); 
              const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
              return dataPonto >= dataCorte;
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // 3. AGRUPAMENTO MENSAL (LÓGICA NOVA)
-    // Se for 6M, 1Y ou ALL, agrupamos por mês
-    if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
+    // 3. AGRUPAMENTO MENSAL
+    // CORREÇÃO: Removi 'ALL' daqui. Agora 'ALL' mostra todos os dias (igual 1M),
+    // enquanto 6M e 1Y continuam resumidos por mês.
+    if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         
         dadosOrdenados.forEach(p => {
-            // Cria uma chave "YYYY-MM" (ex: "2023-12")
-            const chaveMes = p.date.substring(0, 7);
-            
-            // Como os dados já estão ordenados por data, ao atribuir repetidamente à mesma chave,
-            // o valor que ficará no final será sempre o do ÚLTIMO dia disponível daquele mês.
-            // Isso representa o "Fechamento do Mês" ou o valor mais atual daquele mês.
+            const chaveMes = p.date.substring(0, 7); // "YYYY-MM"
+            // Sobrescreve para manter apenas o último dia do mês
             grupos[chaveMes] = p;
         });
 
-        // Transforma o objeto de volta em array
         dadosOrdenados = Object.values(grupos);
-        
-        // Ordena novamente para garantir a cronologia
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
@@ -2185,25 +2177,23 @@ function renderizarGraficoPatrimonio() {
 
     // 4. PREPARAÇÃO DOS DADOS VISUAIS
     const labels = dadosOrdenados.map(p => {
-        // Se estiver agrupado (6M, 1Y, ALL), mostra Mês/Ano (ex: Dez/23)
-        if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
+        // Se estiver agrupado (SÓ 6M e 1Y)
+        if (['6M', '1Y'].includes(currentPatrimonioRange)) {
              const parts = p.date.split('-'); 
              const mesIndex = parseInt(parts[1]) - 1;
              const anoCurto = parts[0].substring(2);
              const nomesMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
              return `${nomesMeses[mesIndex]}/${anoCurto}`;
         }
-        // Se for 1M (diário), mostra Dia/Mês (ex: 25/12)
+        // Para 1M e ALL, mostramos o dia (DD/MM)
         return formatDate(p.date).substring(0, 5);
     });
 
     const dataValor = dadosOrdenados.map(p => p.value);
 
-    // 5. CÁLCULO DE CUSTO (Otimizado: roda apenas nos pontos do gráfico)
+    // 5. CÁLCULO DE CUSTO
     const dataCusto = dadosOrdenados.map(p => {
         const dataSnapshot = new Date(p.date + 'T23:59:59');
-        
-        // Filtra transações até o fechamento daquele mês (ou dia)
         const transacoesAteData = transacoes.filter(t => new Date(t.date) <= dataSnapshot);
         const carteiraTemp = new Map();
 
@@ -2277,7 +2267,7 @@ function renderizarGraficoPatrimonio() {
                         borderColor: '#c084fc',
                         borderWidth: 2,
                         tension: 0.3,
-                        pointRadius: 0, // Pontos escondidos por padrão
+                        pointRadius: 0, 
                         pointHitRadius: 20,
                         pointHoverRadius: 4,
                         order: 1
@@ -2322,7 +2312,7 @@ function renderizarGraficoPatrimonio() {
                         grid: { display: false },
                         ticks: { 
                             display: true,
-                            maxTicksLimit: 6, // Poucos labels no eixo X para não poluir
+                            maxTicksLimit: 6, 
                             color: textColor,
                             font: { size: 9 }
                         } 

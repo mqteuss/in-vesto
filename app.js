@@ -2466,18 +2466,18 @@ function renderizarMetaFinanceira(patrimonioAtual) {
         container.classList.remove('hidden');
     }
 
-	function renderizarDashboardSkeletons(show) {
-        const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
-        const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
-        
-        if (show) {
-            skeletons.forEach(el => el.classList.remove('hidden'));
-            dataElements.forEach(el => el.classList.add('hidden'));
-        } else {
-            skeletons.forEach(el => el.classList.add('hidden'));
-            dataElements.forEach(el => el.classList.remove('hidden'));
-        }
+function renderizarDashboardSkeletons(show) {
+    const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
+    const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
+    
+    if (show) {
+        skeletons.forEach(el => { if(el) el.classList.remove('hidden'); });
+        dataElements.forEach(el => { if(el) el.classList.add('hidden'); });
+    } else {
+        skeletons.forEach(el => { if(el) el.classList.add('hidden'); });
+        dataElements.forEach(el => { if(el) el.classList.remove('hidden'); });
     }
+}
     
 function renderizarCarteiraSkeletons(show) {
         // Se a lista estiver vazia (primeiro load), usamos o skeleton genérico
@@ -2680,6 +2680,7 @@ async function renderizarCarteira() {
     });
 
     // Atualiza Totais do Dashboard
+// Atualiza Totais do Dashboard
     if (carteiraOrdenada.length > 0) {
         const patrimonioTotalAtivos = totalValorCarteira;
         const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
@@ -2690,19 +2691,25 @@ async function renderizarCarteira() {
         else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
         
         renderizarDashboardSkeletons(false);
-        totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
-        totalCaixaValor.textContent = formatBRL(saldoCaixa);
-        totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
-        totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-sm font-medium opacity-80">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
-        totalCarteiraPL.className = `text-lg font-bold ${corPLTotal} mt-0.5`;
         
-        // Salva Snapshot para o gráfico de histórico
+        // Verificações de segurança (if el) adicionadas aqui:
+        if(totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
+        if(totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+        if(totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
+        
+        if(totalCarteiraPL) {
+            totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
+            // Nota: removi a classe fixa para respeitar o HTML novo, apenas ajusto a cor se necessário, ou mantenha a classe do HTML
+            // Se quiser forçar a cor verde/vermelha:
+            totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`; 
+        }
+        
+        // Salva Snapshot
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
-		
-		renderizarMetaFinanceira(patrimonioRealParaSnapshot);
-		renderizarTimelinePagamentos();
+        renderizarMetaFinanceira(patrimonioRealParaSnapshot);
+        renderizarTimelinePagamentos();
         
-		await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
+        await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
     }
     
     // Renderiza Gráficos

@@ -377,6 +377,7 @@ function atualizarCardElemento(card, ativo, dados) {
 document.addEventListener('DOMContentLoaded', async () => {
 	
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
+	let currentPatrimonioRange = '1M'; // ADICIONADO AQUI
 	let histFilterType = 'all';
     let histSearchTerm = '';
 	let provSearchTerm = '';
@@ -600,6 +601,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnSairLock = document.getElementById('btn-sair-lock');
     const installSection = document.getElementById('install-section');
     const installBtn = document.getElementById('install-app-btn');
+	const patrimonioRangeButtons = document.querySelectorAll('.patrimonio-range-btn');
+    patrimonioRangeButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            patrimonioRangeButtons.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            currentPatrimonioRange = e.target.dataset.range;
+            renderizarGraficoPatrimonio();
+        });
+    });
 
     function verificarStatusInstalacao() {
         if (deferredPrompt) {
@@ -2109,30 +2119,47 @@ function renderizarGraficoPatrimonio() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // 1. Garante a ordenação cronológica (Correção Crítica)
-    // Cria uma cópia para não mutar o estado global incorretamente
-    const dadosOrdenados = [...patrimonio].sort((a, b) => new Date(a.date) - new Date(b.date));
+    // 1. Definição do Período de Corte
+    const hoje = new Date();
+    let dataCorte = new Date('2000-01-01'); // Data muito antiga (padrão ALL)
 
-    // 2. Prepara Labels (Eixo X) e Dados de Valor (Eixo Y1)
-    const labels = dadosOrdenados.map(p => formatDate(p.date));
+    if (currentPatrimonioRange === '1M') {
+        dataCorte.setDate(hoje.getDate() - 30);
+    } else if (currentPatrimonioRange === '6M') {
+        dataCorte.setMonth(hoje.getMonth() - 6);
+    } else if (currentPatrimonioRange === '1Y') {
+        dataCorte.setFullYear(hoje.getFullYear() - 1);
+    }
+
+    // 2. Filtragem e Ordenação dos Dados
+    // Filtramos o array de patrimônio PARA EXIBIÇÃO, mas mantemos o histórico de transações global
+    const dadosOrdenados = [...patrimonio]
+        .filter(p => new Date(p.date) >= dataCorte) // Aplica o filtro de data
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Se não houver dados no período, limpa ou mostra vazio
+    if (dadosOrdenados.length === 0) {
+        if (patrimonioChartInstance) {
+            patrimonioChartInstance.destroy();
+            patrimonioChartInstance = null;
+        }
+        return;
+    }
+
+    // 3. Prepara Labels (Eixo X) e Dados de Valor (Eixo Y1)
+    const labels = dadosOrdenados.map(p => formatDate(p.date).substring(0, 5)); // Mostra apenas DD/MM para economizar espaço
     const dataValor = dadosOrdenados.map(p => p.value);
 
-    // 3. Recálculo Preciso do Custo Histórico (Eixo Y2)
+    // 4. Cálculo de Custo (Otimizado para o período visível)
     const dataCusto = dadosOrdenados.map(p => {
-        // Define o limite de tempo para o snapshot exato daquele dia
-        // Ajuste de fuso horário seguro
         const dataSnapshot = new Date(p.date + 'T23:59:59');
 
-        // Filtra transações que ocorreram ANTES ou NA data do snapshot
-        const transacoesAteData = transacoes.filter(t => {
-            const dataTx = new Date(t.date);
-            return dataTx <= dataSnapshot;
-        });
+        // IMPORTANTE: Aqui usamos TODAS as transações globais, não apenas as do período.
+        // O custo histórico depende de compras feitas há 5 anos, mesmo que o gráfico mostre só 30 dias.
+        const transacoesAteData = transacoes.filter(t => new Date(t.date) <= dataSnapshot);
 
-        // Reconstrói a carteira virtualmente até aquele momento
         const carteiraTemp = new Map();
 
-        // É crucial ordenar as transações para calcular o preço médio corretamente
         transacoesAteData.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(t => {
             let ativo = carteiraTemp.get(t.symbol) || { qtd: 0, custoTotal: 0 };
 
@@ -2141,19 +2168,15 @@ function renderizarGraficoPatrimonio() {
                 ativo.custoTotal += (t.quantity * t.price);
             } else if (t.type === 'sell') {
                 if (ativo.qtd > 0) {
-                    // Na venda, abatemos o custo proporcional ao Preço Médio atual
                     const precoMedio = ativo.custoTotal / ativo.qtd;
                     ativo.qtd -= t.quantity;
                     ativo.custoTotal -= (t.quantity * precoMedio);
                 }
             }
-            // Evita resíduos de precisão decimal
             if (ativo.qtd < 0.0001) { ativo.qtd = 0; ativo.custoTotal = 0; }
-            
             carteiraTemp.set(t.symbol, ativo);
         });
 
-        // Soma o custo total de todos os ativos na carteira naquele dia
         let custoTotalDia = 0;
         carteiraTemp.forEach(ativo => {
             if (ativo.qtd > 0) custoTotalDia += ativo.custoTotal;
@@ -2162,48 +2185,41 @@ function renderizarGraficoPatrimonio() {
         return custoTotalDia;
     });
 
-    // 4. Verificação de Cache para evitar renderização desnecessária (Performance)
-    const newDataString = JSON.stringify({ labels, dataValor, dataCusto });
+    // 5. Configuração Visual
+    // Adicionamos o Range ao cache key para forçar atualização se mudar o botão
+    const newDataString = JSON.stringify({ labels, dataValor, dataCusto, range: currentPatrimonioRange });
     if (newDataString === lastPatrimonioData) { return; }
     lastPatrimonioData = newDataString;
 
-    if (labels.length === 0) {
-        if (patrimonioChartInstance) {
-            patrimonioChartInstance.destroy();
-            patrimonioChartInstance = null;
-        }
-        return;
-    }
-
-    // 5. Configuração Visual Premium (Gradiente Roxo Suave)
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(124, 58, 237, 0.5)'); // Roxo no topo
-    gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)'); // Transparente na base
+    gradient.addColorStop(0, 'rgba(124, 58, 237, 0.5)'); 
+    gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
 
     const isLight = document.body.classList.contains('light-mode');
     const textColor = isLight ? '#374151' : '#9ca3af';
     const gridColor = isLight ? '#e5e7eb' : '#2A2A2A';
 
-    // 6. Criação ou Atualização do Gráfico
+    // 6. Criação/Atualização do Chart
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
         
-        // Verifica se o dataset de custo já existe ou precisa ser criado
-        if (patrimonioChartInstance.data.datasets[1]) {
-            patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        } else {
-            patrimonioChartInstance.data.datasets.push({
+        // Garante que o dataset 1 (custo) exista
+        if (!patrimonioChartInstance.data.datasets[1]) {
+             patrimonioChartInstance.data.datasets.push({
                 label: 'Custo Investido',
                 data: dataCusto,
                 borderColor: '#6b7280',
                 borderWidth: 2,
-                borderDash: [5, 5], // Linha tracejada
+                borderDash: [5, 5],
                 pointRadius: 0,
                 fill: false,
                 tension: 0.3
             });
+        } else {
+            patrimonioChartInstance.data.datasets[1].data = dataCusto;
         }
+        
         patrimonioChartInstance.update();
     } else {
         patrimonioChartInstance = new Chart(ctx, {
@@ -2216,21 +2232,21 @@ function renderizarGraficoPatrimonio() {
                         data: dataValor,
                         fill: true,
                         backgroundColor: gradient,
-                        borderColor: '#c084fc', // Roxo claro
+                        borderColor: '#c084fc',
                         borderWidth: 2,
-                        tension: 0.3, // Curva suave
-                        pointRadius: 0, // Sem bolinhas (mais limpo)
-                        pointHitRadius: 20, // Área de toque maior
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHitRadius: 20,
                         pointHoverRadius: 4,
-                        order: 1 // Garante que fique "na frente" visualmente se necessário
+                        order: 1
                     },
                     {
                         label: 'Investido',
                         data: dataCusto,
                         fill: false,
-                        borderColor: '#6b7280', // Cinza
+                        borderColor: '#6b7280',
                         borderWidth: 2,
-                        borderDash: [5, 5], // Tracejado
+                        borderDash: [5, 5],
                         tension: 0.3,
                         pointRadius: 0,
                         pointHitRadius: 20,
@@ -2242,22 +2258,9 @@ function renderizarGraficoPatrimonio() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index', // Mostra os dois valores ao passar o mouse em um ponto X
-                    intersect: false,
-                },
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        align: 'end',
-                        labels: { 
-                            color: textColor, 
-                            boxWidth: 10, 
-                            usePointStyle: true,
-                            font: { size: 10, weight: 'bold' }
-                        }
-                    },
+                    legend: { display: false }, // Ocultamos a legenda para limpar o visual com os botões
                     tooltip: {
                         backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : '#1C1C1E',
                         titleColor: isLight ? '#111' : '#fff',
@@ -2265,35 +2268,25 @@ function renderizarGraficoPatrimonio() {
                         borderColor: isLight ? '#e5e7eb' : '#374151',
                         borderWidth: 1,
                         padding: 10,
-                        titleFont: { size: 13 },
-                        bodyFont: { size: 12 },
                         displayColors: true,
                         callbacks: {
-                            label: (context) => {
-                                return ` ${context.dataset.label}: ${formatBRL(context.parsed.y)}`;
-                            }
+                            label: (context) => ` ${context.dataset.label}: ${formatBRL(context.parsed.y)}`
                         }
                     }
                 },
                 scales: {
                     y: {
-                        beginAtZero: false, // Ajusta a escala para focar na variação
-                        grid: { color: gridColor, drawBorder: false },
-                        ticks: {
-                            display: true,
-                            color: textColor,
-                            font: { size: 10 },
-                            maxTicksLimit: 6,
-                            callback: function(value) {
-                                if (value >= 1000000) return 'R$ ' + (value/1000000).toFixed(1) + 'M';
-                                if (value >= 1000) return 'R$ ' + (value/1000).toFixed(0) + 'k';
-                                return value;
-                            }
-                        }
+                        display: false, // Oculta o eixo Y para ficar "clean" (estilo mobile banking)
+                        beginAtZero: false 
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { display: false } // Esconde datas no eixo X para visual mais limpo (aparece no tooltip)
+                        ticks: { 
+                            display: true, // Mostra datas no eixo X
+                            maxTicksLimit: 5, // Limita para não aglomerar (mostra ~5 datas dependendo do range)
+                            color: textColor,
+                            font: { size: 9 }
+                        } 
                     }
                 }
             }

@@ -223,11 +223,21 @@
                             </div>
 
                             <div class="col-span-2">
-                                <div id="patrimonio-chart-drawer" class="card-drawer">
-                                    <div id="patrimonio-container" class="drawer-content relative h-64 pt-4 bg-[#0f0f0f] rounded-3xl border border-[#2C2C2E] p-2 mb-4">
-                                        <canvas id="patrimonio-chart"></canvas>
-                                    </div>
-                                </div>
+<div id="patrimonio-chart-drawer" class="card-drawer">
+    <div id="patrimonio-container" class="drawer-content relative h-72 pt-4 bg-[#0f0f0f] rounded-3xl border border-[#2C2C2E] p-2 mb-4 flex flex-col">
+        
+        <div id="patrimonio-range-selector" class="flex justify-end gap-2 px-2 mb-2">
+            <button class="patrimonio-range-btn active" data-range="1M">1M</button>
+            <button class="patrimonio-range-btn" data-range="6M">6M</button>
+            <button class="patrimonio-range-btn" data-range="1Y">1Y</button>
+            <button class="patrimonio-range-btn" data-range="ALL">Tudo</button>
+        </div>
+
+        <div class="relative flex-1 w-full min-h-0">
+            <canvas id="patrimonio-chart"></canvas>
+        </div>
+    </div>
+</div>
                             </div>
 
                             <div class="card-bg p-4 rounded-3xl flex flex-col justify-between h-36 cursor-pointer relative overflow-hidden group transition-all active:scale-[0.98] hover:border-gray-700" data-toggle-drawer="alocacao-chart-drawer">

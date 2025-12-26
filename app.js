@@ -2125,7 +2125,6 @@ function renderizarGraficoPatrimonio() {
     hoje.setHours(23, 59, 59, 999);
     
     let dataCorte;
-
     if (currentPatrimonioRange === '1M') {
         dataCorte = new Date(hoje);
         dataCorte.setDate(hoje.getDate() - 30);
@@ -2136,13 +2135,12 @@ function renderizarGraficoPatrimonio() {
         dataCorte = new Date(hoje);
         dataCorte.setFullYear(hoje.getFullYear() - 1);
     } else {
-        // ALL (Tudo) - Pega desde o ano 2000
         dataCorte = new Date('2000-01-01');
     }
     
     dataCorte.setHours(0, 0, 0, 0);
 
-    // 2. FILTRAGEM INICIAL (Por Data)
+    // 2. FILTRAGEM
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
@@ -2151,23 +2149,17 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // 3. AGRUPAMENTO MENSAL
-    // CORREÇÃO: Removi 'ALL' daqui. Agora 'ALL' mostra todos os dias (igual 1M),
-    // enquanto 6M e 1Y continuam resumidos por mês.
+    // 3. AGRUPAMENTO (Para 6M e 1Y)
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
-        
         dadosOrdenados.forEach(p => {
-            const chaveMes = p.date.substring(0, 7); // "YYYY-MM"
-            // Sobrescreve para manter apenas o último dia do mês
+            const chaveMes = p.date.substring(0, 7);
             grupos[chaveMes] = p;
         });
-
         dadosOrdenados = Object.values(grupos);
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
-    // Se não houver dados, limpa
     if (dadosOrdenados.length === 0) {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.destroy();
@@ -2176,23 +2168,28 @@ function renderizarGraficoPatrimonio() {
         return;
     }
 
-    // 4. PREPARAÇÃO DOS DADOS VISUAIS
+    // 4. PREPARAÇÃO DOS LABELS (AXIS X) - MUDANÇA AQUI
     const labels = dadosOrdenados.map(p => {
-        // Se estiver agrupado (SÓ 6M e 1Y)
+        // Cria a data garantindo o fuso correto (adiciona hora fixa)
+        const d = new Date(p.date + 'T12:00:00');
+        
+        const dia = String(d.getDate()).padStart(2, '0');
+        // Pega o mês abreviado (jan, fev) e deixa maiúsculo (JAN, FEV)
+        const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const ano = d.getFullYear().toString().slice(2); // 25
+
+        // Se for período longo, mostra MÊS em cima, ANO embaixo
         if (['6M', '1Y'].includes(currentPatrimonioRange)) {
-             const parts = p.date.split('-'); 
-             const mesIndex = parseInt(parts[1]) - 1;
-             const anoCurto = parts[0].substring(2);
-             const nomesMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-             return `${nomesMeses[mesIndex]}/${anoCurto}`;
+             return [mes, `'${ano}`]; // Ex: ["DEZ", "'25"]
         }
-        // Para 1M e ALL, mostramos o dia (DD/MM)
-        return formatDate(p.date).substring(0, 5);
+        
+        // Para 1M e Tudo: DIA em cima, MÊS embaixo
+        return [dia, mes]; // Ex: ["12", "DEZ"]
     });
 
     const dataValor = dadosOrdenados.map(p => p.value);
 
-    // 5. CÁLCULO DE CUSTO
+    // 5. CÁLCULO DO CUSTO (LINHA TRACEJADA)
     const dataCusto = dadosOrdenados.map(p => {
         const dataSnapshot = new Date(p.date + 'T23:59:59');
         const transacoesAteData = transacoes.filter(t => new Date(t.date) <= dataSnapshot);
@@ -2205,9 +2202,9 @@ function renderizarGraficoPatrimonio() {
                 ativo.custoTotal += (t.quantity * t.price);
             } else if (t.type === 'sell') {
                 if (ativo.qtd > 0) {
-                    const precoMedio = ativo.custoTotal / ativo.qtd;
+                    const pm = ativo.custoTotal / ativo.qtd;
                     ativo.qtd -= t.quantity;
-                    ativo.custoTotal -= (t.quantity * precoMedio);
+                    ativo.custoTotal -= (t.quantity * pm);
                 }
             }
             if (ativo.qtd < 0.0001) { ativo.qtd = 0; ativo.custoTotal = 0; }
@@ -2215,30 +2212,27 @@ function renderizarGraficoPatrimonio() {
         });
 
         let custoTotalDia = 0;
-        carteiraTemp.forEach(ativo => {
-            if (ativo.qtd > 0) custoTotalDia += ativo.custoTotal;
-        });
-
+        carteiraTemp.forEach(ativo => { if (ativo.qtd > 0) custoTotalDia += ativo.custoTotal; });
         return custoTotalDia;
     });
 
-    // 6. CACHE E RENDERIZAÇÃO
+    // 6. RENDERIZAÇÃO
     const newDataString = JSON.stringify({ labels, dataValor, dataCusto, range: currentPatrimonioRange });
     if (newDataString === lastPatrimonioData) { return; }
     lastPatrimonioData = newDataString;
 
     const ctxProto = canvas.getContext('2d');
-    const gradient = ctxProto.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(124, 58, 237, 0.5)'); 
+    const gradient = ctxProto.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); 
     gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
 
     const isLight = document.body.classList.contains('light-mode');
-    const textColor = isLight ? '#374151' : '#9ca3af';
+    const textColor = isLight ? '#6b7280' : '#9ca3af';
+    const gridColor = isLight ? '#e5e7eb' : '#2C2C2E';
 
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
-        
         if (!patrimonioChartInstance.data.datasets[1]) {
              patrimonioChartInstance.data.datasets.push({
                 label: 'Investido',
@@ -2295,27 +2289,59 @@ function renderizarGraficoPatrimonio() {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : '#1C1C1E',
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(20, 20, 20, 0.95)',
                         titleColor: isLight ? '#111' : '#fff',
                         bodyColor: isLight ? '#333' : '#e5e7eb',
-                        borderColor: isLight ? '#e5e7eb' : '#374151',
+                        borderColor: isLight ? '#e5e7eb' : '#333',
                         borderWidth: 1,
                         padding: 10,
-                        displayColors: true,
                         callbacks: {
+                            // Corrige o título do tooltip para juntar o array de volta (ex: "12/DEZ")
+                            title: function(context) {
+                                const label = context[0].label;
+                                if (Array.isArray(label)) {
+                                    return label.join('/'); 
+                                }
+                                return label;
+                            },
                             label: (context) => ` ${context.dataset.label}: ${formatBRL(context.parsed.y)}`
                         }
                     }
                 },
                 scales: {
-                    y: { display: false },
+                    // --- EIXO Y (Valores à Esquerda) ---
+                    y: { 
+                        display: true, // Agora aparece!
+                        position: 'left',
+                        grid: {
+                            color: gridColor,
+                            drawBorder: false, // Remove a linha vertical do eixo
+                        },
+                        ticks: {
+                            color: textColor,
+                            font: { size: 9, weight: '600' },
+                            maxTicksLimit: 5, // Evita poluição visual
+                            callback: function(value) {
+                                // Formata R$ 1500 para "R$ 1,5 mil" ou "1,5K" para economizar espaço
+                                return new Intl.NumberFormat('pt-BR', {
+                                    notation: 'compact',
+                                    compactDisplay: 'short',
+                                    style: 'currency',
+                                    currency: 'BRL'
+                                }).format(value);
+                            }
+                        }
+                    },
+                    // --- EIXO X (Datas Empilhadas) ---
                     x: {
                         grid: { display: false },
                         ticks: { 
                             display: true,
-                            maxTicksLimit: 6, 
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 6, // Máximo de 6 datas para não encavalar
                             color: textColor,
-                            font: { size: 9 }
+                            font: { size: 9, weight: 'bold' }
                         } 
                     }
                 }

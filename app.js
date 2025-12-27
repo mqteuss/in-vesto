@@ -2147,11 +2147,11 @@ function renderizarGraficoPatrimonio() {
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
 
-    // CORES DO TEMA (Premium Palette)
+    // CORES DO TEMA (Refinadas)
     const colorLinePatrimonio = '#c084fc'; // Roxo Vesto
     const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; // Cinza neutro
-    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; // Grid quase invisível
-    const colorText = isLight ? '#6b7280' : '#737373'; // Texto discreto
+    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+    const colorText = isLight ? '#6b7280' : '#737373';
 
     // --- 1. DATA DE CORTE ---
     const hoje = new Date();
@@ -2182,7 +2182,7 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- 3. AGRUPAMENTO (Para 6M e 1Y) ---
+    // --- 3. AGRUPAMENTO ---
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -2243,21 +2243,19 @@ function renderizarGraficoPatrimonio() {
         return custoTotalDia;
     });
 
-    // --- 5. RENDERIZAÇÃO PREMIUM ---
+    // --- 5. RENDERIZAÇÃO ---
     const newDataString = JSON.stringify({ labels, dataValor, dataCusto, range: currentPatrimonioRange });
     if (newDataString === lastPatrimonioData) { return; }
     lastPatrimonioData = newDataString;
 
-    // Gradiente Fundo (Fade Out Vertical)
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)'); // Roxo sutil no topo
-    gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');    // Transparente embaixo
+    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
+    gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
 
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
         patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill;
-        
         if (patrimonioChartInstance.data.datasets[1]) {
             patrimonioChartInstance.data.datasets[1].data = dataCusto;
         }
@@ -2302,20 +2300,24 @@ function renderizarGraficoPatrimonio() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                // Remove padding do layout para alinhar exatamente com a borda esquerda
+                layout: {
+                    padding: { left: 0, right: 0, top: 0, bottom: 0 }
+                },
                 interaction: {
                     mode: 'index',
                     intersect: false,
                 },
                 plugins: {
-                    // --- LEGENDA NO CANTO SUPERIOR ESQUERDO ---
+                    // --- LEGENDA HORIZONTAL E À ESQUERDA ---
                     legend: { 
                         display: true,
                         position: 'top',
-                        align: 'start', // <--- MUDANÇA: 'start' alinha à esquerda
+                        align: 'start', // Força alinhamento à esquerda
                         labels: {
-                            usePointStyle: true,
-                            boxWidth: 6,
-                            padding: 20,
+                            usePointStyle: true, // Bolinhas
+                            boxWidth: 6,         // Tamanho da bolinha (pequeno e elegante)
+                            padding: 15,         // Espaço entre itens (não muito grande para não quebrar linha)
                             color: colorText,
                             font: { 
                                 size: 11, 

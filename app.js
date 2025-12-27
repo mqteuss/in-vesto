@@ -1953,7 +1953,7 @@ function renderizarGraficoAlocacao(dadosGrafico) {
     }
 }
     
-function renderizarGraficoHistorico() {
+function renderizarGraficoHistoricoProventos() {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');

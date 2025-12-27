@@ -1957,12 +1957,19 @@ function renderizarGraficoHistorico({ labels, data }) {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const newDataString = JSON.stringify({ labels, data });
+    
+    // --- LÓGICA DE FILTRO (Últimos 12 Meses) ---
+    // Pega apenas os últimos 12 itens dos arrays
+    const labelsFiltrados = labels.slice(-12);
+    const dataFiltrados = data.slice(-12);
+    // -------------------------------------------
+
+    const newDataString = JSON.stringify({ labels: labelsFiltrados, data: dataFiltrados });
 
     if (newDataString === lastHistoricoData) { return; }
     lastHistoricoData = newDataString; 
     
-    if (!labels || !data || labels.length === 0) {
+    if (!labelsFiltrados || !dataFiltrados || labelsFiltrados.length === 0) {
         if (historicoChartInstance) {
             historicoChartInstance.destroy();
             historicoChartInstance = null; 
@@ -1970,7 +1977,6 @@ function renderizarGraficoHistorico({ labels, data }) {
         return;
     }
     
-    // Mantendo seus gradientes Originais
     const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
     gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
     gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
@@ -1987,16 +1993,13 @@ function renderizarGraficoHistorico({ labels, data }) {
                 meta.data.forEach((bar, index) => {
                     const value = dataset.data[index];
                     if (value > 0) {
-                        // Formata o valor
                         const text = formatBRL(value); 
                         
-                        // Configura a fonte (branca/cinza claro)
                         ctx.font = 'bold 10px sans-serif';
                         ctx.fillStyle = '#e5e7eb'; 
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'bottom';
                         
-                        // Desenha 5px acima da barra
                         ctx.fillText(text, bar.x, bar.y - 5);
                     }
                 });
@@ -2006,41 +2009,41 @@ function renderizarGraficoHistorico({ labels, data }) {
     };
     
     if (historicoChartInstance) {
-        historicoChartInstance.destroy(); // Recria para garantir que o plugin carregue
+        historicoChartInstance.destroy();
     }
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labels,
+            labels: labelsFiltrados, // Usa os dados filtrados
             datasets: [{
                 label: 'Total Recebido',
-                data: data,
+                data: dataFiltrados,     // Usa os dados filtrados
                 backgroundColor: gradient,
                 borderColor: 'rgba(192, 132, 252, 0.3)', 
                 borderWidth: 1,
                 borderRadius: 5,
-                barPercentage: 0.6, // Barras um pouco mais finas para elegância
+                barPercentage: 0.6,
             }]
         },
-        plugins: [floatingLabelsPlugin], // <--- Ativa o texto flutuante
+        plugins: [floatingLabelsPlugin], 
         options: {
             responsive: true, 
             maintainAspectRatio: false,
             layout: {
-                padding: { top: 20 } // Espaço extra no topo para o texto não cortar
+                padding: { top: 20 } 
             },
             plugins: {
                 legend: { display: false },
-                tooltip: { enabled: false } // <--- Remove a caixa de diálogo
+                tooltip: { enabled: false } 
             },
             scales: {
                 y: {
-                    display: false, // Remove eixo Y inteiro (grade e números)
+                    display: false, 
                     beginAtZero: true
                 },
                 x: { 
-                    grid: { display: false }, // Remove grade vertical
+                    grid: { display: false }, 
                     ticks: {
                         color: '#9ca3af',
                         font: { size: 10, weight: 'bold' }

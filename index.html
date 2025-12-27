@@ -167,53 +167,43 @@
                             </div>
                         </div>
 
-<div id="resumo-carteira-card" class="relative overflow-hidden rounded-[2.5rem] p-6 group shadow-2xl shadow-purple-900/20 transition-all duration-500 hover:shadow-purple-900/30">
+<div id="resumo-carteira-card" class="relative overflow-hidden rounded-[2rem] border border-[#2C2C2E] shadow-2xl mb-8 group">
     
-    <div class="absolute inset-0 bg-[#0a0a0a]/80 backdrop-blur-3xl z-0"></div>
-    
-    <div class="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-70 z-0 pointer-events-none"></div>
-    
-    <div class="absolute -top-32 -right-32 w-64 h-64 bg-purple-600/20 rounded-full blur-[80px] group-hover:bg-purple-600/30 transition-all duration-1000 z-0"></div>
-    
-    <div class="absolute inset-0 rounded-[2.5rem] border border-white/10 pointer-events-none z-20"></div>
+    <div class="absolute top-[-50%] left-[-20%] w-[150%] h-[200%] bg-[radial-gradient(circle_farthest-corner_at_50%_50%,_rgba(124,58,237,0.15),_rgba(0,0,0,0))] opacity-80 pointer-events-none"></div>
+    <div class="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-[radial-gradient(circle_farthest-corner_at_50%_50%,_rgba(59,130,246,0.1),_rgba(0,0,0,0))] opacity-60 pointer-events-none"></div>
 
-    <div class="relative z-10 flex flex-col items-center justify-center text-center">
+    <div class="relative z-10 p-6 flex flex-col items-center justify-center min-h-[220px]">
         
-        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-3">Patrimônio Líquido</span>
+        <span class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-3">Patrimônio Líquido</span>
         
-        <div class="relative">
-            <div id="skeleton-total-patrimonio" class="h-10 w-48 bg-gray-800/50 rounded animate-pulse mb-2"></div>
-            <h1 id="total-patrimonio" class="text-4xl font-black text-white tracking-tighter drop-shadow-lg hidden">R$ 0,00</h1>
-        </div>
+        <div id="skeleton-total-valor" class="h-12 w-48 bg-gray-800/50 rounded-xl animate-pulse mb-2"></div>
+        <h2 id="total-carteira-valor" class="text-5xl font-bold text-white tracking-tighter drop-shadow-lg hidden">R$ 0,00</h2>
+        
+<div id="badge-rentabilidade" class="mt-4 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-2 shadow-inner">
+    <div id="skeleton-total-pl" class="h-4 w-24 bg-gray-700/50 rounded animate-pulse"></div>
+    <p id="total-carteira-pl" class="text-sm font-semibold text-gray-300 hidden">
+        R$ 0,00 <span class="text-xs opacity-60 ml-1">(0.00%)</span>
+    </p>
+</div>
 
-        <div id="badge-rentabilidade" class="mt-4 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:border-white/20 transition-colors">
-            <div id="skeleton-total-pl" class="h-4 w-20 bg-gray-700/50 rounded animate-pulse"></div>
-            <p id="total-carteira-pl" class="text-sm font-bold text-gray-300 hidden flex items-center gap-1">
-                R$ 0,00 <span class="text-[10px] opacity-60 font-normal ml-0.5">(0.00%)</span>
-            </p>
-        </div>
+<div class="mt-2 flex items-center justify-center gap-2 opacity-80">
+    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Investido</span>
+    <span id="total-carteira-custo" class="text-xs font-bold text-gray-300">R$ 0,00</span>
+</div>
 
-        <div class="mt-3 flex items-center justify-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-            <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Investido</span>
-            <span id="total-carteira-custo" class="text-[11px] font-bold text-gray-200 font-mono">R$ 0,00</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 w-full mt-8">
-            
-            <div onclick="window.location.href='financeiro.html'" class="bg-white/5 hover:bg-white/10 p-3 rounded-2xl border border-white/5 backdrop-blur-sm flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 group/btn relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity"></div>
-                <span class="text-[9px] text-gray-500 font-bold uppercase mb-1">Disponível</span>
-                <span id="saldo-disponivel" class="text-sm font-bold text-white">R$ 0,00</span>
-            </div>
-
-            <div onclick="abrirModalProventos()" class="bg-white/5 hover:bg-white/10 p-3 rounded-2xl border border-white/5 backdrop-blur-sm flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 group/btn relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity"></div>
-                <span class="text-[9px] text-gray-500 font-bold uppercase mb-1">A Receber</span>
-                <span id="total-proventos" class="text-sm font-bold text-green-400">R$ 0,00</span>
+        <div class="grid grid-cols-2 gap-12 mt-8 w-full px-4">
+            <div class="text-center group-hover:transform group-hover:-translate-y-1 transition-transform duration-300">
+                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Disponível</span>
+                <div id="skeleton-total-caixa" class="h-5 w-20 bg-gray-800/50 rounded mx-auto"></div>
+                <span id="total-caixa-valor" class="text-lg font-bold text-gray-200 hidden">R$ 0,00</span>
             </div>
             
+            <div class="text-center group-hover:transform group-hover:-translate-y-1 transition-transform duration-300 delay-75">
+    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">A Receber</span>
+    <div id="skeleton-total-proventos" class="h-5 w-20 bg-gray-800/50 rounded mx-auto"></div>
+    <span id="total-proventos" class="text-lg font-bold text-green-500 hidden">R$ 0,00</span>
+</div>
         </div>
-
     </div>
 </div>
 						

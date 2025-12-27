@@ -2147,11 +2147,11 @@ function renderizarGraficoPatrimonio() {
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
 
-    // CORES DO TEMA (Refinadas)
-    const colorLinePatrimonio = '#c084fc'; // Roxo Vesto
-    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; // Cinza neutro
-    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
-    const colorText = isLight ? '#6b7280' : '#737373';
+    // CORES DO TEMA
+    const colorLinePatrimonio = '#c084fc'; 
+    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
+    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
+    const colorText = isLight ? '#6b7280' : '#737373'; 
 
     // --- 1. DATA DE CORTE ---
     const hoje = new Date();
@@ -2216,7 +2216,7 @@ function renderizarGraficoPatrimonio() {
 
     const dataValor = dadosOrdenados.map(p => p.value);
 
-    // CÁLCULO DO CUSTO (Investido)
+    // CÁLCULO DO INVESTIDO
     const dataCusto = dadosOrdenados.map(p => {
         const dataSnapshot = new Date(p.date + 'T23:59:59');
         const transacoesAteData = transacoes.filter(t => new Date(t.date) <= dataSnapshot);
@@ -2300,31 +2300,17 @@ function renderizarGraficoPatrimonio() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                // Remove padding do layout para alinhar exatamente com a borda esquerda
                 layout: {
-                    padding: { left: 0, right: 0, top: 0, bottom: 0 }
+                    padding: { left: 0, right: 0, top: 10, bottom: 0 }
                 },
                 interaction: {
                     mode: 'index',
                     intersect: false,
                 },
                 plugins: {
-                    // --- LEGENDA HORIZONTAL E À ESQUERDA ---
+                    // --- MUDANÇA: DESLIGA A LEGENDA INTERNA (Pois já criamos a externa) ---
                     legend: { 
-                        display: true,
-                        position: 'top',
-                        align: 'start', // Força alinhamento à esquerda
-                        labels: {
-                            usePointStyle: true, // Bolinhas
-                            boxWidth: 6,         // Tamanho da bolinha (pequeno e elegante)
-                            padding: 15,         // Espaço entre itens (não muito grande para não quebrar linha)
-                            color: colorText,
-                            font: { 
-                                size: 11, 
-                                weight: '700',
-                                family: 'sans-serif' 
-                            }
-                        }
+                        display: false 
                     },
                     tooltip: {
                         enabled: true,

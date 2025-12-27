@@ -256,12 +256,27 @@
 <div class="col-span-2">
     <div id="patrimonio-chart-drawer" class="card-drawer">
         <div id="patrimonio-container" class="drawer-content relative h-72 pt-4 bg-[#121212] rounded-3xl p-2 mb-4 flex flex-col shadow-inner">
-            <div id="patrimonio-range-selector" class="flex justify-end gap-2 px-2 mb-2">
-                <button class="patrimonio-range-btn active" data-range="1M">1M</button>
-                <button class="patrimonio-range-btn" data-range="6M">6M</button>
-                <button class="patrimonio-range-btn" data-range="1Y">1Y</button>
-                <button class="patrimonio-range-btn" data-range="ALL">Tudo</button>
-            </div>
+<div class="flex justify-between items-center px-4 mb-2 mt-1">
+    
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#c084fc] shadow-[0_0_8px_rgba(192,132,252,0.5)]"></span>
+            <span class="text-[10px] font-bold text-gray-300 tracking-wide">Patrimônio</span>
+        </div>
+        
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full border border-gray-500"></span>
+            <span class="text-[10px] font-bold text-gray-500 tracking-wide">Investido</span>
+        </div>
+    </div>
+
+    <div id="patrimonio-range-selector" class="flex gap-2">
+        <button class="patrimonio-range-btn active" data-range="1M">1M</button>
+        <button class="patrimonio-range-btn" data-range="6M">6M</button>
+        <button class="patrimonio-range-btn" data-range="1Y">1Y</button>
+        <button class="patrimonio-range-btn" data-range="ALL">Tudo</button>
+    </div>
+</div>
             <div class="relative flex-1 w-full min-h-0">
                 <canvas id="patrimonio-chart"></canvas>
             </div>

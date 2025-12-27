@@ -2307,13 +2307,13 @@ function renderizarGraficoPatrimonio() {
                     intersect: false,
                 },
                 plugins: {
-                    // --- LEGENDA COM BOLINHAS (PREMIUM) ---
+                    // --- LEGENDA NO CANTO SUPERIOR ESQUERDO ---
                     legend: { 
                         display: true,
                         position: 'top',
-                        align: 'end', // Alinha à direita
+                        align: 'start', // <--- MUDANÇA: 'start' alinha à esquerda
                         labels: {
-                            usePointStyle: true, // Transforma quadrado em bolinha
+                            usePointStyle: true,
                             boxWidth: 6,
                             padding: 20,
                             color: colorText,
@@ -2336,7 +2336,7 @@ function renderizarGraficoPatrimonio() {
                         displayColors: true,
                         boxWidth: 6,
                         boxHeight: 6,
-                        usePointStyle: true, // Bolinha no tooltip
+                        usePointStyle: true,
                         callbacks: {
                             title: function(context) {
                                 const label = context[0].label;

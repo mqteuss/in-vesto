@@ -2256,7 +2256,7 @@ function renderizarGraficoPatrimonio() {
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
-        patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill; // Atualiza gradiente
+        patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill;
         
         if (patrimonioChartInstance.data.datasets[1]) {
             patrimonioChartInstance.data.datasets[1].data = dataCusto;
@@ -2274,10 +2274,10 @@ function renderizarGraficoPatrimonio() {
                         fill: true,
                         backgroundColor: gradientFill,
                         borderColor: colorLinePatrimonio,
-                        borderWidth: 3, // Linha um pouco mais grossa
-                        tension: 0.4,   // Curva mais suave (Bézier)
+                        borderWidth: 3,
+                        tension: 0.4,
                         pointRadius: 0, 
-                        pointHitRadius: 30, // Área de toque maior
+                        pointHitRadius: 30,
                         pointHoverRadius: 6,
                         pointHoverBackgroundColor: '#fff',
                         pointHoverBorderColor: colorLinePatrimonio,
@@ -2290,7 +2290,7 @@ function renderizarGraficoPatrimonio() {
                         fill: false,
                         borderColor: colorLineInvestido,
                         borderWidth: 2,
-                        borderDash: [4, 4], // Tracejado mais elegante
+                        borderDash: [4, 4],
                         tension: 0.4,
                         pointRadius: 0,
                         pointHitRadius: 10,
@@ -2307,54 +2307,69 @@ function renderizarGraficoPatrimonio() {
                     intersect: false,
                 },
                 plugins: {
-                    legend: { display: false },
+                    // --- LEGENDA COM BOLINHAS (PREMIUM) ---
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        align: 'end', // Alinha à direita
+                        labels: {
+                            usePointStyle: true, // Transforma quadrado em bolinha
+                            boxWidth: 6,
+                            padding: 20,
+                            color: colorText,
+                            font: { 
+                                size: 11, 
+                                weight: '700',
+                                family: 'sans-serif' 
+                            }
+                        }
+                    },
                     tooltip: {
                         enabled: true,
-                        backgroundColor: '#151515', // Fundo quase preto
+                        backgroundColor: '#151515',
                         titleColor: '#9ca3af',
                         bodyColor: '#fff',
                         bodyFont: { weight: 'bold', size: 13 },
                         borderColor: '#2C2C2E',
                         borderWidth: 1,
                         padding: 10,
-                        displayColors: false, // Remove o quadradinho de cor
+                        displayColors: true,
+                        boxWidth: 6,
+                        boxHeight: 6,
+                        usePointStyle: true, // Bolinha no tooltip
                         callbacks: {
                             title: function(context) {
                                 const label = context[0].label;
                                 return Array.isArray(label) ? label.join(' ') : label;
                             },
                             label: (context) => {
-                                // Exibe apenas o valor formatado
-                                return formatBRL(context.parsed.y);
+                                return context.dataset.label + ': ' + formatBRL(context.parsed.y);
                             }
                         }
                     }
                 },
                 scales: {
-                    // EIXO Y (Valores)
                     y: { 
                         display: true,
-                        position: 'right', // Colocar na direita é padrão em Trading/Fintech
+                        position: 'right',
                         grid: {
                             color: colorGrid,
-                            borderDash: [4, 4], // Grade pontilhada
-                            drawBorder: false,  // Remove a linha sólida do eixo
+                            borderDash: [4, 4],
+                            drawBorder: false,
                         },
                         ticks: {
                             color: colorText,
-                            font: { size: 10, family: 'monospace' }, // Fonte tabular
+                            font: { size: 10, family: 'monospace' },
                             maxTicksLimit: 6,
                             padding: 10,
                             callback: function(value) {
-                                // Formatação compacta (1k, 1.5k) para limpar o visual
                                 if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
                                 return value;
                             }
                         }
                     },
-                    // EIXO X (Datas)
                     x: {
-                        grid: { display: false }, // Remove grade vertical (limpeza)
+                        grid: { display: false },
                         ticks: { 
                             display: true,
                             maxRotation: 0,

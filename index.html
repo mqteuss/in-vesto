@@ -167,43 +167,55 @@
                             </div>
                         </div>
 
-<div id="resumo-carteira-card" class="relative overflow-hidden rounded-[2rem] border border-[#2C2C2E] shadow-2xl mb-8 group">
+<div id="resumo-carteira-card">
     
-    <div class="absolute top-[-50%] left-[-20%] w-[150%] h-[200%] bg-[radial-gradient(circle_farthest-corner_at_50%_50%,_rgba(124,58,237,0.15),_rgba(0,0,0,0))] opacity-80 pointer-events-none"></div>
-    <div class="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-[radial-gradient(circle_farthest-corner_at_50%_50%,_rgba(59,130,246,0.1),_rgba(0,0,0,0))] opacity-60 pointer-events-none"></div>
-
-    <div class="relative z-10 p-6 flex flex-col items-center justify-center min-h-[220px]">
+    <div class="premium-content">
         
-        <span class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-3">Patrimônio Líquido</span>
-        
-        <div id="skeleton-total-valor" class="h-12 w-48 bg-gray-800/50 rounded-xl animate-pulse mb-2"></div>
-        <h2 id="total-carteira-valor" class="text-5xl font-bold text-white tracking-tighter drop-shadow-lg hidden">R$ 0,00</h2>
-        
-<div id="badge-rentabilidade" class="mt-4 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-2 shadow-inner">
-    <div id="skeleton-total-pl" class="h-4 w-24 bg-gray-700/50 rounded animate-pulse"></div>
-    <p id="total-carteira-pl" class="text-sm font-semibold text-gray-300 hidden">
-        R$ 0,00 <span class="text-xs opacity-60 ml-1">(0.00%)</span>
-    </p>
-</div>
-
-<div class="mt-2 flex items-center justify-center gap-2 opacity-80">
-    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Investido</span>
-    <span id="total-carteira-custo" class="text-xs font-bold text-gray-300">R$ 0,00</span>
-</div>
-
-        <div class="grid grid-cols-2 gap-12 mt-8 w-full px-4">
-            <div class="text-center group-hover:transform group-hover:-translate-y-1 transition-transform duration-300">
-                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Disponível</span>
-                <div id="skeleton-total-caixa" class="h-5 w-20 bg-gray-800/50 rounded mx-auto"></div>
-                <span id="total-caixa-valor" class="text-lg font-bold text-gray-200 hidden">R$ 0,00</span>
+        <div class="flex justify-between items-start w-full">
+            <div class="flex flex-col">
+                <span class="premium-label">Patrimônio Líquido</span>
+                
+                <div id="skeleton-total-valor" class="h-10 w-40 bg-gray-800/50 rounded animate-pulse mt-1"></div>
+                
+                <h2 id="total-carteira-valor" class="premium-value-lg hidden">R$ 0,00</h2>
             </div>
-            
-            <div class="text-center group-hover:transform group-hover:-translate-y-1 transition-transform duration-300 delay-75">
-    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">A Receber</span>
-    <div id="skeleton-total-proventos" class="h-5 w-20 bg-gray-800/50 rounded mx-auto"></div>
-    <span id="total-proventos" class="text-lg font-bold text-green-500 hidden">R$ 0,00</span>
-</div>
+
+            <div class="premium-badge">
+                 <div id="skeleton-total-pl" class="h-3 w-16 bg-gray-700/50 rounded animate-pulse"></div>
+                 <p id="total-carteira-pl" class="text-xs font-bold text-gray-300 hidden">
+                    R$ 0,00 (0%)
+                 </p>
+            </div>
         </div>
+
+        <div class="flex-1"></div>
+
+        <div class="premium-grid mt-6">
+            
+            <div class="premium-stat-box group">
+                <span class="premium-stat-sub">Investido</span>
+                <div id="skeleton-total-custo" class="h-4 w-16 bg-gray-800/50 rounded mt-1 animate-pulse"></div>
+                <span id="total-carteira-custo" class="premium-stat-value hidden group-hover:text-purple-400 transition-colors">R$ 0,00</span>
+            </div>
+
+            <div class="premium-divider"></div>
+
+            <div class="premium-stat-box group">
+                <span class="premium-stat-sub">Disponível</span>
+                <div id="skeleton-total-caixa" class="h-4 w-16 bg-gray-800/50 rounded mt-1 animate-pulse"></div>
+                <span id="total-caixa-valor" class="premium-stat-value hidden group-hover:text-blue-400 transition-colors">R$ 0,00</span>
+            </div>
+
+            <div class="premium-divider"></div>
+
+            <div class="premium-stat-box group">
+                <span class="premium-stat-sub">A Receber</span>
+                <div id="skeleton-total-proventos" class="h-4 w-16 bg-gray-800/50 rounded mt-1 animate-pulse"></div>
+                <span id="total-proventos" class="premium-stat-value text-green-400 hidden">R$ 0,00</span>
+            </div>
+
+        </div>
+
     </div>
 </div>
 						

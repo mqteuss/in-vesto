@@ -2142,9 +2142,18 @@ function renderizarGraficoHistorico({ labels, data }) {
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
+    
+    // --- SETUP INICIAL ---
     const ctx = canvas.getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
 
-    // 1. DATA DE CORTE
+    // CORES DO TEMA (Premium Palette)
+    const colorLinePatrimonio = '#c084fc'; // Roxo Vesto
+    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; // Cinza neutro
+    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; // Grid quase invisível
+    const colorText = isLight ? '#6b7280' : '#737373'; // Texto discreto
+
+    // --- 1. DATA DE CORTE ---
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     
@@ -2164,7 +2173,7 @@ function renderizarGraficoPatrimonio() {
     
     dataCorte.setHours(0, 0, 0, 0);
 
-    // 2. FILTRAGEM
+    // --- 2. FILTRAGEM ---
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
@@ -2173,7 +2182,7 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // 3. AGRUPAMENTO (Para 6M e 1Y)
+    // --- 3. AGRUPAMENTO (Para 6M e 1Y) ---
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -2192,28 +2201,22 @@ function renderizarGraficoPatrimonio() {
         return;
     }
 
-    // 4. PREPARAÇÃO DOS LABELS (AXIS X) - MUDANÇA AQUI
+    // --- 4. PREPARAÇÃO DOS DADOS ---
     const labels = dadosOrdenados.map(p => {
-        // Cria a data garantindo o fuso correto (adiciona hora fixa)
         const d = new Date(p.date + 'T12:00:00');
-        
         const dia = String(d.getDate()).padStart(2, '0');
-        // Pega o mês abreviado (jan, fev) e deixa maiúsculo (JAN, FEV)
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const ano = d.getFullYear().toString().slice(2); // 25
+        const ano = d.getFullYear().toString().slice(2);
 
-        // Se for período longo, mostra MÊS em cima, ANO embaixo
         if (['6M', '1Y'].includes(currentPatrimonioRange)) {
-             return [mes, `'${ano}`]; // Ex: ["DEZ", "'25"]
+             return [mes, `'${ano}`];
         }
-        
-        // Para 1M e Tudo: DIA em cima, MÊS embaixo
-        return [dia, mes]; // Ex: ["12", "DEZ"]
+        return [dia, mes];
     });
 
     const dataValor = dadosOrdenados.map(p => p.value);
 
-    // 5. CÁLCULO DO CUSTO (LINHA TRACEJADA)
+    // CÁLCULO DO CUSTO (Investido)
     const dataCusto = dadosOrdenados.map(p => {
         const dataSnapshot = new Date(p.date + 'T23:59:59');
         const transacoesAteData = transacoes.filter(t => new Date(t.date) <= dataSnapshot);
@@ -2240,35 +2243,22 @@ function renderizarGraficoPatrimonio() {
         return custoTotalDia;
     });
 
-    // 6. RENDERIZAÇÃO
+    // --- 5. RENDERIZAÇÃO PREMIUM ---
     const newDataString = JSON.stringify({ labels, dataValor, dataCusto, range: currentPatrimonioRange });
     if (newDataString === lastPatrimonioData) { return; }
     lastPatrimonioData = newDataString;
 
-    const ctxProto = canvas.getContext('2d');
-    const gradient = ctxProto.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); 
-    gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
-
-    const isLight = document.body.classList.contains('light-mode');
-    const textColor = isLight ? '#6b7280' : '#9ca3af';
-    const gridColor = isLight ? '#e5e7eb' : '#2C2C2E';
+    // Gradiente Fundo (Fade Out Vertical)
+    const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
+    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)'); // Roxo sutil no topo
+    gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');    // Transparente embaixo
 
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
-        if (!patrimonioChartInstance.data.datasets[1]) {
-             patrimonioChartInstance.data.datasets.push({
-                label: 'Investido',
-                data: dataCusto,
-                borderColor: '#6b7280',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                pointRadius: 0,
-                fill: false,
-                tension: 0.3
-            });
-        } else {
+        patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill; // Atualiza gradiente
+        
+        if (patrimonioChartInstance.data.datasets[1]) {
             patrimonioChartInstance.data.datasets[1].data = dataCusto;
         }
         patrimonioChartInstance.update();
@@ -2282,26 +2272,29 @@ function renderizarGraficoPatrimonio() {
                         label: 'Patrimônio',
                         data: dataValor,
                         fill: true,
-                        backgroundColor: gradient,
-                        borderColor: '#c084fc',
-                        borderWidth: 2,
-                        tension: 0.3,
+                        backgroundColor: gradientFill,
+                        borderColor: colorLinePatrimonio,
+                        borderWidth: 3, // Linha um pouco mais grossa
+                        tension: 0.4,   // Curva mais suave (Bézier)
                         pointRadius: 0, 
-                        pointHitRadius: 20,
-                        pointHoverRadius: 4,
+                        pointHitRadius: 30, // Área de toque maior
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: colorLinePatrimonio,
+                        pointHoverBorderWidth: 3,
                         order: 1
                     },
                     {
                         label: 'Investido',
                         data: dataCusto,
                         fill: false,
-                        borderColor: '#6b7280',
+                        borderColor: colorLineInvestido,
                         borderWidth: 2,
-                        borderDash: [5, 5],
-                        tension: 0.3,
+                        borderDash: [4, 4], // Tracejado mais elegante
+                        tension: 0.4,
                         pointRadius: 0,
-                        pointHitRadius: 20,
-                        pointHoverRadius: 4,
+                        pointHitRadius: 10,
+                        pointHoverRadius: 0,
                         order: 2
                     }
                 ]
@@ -2309,63 +2302,67 @@ function renderizarGraficoPatrimonio() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(20, 20, 20, 0.95)',
-                        titleColor: isLight ? '#111' : '#fff',
-                        bodyColor: isLight ? '#333' : '#e5e7eb',
-                        borderColor: isLight ? '#e5e7eb' : '#333',
+                        enabled: true,
+                        backgroundColor: '#151515', // Fundo quase preto
+                        titleColor: '#9ca3af',
+                        bodyColor: '#fff',
+                        bodyFont: { weight: 'bold', size: 13 },
+                        borderColor: '#2C2C2E',
                         borderWidth: 1,
                         padding: 10,
+                        displayColors: false, // Remove o quadradinho de cor
                         callbacks: {
-                            // Corrige o título do tooltip para juntar o array de volta (ex: "12/DEZ")
                             title: function(context) {
                                 const label = context[0].label;
-                                if (Array.isArray(label)) {
-                                    return label.join('/'); 
-                                }
-                                return label;
+                                return Array.isArray(label) ? label.join(' ') : label;
                             },
-                            label: (context) => ` ${context.dataset.label}: ${formatBRL(context.parsed.y)}`
+                            label: (context) => {
+                                // Exibe apenas o valor formatado
+                                return formatBRL(context.parsed.y);
+                            }
                         }
                     }
                 },
                 scales: {
-                    // --- EIXO Y (Valores à Esquerda) ---
+                    // EIXO Y (Valores)
                     y: { 
-                        display: true, // Agora aparece!
-                        position: 'left',
+                        display: true,
+                        position: 'right', // Colocar na direita é padrão em Trading/Fintech
                         grid: {
-                            color: gridColor,
-                            drawBorder: false, // Remove a linha vertical do eixo
+                            color: colorGrid,
+                            borderDash: [4, 4], // Grade pontilhada
+                            drawBorder: false,  // Remove a linha sólida do eixo
                         },
                         ticks: {
-                            color: textColor,
-                            font: { size: 9, weight: '600' },
-                            maxTicksLimit: 5, // Evita poluição visual
+                            color: colorText,
+                            font: { size: 10, family: 'monospace' }, // Fonte tabular
+                            maxTicksLimit: 6,
+                            padding: 10,
                             callback: function(value) {
-                                // Formata R$ 1500 para "R$ 1,5 mil" ou "1,5K" para economizar espaço
-                                return new Intl.NumberFormat('pt-BR', {
-                                    notation: 'compact',
-                                    compactDisplay: 'short',
-                                    style: 'currency',
-                                    currency: 'BRL'
-                                }).format(value);
+                                // Formatação compacta (1k, 1.5k) para limpar o visual
+                                if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
+                                return value;
                             }
                         }
                     },
-                    // --- EIXO X (Datas Empilhadas) ---
+                    // EIXO X (Datas)
                     x: {
-                        grid: { display: false },
+                        grid: { display: false }, // Remove grade vertical (limpeza)
                         ticks: { 
                             display: true,
                             maxRotation: 0,
                             autoSkip: true,
-                            maxTicksLimit: 6, // Máximo de 6 datas para não encavalar
-                            color: textColor,
-                            font: { size: 9, weight: 'bold' }
+                            maxTicksLimit: 5,
+                            color: colorText,
+                            font: { size: 10, weight: 'bold' },
+                            padding: 5
                         } 
                     }
                 }

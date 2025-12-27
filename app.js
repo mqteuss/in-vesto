@@ -2054,103 +2054,90 @@ function renderizarGraficoHistorico({ labels, data }) {
     });
 }
     
-function renderizarGraficoProventosDetalhes({ labels, data }) {
-    const canvas = document.getElementById('detalhes-proventos-chart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    function renderizarGraficoProventosDetalhes({ labels, data }) {
+        const canvas = document.getElementById('detalhes-proventos-chart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
     
-    // --- SEM FILTRO DE 12 MESES (Mostra tudo) ---
-    // Usamos os dados originais recebidos
-    // --------------------------------------------
-
-    const newDataString = JSON.stringify({ labels, data });
+        if (!labels || !data || labels.length === 0) {
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null; 
+            }
+            return;
+        }
     
-    if (newDataString === lastDetalhesData) { return; }
-    lastDetalhesData = newDataString;
-
-    if (!labels || !data || labels.length === 0) {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 192);
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
+        
+        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 192);
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
+    
         if (detalhesChartInstance) {
-            detalhesChartInstance.destroy();
-            detalhesChartInstance = null; 
-        }
-        return;
-    }
-    
-    // Gradientes (Visual Roxo)
-    const gradient = ctx.createLinearGradient(0, 0, 0, 192);
-    gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
-    gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
-    
-    // Plugin de Texto Flutuante (Igual ao da tela inicial)
-    const floatingLabelsPlugin = {
-        id: 'floatingLabelsDetalhes',
-        afterDatasetsDraw(chart) {
-            const { ctx } = chart;
-            ctx.save();
-            chart.data.datasets.forEach((dataset, i) => {
-                const meta = chart.getDatasetMeta(i);
-                meta.data.forEach((bar, index) => {
-                    const value = dataset.data[index];
-                    if (value > 0) {
-                        const text = formatBRL(value); 
-                        ctx.font = 'bold 10px sans-serif';
-                        ctx.fillStyle = '#e5e7eb'; // Texto Claro
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'bottom';
-                        // Desenha 5px acima da barra
-                        ctx.fillText(text, bar.x, bar.y - 5);
-                    }
-                });
-            });
-            ctx.restore();
-        }
-    };
-
-    if (detalhesChartInstance) {
-        detalhesChartInstance.destroy();
-    }
-
-    detalhesChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels, // Mostra todos os meses
-            datasets: [{
-                label: 'Recebido',
-                data: data, // Mostra todos os valores
-                backgroundColor: gradient,
-                borderColor: 'rgba(192, 132, 252, 0.3)', 
-                borderWidth: 1,
-                borderRadius: 4,
-                barPercentage: 0.6
-            }]
-        },
-        plugins: [floatingLabelsPlugin], // Ativa o visual clean
-        options: {
-            responsive: true, 
-            maintainAspectRatio: false,
-            layout: {
-                padding: { top: 20 } // Espaço para o texto não cortar
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: false } // Remove tooltip (caixa preta)
-            },
-            scales: {
-                y: {
-                    display: false, // Remove eixo Y
-                    beginAtZero: true
+            detalhesChartInstance.data.labels = labels;
+            detalhesChartInstance.data.datasets[0].data = data;
+            detalhesChartInstance.data.datasets[0].backgroundColor = gradient;
+            detalhesChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
+            detalhesChartInstance.update();
+        } else {
+            detalhesChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Recebido',
+                        data: data,
+                        backgroundColor: gradient,
+                        hoverBackgroundColor: hoverGradient,
+                        borderColor: 'rgba(192, 132, 252, 0.3)', 
+                        borderWidth: 1,
+                        borderRadius: 4 
+                    }]
                 },
-                x: { 
-                    grid: { display: false }, // Remove grades
-                    ticks: {
-                        color: '#9ca3af',
-                        font: { size: 10, weight: 'bold' }
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1A1A1A',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false, 
+                            callbacks: {
+                                title: (context) => `Mês: ${context[0].label}`, 
+                                label: (context) => `Valor: ${formatBRL(context.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#2A2A2A' }, 
+                            ticks: { 
+                                display: true,
+                                color: Chart.defaults.color,
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return formatBRL(value);
+                                }
+                            }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: {
+                                color: Chart.defaults.color,
+                                font: { size: 10 }
+                            }
+                        }
                     }
                 }
-            }
+            });
         }
-    });
-}
+    }
     
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');

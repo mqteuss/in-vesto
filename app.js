@@ -1953,82 +1953,103 @@ function renderizarGraficoAlocacao(dadosGrafico) {
     }
 }
     
-    function renderizarGraficoHistorico({ labels, data }) {
-        const canvas = document.getElementById('historico-proventos-chart');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const newDataString = JSON.stringify({ labels, data });
+function renderizarGraficoHistorico({ labels, data }) {
+    const canvas = document.getElementById('historico-proventos-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const newDataString = JSON.stringify({ labels, data });
 
-        if (newDataString === lastHistoricoData) { return; }
-        lastHistoricoData = newDataString; 
-        
-        if (!labels || !data || labels.length === 0) {
-            if (historicoChartInstance) {
-                historicoChartInstance.destroy();
-                historicoChartInstance = null; 
-            }
-            return;
-        }
-        
-        const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
-        
-        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
-        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
-        
+    if (newDataString === lastHistoricoData) { return; }
+    lastHistoricoData = newDataString; 
+    
+    if (!labels || !data || labels.length === 0) {
         if (historicoChartInstance) {
-            historicoChartInstance.data.labels = labels;
-            historicoChartInstance.data.datasets[0].data = data;
-            historicoChartInstance.data.datasets[0].backgroundColor = gradient;
-            historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            historicoChartInstance.update();
-        } else {
-            historicoChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total Recebido',
-                        data: data,
-                        backgroundColor: gradient,
-                        hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', 
-                        borderWidth: 1,
-                        borderRadius: 5 
-                    }]
+            historicoChartInstance.destroy();
+            historicoChartInstance = null; 
+        }
+        return;
+    }
+    
+    // Mantendo seus gradientes Originais
+    const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
+    gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
+    gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
+    
+    // Plugin para desenhar o texto em cima da barra
+    const floatingLabelsPlugin = {
+        id: 'floatingLabels',
+        afterDatasetsDraw(chart) {
+            const { ctx } = chart;
+            ctx.save();
+            
+            chart.data.datasets.forEach((dataset, i) => {
+                const meta = chart.getDatasetMeta(i);
+                meta.data.forEach((bar, index) => {
+                    const value = dataset.data[index];
+                    if (value > 0) {
+                        // Formata o valor
+                        const text = formatBRL(value); 
+                        
+                        // Configura a fonte (branca/cinza claro)
+                        ctx.font = 'bold 10px sans-serif';
+                        ctx.fillStyle = '#e5e7eb'; 
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        
+                        // Desenha 5px acima da barra
+                        ctx.fillText(text, bar.x, bar.y - 5);
+                    }
+                });
+            });
+            ctx.restore();
+        }
+    };
+    
+    if (historicoChartInstance) {
+        historicoChartInstance.destroy(); // Recria para garantir que o plugin carregue
+    }
+
+    historicoChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Recebido',
+                data: data,
+                backgroundColor: gradient,
+                borderColor: 'rgba(192, 132, 252, 0.3)', 
+                borderWidth: 1,
+                borderRadius: 5,
+                barPercentage: 0.6, // Barras um pouco mais finas para elegância
+            }]
+        },
+        plugins: [floatingLabelsPlugin], // <--- Ativa o texto flutuante
+        options: {
+            responsive: true, 
+            maintainAspectRatio: false,
+            layout: {
+                padding: { top: 20 } // Espaço extra no topo para o texto não cortar
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false } // <--- Remove a caixa de diálogo
+            },
+            scales: {
+                y: {
+                    display: false, // Remove eixo Y inteiro (grade e números)
+                    beginAtZero: true
                 },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#1A1A1A',
-                            titleColor: '#f3f4f6',
-                            bodyColor: '#f3f4f6',
-                            borderColor: '#2A2A2A',
-                            borderWidth: 1,
-                            padding: 10,
-                            displayColors: false, 
-                            callbacks: {
-                                title: (context) => `Mês: ${context[0].label}`, 
-                                label: (context) => `Total: ${formatBRL(context.parsed.y)}`
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: '#2A2A2A' }, 
-                            ticks: { display: false }
-                        },
-                        x: { grid: { display: false } }
+                x: { 
+                    grid: { display: false }, // Remove grade vertical
+                    ticks: {
+                        color: '#9ca3af',
+                        font: { size: 10, weight: 'bold' }
                     }
                 }
-            });
+            }
         }
-    }
+    });
+}
     
     function renderizarGraficoProventosDetalhes({ labels, data }) {
         const canvas = document.getElementById('detalhes-proventos-chart');

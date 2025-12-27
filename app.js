@@ -2267,7 +2267,7 @@ function renderizarGraficoPatrimonio() {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Patrimônio',
+                        label: ' ',
                         data: dataValor,
                         fill: true,
                         backgroundColor: gradientFill,
@@ -2283,7 +2283,7 @@ function renderizarGraficoPatrimonio() {
                         order: 1
                     },
                     {
-                        label: 'Investido',
+                        label: ' ',
                         data: dataCusto,
                         fill: false,
                         borderColor: colorLineInvestido,

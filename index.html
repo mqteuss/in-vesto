@@ -270,7 +270,7 @@
         </div>
     </div>
 
-    <div class="card-bg p-4 rounded-[1.5rem] flex flex-col justify-between h-40 cursor-pointer relative overflow-hidden group active:scale-[0.98] transition-all hover:border-blue-900/30" data-toggle-drawer="alocacao-chart-drawer">
+<div class="card-bg p-4 rounded-[1.5rem] flex flex-col justify-between h-40 cursor-pointer relative overflow-hidden group active:scale-[0.98] transition-all hover:border-blue-900/30" data-toggle-drawer="alocacao-chart-drawer">
         <div class="flex justify-between items-start">
             <div class="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
@@ -280,8 +280,11 @@
             <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Carteira</span>
             <span class="text-lg font-bold text-white block leading-tight mt-1">Alocação</span>
         </div>
-        <div class="absolute bottom-0 left-0 w-full h-1 bg-gray-800">
-            <div class="h-full w-[60%] bg-blue-500"></div>
+        
+        <div class="absolute right-[-10px] bottom-[-10px] opacity-[0.05] pointer-events-none group-hover:opacity-10 transition-opacity">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+            </svg>
         </div>
     </div>
 

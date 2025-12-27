@@ -1953,82 +1953,119 @@ function renderizarGraficoAlocacao(dadosGrafico) {
     }
 }
     
-    function renderizarGraficoHistorico({ labels, data }) {
-        const canvas = document.getElementById('historico-proventos-chart');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const newDataString = JSON.stringify({ labels, data });
+function renderizarGraficoHistorico() {
+    const canvas = document.getElementById('historico-proventos-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
-        if (newDataString === lastHistoricoData) { return; }
-        lastHistoricoData = newDataString; 
-        
-        if (!labels || !data || labels.length === 0) {
-            if (historicoChartInstance) {
-                historicoChartInstance.destroy();
-                historicoChartInstance = null; 
-            }
-            return;
+    // Agrupa proventos por mês (lógica mantida)
+    const proventosPorMes = {};
+    proventos.forEach(p => {
+        const data = new Date(p.date);
+        const mesAno = `${data.getMonth() + 1}/${data.getFullYear()}`;
+        if (!proventosPorMes[mesAno]) proventosPorMes[mesAno] = 0;
+        proventosPorMes[mesAno] += p.value;
+    });
+
+    // Ordena cronologicamente
+    const labelsOrdenados = Object.keys(proventosPorMes).sort((a, b) => {
+        const [mesA, anoA] = a.split('/').map(Number);
+        const [mesB, anoB] = b.split('/').map(Number);
+        return anoA - anoB || mesA - mesB;
+    });
+
+    // Formata labels para "DEZ/24"
+    const labelsFinais = labelsOrdenados.map(l => {
+        const [mes, ano] = l.split('/');
+        const dataObj = new Date(ano, mes - 1, 1);
+        const nomeMes = dataObj.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
+        return `${nomeMes}/${ano.slice(2)}`;
+    });
+
+    const dataValues = labelsOrdenados.map(l => proventosPorMes[l]);
+
+    // Plugin customizado para desenhar o texto em cima da barra
+    const floatingLabelsPlugin = {
+        id: 'floatingLabels',
+        afterDatasetsDraw(chart) {
+            const { ctx } = chart;
+            ctx.save();
+            
+            chart.data.datasets.forEach((dataset, i) => {
+                const meta = chart.getDatasetMeta(i);
+                meta.data.forEach((bar, index) => {
+                    const value = dataset.data[index];
+                    if (value > 0) {
+                        // Formata o valor (ex: R$ 15,20)
+                        // Se quiser encurtar (ex: 15,20), tire o "style: currency" do formatBRL ou faça manual
+                        const text = formatBRL(value); 
+                        
+                        // Configura a fonte
+                        ctx.font = 'bold 10px sans-serif';
+                        ctx.fillStyle = '#9ca3af'; // Cor cinza claro (text-gray-400)
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        
+                        // Desenha o texto 5px acima da barra
+                        ctx.fillText(text, bar.x, bar.y - 5);
+                    }
+                });
+            });
+            ctx.restore();
         }
-        
-        const gradient = ctx.createLinearGradient(0, 0, 0, 256); 
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
-        
-        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 256);
-        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
-        
-        if (historicoChartInstance) {
-            historicoChartInstance.data.labels = labels;
-            historicoChartInstance.data.datasets[0].data = data;
-            historicoChartInstance.data.datasets[0].backgroundColor = gradient;
-            historicoChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            historicoChartInstance.update();
-        } else {
-            historicoChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total Recebido',
-                        data: data,
-                        backgroundColor: gradient,
-                        hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', 
-                        borderWidth: 1,
-                        borderRadius: 5 
-                    }]
+    };
+
+    if (historicoChartInstance) {
+        historicoChartInstance.destroy();
+    }
+
+    historicoChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labelsFinais,
+            datasets: [{
+                label: 'Proventos',
+                data: dataValues,
+                backgroundColor: '#22c55e', // Verde (Green-500)
+                borderRadius: 4,            // Barras levemente arredondadas
+                borderSkipped: false,
+                barPercentage: 0.6,         // Largura da barra
+                categoryPercentage: 0.8
+            }]
+        },
+        plugins: [floatingLabelsPlugin], // <--- Ativa nosso plugin aqui
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: { top: 20 } // Espaço extra no topo para o texto não cortar
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { 
+                    enabled: false // <--- Desativa a caixa de diálogo (Tooltip)
+                } 
+            },
+            scales: {
+                y: {
+                    display: false, // Esconde o eixo Y inteiro (linhas e números)
+                    beginAtZero: true,
+                    grid: { display: false }
                 },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#1A1A1A',
-                            titleColor: '#f3f4f6',
-                            bodyColor: '#f3f4f6',
-                            borderColor: '#2A2A2A',
-                            borderWidth: 1,
-                            padding: 10,
-                            displayColors: false, 
-                            callbacks: {
-                                title: (context) => `Mês: ${context[0].label}`, 
-                                label: (context) => `Total: ${formatBRL(context.parsed.y)}`
-                            }
-                        }
+                x: {
+                    grid: { 
+                        display: false, // Remove linhas verticais
+                        drawBorder: false 
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: '#2A2A2A' }, 
-                            ticks: { display: false }
-                        },
-                        x: { grid: { display: false } }
+                    ticks: {
+                        color: '#6b7280', // Cor do texto dos meses
+                        font: { size: 10, weight: 'bold' }
                     }
                 }
-            });
+            }
         }
-    }
+    });
+}
     
     function renderizarGraficoProventosDetalhes({ labels, data }) {
         const canvas = document.getElementById('detalhes-proventos-chart');

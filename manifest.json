@@ -37,23 +37,23 @@
   ],
   "shortcuts": [
     {
-      "name": "Carteira",
-      "short_name": "Carteira",
-      "description": "Minha Carteira",
+      "name": "Portfólio",
+      "short_name": "Portfólio",
+      "description": "Meu Portfólio",
       "url": "/?tab=tab-carteira",
       "icons": [{ "src": "/icons/carteira.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "name": "Histórico",
-      "short_name": "Histórico",
-      "description": "Histórico de Transações",
+      "name": "Extrato",
+      "short_name": "Extrato",
+      "description": "Extrato de Movimentações",
       "url": "/?tab=tab-historico",
       "icons": [{ "src": "/icons/historico.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "name": "Notícias",
-      "short_name": "Notícias",
-      "description": "Notícias FIIs",
+      "name": "Mercado",
+      "short_name": "Mercado",
+      "description": "Notícias do Mercado",
       "url": "/?tab=tab-noticias",
       "icons": [{ "src": "/icons/noticias.png", "sizes": "192x192", "type": "image/png" }]
     }

@@ -1181,12 +1181,10 @@ function renderizarWatchlist() {
 
         // HTML LIMPO: Ticker Branco e Preço (ou vazio)
         card.innerHTML = `
-            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            
-            <span class="text-[10px] font-bold text-white mb-0.5 tracking-wider uppercase">${symbol}</span>
-            
-            <span class="text-sm font-bold text-gray-300 tracking-tight">${preco}</span>
-        `;
+    <span class="text-[10px] font-bold text-white mb-0.5 tracking-wider uppercase">${symbol}</span>
+    
+    <span class="text-sm font-bold text-gray-300 tracking-tight">${preco}</span>
+`;
         carouselEl.appendChild(card);
     });
 }

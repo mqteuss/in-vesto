@@ -253,18 +253,21 @@ module.exports = async function handler(req, res) {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
-            
+
             // Loop sequencial de batches para evitar block IP
             for (const batch of batches) {
                 const promises = batch.map(async (ticker) => {
                     const history = await scrapeAsset(ticker);
-                    const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, 3);
+                    
+                    // CORREÇÃO: Aumentado de 3 para 24 para capturar até 2 anos de histórico
+                    const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, 24);
+                    
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-                
+
                 // Pequeno delay mantido para segurança
                 if (batches.length > 1) await new Promise(r => setTimeout(r, 500)); 
             }

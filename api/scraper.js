@@ -249,23 +249,34 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: dados });
         }
 
-        if (mode === 'proventos_carteira') {
+if (mode === 'proventos_carteira') {
             if (!payload.fiiList) return res.json({ json: [] });
+            
+            // fiiList agora será um array de objetos: [{ ticker: 'MXRF11', limit: 12 }, ...]
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
 
-            // Loop sequencial de batches para evitar block IP
             for (const batch of batches) {
-                const promises = batch.map(async (ticker) => {
+                const promises = batch.map(async (item) => {
+                    // Verifica se o item é string (legado) ou objeto (novo formato)
+                    const ticker = typeof item === 'string' ? item : item.ticker;
+                    // Se for string, assume 24 (padrão antigo). Se for objeto, usa o limite calculado.
+                    const limit = typeof item === 'string' ? 24 : (item.limit || 24);
+
                     const history = await scrapeAsset(ticker);
-                    const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, 3);
+                    
+                    // AQUI APLICAMOS O CORTE INTELIGENTE
+                    const recents = history
+                        .filter(h => h.paymentDate && h.value > 0)
+                        .slice(0, limit); // Corta exatamente onde o App.js pediu
+
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });
+                
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
 
-                // Pequeno delay mantido para segurança
                 if (batches.length > 1) await new Promise(r => setTimeout(r, 500)); 
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });

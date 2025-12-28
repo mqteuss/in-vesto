@@ -1468,19 +1468,26 @@ function renderizarHistoricoProventos() {
         return;
     }
 
-    // 3. Agrupamento e Renderização (MANTIDO IGUAL)
+    // 3. Agrupamento e Renderização
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
-        // Calcula total apenas dos itens visíveis/filtrados
-        grupos[mes].forEach(p => {
+        // CORREÇÃO 1: Pré-filtra itens válidos (onde você tinha cotas)
+        const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            if (qtd > 0) totalMes += (p.value * qtd);
+            if (qtd > 0) {
+                totalMes += (p.value * qtd);
+                return true; 
+            }
+            return false;
         });
+
+        // CORREÇÃO 1: Se o total do mês for zero, pula esse mês inteiro (não renderiza)
+        if (totalMes === 0) return;
 
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
@@ -1498,51 +1505,52 @@ function renderizarHistoricoProventos() {
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
-        grupos[mes].forEach(p => {
+        // Usa os itensValidos calculados acima
+        itensValidos.forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
             
-            if (qtd > 0) {
-                const total = p.value * qtd;
-                const dia = new Date(p.paymentDate).getDate().toString().padStart(2, '0');
-                const sigla = p.symbol.substring(0, 2);
-                const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';
+            // CORREÇÃO 2: Data Precisa. 
+            // Em vez de criar new Date() que sofre com fuso horário, quebra a string.
+            // Formato vindo do scraper é sempre YYYY-MM-DD
+            const dia = p.paymentDate.split('-')[2]; 
 
-                const item = document.createElement('div');
-                item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
+            const total = p.value * qtd;
+            const sigla = p.symbol.substring(0, 2);
+            const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';
 
-                item.innerHTML = `
-                    <div class="flex items-center gap-3 flex-1 min-w-0">
-                        <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
-                            <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
-                        </div>
-                        
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2">
-                                <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
-                                <span class="badge-type ${badgeBg}">PAGO</span>
-                            </div>
-                            <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
-                                <span class="font-medium text-gray-400">Dia ${dia}</span>
-                                <span>•</span>
-                                <span>${qtd} cotas</span>
-                                <span>•</span>
-                                <span>${formatBRL(p.value)}</span>
-                            </div>
-                        </div>
+            const item = document.createElement('div');
+            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
+
+            item.innerHTML = `
+                <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
+                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
                     </div>
                     
-                    <div class="text-right flex flex-col items-end justify-center">
-                        <span class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
+                            <span class="badge-type ${badgeBg}">PAGO</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
+                            <span class="font-medium text-gray-400">Dia ${dia}</span>
+                            <span>•</span>
+                            <span>${qtd} cotas</span>
+                            <span>•</span>
+                            <span>${formatBRL(p.value)}</span>
+                        </div>
                     </div>
-                `;
-                listaGrupo.appendChild(item);
-            }
+                </div>
+                
+                <div class="text-right flex flex-col items-end justify-center">
+                    <span class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
+                </div>
+            `;
+            listaGrupo.appendChild(item);
         });
         
-        if (listaGrupo.children.length > 0) {
-            fragment.appendChild(listaGrupo);
-        }
+        fragment.appendChild(listaGrupo);
     });
 
     listaHistoricoProventos.appendChild(fragment);

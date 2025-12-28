@@ -258,10 +258,7 @@ module.exports = async function handler(req, res) {
             for (const batch of batches) {
                 const promises = batch.map(async (ticker) => {
                     const history = await scrapeAsset(ticker);
-                    
-                    // CORREÇÃO: Aumentado de 3 para 24 para capturar até 2 anos de histórico
-                    const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, 24);
-                    
+                    const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, 3);
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });

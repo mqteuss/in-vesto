@@ -2916,6 +2916,28 @@ async function renderizarCarteira() {
             .filter(p => p !== null);
     }
 
+// --- NOVA FUNÇÃO AUXILIAR: Calcula quantos meses buscar ---
+    function calcularLimiteMeses(symbol) {
+        // Encontra a primeira transação (compra ou venda) deste ativo
+        const txsDoAtivo = transacoes
+            .filter(t => t.symbol === symbol)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Se não achar transação (ex: acabou de adicionar), busca 12 meses por segurança
+        if (txsDoAtivo.length === 0) return 12; 
+
+        const dataPrimeiraCompra = new Date(txsDoAtivo[0].date);
+        const hoje = new Date();
+
+        // Cálculo da diferença em meses
+        const anosDiff = hoje.getFullYear() - dataPrimeiraCompra.getFullYear();
+        const mesesDiff = (anosDiff * 12) + (hoje.getMonth() - dataPrimeiraCompra.getMonth());
+        
+        // Retorna a quantidade exata + 2 meses de margem (com mínimo de 3)
+        return Math.max(3, mesesDiff + 2);
+    }
+
+    // --- FUNÇÃO PRINCIPAL ATUALIZADA ---
     async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
@@ -2937,7 +2959,14 @@ async function renderizarCarteira() {
             if (proventoCache) {
                 proventosPool.push(proventoCache);
             } else {
-                fiisParaBuscar.push(symbol);
+                // MUDANÇA AQUI: Calcula o limite personalizado para este ativo
+                const limiteCalculado = calcularLimiteMeses(symbol);
+                
+                // Envia o objeto { ticker, limit } em vez de só a string
+                fiisParaBuscar.push({ 
+                    ticker: symbol, 
+                    limit: limiteCalculado 
+                });
             }
         }
         

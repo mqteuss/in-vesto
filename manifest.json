@@ -53,7 +53,7 @@
     {
       "name": "Notícias",
       "short_name": "Notícias",
-      "description": "Notícias de FIIs",
+      "description": "Notícias FIIs",
       "url": "/?tab=tab-noticias",
       "icons": [{ "src": "/icons/noticias.png", "sizes": "192x192", "type": "image/png" }]
     }

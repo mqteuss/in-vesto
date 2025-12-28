@@ -171,16 +171,15 @@
     
     <div class="premium-content">
         
-        <div class="flex justify-between items-start w-full">
-            <div class="flex flex-col">
-                <span class="premium-label">Patrimônio Líquido</span>
-                
-                <div id="skeleton-total-valor" class="h-10 w-40 bg-gray-800/50 rounded animate-pulse mt-1"></div>
-                
-                <h2 id="total-carteira-valor" class="premium-value-lg hidden">R$ 0,00</h2>
-            </div>
+        <div class="flex flex-col items-center justify-center w-full mt-2 text-center relative z-20">
+            
+            <span class="premium-label mb-1 opacity-80">Patrimônio Líquido</span>
+            
+            <div id="skeleton-total-valor" class="h-12 w-48 bg-gray-800/50 rounded animate-pulse mt-2"></div>
+            
+            <h2 id="total-carteira-valor" class="premium-value-lg hidden mt-1 mb-1">R$ 0,00</h2>
 
-            <div class="premium-badge">
+            <div class="premium-badge mt-2 scale-90">
                  <div id="skeleton-total-pl" class="h-3 w-16 bg-gray-700/50 rounded animate-pulse"></div>
                  <p id="total-carteira-pl" class="text-xs font-bold text-gray-300 hidden">
                     R$ 0,00 (0%)
@@ -188,11 +187,11 @@
             </div>
         </div>
 
-        <div class="flex-1"></div>
+        <div class="flex-1 min-h-[20px]"></div>
 
-        <div class="premium-grid mt-6">
+        <div class="premium-grid relative z-20">
             
-            <div class="premium-stat-box group">
+            <div class="premium-stat-box group cursor-pointer">
                 <span class="premium-stat-sub">Investido</span>
                 <div id="skeleton-total-custo" class="h-4 w-16 bg-gray-800/50 rounded mt-1 animate-pulse"></div>
                 <span id="total-carteira-custo" class="premium-stat-value hidden group-hover:text-purple-400 transition-colors">R$ 0,00</span>
@@ -200,7 +199,7 @@
 
             <div class="premium-divider"></div>
 
-            <div class="premium-stat-box group">
+            <div class="premium-stat-box group cursor-pointer">
                 <span class="premium-stat-sub">Disponível</span>
                 <div id="skeleton-total-caixa" class="h-4 w-16 bg-gray-800/50 rounded mt-1 animate-pulse"></div>
                 <span id="total-caixa-valor" class="premium-stat-value hidden group-hover:text-blue-400 transition-colors">R$ 0,00</span>
@@ -208,7 +207,7 @@
 
             <div class="premium-divider"></div>
 
-            <div class="premium-stat-box group">
+            <div class="premium-stat-box group cursor-pointer">
                 <span class="premium-stat-sub">A Receber</span>
                 <div id="skeleton-total-proventos" class="h-4 w-16 bg-gray-800/50 rounded mt-1 animate-pulse"></div>
                 <span id="total-proventos" class="premium-stat-value text-green-400 hidden">R$ 0,00</span>

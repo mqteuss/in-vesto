@@ -4486,6 +4486,8 @@ periodoSelectorGroup.addEventListener('click', (e) => {
         });
     }
 
+// --- EM app.js (Substitua toda a parte do exportCsvBtn) ---
+
     if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', () => {
             if (!transacoes || transacoes.length === 0) {
@@ -4493,23 +4495,54 @@ periodoSelectorGroup.addEventListener('click', (e) => {
                 return;
             }
 
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Data,Ativo,Tipo,Quantidade,Preco,ID\n"; 
+            // Muda o texto do botão para feedback
+            const originalText = exportCsvBtn.querySelector('.settings-label').textContent;
+            exportCsvBtn.querySelector('.settings-label').textContent = "Gerando Excel...";
 
-            transacoes.forEach(t => {
-                const dataFmt = t.date.split('T')[0];
-                const row = `${dataFmt},${t.symbol},${t.type},${t.quantity},${t.price},${t.id}`;
-                csvContent += row + "\n";
-            });
+            try {
+                // 1. Prepara os dados no formato exato da B3
+                const dadosParaExportar = transacoes.map(t => {
+                    // Formata Data (DD/MM/AAAA)
+                    let dataFormatada = '';
+                    try {
+                        const dataObj = new Date(t.date);
+                        const dia = String(dataObj.getDate()).padStart(2, '0');
+                        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+                        const ano = dataObj.getFullYear();
+                        dataFormatada = `${dia}/${mes}/${ano}`;
+                    } catch (e) {
+                        dataFormatada = t.date;
+                    }
 
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `vesto_export_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            
-            link.click();
-            document.body.removeChild(link);
+                    return {
+                        "Data do Negócio": dataFormatada,
+                        "Tipo de Movimentação": t.type === 'sell' ? 'Venda' : 'Compra',
+                        "Mercado": "Mercado à Vista", // Coluna padrão B3 (Opcional, mas ajuda a ficar igual)
+                        "Código de Negociação": t.symbol,
+                        "Quantidade": t.quantity,
+                        "Preço": t.price,
+                        "Valor": t.quantity * t.price // Opcional, mas útil
+                    };
+                });
+
+                // 2. Cria a planilha usando a biblioteca SheetJS (XLSX)
+                const worksheet = XLSX.utils.json_to_sheet(dadosParaExportar);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Negociações");
+
+                // 3. Gera o arquivo .xlsx e dispara o download
+                const dataHoje = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(workbook, `vesto_backup_b3_${dataHoje}.xlsx`);
+
+                showToast("Arquivo Excel gerado com sucesso!", "success");
+
+            } catch (e) {
+                console.error("Erro ao exportar Excel:", e);
+                showToast("Erro ao gerar arquivo Excel.");
+            } finally {
+                // Restaura o texto do botão
+                exportCsvBtn.querySelector('.settings-label').textContent = originalText;
+            }
         });
     }
 	

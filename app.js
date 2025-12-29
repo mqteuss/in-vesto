@@ -1151,10 +1151,9 @@ function renderizarWatchlist() {
     
     carouselEl.innerHTML = '';
 
-    // Card de "Adicionar" se estiver vazio
     if (watchlist.length === 0) {
         carouselEl.innerHTML = `
-            <div onclick="document.getElementById('carteira-search-input').focus(); mudarAba('tab-carteira');" class="fav-card border-dashed border-gray-700 cursor-pointer opacity-70">
+            <div onclick="mudarAba('tab-carteira'); setTimeout(() => document.getElementById('carteira-search-input').focus(), 400);" class="fav-card border-dashed border-gray-700 cursor-pointer opacity-70">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                 <span class="text-[9px] text-gray-500 font-bold uppercase">Add</span>
             </div>`;

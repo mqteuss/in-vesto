@@ -1214,7 +1214,7 @@ function renderizarWatchlist() {
 
 async function processarDividendosPagos() {
     const hoje = new Date();
-    hoje.setHours(23, 59, 59, 999); // Considera até o último segundo de hoje
+    hoje.setHours(23, 59, 59, 999);
 
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const currentSignature = `${hoje.toISOString().split('T')[0]}-${proventosConhecidos.length}-${transacoes.length}-${lastTxId}`;
@@ -1226,21 +1226,13 @@ async function processarDividendosPagos() {
     }
 
     let totalPagos = 0;
-    // Usamos um Set para evitar processar o mesmo ID de provento duas vezes
-    const processados = new Set();
-
     proventosConhecidos.forEach(p => {
-        if (processados.has(p.id)) return;
-        
-        // Padronização da data para evitar erros de fuso horário
         const dataPagamento = new Date(p.paymentDate + 'T00:00:00');
-        
         if (dataPagamento <= hoje) {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
             if (qtd > 0) {
                 totalPagos += (p.value * qtd);
-                processados.add(p.id);
             }
         }
     });
@@ -2787,36 +2779,39 @@ async function renderizarCarteira() {
 }
 
 function renderizarProventos() {
-    let totalFuturo = 0;
     let totalRecebido = 0;
-    const hoje = new Date();
-    hoje.setHours(23, 59, 59, 999);
+    let totalAReceber = 0;
     
-    // Evita duplicatas se o banco trouxer o mesmo provento duas vezes
-    const idsProcessados = new Set();
+    // Usamos o final do dia de hoje como referência
+    const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999); 
 
     proventosAtuais.forEach(provento => {
-        if (!provento || idsProcessados.has(provento.id)) return;
+        if (provento && typeof provento.value === 'number' && provento.value > 0) {
+            // Ajuste de fuso horário para garantir precisão na data
+            const dataPagamento = new Date(provento.paymentDate + 'T00:00:00');
+            const dataReferencia = provento.dataCom || provento.paymentDate;
+            const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
-        const dataPagamento = new Date(provento.paymentDate + 'T00:00:00');
-        const dataReferencia = provento.dataCom || provento.paymentDate;
-        const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-
-        if (qtdElegivel > 0) {
-            if (dataPagamento > hoje) {
-                totalFuturo += (qtdElegivel * provento.value);
-            } else {
-                totalRecebido += (qtdElegivel * provento.value);
+            if (qtdElegivel > 0) {
+                if (dataPagamento <= hoje) {
+                    totalRecebido += (qtdElegivel * provento.value);
+                } else {
+                    totalAReceber += (qtdElegivel * provento.value);
+                }
             }
-            idsProcessados.add(provento.id);
         }
     });
 
-    if (totalProventosEl) totalProventosEl.textContent = formatBRL(totalRecebido);
-    
+    // Atualiza o card da esquerda (RECEBIDOS)
+    if (totalProventosEl) {
+        totalProventosEl.textContent = formatBRL(totalRecebido);
+    }
+
+    // ATUALIZA O CARD DA DIREITA (A RECEBER) - Isso é o que faltava no seu código
     const totalEstimadoEl = document.getElementById('total-estimado');
     if (totalEstimadoEl) {
-        totalEstimadoEl.textContent = formatBRL(totalFuturo);
+        totalEstimadoEl.textContent = formatBRL(totalAReceber);
     }
 }
 

@@ -4542,6 +4542,8 @@ periodoSelectorGroup.addEventListener('click', (e) => {
                 let importadosCount = 0;
                 let errosCount = 0;
 
+// ... (dentro do importExcelInput.addEventListener) ...
+
                 for (const row of jsonData) {
                     const dateRaw = row['Data do Negócio'] || row['Data'] || row['Date'];
                     const tickerRaw = row['Código de Negociação'] || row['Ativo'] || row['Ticker'];
@@ -4561,25 +4563,34 @@ periodoSelectorGroup.addEventListener('click', (e) => {
                             }
 
                             let dataISO;
-                            if (dateRaw.includes('/')) {
+                            if (dateRaw && typeof dateRaw === 'string' && dateRaw.includes('/')) {
                                 const parts = dateRaw.split('/'); 
                                 dataISO = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00`).toISOString();
                             } else {
                                 dataISO = new Date().toISOString(); 
                             }
 
+                            // --- CORREÇÃO DO PREÇO AQUI ---
                             const cleanNumber = (val) => {
                                 if (typeof val === 'number') return val;
                                 if (typeof val === 'string') {
-                                    return parseFloat(val.replace('R$', '').trim().replace('.', '').replace(',', '.'));
+                                    let v = val.replace('R$', '').trim();
+                                    // Se tiver vírgula (ex: "9,25"), troca vírgula por ponto e remove ponto de milhar
+                                    if (v.includes(',')) {
+                                        return parseFloat(v.replace(/\./g, '').replace(',', '.'));
+                                    }
+                                    // Se não tiver vírgula (ex: "9.25"), lê direto
+                                    return parseFloat(v);
                                 }
                                 return 0;
                             };
+                            // ------------------------------
 
                             const qtd = parseInt(cleanNumber(qtdRaw));
                             const preco = parseFloat(cleanNumber(priceRaw));
 
-                            if (qtd > 0 && preco >= 0) {
+                            // Validação extra para evitar importar lixo
+                            if (qtd > 0 && preco >= 0 && !isNaN(preco)) {
                                 const novaTransacao = {
                                     id: 'tx_' + Date.now() + Math.random().toString(36).substr(2, 5),
                                     date: dataISO,

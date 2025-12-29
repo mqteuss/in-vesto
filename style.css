@@ -11,14 +11,14 @@ body {
 }
 
 /* =========================================
-      TEMA CLARO (LIGHT MODE) - REVISADO
+      TEMA CLARO (LIGHT MODE) - CORRIGIDO FINAL
    ========================================= */
 body.light-mode {
     background-color: #f3f4f6;
     color: #1f2937;
 }
 
-/* --- 1. OVERRIDES DE FUNDO, BORDA E IMAGEM (CRÍTICO) --- */
+/* --- 1. OVERRIDES GERAIS DE FUNDO, BORDA E IMAGEM --- */
 body.light-mode .card-bg,
 body.light-mode .modal-content,
 body.light-mode .page-content,
@@ -30,7 +30,6 @@ body.light-mode .wallet-card,
 body.light-mode .history-card,
 body.light-mode #resumo-carteira-card,
 body.light-mode .fav-card,
-/* Captura cores injetadas via JS */
 body.light-mode .bg-black,
 body.light-mode .bg-\[\#151515\],
 body.light-mode .bg-\[\#0a0a0a\],
@@ -38,33 +37,68 @@ body.light-mode .bg-\[\#1C1C1E\],
 body.light-mode .bg-\[\#121212\],
 body.light-mode .bg-\[\#111\] {
     background-color: #ffffff !important;
-    background-image: none !important; /* Remove gradientes escuros */
+    background-image: none !important;
     border-color: #e5e7eb !important;
     color: #1f2937 !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
-/* --- 2. RESUMO CARTEIRA (PREMIUM CARD) --- */
-/* Remove os efeitos de brilho (glow) que atrapalham no modo claro */
+/* --- 2. CORREÇÃO ESPECÍFICA ABA CONTA (NOVO) --- */
+/* Força a cor do texto das opções (Tema, Privacidade, etc) */
+body.light-mode .settings-label {
+    color: #1f2937 !important; /* Preto/Cinza Escuro */
+}
+
+/* Força a cor dos subtítulos (ex: "Ocultar valores") */
+body.light-mode .settings-sub {
+    color: #6b7280 !important; /* Cinza Médio */
+}
+
+/* Títulos das seções (GERAL, SEGURANÇA, DADOS) */
+body.light-mode #tab-config h3 {
+    color: #6b7280 !important; /* Cinza Escuro */
+}
+
+/* Garante que o texto vermelho (Sair da Conta) continue vermelho */
+body.light-mode .text-red-500 {
+    color: #ef4444 !important;
+}
+
+/* Ícones dos menus de configuração */
+body.light-mode .settings-icon-box {
+    background-color: #f3f4f6 !important;
+    border-color: #e5e7eb !important;
+}
+/* Apenas ícones que não são coloridos (ex: setas) */
+body.light-mode .settings-icon-box svg {
+    color: #4b5563;
+}
+
+/* Card do Usuário no topo */
+body.light-mode #tab-config .card-bg .text-white {
+    color: #111827 !important;
+}
+body.light-mode #tab-config .card-bg .text-gray-500 {
+    color: #6b7280 !important;
+}
+
+/* --- 3. RESUMO CARTEIRA (PREMIUM CARD) --- */
 body.light-mode #resumo-carteira-card::before,
 body.light-mode #resumo-carteira-card::after {
     display: none !important;
 }
-
-/* Ajusta o valor grande para ser escuro/gradiente metálico */
 body.light-mode .premium-value-lg {
     background: linear-gradient(180deg, #111827 30%, #4b5563 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     filter: none;
 }
-
 body.light-mode .premium-grid {
     background: rgba(243, 244, 246, 0.8);
     border-top-color: #e5e7eb;
 }
 
-/* --- 3. CORREÇÃO DE TEXTOS (CONTRASTE) --- */
+/* --- 4. CORREÇÃO GERAL DE TEXTOS --- */
 body.light-mode .text-white,
 body.light-mode .text-gray-100,
 body.light-mode .text-gray-200,
@@ -72,7 +106,7 @@ body.light-mode .text-gray-300,
 body.light-mode .text-\[\#e5e5e5\], 
 body.light-mode .text-\[\#cccccc\],
 body.light-mode .text-\[\#888888\],
-body.light-mode .news-card-summary /* Resumo da notícia */ { 
+body.light-mode .news-card-summary { 
     color: #111827 !important; 
 }
 
@@ -84,7 +118,7 @@ body.light-mode .text-\[\#666666\] {
     color: #6b7280 !important; 
 }
 
-/* --- 4. TÍTULOS --- */
+/* --- 5. TÍTULOS --- */
 body.light-mode .app-page-title {
     background: linear-gradient(180deg, #111827 20%, #4b5563 100%) !important;
     -webkit-background-clip: text !important;
@@ -98,7 +132,7 @@ body.light-mode .app-page-title::after {
     color: #7c3aed !important;
 }
 
-/* --- 5. INPUTS E BOTÕES --- */
+/* --- 6. INPUTS E BOTÕES --- */
 body.light-mode input, 
 body.light-mode select, 
 body.light-mode textarea,
@@ -112,7 +146,6 @@ body.light-mode .settings-icon-box {
     color: #111827 !important;
 }
 
-/* Inputs em Modais (precisam ser brancos puros) */
 body.light-mode #add-ativo-modal input,
 body.light-mode #new-password-form input,
 body.light-mode #change-password-form input {
@@ -121,7 +154,6 @@ body.light-mode #change-password-form input {
     color: #111827 !important;
 }
 
-/* Loader pequeno (dentro de botões) vira roxo no claro */
 body.light-mode .loader-sm, 
 body.light-mode .loader-sm::before, 
 body.light-mode .loader-sm::after {
@@ -131,14 +163,13 @@ body.light-mode .loader-sm::after {
 body.light-mode ::-webkit-calendar-picker-indicator { filter: invert(0) !important; }
 body.light-mode input::placeholder { color: #9ca3af !important; }
 
-/* Botões Ativos */
 body.light-mode .periodo-selector-btn.active {
     background-color: rgba(124, 58, 237, 0.1) !important;
     border-color: #7c3aed !important;
     color: #7c3aed !important;
 }
 
-/* --- 6. NAVEGAÇÃO E HEADERS --- */
+/* --- 7. NAVEGAÇÃO E HEADERS --- */
 body.light-mode .bottom-nav {
     background-color: rgba(255, 255, 255, 0.85) !important;
     border-color: #e5e7eb !important;
@@ -155,7 +186,7 @@ body.light-mode .sticky.top-0 {
 }
 body.light-mode .history-header-sticky h3 { color: #374151 !important; }
 
-/* --- 7. UTILS E SKELETONS --- */
+/* --- 8. UTILS E SKELETONS --- */
 body.light-mode .bg-neutral-900,
 body.light-mode .bg-gray-900,
 body.light-mode .bg-gray-800 { 
@@ -170,7 +201,6 @@ body.light-mode .border-neutral-800 {
 body.light-mode .skeleton-text { background-color: #e5e7eb !important; }
 body.light-mode .card-arrow-icon { color: #9ca3af !important; }
 
-/* Cards de Notificação */
 body.light-mode .notif-card-payment {
     background: #f0fdf4 !important;
     border-left-color: #16a34a !important;

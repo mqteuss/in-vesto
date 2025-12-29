@@ -4512,6 +4512,116 @@ periodoSelectorGroup.addEventListener('click', (e) => {
             document.body.removeChild(link);
         });
     }
+	
+	
+	const importExcelBtn = document.getElementById('import-excel-btn');
+    const importExcelInput = document.getElementById('import-excel-input');
+	if (importExcelBtn && importExcelInput) {
+        importExcelBtn.addEventListener('click', () => {
+            importExcelInput.click();
+        });
+
+        importExcelInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const labelOriginal = importExcelBtn.querySelector('.settings-label').textContent;
+            importExcelBtn.querySelector('.settings-label').innerHTML = `<span class="loader-sm"></span> Lendo arquivo...`;
+            importExcelBtn.disabled = true;
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'dd/mm/yyyy' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
+
+                if (jsonData.length === 0) throw new Error("O arquivo está vazio.");
+
+                let importadosCount = 0;
+                let errosCount = 0;
+
+                for (const row of jsonData) {
+                    const dateRaw = row['Data do Negócio'] || row['Data'] || row['Date'];
+                    const tickerRaw = row['Código de Negociação'] || row['Ativo'] || row['Ticker'];
+                    const typeRaw = row['Tipo de Movimentação'] || row['Tipo'] || row['Type'];
+                    const qtdRaw = row['Quantidade'] || row['Qtd'];
+                    const priceRaw = row['Preço'] || row['Preco'] || row['Price'];
+
+                    if (tickerRaw && qtdRaw && priceRaw) {
+                        try {
+                            let ticker = tickerRaw.toString().trim().toUpperCase();
+                            if (ticker.endsWith('F')) ticker = ticker.slice(0, -1); 
+                            
+                            let type = 'buy';
+                            const typeStr = typeRaw ? typeRaw.toString().toLowerCase() : 'compra';
+                            if (typeStr.includes('vend') || typeStr.includes('sell')) {
+                                type = 'sell';
+                            }
+
+                            let dataISO;
+                            if (dateRaw.includes('/')) {
+                                const parts = dateRaw.split('/'); 
+                                dataISO = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00`).toISOString();
+                            } else {
+                                dataISO = new Date().toISOString(); 
+                            }
+
+                            const cleanNumber = (val) => {
+                                if (typeof val === 'number') return val;
+                                if (typeof val === 'string') {
+                                    return parseFloat(val.replace('R$', '').trim().replace('.', '').replace(',', '.'));
+                                }
+                                return 0;
+                            };
+
+                            const qtd = parseInt(cleanNumber(qtdRaw));
+                            const preco = parseFloat(cleanNumber(priceRaw));
+
+                            if (qtd > 0 && preco >= 0) {
+                                const novaTransacao = {
+                                    id: 'tx_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                                    date: dataISO,
+                                    symbol: ticker,
+                                    type: type,
+                                    quantity: qtd,
+                                    price: preco
+                                };
+
+                                await supabaseDB.addTransacao(novaTransacao);
+                                transacoes.push(novaTransacao);
+                                importadosCount++;
+                            }
+
+                        } catch (err) {
+                            console.error("Erro na linha:", row, err);
+                            errosCount++;
+                        }
+                    }
+                }
+
+                if (importadosCount > 0) {
+                    showToast(`${importadosCount} negociações importadas!`, 'success');
+                    saldoCaixa = 0; 
+                    await salvarCaixa();
+                    mesesProcessados = [];
+                    await salvarHistoricoProcessado();
+                    await atualizarTodosDados(true);
+                } else {
+                    showToast("Nenhuma transação válida encontrada.", 'error');
+                }
+
+            } catch (e) {
+                console.error("Erro na importação:", e);
+                showToast("Erro ao ler arquivo: " + e.message);
+            } finally {
+                importExcelBtn.querySelector('.settings-label').textContent = 'Importar B3/Excel';
+                importExcelBtn.disabled = false;
+                importExcelInput.value = ''; 
+            }
+        });
+    }
 
 if (clearCacheBtn) {
         clearCacheBtn.addEventListener('click', () => {

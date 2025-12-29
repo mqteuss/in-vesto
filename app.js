@@ -2801,38 +2801,39 @@ async function renderizarCarteira() {
 }
 
 function renderizarProventos() {
-    let totalRecebido = 0;
-    let totalAReceber = 0; // Nova variável para o cálculo futuro
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    let totalRecebido = 0; // Para o card "Recebidos"
+    let totalAReceber = 0; // Para o card "A Receber"
     
+    const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999); // Ajuste para garantir que hoje seja considerado passado
+
     proventosAtuais.forEach(provento => {
         if (provento && typeof provento.value === 'number' && provento.value > 0) {
             const parts = provento.paymentDate.split('-');
             const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
+            dataPagamento.setHours(0, 0, 0, 0);
+
             const dataReferencia = provento.dataCom || provento.paymentDate;
-            
-            // Verifica quantas cotas você tinha na data de corte
             const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
             if (qtdElegivel > 0) {
-                if (dataPagamento <= hoje) { 
-                    // Soma no "Recebidos"
+                // Se a data de pagamento já passou ou é HOJE
+                if (dataPagamento <= hoje) {
                     totalRecebido += (qtdElegivel * provento.value);
                 } else {
-                    // Soma no "A Receber"
+                    // Se a data de pagamento ainda vai chegar
                     totalAReceber += (qtdElegivel * provento.value);
                 }
             }
         }
     });
 
-    // Atualiza o campo de "Recebidos" (Ex: R$ 5,26)
+    // 1. ATUALIZA O CARD "RECEBIDOS" (Onde estava aparecendo o valor errado)
     if (totalProventosEl) {
         totalProventosEl.textContent = formatBRL(totalRecebido);
     }
 
-    // CORREÇÃO: Atualiza o campo de "A Receber" (Zera se não houver anúncios reais)
+    // 2. ATUALIZA O CARD "A RECEBER" (Para limpar os R$ 4,24 e mostrar o real)
     const totalEstimadoEl = document.getElementById('total-estimado');
     if (totalEstimadoEl) {
         totalEstimadoEl.textContent = formatBRL(totalAReceber);

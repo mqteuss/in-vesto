@@ -5496,6 +5496,8 @@ if (toggleNotifBtn) {
             }
         });
     }
+	window.mudarAba = mudarAba;
+	
 	window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();

@@ -2193,6 +2193,7 @@ function renderizarGraficoPatrimonio() {
     // Se os dados são os mesmos e o gráfico já está desenhado, não faz nada.
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const lastPatId = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1].date : 'none';
+	const lastPatVal = lastItem ? lastItem.value : 0;
     
     // Assinatura combina: Range selecionado + Estado das Transações + Estado do Patrimônio
     const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}`;

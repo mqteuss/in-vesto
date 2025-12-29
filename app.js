@@ -2806,32 +2806,34 @@ function renderizarProventos() {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     
-    // proventosAtuais contém os proventos do banco filtrados para o período recente
+    // Itera pelos proventos conhecidos no banco de dados
     proventosAtuais.forEach(provento => {
         if (provento && typeof provento.value === 'number' && provento.value > 0) {
             const parts = provento.paymentDate.split('-');
             const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
             const dataReferencia = provento.dataCom || provento.paymentDate;
             
-            // Verifica quantas cotas você tinha na data de corte (Data Com)
+            // Verifica a sua posição na data de corte
             const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
             if (qtdElegivel > 0) {
                 if (dataPagamento > hoje) {
+                    // Soma para o campo "A Receber"
                     totalFuturo += (qtdElegivel * provento.value);
                 } else {
+                    // Soma para o campo "Recebidos"
                     totalRecebido += (qtdElegivel * provento.value);
                 }
             }
         }
     });
 
-    // Atualiza o card de RECEBIDOS (R$ 5,26 na sua imagem)
+    // ATUALIZA RECEBIDOS (Ex: R$ 5,26)
     if (totalProventosEl) {
         totalProventosEl.textContent = formatBRL(totalRecebido);
     }
     
-    // CORREÇÃO: Atualiza o card de A RECEBER (para limpar os R$ 4,24 antigos)
+    // ATUALIZA A RECEBER (Isso vai limpar o valor "fantasma" se o total for 0)
     const totalEstimadoEl = document.getElementById('total-estimado');
     if (totalEstimadoEl) {
         totalEstimadoEl.textContent = formatBRL(totalFuturo);

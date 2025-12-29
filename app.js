@@ -2801,42 +2801,41 @@ async function renderizarCarteira() {
 }
 
 function renderizarProventos() {
-    let totalFuturo = 0;   // "A Receber"
-    let totalRecebido = 0; // "Recebidos"
+    let totalRecebido = 0;
+    let totalAReceber = 0; // Nova variável para o cálculo futuro
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     
-    // Itera pelos proventos conhecidos no banco de dados
     proventosAtuais.forEach(provento => {
         if (provento && typeof provento.value === 'number' && provento.value > 0) {
             const parts = provento.paymentDate.split('-');
             const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
             const dataReferencia = provento.dataCom || provento.paymentDate;
             
-            // Verifica a sua posição na data de corte
+            // Verifica quantas cotas você tinha na data de corte
             const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
             if (qtdElegivel > 0) {
-                if (dataPagamento > hoje) {
-                    // Soma para o campo "A Receber"
-                    totalFuturo += (qtdElegivel * provento.value);
-                } else {
-                    // Soma para o campo "Recebidos"
+                if (dataPagamento <= hoje) { 
+                    // Soma no "Recebidos"
                     totalRecebido += (qtdElegivel * provento.value);
+                } else {
+                    // Soma no "A Receber"
+                    totalAReceber += (qtdElegivel * provento.value);
                 }
             }
         }
     });
 
-    // ATUALIZA RECEBIDOS (Ex: R$ 5,26)
+    // Atualiza o campo de "Recebidos" (Ex: R$ 5,26)
     if (totalProventosEl) {
         totalProventosEl.textContent = formatBRL(totalRecebido);
     }
-    
-    // ATUALIZA A RECEBER (Isso vai limpar o valor "fantasma" se o total for 0)
+
+    // CORREÇÃO: Atualiza o campo de "A Receber" (Zera se não houver anúncios reais)
     const totalEstimadoEl = document.getElementById('total-estimado');
     if (totalEstimadoEl) {
-        totalEstimadoEl.textContent = formatBRL(totalFuturo);
+        totalEstimadoEl.textContent = formatBRL(totalAReceber);
     }
 }
 

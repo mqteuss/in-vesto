@@ -11,40 +11,39 @@ body {
 }
 
 /* =========================================
-      TEMA CLARO (LIGHT MODE) - CONTRASTE CORRIGIDO
+      TEMA CLARO (LIGHT MODE) - FINAL V2
    ========================================= */
 body.light-mode {
-    background-color: #ffffff; /* Fundo da página BRANCO PURO */
+    background-color: #ffffff;
     color: #1f2937;
 }
 
-/* --- 1. CARDS AGORA SÃO CINZA CLARO (PARA DESTACAR DO FUNDO BRANCO) --- */
+/* --- 1. CARDS CINZA CLARO --- */
 body.light-mode .card-bg,
 body.light-mode .modal-content,
 body.light-mode .page-content,
 body.light-mode .card-drawer,
 body.light-mode .drawer-content,
-body.light-mode .settings-group, /* Grupos da aba Conta */
+body.light-mode .settings-group,
 body.light-mode .settings-item,
 body.light-mode .wallet-card,
 body.light-mode .history-card,
 body.light-mode #resumo-carteira-card,
 body.light-mode .fav-card,
-/* Captura cores injetadas via JS */
 body.light-mode .bg-black,
 body.light-mode .bg-\[\#151515\],
 body.light-mode .bg-\[\#0a0a0a\],
 body.light-mode .bg-\[\#1C1C1E\],
 body.light-mode .bg-\[\#121212\],
 body.light-mode .bg-\[\#111\] {
-    background-color: #f3f4f6 !important; /* CINZA CLARO (Tom mais escuro que o branco) */
+    background-color: #f3f4f6 !important;
     background-image: none !important;
-    border: 1px solid #e5e7eb !important; /* Borda sutil para definição */
+    border: 1px solid #e5e7eb !important;
     color: #1f2937 !important;
-    box-shadow: none !important; /* Remove sombras excessivas para visual flat/clean */
+    box-shadow: none !important;
 }
 
-/* --- 2. INPUTS AGORA SÃO BRANCOS (PARA DESTACAR DENTRO DO CARD CINZA) --- */
+/* --- 2. INPUTS BRANCOS --- */
 body.light-mode input, 
 body.light-mode select, 
 body.light-mode textarea,
@@ -53,13 +52,12 @@ body.light-mode .compact-search-input,
 body.light-mode .filter-funnel-btn,
 body.light-mode .periodo-selector-btn,
 body.light-mode .settings-icon-box {
-    background-color: #ffffff !important; /* Input BRANCO */
+    background-color: #ffffff !important;
     border-color: #d1d5db !important;
     color: #111827 !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Leve sombra interna/relevo */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-/* Inputs específicos de modais */
 body.light-mode #add-ativo-modal input,
 body.light-mode #new-password-form input,
 body.light-mode #change-password-form input {
@@ -69,30 +67,36 @@ body.light-mode #change-password-form input {
 }
 
 /* --- 3. CORREÇÃO ESPECÍFICA ABA CONTA --- */
-body.light-mode .settings-label {
-    color: #111827 !important; /* Preto quase puro */
-    font-weight: 600;
-}
-body.light-mode .settings-sub {
-    color: #6b7280 !important;
-}
-body.light-mode #tab-config h3 {
-    color: #4b5563 !important; /* Títulos das seções mais escuros */
-}
-/* Ícones da aba conta */
+body.light-mode .settings-label { color: #111827 !important; font-weight: 600; }
+body.light-mode .settings-sub { color: #6b7280 !important; }
+body.light-mode #tab-config h3 { color: #4b5563 !important; }
 body.light-mode .settings-icon-box {
-    background-color: #ffffff !important; /* Fundo do ícone branco */
+    background-color: #ffffff !important;
     border-color: #e5e7eb !important;
 }
-/* Texto "Minha Conta" no card do topo */
-body.light-mode #tab-config .card-bg .text-white {
-    color: #111827 !important;
+body.light-mode #tab-config .card-bg .text-white { color: #111827 !important; }
+body.light-mode #tab-config .card-bg .text-gray-500 { color: #4b5563 !important; }
+
+/* --- 4. CORREÇÃO CARD RESUMO (VALORES INFERIORES) --- */
+/* ADICIONADO: Corrige Investido/Recebido/A Receber */
+body.light-mode .premium-stat-value {
+    color: #1f2937 !important; 
 }
-body.light-mode #tab-config .card-bg .text-gray-500 {
-    color: #4b5563 !important;
+body.light-mode .premium-value-lg {
+    background: linear-gradient(180deg, #111827 30%, #4b5563 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: none;
+}
+/* Esconde brilhos */
+body.light-mode #resumo-carteira-card::before,
+body.light-mode #resumo-carteira-card::after { display: none !important; }
+body.light-mode .premium-grid {
+    background: rgba(255, 255, 255, 0.5);
+    border-top-color: #e5e7eb;
 }
 
-/* --- 4. TEXTOS E TÍTULOS --- */
+/* --- 5. TEXTOS E TÍTULOS --- */
 body.light-mode .app-page-title {
     background: linear-gradient(180deg, #111827 20%, #374151 100%) !important;
     -webkit-background-clip: text !important;
@@ -106,7 +110,7 @@ body.light-mode .app-page-title::after {
     color: #7c3aed !important;
 }
 
-/* Ajuste de contraste para textos que eram brancos */
+/* Mapeamento de Cores de Texto */
 body.light-mode .text-white,
 body.light-mode .text-gray-100,
 body.light-mode .text-gray-200,
@@ -114,61 +118,34 @@ body.light-mode .text-gray-300,
 body.light-mode .text-\[\#e5e5e5\], 
 body.light-mode .text-\[\#cccccc\],
 body.light-mode .text-\[\#888888\],
-body.light-mode .news-card-summary { 
-    color: #1f2937 !important; 
-}
+body.light-mode .news-card-summary { color: #1f2937 !important; }
 
 body.light-mode .text-gray-400,
 body.light-mode .text-gray-500,
 body.light-mode .text-neutral-400,
 body.light-mode .text-neutral-500,
-body.light-mode .text-\[\#666666\] { 
-    color: #4b5563 !important; 
-}
-
-/* --- 5. RESUMO CARTEIRA (PREMIUM CARD) --- */
-/* No modo claro, este card também fica cinza claro */
-body.light-mode #resumo-carteira-card {
-    background: #f3f4f6 !important;
-    border: 1px solid #e5e7eb !important;
-}
-body.light-mode #resumo-carteira-card::before,
-body.light-mode #resumo-carteira-card::after {
-    display: none !important;
-}
-body.light-mode .premium-value-lg {
-    background: linear-gradient(180deg, #111827 30%, #4b5563 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: none;
-}
-body.light-mode .premium-grid {
-    background: rgba(255, 255, 255, 0.5); /* Grade interna levemente mais clara */
-    border-top-color: #e5e7eb;
-}
+body.light-mode .text-\[\#666666\] { color: #4b5563 !important; }
 
 /* --- 6. UTILS E OUTROS --- */
 body.light-mode .loader-sm, 
 body.light-mode .loader-sm::before, 
-body.light-mode .loader-sm::after {
-    background: #7c3aed !important;
-}
+body.light-mode .loader-sm::after { background: #7c3aed !important; }
 body.light-mode ::-webkit-calendar-picker-indicator { filter: invert(0) !important; }
 body.light-mode input::placeholder { color: #9ca3af !important; }
 
-/* Botões de Período (Gráficos) */
+/* Botões de Gráfico */
 body.light-mode .periodo-selector-btn {
     background-color: #ffffff !important;
     color: #4b5563 !important;
     border-color: #d1d5db !important;
 }
 body.light-mode .periodo-selector-btn.active {
-    background-color: #f3f4f6 !important; /* Ativo fica cinza */
+    background-color: #f3f4f6 !important;
     border-color: #7c3aed !important;
     color: #7c3aed !important;
 }
 
-/* Navegação Inferior */
+/* Navegação */
 body.light-mode .bottom-nav {
     background-color: rgba(255, 255, 255, 0.9) !important;
     border-color: #e5e7eb !important;
@@ -194,19 +171,17 @@ body.light-mode .bg-gray-800 {
 }
 body.light-mode .border-\[\#2C2C2E\],
 body.light-mode .border-gray-800,
-body.light-mode .border-neutral-800 {
-    border-color: #e5e7eb !important;
-}
+body.light-mode .border-neutral-800 { border-color: #e5e7eb !important; }
 body.light-mode .skeleton-text { background-color: #e5e7eb !important; }
 body.light-mode .card-arrow-icon { color: #9ca3af !important; }
 
 /* Notificações */
 body.light-mode .notif-card-payment {
-    background: #dcfce7 !important; /* Verde bem claro */
+    background: #dcfce7 !important;
     border-left-color: #16a34a !important;
 }
 body.light-mode .notif-card-datacom {
-    background: #fef9c3 !important; /* Amarelo bem claro */
+    background: #fef9c3 !important;
     border-left-color: #ca8a04 !important;
 }
 

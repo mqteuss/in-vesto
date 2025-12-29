@@ -2801,37 +2801,38 @@ async function renderizarCarteira() {
 }
 
 function renderizarProventos() {
-    let totalFuturo = 0;   // O que ainda vai cair (A Receber)
-    let totalRecebido = 0; // O que já caiu (Recebidos)
+    let totalFuturo = 0;   // "A Receber"
+    let totalRecebido = 0; // "Recebidos"
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     
-    // proventosAtuais são os proventos filtrados dos últimos 45 dias
+    // proventosAtuais contém os proventos do banco filtrados para o período recente
     proventosAtuais.forEach(provento => {
         if (provento && typeof provento.value === 'number' && provento.value > 0) {
             const parts = provento.paymentDate.split('-');
             const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
             const dataReferencia = provento.dataCom || provento.paymentDate;
+            
+            // Verifica quantas cotas você tinha na data de corte (Data Com)
             const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
             if (qtdElegivel > 0) {
                 if (dataPagamento > hoje) {
-                    // Soma para "A Receber"
                     totalFuturo += (qtdElegivel * provento.value);
                 } else {
-                    // Soma para "Recebidos"
                     totalRecebido += (qtdElegivel * provento.value);
                 }
             }
         }
     });
 
-    // Atualiza o card de RECEBIDOS
+    // Atualiza o card de RECEBIDOS (R$ 5,26 na sua imagem)
     if (totalProventosEl) {
         totalProventosEl.textContent = formatBRL(totalRecebido);
     }
     
-    // Atualiza o card de A RECEBER (Isso remove o "bug" do valor estático)
+    // CORREÇÃO: Atualiza o card de A RECEBER (para limpar os R$ 4,24 antigos)
+    const totalEstimadoEl = document.getElementById('total-estimado');
     if (totalEstimadoEl) {
         totalEstimadoEl.textContent = formatBRL(totalFuturo);
     }

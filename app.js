@@ -1212,59 +1212,45 @@ function renderizarWatchlist() {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
 
-    async function processarDividendosPagos() {
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const hojeString = hoje.toISOString().split('T')[0];
+async function processarDividendosPagos() {
+    const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999); // Considera até o último segundo de hoje
 
-const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-const currentSignature = `${hojeString}-${proventosConhecidos.length}-${transacoes.length}-${lastTxId}`;
+    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+    const currentSignature = `${hoje.toISOString().split('T')[0]}-${proventosConhecidos.length}-${transacoes.length}-${lastTxId}`;
 
-        if (currentSignature === lastProventosCalcSignature) {
-            saldoCaixa = cachedSaldoCaixa;
-            if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
-            return;
-        }
-
-        let novoSaldoCalculado = 0; 
-        let proventosParaMarcarComoProcessado = [];
-
-        for (const provento of proventosConhecidos) {
-            if (provento.paymentDate && provento.value > 0) {
-                const parts = provento.paymentDate.split('-');
-                const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
-
-                if (!isNaN(dataPagamento) && dataPagamento <= hoje) {
-                    const dataReferencia = provento.dataCom || provento.paymentDate;
-                    const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-
-                    if (qtdElegivel > 0) {
-                        const valorRecebido = provento.value * qtdElegivel;
-                        novoSaldoCalculado += valorRecebido;
-                    }
-                    
-                    if (!provento.processado) {
-                        provento.processado = true;
-                        proventosParaMarcarComoProcessado.push(provento);
-                    }
-                }
-            }
-        }
-        
-        saldoCaixa = novoSaldoCalculado;
-        cachedSaldoCaixa = novoSaldoCalculado;
-        lastProventosCalcSignature = currentSignature;
-
-        await salvarCaixa();
-        
+    if (currentSignature === lastProventosCalcSignature) {
+        saldoCaixa = cachedSaldoCaixa;
         if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+        return;
+    }
+
+    let totalPagos = 0;
+    // Usamos um Set para evitar processar o mesmo ID de provento duas vezes
+    const processados = new Set();
+
+    proventosConhecidos.forEach(p => {
+        if (processados.has(p.id)) return;
         
-        if (proventosParaMarcarComoProcessado.length > 0) {
-            for (const provento of proventosParaMarcarComoProcessado) {
-                await supabaseDB.updateProventoProcessado(provento.id);
+        // Padronização da data para evitar erros de fuso horário
+        const dataPagamento = new Date(p.paymentDate + 'T00:00:00');
+        
+        if (dataPagamento <= hoje) {
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+            if (qtd > 0) {
+                totalPagos += (p.value * qtd);
+                processados.add(p.id);
             }
         }
-    }
+    });
+
+    saldoCaixa = totalPagos;
+    cachedSaldoCaixa = saldoCaixa;
+    lastProventosCalcSignature = currentSignature;
+
+    if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+}
 
 function calcularCarteira() {
     // 1. OTIMIZAÇÃO: Cria uma assinatura simples baseada no tamanho e no último ID
@@ -2801,42 +2787,36 @@ async function renderizarCarteira() {
 }
 
 function renderizarProventos() {
-    let totalRecebido = 0; // Para o card "Recebidos"
-    let totalAReceber = 0; // Para o card "A Receber"
-    
+    let totalFuturo = 0;
+    let totalRecebido = 0;
     const hoje = new Date();
-    hoje.setHours(23, 59, 59, 999); // Ajuste para garantir que hoje seja considerado passado
+    hoje.setHours(23, 59, 59, 999);
+    
+    // Evita duplicatas se o banco trouxer o mesmo provento duas vezes
+    const idsProcessados = new Set();
 
     proventosAtuais.forEach(provento => {
-        if (provento && typeof provento.value === 'number' && provento.value > 0) {
-            const parts = provento.paymentDate.split('-');
-            const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
-            dataPagamento.setHours(0, 0, 0, 0);
+        if (!provento || idsProcessados.has(provento.id)) return;
 
-            const dataReferencia = provento.dataCom || provento.paymentDate;
-            const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+        const dataPagamento = new Date(provento.paymentDate + 'T00:00:00');
+        const dataReferencia = provento.dataCom || provento.paymentDate;
+        const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
-            if (qtdElegivel > 0) {
-                // Se a data de pagamento já passou ou é HOJE
-                if (dataPagamento <= hoje) {
-                    totalRecebido += (qtdElegivel * provento.value);
-                } else {
-                    // Se a data de pagamento ainda vai chegar
-                    totalAReceber += (qtdElegivel * provento.value);
-                }
+        if (qtdElegivel > 0) {
+            if (dataPagamento > hoje) {
+                totalFuturo += (qtdElegivel * provento.value);
+            } else {
+                totalRecebido += (qtdElegivel * provento.value);
             }
+            idsProcessados.add(provento.id);
         }
     });
 
-    // 1. ATUALIZA O CARD "RECEBIDOS" (Onde estava aparecendo o valor errado)
-    if (totalProventosEl) {
-        totalProventosEl.textContent = formatBRL(totalRecebido);
-    }
-
-    // 2. ATUALIZA O CARD "A RECEBER" (Para limpar os R$ 4,24 e mostrar o real)
+    if (totalProventosEl) totalProventosEl.textContent = formatBRL(totalRecebido);
+    
     const totalEstimadoEl = document.getElementById('total-estimado');
     if (totalEstimadoEl) {
-        totalEstimadoEl.textContent = formatBRL(totalAReceber);
+        totalEstimadoEl.textContent = formatBRL(totalFuturo);
     }
 }
 

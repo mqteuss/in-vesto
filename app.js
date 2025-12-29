@@ -376,7 +376,8 @@ function atualizarCardElemento(card, ativo, dados) {
 
 document.addEventListener('DOMContentLoaded', async () => {
 	
-	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
+	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO)
+	const totalEstimadoEl = document.getElementById('total-estimado');
 	let lastProventosListSignature = '';
 	let lastHistoricoListSignature = '';
 	let lastPatrimonioCalcSignature = '';
@@ -2800,28 +2801,40 @@ async function renderizarCarteira() {
 }
 
 function renderizarProventos() {
-    let totalRecebido = 0; // Mudamos o foco para o que já caiu
+    let totalFuturo = 0;   // O que ainda vai cair (A Receber)
+    let totalRecebido = 0; // O que já caiu (Recebidos)
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     
+    // proventosAtuais são os proventos filtrados dos últimos 45 dias
     proventosAtuais.forEach(provento => {
         if (provento && typeof provento.value === 'number' && provento.value > 0) {
             const parts = provento.paymentDate.split('-');
             const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
+            const dataReferencia = provento.dataCom || provento.paymentDate;
+            const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
 
-            // MUDANÇA AQUI: Agora somamos o que é de HOJE para TRÁS
-            if (dataPagamento <= hoje) { 
-                const dataReferencia = provento.dataCom || provento.paymentDate;
-                const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-                
-                if (qtdElegivel > 0) {
+            if (qtdElegivel > 0) {
+                if (dataPagamento > hoje) {
+                    // Soma para "A Receber"
+                    totalFuturo += (qtdElegivel * provento.value);
+                } else {
+                    // Soma para "Recebidos"
                     totalRecebido += (qtdElegivel * provento.value);
                 }
             }
         }
     });
-    // Atualiza o card na tela com o valor total já recebido
-    totalProventosEl.textContent = formatBRL(totalRecebido);
+
+    // Atualiza o card de RECEBIDOS
+    if (totalProventosEl) {
+        totalProventosEl.textContent = formatBRL(totalRecebido);
+    }
+    
+    // Atualiza o card de A RECEBER (Isso remove o "bug" do valor estático)
+    if (totalEstimadoEl) {
+        totalEstimadoEl.textContent = formatBRL(totalFuturo);
+    }
 }
 
     async function handleAtualizarNoticias(force = false) {

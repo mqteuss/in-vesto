@@ -377,6 +377,7 @@ function atualizarCardElemento(card, ativo, dados) {
 document.addEventListener('DOMContentLoaded', async () => {
 	
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
+	let lastProventosListSignature = '';
 	let lastHistoricoListSignature = '';
 	let lastPatrimonioCalcSignature = '';
 	let currentPatrimonioRange = '1M'; // ADICIONADO AQUI
@@ -1471,26 +1472,39 @@ function renderizarHistorico() {
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
-    listaHistoricoProventos.innerHTML = '';
+    if (!listaHistoricoProventos) return;
+
+    // --- 1. OTIMIZAÇÃO: SMART CHECK ---
+    // Cria uma digital baseada na quantidade de proventos, no ID do último e no termo de busca atual
+    const lastId = proventosConhecidos.length > 0 ? (proventosConhecidos[proventosConhecidos.length - 1].id || 'none') : 'none';
+    const currentSignature = `${proventosConhecidos.length}-${lastId}-${provSearchTerm}`;
+
+    // Se os dados e filtros forem os mesmos e a lista já estiver desenhada, aborta o processamento
+    if (currentSignature === lastProventosListSignature && listaHistoricoProventos.children.length > 0) {
+        return; 
+    }
     
+    // Atualiza a assinatura
+    lastProventosListSignature = currentSignature;
+
+    // --- 2. FILTRAGEM E LIMPEZA ---
+    listaHistoricoProventos.innerHTML = '';
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // 1. Filtra por Data (Pagos) E pelo Termo de Busca
+    // Filtra por Data (Pagos) e pelo Termo de Busca (global: provSearchTerm)
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         
-        // Verificação de Data
         const parts = p.paymentDate.split('-');
         const dPag = new Date(parts[0], parts[1]-1, parts[2]);
         const dataValida = dPag <= hoje;
         
-        // Verificação da Busca
         const buscaValida = provSearchTerm === '' || p.symbol.includes(provSearchTerm);
 
         return dataValida && buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    // 2. Verifica se está vazio
+    // Verifica se a lista ficou vazia após o filtro
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
@@ -1502,14 +1516,14 @@ function renderizarHistoricoProventos() {
         return;
     }
 
-    // 3. Agrupamento e Renderização
+    // --- 3. AGRUPAMENTO POR MÊS E RENDERIZAÇÃO ---
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
-        // CORREÇÃO 1: Pré-filtra itens válidos (onde você tinha cotas)
+        // Filtra itens onde o usuário realmente tinha posição na data
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1520,7 +1534,7 @@ function renderizarHistoricoProventos() {
             return false;
         });
 
-        // CORREÇÃO 1: Se o total do mês for zero, pula esse mês inteiro (não renderiza)
+        // Se o total do mês for zero, pula a renderização deste bloco de mês
         if (totalMes === 0) return;
 
         const header = document.createElement('div');
@@ -1539,16 +1553,10 @@ function renderizarHistoricoProventos() {
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
-        // Usa os itensValidos calculados acima
         itensValidos.forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            
-            // CORREÇÃO 2: Data Precisa. 
-            // Em vez de criar new Date() que sofre com fuso horário, quebra a string.
-            // Formato vindo do scraper é sempre YYYY-MM-DD
-            const dia = p.paymentDate.split('-')[2]; 
-
+            const dia = p.paymentDate.split('-')[2];
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';
@@ -1561,7 +1569,6 @@ function renderizarHistoricoProventos() {
                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
                         <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
                     </div>
-                    
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
@@ -1572,11 +1579,10 @@ function renderizarHistoricoProventos() {
                             <span>•</span>
                             <span>${qtd} cotas</span>
                             <span>•</span>
-                            <span>${formatBRL(p.value)}</span>
+                            <span>${formatBRL(p.value)}/cota</span>
                         </div>
                     </div>
                 </div>
-                
                 <div class="text-right flex flex-col items-end justify-center">
                     <span class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
                 </div>
@@ -2189,17 +2195,17 @@ function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
     
-    // 1. OTIMIZAÇÃO: Verifica se os dados mudaram E se o gráfico já existe
-    // Se os dados são os mesmos e o gráfico já está desenhado, não faz nada.
+    // 1. OTIMIZAÇÃO CORRIGIDA
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const lastPatId = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1].date : 'none';
-	const lastPatVal = lastItem ? lastItem.value : 0;
+    const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null; // Define o item primeiro
+    const lastPatId = lastItem ? lastItem.date : 'none';
+    const lastPatVal = lastItem ? lastItem.value : 0; 
     
-    // Assinatura combina: Range selecionado + Estado das Transações + Estado do Patrimônio
-    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}`;
+    // Inclua lastPatVal na assinatura para o gráfico atualizar se o preço mudar hoje
+    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
     if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
-        return; // Sai antes de fazer o loop pesado de cálculo de custo
+        return; 
     }
 
     const ctx = canvas.getContext('2d');

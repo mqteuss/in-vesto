@@ -1959,13 +1959,14 @@ function renderizarGraficoAlocacao(dadosGrafico) {
     }
 }
     
+// --- EM app.js (Substitua a função renderizarGraficoHistorico inteira) ---
+
 function renderizarGraficoHistorico({ labels, data }) {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
     // --- LÓGICA DE FILTRO (Últimos 12 Meses) ---
-    // Pega apenas os últimos 12 itens dos arrays
     const labelsFiltrados = labels.slice(-12);
     const dataFiltrados = data.slice(-12);
     // -------------------------------------------
@@ -1994,6 +1995,10 @@ function renderizarGraficoHistorico({ labels, data }) {
             const { ctx } = chart;
             ctx.save();
             
+            // VERIFICAÇÃO DE TEMA (CORREÇÃO AQUI)
+            const isLight = document.body.classList.contains('light-mode');
+            const textColor = isLight ? '#374151' : '#e5e7eb'; // Escuro no Light, Claro no Dark
+            
             chart.data.datasets.forEach((dataset, i) => {
                 const meta = chart.getDatasetMeta(i);
                 meta.data.forEach((bar, index) => {
@@ -2002,7 +2007,7 @@ function renderizarGraficoHistorico({ labels, data }) {
                         const text = formatBRL(value); 
                         
                         ctx.font = 'bold 10px sans-serif';
-                        ctx.fillStyle = '#e5e7eb'; 
+                        ctx.fillStyle = textColor; // Usa a cor dinâmica
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'bottom';
                         
@@ -2021,10 +2026,10 @@ function renderizarGraficoHistorico({ labels, data }) {
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labelsFiltrados, // Usa os dados filtrados
+            labels: labelsFiltrados,
             datasets: [{
                 label: 'Total Recebido',
-                data: dataFiltrados,     // Usa os dados filtrados
+                data: dataFiltrados,
                 backgroundColor: gradient,
                 borderColor: 'rgba(192, 132, 252, 0.3)', 
                 borderWidth: 1,
@@ -2051,7 +2056,8 @@ function renderizarGraficoHistorico({ labels, data }) {
                 x: { 
                     grid: { display: false }, 
                     ticks: {
-                        color: '#9ca3af',
+                        // A cor dos eixos já é tratada globalmente, mas reforçamos aqui
+                        color: document.body.classList.contains('light-mode') ? '#374151' : '#9ca3af',
                         font: { size: 10, weight: 'bold' }
                     }
                 }

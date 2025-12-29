@@ -1216,7 +1216,8 @@ function renderizarWatchlist() {
         hoje.setHours(0, 0, 0, 0);
         const hojeString = hoje.toISOString().split('T')[0];
 
-        const currentSignature = `${hojeString}-${proventosConhecidos.length}-${transacoes.length}`;
+const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+const currentSignature = `${hojeString}-${proventosConhecidos.length}-${transacoes.length}-${lastTxId}`;
 
         if (currentSignature === lastProventosCalcSignature) {
             saldoCaixa = cachedSaldoCaixa;
@@ -2798,28 +2799,30 @@ async function renderizarCarteira() {
     }
 }
 
-    function renderizarProventos() {
-        let totalEstimado = 0;
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        
-        proventosAtuais.forEach(provento => {
-            if (provento && typeof provento.value === 'number' && provento.value > 0) {
-                 const parts = provento.paymentDate.split('-');
-                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
+function renderizarProventos() {
+    let totalRecebido = 0; // Mudamos o foco para o que já caiu
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    proventosAtuais.forEach(provento => {
+        if (provento && typeof provento.value === 'number' && provento.value > 0) {
+            const parts = provento.paymentDate.split('-');
+            const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
-                 if (dataPagamento > hoje) {
-                     const dataReferencia = provento.dataCom || provento.paymentDate;
-                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-                     
-                     if (qtdElegivel > 0) {
-                         totalEstimado += (qtdElegivel * provento.value);
-                     }
-                 }
+            // MUDANÇA AQUI: Agora somamos o que é de HOJE para TRÁS
+            if (dataPagamento <= hoje) { 
+                const dataReferencia = provento.dataCom || provento.paymentDate;
+                const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+                
+                if (qtdElegivel > 0) {
+                    totalRecebido += (qtdElegivel * provento.value);
+                }
             }
-        });
-        totalProventosEl.textContent = formatBRL(totalEstimado);
-    }
+        }
+    });
+    // Atualiza o card na tela com o valor total já recebido
+    totalProventosEl.textContent = formatBRL(totalRecebido);
+}
 
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v5_filtered';
@@ -3298,7 +3301,8 @@ async function atualizarTodosDados(force = false) {
         
         // --- CÁLCULOS LOCAIS (RÁPIDOS) ---
         calcularCarteira();
-        await processarDividendosPagos(); 
+        await processarDividendosPagos();
+		renderizarProventos();
         renderizarHistorico();
         renderizarGraficoPatrimonio(); 
         

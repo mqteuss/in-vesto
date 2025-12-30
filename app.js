@@ -2226,21 +2226,20 @@ function renderizarGraficoHistorico({ labels, data }) {
         }
     }
     
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio INTEIRA ---
+
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
     
     // --- 1. OTIMIZAÇÃO: SMART CHECK ---
-    // Cria uma assinatura única do estado atual
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
     const lastPatId = lastItem ? lastItem.date : 'none';
     const lastPatVal = lastItem ? lastItem.value : 0;
     
-    // A assinatura considera: Range selecionado, Estado das Transações e Estado do Patrimônio (Data e Valor)
     const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
-    // Se a assinatura for igual à última processada e o gráfico já existir, não faz nada
     if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
         return; 
     }
@@ -2273,6 +2272,7 @@ function renderizarGraficoPatrimonio() {
     }
     dataCorte.setHours(0, 0, 0, 0);
 
+    // Prepara dados de patrimônio ordenados
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
@@ -2286,8 +2286,7 @@ function renderizarGraficoPatrimonio() {
         const grupos = {};
         dadosOrdenados.forEach(p => {
             const chaveMes = p.date.substring(0, 7);
-            // Pega o último registro do mês
-            grupos[chaveMes] = p;
+            grupos[chaveMes] = p; // Pega o último registro do mês
         });
         dadosOrdenados = Object.values(grupos);
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -2301,32 +2300,53 @@ function renderizarGraficoPatrimonio() {
         return;
     }
 
-    // --- 3. PREPARAÇÃO DOS DADOS ---
-    const labels = dadosOrdenados.map(p => {
+    // --- 3. PREPARAÇÃO DOS DADOS (ALGORITMO OTIMIZADO) ---
+    const labels = [];
+    const dataValor = [];
+    
+    // Otimização do Custo Investido:
+    // Em vez de recalcular tudo para cada dia (N^2), usamos um acumulador linear (N)
+    
+    // 1. Ordena transações por data
+    const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    let custoAcumulado = 0;
+    let txIndex = 0;
+    const dataCusto = [];
+
+    dadosOrdenados.forEach(p => {
+        // Labels
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         
         if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
-             return mes;
+             labels.push(mes);
+        } else {
+             labels.push([dia, mes]);
         }
-        return [dia, mes];
-    });
 
-    const dataValor = dadosOrdenados.map(p => p.value);
+        // Valor Patrimônio
+        dataValor.push(p.value);
 
-    // Cálculo do "Custo Investido" histórico (A parte pesada que agora é evitada pelo Smart Check)
-    const dataCusto = dadosOrdenados.map(p => {
-        const dataSnapshot = new Date(p.date + 'T23:59:59');
-        return transacoes.reduce((acc, t) => {
-            const dataTransacao = new Date(t.date);
-            if (dataTransacao <= dataSnapshot) {
-                if (t.type === 'buy') return acc + (t.quantity * t.price);
-                if (t.type === 'sell') return acc - (t.quantity * t.price); 
+        // Cálculo Rápido do Custo
+        // Avança o índice das transações até a data deste ponto do gráfico
+        const dataPontoLimite = new Date(p.date + 'T23:59:59');
+        
+        while(txIndex < txOrdenadas.length) {
+            const tx = txOrdenadas[txIndex];
+            const dataTx = new Date(tx.date);
+            
+            if (dataTx <= dataPontoLimite) {
+                if (tx.type === 'buy') custoAcumulado += (tx.quantity * tx.price);
+                if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
+                txIndex++;
+            } else {
+                break; // As próximas transações são do futuro, para por aqui
             }
-            return acc;
-        }, 0);
+        }
+        dataCusto.push(custoAcumulado);
     });
 
     // --- 4. RENDERIZAÇÃO ---
@@ -2334,11 +2354,14 @@ function renderizarGraficoPatrimonio() {
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
 
+    // Configuração de animação: Desliga se for apenas update para evitar lag
+    const animationConfig = patrimonioChartInstance ? false : { duration: 1000, easing: 'easeOutQuart' };
+
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
         patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        patrimonioChartInstance.update();
+        patrimonioChartInstance.update('none'); // 'none' evita animação no update para performance máxima
     } else {
         patrimonioChartInstance = new Chart(ctx, {
             type: 'line',
@@ -2379,6 +2402,7 @@ function renderizarGraficoPatrimonio() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: animationConfig, // Otimização de animação
                 layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {

@@ -2228,16 +2228,19 @@ function renderizarGraficoHistorico({ labels, data }) {
     
 // --- EM app.js: Substitua a função renderizarGraficoPatrimonio INTEIRA ---
 
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
     
-    // --- 1. OTIMIZAÇÃO: SMART CHECK ---
+    // Smart Check
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
     const lastPatId = lastItem ? lastItem.date : 'none';
     const lastPatVal = lastItem ? lastItem.value : 0;
     
+    // Adicionei currentPatrimonioRange na assinatura para forçar update ao trocar botão
     const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
     if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
@@ -2247,13 +2250,13 @@ function renderizarGraficoPatrimonio() {
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
 
-    // Definição de Cores
+    // Cores
     const colorLinePatrimonio = '#c084fc'; 
     const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // --- 2. FILTRAGEM DE DATA ---
+    // 1. Data de Corte
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     
@@ -2272,7 +2275,7 @@ function renderizarGraficoPatrimonio() {
     }
     dataCorte.setHours(0, 0, 0, 0);
 
-    // Prepara dados de patrimônio ordenados
+    // 2. Filtra dados brutos pela data
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
@@ -2281,14 +2284,21 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Agrupamento mensal para períodos longos (otimização visual)
-    if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange) && dadosOrdenados.length > 60) {
+    // --- CORREÇÃO AQUI: Agrupamento Mensal Rigoroso ---
+    // Se for 6M, 1Y ou ALL, sempre agrupa para mostrar apenas o fechamento do mês.
+    if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
         const grupos = {};
+        
         dadosOrdenados.forEach(p => {
-            const chaveMes = p.date.substring(0, 7);
-            grupos[chaveMes] = p; // Pega o último registro do mês
+            // Chave = "AAAA-MM" (Ex: 2024-05)
+            const chaveMes = p.date.substring(0, 7); 
+            // Ao sobrescrever, garantimos que o último dia do mês seja o que fica
+            grupos[chaveMes] = p; 
         });
+        
+        // Reconstrói a lista apenas com os fechamentos
         dadosOrdenados = Object.values(grupos);
+        // Garante a ordenação final
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
@@ -2300,16 +2310,12 @@ function renderizarGraficoPatrimonio() {
         return;
     }
 
-    // --- 3. PREPARAÇÃO DOS DADOS (ALGORITMO OTIMIZADO) ---
+    // 3. Prepara Arrays (Labels e Dados)
     const labels = [];
     const dataValor = [];
     
-    // Otimização do Custo Investido:
-    // Em vez de recalcular tudo para cada dia (N^2), usamos um acumulador linear (N)
-    
-    // 1. Ordena transações por data
+    // Cálculo Otimizado do Investido (Acumulativo)
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
-    
     let custoAcumulado = 0;
     let txIndex = 0;
     const dataCusto = [];
@@ -2319,8 +2325,11 @@ function renderizarGraficoPatrimonio() {
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
         const dia = String(d.getDate()).padStart(2, '0');
+        
+        // Mês abreviado em Maiúsculo (JAN, FEV...)
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         
+        // Se for mensal, mostra só o mês. Se for diário (1M), mostra Dia/Mês
         if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
              labels.push(mes);
         } else {
@@ -2330,8 +2339,7 @@ function renderizarGraficoPatrimonio() {
         // Valor Patrimônio
         dataValor.push(p.value);
 
-        // Cálculo Rápido do Custo
-        // Avança o índice das transações até a data deste ponto do gráfico
+        // Avança o custo acumulado até a data deste ponto
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         
         while(txIndex < txOrdenadas.length) {
@@ -2343,25 +2351,24 @@ function renderizarGraficoPatrimonio() {
                 if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
                 txIndex++;
             } else {
-                break; // As próximas transações são do futuro, para por aqui
+                break;
             }
         }
         dataCusto.push(custoAcumulado);
     });
 
-    // --- 4. RENDERIZAÇÃO ---
+    // 4. Configuração do Gráfico
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
 
-    // Configuração de animação: Desliga se for apenas update para evitar lag
     const animationConfig = patrimonioChartInstance ? false : { duration: 1000, easing: 'easeOutQuart' };
 
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
         patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        patrimonioChartInstance.update('none'); // 'none' evita animação no update para performance máxima
+        patrimonioChartInstance.update('none'); 
     } else {
         patrimonioChartInstance = new Chart(ctx, {
             type: 'line',
@@ -2402,7 +2409,7 @@ function renderizarGraficoPatrimonio() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: animationConfig, // Otimização de animação
+                animation: animationConfig,
                 layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
@@ -2447,7 +2454,7 @@ function renderizarGraficoPatrimonio() {
                             display: true,
                             maxRotation: 0,
                             autoSkip: true,
-                            maxTicksLimit: 5,
+                            maxTicksLimit: 6, // Limita para não amontoar os meses
                             color: colorText,
                             font: { size: 10, weight: 'bold' }
                         } 
@@ -2457,7 +2464,6 @@ function renderizarGraficoPatrimonio() {
         });
     }
 
-    // Salva a nova assinatura
     lastPatrimonioCalcSignature = currentSignature;
 }
 

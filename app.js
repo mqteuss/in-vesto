@@ -1343,6 +1343,8 @@ function agruparPorMes(itens, dateField) {
 
 // --- EM app.js: Substitua a função renderizarHistorico ---
 
+// --- EM app.js: Substitua a função renderizarHistorico ---
+
 function renderizarHistorico() {
     const listaHistorico = document.getElementById('lista-historico');
     const historicoStatus = document.getElementById('historico-status');
@@ -1382,9 +1384,8 @@ function renderizarHistorico() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // --- CABEÇALHO DO MÊS (ESTILO NOTÍCIAS) ---
+        // Header Mês
         const header = document.createElement('div');
-        // Copiado estilo exato da aba Mercado + flex para alinhar o total à direita
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
@@ -1410,16 +1411,18 @@ function renderizarHistorico() {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const sigla = t.symbol.substring(0, 2);
 
-            // Ícones Brancos (text-white)
-            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+            // --- REFINAMENTO DE CORES AQUI ---
+            // Ícones agora usam a cor correspondente (text-green-400 / text-red-400)
+            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
 
             const labelContent = isVenda ? iconVenda : iconCompra;
             
-            // Background Colorido Sutil
+            // Fundo mais suave (opacity /10 em vez de /20)
             const badgeBg = isVenda 
-                ? 'bg-red-500/20 border border-red-500/20' 
-                : 'bg-green-500/20 border border-green-500/20';
+                ? 'bg-red-500/10 border border-red-500/20' 
+                : 'bg-green-500/10 border border-green-500/20';
+            // ----------------------------------
 
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
@@ -1464,6 +1467,8 @@ function renderizarHistorico() {
     
     listaHistorico.appendChild(fragment);
 }
+
+// --- EM app.js: Substitua a função renderizarHistoricoProventos ---
 
 // --- EM app.js: Substitua a função renderizarHistoricoProventos ---
 
@@ -1523,7 +1528,7 @@ function renderizarHistoricoProventos() {
 
         if (totalMes === 0) return;
 
-        // --- CABEÇALHO DO MÊS (ESTILO NOTÍCIAS) ---
+        // Header Mês
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         header.innerHTML = `
@@ -1547,10 +1552,13 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // Ícone Check Branco
-            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
+            // --- REFINAMENTO DE CORES AQUI ---
+            // Ícone Check Verde (text-green-400)
+            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
             
-            const badgeBg = 'bg-green-500/20 border border-green-500/20';
+            // Fundo verde suave (/10)
+            const badgeBg = 'bg-green-500/10 border border-green-500/20';
+            // ---------------------------------
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
@@ -4040,6 +4048,8 @@ async function handleMostrarDetalhes(symbol) {
 
 // --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
 
+// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
+
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');
     const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
@@ -4068,9 +4078,7 @@ function renderizarTransacoesDetalhes(symbol) {
     Object.keys(grupos).forEach(mes => {
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
 
-        // --- CABEÇALHO DO MÊS (ESTILO NOTÍCIAS) ---
         const header = document.createElement('div');
-        // Mantive os estilos inline de margem para o modal, mas apliquei as classes visuais da Notícia
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center'; 
         header.style.top = '-1px'; 
         header.style.margin = '0 -8px 8px -8px'; 
@@ -4095,15 +4103,16 @@ function renderizarTransacoesDetalhes(symbol) {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const sigla = t.symbol.substring(0, 2);
             
-            // Ícones Brancos
-            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+            // --- REFINAMENTO DE CORES AQUI ---
+            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
 
             const labelContent = isVenda ? iconVenda : iconCompra;
             
             const badgeBg = isVenda 
-                ? 'bg-red-500/20 border border-red-500/20' 
-                : 'bg-green-500/20 border border-green-500/20';
+                ? 'bg-red-500/10 border border-red-500/20' 
+                : 'bg-green-500/10 border border-green-500/20';
+            // --------------------------------
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 relative group';

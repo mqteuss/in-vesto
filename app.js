@@ -2230,6 +2230,8 @@ function renderizarGraficoHistorico({ labels, data }) {
 
 // --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
 
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
@@ -2240,7 +2242,6 @@ function renderizarGraficoPatrimonio() {
     const lastPatId = lastItem ? lastItem.date : 'none';
     const lastPatVal = lastItem ? lastItem.value : 0;
     
-    // Adicionei currentPatrimonioRange na assinatura para forçar update ao trocar botão
     const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
     if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
@@ -2256,23 +2257,29 @@ function renderizarGraficoPatrimonio() {
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // 1. Data de Corte
+    // --- 1. LÓGICA DE DATAS LIMITE (MUDOU AQUI) ---
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     
     let dataCorte;
+    
     if (currentPatrimonioRange === '1M') {
         dataCorte = new Date(hoje);
-        dataCorte.setDate(hoje.getDate() - 30);
+        dataCorte.setDate(hoje.getDate() - 30); // Últimos 30 dias
     } else if (currentPatrimonioRange === '6M') {
         dataCorte = new Date(hoje);
-        dataCorte.setMonth(hoje.getMonth() - 6);
+        dataCorte.setMonth(hoje.getMonth() - 6); // Exatamente 6 meses atrás
     } else if (currentPatrimonioRange === '1Y') {
         dataCorte = new Date(hoje);
-        dataCorte.setFullYear(hoje.getFullYear() - 1);
+        dataCorte.setFullYear(hoje.getFullYear() - 1); // Exatamente 1 ano atrás
+    } else if (currentPatrimonioRange === '5Y') {
+        dataCorte = new Date(hoje);
+        dataCorte.setFullYear(hoje.getFullYear() - 5); // Exatamente 5 anos atrás
     } else {
-        dataCorte = new Date('2000-01-01'); // 'ALL'
+        dataCorte = new Date('2000-01-01'); // 'ALL' - Pega tudo
     }
+    
+    // Zera horas para comparação justa
     dataCorte.setHours(0, 0, 0, 0);
 
     // 2. Filtra dados brutos pela data
@@ -2284,21 +2291,17 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- CORREÇÃO AQUI: Agrupamento Mensal Rigoroso ---
-    // Se for 6M, 1Y ou ALL, sempre agrupa para mostrar apenas o fechamento do mês.
-    if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
+    // --- AGRUPAMENTO MENSAL OTIMIZADO ---
+    // Agora inclui '5Y' na lista de quem deve ser agrupado por mês
+    if (['6M', '1Y', '5Y', 'ALL'].includes(currentPatrimonioRange)) {
         const grupos = {};
         
         dadosOrdenados.forEach(p => {
-            // Chave = "AAAA-MM" (Ex: 2024-05)
-            const chaveMes = p.date.substring(0, 7); 
-            // Ao sobrescrever, garantimos que o último dia do mês seja o que fica
-            grupos[chaveMes] = p; 
+            const chaveMes = p.date.substring(0, 7); // "2024-05"
+            grupos[chaveMes] = p; // Mantém o último dia do mês
         });
         
-        // Reconstrói a lista apenas com os fechamentos
         dadosOrdenados = Object.values(grupos);
-        // Garante a ordenação final
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
@@ -2314,7 +2317,7 @@ function renderizarGraficoPatrimonio() {
     const labels = [];
     const dataValor = [];
     
-    // Cálculo Otimizado do Investido (Acumulativo)
+    // Cálculo Otimizado do Investido
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;
@@ -2325,12 +2328,10 @@ function renderizarGraficoPatrimonio() {
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
         const dia = String(d.getDate()).padStart(2, '0');
-        
-        // Mês abreviado em Maiúsculo (JAN, FEV...)
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         
-        // Se for mensal, mostra só o mês. Se for diário (1M), mostra Dia/Mês
-        if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
+        // Se for período longo, mostra só o Mês. Se for curto (1M), mostra Dia/Mês
+        if (['6M', '1Y', '5Y', 'ALL'].includes(currentPatrimonioRange)) {
              labels.push(mes);
         } else {
              labels.push([dia, mes]);
@@ -2454,7 +2455,7 @@ function renderizarGraficoPatrimonio() {
                             display: true,
                             maxRotation: 0,
                             autoSkip: true,
-                            maxTicksLimit: 6, // Limita para não amontoar os meses
+                            maxTicksLimit: 6, 
                             color: colorText,
                             font: { size: 10, weight: 'bold' }
                         } 

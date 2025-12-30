@@ -2228,6 +2228,8 @@ function renderizarGraficoHistorico({ labels, data }) {
     
 // --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
 
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
@@ -2277,7 +2279,7 @@ function renderizarGraficoPatrimonio() {
     
     dataCorte.setHours(0, 0, 0, 0);
 
-    // 2. Filtra dados brutos pela data
+    // 2. Filtra dados brutos
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
@@ -2286,17 +2288,13 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- AGRUPAMENTO MENSAL ---
-    // REMOVIDO 'ALL' desta lista. Agora ALL mostra dados diários.
-    // Apenas 6M, 1Y e 5Y agruparão por mês para ficar mais limpo.
+    // --- AGRUPAMENTO MENSAL (Apenas para 6M, 1Y, 5Y) ---
     if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
-        
         dadosOrdenados.forEach(p => {
             const chaveMes = p.date.substring(0, 7); 
             grupos[chaveMes] = p; 
         });
-        
         dadosOrdenados = Object.values(grupos);
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
@@ -2320,18 +2318,24 @@ function renderizarGraficoPatrimonio() {
     const dataCusto = [];
 
     dadosOrdenados.forEach(p => {
-        // Labels
+        // Parse da data
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
+        
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        
-        // Formatação da Label:
-        // REMOVIDO 'ALL' daqui também. Agora ALL mostra "Dia Mês" (ex: 15 FEV)
-        if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
-             labels.push(mes); // Apenas Mês
+        const ano = d.getFullYear().toString().slice(-2); // Pega '23', '24', '25'
+
+        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA (CORRIGIDA) ---
+        if (currentPatrimonioRange === '1M') {
+             // 1M: "15 FEV" (Ano implícito pelo curto prazo)
+             labels.push([dia, mes]); 
+        } else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
+             // Períodos Longos (Mensal): "FEV 25"
+             labels.push([mes, ano]); 
         } else {
-             labels.push([dia, mes]); // Dia e Mês (1M e ALL)
+             // TUDO: "15 FEV 25" (Precisa do ano para diferenciar)
+             labels.push([dia, mes, ano]); 
         }
 
         // Valor Patrimônio
@@ -2339,11 +2343,9 @@ function renderizarGraficoPatrimonio() {
 
         // Avança o custo acumulado
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
-        
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
             const dataTx = new Date(tx.date);
-            
             if (dataTx <= dataPontoLimite) {
                 if (tx.type === 'buy') custoAcumulado += (tx.quantity * tx.price);
                 if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
@@ -2423,6 +2425,7 @@ function renderizarGraficoPatrimonio() {
                         padding: 10,
                         displayColors: true,
                         callbacks: {
+                            // Junta as linhas [Dia, Mês, Ano] em uma linha só no Tooltip: "15 FEV 25"
                             title: function(context) {
                                 const label = context[0].label;
                                 return Array.isArray(label) ? label.join(' ') : label;
@@ -2452,7 +2455,7 @@ function renderizarGraficoPatrimonio() {
                             display: true,
                             maxRotation: 0,
                             autoSkip: true,
-                            maxTicksLimit: 6, // Continua limitando para não encavalar o texto
+                            maxTicksLimit: 6, 
                             color: colorText,
                             font: { size: 10, weight: 'bold' }
                         } 

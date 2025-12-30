@@ -1876,7 +1876,7 @@ function renderizarNoticias(articles) {
 
 // EM app.js
 
-function renderizarGraficoAlocacao() {
+function renderizarGraficoAlocacao(dadosInput) {
     const canvas = document.getElementById('alocacao-chart');
     const centerValueEl = document.getElementById('center-chart-value');
     const legendContainer = document.getElementById('alocacao-legend');
@@ -1884,14 +1884,25 @@ function renderizarGraficoAlocacao() {
     if (!canvas) return;
 
     // 1. PREPARAÇÃO DOS DADOS
-    // Calcula os dados internamente para garantir compatibilidade com o resto do sistema
-    let dadosGrafico = carteiraCalculada.map(item => {
-        const precoAtual = precosCache[item.symbol] || item.precoMedio;
-        return {
-            symbol: item.symbol,
-            totalPosicao: item.quantity * precoAtual
-        };
-    }).filter(d => d.totalPosicao > 0.01); // Remove ativos zerados
+    // Usa os dados que vieram da renderizarCarteira. 
+    // Se por acaso vier vazio (chamada manual), calcula usando precosAtuais.
+    let dadosGrafico = dadosInput;
+
+    if (!dadosGrafico) {
+        // Fallback de segurança: Cria mapa baseado em precosAtuais (variável global correta)
+        const mapPrecos = {};
+        if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
+            precosAtuais.forEach(p => mapPrecos[p.symbol] = p.regularMarketPrice);
+        }
+
+        dadosGrafico = carteiraCalculada.map(item => {
+            const precoAtual = mapPrecos[item.symbol] || item.precoMedio;
+            return {
+                symbol: item.symbol,
+                totalPosicao: item.quantity * precoAtual
+            };
+        }).filter(d => d.totalPosicao > 0.01);
+    }
 
     // Ordena do maior para o menor
     dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
@@ -1905,7 +1916,6 @@ function renderizarGraficoAlocacao() {
     const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
 
     // Verifica se os dados mudaram E se a legenda já existe no HTML
-    // (Adicionamos legendContainer.children.length > 0 para garantir que a legenda apareça na primeira carga)
     const legendExists = legendContainer ? legendContainer.children.length > 0 : true;
 
     if (newDataString === lastAlocacaoData && alocacaoChartInstance && legendExists) {
@@ -1953,10 +1963,15 @@ function renderizarGraficoAlocacao() {
     // 7. Renderiza ou Atualiza o Gráfico
     const ctx = canvas.getContext('2d');
     
+    // Ajuste de cores para tema claro/escuro
+    const isLight = document.body.classList.contains('light-mode');
+    const borderColor = isLight ? '#ffffff' : '#000000';
+
     if (alocacaoChartInstance) {
         alocacaoChartInstance.data.labels = labels;
         alocacaoChartInstance.data.datasets[0].data = data;
         alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
+        alocacaoChartInstance.data.datasets[0].borderColor = borderColor;
         alocacaoChartInstance.update();
     } else {
         alocacaoChartInstance = new Chart(ctx, {
@@ -1966,7 +1981,8 @@ function renderizarGraficoAlocacao() {
                 datasets: [{ 
                     data: data, 
                     backgroundColor: colors, 
-                    borderWidth: 0,
+                    borderColor: borderColor,
+                    borderWidth: 2,
                     spacing: 5,
                     borderRadius: 20,
                     hoverOffset: 10
@@ -1980,10 +1996,10 @@ function renderizarGraficoAlocacao() {
                 plugins: {
                     legend: { display: false }, // Oculta a legenda interna
                     tooltip: {
-                        backgroundColor: 'rgba(20, 20, 20, 0.95)',
-                        titleColor: '#fff',
-                        bodyColor: '#e5e7eb',
-                        borderColor: '#333',
+                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 20, 0.95)',
+                        titleColor: isLight ? '#1f2937' : '#fff',
+                        bodyColor: isLight ? '#4b5563' : '#e5e7eb',
+                        borderColor: isLight ? '#e5e7eb' : '#333',
                         borderWidth: 1,
                         padding: 12,
                         cornerRadius: 12,

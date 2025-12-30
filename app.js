@@ -2226,10 +2226,6 @@ function renderizarGraficoHistorico({ labels, data }) {
         }
     }
     
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio INTEIRA ---
-
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
-
 // --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
 
 function renderizarGraficoPatrimonio() {
@@ -2257,7 +2253,7 @@ function renderizarGraficoPatrimonio() {
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // --- 1. LÓGICA DE DATAS LIMITE (MUDOU AQUI) ---
+    // 1. LÓGICA DE DATAS LIMITE
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     
@@ -2265,21 +2261,20 @@ function renderizarGraficoPatrimonio() {
     
     if (currentPatrimonioRange === '1M') {
         dataCorte = new Date(hoje);
-        dataCorte.setDate(hoje.getDate() - 30); // Últimos 30 dias
+        dataCorte.setDate(hoje.getDate() - 30);
     } else if (currentPatrimonioRange === '6M') {
         dataCorte = new Date(hoje);
-        dataCorte.setMonth(hoje.getMonth() - 6); // Exatamente 6 meses atrás
+        dataCorte.setMonth(hoje.getMonth() - 6);
     } else if (currentPatrimonioRange === '1Y') {
         dataCorte = new Date(hoje);
-        dataCorte.setFullYear(hoje.getFullYear() - 1); // Exatamente 1 ano atrás
+        dataCorte.setFullYear(hoje.getFullYear() - 1);
     } else if (currentPatrimonioRange === '5Y') {
         dataCorte = new Date(hoje);
-        dataCorte.setFullYear(hoje.getFullYear() - 5); // Exatamente 5 anos atrás
+        dataCorte.setFullYear(hoje.getFullYear() - 5);
     } else {
-        dataCorte = new Date('2000-01-01'); // 'ALL' - Pega tudo
+        dataCorte = new Date('2000-01-01'); // 'ALL'
     }
     
-    // Zera horas para comparação justa
     dataCorte.setHours(0, 0, 0, 0);
 
     // 2. Filtra dados brutos pela data
@@ -2291,14 +2286,15 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- AGRUPAMENTO MENSAL OTIMIZADO ---
-    // Agora inclui '5Y' na lista de quem deve ser agrupado por mês
-    if (['6M', '1Y', '5Y', 'ALL'].includes(currentPatrimonioRange)) {
+    // --- AGRUPAMENTO MENSAL ---
+    // REMOVIDO 'ALL' desta lista. Agora ALL mostra dados diários.
+    // Apenas 6M, 1Y e 5Y agruparão por mês para ficar mais limpo.
+    if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         
         dadosOrdenados.forEach(p => {
-            const chaveMes = p.date.substring(0, 7); // "2024-05"
-            grupos[chaveMes] = p; // Mantém o último dia do mês
+            const chaveMes = p.date.substring(0, 7); 
+            grupos[chaveMes] = p; 
         });
         
         dadosOrdenados = Object.values(grupos);
@@ -2330,17 +2326,18 @@ function renderizarGraficoPatrimonio() {
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         
-        // Se for período longo, mostra só o Mês. Se for curto (1M), mostra Dia/Mês
-        if (['6M', '1Y', '5Y', 'ALL'].includes(currentPatrimonioRange)) {
-             labels.push(mes);
+        // Formatação da Label:
+        // REMOVIDO 'ALL' daqui também. Agora ALL mostra "Dia Mês" (ex: 15 FEV)
+        if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
+             labels.push(mes); // Apenas Mês
         } else {
-             labels.push([dia, mes]);
+             labels.push([dia, mes]); // Dia e Mês (1M e ALL)
         }
 
         // Valor Patrimônio
         dataValor.push(p.value);
 
-        // Avança o custo acumulado até a data deste ponto
+        // Avança o custo acumulado
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         
         while(txIndex < txOrdenadas.length) {
@@ -2455,7 +2452,7 @@ function renderizarGraficoPatrimonio() {
                             display: true,
                             maxRotation: 0,
                             autoSkip: true,
-                            maxTicksLimit: 6, 
+                            maxTicksLimit: 6, // Continua limitando para não encavalar o texto
                             color: colorText,
                             font: { size: 10, weight: 'bold' }
                         } 

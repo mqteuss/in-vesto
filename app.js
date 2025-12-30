@@ -5667,62 +5667,6 @@ if (toggleNotifBtn) {
 	window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
-	
-	// --- LÓGICA DO FILTRO DE PATRIMÔNIO (GLOBAL) ---
-// Cole isto no FINAL do arquivo app.js
-
-document.addEventListener('click', function(e) {
-    // Elementos
-    const btn = e.target.closest('#patrimonio-filter-btn');
-    const dropdown = document.getElementById('patrimonio-filter-dropdown');
-    const option = e.target.closest('.patrimonio-range-item');
-
-    // 1. CLICOU NO BOTÃO DO FILTRO?
-    if (btn) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (dropdown) dropdown.classList.toggle('hidden');
-        return;
-    }
-
-    // 2. CLICOU EM UMA OPÇÃO (1M, 6M, etc)?
-    if (option) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const range = option.getAttribute('data-range');
-        const label = document.getElementById('patrimonio-filter-label');
-        const allItems = document.querySelectorAll('.patrimonio-range-item');
-
-        // A. Atualiza variável global (se existir)
-        if (typeof currentPatrimonioRange !== 'undefined') {
-            currentPatrimonioRange = range;
-        }
-
-        // B. Atualiza texto do botão
-        if (label) label.textContent = range === 'ALL' ? 'Tudo' : range;
-
-        // C. Atualiza visual (quem tem o checkmark)
-        allItems.forEach(item => item.classList.remove('active'));
-        option.classList.add('active');
-
-        // D. Fecha o menu e renderiza
-        if (dropdown) dropdown.classList.add('hidden');
-        
-        if (typeof renderizarGraficoPatrimonio === 'function') {
-            renderizarGraficoPatrimonio();
-        }
-        return;
-    }
-
-    // 3. CLICOU FORA? (Fecha o menu)
-    if (dropdown && !dropdown.classList.contains('hidden')) {
-        // Se o clique NÃO foi dentro do dropdown, fecha ele
-        if (!e.target.closest('#patrimonio-filter-dropdown')) {
-            dropdown.classList.add('hidden');
-        }
-    }
-});
 
     await init();
 });

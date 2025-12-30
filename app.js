@@ -1341,6 +1341,8 @@ function agruparPorMes(itens, dateField) {
 
 // Substitua a função renderizarHistorico existente em app.js
 
+// --- EM app.js: Substitua a função renderizarHistorico ---
+
 function renderizarHistorico() {
     const listaHistorico = document.getElementById('lista-historico');
     const historicoStatus = document.getElementById('historico-status');
@@ -1380,18 +1382,18 @@ function renderizarHistorico() {
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header Mês
+        // --- CABEÇALHO DO MÊS (ESTILO NOTÍCIAS) ---
         const header = document.createElement('div');
-        header.className = 'history-header-sticky';
+        // Copiado estilo exato da aba Mercado + flex para alinhar o total à direita
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
         
         header.innerHTML = `
-            <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-purple-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
+            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">
                 ${mes}
             </h3>
-            <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
                 Mov: ${formatBRL(totalMes)}
             </span>
         `;
@@ -1408,21 +1410,21 @@ function renderizarHistorico() {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const sigla = t.symbol.substring(0, 2);
 
-            // ÍCONES DE SETA
-            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+            // Ícones Brancos (text-white)
+            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
 
             const labelContent = isVenda ? iconVenda : iconCompra;
             
+            // Background Colorido Sutil
             const badgeBg = isVenda 
-                ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
-                : 'bg-green-500/10 text-green-500 border border-green-500/20';
+                ? 'bg-red-500/20 border border-red-500/20' 
+                : 'bg-green-500/20 border border-green-500/20';
 
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
 
-            // CORREÇÃO: Usando DIV com flex center e removendo badge-type
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
@@ -1462,6 +1464,8 @@ function renderizarHistorico() {
     
     listaHistorico.appendChild(fragment);
 }
+
+// --- EM app.js: Substitua a função renderizarHistoricoProventos ---
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
@@ -1519,15 +1523,14 @@ function renderizarHistoricoProventos() {
 
         if (totalMes === 0) return;
 
-        // Header
+        // --- CABEÇALHO DO MÊS (ESTILO NOTÍCIAS) ---
         const header = document.createElement('div');
-        header.className = 'history-header-sticky';
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         header.innerHTML = `
-            <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">
                 ${mes}
             </h3>
-            <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
                 Recebido: ${formatBRL(totalMes)}
             </span>
         `;
@@ -1544,9 +1547,10 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
+            // Ícone Check Branco
+            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
             
-            const badgeBg = 'bg-green-500/10 text-green-500 border border-green-500/20';
+            const badgeBg = 'bg-green-500/20 border border-green-500/20';
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
@@ -4034,6 +4038,8 @@ async function handleMostrarDetalhes(symbol) {
 
 // EM app.js - Substitua a função renderizarTransacoesDetalhes por esta versão:
 
+// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
+
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');
     const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
@@ -4062,18 +4068,19 @@ function renderizarTransacoesDetalhes(symbol) {
     Object.keys(grupos).forEach(mes => {
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
 
+        // --- CABEÇALHO DO MÊS (ESTILO NOTÍCIAS) ---
         const header = document.createElement('div');
-        header.className = 'history-header-sticky'; 
+        // Mantive os estilos inline de margem para o modal, mas apliquei as classes visuais da Notícia
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center'; 
         header.style.top = '-1px'; 
         header.style.margin = '0 -8px 8px -8px'; 
         header.style.borderRadius = '12px'; 
         
         header.innerHTML = `
-            <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-purple-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
+            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">
                 ${mes}
             </h3>
-            <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
                 Mov: ${formatBRL(totalMes)}
             </span>
         `;
@@ -4088,14 +4095,15 @@ function renderizarTransacoesDetalhes(symbol) {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const sigla = t.symbol.substring(0, 2);
             
-            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+            // Ícones Brancos
+            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
 
             const labelContent = isVenda ? iconVenda : iconCompra;
             
             const badgeBg = isVenda 
-                ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
-                : 'bg-green-500/10 text-green-500 border border-green-500/20';
+                ? 'bg-red-500/20 border border-red-500/20' 
+                : 'bg-green-500/20 border border-green-500/20';
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 relative group';

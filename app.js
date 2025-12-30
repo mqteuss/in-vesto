@@ -2595,51 +2595,6 @@ function renderizarGraficoPatrimonio() {
 
     lastPatrimonioCalcSignature = currentSignature;
 }
-
-function renderizarMetaFinanceira(patrimonioAtual) {
-        const card = document.getElementById('meta-card');
-        const alvoTexto = document.getElementById('meta-alvo-texto');
-        const porcentagemTexto = document.getElementById('meta-porcentagem');
-        const progressBar = document.getElementById('meta-progress-bar');
-        const faltanteTexto = document.getElementById('meta-faltante');
-
-        // Define marcos automáticos de patrimônio
-        const marcos = [1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
-        
-        // Encontra o próximo marco
-        let proximaMeta = marcos.find(m => m > patrimonioAtual);
-        
-        // Se já passou de 1 milhão ou não achou marco maior (rico!), cria um marco dinâmico (+100k)
-        if (!proximaMeta) {
-            proximaMeta = Math.ceil((patrimonioAtual + 1) / 100000) * 100000;
-        }
-
-        // Se o patrimônio é 0, a meta é o primeiro marco
-        if (patrimonioAtual === 0) proximaMeta = marcos[0];
-
-        // Cálculos
-        const progresso = Math.min((patrimonioAtual / proximaMeta) * 100, 100);
-        const falta = proximaMeta - patrimonioAtual;
-
-        // Renderização
-        alvoTexto.textContent = formatBRL(proximaMeta);
-        porcentagemTexto.textContent = `${progresso.toFixed(1)}%`;
-        
-        // Pequeno delay para animação CSS funcionar
-        setTimeout(() => {
-            progressBar.style.width = `${progresso}%`;
-        }, 100);
-
-        if (falta <= 0) {
-            faltanteTexto.textContent = "Meta atingida! ";
-            progressBar.classList.add('bg-green-500'); // Fica verde se atingiu
-        } else {
-            faltanteTexto.textContent = `Faltam ${formatBRL(falta)} `;
-            progressBar.classList.remove('bg-green-500');
-        }
-
-        card.classList.remove('hidden');
-    }
 	
 	function renderizarTimelinePagamentos() {
         const container = document.getElementById('timeline-pagamentos-container');
@@ -2952,7 +2907,6 @@ async function renderizarCarteira() {
         
         // Salva Snapshot
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
-        renderizarMetaFinanceira(patrimonioRealParaSnapshot);
         renderizarTimelinePagamentos();
         
         await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);

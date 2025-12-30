@@ -1408,23 +1408,21 @@ function renderizarHistorico() {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const sigla = t.symbol.substring(0, 2);
 
-            // --- ALTERAÇÃO SOLICITADA: ÍCONES E CORES ---
-            // Seta para Baixo (Entrada/Compra) | Seta para Cima (Saída/Venda)
-            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+            // ÍCONES DE SETA
+            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
 
             const labelContent = isVenda ? iconVenda : iconCompra;
             
-            // Compra agora é VERDE (Green-500), Venda é VERMELHO (Red-500)
             const badgeBg = isVenda 
                 ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
                 : 'bg-green-500/10 text-green-500 border border-green-500/20';
-            // ----------------------------------------------
 
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
 
+            // CORREÇÃO: Usando DIV com flex center e removendo badge-type
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
@@ -1435,9 +1433,9 @@ function renderizarHistorico() {
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${t.symbol}</h4>
                             
-                            <span class="badge-type ${badgeBg} w-5 h-5 flex items-center justify-center !p-0 rounded-md">
+                            <div class="${badgeBg} w-6 h-6 flex items-center justify-center rounded-md shrink-0">
                                 ${labelContent}
-                            </span>
+                            </div>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
@@ -1546,10 +1544,8 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- ALTERAÇÃO AQUI: Ícone de Check ---
-            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
+            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
             
-            // Estilo Verde Neon Suave
             const badgeBg = 'bg-green-500/10 text-green-500 border border-green-500/20';
 
             const item = document.createElement('div');
@@ -1565,9 +1561,9 @@ function renderizarHistoricoProventos() {
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
                             
-                            <span class="badge-type ${badgeBg} w-5 h-5 flex items-center justify-center !p-0 rounded-md" title="Pago">
+                            <div class="${badgeBg} w-6 h-6 flex items-center justify-center rounded-md shrink-0" title="Pago">
                                 ${iconPago}
-                            </span>
+                            </div>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
@@ -4092,16 +4088,14 @@ function renderizarTransacoesDetalhes(symbol) {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const sigla = t.symbol.substring(0, 2);
             
-            // --- ALTERAÇÃO SOLICITADA TAMBÉM AQUI ---
-            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
 
             const labelContent = isVenda ? iconVenda : iconCompra;
             
             const badgeBg = isVenda 
                 ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
                 : 'bg-green-500/10 text-green-500 border border-green-500/20';
-            // ----------------------------------------
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 relative group';
@@ -4114,9 +4108,9 @@ function renderizarTransacoesDetalhes(symbol) {
                     
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                             <span class="badge-type ${badgeBg} w-5 h-5 flex items-center justify-center !p-0 rounded-md">
+                             <div class="${badgeBg} w-6 h-6 flex items-center justify-center rounded-md shrink-0">
                                 ${labelContent}
-                            </span>
+                            </div>
                             <span class="text-[10px] font-medium text-gray-500">Dia ${dia}</span>
                         </div>
                         <div class="flex items-center gap-1.5 mt-0.5 text-xs text-gray-300 leading-none">

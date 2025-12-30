@@ -2033,17 +2033,12 @@ function renderizarGraficoAlocacao(dadosInput) {
         });
     }
 }
-    
-// --- EM app.js (Substitua a função renderizarGraficoHistorico inteira) ---
-
-// --- EM app.js: Substitua a função renderizarGraficoHistorico ---
 
 function renderizarGraficoHistorico() {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
     // --- 1. PREPARAÇÃO DOS DADOS (Cálculo Interno) ---
-    // Agrupa os proventos por mês para gerar as Labels e Dados corretos
     const grupos = {};
     proventosConhecidos.forEach(p => {
         if (!p.paymentDate || p.value <= 0) return;
@@ -2059,7 +2054,6 @@ function renderizarGraficoHistorico() {
 
     const mesesOrdenados = Object.keys(grupos).sort();
     
-    // Gera arrays brutos (todas as datas)
     const labelsRaw = [];
     const dataRaw = [];
 
@@ -2076,7 +2070,6 @@ function renderizarGraficoHistorico() {
     });
 
     // --- 2. LÓGICA DE FILTRO (Últimos 12 Meses) ---
-    // Pega apenas os últimos 12 registros gerados
     const labelsFiltrados = labelsRaw.slice(-12);
     const dataFiltrados = dataRaw.slice(-12);
     
@@ -2095,10 +2088,9 @@ function renderizarGraficoHistorico() {
     
     const ctx = canvas.getContext('2d');
 
-    // --- 4. CONFIGURAÇÃO VISUAL (Seu estilo Roxo) ---
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400); 
-    gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
-    gradient.addColorStop(1, 'rgba(124, 58, 237, 0.1)');  
+    // --- 4. VISUAL SIMPLIFICADO (Removido Gradiente) ---
+    // Usamos uma cor sólida com leve transparência
+    const simplePurpleFill = 'rgba(192, 132, 252, 0.85)'; 
     
     // Plugin para desenhar o texto em cima da barra
     const floatingLabelsPlugin = {
@@ -2107,7 +2099,6 @@ function renderizarGraficoHistorico() {
             const { ctx } = chart;
             ctx.save();
             
-            // Verifica o tema na hora de desenhar (para reagir a trocas de tema sem reload)
             const isLight = document.body.classList.contains('light-mode');
             const textColor = isLight ? '#374151' : '#e5e7eb'; 
             
@@ -2117,12 +2108,10 @@ function renderizarGraficoHistorico() {
                     const value = dataset.data[index];
                     if (value > 0) {
                         const text = formatBRL(value); 
-                        
-                        ctx.font = 'bold 10px monospace'; // Fonte Monospace fica melhor para números
+                        ctx.font = 'bold 10px monospace'; 
                         ctx.fillStyle = textColor;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'bottom';
-                        
                         ctx.fillText(text, bar.x, bar.y - 5);
                     }
                 });
@@ -2142,10 +2131,11 @@ function renderizarGraficoHistorico() {
             datasets: [{
                 label: 'Total Recebido',
                 data: dataFiltrados,
-                backgroundColor: gradient,
+                // ALTERADO AQUI: Usando a cor sólida simples
+                backgroundColor: simplePurpleFill,
                 borderColor: '#c084fc', 
                 borderWidth: 1,
-                borderRadius: 4,
+                borderRadius: 4, // Mantém cantos arredondados suaves
                 barPercentage: 0.6,
             }]
         },

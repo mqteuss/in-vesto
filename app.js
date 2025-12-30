@@ -380,9 +380,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 	let lastTransacoesSignature = '';    
     let lastPatrimonioCalcSignature = ''; 
     let lastHistoricoListSignature = '';
-    let lastHistoricoProventosSignature = '';
-	let virtualListTransacoes = null;
-    let virtualListProventos = null;
+    let lastHistoricoProventosSignature = '';	
     let lastAlocacaoData = '';
 	let currentPatrimonioRange = '1M';
 	let histFilterType = 'all';
@@ -1338,115 +1336,10 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
-// --- CLASSE DE VIRTUALIZAÇÃO (Virtual Scroller) ---
-// --- CLASSE DE VIRTUALIZAÇÃO (CORRIGIDA) ---
-class VirtualList {
-    constructor(containerId, items, renderCallback) {
-        this.container = document.getElementById(containerId);
-        this.items = items;
-        this.renderCallback = renderCallback;
-        this.totalHeight = items.length > 0 ? items[items.length - 1].bottom : 0;
-        
-        this.spacer = document.createElement('div');
-        this.spacer.className = 'virtual-spacer';
-        this.spacer.style.height = `${this.totalHeight}px`;
-        
-        this.content = document.createElement('div');
-        this.content.className = 'virtual-content';
-        
-        this.rafId = null;
-        this.resizeObserver = null;
-        
-        this.init();
-    }
+// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL LIMPO E UNIFORME) ---
+// Em app.js
 
-    init() {
-        // Limpa qualquer conteúdo anterior
-        this.container.innerHTML = '';
-        this.container.appendChild(this.spacer);
-        this.container.appendChild(this.content);
-        
-        // 1. Listener de Scroll
-        this.container.addEventListener('scroll', () => {
-            if (this.rafId) return;
-            this.rafId = requestAnimationFrame(() => {
-                this.render();
-                this.rafId = null;
-            });
-        }, { passive: true });
-        
-        // 2. CORREÇÃO CRÍTICA: Observador de Tamanho
-        // Assim que a aba ficar visível (height > 0), força a renderização
-        this.resizeObserver = new ResizeObserver(() => {
-            if (this.container.clientHeight > 0) {
-                this.render();
-            }
-        });
-        this.resizeObserver.observe(this.container);
-        
-        // Tenta renderizar inicial (pode ser 0 se estiver oculto, mas o Observer corrige depois)
-        this.render();
-    }
-
-    render() {
-        const scrollTop = this.container.scrollTop;
-        const containerHeight = this.container.clientHeight;
-        
-        // Se a aba estiver oculta, não faz nada (economiza erro)
-        if (containerHeight === 0) return;
-
-        const buffer = 300; // Buffer maior para garantir fluidez
-        const startY = Math.max(0, scrollTop - buffer);
-        const endY = scrollTop + containerHeight + buffer;
-
-        const startIndex = this.findStartIndex(startY);
-        const endIndex = this.findEndIndex(endY, startIndex);
-
-        this.content.innerHTML = '';
-
-        for (let i = startIndex; i <= endIndex && i < this.items.length; i++) {
-            const item = this.items[i];
-            const element = this.renderCallback(item.data, item.type);
-            
-            element.classList.add('virtual-item');
-            element.style.transform = `translateY(${item.top}px)`;
-            element.style.height = `${item.height}px`;
-            
-            this.content.appendChild(element);
-        }
-    }
-
-    findStartIndex(y) {
-        let low = 0, high = this.items.length - 1;
-        while (low <= high) {
-            const mid = Math.floor((low + high) / 2);
-            const item = this.items[mid];
-            if (item.bottom < y) {
-                low = mid + 1;
-            } else if (item.top > y) {
-                high = mid - 1;
-            } else {
-                return mid;
-            }
-        }
-        return Math.max(0, low - 1);
-    }
-
-    findEndIndex(y, start) {
-        for (let i = start; i < this.items.length; i++) {
-            if (this.items[i].top > y) return i;
-        }
-        return this.items.length - 1;
-    }
-    
-    // Método para limpar memória se destruirmos a lista
-    destroy() {
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-        }
-        this.container.innerHTML = '';
-    }
-}
+// Substitua a função renderizarHistorico existente em app.js
 
 function renderizarHistorico() {
     const listaHistorico = document.getElementById('lista-historico');
@@ -1455,99 +1348,82 @@ function renderizarHistorico() {
 
     if (!listaHistorico) return;
 
-    // 1. SMART CHECK
+    // --- 1. OTIMIZAÇÃO: SMART CHECK (A parte que faltava) ---
+    // Cria uma assinatura baseada no número de transações, no último ID e nos filtros
     const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
 
-    if (currentSignature === lastHistoricoListSignature && virtualListTransacoes) {
+    // Se nada mudou, PULA todo o resto da função (Economiza processamento)
+    if (currentSignature === lastHistoricoListSignature && listaHistorico.children.length > 0) {
         return; 
     }
+    
+    // Atualiza a assinatura
     lastHistoricoListSignature = currentSignature;
 
-    // 2. FILTRAGEM
+    // --- 2. RENDERIZAÇÃO (Só acontece se passar pelo check acima) ---
+    listaHistorico.innerHTML = '';
+    
+    // Filtragem
     let dadosFiltrados = transacoes.filter(t => {
         const matchType = histFilterType === 'all' || t.type === histFilterType;
         const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
         return matchType && matchSearch;
     });
 
+    // Verificação de Vazio
     if (dadosFiltrados.length === 0) {
-        listaHistorico.innerHTML = ''; // Limpa virtualização antiga
         historicoStatus.classList.remove('hidden');
-        historicoMensagem.textContent = transacoes.length > 0 ? "Nenhum resultado para o filtro." : "Nenhum registro encontrado.";
-        virtualListTransacoes = null;
+        if (transacoes.length > 0) {
+            historicoMensagem.textContent = "Nenhum resultado para o filtro.";
+        } else {
+            historicoMensagem.textContent = "Nenhum registro encontrado.";
+        }
         return;
     }
     
     historicoStatus.classList.add('hidden');
-    dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    // 3. FLAT LIST (ACHATAMENTO DOS DADOS PARA VIRTUALIZAÇÃO)
-    // Precisamos converter: { Mês: [t1, t2] }  ->  [Header, t1, t2, Header, t3...]
-    const grupos = agruparPorMes(dadosFiltrados, 'date');
-    const flatItems = [];
-    let currentTop = 0;
     
-    // Alturas fixas (ajuste conforme seu CSS)
-    const HEADER_HEIGHT = 45; 
-    const ROW_HEIGHT = 90; // Card + margem
+    // Ordenação e Agrupamento
+    dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const grupos = agruparPorMes(dadosFiltrados, 'date');
+    const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        const itens = grupos[mes];
-        const totalMes = itens.reduce((acc, t) => acc + (t.quantity * t.price), 0);
+        // Header
+        const header = document.createElement('div');
+        header.className = 'history-header-sticky';
+        
+        const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
+        
+        header.innerHTML = `
+            <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-purple-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
+                ${mes}
+            </h3>
+            <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+                Mov: ${formatBRL(totalMes)}
+            </span>
+        `;
+        fragment.appendChild(header);
 
-        // Adiciona Header na lista plana
-        flatItems.push({
-            type: 'header',
-            data: { mes, total: totalMes },
-            top: currentTop,
-            height: HEADER_HEIGHT,
-            bottom: currentTop + HEADER_HEIGHT
-        });
-        currentTop += HEADER_HEIGHT;
+        // Cards
+        const listaGrupo = document.createElement('div');
+        listaGrupo.className = 'px-3 pb-2'; 
 
-        // Adiciona Linhas
-        itens.forEach(t => {
-            flatItems.push({
-                type: 'row',
-                data: t,
-                top: currentTop,
-                height: ROW_HEIGHT,
-                bottom: currentTop + ROW_HEIGHT
-            });
-            currentTop += ROW_HEIGHT;
-        });
-    });
-
-    // 4. INICIALIZA A LISTA VIRTUAL
-    // Callback que desenha UM item (Header ou Row)
-    const renderRowItem = (data, type) => {
-        if (type === 'header') {
-            const div = document.createElement('div');
-            // Sticky removido pois virtualização remove itens do DOM, quebrando o sticky nativo.
-            // O visual permanece idêntico, apenas não "gruda" no topo.
-            div.className = 'flex items-center justify-between px-1 py-1'; 
-            div.innerHTML = `
-                <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-purple-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
-                    ${data.mes}
-                </h3>
-                <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
-                    Mov: ${formatBRL(data.total)}
-                </span>
-            `;
-            return div;
-        } else {
-            // Row Normal
-            const t = data;
+        grupos[mes].forEach(t => {
             const isVenda = t.type === 'sell';
+            const item = document.createElement('div');
             const totalTransacao = t.quantity * t.price;
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
+            
             const labelTipo = isVenda ? 'VENDA' : 'COMPRA';
-            const badgeBg = isVenda ? 'bg-red-900/20 text-red-400 border border-red-500/20' : 'bg-purple-900/20 text-purple-400 border border-purple-500/20';
+            const badgeBg = isVenda 
+                ? 'bg-red-900/20 text-red-400 border border-red-500/20' 
+                : 'bg-purple-900/20 text-purple-400 border border-purple-500/20';
+
             const sigla = t.symbol.substring(0, 2);
 
-            const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
             item.setAttribute('data-id', t.id);
@@ -1557,6 +1433,7 @@ function renderizarHistorico() {
                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
                         <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
                     </div>
+                    
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${t.symbol}</h4>
@@ -1569,44 +1446,65 @@ function renderizarHistorico() {
                         </div>
                     </div>
                 </div>
+                
                 <div class="text-right flex flex-col items-end justify-center">
                     <span class="text-sm font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
-                    <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/80 text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    
+                    <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/80 text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                     </button>
                 </div>
             `;
-            return item;
-        }
-    };
-
-    virtualListTransacoes = new VirtualList('lista-historico', flatItems, renderRowItem);
+            listaGrupo.appendChild(item);
+        });
+        fragment.appendChild(listaGrupo);
+    });
+    
+    listaHistorico.appendChild(fragment);
 }
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
-    // 1. SMART CHECK
+    // --- 1. OTIMIZAÇÃO: SMART CHECK ---
+    // Precisamos monitorar Proventos, Transações (pois afetam a quantidade/valor) e a Busca
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+    
+    // A assinatura combina: Proventos + Transações + Filtro de Busca
     const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${provSearchTerm}`;
 
-    if (currentSignature === lastHistoricoProventosSignature && virtualListProventos) {
+    // Se nada mudou e a lista já tem itens, não faz nada (Economiza CPU)
+    if (currentSignature === lastHistoricoProventosSignature && listaHistoricoProventos.children.length > 0) {
         return; 
     }
+    
+    // Atualiza a assinatura
     lastHistoricoProventosSignature = currentSignature;
+    // ----------------------------------
 
-    // 2. FILTRO E PROCESSAMENTO
+    listaHistoricoProventos.innerHTML = '';
+    
     const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+    // 2. Filtra por Data (Pagos) E pelo Termo de Busca
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
+        
+        // Verificação de Data
         const parts = p.paymentDate.split('-');
         const dPag = new Date(parts[0], parts[1]-1, parts[2]);
         const dataValida = dPag <= hoje;
+        
+        // Verificação da Busca
         const buscaValida = provSearchTerm === '' || p.symbol.includes(provSearchTerm);
+
         return dataValida && buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
+    // 3. Verifica se está vazio
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
@@ -1615,20 +1513,17 @@ function renderizarHistoricoProventos() {
                 </svg>
                 <p class="text-xs text-gray-500">Nenhum provento encontrado.</p>
             </div>`;
-        virtualListProventos = null;
         return;
     }
 
-    // 3. FLAT LIST (ACHATAMENTO)
+    // 4. Agrupamento e Renderização
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
-    const flatItems = [];
-    let currentTop = 0;
-    const HEADER_HEIGHT = 45;
-    const ROW_HEIGHT = 90;
+    const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
-        // Filtra itens com quantidade > 0
+        
+        // Pré-filtra itens válidos (onde você tinha cotas) e calcula totais
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1639,47 +1534,26 @@ function renderizarHistoricoProventos() {
             return false;
         });
 
+        // Se o total do mês for zero, pula esse mês
         if (totalMes === 0) return;
 
-        // Header
-        flatItems.push({
-            type: 'header',
-            data: { mes, total: totalMes },
-            top: currentTop,
-            height: HEADER_HEIGHT,
-            bottom: currentTop + HEADER_HEIGHT
-        });
-        currentTop += HEADER_HEIGHT;
+        const header = document.createElement('div');
+        header.className = 'history-header-sticky';
+        header.innerHTML = `
+            <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                ${mes}
+            </h3>
+            <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+                Recebido: ${formatBRL(totalMes)}
+            </span>
+        `;
+        fragment.appendChild(header);
 
-        // Rows
+        const listaGrupo = document.createElement('div');
+        listaGrupo.className = 'px-3 pb-2'; 
+
         itensValidos.forEach(p => {
-            flatItems.push({
-                type: 'row',
-                data: p,
-                top: currentTop,
-                height: ROW_HEIGHT,
-                bottom: currentTop + ROW_HEIGHT
-            });
-            currentTop += ROW_HEIGHT;
-        });
-    });
-
-    // 4. INICIALIZA LISTA VIRTUAL
-    const renderRowItem = (p, type) => {
-        if (type === 'header') {
-            const div = document.createElement('div');
-            div.className = 'flex items-center justify-between px-1 py-1';
-            div.innerHTML = `
-                <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
-                    ${p.mes}
-                </h3>
-                <span class="text-[10px] font-mono font-medium text-gray-400 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
-                    Recebido: ${formatBRL(p.total)}
-                </span>
-            `;
-            return div;
-        } else {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
             const dia = p.paymentDate.split('-')[2]; 
@@ -1689,11 +1563,13 @@ function renderizarHistoricoProventos() {
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
+
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
                         <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
                     </div>
+                    
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
@@ -1708,15 +1584,18 @@ function renderizarHistoricoProventos() {
                         </div>
                     </div>
                 </div>
+                
                 <div class="text-right flex flex-col items-end justify-center">
                     <span class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
                 </div>
             `;
-            return item;
-        }
-    };
+            listaGrupo.appendChild(item);
+        });
+        
+        fragment.appendChild(listaGrupo);
+    });
 
-    virtualListProventos = new VirtualList('lista-historico-proventos', flatItems, renderRowItem);
+    listaHistoricoProventos.appendChild(fragment);
 }
 
     // 1. Alternar entre Abas (Transações vs Proventos)
@@ -2018,11 +1897,12 @@ function renderizarGraficoAlocacao(dadosInput) {
     if (!canvas) return;
 
     // 1. PREPARAÇÃO DOS DADOS
+    // Usa os dados que vieram da renderizarCarteira. 
+    // Se por acaso vier vazio (chamada manual), calcula usando precosAtuais.
     let dadosGrafico = dadosInput;
 
     if (!dadosGrafico) {
-        // --- CORREÇÃO DO ERRO AQUI ---
-        // Usa 'precosAtuais' (variável global) em vez de 'precosCache'
+        // Fallback de segurança: Cria mapa baseado em precosAtuais (variável global correta)
         const mapPrecos = {};
         if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
             precosAtuais.forEach(p => mapPrecos[p.symbol] = p.regularMarketPrice);
@@ -2040,23 +1920,29 @@ function renderizarGraficoAlocacao(dadosInput) {
     // Ordena do maior para o menor
     dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
-    // 2. SMART CHECK
+    // 2. OTIMIZAÇÃO: SMART CHECK (Antes de desenhar qualquer coisa)
     const labels = dadosGrafico.map(d => d.symbol);
     const data = dadosGrafico.map(d => d.totalPosicao);
     const totalGeral = data.reduce((acc, curr) => acc + curr, 0);
 
+    // Cria a assinatura do estado atual
     const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
+
+    // Verifica se os dados mudaram E se a legenda já existe no HTML
     const legendExists = legendContainer ? legendContainer.children.length > 0 : true;
 
     if (newDataString === lastAlocacaoData && alocacaoChartInstance && legendExists) {
-        return; 
+        return; // Aborta se tudo estiver igual
     }
 
     lastAlocacaoData = newDataString;
 
-    // 3. VISUAL
+    // --- DAQUI PARA BAIXO: RENDERIZAÇÃO (Só executa se houver mudança) ---
+
+    // 3. Atualiza valor central
     if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
 
+    // 4. Limpeza se não houver dados
     if (dadosGrafico.length === 0) {
         if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
@@ -2067,12 +1953,17 @@ function renderizarGraficoAlocacao(dadosInput) {
         return;
     }
 
+    // 5. Gerador de Cores Premium
     const gerarPaletaPremium = (num) => {
-        const coresBase = ['#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'];
+        const coresBase = [
+            '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
+            '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'
+        ];
         return Array.from({length: num}, (_, i) => coresBase[i % coresBase.length]);
     };
     const colors = gerarPaletaPremium(labels.length);
 
+    // 6. Renderiza a Legenda Externa
     if(legendContainer) {
         legendContainer.innerHTML = labels.map((label, i) => `
             <div class="flex items-center gap-1.5">
@@ -2082,7 +1973,10 @@ function renderizarGraficoAlocacao(dadosInput) {
         `).join('');
     }
 
+    // 7. Renderiza ou Atualiza o Gráfico
     const ctx = canvas.getContext('2d');
+    
+    // Ajuste de cores para tema claro/escuro
     const isLight = document.body.classList.contains('light-mode');
     const borderColor = isLight ? '#ffffff' : '#000000';
 
@@ -2110,9 +2004,29 @@ function renderizarGraficoAlocacao(dadosInput) {
             options: {
                 responsive: true, 
                 maintainAspectRatio: false,
-                cutout: '85%',
+                cutout: '85%', // Anel fino moderno
                 layout: { padding: 10 },
-                plugins: { legend: { display: false }, tooltip: { enabled: true } }
+                plugins: {
+                    legend: { display: false }, // Oculta a legenda interna
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 20, 0.95)',
+                        titleColor: isLight ? '#1f2937' : '#fff',
+                        bodyColor: isLight ? '#4b5563' : '#e5e7eb',
+                        borderColor: isLight ? '#e5e7eb' : '#333',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return ` ${label}: ${percent}% (${formatBRL(value)})`;
+                            }
+                        }
+                    }
+                }
             }
         });
     }

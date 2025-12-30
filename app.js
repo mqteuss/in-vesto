@@ -1339,6 +1339,7 @@ function agruparPorMes(itens, dateField) {
 }
 
 // --- CLASSE DE VIRTUALIZAÇÃO (Virtual Scroller) ---
+// --- CLASSE DE VIRTUALIZAÇÃO (CORRIGIDA) ---
 class VirtualList {
     constructor(containerId, items, renderCallback) {
         this.container = document.getElementById(containerId);
@@ -1353,19 +1354,19 @@ class VirtualList {
         this.content = document.createElement('div');
         this.content.className = 'virtual-content';
         
-        // Estado interno
-        this.lastScrollTop = -1;
         this.rafId = null;
+        this.resizeObserver = null;
         
         this.init();
     }
 
     init() {
+        // Limpa qualquer conteúdo anterior
         this.container.innerHTML = '';
         this.container.appendChild(this.spacer);
         this.container.appendChild(this.content);
         
-        // Listener de Scroll Otimizado
+        // 1. Listener de Scroll
         this.container.addEventListener('scroll', () => {
             if (this.rafId) return;
             this.rafId = requestAnimationFrame(() => {
@@ -1374,6 +1375,16 @@ class VirtualList {
             });
         }, { passive: true });
         
+        // 2. CORREÇÃO CRÍTICA: Observador de Tamanho
+        // Assim que a aba ficar visível (height > 0), força a renderização
+        this.resizeObserver = new ResizeObserver(() => {
+            if (this.container.clientHeight > 0) {
+                this.render();
+            }
+        });
+        this.resizeObserver.observe(this.container);
+        
+        // Tenta renderizar inicial (pode ser 0 se estiver oculto, mas o Observer corrige depois)
         this.render();
     }
 
@@ -1381,24 +1392,22 @@ class VirtualList {
         const scrollTop = this.container.scrollTop;
         const containerHeight = this.container.clientHeight;
         
-        // Buffer para renderizar um pouco acima e abaixo (evita tela branca ao scrollar rápido)
-        const buffer = 200; 
+        // Se a aba estiver oculta, não faz nada (economiza erro)
+        if (containerHeight === 0) return;
+
+        const buffer = 300; // Buffer maior para garantir fluidez
         const startY = Math.max(0, scrollTop - buffer);
         const endY = scrollTop + containerHeight + buffer;
 
-        // Busca Binária para performance em listas gigantes
         const startIndex = this.findStartIndex(startY);
         const endIndex = this.findEndIndex(endY, startIndex);
 
-        // Limpa renderização anterior
         this.content.innerHTML = '';
 
-        // Renderiza apenas os visíveis
         for (let i = startIndex; i <= endIndex && i < this.items.length; i++) {
             const item = this.items[i];
             const element = this.renderCallback(item.data, item.type);
             
-            // Posicionamento Absoluto
             element.classList.add('virtual-item');
             element.style.transform = `translateY(${item.top}px)`;
             element.style.height = `${item.height}px`;
@@ -1417,7 +1426,7 @@ class VirtualList {
             } else if (item.top > y) {
                 high = mid - 1;
             } else {
-                return mid; // Encontrou um item que cruza Y
+                return mid;
             }
         }
         return Math.max(0, low - 1);
@@ -1428,6 +1437,14 @@ class VirtualList {
             if (this.items[i].top > y) return i;
         }
         return this.items.length - 1;
+    }
+    
+    // Método para limpar memória se destruirmos a lista
+    destroy() {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+        this.container.innerHTML = '';
     }
 }
 

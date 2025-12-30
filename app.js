@@ -379,7 +379,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
 	let lastTransacoesSignature = '';    
     let lastPatrimonioCalcSignature = ''; 
-    let lastHistoricoListSignature = '';  
+    let lastHistoricoListSignature = '';
+    let lastHistoricoProventosSignature = '';	
     let lastAlocacaoData = '';
 	let currentPatrimonioRange = '1M';
 	let histFilterType = 'all';
@@ -1466,11 +1467,29 @@ function renderizarHistorico() {
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
+    
+    // --- 1. OTIMIZAÇÃO: SMART CHECK ---
+    // Precisamos monitorar Proventos, Transações (pois afetam a quantidade/valor) e a Busca
+    const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
+    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+    
+    // A assinatura combina: Proventos + Transações + Filtro de Busca
+    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${provSearchTerm}`;
+
+    // Se nada mudou e a lista já tem itens, não faz nada (Economiza CPU)
+    if (currentSignature === lastHistoricoProventosSignature && listaHistoricoProventos.children.length > 0) {
+        return; 
+    }
+    
+    // Atualiza a assinatura
+    lastHistoricoProventosSignature = currentSignature;
+    // ----------------------------------
+
     listaHistoricoProventos.innerHTML = '';
     
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // 1. Filtra por Data (Pagos) E pelo Termo de Busca
+    // 2. Filtra por Data (Pagos) E pelo Termo de Busca
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         
@@ -1485,7 +1504,7 @@ function renderizarHistoricoProventos() {
         return dataValida && buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    // 2. Verifica se está vazio
+    // 3. Verifica se está vazio
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
@@ -1497,14 +1516,14 @@ function renderizarHistoricoProventos() {
         return;
     }
 
-    // 3. Agrupamento e Renderização
+    // 4. Agrupamento e Renderização
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
-        // CORREÇÃO 1: Pré-filtra itens válidos (onde você tinha cotas)
+        // Pré-filtra itens válidos (onde você tinha cotas) e calcula totais
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1515,7 +1534,7 @@ function renderizarHistoricoProventos() {
             return false;
         });
 
-        // CORREÇÃO 1: Se o total do mês for zero, pula esse mês inteiro (não renderiza)
+        // Se o total do mês for zero, pula esse mês
         if (totalMes === 0) return;
 
         const header = document.createElement('div');
@@ -1534,16 +1553,10 @@ function renderizarHistoricoProventos() {
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
-        // Usa os itensValidos calculados acima
         itensValidos.forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            
-            // CORREÇÃO 2: Data Precisa. 
-            // Em vez de criar new Date() que sofre com fuso horário, quebra a string.
-            // Formato vindo do scraper é sempre YYYY-MM-DD
             const dia = p.paymentDate.split('-')[2]; 
-
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';

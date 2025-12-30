@@ -1348,20 +1348,15 @@ function renderizarHistorico() {
 
     if (!listaHistorico) return;
 
-    // --- 1. OTIMIZAÇÃO: SMART CHECK (A parte que faltava) ---
-    // Cria uma assinatura baseada no número de transações, no último ID e nos filtros
+    // Smart Check
     const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
 
-    // Se nada mudou, PULA todo o resto da função (Economiza processamento)
     if (currentSignature === lastHistoricoListSignature && listaHistorico.children.length > 0) {
         return; 
     }
     
-    // Atualiza a assinatura
     lastHistoricoListSignature = currentSignature;
-
-    // --- 2. RENDERIZAÇÃO (Só acontece se passar pelo check acima) ---
     listaHistorico.innerHTML = '';
     
     // Filtragem
@@ -1371,26 +1366,21 @@ function renderizarHistorico() {
         return matchType && matchSearch;
     });
 
-    // Verificação de Vazio
     if (dadosFiltrados.length === 0) {
         historicoStatus.classList.remove('hidden');
-        if (transacoes.length > 0) {
-            historicoMensagem.textContent = "Nenhum resultado para o filtro.";
-        } else {
-            historicoMensagem.textContent = "Nenhum registro encontrado.";
-        }
+        historicoMensagem.textContent = transacoes.length > 0 ? "Nenhum resultado para o filtro." : "Nenhum registro encontrado.";
         return;
     }
     
     historicoStatus.classList.add('hidden');
     
-    // Ordenação e Agrupamento
+    // Agrupamento
     dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
     const grupos = agruparPorMes(dadosFiltrados, 'date');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header
+        // Header Mês
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
         
@@ -1407,7 +1397,7 @@ function renderizarHistorico() {
         `;
         fragment.appendChild(header);
 
-        // Cards
+        // Lista de Cards
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1416,13 +1406,20 @@ function renderizarHistorico() {
             const item = document.createElement('div');
             const totalTransacao = t.quantity * t.price;
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
-            
-            const labelTipo = isVenda ? 'VENDA' : 'COMPRA';
-            const badgeBg = isVenda 
-                ? 'bg-red-900/20 text-red-400 border border-red-500/20' 
-                : 'bg-purple-900/20 text-purple-400 border border-purple-500/20';
-
             const sigla = t.symbol.substring(0, 2);
+
+            // --- ALTERAÇÃO SOLICITADA: ÍCONES E CORES ---
+            // Seta para Baixo (Entrada/Compra) | Seta para Cima (Saída/Venda)
+            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+
+            const labelContent = isVenda ? iconVenda : iconCompra;
+            
+            // Compra agora é VERDE (Green-500), Venda é VERMELHO (Red-500)
+            const badgeBg = isVenda 
+                ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
+                : 'bg-green-500/10 text-green-500 border border-green-500/20';
+            // ----------------------------------------------
 
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
@@ -1437,7 +1434,10 @@ function renderizarHistorico() {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${t.symbol}</h4>
-                            <span class="badge-type ${badgeBg}">${labelTipo}</span>
+                            
+                            <span class="badge-type ${badgeBg} w-5 h-5 flex items-center justify-center !p-0 rounded-md">
+                                ${labelContent}
+                            </span>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
@@ -1468,43 +1468,30 @@ function renderizarHistorico() {
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
-    // --- 1. OTIMIZAÇÃO: SMART CHECK ---
-    // Precisamos monitorar Proventos, Transações (pois afetam a quantidade/valor) e a Busca
+    // Smart Check
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    
-    // A assinatura combina: Proventos + Transações + Filtro de Busca
     const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${provSearchTerm}`;
 
-    // Se nada mudou e a lista já tem itens, não faz nada (Economiza CPU)
     if (currentSignature === lastHistoricoProventosSignature && listaHistoricoProventos.children.length > 0) {
         return; 
     }
     
-    // Atualiza a assinatura
     lastHistoricoProventosSignature = currentSignature;
-    // ----------------------------------
-
     listaHistoricoProventos.innerHTML = '';
     
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // 2. Filtra por Data (Pagos) E pelo Termo de Busca
+    // Filtros
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
-        
-        // Verificação de Data
         const parts = p.paymentDate.split('-');
         const dPag = new Date(parts[0], parts[1]-1, parts[2]);
         const dataValida = dPag <= hoje;
-        
-        // Verificação da Busca
         const buscaValida = provSearchTerm === '' || p.symbol.includes(provSearchTerm);
-
         return dataValida && buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    // 3. Verifica se está vazio
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
@@ -1516,14 +1503,12 @@ function renderizarHistoricoProventos() {
         return;
     }
 
-    // 4. Agrupamento e Renderização
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
-        // Pré-filtra itens válidos (onde você tinha cotas) e calcula totais
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1534,9 +1519,9 @@ function renderizarHistoricoProventos() {
             return false;
         });
 
-        // Se o total do mês for zero, pula esse mês
         if (totalMes === 0) return;
 
+        // Header
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
         header.innerHTML = `
@@ -1550,6 +1535,7 @@ function renderizarHistoricoProventos() {
         `;
         fragment.appendChild(header);
 
+        // Lista
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1559,7 +1545,12 @@ function renderizarHistoricoProventos() {
             const dia = p.paymentDate.split('-')[2]; 
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
-            const badgeBg = 'bg-green-900/20 text-green-400 border border-green-500/20';
+            
+            // --- ALTERAÇÃO AQUI: Ícone de Check ---
+            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
+            
+            // Estilo Verde Neon Suave
+            const badgeBg = 'bg-green-500/10 text-green-500 border border-green-500/20';
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
@@ -1573,7 +1564,10 @@ function renderizarHistoricoProventos() {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
-                            <span class="badge-type ${badgeBg}">PAGO</span>
+                            
+                            <span class="badge-type ${badgeBg} w-5 h-5 flex items-center justify-center !p-0 rounded-md" title="Pago">
+                                ${iconPago}
+                            </span>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
@@ -4051,7 +4045,6 @@ function renderizarTransacoesDetalhes(symbol) {
 
     listaContainer.innerHTML = '';
     
-    // 1. Filtra e Ordena
     const txsDoAtivo = transacoes
         .filter(t => t.symbol === symbol)
         .sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -4059,7 +4052,7 @@ function renderizarTransacoesDetalhes(symbol) {
     if (txsDoAtivo.length === 0) {
         vazioMsg.classList.remove('hidden');
         listaContainer.classList.add('hidden');
-        container.classList.remove('hidden'); // Garante que o container pai apareça para mostrar a msg vazio
+        container.classList.remove('hidden');
         return;
     } 
     
@@ -4067,21 +4060,17 @@ function renderizarTransacoesDetalhes(symbol) {
     listaContainer.classList.remove('hidden');
     container.classList.remove('hidden');
 
-    // 2. Agrupa por Mês (Mesma lógica do Extrato)
     const grupos = agruparPorMes(txsDoAtivo, 'date');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Soma do valor movimentado no mês para este ativo
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
 
-        // --- HEADER DO MÊS (Sticky) ---
         const header = document.createElement('div');
-        // Ajuste de estilo inline para garantir que fique bonito dentro do padding do modal
         header.className = 'history-header-sticky'; 
-        header.style.top = '-1px'; // Ajuste fino para colar no topo do container scrollavel
-        header.style.margin = '0 -8px 8px -8px'; // Margem negativa para alinhar com as bordas
-        header.style.borderRadius = '12px'; // Leve arredondamento
+        header.style.top = '-1px'; 
+        header.style.margin = '0 -8px 8px -8px'; 
+        header.style.borderRadius = '12px'; 
         
         header.innerHTML = `
             <h3 class="text-[11px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-2">
@@ -4094,7 +4083,6 @@ function renderizarTransacoesDetalhes(symbol) {
         `;
         fragment.appendChild(header);
 
-        // --- LISTA DE CARDS ---
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'pb-2'; 
 
@@ -4104,17 +4092,20 @@ function renderizarTransacoesDetalhes(symbol) {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const sigla = t.symbol.substring(0, 2);
             
-            const labelTipo = isVenda ? 'VENDA' : 'COMPRA';
+            // --- ALTERAÇÃO SOLICITADA TAMBÉM AQUI ---
+            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+
+            const labelContent = isVenda ? iconVenda : iconCompra;
+            
             const badgeBg = isVenda 
-                ? 'bg-red-900/20 text-red-400 border border-red-500/20' 
-                : 'bg-purple-900/20 text-purple-400 border border-purple-500/20';
+                ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
+                : 'bg-green-500/10 text-green-500 border border-green-500/20';
+            // ----------------------------------------
 
             const item = document.createElement('div');
-            // Reutiliza a classe 'history-card' do CSS global para garantir identidade visual
             item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 relative group';
             
-            // Nota: Removemos os botões de ação (editar/excluir) aqui para manter o modal limpo,
-            // já que a gestão principal é feita na aba Extrato.
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
@@ -4123,7 +4114,9 @@ function renderizarTransacoesDetalhes(symbol) {
                     
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <span class="badge-type ${badgeBg}">${labelTipo}</span>
+                             <span class="badge-type ${badgeBg} w-5 h-5 flex items-center justify-center !p-0 rounded-md">
+                                ${labelContent}
+                            </span>
                             <span class="text-[10px] font-medium text-gray-500">Dia ${dia}</span>
                         </div>
                         <div class="flex items-center gap-1.5 mt-0.5 text-xs text-gray-300 leading-none">

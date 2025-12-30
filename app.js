@@ -2032,15 +2032,12 @@ function renderizarGraficoAlocacao(dadosInput) {
 // --- EM app.js: Adicione esta função auxiliar (pode ser antes da renderizarGraficoHistorico) ---
 
 function exibirDetalhesProventos(anoMes, labelAmigavel) {
-    // 1. Filtrar e Agrupar por Ativo
+    // 1. Filtrar e Agrupar
     const agrupado = {};
     let totalMes = 0;
 
     proventosConhecidos.forEach(p => {
-        // Verifica se o provento é do mês clicado (Ex: "2025-10")
         if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
-        
-        // Calcula quantidade e valor
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
         
@@ -2052,10 +2049,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         }
     });
 
-    // 2. Ordenar do maior pagamento para o menor
     const lista = Object.entries(agrupado).sort(([, a], [, b]) => b - a);
 
-    // 3. Gerar HTML da Lista (Visual Clean Dark)
+    // 2. HTML da Lista (SEM BORDAS NOS ITENS)
     let html = `<div class="w-full text-left space-y-2 max-h-[50vh] overflow-y-auto custom-scroll pr-1 mt-2">`;
     
     if (lista.length === 0) {
@@ -2063,9 +2059,9 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     } else {
         lista.forEach(([ticker, valor]) => {
             html += `
-                <div class="flex justify-between items-center p-3 bg-[#151515] rounded-xl border border-[#2C2C2E]">
+                <div class="flex justify-between items-center p-3 bg-[#151515] rounded-xl">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-lg bg-[#1C1C1E] border border-[#2C2C2E] flex items-center justify-center font-bold text-[10px] text-gray-400">
+                        <div class="w-9 h-9 rounded-lg bg-[#1C1C1E] flex items-center justify-center font-bold text-[10px] text-gray-400">
                             ${ticker.substring(0,2)}
                         </div>
                         <span class="font-bold text-gray-200 text-sm">${ticker}</span>
@@ -2082,30 +2078,41 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             <span class="text-lg font-bold text-purple-400">${formatBRL(totalMes)}</span>
         </div>`;
 
-    // 4. Exibir no Modal (Reutilizando seu modal padrão)
+    // 3. Configurar Modal
     const modal = document.getElementById('custom-modal');
+    const modalContent = document.getElementById('custom-modal-content'); // Captura o container
     const title = document.getElementById('custom-modal-title');
     const msg = document.getElementById('custom-modal-message');
     const btnCancel = document.getElementById('custom-modal-cancel');
     const btnOk = document.getElementById('custom-modal-ok');
 
-    // Configura o modal para modo "Relatório"
+    // --- REMOVE BORDA DO MODAL TEMPORARIAMENTE ---
+    if(modalContent) {
+        modalContent.style.border = 'none';
+        modalContent.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.9)'; // Sombra mais forte para compensar
+    }
+    // ---------------------------------------------
+
     title.textContent = `Proventos de ${labelAmigavel}`;
     msg.innerHTML = html; 
     
-    // Esconde botão Cancelar e muda o OK para "Fechar"
     btnCancel.style.display = 'none';
     btnOk.textContent = 'Fechar';
     
-    // Handler temporário para fechar e limpar
     btnOk.onclick = () => {
         modal.classList.remove('visible');
-        // Reseta o modal para o estado original após fechar (para não quebrar outros confirms)
         setTimeout(() => {
+            // --- RESTAURA BORDA ORIGINAL AO FECHAR ---
+            if(modalContent) {
+                modalContent.style.border = ''; // Volta ao padrão do CSS/HTML
+                modalContent.style.boxShadow = ''; 
+            }
+            // -----------------------------------------
+            
             btnCancel.style.display = 'block';
             btnOk.textContent = 'Confirmar';
             msg.innerHTML = ''; 
-            btnOk.onclick = null; // Remove este handler
+            btnOk.onclick = null; 
         }, 300);
     };
 

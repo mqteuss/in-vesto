@@ -1473,7 +1473,7 @@ function renderizarHistorico() {
     
     // Alturas fixas (ajuste conforme seu CSS)
     const HEADER_HEIGHT = 45; 
-    const ROW_HEIGHT = 76; // Card + margem
+    const ROW_HEIGHT = 90; // Card + margem
 
     Object.keys(grupos).forEach(mes => {
         const itens = grupos[mes];
@@ -1607,7 +1607,7 @@ function renderizarHistoricoProventos() {
     const flatItems = [];
     let currentTop = 0;
     const HEADER_HEIGHT = 45;
-    const ROW_HEIGHT = 76;
+    const ROW_HEIGHT = 90;
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
@@ -2001,12 +2001,11 @@ function renderizarGraficoAlocacao(dadosInput) {
     if (!canvas) return;
 
     // 1. PREPARAÇÃO DOS DADOS
-    // Usa os dados que vieram da renderizarCarteira. 
-    // Se por acaso vier vazio (chamada manual), calcula usando precosAtuais.
     let dadosGrafico = dadosInput;
 
     if (!dadosGrafico) {
-        // Fallback de segurança: Cria mapa baseado em precosAtuais (variável global correta)
+        // --- CORREÇÃO DO ERRO AQUI ---
+        // Usa 'precosAtuais' (variável global) em vez de 'precosCache'
         const mapPrecos = {};
         if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
             precosAtuais.forEach(p => mapPrecos[p.symbol] = p.regularMarketPrice);
@@ -2024,29 +2023,23 @@ function renderizarGraficoAlocacao(dadosInput) {
     // Ordena do maior para o menor
     dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
-    // 2. OTIMIZAÇÃO: SMART CHECK (Antes de desenhar qualquer coisa)
+    // 2. SMART CHECK
     const labels = dadosGrafico.map(d => d.symbol);
     const data = dadosGrafico.map(d => d.totalPosicao);
     const totalGeral = data.reduce((acc, curr) => acc + curr, 0);
 
-    // Cria a assinatura do estado atual
     const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
-
-    // Verifica se os dados mudaram E se a legenda já existe no HTML
     const legendExists = legendContainer ? legendContainer.children.length > 0 : true;
 
     if (newDataString === lastAlocacaoData && alocacaoChartInstance && legendExists) {
-        return; // Aborta se tudo estiver igual
+        return; 
     }
 
     lastAlocacaoData = newDataString;
 
-    // --- DAQUI PARA BAIXO: RENDERIZAÇÃO (Só executa se houver mudança) ---
-
-    // 3. Atualiza valor central
+    // 3. VISUAL
     if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
 
-    // 4. Limpeza se não houver dados
     if (dadosGrafico.length === 0) {
         if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
@@ -2057,17 +2050,12 @@ function renderizarGraficoAlocacao(dadosInput) {
         return;
     }
 
-    // 5. Gerador de Cores Premium
     const gerarPaletaPremium = (num) => {
-        const coresBase = [
-            '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
-            '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'
-        ];
+        const coresBase = ['#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'];
         return Array.from({length: num}, (_, i) => coresBase[i % coresBase.length]);
     };
     const colors = gerarPaletaPremium(labels.length);
 
-    // 6. Renderiza a Legenda Externa
     if(legendContainer) {
         legendContainer.innerHTML = labels.map((label, i) => `
             <div class="flex items-center gap-1.5">
@@ -2077,10 +2065,7 @@ function renderizarGraficoAlocacao(dadosInput) {
         `).join('');
     }
 
-    // 7. Renderiza ou Atualiza o Gráfico
     const ctx = canvas.getContext('2d');
-    
-    // Ajuste de cores para tema claro/escuro
     const isLight = document.body.classList.contains('light-mode');
     const borderColor = isLight ? '#ffffff' : '#000000';
 
@@ -2108,29 +2093,9 @@ function renderizarGraficoAlocacao(dadosInput) {
             options: {
                 responsive: true, 
                 maintainAspectRatio: false,
-                cutout: '85%', // Anel fino moderno
+                cutout: '85%',
                 layout: { padding: 10 },
-                plugins: {
-                    legend: { display: false }, // Oculta a legenda interna
-                    tooltip: {
-                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 20, 0.95)',
-                        titleColor: isLight ? '#1f2937' : '#fff',
-                        bodyColor: isLight ? '#4b5563' : '#e5e7eb',
-                        borderColor: isLight ? '#e5e7eb' : '#333',
-                        borderWidth: 1,
-                        padding: 12,
-                        cornerRadius: 12,
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return ` ${label}: ${percent}% (${formatBRL(value)})`;
-                            }
-                        }
-                    }
-                }
+                plugins: { legend: { display: false }, tooltip: { enabled: true } }
             }
         });
     }

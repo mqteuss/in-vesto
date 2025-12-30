@@ -1891,6 +1891,8 @@ function renderizarNoticias(articles) {
 
 // EM app.js
 
+// --- EM app.js: Substitua a função renderizarGraficoAlocacao ---
+
 function renderizarGraficoAlocacao(dadosInput) {
     const canvas = document.getElementById('alocacao-chart');
     const centerValueEl = document.getElementById('center-chart-value');
@@ -1899,12 +1901,9 @@ function renderizarGraficoAlocacao(dadosInput) {
     if (!canvas) return;
 
     // 1. PREPARAÇÃO DOS DADOS
-    // Usa os dados que vieram da renderizarCarteira. 
-    // Se por acaso vier vazio (chamada manual), calcula usando precosAtuais.
     let dadosGrafico = dadosInput;
 
     if (!dadosGrafico) {
-        // Fallback de segurança: Cria mapa baseado em precosAtuais (variável global correta)
         const mapPrecos = {};
         if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
             precosAtuais.forEach(p => mapPrecos[p.symbol] = p.regularMarketPrice);
@@ -1919,32 +1918,26 @@ function renderizarGraficoAlocacao(dadosInput) {
         }).filter(d => d.totalPosicao > 0.01);
     }
 
-    // Ordena do maior para o menor
     dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
-    // 2. OTIMIZAÇÃO: SMART CHECK (Antes de desenhar qualquer coisa)
+    // 2. SMART CHECK
     const labels = dadosGrafico.map(d => d.symbol);
     const data = dadosGrafico.map(d => d.totalPosicao);
     const totalGeral = data.reduce((acc, curr) => acc + curr, 0);
 
-    // Cria a assinatura do estado atual
     const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
-
-    // Verifica se os dados mudaram E se a legenda já existe no HTML
     const legendExists = legendContainer ? legendContainer.children.length > 0 : true;
 
     if (newDataString === lastAlocacaoData && alocacaoChartInstance && legendExists) {
-        return; // Aborta se tudo estiver igual
+        return; 
     }
 
     lastAlocacaoData = newDataString;
 
-    // --- DAQUI PARA BAIXO: RENDERIZAÇÃO (Só executa se houver mudança) ---
-
     // 3. Atualiza valor central
     if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
 
-    // 4. Limpeza se não houver dados
+    // 4. Limpeza se vazio
     if (dadosGrafico.length === 0) {
         if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
@@ -1955,7 +1948,7 @@ function renderizarGraficoAlocacao(dadosInput) {
         return;
     }
 
-    // 5. Gerador de Cores Premium
+    // 5. Cores
     const gerarPaletaPremium = (num) => {
         const coresBase = [
             '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
@@ -1965,7 +1958,7 @@ function renderizarGraficoAlocacao(dadosInput) {
     };
     const colors = gerarPaletaPremium(labels.length);
 
-    // 6. Renderiza a Legenda Externa
+    // 6. Legenda Externa
     if(legendContainer) {
         legendContainer.innerHTML = labels.map((label, i) => `
             <div class="flex items-center gap-1.5">
@@ -1975,10 +1968,8 @@ function renderizarGraficoAlocacao(dadosInput) {
         `).join('');
     }
 
-    // 7. Renderiza ou Atualiza o Gráfico
+    // 7. Renderiza Gráfico
     const ctx = canvas.getContext('2d');
-    
-    // Ajuste de cores para tema claro/escuro
     const isLight = document.body.classList.contains('light-mode');
     const borderColor = isLight ? '#ffffff' : '#000000';
 
@@ -2006,10 +1997,14 @@ function renderizarGraficoAlocacao(dadosInput) {
             options: {
                 responsive: true, 
                 maintainAspectRatio: false,
-                cutout: '85%', // Anel fino moderno
+                
+                // --- ALTERAÇÃO AQUI: De 85% para 75% (Mais grosso) ---
+                cutout: '75%', 
+                // ----------------------------------------------------
+                
                 layout: { padding: 10 },
                 plugins: {
-                    legend: { display: false }, // Oculta a legenda interna
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 20, 0.95)',
                         titleColor: isLight ? '#1f2937' : '#fff',

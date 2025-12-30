@@ -2029,15 +2029,101 @@ function renderizarGraficoAlocacao(dadosInput) {
     }
 }
 
+// --- EM app.js: Adicione esta função auxiliar (pode ser antes da renderizarGraficoHistorico) ---
+
+function exibirDetalhesProventos(anoMes, labelAmigavel) {
+    // 1. Filtrar e Agrupar por Ativo
+    const agrupado = {};
+    let totalMes = 0;
+
+    proventosConhecidos.forEach(p => {
+        // Verifica se o provento é do mês clicado (Ex: "2025-10")
+        if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
+        
+        // Calcula quantidade e valor
+        const dataRef = p.dataCom || p.paymentDate;
+        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+        
+        if (qtd > 0) {
+            const total = p.value * qtd;
+            if (!agrupado[p.symbol]) agrupado[p.symbol] = 0;
+            agrupado[p.symbol] += total;
+            totalMes += total;
+        }
+    });
+
+    // 2. Ordenar do maior pagamento para o menor
+    const lista = Object.entries(agrupado).sort(([, a], [, b]) => b - a);
+
+    // 3. Gerar HTML da Lista (Visual Clean Dark)
+    let html = `<div class="w-full text-left space-y-2 max-h-[50vh] overflow-y-auto custom-scroll pr-1 mt-2">`;
+    
+    if (lista.length === 0) {
+        html += `<p class="text-center text-gray-500 text-sm py-4">Sem dados detalhados.</p>`;
+    } else {
+        lista.forEach(([ticker, valor]) => {
+            html += `
+                <div class="flex justify-between items-center p-3 bg-[#151515] rounded-xl border border-[#2C2C2E]">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-[#1C1C1E] border border-[#2C2C2E] flex items-center justify-center font-bold text-[10px] text-gray-400">
+                            ${ticker.substring(0,2)}
+                        </div>
+                        <span class="font-bold text-gray-200 text-sm">${ticker}</span>
+                    </div>
+                    <span class="font-bold text-white text-sm tracking-tight">${formatBRL(valor)}</span>
+                </div>
+            `;
+        });
+    }
+    
+    html += `</div>
+        <div class="mt-4 pt-3 border-t border-[#2C2C2E] flex justify-between items-center">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total do Mês</span>
+            <span class="text-lg font-bold text-purple-400">${formatBRL(totalMes)}</span>
+        </div>`;
+
+    // 4. Exibir no Modal (Reutilizando seu modal padrão)
+    const modal = document.getElementById('custom-modal');
+    const title = document.getElementById('custom-modal-title');
+    const msg = document.getElementById('custom-modal-message');
+    const btnCancel = document.getElementById('custom-modal-cancel');
+    const btnOk = document.getElementById('custom-modal-ok');
+
+    // Configura o modal para modo "Relatório"
+    title.textContent = `Proventos de ${labelAmigavel}`;
+    msg.innerHTML = html; 
+    
+    // Esconde botão Cancelar e muda o OK para "Fechar"
+    btnCancel.style.display = 'none';
+    btnOk.textContent = 'Fechar';
+    
+    // Handler temporário para fechar e limpar
+    btnOk.onclick = () => {
+        modal.classList.remove('visible');
+        // Reseta o modal para o estado original após fechar (para não quebrar outros confirms)
+        setTimeout(() => {
+            btnCancel.style.display = 'block';
+            btnOk.textContent = 'Confirmar';
+            msg.innerHTML = ''; 
+            btnOk.onclick = null; // Remove este handler
+        }, 300);
+    };
+
+    modal.classList.add('visible');
+}
+
+
+// --- AGORA A FUNÇÃO DO GRÁFICO ATUALIZADA (Com suporte a clique) ---
+
 function renderizarGraficoHistorico() {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // --- 1. PREPARAÇÃO DOS DADOS (Cálculo Interno) ---
+    // 1. Dados
     const grupos = {};
     proventosConhecidos.forEach(p => {
         if (!p.paymentDate || p.value <= 0) return;
-        const key = p.paymentDate.substring(0, 7); // "2024-05"
+        const key = p.paymentDate.substring(0, 7); 
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
         
@@ -2047,28 +2133,32 @@ function renderizarGraficoHistorico() {
         }
     });
 
-    const mesesOrdenados = Object.keys(grupos).sort();
+    let mesesOrdenados = Object.keys(grupos).sort();
     
+    // Pega os dados crus (YYYY-MM) antes de formatar, para usarmos no clique
     const labelsRaw = [];
     const dataRaw = [];
+    
+    // Array paralelo para guardar a chave "2025-10" correspondente a cada barra
+    const keysMap = []; 
 
     mesesOrdenados.forEach(mesIso => {
         const [anoFull, mesNum] = mesIso.split('-');
         const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
         
-        // Formata para "MAI 24"
         const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const anoCurto = anoFull.slice(-2);
         
         labelsRaw.push(`${nomeMes} ${anoCurto}`);
         dataRaw.push(grupos[mesIso]);
+        keysMap.push(mesIso); // Guarda "2024-05"
     });
 
-    // --- 2. LÓGICA DE FILTRO (Últimos 12 Meses) ---
+    // Filtro 12 meses
     const labelsFiltrados = labelsRaw.slice(-12);
     const dataFiltrados = dataRaw.slice(-12);
+    const keysFiltrados = keysMap.slice(-12); // Keys alinhadas com o filtro
     
-    // --- 3. VERIFICAÇÃO DE MUDANÇAS (Cache) ---
     const newDataString = JSON.stringify({ labels: labelsFiltrados, data: dataFiltrados });
     if (newDataString === lastHistoricoData && historicoChartInstance) { return; }
     lastHistoricoData = newDataString; 
@@ -2082,18 +2172,13 @@ function renderizarGraficoHistorico() {
     }
     
     const ctx = canvas.getContext('2d');
-
-    // --- 4. VISUAL SIMPLIFICADO (Removido Gradiente) ---
-    // Usamos uma cor sólida com leve transparência
     const simplePurpleFill = 'rgba(192, 132, 252, 0.85)'; 
     
-    // Plugin para desenhar o texto em cima da barra
     const floatingLabelsPlugin = {
         id: 'floatingLabels',
         afterDatasetsDraw(chart) {
             const { ctx } = chart;
             ctx.save();
-            
             const isLight = document.body.classList.contains('light-mode');
             const textColor = isLight ? '#374151' : '#e5e7eb'; 
             
@@ -2126,12 +2211,13 @@ function renderizarGraficoHistorico() {
             datasets: [{
                 label: 'Total Recebido',
                 data: dataFiltrados,
-                // ALTERADO AQUI: Usando a cor sólida simples
                 backgroundColor: simplePurpleFill,
                 borderColor: '#c084fc', 
                 borderWidth: 1,
-                borderRadius: 4, // Mantém cantos arredondados suaves
+                borderRadius: 4,
                 barPercentage: 0.6,
+                // Truque: Salvamos as chaves reais (YYYY-MM) dentro do dataset para acessar no clique
+                rawKeys: keysFiltrados 
             }]
         },
         plugins: [floatingLabelsPlugin], 
@@ -2139,18 +2225,31 @@ function renderizarGraficoHistorico() {
             responsive: true, 
             maintainAspectRatio: false,
             animation: { duration: 800, easing: 'easeOutQuart' },
-            layout: {
-                padding: { top: 25 } 
+            layout: { padding: { top: 25 } },
+            
+            // --- EVENTO DE CLIQUE ---
+            onClick: (e, elements, chart) => {
+                if (!elements || elements.length === 0) return;
+                
+                // Pega o índice da barra clicada
+                const index = elements[0].index;
+                const datasetIndex = elements[0].datasetIndex;
+                
+                // Recupera o label (Ex: "OUT 25") e a chave crua (Ex: "2025-10")
+                const labelAmigavel = chart.data.labels[index];
+                const rawKey = chart.data.datasets[datasetIndex].rawKeys[index];
+                
+                // Abre o modal com os detalhes
+                exibirDetalhesProventos(rawKey, labelAmigavel);
             },
+            // ------------------------
+
             plugins: {
                 legend: { display: false },
                 tooltip: { enabled: false } 
             },
             scales: {
-                y: {
-                    display: false, 
-                    beginAtZero: true
-                },
+                y: { display: false, beginAtZero: true },
                 x: { 
                     grid: { display: false }, 
                     ticks: {

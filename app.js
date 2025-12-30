@@ -377,7 +377,11 @@ function atualizarCardElemento(card, ativo, dados) {
 document.addEventListener('DOMContentLoaded', async () => {
 	
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
-	let currentPatrimonioRange = '1M'; // ADICIONADO AQUI
+	let lastTransacoesSignature = '';    
+    let lastPatrimonioCalcSignature = ''; 
+    let lastHistoricoListSignature = '';  
+    let lastAlocacaoData = '';
+	let currentPatrimonioRange = '1M';
 	let histFilterType = 'all';
     let histSearchTerm = '';
 	let provSearchTerm = '';
@@ -1261,40 +1265,55 @@ function renderizarWatchlist() {
     }
 
 function calcularCarteira() {
-        const ativosMap = new Map();
-        const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
+    // 1. Snapshot: Verificamos o tamanho do array e o ID da última transação
+    const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+    const currentSignature = `${transacoes.length}-${lastId}`;
 
-        for (const t of transacoesOrdenadas) {
-            const symbol = t.symbol;
-            let ativo = ativosMap.get(symbol) || { 
-                symbol: symbol, quantity: 0, totalCost: 0, dataCompra: t.date
-            };
+    // 2. Trava de Cache: Se a "assinatura" for idêntica, nada mudou desde o último cálculo
+    if (currentSignature === lastTransacoesSignature && carteiraCalculada.length > 0) {
+        return; // Interrompe a função aqui para economizar processamento
+    }
 
-            if (t.type === 'buy') {
-                ativo.quantity += t.quantity;
-                ativo.totalCost += t.quantity * t.price;
-            } else if (t.type === 'sell') {
-                // LÓGICA DE VENDA: Reduz quantidade e custo proporcional
-                if (ativo.quantity > 0) {
-                    const pmAtual = ativo.totalCost / ativo.quantity;
-                    ativo.quantity -= t.quantity;
-                    ativo.totalCost -= t.quantity * pmAtual;
-                }
+    const ativosMap = new Map();
+    // Ordenamos por data para garantir que o cálculo do Preço Médio siga a ordem real das operações
+    const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    for (const t of transacoesOrdenadas) {
+        const symbol = t.symbol;
+        let ativo = ativosMap.get(symbol) || { 
+            symbol: symbol, quantity: 0, totalCost: 0, dataCompra: t.date 
+        };
+
+        if (t.type === 'buy') {
+            ativo.quantity += t.quantity;
+            ativo.totalCost += t.quantity * t.price;
+        } else if (t.type === 'sell') {
+            if (ativo.quantity > 0) {
+                // O custo total é reduzido proporcionalmente ao Preço Médio atual
+                const pmAtual = ativo.totalCost / ativo.quantity;
+                ativo.quantity -= t.quantity;
+                ativo.totalCost -= t.quantity * pmAtual;
             }
-            
-            if (ativo.quantity < 0) { ativo.quantity = 0; ativo.totalCost = 0; }
-            ativosMap.set(symbol, ativo);
         }
         
-        carteiraCalculada = Array.from(ativosMap.values())
-            .filter(a => a.quantity > 0.0001) // Remove o que foi zerado
-            .map(a => ({
-                symbol: a.symbol,
-                quantity: a.quantity,
-                precoMedio: a.quantity > 0 ? parseFloat((a.totalCost / a.quantity).toFixed(2)) : 0,
-                dataCompra: a.dataCompra
-            }));
+        // Proteção contra dízimas periódicas (resíduos matemáticos do JS)
+        if (ativo.quantity < 0.0001) { ativo.quantity = 0; ativo.totalCost = 0; }
+        ativosMap.set(symbol, ativo);
     }
+    
+    // Converte o Mapa consolidado em um array para a interface
+    carteiraCalculada = Array.from(ativosMap.values())
+        .filter(a => a.quantity > 0.0001)
+        .map(a => ({
+            symbol: a.symbol,
+            quantity: a.quantity,
+            precoMedio: a.quantity > 0 ? parseFloat((a.totalCost / a.quantity).toFixed(2)) : 0,
+            dataCompra: a.dataCompra
+        }));
+
+    // 3. Salva a nova assinatura para o próximo ciclo de atualização
+    lastTransacoesSignature = currentSignature;
+}
 
 // Substitua a função inteira em app.js
 
@@ -1327,20 +1346,32 @@ function renderizarHistorico() {
     const historicoStatus = document.getElementById('historico-status');
     const historicoMensagem = document.getElementById('historico-mensagem');
 
+    if (!listaHistorico) return;
+
+    // --- 1. OTIMIZAÇÃO: SMART CHECK (A parte que faltava) ---
+    // Cria uma assinatura baseada no número de transações, no último ID e nos filtros
+    const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+    const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
+
+    // Se nada mudou, PULA todo o resto da função (Economiza processamento)
+    if (currentSignature === lastHistoricoListSignature && listaHistorico.children.length > 0) {
+        return; 
+    }
+    
+    // Atualiza a assinatura
+    lastHistoricoListSignature = currentSignature;
+
+    // --- 2. RENDERIZAÇÃO (Só acontece se passar pelo check acima) ---
     listaHistorico.innerHTML = '';
     
-    // 1. Filtragem dos Dados
+    // Filtragem
     let dadosFiltrados = transacoes.filter(t => {
-        // Filtro por Tipo (Compra/Venda)
         const matchType = histFilterType === 'all' || t.type === histFilterType;
-        
-        // Filtro por Busca (Ticker)
         const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
-        
         return matchType && matchSearch;
     });
 
-    // 2. Verifica se sobrou algo
+    // Verificação de Vazio
     if (dadosFiltrados.length === 0) {
         historicoStatus.classList.remove('hidden');
         if (transacoes.length > 0) {
@@ -1353,17 +1384,16 @@ function renderizarHistorico() {
     
     historicoStatus.classList.add('hidden');
     
-    // 3. Ordenação e Agrupamento
+    // Ordenação e Agrupamento
     dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
     const grupos = agruparPorMes(dadosFiltrados, 'date');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
-        // Header do Mês
+        // Header
         const header = document.createElement('div');
         header.className = 'history-header-sticky';
         
-        // Soma apenas o que está visível no filtro
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
         
         header.innerHTML = `
@@ -1377,7 +1407,7 @@ function renderizarHistorico() {
         `;
         fragment.appendChild(header);
 
-        // Lista de Cards
+        // Cards
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1431,6 +1461,7 @@ function renderizarHistorico() {
         });
         fragment.appendChild(listaGrupo);
     });
+    
     listaHistorico.appendChild(fragment);
 }
 
@@ -1846,36 +1877,61 @@ function renderizarNoticias(articles) {
 
 // EM app.js
 
-function renderizarGraficoAlocacao(dadosGrafico) {
+function renderizarGraficoAlocacao() {
     const canvas = document.getElementById('alocacao-chart');
     const centerValueEl = document.getElementById('center-chart-value');
-    const legendContainer = document.getElementById('alocacao-legend'); // Referência para a legenda nova
+    const legendContainer = document.getElementById('alocacao-legend');
     
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // 1. Limpeza se não houver dados
+
+    // 1. PREPARAÇÃO DOS DADOS
+    // Calcula os dados internamente para garantir compatibilidade com o resto do sistema
+    let dadosGrafico = carteiraCalculada.map(item => {
+        const precoAtual = precosCache[item.symbol] || item.precoMedio;
+        return {
+            symbol: item.symbol,
+            totalPosicao: item.quantity * precoAtual
+        };
+    }).filter(d => d.totalPosicao > 0.01); // Remove ativos zerados
+
+    // Ordena do maior para o menor
+    dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
+
+    // 2. OTIMIZAÇÃO: SMART CHECK (Antes de desenhar qualquer coisa)
+    const labels = dadosGrafico.map(d => d.symbol);
+    const data = dadosGrafico.map(d => d.totalPosicao);
+    const totalGeral = data.reduce((acc, curr) => acc + curr, 0);
+
+    // Cria a assinatura do estado atual
+    const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
+
+    // Verifica se os dados mudaram E se a legenda já existe no HTML
+    // (Adicionamos legendContainer.children.length > 0 para garantir que a legenda apareça na primeira carga)
+    const legendExists = legendContainer ? legendContainer.children.length > 0 : true;
+
+    if (newDataString === lastAlocacaoData && alocacaoChartInstance && legendExists) {
+        return; // Aborta se tudo estiver igual
+    }
+
+    lastAlocacaoData = newDataString;
+
+    // --- DAQUI PARA BAIXO: RENDERIZAÇÃO (Só executa se houver mudança) ---
+
+    // 3. Atualiza valor central
+    if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
+
+    // 4. Limpeza se não houver dados
     if (dadosGrafico.length === 0) {
         if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
-            alocacaoChartInstance = null; 
+            alocacaoChartInstance = null;
         }
-        lastAlocacaoData = null; 
+        if(legendContainer) legendContainer.innerHTML = '';
         if(centerValueEl) centerValueEl.textContent = 'R$ 0,00';
-        if(legendContainer) legendContainer.innerHTML = ''; // Limpa legenda
         return;
     }
-    
-    dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
-    // Atualiza o valor central
-    const totalGeral = dadosGrafico.reduce((acc, curr) => acc + curr.totalPosicao, 0);
-    if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
-
-    const labels = dadosGrafico.map(d => d.symbol);
-    const data = dadosGrafico.map(d => d.totalPosicao);
-    
-    // Gerador de Cores
+    // 5. Gerador de Cores Premium
     const gerarPaletaPremium = (num) => {
         const coresBase = [
             '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
@@ -1883,12 +1939,9 @@ function renderizarGraficoAlocacao(dadosGrafico) {
         ];
         return Array.from({length: num}, (_, i) => coresBase[i % coresBase.length]);
     };
-
     const colors = gerarPaletaPremium(labels.length);
-    const newDataString = JSON.stringify({ labels, data });
 
-    // --- CRIAÇÃO DA LEGENDA EXTERNA ---
-    // Isso garante que o gráfico fique centralizado e a legenda fique embaixo
+    // 6. Renderiza a Legenda Externa
     if(legendContainer) {
         legendContainer.innerHTML = labels.map((label, i) => `
             <div class="flex items-center gap-1.5">
@@ -1897,13 +1950,10 @@ function renderizarGraficoAlocacao(dadosGrafico) {
             </div>
         `).join('');
     }
-    // ----------------------------------
 
-    if (newDataString === lastAlocacaoData) { return; }
-    lastAlocacaoData = newDataString; 
+    // 7. Renderiza ou Atualiza o Gráfico
+    const ctx = canvas.getContext('2d');
     
-    const bgColor = document.body.classList.contains('light-mode') ? '#ffffff' : '#0f0f0f';
-
     if (alocacaoChartInstance) {
         alocacaoChartInstance.data.labels = labels;
         alocacaoChartInstance.data.datasets[0].data = data;
@@ -1917,8 +1967,8 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                 datasets: [{ 
                     data: data, 
                     backgroundColor: colors, 
-                    borderWidth: 0,          // Sem borda preta
-                    spacing: 5,              // Espaçamento real
+                    borderWidth: 0,
+                    spacing: 5,
                     borderRadius: 20,
                     hoverOffset: 10
                 }] 
@@ -1926,14 +1976,10 @@ function renderizarGraficoAlocacao(dadosGrafico) {
             options: {
                 responsive: true, 
                 maintainAspectRatio: false,
-                cutout: '85%', // Anel fino e moderno
-                layout: {
-                    padding: 10
-                },
+                cutout: '85%', // Anel fino moderno
+                layout: { padding: 10 },
                 plugins: {
-                    legend: { 
-                        display: false // <--- O SEGREDO: Desliga a legenda interna para centralizar o anel
-                    },
+                    legend: { display: false }, // Oculta a legenda interna
                     tooltip: {
                         backgroundColor: 'rgba(20, 20, 20, 0.95)',
                         titleColor: '#fff',
@@ -1947,7 +1993,7 @@ function renderizarGraficoAlocacao(dadosGrafico) {
                                 const label = context.label || '';
                                 const value = context.parsed || 0;
                                 const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percent = ((value / total) * 100).toFixed(1);
+                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
                                 return ` ${label}: ${percent}% (${formatBRL(value)})`;
                             }
                         }
@@ -2154,17 +2200,31 @@ function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
     
-    // --- SETUP INICIAL ---
+    // --- 1. OTIMIZAÇÃO: SMART CHECK ---
+    // Cria uma assinatura única do estado atual
+    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+    const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
+    const lastPatId = lastItem ? lastItem.date : 'none';
+    const lastPatVal = lastItem ? lastItem.value : 0;
+    
+    // A assinatura considera: Range selecionado, Estado das Transações e Estado do Patrimônio (Data e Valor)
+    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
+
+    // Se a assinatura for igual à última processada e o gráfico já existir, não faz nada
+    if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
+        return; 
+    }
+
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
 
-    // CORES DO TEMA
+    // Definição de Cores
     const colorLinePatrimonio = '#c084fc'; 
     const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // --- 1. DATA DE CORTE ---
+    // --- 2. FILTRAGEM DE DATA ---
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     
@@ -2179,12 +2239,10 @@ function renderizarGraficoPatrimonio() {
         dataCorte = new Date(hoje);
         dataCorte.setFullYear(hoje.getFullYear() - 1);
     } else {
-        dataCorte = new Date('2000-01-01');
+        dataCorte = new Date('2000-01-01'); // 'ALL'
     }
-    
     dataCorte.setHours(0, 0, 0, 0);
 
-    // --- 2. FILTRAGEM ---
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
@@ -2193,11 +2251,12 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- 3. AGRUPAMENTO ---
-    if (['6M', '1Y'].includes(currentPatrimonioRange)) {
+    // Agrupamento mensal para períodos longos (otimização visual)
+    if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange) && dadosOrdenados.length > 60) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
             const chaveMes = p.date.substring(0, 7);
+            // Pega o último registro do mês
             grupos[chaveMes] = p;
         });
         dadosOrdenados = Object.values(grupos);
@@ -2212,53 +2271,35 @@ function renderizarGraficoPatrimonio() {
         return;
     }
 
-    // --- 4. PREPARAÇÃO DOS DADOS ---
+    // --- 3. PREPARAÇÃO DOS DADOS ---
     const labels = dadosOrdenados.map(p => {
-        const d = new Date(p.date + 'T12:00:00');
+        const parts = p.date.split('-');
+        const d = new Date(parts[0], parts[1]-1, parts[2]);
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const ano = d.getFullYear().toString().slice(2);
-
-        if (['6M', '1Y'].includes(currentPatrimonioRange)) {
-             return [mes, `'${ano}`];
+        
+        if (['6M', '1Y', 'ALL'].includes(currentPatrimonioRange)) {
+             return mes;
         }
         return [dia, mes];
     });
 
     const dataValor = dadosOrdenados.map(p => p.value);
 
-    // CÁLCULO DO INVESTIDO
+    // Cálculo do "Custo Investido" histórico (A parte pesada que agora é evitada pelo Smart Check)
     const dataCusto = dadosOrdenados.map(p => {
         const dataSnapshot = new Date(p.date + 'T23:59:59');
-        const transacoesAteData = transacoes.filter(t => new Date(t.date) <= dataSnapshot);
-        const carteiraTemp = new Map();
-
-        transacoesAteData.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(t => {
-            let ativo = carteiraTemp.get(t.symbol) || { qtd: 0, custoTotal: 0 };
-            if (t.type === 'buy') {
-                ativo.qtd += t.quantity;
-                ativo.custoTotal += (t.quantity * t.price);
-            } else if (t.type === 'sell') {
-                if (ativo.qtd > 0) {
-                    const pm = ativo.custoTotal / ativo.qtd;
-                    ativo.qtd -= t.quantity;
-                    ativo.custoTotal -= (t.quantity * pm);
-                }
+        return transacoes.reduce((acc, t) => {
+            const dataTransacao = new Date(t.date);
+            if (dataTransacao <= dataSnapshot) {
+                if (t.type === 'buy') return acc + (t.quantity * t.price);
+                if (t.type === 'sell') return acc - (t.quantity * t.price); 
             }
-            if (ativo.qtd < 0.0001) { ativo.qtd = 0; ativo.custoTotal = 0; }
-            carteiraTemp.set(t.symbol, ativo);
-        });
-
-        let custoTotalDia = 0;
-        carteiraTemp.forEach(ativo => { if (ativo.qtd > 0) custoTotalDia += ativo.custoTotal; });
-        return custoTotalDia;
+            return acc;
+        }, 0);
     });
 
-    // --- 5. RENDERIZAÇÃO ---
-    const newDataString = JSON.stringify({ labels, dataValor, dataCusto, range: currentPatrimonioRange });
-    if (newDataString === lastPatrimonioData) { return; }
-    lastPatrimonioData = newDataString;
-
+    // --- 4. RENDERIZAÇÃO ---
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
@@ -2266,10 +2307,7 @@ function renderizarGraficoPatrimonio() {
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
-        patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill;
-        if (patrimonioChartInstance.data.datasets[1]) {
-            patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        }
+        patrimonioChartInstance.data.datasets[1].data = dataCusto;
         patrimonioChartInstance.update();
     } else {
         patrimonioChartInstance = new Chart(ctx, {
@@ -2278,7 +2316,7 @@ function renderizarGraficoPatrimonio() {
                 labels: labels,
                 datasets: [
                     {
-                        label: ' ',
+                        label: 'Patrimônio',
                         data: dataValor,
                         fill: true,
                         backgroundColor: gradientFill,
@@ -2294,7 +2332,7 @@ function renderizarGraficoPatrimonio() {
                         order: 1
                     },
                     {
-                        label: ' ',
+                        label: 'Investido',
                         data: dataCusto,
                         fill: false,
                         borderColor: colorLineInvestido,
@@ -2311,18 +2349,10 @@ function renderizarGraficoPatrimonio() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: {
-                    padding: { left: 0, right: 0, top: 10, bottom: 0 }
-                },
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
+                layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    // --- MUDANÇA: DESLIGA A LEGENDA INTERNA (Pois já criamos a externa) ---
-                    legend: { 
-                        display: false 
-                    },
+                    legend: { display: false },
                     tooltip: {
                         enabled: true,
                         backgroundColor: '#151515',
@@ -2333,17 +2363,12 @@ function renderizarGraficoPatrimonio() {
                         borderWidth: 1,
                         padding: 10,
                         displayColors: true,
-                        boxWidth: 6,
-                        boxHeight: 6,
-                        usePointStyle: true,
                         callbacks: {
                             title: function(context) {
                                 const label = context[0].label;
                                 return Array.isArray(label) ? label.join(' ') : label;
                             },
-                            label: (context) => {
-                                return context.dataset.label + ': ' + formatBRL(context.parsed.y);
-                            }
+                            label: (context) => context.dataset.label + ': ' + formatBRL(context.parsed.y)
                         }
                     }
                 },
@@ -2351,16 +2376,11 @@ function renderizarGraficoPatrimonio() {
                     y: { 
                         display: true,
                         position: 'right',
-                        grid: {
-                            color: colorGrid,
-                            borderDash: [4, 4],
-                            drawBorder: false,
-                        },
+                        grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
                         ticks: {
                             color: colorText,
                             font: { size: 10, family: 'monospace' },
                             maxTicksLimit: 6,
-                            padding: 10,
                             callback: function(value) {
                                 if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
                                 return value;
@@ -2375,14 +2395,16 @@ function renderizarGraficoPatrimonio() {
                             autoSkip: true,
                             maxTicksLimit: 5,
                             color: colorText,
-                            font: { size: 10, weight: 'bold' },
-                            padding: 5
+                            font: { size: 10, weight: 'bold' }
                         } 
                     }
                 }
             }
         });
     }
+
+    // Salva a nova assinatura
+    lastPatrimonioCalcSignature = currentSignature;
 }
 
 function renderizarMetaFinanceira(patrimonioAtual) {

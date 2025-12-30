@@ -1999,7 +1999,7 @@ function renderizarGraficoAlocacao(dadosInput) {
                 maintainAspectRatio: false,
                 
                 // --- ALTERAÇÃO AQUI: De 85% para 75% (Mais grosso) ---
-                cutout: '75%', 
+                cutout: '80%', 
                 // ----------------------------------------------------
                 
                 layout: { padding: 10 },

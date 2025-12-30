@@ -5669,57 +5669,58 @@ if (toggleNotifBtn) {
 	setupTransactionModalLogic();
 
 // Configuração Inicial do Filtro de Patrimônio
-function setupPatrimonioFilter() {
-    const btn = document.getElementById('patrimonio-filter-btn');
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#patrimonio-filter-btn');
     const dropdown = document.getElementById('patrimonio-filter-dropdown');
-    const label = document.getElementById('patrimonio-filter-label');
-    const items = document.querySelectorAll('.patrimonio-range-item');
+    const option = e.target.closest('.patrimonio-range-item');
 
-    if (!btn || !dropdown) return;
-
-    // 1. Alternar Dropdown
-    btn.addEventListener('click', (e) => {
+    // 1. Clicou no Botão do Filtro?
+    if (btn) {
+        e.preventDefault();
         e.stopPropagation();
-        dropdown.classList.toggle('hidden');
-    });
+        if (dropdown) dropdown.classList.toggle('hidden');
+        return;
+    }
 
-    // 2. Fechar ao clicar fora
-    document.addEventListener('click', (e) => {
-        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+    // 2. Clicou em uma Opção do Menu?
+    if (option) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const range = option.getAttribute('data-range');
+        const label = document.getElementById('patrimonio-filter-label');
+        const items = document.querySelectorAll('.patrimonio-range-item');
+
+        // Atualiza variável global
+        if (typeof currentPatrimonioRange !== 'undefined') {
+            currentPatrimonioRange = range;
+        }
+
+        // Atualiza Texto do Botão
+        if (label) label.textContent = range === 'ALL' ? 'Tudo' : range;
+
+        // Atualiza Visual (Checkmarks)
+        items.forEach(i => i.classList.remove('active'));
+        option.classList.add('active');
+
+        // Fecha o menu
+        if (dropdown) dropdown.classList.add('hidden');
+
+        // Renderiza o gráfico
+        if (typeof renderizarGraficoPatrimonio === 'function') {
+            renderizarGraficoPatrimonio();
+        }
+        return;
+    }
+
+    // 3. Clicou fora? (Fecha o menu)
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        // Se o clique NÃO foi dentro do dropdown, fecha ele
+        if (!e.target.closest('#patrimonio-filter-dropdown')) {
             dropdown.classList.add('hidden');
         }
-    });
-
-    // 3. Clique nas Opções
-    items.forEach(item => {
-        item.addEventListener('click', () => {
-            const range = item.getAttribute('data-range');
-            
-            // Atualiza variável global (certifique-se que ela existe no topo do arquivo)
-            currentPatrimonioRange = range;
-            
-            // Atualiza Label do Botão Principal
-            label.textContent = range === 'ALL' ? 'Tudo' : range;
-            
-            // Atualiza Estilo Visual (Checkmark e Cor)
-            items.forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
-            
-            // Renderiza o Gráfico
-            renderizarGraficoPatrimonio();
-            
-            // Fecha Dropdown
-            dropdown.classList.add('hidden');
-        });
-    });
-
-    // 4. Definir estado inicial (Visual)
-    const initialItem = document.querySelector(`.patrimonio-range-item[data-range="${currentPatrimonioRange || '1M'}"]`);
-    if(initialItem) {
-        initialItem.classList.add('active');
-        label.textContent = currentPatrimonioRange === 'ALL' ? 'Tudo' : currentPatrimonioRange;
     }
-}
+});
 
 // Chame esta função após o carregamento da página
 document.addEventListener('DOMContentLoaded', () => {

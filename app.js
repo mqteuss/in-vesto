@@ -5668,5 +5668,63 @@ if (toggleNotifBtn) {
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
 
+// Configuração Inicial do Filtro de Patrimônio
+function setupPatrimonioFilter() {
+    const btn = document.getElementById('patrimonio-filter-btn');
+    const dropdown = document.getElementById('patrimonio-filter-dropdown');
+    const label = document.getElementById('patrimonio-filter-label');
+    const items = document.querySelectorAll('.patrimonio-range-item');
+
+    if (!btn || !dropdown) return;
+
+    // 1. Alternar Dropdown
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('hidden');
+    });
+
+    // 2. Fechar ao clicar fora
+    document.addEventListener('click', (e) => {
+        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    // 3. Clique nas Opções
+    items.forEach(item => {
+        item.addEventListener('click', () => {
+            const range = item.getAttribute('data-range');
+            
+            // Atualiza variável global (certifique-se que ela existe no topo do arquivo)
+            currentPatrimonioRange = range;
+            
+            // Atualiza Label do Botão Principal
+            label.textContent = range === 'ALL' ? 'Tudo' : range;
+            
+            // Atualiza Estilo Visual (Checkmark e Cor)
+            items.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            
+            // Renderiza o Gráfico
+            renderizarGraficoPatrimonio();
+            
+            // Fecha Dropdown
+            dropdown.classList.add('hidden');
+        });
+    });
+
+    // 4. Definir estado inicial (Visual)
+    const initialItem = document.querySelector(`.patrimonio-range-item[data-range="${currentPatrimonioRange || '1M'}"]`);
+    if(initialItem) {
+        initialItem.classList.add('active');
+        label.textContent = currentPatrimonioRange === 'ALL' ? 'Tudo' : currentPatrimonioRange;
+    }
+}
+
+// Chame esta função após o carregamento da página
+document.addEventListener('DOMContentLoaded', () => {
+    setupPatrimonioFilter();
+});
+
     await init();
 });

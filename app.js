@@ -2657,12 +2657,10 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra futuros e com quantidade > 0
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-        
         if (dataPag < hoje) return false;
 
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
@@ -2694,7 +2692,7 @@ function renderizarTimelinePagamentos() {
 
         if (diffDays === 0) {
             textoStatus = 'HOJE';
-            classeStatus = 'text-hoje'; // Usa o amarelo definido no CSS
+            classeStatus = 'text-hoje'; // Amarelo via CSS
         } else if (diffDays === 1) {
             textoStatus = 'Amanhã';
         } else {

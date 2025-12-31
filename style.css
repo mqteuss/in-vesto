@@ -54,7 +54,6 @@ body.light-mode {
 /* Backgrounds Gerais no Light Mode */
 body.light-mode .card-bg,
 body.light-mode .modal-content,
-body.light-mode .page-content,
 body.light-mode .card-drawer,
 body.light-mode .drawer-content,
 body.light-mode .settings-group,
@@ -73,6 +72,14 @@ body.light-mode .bg-\[\#111\] {
     border: none !important;
     color: #1f2937 !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* EXCEÇÃO: Page Content (Gaveta) no Light Mode precisa de borda no topo */
+body.light-mode .page-content {
+    background-color: #ffffff !important;
+    border: none !important;
+    border-top: 1px solid #e5e7eb !important; /* BORDA SUPERIOR VISÍVEL */
+    color: #1f2937 !important;
 }
 
 /* Inputs & Forms Light Mode */
@@ -513,11 +520,19 @@ input:-webkit-autofill:active {
 
 .page-modal { opacity: 0; pointer-events: none; transition: opacity 0.4s ease-in-out; z-index: 70; }
 .page-modal.visible { opacity: 1; pointer-events: auto; }
+
+/* AQUI ESTÁ A ALTERAÇÃO: Gaveta gigante com borda superior */
 .page-content {
     transition: transform 0.4s ease-in-out, background-color 0.3s ease;
     transform: translateY(100%);
     background-color: #000000;
-    border-top: none; 
+    
+    /* Borda superior para destacar a gaveta */
+    border-top: 1px solid #27272a; 
+    
+    /* Arredondamento para parecer uma gaveta */
+    border-radius: 2rem 2rem 0 0;
+    
     position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto;
     max-width: 32rem; z-index: 80;
 }
@@ -549,8 +564,7 @@ input:-webkit-autofill:active {
     position: relative; 
     overflow: hidden;
     
-    /* COR SUTIL (Deep Violet Gradient) 
-       Começa um pouco roxo escuro e termina na cor padrão dos cards */
+    /* COR SUTIL (Deep Violet Gradient) */
     background: linear-gradient(180deg, #201c2e 0%, #141414 100%);
     
     border: none; 

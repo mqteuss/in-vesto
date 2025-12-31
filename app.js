@@ -2642,11 +2642,19 @@ function renderizarGraficoPatrimonio() {
 	
 // --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
 
+// --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
+
 function renderizarTimelinePagamentos() {
+    // Atenção: O container principal no HTML precisa permitir o scroll.
+    // Vamos garantir que a classe do container pai seja ajustada via JS ou você ajusta no HTML.
+    // Aqui vou injetar a classe no container da lista.
+    
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // 1. Verificação de Segurança
+    // Configura o container para ser um carrossel horizontal
+    lista.className = 'payment-carousel'; 
+
     if (!proventosAtuais || proventosAtuais.length === 0) {
         container.classList.add('hidden');
         return;
@@ -2655,17 +2663,17 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // 2. Filtra pagamentos futuros ou de hoje
-    const pagamentosFuturos = proventosAtuais.filter(p => {
+    // 1. Filtros (Data Futura e Qtd > 0)
+    const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-        return dataPag >= hoje;
-    });
+        
+        // Verifica se é hoje ou futuro
+        if (dataPag < hoje) return false;
 
-    // 3. Filtra apenas o que o usuário TEM na carteira (Qtd > 0)
-    const pagamentosReais = pagamentosFuturos.filter(prov => {
-        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+        // Verifica se tem na carteira
+        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
         return ativoNaCarteira && ativoNaCarteira.quantity > 0;
     });
 
@@ -2674,64 +2682,54 @@ function renderizarTimelinePagamentos() {
         return;
     }
 
-    // Ordena: data mais próxima primeiro
+    // Ordena por data
     pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
     
-    // Limita a 3 itens para manter o design clean
-    const proximos = pagamentosReais.slice(0, 3);
-
+    // --- REMOVIDO O LIMITE (SLICE) --- 
+    // Agora mostramos todos no carrossel.
+    
     lista.innerHTML = '';
     
-    proximos.forEach(prov => {
+    pagamentosReais.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
         
         const dia = parts[2];
-        // Mês abreviado (JAN, FEV...)
         const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
 
-        // Cálculo inteligente de dias
+        // Dias restantes
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         
         let textoStatus = '';
-        let corStatus = 'text-gray-500';
+        let classeStatus = '';
 
         if (diffDays === 0) {
-            textoStatus = 'Recebe Hoje';
-            corStatus = 'text-green-400 font-bold';
+            textoStatus = 'HOJE';
+            classeStatus = 'text-hoje';
         } else if (diffDays === 1) {
             textoStatus = 'Amanhã';
-            corStatus = 'text-gray-300';
         } else {
-            textoStatus = `Faltam ${diffDays} dias`;
-            corStatus = 'text-gray-500';
+            textoStatus = `Em ${diffDays} dias`;
         }
 
-        // Cálculos Financeiros
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
         const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
         const totalReceber = prov.value * qtd;
 
         const item = document.createElement('div');
-        item.className = 'clean-payment-card'; // Nova classe CSS
+        item.className = 'square-payment-card'; // Classe do quadrado
         
         item.innerHTML = `
-            <div class="flex items-center gap-3">
-                <div class="clean-date-badge">
-                    <span class="clean-month">${mes}</span>
-                    <span class="clean-day">${dia}</span>
-                </div>
-                
-                <div>
-                    <h4 class="clean-ticker">${prov.symbol}</h4>
-                    <p class="clean-sub">${qtd} cotas • ${formatBRL(prov.value)}</p>
-                </div>
+            <div class="square-date-row">
+                <span class="square-day">${dia}</span>
+                <span class="square-month">${mes}</span>
             </div>
-
-            <div>
-                 <div class="clean-value">+${formatBRL(totalReceber)}</div>
-                 <span class="clean-status ${corStatus}">${textoStatus}</span>
+            
+            <div class="square-info">
+                <span class="square-ticker">${prov.symbol}</span>
+                <span class="square-value">+${formatBRL(totalReceber)}</span>
+                <span class="square-status ${classeStatus}">${textoStatus}</span>
             </div>
         `;
         lista.appendChild(item);

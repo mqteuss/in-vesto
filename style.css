@@ -156,7 +156,7 @@ body.light-mode .text-\[\#666666\] { color: #4b5563 !important; }
 body.light-mode .loader-sm, body.light-mode .loader-sm::before, body.light-mode .loader-sm::after { background: #7c3aed !important; }
 body.light-mode ::-webkit-calendar-picker-indicator { filter: invert(0) !important; }
 body.light-mode .bottom-nav {
-    background-color: rgba(255, 255, 255, 0.95) !important;
+    background-color: rgba(255, 255, 255, 0.5) !important; /* 50% opacity no Light Mode também */
     border: none !important; 
     box-shadow: none !important;
 }
@@ -394,8 +394,9 @@ body.light-mode .text-hoje { color: #d97706 !important; }
 }
 .tab-content.active { animation: none; }
 
+/* BOTTOM NAV: CORRIGIDO PARA 50% TRANSPARÊNCIA */
 .bottom-nav {
-    background-color: rgba(20, 20, 20, 0.90);
+    background-color: rgba(20, 20, 20, 0.5); /* 50% Opacity */
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: none;
@@ -579,7 +580,8 @@ input:-webkit-autofill:active {
     transition: transform 0.3s ease;
 }
 
-#resumo-carteira-card:active { transform: scale(0.99); }
+/* SEM EFEITO TÁTIL (ATIVO) */
+/* Removido o seletor :active que fazia scale */
 
 /* REATIVADOS EFEITOS DE AURORA (Pseudo-elementos) - Mantidos pelo visual, mas sem box-shadow */
 #resumo-carteira-card::before {

@@ -71,7 +71,7 @@ body.light-mode .bg-\[\#111\] {
     background-image: none !important;
     border: none !important;
     color: #1f2937 !important;
-    box-shadow: none !important; /* SEM SOMBRA */
+    box-shadow: none !important;
 }
 
 /* EXCEÇÃO: Page Content (Gaveta) no Light Mode precisa de borda no topo */
@@ -98,6 +98,12 @@ body.light-mode #change-password-form input {
     border: none !important; 
     color: #111827 !important;
     box-shadow: none !important;
+}
+
+body.light-mode #auth-container input {
+    background-color: #f3f4f6 !important; /* Mais escuro que o card branco no light mode */
+    border: none !important;
+    color: #111827 !important;
 }
 
 body.light-mode input::placeholder {
@@ -156,7 +162,7 @@ body.light-mode .text-\[\#666666\] { color: #4b5563 !important; }
 body.light-mode .loader-sm, body.light-mode .loader-sm::before, body.light-mode .loader-sm::after { background: #7c3aed !important; }
 body.light-mode ::-webkit-calendar-picker-indicator { filter: invert(0) !important; }
 body.light-mode .bottom-nav {
-    background-color: rgba(255, 255, 255, 0.5) !important; /* 50% opacity no Light Mode também */
+    background-color: rgba(255, 255, 255, 0.5) !important;
     border: none !important; 
     box-shadow: none !important;
 }
@@ -394,7 +400,7 @@ body.light-mode .text-hoje { color: #d97706 !important; }
 }
 .tab-content.active { animation: none; }
 
-/* BOTTOM NAV: CORRIGIDO PARA 50% TRANSPARÊNCIA */
+/* BOTTOM NAV: 50% TRANSPARÊNCIA */
 .bottom-nav {
     background-color: rgba(20, 20, 20, 0.5); /* 50% Opacity */
     backdrop-filter: blur(20px);
@@ -465,14 +471,25 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 input[type=number] { -moz-appearance: textfield; font-variant-numeric: tabular-nums; }
 select { -webkit-appearance: none; appearance: none; border-radius: 9999px; }
 
+/* Inputs Gerais */
 #add-ativo-modal input, 
-#auth-container input,
 #new-password-form input, 
 #change-password-form input,
 #recover-form input, 
 #carteira-search-input {
     transition: all 0.2s ease-in-out;
     background-color: #141414; 
+    border: none; 
+    color: #ffffff;
+    border-radius: 12px;
+    outline: none;
+    box-shadow: none; 
+}
+
+/* INPUTS DE LOGIN/CADASTRO - COR MAIS ESCURA PARA CONTRASTE */
+#auth-container input {
+    transition: all 0.2s ease-in-out;
+    background-color: #050505; /* Preto quase absoluto para destacar do card cinza */
     border: none; 
     color: #ffffff;
     border-radius: 12px;
@@ -580,10 +597,9 @@ input:-webkit-autofill:active {
     transition: transform 0.3s ease;
 }
 
-/* SEM EFEITO TÁTIL (ATIVO) */
-/* Removido o seletor :active que fazia scale */
+/* SEM EFEITO TÁTIL (ATIVO) - Card estático */
 
-/* REATIVADOS EFEITOS DE AURORA (Pseudo-elementos) - Mantidos pelo visual, mas sem box-shadow */
+/* REATIVADOS EFEITOS DE AURORA (Pseudo-elementos) */
 #resumo-carteira-card::before {
     content: ''; position: absolute; top: -40%; left: -20%; width: 150%; height: 150%;
     background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, rgba(0,0,0,0) 65%);

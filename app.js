@@ -2642,17 +2642,11 @@ function renderizarGraficoPatrimonio() {
 	
 // --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
 
-// --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
-
 function renderizarTimelinePagamentos() {
-    // Atenção: O container principal no HTML precisa permitir o scroll.
-    // Vamos garantir que a classe do container pai seja ajustada via JS ou você ajusta no HTML.
-    // Aqui vou injetar a classe no container da lista.
-    
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // Configura o container para ser um carrossel horizontal
+    // Define layout de carrossel
     lista.className = 'payment-carousel'; 
 
     if (!proventosAtuais || proventosAtuais.length === 0) {
@@ -2663,16 +2657,14 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // 1. Filtros (Data Futura e Qtd > 0)
+    // Filtra futuros e com quantidade > 0
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         
-        // Verifica se é hoje ou futuro
         if (dataPag < hoje) return false;
 
-        // Verifica se tem na carteira
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
         return ativoNaCarteira && ativoNaCarteira.quantity > 0;
     });
@@ -2682,11 +2674,8 @@ function renderizarTimelinePagamentos() {
         return;
     }
 
-    // Ordena por data
+    // Ordena
     pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-    
-    // --- REMOVIDO O LIMITE (SLICE) --- 
-    // Agora mostramos todos no carrossel.
     
     lista.innerHTML = '';
     
@@ -2697,7 +2686,6 @@ function renderizarTimelinePagamentos() {
         const dia = parts[2];
         const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
 
-        // Dias restantes
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         
@@ -2706,7 +2694,7 @@ function renderizarTimelinePagamentos() {
 
         if (diffDays === 0) {
             textoStatus = 'HOJE';
-            classeStatus = 'text-hoje';
+            classeStatus = 'text-hoje'; // Usa o amarelo definido no CSS
         } else if (diffDays === 1) {
             textoStatus = 'Amanhã';
         } else {
@@ -2718,7 +2706,7 @@ function renderizarTimelinePagamentos() {
         const totalReceber = prov.value * qtd;
 
         const item = document.createElement('div');
-        item.className = 'square-payment-card'; // Classe do quadrado
+        item.className = 'square-payment-card';
         
         item.innerHTML = `
             <div class="square-date-row">

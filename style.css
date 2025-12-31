@@ -214,11 +214,14 @@ body.light-mode .text-hoje { color: #d97706 !important; }
 
 /* Estilos Globais de Card */
 .card-bg {
+    /* Fundo sólido escuro */
     background-color: #141414;
     background-image: none; 
-    border: none; 
+    border: none; /* SEM BORDA */
     border-radius: 1.5rem;
+    
     transition: transform 0.2s ease, background-color 0.2s ease;
+    /* Sombra muito suave apenas para elevação */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -557,8 +560,11 @@ input:-webkit-autofill:active {
 #resumo-carteira-card {
     position: relative; 
     overflow: hidden;
-    /* GRADIENTE VIBRANTE: Violeta Profundo para Preto */
-    background: linear-gradient(180deg, #2e1065 0%, #141414 100%);
+    
+    /* GRADIENTE SPOTLIGHT: Zinco claro para escuro (Efeito de iluminação) */
+    /* Nem roxo, nem morto. Apenas uma luz de cima. */
+    background: linear-gradient(180deg, #27272a 0%, #141414 100%);
+    
     border: none; 
     border-radius: 2rem;
     min-height: 210px; 

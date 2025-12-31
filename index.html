@@ -146,26 +146,36 @@
                                     <span id="notification-badge" class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-black hidden"></span>
                                 </button>
                             </div>
-                            <div id="notifications-drawer" class="card-drawer absolute top-full right-0 mt-2 w-80 z-50">
-                                <div class="drawer-content bg-[#0a0a0a] rounded-3xl border border-[#2C2C2E] shadow-[0_20px_50px_rgba(0,0,0,0.9)] overflow-hidden">
-                                    <div class="flex justify-between items-center p-4 border-b border-[#2C2C2E] bg-black/50 backdrop-blur-md">
-                                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" /></svg>
-                                            Central de Avisos
-                                        </h3>
-                                        <button id="close-notif-drawer-btn" class="text-gray-600 hover:text-white transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                        </button>
-                                    </div>
-                                    <div id="notifications-list" class="max-h-[60vh] overflow-y-auto p-2 space-y-2 custom-scroll"></div>
-                                    <div id="notifications-empty" class="hidden py-8 text-center">
-                                        <div class="w-12 h-12 bg-[#151515] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#2C2C2E]">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                        </div>
-                                        <p class="text-xs text-gray-500 font-medium">Tudo em dia por aqui.</p>
-                                    </div>
-                                </div>
-                            </div>
+<div id="notifications-drawer" class="card-drawer absolute top-full right-0 mt-2 w-80 z-50">
+    <div class="drawer-content bg-[#121212] rounded-3xl border border-[#2C2C2E] shadow-2xl overflow-hidden flex flex-col max-h-[60vh]">
+        
+        <div class="flex justify-between items-center px-4 py-3 border-b border-[#2C2C2E] bg-black/40 backdrop-blur-md sticky top-0 z-10">
+            <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></span>
+                Central de Avisos
+            </h3>
+            
+            <div class="flex items-center gap-1">
+                <button id="btn-clear-notifications" class="text-[10px] font-bold text-gray-500 hover:text-white px-2 py-1 rounded-md hover:bg-white/5 transition-colors hidden">
+                    LIMPAR
+                </button>
+                <button id="close-notif-drawer-btn" class="p-1 text-gray-500 hover:text-white transition-colors rounded-full hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="notifications-list" class="overflow-y-auto p-2 space-y-2 custom-scroll min-h-[100px]">
+            </div>
+
+        <div id="notifications-empty" class="hidden py-10 text-center flex flex-col items-center justify-center">
+            <div class="w-12 h-12 bg-[#1A1A1A] rounded-full flex items-center justify-center mb-3 border border-[#2C2C2E] shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <p class="text-xs text-gray-500 font-medium">Tudo em dia por aqui.</p>
+        </div>
+    </div>
+</div>
                         </div>
 
 <div id="resumo-carteira-card">

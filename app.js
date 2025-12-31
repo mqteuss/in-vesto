@@ -4,32 +4,76 @@ import * as supabaseDB from './supabase.js';
 
 // --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
 window.dismissNotificationGlobal = function(id, btnElement) {
-    // 1. Salva no localStorage para não voltar
     const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
     if (!dismissed.includes(id)) {
         dismissed.push(id);
         localStorage.setItem('vesto_dismissed_notifs', JSON.stringify(dismissed));
     }
     
-    // 2. Animação de saída
-    const card = btnElement.closest('.notif-card'); // Pega o pai correto
+    // Animação de saída
+    const card = btnElement.closest('.notif-item');
     if (card) {
-        card.style.transition = 'all 0.3s ease';
+        card.style.transform = 'translateX(100%)';
         card.style.opacity = '0';
-        card.style.transform = 'translateX(20px)';
         
         setTimeout(() => {
             card.remove();
-            // Verifica se a lista ficou vazia
-            const list = document.getElementById('notifications-list');
-            if (!list || list.children.length === 0) {
-                document.getElementById('notification-badge').classList.add('hidden');
-                document.getElementById('notifications-empty').classList.remove('hidden');
-                document.getElementById('btn-notifications').classList.remove('bell-ringing');
-            }
-        }, 300);
+            checkEmptyState();
+        }, 250);
     }
 };
+
+// Verificar se a lista ficou vazia
+function checkEmptyState() {
+    const list = document.getElementById('notifications-list');
+    const badge = document.getElementById('notification-badge');
+    const emptyState = document.getElementById('notifications-empty');
+    const btnClear = document.getElementById('btn-clear-notifications');
+    const btnBell = document.getElementById('btn-notifications');
+
+    if (!list || list.children.length === 0) {
+        badge.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        if(btnClear) btnClear.classList.add('hidden');
+        if(btnBell) btnBell.classList.remove('bell-ringing');
+    } else {
+        badge.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        if(btnClear) btnClear.classList.remove('hidden');
+        if(btnBell) btnBell.classList.add('bell-ringing');
+    }
+}
+
+// Limpar TODAS as notificações
+function limparTodasNotificacoes() {
+    const list = document.getElementById('notifications-list');
+    if (!list) return;
+
+    // Pega todos os IDs visíveis
+    const visibleCards = list.querySelectorAll('.notif-item');
+    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
+
+    visibleCards.forEach((card, index) => {
+        // Efeito cascata na saída
+        setTimeout(() => {
+            card.style.transform = 'translateX(20px)';
+            card.style.opacity = '0';
+        }, index * 50);
+
+        // Salva ID no localStorage
+        const id = card.getAttribute('data-notif-id');
+        if (id && !dismissed.includes(id)) {
+            dismissed.push(id);
+        }
+    });
+
+    localStorage.setItem('vesto_dismissed_notifs', JSON.stringify(dismissed));
+
+    setTimeout(() => {
+        list.innerHTML = '';
+        checkEmptyState();
+    }, (visibleCards.length * 50) + 200);
+}
 
 let deferredPrompt;
 
@@ -3290,62 +3334,46 @@ function dismissNotification(id, element) {
 // --- FUNÇÃO DE NOTIFICAÇÕES (REMODELADA: CLEAN & PREMIUM) ---
 function verificarNotificacoesFinanceiras() {
     const list = document.getElementById('notifications-list');
-    const badge = document.getElementById('notification-badge');
-    const emptyState = document.getElementById('notifications-empty');
-    const btnNotif = document.getElementById('btn-notifications');
+    const btnClear = document.getElementById('btn-clear-notifications');
 
-    // Limpeza inicial
+    // Setup do botão limpar (apenas uma vez)
+    if (btnClear && !btnClear.dataset.hasListener) {
+        btnClear.addEventListener('click', limparTodasNotificacoes);
+        btnClear.dataset.hasListener = 'true';
+    }
+
     list.innerHTML = '';
-    let temNotificacao = false;
+    let count = 0;
 
-    // Datas
     const hoje = new Date();
     const offset = hoje.getTimezoneOffset() * 60000;
     const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
     const hojeDateObj = new Date(hojeLocal + 'T00:00:00'); 
 
-    // --- RENDERIZADOR DO CARD (NOVO DESIGN) ---
-    const renderNotificationItem = (id, type, title, message) => {
-        const div = document.createElement('div');
-        div.className = 'notif-card relative bg-[#151515] border border-[#2C2C2E] p-3 rounded-2xl mb-2 flex items-start gap-3 transition-all hover:bg-[#1A1A1A] group';
-        
-        // Definição de Ícones e Cores Clean
-        let iconHtml = '';
-        let accentColor = ''; // Apenas para detalhes sutis
+    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
 
-        if (type === 'payment') { 
-            // Pagamento (Verde)
-            accentColor = 'text-green-500';
-            iconHtml = `
-            <div class="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0 text-green-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-            </div>`;
-        } else if (type === 'datacom') { 
-            // Data Com (Amarelo)
-            accentColor = 'text-yellow-500';
-            iconHtml = `
-            <div class="w-8 h-8 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0 text-yellow-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>`;
-        } else { 
-            // News/Anúncio (Azul/Roxo)
-            accentColor = 'text-purple-400';
-            iconHtml = `
-            <div class="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0 text-purple-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9" /></svg>
-            </div>`;
-        }
+    // --- Helper para criar HTML do Card ---
+    const createCard = (id, type, title, htmlMsg, iconSvg) => {
+        const div = document.createElement('div');
+        div.className = `notif-item notif-type-${type} notif-animate-enter`;
+        div.setAttribute('data-notif-id', id);
+        
+        // Cores específicas para os ícones
+        let iconBgClass = 'bg-gray-800 text-gray-400';
+        if (type === 'payment') iconBgClass = 'bg-green-500/10 text-green-500 border border-green-500/20';
+        if (type === 'datacom') iconBgClass = 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20';
+        if (type === 'news')    iconBgClass = 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
 
         div.innerHTML = `
-            ${iconHtml}
-            <div class="flex-1 min-w-0 pt-0.5">
-                <h4 class="text-[11px] font-bold text-gray-400 uppercase tracking-wide leading-tight mb-1">${title}</h4>
-                <div class="text-sm text-gray-200 leading-snug">${message}</div>
+            <div class="notif-icon-box ${iconBgClass}">
+                ${iconSvg}
             </div>
-            <button onclick="window.dismissNotificationGlobal('${id}', this)" class="text-gray-600 hover:text-red-400 p-1 rounded-md hover:bg-white/5 transition-colors -mr-1 -mt-1">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
+            <div class="flex-1 min-w-0 pt-0.5">
+                <div class="notif-title">${title}</div>
+                <div class="notif-msg">${htmlMsg}</div>
+            </div>
+            <button onclick="window.dismissNotificationGlobal('${id}', this)" class="notif-close-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         `;
         return div;
@@ -3357,62 +3385,60 @@ function verificarNotificacoesFinanceiras() {
         createdAt: p.created_at || new Date().toISOString()
     });
 
-    // 1. Pagamentos
+    // 1. PAGAMENTOS HOJE
     const pagamentosHoje = proventosConhecidos.filter(p => getProps(p).paymentDate === hojeLocal);
     pagamentosHoje.forEach(p => {
-        const notifId = `pay_${p.id || p.symbol + Date.now()}`;
-        if (isNotificationDismissed(notifId)) return;
+        const notifId = `pay_${p.id || p.symbol + p.paymentDate}`;
+        if (dismissed.includes(notifId)) return;
 
         const props = getProps(p);
         const qtd = getQuantidadeNaData(p.symbol, props.dataCom || props.paymentDate);
         
         if (qtd > 0) {
-            temNotificacao = true;
-            const msg = `<span class="font-bold text-white">${p.symbol}</span> pagou <span class="font-bold text-green-400">${formatBRL(p.value * qtd)}</span> hoje.`;
-            list.appendChild(renderNotificationItem(notifId, 'payment', 'Caiu na Conta', msg));
+            count++;
+            const msg = `O ativo <strong class="text-white">${p.symbol}</strong> depositou <strong class="text-green-400">${formatBRL(p.value * qtd)}</strong> na sua conta.`;
+            const icon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`;
+            list.appendChild(createCard(notifId, 'payment', 'Pagamento Recebido', msg, icon));
         }
     });
 
-    // 2. Data Com
+    // 2. DATA COM HOJE
     const dataComHoje = proventosConhecidos.filter(p => getProps(p).dataCom === hojeLocal);
     dataComHoje.forEach(p => {
-        const notifId = `com_${p.id || p.symbol + 'com'}`;
-        if (isNotificationDismissed(notifId)) return;
+        const notifId = `com_${p.id || p.symbol + 'com' + hojeLocal}`;
+        if (dismissed.includes(notifId)) return;
 
-        temNotificacao = true;
-        const msg = `<span class="font-bold text-white">${p.symbol}</span> fecha data-com hoje. <span class="text-yellow-500 font-bold">${formatBRL(p.value)}</span>/cota.`;
-        list.appendChild(renderNotificationItem(notifId, 'datacom', 'Data de Corte', msg));
+        count++;
+        const msg = `<strong class="text-white">${p.symbol}</strong> fecha Data Com hoje. Valor: <strong class="text-yellow-400">${formatBRL(p.value)}</strong>.`;
+        const icon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
+        list.appendChild(createCard(notifId, 'datacom', 'Data de Corte', msg, icon));
     });
 
-    // 3. Novos Anúncios
+    // 3. NOVOS ANÚNCIOS (Últimas 24h)
     const novosAnuncios = proventosConhecidos.filter(p => {
         const props = getProps(p);
         const dataCriacao = props.createdAt.split('T')[0];
+        
+        // Regra: Criado hoje, E NÃO paga hoje, E NÃO é data com hoje (para não duplicar)
         if (dataCriacao !== hojeLocal) return false;
         if (props.paymentDate === hojeLocal || props.dataCom === hojeLocal) return false; 
         
+        // Garante que é futuro
         const dataPagamentoObj = new Date((props.paymentDate || '') + 'T00:00:00');
         return dataPagamentoObj >= hojeDateObj;
     });
 
     novosAnuncios.forEach(p => {
-        const notifId = `news_${p.id}`;
-        if (isNotificationDismissed(notifId)) return;
+        const notifId = `news_${p.id || p.symbol + 'news'}`;
+        if (dismissed.includes(notifId)) return;
 
-        temNotificacao = true;
-        const msg = `<span class="font-bold text-white">${p.symbol}</span> anunciou <span class="font-bold text-purple-400">${formatBRL(p.value)}</span> para ${formatDate(getProps(p).paymentDate)}.`;
-        list.appendChild(renderNotificationItem(notifId, 'news', 'Novo Anúncio', msg));
+        count++;
+        const msg = `Novo anúncio de <strong class="text-white">${p.symbol}</strong>: <strong class="text-purple-400">${formatBRL(p.value)}</strong> para ${formatDate(getProps(p).paymentDate)}.`;
+        const icon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`;
+        list.appendChild(createCard(notifId, 'news', 'Novo Provento', msg, icon));
     });
 
-    if (temNotificacao) {
-        badge.classList.remove('hidden');
-        btnNotif.classList.add('bell-ringing');
-        emptyState.classList.add('hidden');
-    } else {
-        badge.classList.add('hidden');
-        btnNotif.classList.remove('bell-ringing');
-        emptyState.classList.remove('hidden');
-    }
+    checkEmptyState();
 }
 	
 async function atualizarTodosDados(force = false) { 

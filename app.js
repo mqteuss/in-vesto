@@ -3336,6 +3336,7 @@ function verificarNotificacoesFinanceiras() {
     const list = document.getElementById('notifications-list');
     const btnClear = document.getElementById('btn-clear-notifications');
 
+    // Setup do botão limpar (apenas uma vez)
     if (btnClear && !btnClear.dataset.hasListener) {
         btnClear.addEventListener('click', limparTodasNotificacoes);
         btnClear.dataset.hasListener = 'true';
@@ -3345,23 +3346,29 @@ function verificarNotificacoesFinanceiras() {
     let count = 0;
     const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
 
-    // Datas
+    // --- Datas ---
     const hoje = new Date();
     const offset = hoje.getTimezoneOffset() * 60000;
     const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
     const hojeDateObj = new Date(hojeLocal + 'T00:00:00'); 
+    
+    // Formatador curto para texto (ex: 12/05)
+    const fmtDia = (dataStr) => {
+        if (!dataStr) return '?';
+        const parts = dataStr.split('-');
+        return `${parts[2]}/${parts[1]}`;
+    };
 
-    // --- HELPER DO CARD (CLEAN) ---
+    // --- HELPER DO CARD (CLEAN & INFORMATIVO) ---
     const createCard = (id, type, title, htmlMsg, iconSvg) => {
         const div = document.createElement('div');
         div.className = `notif-item notif-type-${type} notif-animate-enter`;
         div.setAttribute('data-notif-id', id);
         
-        // Cores dos ícones (Sem fundo colorido, apenas o traço colorido ou branco)
         let iconColorClass = 'text-gray-400'; 
         if (type === 'payment') iconColorClass = 'text-green-500';
         if (type === 'datacom') iconColorClass = 'text-yellow-500';
-        if (type === 'news')    iconColorClass = 'text-blue-400'; // AZUL (Info)
+        if (type === 'news')    iconColorClass = 'text-blue-400';
 
         div.innerHTML = `
             <div class="notif-icon-box">
@@ -3371,7 +3378,9 @@ function verificarNotificacoesFinanceiras() {
             </div>
             <div class="flex-1 min-w-0 pt-0.5">
                 <div class="notif-title">${title}</div>
-                <div class="notif-msg">${htmlMsg}</div>
+                <div class="notif-msg text-[11px] leading-relaxed text-gray-300">
+                    ${htmlMsg}
+                </div>
             </div>
             <button onclick="window.dismissNotificationGlobal('${id}', this)" class="notif-close-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
@@ -3386,7 +3395,7 @@ function verificarNotificacoesFinanceiras() {
         createdAt: p.created_at || new Date().toISOString()
     });
 
-    // 1. PAGAMENTOS (Verde)
+    // 1. PAGAMENTOS (Verde) - Dinheiro na conta
     const pagamentosHoje = proventosConhecidos.filter(p => getProps(p).paymentDate === hojeLocal);
     pagamentosHoje.forEach(p => {
         const notifId = `pay_${p.id || p.symbol + p.paymentDate}`;
@@ -3394,28 +3403,31 @@ function verificarNotificacoesFinanceiras() {
 
         const props = getProps(p);
         const qtd = getQuantidadeNaData(p.symbol, props.dataCom || props.paymentDate);
+        
         if (qtd > 0) {
             count++;
-            // Texto clean: sem negritos coloridos no meio, apenas branco
-            const msg = `<strong>${p.symbol}</strong> pagou <strong>${formatBRL(p.value * qtd)}</strong>.`;
+            // Ex: Recebeu R$ 50,00 de MXRF11 (100 cotas).
+            const msg = `Recebeu <strong class="text-white">${formatBRL(p.value * qtd)}</strong> de <strong class="text-white">${p.symbol}</strong> (${qtd} cotas).`;
             const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>`;
-            list.appendChild(createCard(notifId, 'payment', 'Entrada', msg, icon));
+            list.appendChild(createCard(notifId, 'payment', 'Pagamento Recebido', msg, icon));
         }
     });
 
-    // 2. DATA COM (Amarelo)
+    // 2. DATA COM (Amarelo) - Último dia para comprar
     const dataComHoje = proventosConhecidos.filter(p => getProps(p).dataCom === hojeLocal);
     dataComHoje.forEach(p => {
         const notifId = `com_${p.id || p.symbol + 'com'}`;
         if (dismissed.includes(notifId)) return;
 
+        const props = getProps(p);
         count++;
-        const msg = `Data com de <strong>${p.symbol}</strong> (${formatBRL(p.value)}).`;
+        // Ex: Data Com de MXRF11 hoje (15/05). Paga em 30/05.
+        const msg = `Data Com de <strong class="text-white">${p.symbol}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> • Paga em: ${fmtDia(props.paymentDate)}`;
         const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-        list.appendChild(createCard(notifId, 'datacom', 'Data Com', msg, icon));
+        list.appendChild(createCard(notifId, 'datacom', 'Data de Corte', msg, icon));
     });
 
-    // 3. ANÚNCIOS (Azul - Substitui o Roxo)
+    // 3. ANÚNCIOS (Azul) - Informação futura
     const novosAnuncios = proventosConhecidos.filter(p => {
         const props = getProps(p);
         const dataCriacao = props.createdAt.split('T')[0];
@@ -3429,11 +3441,12 @@ function verificarNotificacoesFinanceiras() {
         const notifId = `news_${p.id || p.symbol + 'news'}`;
         if (dismissed.includes(notifId)) return;
 
+        const props = getProps(p);
         count++;
-        // Removemos a cor roxa do texto, agora é neutro/branco
-        const msg = `<strong>${p.symbol}</strong> anunciou <strong>${formatBRL(p.value)}</strong>.`;
+        // Ex: MXRF11 anunciou R$ 0,10. Data Com: 15/05.
+        const msg = `<strong class="text-white">${p.symbol}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} • Pag: ${fmtDia(props.paymentDate)}`;
         const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-        list.appendChild(createCard(notifId, 'news', 'Aviso', msg, icon));
+        list.appendChild(createCard(notifId, 'news', 'Novo Anúncio', msg, icon));
     });
 
     checkEmptyState();

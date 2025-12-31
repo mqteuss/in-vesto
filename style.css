@@ -78,7 +78,7 @@ body.light-mode .bg-\[\#111\] {
 body.light-mode .page-content {
     background-color: #ffffff !important;
     border: none !important;
-    border-top: 1px solid #e5e7eb !important; /* BORDA SUPERIOR VISÍVEL */
+    border-top: 1px solid #e5e7eb !important; 
     color: #1f2937 !important;
 }
 
@@ -194,7 +194,7 @@ body.light-mode .skeleton-text { background-color: #e5e7eb !important; }
 body.light-mode .skeleton-text::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent); }
 body.light-mode .card-arrow-icon { color: #9ca3af !important; }
 
-/* Light Mode Agenda Squares */
+/* Light Mode Agenda Colors */
 body.light-mode .square-payment-card {
     background-color: #ffffff !important;
     border: none !important;
@@ -203,7 +203,11 @@ body.light-mode .square-payment-card {
 body.light-mode .square-day { color: #111827; }
 body.light-mode .square-month { color: #6b7280; }
 body.light-mode .square-ticker { color: #374151; }
-body.light-mode .square-value { color: #d97706 !important; }
+
+/* MUDANÇA: Valor em Âmbar no Light Mode para melhor contraste */
+body.light-mode .square-value,
+body.light-mode .agenda-value { color: #d97706 !important; } 
+
 body.light-mode .text-hoje { color: #d97706 !important; }
 
 
@@ -359,10 +363,11 @@ body.light-mode .text-hoje { color: #d97706 !important; }
     display: block;
 }
 
+/* MUDANÇA: COR AMARELA (AGENDADO) */
 .agenda-value {
     font-size: 11px;
     font-weight: 600;
-    color: #22c55e;
+    color: #facc15; /* Amarelo Bright */
     display: block;
     margin-top: 1px;
 }
@@ -521,18 +526,13 @@ input:-webkit-autofill:active {
 .page-modal { opacity: 0; pointer-events: none; transition: opacity 0.4s ease-in-out; z-index: 70; }
 .page-modal.visible { opacity: 1; pointer-events: auto; }
 
-/* AQUI ESTÁ A ALTERAÇÃO: Gaveta gigante com borda superior */
+/* Gaveta gigante com borda superior */
 .page-content {
     transition: transform 0.4s ease-in-out, background-color 0.3s ease;
     transform: translateY(100%);
     background-color: #000000;
-    
-    /* Borda superior para destacar a gaveta */
     border-top: 1px solid #27272a; 
-    
-    /* Arredondamento para parecer uma gaveta */
     border-radius: 2rem 2rem 0 0;
-    
     position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto;
     max-width: 32rem; z-index: 80;
 }
@@ -563,13 +563,10 @@ input:-webkit-autofill:active {
 #resumo-carteira-card {
     position: relative; 
     overflow: hidden;
-    
-    /* COR SUTIL (Deep Violet Gradient) */
+    /* Deep Violet Gradient */
     background: linear-gradient(180deg, #201c2e 0%, #141414 100%);
-    
     border: none; 
     border-radius: 2rem;
-    
     min-height: 210px; 
     margin-bottom: 1.5rem;
     display: flex; 
@@ -611,7 +608,6 @@ input:-webkit-autofill:active {
 .premium-grid {
     display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; align-items: center;
     background: transparent;
-    /* Separador interno muito sutil */
     border-top: 1px solid rgba(255,255,255,0.05);
     margin: 1rem -1.25rem -1.25rem -1.25rem; 
     padding: 1rem 0;

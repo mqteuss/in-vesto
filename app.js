@@ -3336,7 +3336,7 @@ function verificarNotificacoesFinanceiras() {
     const list = document.getElementById('notifications-list');
     const btnClear = document.getElementById('btn-clear-notifications');
 
-    // Setup do botão limpar (apenas uma vez)
+    // Setup do botão limpar
     if (btnClear && !btnClear.dataset.hasListener) {
         btnClear.addEventListener('click', limparTodasNotificacoes);
         btnClear.dataset.hasListener = 'true';
@@ -3346,29 +3346,33 @@ function verificarNotificacoesFinanceiras() {
     let count = 0;
     const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
 
-    // --- Datas ---
+    // --- Datas e Helpers ---
     const hoje = new Date();
     const offset = hoje.getTimezoneOffset() * 60000;
     const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
     const hojeDateObj = new Date(hojeLocal + 'T00:00:00'); 
     
-    // Formatador curto para texto (ex: 12/05)
     const fmtDia = (dataStr) => {
         if (!dataStr) return '?';
         const parts = dataStr.split('-');
         return `${parts[2]}/${parts[1]}`;
     };
 
-    // --- HELPER DO CARD (CLEAN & INFORMATIVO) ---
-    const createCard = (id, type, title, htmlMsg, iconSvg) => {
+    // --- HELPER CARD (Com suporte a Link) ---
+    const createCard = (id, type, title, htmlMsg, iconSvg, linkUrl = null) => {
         const div = document.createElement('div');
-        div.className = `notif-item notif-type-${type} notif-animate-enter`;
+        div.className = `notif-item notif-type-${type} notif-animate-enter group cursor-default`;
         div.setAttribute('data-notif-id', id);
         
         let iconColorClass = 'text-gray-400'; 
         if (type === 'payment') iconColorClass = 'text-green-500';
         if (type === 'datacom') iconColorClass = 'text-yellow-500';
         if (type === 'news')    iconColorClass = 'text-blue-400';
+
+        // Se tiver link, o título ou card pode ser clicável
+        const linkHtml = linkUrl 
+            ? `<a href="${linkUrl}" target="_blank" class="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30 ml-1">Ler</a>` 
+            : '';
 
         div.innerHTML = `
             <div class="notif-icon-box">
@@ -3377,15 +3381,29 @@ function verificarNotificacoesFinanceiras() {
                 </div>
             </div>
             <div class="flex-1 min-w-0 pt-0.5">
-                <div class="notif-title">${title}</div>
+                <div class="notif-title flex justify-between">
+                    <span>${title}</span>
+                    ${linkUrl ? `<span class="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-gray-500">Externo ↗</span>` : ''}
+                </div>
                 <div class="notif-msg text-[11px] leading-relaxed text-gray-300">
-                    ${htmlMsg}
+                    ${htmlMsg} ${linkHtml}
                 </div>
             </div>
-            <button onclick="window.dismissNotificationGlobal('${id}', this)" class="notif-close-btn">
+            <button onclick="window.dismissNotificationGlobal('${id}', this)" class="notif-close-btn z-10">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
             </button>
         `;
+        
+        // Se tiver link, permite clicar no corpo do card (opcional)
+        if (linkUrl) {
+            div.addEventListener('click', (e) => {
+                if(!e.target.closest('button') && !e.target.closest('a')) {
+                    window.open(linkUrl, '_blank');
+                }
+            });
+            div.classList.add('cursor-pointer', 'hover:bg-[#18181b]');
+        }
+
         return div;
     };
 
@@ -3395,7 +3413,9 @@ function verificarNotificacoesFinanceiras() {
         createdAt: p.created_at || new Date().toISOString()
     });
 
-    // 1. PAGAMENTOS (Verde) - Dinheiro na conta
+    // =========================================
+    // 1. PAGAMENTOS (Verde)
+    // =========================================
     const pagamentosHoje = proventosConhecidos.filter(p => getProps(p).paymentDate === hojeLocal);
     pagamentosHoje.forEach(p => {
         const notifId = `pay_${p.id || p.symbol + p.paymentDate}`;
@@ -3406,14 +3426,15 @@ function verificarNotificacoesFinanceiras() {
         
         if (qtd > 0) {
             count++;
-            // Ex: Recebeu R$ 50,00 de MXRF11 (100 cotas).
             const msg = `Recebeu <strong class="text-white">${formatBRL(p.value * qtd)}</strong> de <strong class="text-white">${p.symbol}</strong> (${qtd} cotas).`;
             const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>`;
             list.appendChild(createCard(notifId, 'payment', 'Pagamento Recebido', msg, icon));
         }
     });
 
-    // 2. DATA COM (Amarelo) - Último dia para comprar
+    // =========================================
+    // 2. DATA COM (Amarelo)
+    // =========================================
     const dataComHoje = proventosConhecidos.filter(p => getProps(p).dataCom === hojeLocal);
     dataComHoje.forEach(p => {
         const notifId = `com_${p.id || p.symbol + 'com'}`;
@@ -3421,13 +3442,14 @@ function verificarNotificacoesFinanceiras() {
 
         const props = getProps(p);
         count++;
-        // Ex: Data Com de MXRF11 hoje (15/05). Paga em 30/05.
         const msg = `Data Com de <strong class="text-white">${p.symbol}</strong> hoje (${fmtDia(hojeLocal)}).<br>Valor: <strong class="text-white">${formatBRL(p.value)}</strong> • Paga em: ${fmtDia(props.paymentDate)}`;
         const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
         list.appendChild(createCard(notifId, 'datacom', 'Data de Corte', msg, icon));
     });
 
-    // 3. ANÚNCIOS (Azul) - Informação futura
+    // =========================================
+    // 3. ANÚNCIOS DE PROVENTOS (Azul Clean)
+    // =========================================
     const novosAnuncios = proventosConhecidos.filter(p => {
         const props = getProps(p);
         const dataCriacao = props.createdAt.split('T')[0];
@@ -3440,14 +3462,55 @@ function verificarNotificacoesFinanceiras() {
     novosAnuncios.forEach(p => {
         const notifId = `news_${p.id || p.symbol + 'news'}`;
         if (dismissed.includes(notifId)) return;
-
         const props = getProps(p);
         count++;
-        // Ex: MXRF11 anunciou R$ 0,10. Data Com: 15/05.
         const msg = `<strong class="text-white">${p.symbol}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} • Pag: ${fmtDia(props.paymentDate)}`;
         const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
         list.appendChild(createCard(notifId, 'news', 'Novo Anúncio', msg, icon));
     });
+
+    // =========================================
+    // 4. NOTÍCIAS DE MERCADO (Ticker Match)
+    // =========================================
+    // Verifica se existe cache de notícias e carteira carregada
+    if (window.noticiasCache && window.noticiasCache.length > 0 && carteira.length > 0) {
+        
+        // Cria lista única de tickers do usuário (ex: ['WEGE3', 'VALE3'])
+        const meusTickers = [...new Set(carteira.map(item => item.symbol.toUpperCase()))];
+        
+        window.noticiasCache.slice(0, 30).forEach(noticia => {
+            // Verifica se algum ticker está no título da notícia
+            const tickerEncontrado = meusTickers.find(ticker => {
+                // Regex para garantir palavra inteira (evita que "ON" ache "ACTION")
+                // Se o ticker for complexo, usa includes simples
+                return noticia.title.toUpperCase().includes(ticker); 
+            });
+
+            if (tickerEncontrado) {
+                // Cria ID único baseado no título (hash simples) para não repetir
+                // Remove caracteres especiais para o ID
+                const safeId = 'news_mkt_' + noticia.title.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+                
+                if (dismissed.includes(safeId)) return;
+
+                count++;
+                
+                // Formata data da noticia se tiver
+                let dataPub = '';
+                if (noticia.pubDate) {
+                   const d = new Date(noticia.pubDate);
+                   dataPub = !isNaN(d) ? ` • ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : '';
+                }
+
+                const msg = `Notícia sobre <strong class="text-white">${tickerEncontrado}</strong> saiu no mercado.${dataPub}<br><span class="text-gray-400 italic">"${noticia.title.slice(0, 50)}..."</span>`;
+                
+                const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>`;
+                
+                // Passamos o link da notícia para o card
+                list.appendChild(createCard(safeId, 'news', 'Radar de Notícias', msg, icon, noticia.link));
+            }
+        });
+    }
 
     checkEmptyState();
 }

@@ -553,33 +553,49 @@ input:-webkit-autofill:active {
 
 
 /* =========================================
-   DASHBOARD & CARTEIRA (CLEAN & BORDERLESS)
+   DASHBOARD & CARTEIRA (CLEAN, EXCEPT MAIN CARD)
    ========================================= */
 
-/* Premium Card (Resumo) */
+/* PREMIUM CARD (RESUMO) - REVERTIDO PARA O ESTILO ORIGINAL (VIBRANTE/AURORA)
+   Conforme solicitado: "Deixe ele como era, APENAS ele".
+*/
 #resumo-carteira-card {
     position: relative; 
     overflow: hidden;
     
-    /* GRADIENTE SPOTLIGHT: Zinco claro para escuro (Efeito de iluminação) */
-    /* Nem roxo, nem morto. Apenas uma luz de cima. */
-    background: linear-gradient(180deg, #27272a 0%, #141414 100%);
+    /* Gradiente Original Escuro e Profundo */
+    background: linear-gradient(160deg, #130e1a 0%, #000000 100%);
     
-    border: none; 
+    /* Bordas e Sombras Originais */
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 2rem;
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    
     min-height: 210px; 
     margin-bottom: 1.5rem;
     display: flex; 
     flex-direction: column; 
     justify-content: space-between;
-    transition: transform 0.3s ease;
-    box-shadow: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 #resumo-carteira-card:active { transform: scale(0.99); }
 
-#resumo-carteira-card::before,
-#resumo-carteira-card::after { display: none; }
+/* REATIVADOS EFEITOS DE AURORA (Pseudo-elementos) */
+#resumo-carteira-card::before {
+    content: ''; position: absolute; top: -40%; left: -20%; width: 150%; height: 150%;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, rgba(0,0,0,0) 65%);
+    filter: blur(50px); z-index: 0; pointer-events: none;
+    will-change: transform, opacity; animation: auroraPulse 8s ease-in-out infinite alternate;
+    display: block;
+}
+
+#resumo-carteira-card::after {
+    content: ''; position: absolute; bottom: -30%; right: -20%; width: 120%; height: 120%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(0,0,0,0) 65%);
+    filter: blur(50px); z-index: 0; pointer-events: none;
+    display: block;
+}
 
 .premium-content {
     position: relative; z-index: 10; padding: 1.25rem;
@@ -593,28 +609,37 @@ input:-webkit-autofill:active {
 
 .premium-value-lg {
     font-size: 3.5rem; line-height: 1.1; font-weight: 800; letter-spacing: -0.04em; color: #ffffff;
-    background: none; 
-    -webkit-text-fill-color: #ffffff;
-    filter: none; margin: 0; padding: 0;
+    
+    /* Texto original com gradiente sutil branco/cinza */
+    background: linear-gradient(180deg, #fff 20%, #9ca3af 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5)); 
+    
+    margin: 0; padding: 0;
 }
 
 .premium-badge {
     display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
-    border-radius: 99px; background: #1c1c1e;
-    border: none; 
+    border-radius: 99px; 
+    /* Estilo Badge Original */
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06); 
+    backdrop-filter: blur(10px);
     margin-top: 1rem; width: fit-content;
 }
 
 .premium-grid {
     display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; align-items: center;
-    background: transparent;
-    border-top: 1px solid rgba(255,255,255,0.05);
+    /* Grid Original Translúcido */
+    background: rgba(0, 0, 0, 0.4); 
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     margin: 1rem -1.25rem -1.25rem -1.25rem; 
     padding: 1rem 0;
 }
 
 .premium-stat-box { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 0.5rem; }
-.premium-divider { width: 1px; height: 60%; background: rgba(255,255,255,0.05); }
+.premium-divider { width: 1px; height: 60%; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.08), transparent); }
 .premium-stat-value { font-size: 0.9rem; font-weight: 700; color: #e5e5e5; letter-spacing: -0.02em; }
 .premium-stat-sub { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-top: 2px; font-weight: 600; }
 
@@ -934,6 +959,12 @@ body.privacy-mode [data-field="pl-valor"] {
 
 @keyframes slideInRight { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes fadeInDropdown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Animação para o efeito Aurora (Adicionado para garantir que funcione) */
+@keyframes auroraPulse {
+    0% { opacity: 0.6; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.1); }
+}
 
 /* Botões Active Scale */
 button:active, .accent-bg:active, #refresh-button:active, #refresh-noticias-button:active, #show-add-modal-btn:active, .periodo-selector-btn:active, .news-ticker-tag:active, #copiar-dados-btn:active, #abrir-importar-modal-btn:active, #logout-btn:active {

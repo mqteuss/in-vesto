@@ -2640,76 +2640,105 @@ function renderizarGraficoPatrimonio() {
     lastPatrimonioCalcSignature = currentSignature;
 }
 	
-	function renderizarTimelinePagamentos() {
-        const container = document.getElementById('timeline-pagamentos-container');
-        const lista = document.getElementById('timeline-lista');
-        
-        // Filtra proventos futuros ou do mês atual
-        // proventosAtuais é uma variável global que já populamos na renderizarCarteira
-        if (!proventosAtuais || proventosAtuais.length === 0) {
-            container.classList.add('hidden');
-            return;
-        }
+// --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
 
-        const hoje = new Date();
-        hoje.setHours(0,0,0,0);
-
-        // Filtra pagamentos que ainda vão acontecer ou aconteceram hoje
-        const pagamentosFuturos = proventosAtuais.filter(p => {
-            if (!p.paymentDate) return false;
-            const parts = p.paymentDate.split('-');
-            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-            return dataPag >= hoje;
-        });
-
-        if (pagamentosFuturos.length === 0) {
-            container.classList.add('hidden');
-            return;
-        }
-
-        // Ordena por data (mais próximo primeiro)
-        pagamentosFuturos.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-        
-        // Pega apenas os 3 próximos para não poluir
-        const proximos = pagamentosFuturos.slice(0, 3);
-
-        lista.innerHTML = '';
-        proximos.forEach(prov => {
-            const parts = prov.paymentDate.split('-');
-            const dia = parts[2];
-            const mes = new Date(parts[0], parts[1] - 1, parts[2])
-                        .toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-
-            // Busca quantidade que você tem na carteira para calcular o total
-            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-            const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-            const totalReceber = prov.value * qtd;
-
-            const item = document.createElement('div');
-            item.className = 'card-bg p-3 rounded-xl flex items-center justify-between border border-gray-800/50';
-            
-            item.innerHTML = `
-                <div class="flex items-center gap-4">
-                    <div class="bg-gray-800 rounded-lg p-2 w-12 text-center flex-shrink-0 flex flex-col justify-center leading-none">
-                        <span class="text-[10px] text-gray-400 font-bold block mb-0.5">${mes}</span>
-                        <span class="text-lg font-bold text-white block">${dia}</span>
-                    </div>
-                    
-                    <div>
-                        <span class="text-sm font-bold text-white block">${prov.symbol}</span>
-                        <span class="text-xs text-gray-500">Valor/cota: ${formatBRL(prov.value)}</span>
-                    </div>
-                </div>
-                <div class="text-right">
-                     <span class="text-sm font-bold text-green-400 block">+${formatBRL(totalReceber)}</span>
-                     <span class="text-[10px] text-gray-500 font-medium">A Receber</span>
-                </div>
-            `;
-            lista.appendChild(item);
-        });
-
-        container.classList.remove('hidden');
+function renderizarTimelinePagamentos() {
+    const container = document.getElementById('timeline-pagamentos-container');
+    const lista = document.getElementById('timeline-lista');
+    
+    // 1. Verificação de Segurança
+    if (!proventosAtuais || proventosAtuais.length === 0) {
+        container.classList.add('hidden');
+        return;
     }
+
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+
+    // 2. Filtra pagamentos futuros ou de hoje
+    const pagamentosFuturos = proventosAtuais.filter(p => {
+        if (!p.paymentDate) return false;
+        const parts = p.paymentDate.split('-');
+        const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+        return dataPag >= hoje;
+    });
+
+    // 3. Filtra apenas o que o usuário TEM na carteira (Qtd > 0)
+    const pagamentosReais = pagamentosFuturos.filter(prov => {
+        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+        return ativoNaCarteira && ativoNaCarteira.quantity > 0;
+    });
+
+    if (pagamentosReais.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    // Ordena: data mais próxima primeiro
+    pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+    
+    // Limita a 3 itens para manter o design clean
+    const proximos = pagamentosReais.slice(0, 3);
+
+    lista.innerHTML = '';
+    
+    proximos.forEach(prov => {
+        const parts = prov.paymentDate.split('-');
+        const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        
+        const dia = parts[2];
+        // Mês abreviado (JAN, FEV...)
+        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+
+        // Cálculo inteligente de dias
+        const diffTime = Math.abs(dataObj - hoje);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        let textoStatus = '';
+        let corStatus = 'text-gray-500';
+
+        if (diffDays === 0) {
+            textoStatus = 'Recebe Hoje';
+            corStatus = 'text-green-400 font-bold';
+        } else if (diffDays === 1) {
+            textoStatus = 'Amanhã';
+            corStatus = 'text-gray-300';
+        } else {
+            textoStatus = `Faltam ${diffDays} dias`;
+            corStatus = 'text-gray-500';
+        }
+
+        // Cálculos Financeiros
+        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+        const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+        const totalReceber = prov.value * qtd;
+
+        const item = document.createElement('div');
+        item.className = 'clean-payment-card'; // Nova classe CSS
+        
+        item.innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="clean-date-badge">
+                    <span class="clean-month">${mes}</span>
+                    <span class="clean-day">${dia}</span>
+                </div>
+                
+                <div>
+                    <h4 class="clean-ticker">${prov.symbol}</h4>
+                    <p class="clean-sub">${qtd} cotas • ${formatBRL(prov.value)}</p>
+                </div>
+            </div>
+
+            <div>
+                 <div class="clean-value">+${formatBRL(totalReceber)}</div>
+                 <span class="clean-status ${corStatus}">${textoStatus}</span>
+            </div>
+        `;
+        lista.appendChild(item);
+    });
+
+    container.classList.remove('hidden');
+}
 
 function renderizarDashboardSkeletons(show) {
     const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];

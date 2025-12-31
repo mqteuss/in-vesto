@@ -203,11 +203,8 @@ body.light-mode .square-payment-card {
 body.light-mode .square-day { color: #111827; }
 body.light-mode .square-month { color: #6b7280; }
 body.light-mode .square-ticker { color: #374151; }
-
-/* MUDANÇA: Valor em Âmbar no Light Mode para melhor contraste */
 body.light-mode .square-value,
 body.light-mode .agenda-value { color: #d97706 !important; } 
-
 body.light-mode .text-hoje { color: #d97706 !important; }
 
 
@@ -217,14 +214,11 @@ body.light-mode .text-hoje { color: #d97706 !important; }
 
 /* Estilos Globais de Card */
 .card-bg {
-    /* Fundo sólido escuro */
     background-color: #141414;
     background-image: none; 
-    border: none; /* SEM BORDA */
+    border: none; 
     border-radius: 1.5rem;
-    
     transition: transform 0.2s ease, background-color 0.2s ease;
-    /* Sombra muito suave apenas para elevação */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -363,7 +357,7 @@ body.light-mode .text-hoje { color: #d97706 !important; }
     display: block;
 }
 
-/* MUDANÇA: COR AMARELA (AGENDADO) */
+/* COR AMARELA (AGENDADO) */
 .agenda-value {
     font-size: 11px;
     font-weight: 600;
@@ -563,8 +557,8 @@ input:-webkit-autofill:active {
 #resumo-carteira-card {
     position: relative; 
     overflow: hidden;
-    /* Deep Violet Gradient */
-    background: linear-gradient(180deg, #201c2e 0%, #141414 100%);
+    /* GRADIENTE VIBRANTE: Violeta Profundo para Preto */
+    background: linear-gradient(180deg, #2e1065 0%, #141414 100%);
     border: none; 
     border-radius: 2rem;
     min-height: 210px; 

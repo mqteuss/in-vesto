@@ -101,7 +101,7 @@ body.light-mode #change-password-form input {
 }
 
 body.light-mode #auth-container input {
-    background-color: #f3f4f6 !important; /* Mais escuro que o card branco no light mode */
+    background-color: #f3f4f6 !important;
     border: none !important;
     color: #111827 !important;
 }
@@ -226,12 +226,19 @@ body.light-mode .text-hoje { color: #d97706 !important; }
     border: none; /* SEM BORDA */
     border-radius: 1.5rem;
     transition: transform 0.2s ease, background-color 0.2s ease;
-    box-shadow: none; /* PERFORMANCE: SEM SOMBRA */
+    box-shadow: none; 
 }
 
 .card-bg:active {
     transform: scale(0.99);
     background-color: #1a1a1a;
+}
+
+/* --- FIX: REMOVER ANIMAÇÃO DE CLIQUE DO CARD DE LOGIN/AUTH --- */
+/* O card de autenticação deve ser estático para digitar */
+#auth-container.card-bg:active {
+    transform: none !important;
+    background-color: #141414 !important; /* Mantém a cor fixa */
 }
 
 /* Accent & Text */
@@ -376,7 +383,7 @@ body.light-mode .text-hoje { color: #d97706 !important; }
 /* HOJE */
 .agenda-card.is-today {
     background-color: #27272a; 
-    box-shadow: none; /* PERFORMANCE: SEM GLOW */
+    box-shadow: none; 
 }
 .agenda-card.is-today .agenda-header {
     background-color: #eab308;
@@ -400,7 +407,7 @@ body.light-mode .text-hoje { color: #d97706 !important; }
 }
 .tab-content.active { animation: none; }
 
-/* BOTTOM NAV: 50% TRANSPARÊNCIA */
+/* BOTTOM NAV: 50% TRANSPARÊNCIA (VIDRO FOSCO MAIS FORTE) */
 .bottom-nav {
     background-color: rgba(20, 20, 20, 0.5); /* 50% Opacity */
     backdrop-filter: blur(20px);
@@ -419,7 +426,7 @@ body.light-mode .text-hoje { color: #d97706 !important; }
     justify-content: space-evenly;
     align-items: center;
     padding: 0 0.5rem;
-    box-shadow: none; /* PERFORMANCE: SEM SOMBRA */
+    box-shadow: none; 
     transition: all 0.3s ease;
 }
 
@@ -471,7 +478,6 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 input[type=number] { -moz-appearance: textfield; font-variant-numeric: tabular-nums; }
 select { -webkit-appearance: none; appearance: none; border-radius: 9999px; }
 
-/* Inputs Gerais */
 #add-ativo-modal input, 
 #new-password-form input, 
 #change-password-form input,
@@ -486,10 +492,10 @@ select { -webkit-appearance: none; appearance: none; border-radius: 9999px; }
     box-shadow: none; 
 }
 
-/* INPUTS DE LOGIN/CADASTRO - COR MAIS ESCURA PARA CONTRASTE */
+/* INPUTS DE LOGIN/CADASTRO */
 #auth-container input {
     transition: all 0.2s ease-in-out;
-    background-color: #050505; /* Preto quase absoluto para destacar do card cinza */
+    background-color: #050505; /* Preto quase absoluto */
     border: none; 
     color: #ffffff;
     border-radius: 12px;
@@ -534,7 +540,7 @@ input:-webkit-autofill:active {
     animation: modalIn 0.2s ease-out forwards;
     border-radius: 1.5rem;
     transition: background-color 0.3s ease;
-    box-shadow: none; /* PERFORMANCE */
+    box-shadow: none;
 }
 .modal-content.modal-out { animation: modalOut 0.2s ease-in forwards; }
 
@@ -574,19 +580,16 @@ input:-webkit-autofill:active {
    DASHBOARD & CARTEIRA (CLEAN, MAIN CARD ORIGINAL)
    ========================================= */
 
-/* PREMIUM CARD (RESUMO) - VISUAL GLORY, SEM SOMBRA PESADA (PERFORMANCE) */
+/* PREMIUM CARD (RESUMO) - VISUAL GLORY, SEM SOMBRA PESADA, SEM CLICK */
 #resumo-carteira-card {
     position: relative; 
     overflow: hidden;
-    
     /* Gradiente Original Escuro e Profundo */
     background: linear-gradient(160deg, #130e1a 0%, #000000 100%);
-    
     /* Borda Original */
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 2rem;
-    
-    /* PERFORMANCE: Removemos box-shadow pesado */
+    /* SEM box-shadow pesado */
     box-shadow: none; 
     
     min-height: 210px; 
@@ -597,9 +600,7 @@ input:-webkit-autofill:active {
     transition: transform 0.3s ease;
 }
 
-/* SEM EFEITO TÁTIL (ATIVO) - Card estático */
-
-/* REATIVADOS EFEITOS DE AURORA (Pseudo-elementos) */
+/* EFEITOS DE AURORA */
 #resumo-carteira-card::before {
     content: ''; position: absolute; top: -40%; left: -20%; width: 150%; height: 150%;
     background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, rgba(0,0,0,0) 65%);
@@ -627,21 +628,16 @@ input:-webkit-autofill:active {
 
 .premium-value-lg {
     font-size: 3.5rem; line-height: 1.1; font-weight: 800; letter-spacing: -0.04em; color: #ffffff;
-    
     /* Texto original com gradiente */
     background: linear-gradient(180deg, #fff 20%, #9ca3af 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    
-    /* PERFORMANCE: Filtro de sombra removido */
     filter: none; 
-    
     margin: 0; padding: 0;
 }
 
 .premium-badge {
     display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
     border-radius: 99px; 
-    /* Estilo Badge Original */
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06); 
     backdrop-filter: blur(10px);
@@ -650,7 +646,6 @@ input:-webkit-autofill:active {
 
 .premium-grid {
     display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; align-items: center;
-    /* Grid Original Translúcido */
     background: rgba(0, 0, 0, 0.4); 
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -673,7 +668,7 @@ input:-webkit-autofill:active {
     margin-bottom: 10px;
     position: relative;
     overflow: hidden;
-    box-shadow: none; /* PERFORMANCE */
+    box-shadow: none;
     transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
@@ -773,7 +768,7 @@ input:-webkit-autofill:active {
     position: absolute; top: 52px; right: 16px; width: 140px;
     background-color: #141414; 
     border: none; 
-    border-radius: 12px; box-shadow: none; /* PERFORMANCE */
+    border-radius: 12px; box-shadow: none;
     overflow: hidden; display: none; flex-direction: column; z-index: 50;
     animation: fadeInDropdown 0.2s ease-out;
 }
@@ -877,7 +872,7 @@ input:-webkit-autofill:active {
 #notifications-drawer .drawer-content { 
     background-color: #09090b !important; 
     border: none; 
-    box-shadow: none; /* PERFORMANCE */
+    box-shadow: none; 
 }
 
 .notif-item {
@@ -987,7 +982,26 @@ body.privacy-mode [data-field="pl-valor"] {
 }
 
 /* Botões Active Scale */
-button:active, .accent-bg:active, #refresh-button:active, #refresh-noticias-button:active, #show-add-modal-btn:active, .periodo-selector-btn:active, .news-ticker-tag:active, #copiar-dados-btn:active, #abrir-importar-modal-btn:active, #logout-btn:active {
+/* --- NOVO ESTILO DO BOTÃO ADICIONAR (GELO SUAVE) --- */
+#show-add-modal-btn {
+    background-color: #e4e4e7; /* Gelo */
+    color: #000000;
+    transition: transform 0.1s ease, background-color 0.2s ease;
+}
+#show-add-modal-btn:active {
+    transform: scale(0.90);
+    background-color: #d4d4d8; /* Um pouco mais escuro ao clicar */
+}
+
+/* Outros botões */
+button:not(#show-add-modal-btn):active, 
+.accent-bg:active, #refresh-button:active, 
+#refresh-noticias-button:active, 
+.periodo-selector-btn:active, 
+.news-ticker-tag:active, 
+#copiar-dados-btn:active, 
+#abrir-importar-modal-btn:active, 
+#logout-btn:active {
     transform: scale(0.96); transition: transform 0.1s ease-out;
 }
 

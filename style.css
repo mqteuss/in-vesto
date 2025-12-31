@@ -243,16 +243,22 @@ body.light-mode .text-hoje { color: #d97706 !important; }
 
 /* Accent & Text */
 .accent-bg {
-    background-image: linear-gradient(to right, #c084fc 0%, #7c3aed 100%);
+    background-color: #7c3aed; /* Roxo Sólido (Violet 600) */
+    background-image: none;    /* Remove o gradiente */
     color: #FFF;
     border-radius: 9999px;
-    background-size: 100% auto;
-    transition: all 0.3s ease-out;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 .accent-bg:hover {
-    background-size: 150% auto;
-    background-position: right center;
+    background-color: #6d28d9; /* Roxo mais escuro no hover (Violet 700) */
+    background-image: none;
 }
+
+.accent-bg:active {
+    transform: scale(0.96);
+    background-color: #5b21b6; /* Roxo ainda mais escuro no clique */
+}
+
 .accent-text { color: #c084fc; }
 .hover-accent-text:hover { color: #7c3aed; }
 

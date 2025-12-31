@@ -1799,8 +1799,9 @@ function agruparNoticiasPorData(articles) {
 }
 
 // --- RENDERIZAR NOTÍCIAS (FUSÃO: LÓGICA ROBUSTA + VISUAL PROFISSIONAL) ---
+// --- RENDERIZAR NOTÍCIAS (COM FAVICONS + TITULOS BRANCOS) ---
 function renderizarNoticias(articles) { 
-    // 1. Limpeza e Verificações de Cache (Sua lógica original)
+    // 1. Limpeza e Verificações de Cache
     fiiNewsSkeleton.classList.add('hidden');
     
     const newSignature = JSON.stringify(articles);
@@ -1823,10 +1824,10 @@ function renderizarNoticias(articles) {
     const grupos = agruparNoticiasPorData(sortedArticles);
     
     const fragment = document.createDocumentFragment();
-    let isGlobalFirstItem = true; // Flag para identificar a Manchete
+    let isGlobalFirstItem = true;
 
     Object.keys(grupos).forEach(dataLabel => {
-        // HEADER DE DATA (Estilo Editorial Sóbrio)
+        // HEADER DE DATA
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-[#000000]/95 backdrop-blur-md py-2 px-2 border-b border-neutral-800 mb-2 mt-4 flex items-center gap-2';
         header.innerHTML = `
@@ -1851,7 +1852,7 @@ function renderizarNoticias(articles) {
             const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
             const drawerId = `news-drawer-${safeLabel}-${index}`;
             
-            // Tratamento de Tickers (Tags Monospace)
+            // Tickers
             const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
@@ -1861,10 +1862,8 @@ function renderizarNoticias(articles) {
 
             const item = document.createElement('div');
             
-            // --- LÓGICA HÍBRIDA: DESTAQUE vs LISTA ---
-            
             if (isGlobalFirstItem) {
-                // === MANCHETE (Primeira notícia do topo) ===
+                // === MANCHETE (HEADLINE) ===
                 isGlobalFirstItem = false;
                 item.className = 'news-headline-card group cursor-pointer';
                 item.setAttribute('data-action', 'toggle-news');
@@ -1877,12 +1876,12 @@ function renderizarNoticias(articles) {
                             <span class="text-[10px] text-gray-500 font-mono">${horaPub}</span>
                         </div>
                         
-                        <h4 class="text-lg font-bold text-gray-100 leading-snug mb-3 group-hover:text-blue-400 transition-colors">
+                        <h4 class="text-lg font-bold text-white leading-snug mb-3 group-hover:text-blue-400 transition-colors">
                             ${article.title}
                         </h4>
                         
-                        <div class="flex items-center gap-3 opacity-80">
-                            <img src="${faviconUrl}" class="w-4 h-4 rounded-full grayscale" loading="lazy" />
+                        <div class="flex items-center gap-2 opacity-80">
+                            <img src="${faviconUrl}" class="w-4 h-4 rounded-full grayscale group-hover:grayscale-0 transition-all" loading="lazy" onerror="this.style.display='none'" />
                             <span class="text-[10px] font-bold uppercase text-gray-400 tracking-wide">${sourceName}</span>
                         </div>
 
@@ -1891,13 +1890,20 @@ function renderizarNoticias(articles) {
                 `;
 
             } else {
-                // === FEED (Restante das notícias) ===
+                // === FEED COM FAVICON (RETORNADO) ===
                 item.className = 'news-feed-item group cursor-pointer';
                 item.setAttribute('data-action', 'toggle-news');
                 item.setAttribute('data-target', drawerId);
 
                 item.innerHTML = `
                     <div class="flex items-start gap-3">
+                        <div class="flex-shrink-0 mt-1">
+                            <img src="${faviconUrl}" 
+                                 class="w-4 h-4 rounded-full grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300" 
+                                 loading="lazy" 
+                                 onerror="this.style.display='none'" />
+                        </div>
+
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-1">
                                 <span class="text-[10px] font-bold text-gray-500 uppercase">${sourceName}</span>
@@ -1905,14 +1911,14 @@ function renderizarNoticias(articles) {
                                 <span class="text-[10px] text-gray-500 font-mono">${horaPub}</span>
                             </div>
                             
-                            <h4 class="text-sm font-medium text-gray-300 leading-snug group-hover:text-white transition-colors">
+                            <h4 class="text-sm font-medium text-white leading-snug group-hover:text-blue-400 transition-colors">
                                 ${article.title}
                             </h4>
                             
                             ${tickersHtml ? `<div class="mt-2 flex flex-wrap gap-2">${tickersHtml}</div>` : ''}
                         </div>
 
-                        <div class="mt-1 text-gray-600 news-arrow-reveal">
+                        <div class="mt-1 text-gray-500 news-arrow-reveal">
                              <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                             </svg>
@@ -1921,11 +1927,10 @@ function renderizarNoticias(articles) {
                 `;
             }
 
-            // DRAWER DE CONTEÚDO (Mantendo sua lógica de abrir/fechar)
-            // Note o uso do botão AZUL aqui também
+            // DRAWER DE CONTEÚDO
             const drawerHtml = `
                 <div id="${drawerId}" class="card-drawer">
-                    <div class="drawer-content px-4 pb-5 pt-2 bg-[#121212] border-t border-dashed border-[#27272a] mt-2">
+                    <div class="drawer-content px-4 pb-5 pt-2 bg-[#121212] border-t border-dashed border-[#27272a] mt-2 ml-7">
                         <div class="text-xs text-gray-400 leading-relaxed font-serif tracking-wide pl-2 border-l-2 border-gray-800 py-2">
                             ${article.summary ? article.summary : 'Conteúdo indisponível para pré-visualização.'}
                         </div>

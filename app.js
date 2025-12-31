@@ -1798,9 +1798,9 @@ function agruparNoticiasPorData(articles) {
     return grupos;
 }
 
-// --- RENDERIZAR NOTÍCIAS (VISUAL IDÊNTICO AO HISTÓRICO) ---
-// --- RENDERIZAR NOTÍCIAS (AJUSTES FINAIS: TAMANHO, BORDAS E COR) ---
+// --- RENDERIZAR NOTÍCIAS (FUSÃO: LÓGICA ROBUSTA + VISUAL PROFISSIONAL) ---
 function renderizarNoticias(articles) { 
+    // 1. Limpeza e Verificações de Cache (Sua lógica original)
     fiiNewsSkeleton.classList.add('hidden');
     
     const newSignature = JSON.stringify(articles);
@@ -1818,113 +1818,128 @@ function renderizarNoticias(articles) {
         return;
     }
     
+    // 2. Ordenação e Agrupamento
     const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
     const grupos = agruparNoticiasPorData(sortedArticles);
     
     const fragment = document.createDocumentFragment();
-    let isGlobalFirstItem = true;
+    let isGlobalFirstItem = true; // Flag para identificar a Manchete
 
     Object.keys(grupos).forEach(dataLabel => {
-        // Header
+        // HEADER DE DATA (Estilo Editorial Sóbrio)
         const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
-        header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${dataLabel}</h3>`;
+        header.className = 'sticky top-0 z-10 bg-[#000000]/95 backdrop-blur-md py-2 px-2 border-b border-neutral-800 mb-2 mt-4 flex items-center gap-2';
+        header.innerHTML = `
+            <span class="w-1.5 h-1.5 bg-neutral-600 rounded-full"></span>
+            <h3 class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">${dataLabel}</h3>
+        `;
         fragment.appendChild(header);
 
-        // Lista
+        // CONTAINER DA LISTA
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'mb-8';
+        listaGrupo.className = 'mb-6';
 
         grupos[dataLabel].forEach((article, index) => {
-            const sourceName = article.sourceName || 'Fonte';
+            const sourceName = article.sourceName || 'Mercado';
             const faviconUrl = article.favicon || `https://www.google.com/s2/favicons?domain=${article.sourceHostname || 'google.com'}&sz=64`;
+            
             let horaPub = '';
-            try { horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' }); } catch(e) { horaPub = '--:--'; }
+            try { 
+                horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' }); 
+            } catch(e) { horaPub = ''; }
+
             const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
             const drawerId = `news-drawer-${safeLabel}-${index}`;
             
-            // Tickers
+            // Tratamento de Tickers (Tags Monospace)
             const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
             if (foundTickers.length > 0) {
-                foundTickers.forEach(ticker => {
-                    tickersHtml += `<span class="news-ticker-tag text-[10px] py-0.5 px-2 bg-neutral-800 text-neutral-400 rounded-md border border-neutral-700 mr-2 mb-1 inline-block" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
-                });
+                tickersHtml = foundTickers.map(t => `<span class="news-ticker-tag" data-action="view-ticker" data-symbol="${t}">${t}</span>`).join('');
             }
 
             const item = document.createElement('div');
             
-            // --- ESTILOS ---
-            let itemWrapperClass = 'group relative transition-all news-card-interactive ';
-            let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
-            let badgeDestaque = '';
-
+            // --- LÓGICA HÍBRIDA: DESTAQUE vs LISTA ---
+            
             if (isGlobalFirstItem) {
-                // DESTAQUE (Ajustado para ser menor)
-                itemWrapperClass += 'bg-gradient-to-r from-purple-900/30 to-transparent border-l-[3px] border-purple-500 py-1 my-2 rounded-r-lg';
-                // Mudado de text-lg para text-base (diminuiu um pouco)
-                titleClass += 'text-base'; 
-                badgeDestaque = '<span class="inline-block bg-purple-600 text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
+                // === MANCHETE (Primeira notícia do topo) ===
                 isGlobalFirstItem = false;
-            } else {
-                // NORMAL
-                itemWrapperClass += 'border-b border-neutral-800 last:border-0 hover:bg-neutral-900/40';
-                titleClass += 'text-sm';
-            }
+                item.className = 'news-headline-card group cursor-pointer';
+                item.setAttribute('data-action', 'toggle-news');
+                item.setAttribute('data-target', drawerId);
 
-            item.className = itemWrapperClass;
-            item.setAttribute('data-action', 'toggle-news');
-            item.setAttribute('data-target', drawerId);
-
-            item.innerHTML = `
-                <div class="flex items-start gap-4 py-4 px-3 cursor-pointer">
-                    <div class="flex-shrink-0 mt-1.5">
-                        <img src="${faviconUrl}" alt="${sourceName}" 
-                             class="w-10 h-10 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 border border-neutral-800 transition-all"
-                             loading="lazy"
-                             onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
-                        />
-                    </div>
-                    
-                    <div class="flex-1 min-w-0 pointer-events-none">
-                        ${badgeDestaque}
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">${sourceName}</span>
-                            <span class="text-[10px] text-neutral-600">•</span>
-                            <span class="text-[10px] text-neutral-500">${horaPub}</span>
+                item.innerHTML = `
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="bg-blue-600 text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm">Manchete</span>
+                            <span class="text-[10px] text-gray-500 font-mono">${horaPub}</span>
                         </div>
                         
-                        <h4 class="${titleClass}">
-                            ${article.title || 'Título indisponível'}
+                        <h4 class="text-lg font-bold text-gray-100 leading-snug mb-3 group-hover:text-blue-400 transition-colors">
+                            ${article.title}
                         </h4>
                         
-                        <div class="pointer-events-auto mt-2">
-                            ${tickersHtml ? `<div class="flex flex-wrap">${tickersHtml}</div>` : ''}
+                        <div class="flex items-center gap-3 opacity-80">
+                            <img src="${faviconUrl}" class="w-4 h-4 rounded-full grayscale" loading="lazy" />
+                            <span class="text-[10px] font-bold uppercase text-gray-400 tracking-wide">${sourceName}</span>
                         </div>
-                    </div>
 
-                    <div class="text-neutral-600 group-hover:text-neutral-400 mt-2 transition-colors">
-                         <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                        </svg>
+                        ${tickersHtml ? `<div class="mt-4 flex flex-wrap gap-2">${tickersHtml}</div>` : ''}
                     </div>
-                </div>
-                
-                <div id="${drawerId}" class="card-drawer">
-                    <div class="drawer-content px-3 pb-5 pl-14">
-                        <div class="text-sm text-neutral-400 leading-relaxed border-l-2 border-neutral-700 pl-4">
-                            ${article.summary ? article.summary : 'Resumo não disponível.'}
+                `;
+
+            } else {
+                // === FEED (Restante das notícias) ===
+                item.className = 'news-feed-item group cursor-pointer';
+                item.setAttribute('data-action', 'toggle-news');
+                item.setAttribute('data-target', drawerId);
+
+                item.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-bold text-gray-500 uppercase">${sourceName}</span>
+                                <span class="text-[10px] text-gray-700">•</span>
+                                <span class="text-[10px] text-gray-500 font-mono">${horaPub}</span>
+                            </div>
+                            
+                            <h4 class="text-sm font-medium text-gray-300 leading-snug group-hover:text-white transition-colors">
+                                ${article.title}
+                            </h4>
+                            
+                            ${tickersHtml ? `<div class="mt-2 flex flex-wrap gap-2">${tickersHtml}</div>` : ''}
                         </div>
-                        <div class="mt-4 pl-4">
-                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors bg-purple-500/10 px-3 py-1.5 rounded-md">
-                                Ler notícia completa
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+
+                        <div class="mt-1 text-gray-600 news-arrow-reveal">
+                             <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                            </svg>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // DRAWER DE CONTEÚDO (Mantendo sua lógica de abrir/fechar)
+            // Note o uso do botão AZUL aqui também
+            const drawerHtml = `
+                <div id="${drawerId}" class="card-drawer">
+                    <div class="drawer-content px-4 pb-5 pt-2 bg-[#121212] border-t border-dashed border-[#27272a] mt-2">
+                        <div class="text-xs text-gray-400 leading-relaxed font-serif tracking-wide pl-2 border-l-2 border-gray-800 py-2">
+                            ${article.summary ? article.summary : 'Conteúdo indisponível para pré-visualização.'}
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-400 hover:text-white transition-colors uppercase tracking-wider border border-blue-900/40 hover:bg-blue-600 hover:border-blue-600 px-3 py-1.5 rounded bg-blue-900/10">
+                                Ler na Fonte
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>
                         </div>
                     </div>
                 </div>
             `;
+            
+            item.insertAdjacentHTML('beforeend', drawerHtml);
             listaGrupo.appendChild(item);
         });
         fragment.appendChild(listaGrupo);
@@ -1932,10 +1947,6 @@ function renderizarNoticias(articles) {
     
     fiiNewsList.appendChild(fragment);
 }
-
-// EM app.js
-
-// --- EM app.js: Substitua a função renderizarGraficoAlocacao ---
 
 function renderizarGraficoAlocacao(dadosInput) {
     const canvas = document.getElementById('alocacao-chart');

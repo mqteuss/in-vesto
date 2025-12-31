@@ -3004,6 +3004,7 @@ async function renderizarCarteira() {
         if (!force) {
             const cache = await getCache(cacheKey);
             if (cache) {
+				window.noticiasCache = cache;
                 renderizarNoticias(cache);
                 return;
             }
@@ -3020,6 +3021,7 @@ async function renderizarCarteira() {
 
         try {
             const articles = await fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey);
+			window.noticiasCache = articles;
             renderizarNoticias(articles);
         } catch (e) {
             console.error("Erro ao buscar notícias (função separada):", e);
@@ -3358,7 +3360,7 @@ function verificarNotificacoesFinanceiras() {
         return `${parts[2]}/${parts[1]}`;
     };
 
-    // --- HELPER CARD ---
+    // Helper CreateCard (Seu código original mantido)
     const createCard = (id, type, title, htmlMsg, iconSvg, linkUrl = null) => {
         const div = document.createElement('div');
         div.className = `notif-item notif-type-${type} notif-animate-enter group cursor-default`;
@@ -3375,9 +3377,7 @@ function verificarNotificacoesFinanceiras() {
 
         div.innerHTML = `
             <div class="notif-icon-box">
-                <div class="${iconColorClass} w-4 h-4">
-                    ${iconSvg}
-                </div>
+                <div class="${iconColorClass} w-4 h-4">${iconSvg}</div>
             </div>
             <div class="flex-1 min-w-0 pt-0.5">
                 <div class="notif-title flex justify-between">
@@ -3395,13 +3395,10 @@ function verificarNotificacoesFinanceiras() {
         
         if (linkUrl) {
             div.addEventListener('click', (e) => {
-                if(!e.target.closest('button') && !e.target.closest('a')) {
-                    window.open(linkUrl, '_blank');
-                }
+                if(!e.target.closest('button') && !e.target.closest('a')) { window.open(linkUrl, '_blank'); }
             });
             div.classList.add('cursor-pointer', 'hover:bg-[#18181b]');
         }
-
         return div;
     };
 
@@ -3411,7 +3408,16 @@ function verificarNotificacoesFinanceiras() {
         createdAt: p.created_at || new Date().toISOString()
     });
 
-    // 1. PAGAMENTOS
+    // --- 0. NOTIFICAÇÃO DE TESTE (Para ver se o visual está OK) ---
+    // Remova este bloco depois de testar
+    if (!dismissed.includes('teste_sistema')) {
+        count++;
+        const msg = `O sistema de notificações está ativo. <strong class="text-white">Bom monitoramento!</strong>`;
+        const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+        list.appendChild(createCard('teste_sistema', 'news', 'Sistema Ativo', msg, icon));
+    }
+
+    // 1. PAGAMENTOS HOJE
     const pagamentosHoje = proventosConhecidos.filter(p => getProps(p).paymentDate === hojeLocal);
     pagamentosHoje.forEach(p => {
         const notifId = `pay_${p.id || p.symbol + p.paymentDate}`;
@@ -3428,7 +3434,7 @@ function verificarNotificacoesFinanceiras() {
         }
     });
 
-    // 2. DATA COM
+    // 2. DATA COM HOJE
     const dataComHoje = proventosConhecidos.filter(p => getProps(p).dataCom === hojeLocal);
     dataComHoje.forEach(p => {
         const notifId = `com_${p.id || p.symbol + 'com'}`;
@@ -3441,7 +3447,7 @@ function verificarNotificacoesFinanceiras() {
         list.appendChild(createCard(notifId, 'datacom', 'Data de Corte', msg, icon));
     });
 
-    // 3. ANÚNCIOS DE PROVENTOS
+    // 3. NOVOS ANÚNCIOS
     const novosAnuncios = proventosConhecidos.filter(p => {
         const props = getProps(p);
         const dataCriacao = props.createdAt.split('T')[0];
@@ -3461,13 +3467,9 @@ function verificarNotificacoesFinanceiras() {
         list.appendChild(createCard(notifId, 'news', 'Novo Anúncio', msg, icon));
     });
 
-    // =========================================
-    // 4. NOTÍCIAS DE MERCADO (CORRIGIDO)
-    // =========================================
-    // Correção: mudado de 'carteira' para 'carteiraCalculada'
+    // 4. NOTÍCIAS DE MERCADO (CORRIGIDO: USA carteiraCalculada)
     if (window.noticiasCache && window.noticiasCache.length > 0 && carteiraCalculada.length > 0) {
         
-        // Correção: mudado de 'carteira' para 'carteiraCalculada'
         const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
         
         window.noticiasCache.slice(0, 30).forEach(noticia => {
@@ -3477,7 +3479,6 @@ function verificarNotificacoesFinanceiras() {
 
             if (tickerEncontrado) {
                 const safeId = 'news_mkt_' + noticia.title.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
-                
                 if (dismissed.includes(safeId)) return;
 
                 count++;

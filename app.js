@@ -2652,6 +2652,8 @@ function renderizarGraficoPatrimonio() {
 	
 // --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
 
+// --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
+
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
@@ -2682,7 +2684,7 @@ function renderizarTimelinePagamentos() {
         return;
     }
 
-    // Ordena
+    // Ordena por data
     pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
     
     lista.innerHTML = '';
@@ -2693,41 +2695,44 @@ function renderizarTimelinePagamentos() {
         
         const dia = parts[2];
         const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
 
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         
-        let textoStatus = '';
-        let classeStatus = '';
-
-        if (diffDays === 0) {
-            textoStatus = 'HOJE';
-            classeStatus = 'text-hoje'; // Amarelo via CSS
-        } else if (diffDays === 1) {
-            textoStatus = 'Amanhã';
-        } else {
-            textoStatus = `Em ${diffDays} dias`;
-        }
-
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
         const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
         const totalReceber = prov.value * qtd;
 
+        // Verifica se é hoje para aplicar estilo especial
+        const isHoje = diffDays === 0;
+        const classeHoje = isHoje ? 'is-today' : '';
+        const textoHeader = isHoje ? 'HOJE' : mes; // Se for hoje, escreve HOJE no topo em vez do mês
+
         const item = document.createElement('div');
-        item.className = 'square-payment-card';
+        // Usa a nova classe agenda-card
+        item.className = `agenda-card ${classeHoje}`;
         
+        // Estrutura HTML "Folha de Calendário"
         item.innerHTML = `
-            <div class="square-date-row">
-                <span class="square-day">${dia}</span>
-                <span class="square-month">${mes}</span>
+            <div class="agenda-header">
+                ${textoHeader}
             </div>
             
-            <div class="square-info">
-                <span class="square-ticker">${prov.symbol}</span>
-                <span class="square-value">+${formatBRL(totalReceber)}</span>
-                <span class="square-status ${classeStatus}">${textoStatus}</span>
+            <div class="agenda-body">
+                <span class="agenda-day">${dia}</span>
+                <span class="agenda-weekday">${diaSemana}</span>
+            </div>
+            
+            <div class="agenda-footer">
+                <span class="agenda-ticker">${prov.symbol}</span>
+                <span class="agenda-value">+${formatBRL(totalReceber)}</span>
             </div>
         `;
+        
+        // Efeito de clique para abrir detalhes
+        item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+        
         lista.appendChild(item);
     });
 

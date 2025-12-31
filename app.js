@@ -1255,58 +1255,7 @@ function renderizarWatchlist() {
         await supabaseDB.saveAppState('historicoProcessado', { value: mesesProcessados });
     }
 
-    async function processarDividendosPagos() {
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const hojeString = hoje.toISOString().split('T')[0];
-
-        const currentSignature = `${hojeString}-${proventosConhecidos.length}-${transacoes.length}`;
-
-        if (currentSignature === lastProventosCalcSignature) {
-            saldoCaixa = cachedSaldoCaixa;
-            if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
-            return;
-        }
-
-        let novoSaldoCalculado = 0; 
-        let proventosParaMarcarComoProcessado = [];
-
-        for (const provento of proventosConhecidos) {
-            if (provento.paymentDate && provento.value > 0) {
-                const parts = provento.paymentDate.split('-');
-                const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
-
-                if (!isNaN(dataPagamento) && dataPagamento <= hoje) {
-                    const dataReferencia = provento.dataCom || provento.paymentDate;
-                    const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-
-                    if (qtdElegivel > 0) {
-                        const valorRecebido = provento.value * qtdElegivel;
-                        novoSaldoCalculado += valorRecebido;
-                    }
-                    
-                    if (!provento.processado) {
-                        provento.processado = true;
-                        proventosParaMarcarComoProcessado.push(provento);
-                    }
-                }
-            }
-        }
-        
-        saldoCaixa = novoSaldoCalculado;
-        cachedSaldoCaixa = novoSaldoCalculado;
-        lastProventosCalcSignature = currentSignature;
-
-        await salvarCaixa();
-        
-        if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
-        
-        if (proventosParaMarcarComoProcessado.length > 0) {
-            for (const provento of proventosParaMarcarComoProcessado) {
-                await supabaseDB.updateProventoProcessado(provento.id);
-            }
-        }
-    }
+async function processarDividendosPagos() {
 
 function calcularCarteira() {
     // 1. Snapshot: Verificamos o tamanho do array e o ID da última transação
@@ -3175,44 +3124,52 @@ async function renderizarCarteira() {
     }
 
     // --- FUNÇÃO PRINCIPAL ATUALIZADA ---
-    async function buscarProventosFuturos(force = false) {
+async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
             .map(a => a.symbol);
             
         if (fiiNaCarteira.length === 0) return [];
 
-        let proventosPool = [];
-        let fiisParaBuscar = [];
+        // Arrays thread-safe (JS é single-thread, então push é seguro)
+        const proventosPool = [];
+        const fiisParaBuscar = [];
 
-        for (const symbol of fiiNaCarteira) {
+        // 1. Dispara todas as verificações de cache simultaneamente
+        await Promise.all(fiiNaCarteira.map(async (symbol) => {
             const cacheKey = `provento_ia_${symbol}`;
+            
             if (force) {
+                // Não precisamos esperar o delete para continuar a lógica,
+                // mas mantemos o await para garantir consistência se necessário.
+                // Como são operações independentes, o Promise.all gerencia o paralelismo.
                 await vestoDB.delete('apiCache', cacheKey);
                 await removerProventosConhecidos(symbol);
             }
             
+            // Tenta pegar do cache
             const proventoCache = await getCache(cacheKey);
-            if (proventoCache) {
+            
+            if (proventoCache && !force) {
                 proventosPool.push(proventoCache);
             } else {
-                // MUDANÇA AQUI: Calcula o limite personalizado para este ativo
+                // Se não tem cache, calcula o limite e marca para busca na API
                 const limiteCalculado = calcularLimiteMeses(symbol);
-                
-                // Envia o objeto { ticker, limit } em vez de só a string
                 fiisParaBuscar.push({ 
                     ticker: symbol, 
                     limit: limiteCalculado 
                 });
             }
-        }
+        }));
         
+        // 2. Busca na API apenas o que faltou (Batch Request)
         if (fiisParaBuscar.length > 0) {
             try {
                 const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
-                    for (const provento of novosProventos) {
+                    // Salva os novos resultados no cache em paralelo também
+                    await Promise.all(novosProventos.map(async (provento) => {
                         if (provento && provento.symbol && provento.paymentDate) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_PROVENTOS); 
@@ -3223,11 +3180,12 @@ async function renderizarCarteira() {
                             
                             if (!existe) {
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
+                                // Adiciona ao DB e memória
                                 await supabaseDB.addProventoConhecido(novoProvento);
                                 proventosConhecidos.push(novoProvento);
                             }
                         }
-                    }
+                    }));
                 }
             } catch (error) {
                 console.error("Erro ao buscar novos proventos com Scraper:", error);

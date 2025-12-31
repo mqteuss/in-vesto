@@ -1256,6 +1256,67 @@ function renderizarWatchlist() {
     }
 
 async function processarDividendosPagos() {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const hojeString = hoje.toISOString().split('T')[0];
+
+        // Cria uma assinatura única para evitar re-cálculos desnecessários se nada mudou
+        const currentSignature = `${hojeString}-${proventosConhecidos.length}-${transacoes.length}`;
+
+        if (currentSignature === lastProventosCalcSignature) {
+            saldoCaixa = cachedSaldoCaixa;
+            if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+            return;
+        }
+
+        let novoSaldoCalculado = 0; 
+        let proventosParaMarcarComoProcessado = [];
+
+        // 1. Cálculo em Memória (Rápido, pode manter o loop síncrono)
+        for (const provento of proventosConhecidos) {
+            if (provento.paymentDate && provento.value > 0) {
+                const parts = provento.paymentDate.split('-');
+                const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
+
+                if (!isNaN(dataPagamento) && dataPagamento <= hoje) {
+                    const dataReferencia = provento.dataCom || provento.paymentDate;
+                    const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+
+                    if (qtdElegivel > 0) {
+                        const valorRecebido = provento.value * qtdElegivel;
+                        novoSaldoCalculado += valorRecebido;
+                    }
+                    
+                    if (!provento.processado) {
+                        provento.processado = true;
+                        proventosParaMarcarComoProcessado.push(provento);
+                    }
+                }
+            }
+        }
+        
+        saldoCaixa = novoSaldoCalculado;
+        cachedSaldoCaixa = novoSaldoCalculado;
+        lastProventosCalcSignature = currentSignature;
+
+        // Atualiza UI e Salva Saldo Localmente
+        await salvarCaixa();
+        if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+        
+        // 2. OTIMIZAÇÃO AQUI: Atualização em Massa no Supabase
+        // Em vez de esperar um por um (await no loop), disparamos todos juntos.
+        if (proventosParaMarcarComoProcessado.length > 0) {
+            try {
+                // Promise.all executa todas as requisições de update em paralelo
+                await Promise.all(proventosParaMarcarComoProcessado.map(provento => 
+                    supabaseDB.updateProventoProcessado(provento.id)
+                ));
+            } catch (error) {
+                console.error("Erro ao atualizar status dos proventos:", error);
+                // Não bloqueia o fluxo visual se falhar a atualização no servidor
+            }
+        }
+    }
 
 function calcularCarteira() {
     // 1. Snapshot: Verificamos o tamanho do array e o ID da última transação
@@ -3124,7 +3185,8 @@ async function renderizarCarteira() {
     }
 
     // --- FUNÇÃO PRINCIPAL ATUALIZADA ---
-async function buscarProventosFuturos(force = false) {
+// --- OTIMIZAÇÃO: Leitura de Cache em Paralelo ---
+    async function buscarProventosFuturos(force = false) {
         const fiiNaCarteira = carteiraCalculada
             .filter(a => isFII(a.symbol))
             .map(a => a.symbol);
@@ -3194,6 +3256,7 @@ async function buscarProventosFuturos(force = false) {
         
         return processarProventosScraper(proventosPool); 
     }
+	
 	async function callScraperProximoProventoAPI(ticker) {
         const body = { mode: 'proximo_provento', payload: { ticker } };
         const response = await fetchBFF('/api/scraper', {

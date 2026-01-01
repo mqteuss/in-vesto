@@ -44,17 +44,17 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 /* =========================================
-   TEMA CLARO (LIGHT MODE) - CONTRASTE CORRIGIDO
+   TEMA CLARO (LIGHT MODE) - CONTRASTE FORTE
    ========================================= */
 body.light-mode {
-    background-color: #f2f2f7; /* FUNDO CINZA (Para destacar os cards brancos) */
+    background-color: #e4e4e7 !important; /* CINZA MAIS ESCURO (Zinc 200) para garantir contraste */
     color: #1c1c1e; /* Texto quase preto */
 }
 
-/* ESTRATÉGIA DE CONTRASTE:
-   - Fundo: #f2f2f7 (Cinza iOS)
+/* ESTRATÉGIA FLAT:
+   - Fundo: #e4e4e7 (Cinza visível)
    - Cards: #ffffff (Branco Puro)
-   - Sem sombras nos cards comuns.
+   - Isso garante que o card "flutue" sem precisar de sombra.
 */
 
 body.light-mode .card-bg,
@@ -73,20 +73,20 @@ body.light-mode .bg-\[\#0a0a0a\],
 body.light-mode .bg-\[\#1C1C1E\],
 body.light-mode .bg-\[\#121212\],
 body.light-mode .bg-\[\#111\] {
-    background-color: #ffffff !important; /* Card Branco */
+    background-color: #ffffff !important; /* Card Branco Puro */
     background-image: none !important;
-    border: none !important;
+    border: 1px solid rgba(0,0,0,0.03) !important; /* Borda ultra sutil para definição */
     color: #1f2937 !important;
-    box-shadow: none !important; /* Zero sombra, contraste puramente por cor */
+    box-shadow: none !important; /* Zero sombra */
 }
 
 /* EXCEÇÃO: Card Principal (Premium) 
-   Mantém um visual levemente diferenciado e sombra suave para hierarquia.
+   - Mantém destaque maior
 */
 body.light-mode #resumo-carteira-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%) !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f4f4f5 100%) !important;
     border: 1px solid rgba(0,0,0,0.05) !important;
-    box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.08) !important; /* Sombra suave mantida */
+    box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.08) !important;
     color: #18181b !important;
 }
 
@@ -102,7 +102,7 @@ body.light-mode .premium-value-lg {
 body.light-mode .premium-stat-value { color: #18181b !important; }
 body.light-mode .premium-stat-sub { color: #71717a !important; }
 body.light-mode .premium-grid {
-    background: rgba(0, 0, 0, 0.03); /* Leve escurecimento na grid interna */
+    background: rgba(0, 0, 0, 0.03); 
     border-top: 1px solid rgba(0,0,0,0.05);
 }
 body.light-mode .premium-badge {
@@ -111,7 +111,7 @@ body.light-mode .premium-badge {
 }
 
 /* INPUTS NO LIGHT MODE 
-   Como o card agora é BRANCO, o input precisa ser CINZA CLARO para aparecer.
+   Como o card é BRANCO, o input será CINZA CLARO (#f4f4f5)
 */
 body.light-mode input, 
 body.light-mode select, 
@@ -125,7 +125,7 @@ body.light-mode .notif-icon-box,
 body.light-mode #add-ativo-modal input,
 body.light-mode #new-password-form input,
 body.light-mode #change-password-form input {
-    background-color: #f3f4f6 !important; /* Input Cinza (Zinc 100) */
+    background-color: #f4f4f5 !important; /* Input Cinza */
     border: none !important;
     color: #111827 !important;
     box-shadow: none !important;
@@ -133,14 +133,13 @@ body.light-mode #change-password-form input {
 
 /* Auth Inputs */
 body.light-mode #auth-container input {
-    background-color: #f3f4f6 !important;
+    background-color: #f4f4f5 !important;
     color: #111827 !important;
 }
 
-/* Efeito de foco no input light */
 body.light-mode input:focus, 
 body.light-mode .compact-search-input:focus {
-    background-color: #e5e7eb !important; /* Escurece levemente ao focar */
+    background-color: #e4e4e7 !important; /* Escurece levemente ao focar */
 }
 
 body.light-mode input::placeholder {
@@ -149,40 +148,39 @@ body.light-mode input::placeholder {
 
 /* Page Content (Gaveta Inferior) */
 body.light-mode .page-content {
-    background-color: #f2f2f7 !important; /* Segue a cor do fundo da página */
-    border-top: 1px solid #e5e5e5 !important;
+    background-color: #e4e4e7 !important; /* Segue a cor do fundo da página */
+    border-top: 1px solid #d4d4d8 !important;
     color: #1f2937 !important;
 }
 
 /* Headers e Navegação */
 body.light-mode .history-header-sticky,
 body.light-mode .sticky.top-0 {
-    background-color: rgba(242, 242, 247, 0.95) !important; /* Fosco da cor do fundo */
-    border-bottom: 1px solid #e5e5e5 !important;
+    background-color: rgba(228, 228, 231, 0.95) !important; /* Fosco da cor do fundo (Zinc 200) */
+    border-bottom: 1px solid #d4d4d8 !important;
     color: #18181b !important;
 }
 
 body.light-mode .bottom-nav {
-    background-color: rgba(255, 255, 255, 0.9) !important; /* Menu Branco */
+    background-color: rgba(255, 255, 255, 0.95) !important; /* Menu Branco */
     border: none !important;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1) !important; /* Sombra necessária aqui para flutuar */
+    box-shadow: 0 5px 25px rgba(0,0,0,0.1) !important; /* Sombra necessária para flutuar */
 }
 body.light-mode .tab-button span { color: #6b7280; }
 body.light-mode .tab-button.active span { color: #7c3aed !important; }
 
 /* Agenda / Calendário Light */
 body.light-mode .agenda-card {
-    /* O card da agenda já pega o background branco global, 
-       mas precisamos garantir que o fundo do carrossel seja o cinza da página */
+    /* Background branco já definido no seletor global */
     box-shadow: none !important;
 }
 body.light-mode .agenda-header {
-    background-color: #f3f4f6; /* Header cinza */
+    background-color: #f4f4f5; /* Header cinza claro */
     color: #525252;
     border-bottom: none;
 }
 body.light-mode .agenda-footer {
-    background-color: #f3f4f6;
+    background-color: #f4f4f5;
     border-top: none;
 }
 body.light-mode .agenda-day { color: #18181b; }
@@ -191,7 +189,7 @@ body.light-mode .agenda-ticker { color: #18181b; }
 /* Destaque HOJE na agenda light */
 body.light-mode .agenda-card.is-today {
     background-color: #ffffff !important;
-    border: 2px solid #eab308 !important; /* Borda amarela forte */
+    border: 2px solid #eab308 !important; 
 }
 
 /* Configurações & Textos */
@@ -201,10 +199,10 @@ body.light-mode #tab-config h3 { color: #4b5563 !important; }
 
 /* Botões Seletores */
 body.light-mode .periodo-selector-btn {
-    background-color: #f3f4f6 !important;
+    background-color: #f4f4f5 !important;
 }
 body.light-mode .periodo-selector-btn.active {
-    background-color: #18181b !important; /* Preto para ativo */
+    background-color: #18181b !important;
     color: #ffffff !important;
     box-shadow: none !important;
 }
@@ -232,15 +230,15 @@ body.light-mode .text-gray-500,
 body.light-mode .text-neutral-400,
 body.light-mode .text-neutral-500 { color: #6b7280 !important; }
 
-body.light-mode .skeleton-text { background-color: #e4e4e7 !important; }
+body.light-mode .skeleton-text { background-color: #d4d4d8 !important; }
 body.light-mode .skeleton-text::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent); }
 body.light-mode .card-arrow-icon { color: #a1a1aa !important; }
 
 /* Notificações Light */
 body.light-mode .notif-card-payment { background: #dcfce7 !important; border-left: none !important; }
 body.light-mode .notif-card-datacom { background: #fef9c3 !important; border-left: none !important; }
-body.light-mode #notifications-drawer .drawer-content { background-color: #f2f2f7 !important; border: none; }
-body.light-mode .notif-item:hover { background-color: #f9fafb; }
+body.light-mode #notifications-drawer .drawer-content { background-color: #e4e4e7 !important; border: none; }
+body.light-mode .notif-item:hover { background-color: #f4f4f5; }
 body.light-mode .notif-msg { color: #3f3f46; }
 body.light-mode .notif-close-btn { color: #9ca3af; }
 body.light-mode .notif-close-btn:hover { color: #dc2626; background-color: #fee2e2; }
@@ -264,7 +262,7 @@ body.light-mode .border-neutral-800 { border-color: transparent !important; }
 
 /* Estilos Globais de Card */
 .card-bg {
-    /* Fundo sólido escuro */
+    /* Fundo sólido escuro (Default Dark Mode) */
     background-color: #141414;
     background-image: none; 
     border: none; /* SEM BORDA */
@@ -279,28 +277,28 @@ body.light-mode .border-neutral-800 { border-color: transparent !important; }
 }
 
 /* --- FIX: REMOVER ANIMAÇÃO DE CLIQUE DO CARD DE LOGIN/AUTH --- */
-/* O card de autenticação deve ser estático para digitar */
 #auth-container.card-bg:active {
     transform: none !important;
-    background-color: #141414 !important; /* Mantém a cor fixa */
+    background-color: #141414 !important; 
+    transition: none;
 }
 
 /* Accent & Text */
 .accent-bg {
     background-color: #7c3aed; /* Roxo Sólido (Violet 600) */
-    background-image: none;    /* Remove o gradiente */
+    background-image: none;    
     color: #FFF;
     border-radius: 9999px;
     transition: background-color 0.2s ease, transform 0.1s ease;
 }
 .accent-bg:hover {
-    background-color: #6d28d9; /* Roxo mais escuro no hover (Violet 700) */
+    background-color: #6d28d9; 
     background-image: none;
 }
 
 .accent-bg:active {
     transform: scale(0.96);
-    background-color: #5b21b6; /* Roxo ainda mais escuro no clique */
+    background-color: #5b21b6; 
 }
 
 .accent-text { color: #c084fc; }

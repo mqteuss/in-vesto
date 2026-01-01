@@ -44,14 +44,17 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 /* =========================================
-   TEMA CLARO (LIGHT MODE) - OVERRIDES
+   TEMA CLARO (LIGHT MODE) - CORRIGIDO
    ========================================= */
 body.light-mode {
-    background-color: #f3f4f6; 
+    /* Fundo cinza médio para dar destaque aos cards brancos sem usar sombras */
+    background-color: #e4e4e7; 
     color: #1f2937;
 }
 
-/* Backgrounds Gerais no Light Mode */
+/* CARDS BRANCOS PUROS 
+   Força fundo branco em todos os elementos de container 
+*/
 body.light-mode .card-bg,
 body.light-mode .modal-content,
 body.light-mode .card-drawer,
@@ -59,14 +62,10 @@ body.light-mode .drawer-content,
 body.light-mode .settings-group,
 body.light-mode .wallet-card,
 body.light-mode .history-card,
-body.light-mode #resumo-carteira-card,
+body.light-mode #resumo-carteira-card, /* Correção Premium Card */
 body.light-mode .fav-card,
-body.light-mode .bg-black,
-body.light-mode .bg-\[\#151515\],
-body.light-mode .bg-\[\#0a0a0a\],
-body.light-mode .bg-\[\#1C1C1E\],
-body.light-mode .bg-\[\#121212\],
-body.light-mode .bg-\[\#111\] {
+body.light-mode .notif-item,
+body.light-mode #auth-container {
     background-color: #ffffff !important;
     background-image: none !important;
     border: none !important;
@@ -74,15 +73,61 @@ body.light-mode .bg-\[\#111\] {
     box-shadow: none !important;
 }
 
-/* EXCEÇÃO: Page Content (Gaveta) no Light Mode precisa de borda no topo */
-body.light-mode .page-content {
+/* Correção Específica: Card Premium/Aurora */
+body.light-mode #resumo-carteira-card::before,
+body.light-mode #resumo-carteira-card::after {
+    display: none; /* Remove efeitos de luz/aurora */
+}
+body.light-mode .premium-value-lg {
+    background: transparent;
+    -webkit-text-fill-color: #111827;
+    color: #111827;
+}
+body.light-mode .premium-grid {
+    background: #f4f4f5; /* Grid cinza bem claro */
+    border: none;
+    border-radius: 12px;
+}
+body.light-mode .premium-stat-value { color: #111827; }
+body.light-mode .premium-label { color: #6b7280; }
+body.light-mode .premium-divider { background: #d4d4d8; }
+
+/* Correção Específica: Agenda/Carrossel */
+body.light-mode .agenda-card {
     background-color: #ffffff !important;
+    box-shadow: none !important;
+}
+body.light-mode .agenda-card:active {
+    background-color: #f4f4f5 !important;
+}
+body.light-mode .agenda-header {
+    background-color: #f4f4f5;
+    color: #52525b;
+    border-bottom: 1px solid #e4e4e7;
+}
+body.light-mode .agenda-footer {
+    background-color: #f4f4f5;
+    border-top: 1px solid #e4e4e7;
+}
+body.light-mode .agenda-day { color: #18181b; }
+body.light-mode .agenda-ticker { color: #27272a; }
+body.light-mode .agenda-weekday { color: #71717a; }
+/* Destaque "Hoje" no Light Mode */
+body.light-mode .agenda-card.is-today { background-color: #ffffff !important; }
+body.light-mode .agenda-card.is-today .agenda-header {
+    background-color: #eab308;
+    color: #000000;
+}
+
+/* Page Content (Gaveta) no Light Mode */
+body.light-mode .page-content {
+    background-color: #f4f4f5 !important;
     border: none !important;
-    border-top: 1px solid #e5e7eb !important; 
+    border-top: none !important;
     color: #1f2937 !important;
 }
 
-/* Inputs & Forms Light Mode */
+/* Inputs & Forms Light Mode (Cinza claro para contrastar com card branco) */
 body.light-mode input, 
 body.light-mode select, 
 body.light-mode textarea,
@@ -91,43 +136,25 @@ body.light-mode .compact-search-input,
 body.light-mode .filter-funnel-btn,
 body.light-mode .periodo-selector-btn,
 body.light-mode .settings-icon-box,
+body.light-mode .notif-icon-box,
 body.light-mode #add-ativo-modal input,
 body.light-mode #new-password-form input,
 body.light-mode #change-password-form input {
-    background-color: #f9fafb !important;
+    background-color: #f4f4f5 !important;
     border: none !important; 
     color: #111827 !important;
     box-shadow: none !important;
 }
-
 body.light-mode #auth-container input {
-    background-color: #f3f4f6 !important;
-    border: none !important;
+    background-color: #f4f4f5 !important;
     color: #111827 !important;
 }
-
-body.light-mode input::placeholder {
-    color: #9ca3af !important;
-}
+body.light-mode input::placeholder { color: #a1a1aa !important; }
 
 /* Configurações & Textos Light Mode */
 body.light-mode .settings-label { color: #111827 !important; font-weight: 600; }
 body.light-mode .settings-sub { color: #6b7280 !important; }
 body.light-mode #tab-config h3 { color: #4b5563 !important; }
-
-/* Resumo Carteira (Premium Stat) Light Mode */
-body.light-mode .premium-stat-value { color: #1f2937 !important; }
-body.light-mode .premium-value-lg {
-    background: #111827; 
-    -webkit-background-clip: unset;
-    -webkit-text-fill-color: #111827;
-    color: #111827;
-    filter: none;
-}
-body.light-mode .premium-grid {
-    background: transparent;
-    border-top: 1px solid #f3f4f6;
-}
 
 /* Títulos Light Mode */
 body.light-mode .app-page-title {
@@ -150,68 +177,46 @@ body.light-mode .text-gray-300,
 body.light-mode .text-\[\#e5e5e5\], 
 body.light-mode .text-\[\#cccccc\],
 body.light-mode .text-\[\#888888\],
-body.light-mode .news-card-summary { color: #1f2937 !important; }
+body.light-mode .news-card-summary { color: #374151 !important; }
 
 body.light-mode .text-gray-400,
 body.light-mode .text-gray-500,
 body.light-mode .text-neutral-400,
 body.light-mode .text-neutral-500,
-body.light-mode .text-\[\#666666\] { color: #4b5563 !important; }
+body.light-mode .text-\[\#666666\] { color: #6b7280 !important; }
 
-/* Navegação & Loaders Light Mode */
-body.light-mode .loader-sm, body.light-mode .loader-sm::before, body.light-mode .loader-sm::after { background: #7c3aed !important; }
-body.light-mode ::-webkit-calendar-picker-indicator { filter: invert(0) !important; }
+/* Navegação & Sticky Headers Light Mode */
 body.light-mode .bottom-nav {
-    background-color: rgba(255, 255, 255, 0.5) !important;
-    border: none !important; 
-    box-shadow: none !important;
+    background-color: rgba(255, 255, 255, 0.8) !important;
+    border: 1px solid rgba(0,0,0,0.05) !important;
 }
 body.light-mode .tab-button span { color: #6b7280; }
 body.light-mode .tab-button.active span { color: #7c3aed !important; }
 
-/* Sticky Headers Light Mode */
 body.light-mode .history-header-sticky,
 body.light-mode .sticky.top-0 {
-    background-color: rgba(255, 255, 255, 0.98) !important;
-    border-bottom: 1px solid #f3f4f6 !important;
+    background-color: rgba(228, 228, 231, 0.95) !important; /* #e4e4e7 com blur */
+    border-bottom: none !important;
     color: #374151 !important;
 }
 
-/* Notificações no Light Mode */
-body.light-mode .notif-card-payment { background: #dcfce7 !important; border-left: none !important; }
-body.light-mode .notif-card-datacom { background: #fef9c3 !important; border-left: none !important; }
-body.light-mode #notifications-drawer .drawer-content { background-color: #ffffff !important; border: none; }
-body.light-mode .notif-item { background-color: #ffffff; border: none; box-shadow: none; }
-body.light-mode .notif-item:hover { background-color: #f9fafb; }
-body.light-mode .notif-icon-box { background-color: #f3f4f6; border: none; }
-body.light-mode .notif-msg { color: #3f3f46; }
-body.light-mode .notif-close-btn { color: #9ca3af; }
-body.light-mode .notif-close-btn:hover { color: #dc2626; background-color: #fee2e2; }
-
-/* Overrides Backgrounds Neutros Light Mode */
-body.light-mode .bg-neutral-900,
-body.light-mode .bg-gray-900,
-body.light-mode .bg-gray-800 { background-color: #f3f4f6 !important; border: none !important; }
-body.light-mode .border-\[\#2C2C2E\],
-body.light-mode .border-gray-800,
-body.light-mode .border-neutral-800 { border-color: transparent !important; }
-
-body.light-mode .skeleton-text { background-color: #e5e7eb !important; }
-body.light-mode .skeleton-text::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent); }
-body.light-mode .card-arrow-icon { color: #9ca3af !important; }
-
-/* Light Mode Agenda Colors */
-body.light-mode .square-payment-card {
+/* Filtros e Dropdowns Light Mode */
+body.light-mode .filter-dropdown-menu {
     background-color: #ffffff !important;
-    border: none !important;
-    box-shadow: none !important;
 }
-body.light-mode .square-day { color: #111827; }
-body.light-mode .square-month { color: #6b7280; }
-body.light-mode .square-ticker { color: #374151; }
-body.light-mode .square-value,
-body.light-mode .agenda-value { color: #d97706 !important; } 
-body.light-mode .text-hoje { color: #d97706 !important; }
+body.light-mode .filter-dropdown-item {
+    color: #374151;
+    border-bottom: 1px solid #f4f4f5;
+}
+body.light-mode .filter-dropdown-item.selected {
+    background-color: #f4f4f5;
+    color: #000000;
+}
+
+/* Histórico Tabs */
+body.light-mode .hist-tab-btn { color: #6b7280; }
+body.light-mode .hist-tab-btn.active { color: #111827; }
+body.light-mode .active-tab-indicator { background-color: #7c3aed; }
 
 
 /* =========================================

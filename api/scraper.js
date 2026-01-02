@@ -84,17 +84,17 @@ async function fetchHtmlWithRetry(ticker) {
     }
 }
 
-// --- SCRAPER DE FUNDAMENTOS ---
-// --- SCRAPER DE FUNDAMENTOS ATUALIZADO ---
+// --- EM scraper.js: Substitua a função scrapeFundamentos inteira ---
+
 async function scrapeFundamentos(ticker) {
     try {
         const response = await fetchHtmlWithRetry(ticker);
         const html = response.data;
         const $ = cheerio.load(html);
 
-        // Adicionamos 'pl' (P/L) e 'roe' ao objeto inicial
+        // 1. Inicializamos o objeto com os novos campos (pl, roe)
         let dados = {
-            dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', // Novos campos
+            dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', // Novos campos para Ações
             segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
@@ -113,8 +113,8 @@ async function scrapeFundamentos(ticker) {
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             
-            // Lógica nova para Ações
-            if (dados.pl === 'N/A' && titulo.includes('p/l')) dados.pl = valor; 
+            // --- Captura específica para Ações ---
+            if (dados.pl === 'N/A' && titulo.includes('p/l')) dados.pl = valor;
             if (dados.roe === 'N/A' && titulo.includes('roe')) dados.roe = valor;
 
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
@@ -130,7 +130,12 @@ async function scrapeFundamentos(ticker) {
             if (dados.tipo_fundo === 'N/A' && titulo.includes('tipo de fundo')) dados.tipo_fundo = valor;
             if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
-            if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
+
+            // Ajuste: Ações usam "Total de Papéis" ou "Ações Emitidas"
+            if ((titulo.includes('cotas') || titulo.includes('papeis') || titulo.includes('acoes')) && (titulo.includes('emitidas') || titulo.includes('total'))) {
+                 dados.cotas_emitidas = valor;
+                 num_cotas = parseValue(valor);
+            }
 
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
@@ -141,25 +146,21 @@ async function scrapeFundamentos(ticker) {
                     if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
-
-            if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
-                num_cotas = parseValue(valor);
-                if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
-            }
         };
 
-        // Extração por Cards (Prioritário)
+        // --- Extração por Cards (Prioritário) ---
+        
+        // FIIs e Ações
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
         
         const pvpEl = $('._card.vp ._card-body span').first();
         if (pvpEl.length) dados.pvp = pvpEl.text().trim();
         
-        // Extração Card P/L (Específico de Ações)
+        // Específico Ações (Classes CSS do site)
         const plEl = $('._card.pl ._card-body span').first();
         if (plEl.length) dados.pl = plEl.text().trim();
-
-        // Extração Card ROE (Específico de Ações)
+        
         const roeEl = $('._card.roe ._card-body span').first();
         if (roeEl.length) dados.roe = roeEl.text().trim();
 
@@ -172,7 +173,7 @@ async function scrapeFundamentos(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // Varredura Geral
+        // Varredura Geral (Fallback)
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         $('table tbody tr').each((i, row) => {
@@ -198,7 +199,7 @@ async function scrapeFundamentos(ticker) {
 
         return dados;
     } catch (error) {
-        return { dy: '-', pvp: '-', pl: '-', roe: '-', segmento: '-' };
+        return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 

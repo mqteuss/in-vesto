@@ -43,15 +43,14 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     scrollbar-width: none;
 }
 
-/* =========================================   TEMA CLARO (LIGHT MODE) - OVERRIDES   ========================================= */
+/* =========================================   TEMA CLARO (LIGHT MODE) - FLAT & INVERTED   ========================================= */
 
 body.light-mode {
-    /* 1. O segredo: Fundo da página levemente cinza para destacar os cards brancos */
-    background-color: #f2f2f7 !important; 
+    background-color: #ffffff !important; /* Fundo Branco Puro */
     color: #1c1c1e !important;
 }
 
-/* --- CARDS & ELEMENTOS FLUTUANTES (Branco Puro + Sombra Suave) --- */
+/* --- CARDS & ELEMENTOS (Cinza para destacar no fundo branco) --- */
 body.light-mode .card-bg,
 body.light-mode .modal-content,
 body.light-mode .card-drawer,
@@ -68,77 +67,77 @@ body.light-mode .bg-\[\#1C1C1E\],
 body.light-mode .bg-\[\#121212\],
 body.light-mode .bg-\[\#111\],
 body.light-mode .bg-gray-900 {
-    background-color: #ffffff !important; /* Fundo Branco Puro */
+    background-color: #f3f4f6 !important; /* Cinza claro/médio */
     background-image: none !important;
-    border: none !important; /* REMOVE AS BORDAS */
+    border: none !important; /* Sem bordas */
+    box-shadow: none !important; /* Sem sombras (Flat) */
     color: #1c1c1e !important;
-    
-    /* A MÁGICA: Sombra suave e difusa para dar profundidade */
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0,0,0,0.02) !important;
 }
 
-/* Page Content (Gaveta que sobe) */
+/* Page Content (Gaveta) */
 body.light-mode .page-content {
-    background-color: #ffffff !important;
+    background-color: #ffffff !important; /* Mantém fundo branco */
     border: none !important;
-    /* Sombra forte apenas no topo para separar do fundo */
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.08) !important; 
+    box-shadow: none !important;
 }
 
-/* --- RESUMO CARTEIRA (PREMIUM CARD) --- */
+/* --- RESUMO DA CARTEIRA (A ÚNICA EXCEÇÃO DE SOMBRA) --- */
 body.light-mode #resumo-carteira-card {
-    background: #ffffff !important;
+    background: #f3f4f6 !important; /* Mesmo cinza dos outros cards */
     border: none !important;
-    /* Sombra um pouco mais forte para destaque principal */
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+    /* Único elemento com sombra para destaque hierárquico */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
+    z-index: 10; /* Garante que fique acima visualmente */
 }
-/* Remove aurora e gradients do dark mode */
+/* Remove efeitos de aurora */
 body.light-mode #resumo-carteira-card::before,
 body.light-mode #resumo-carteira-card::after { display: none !important; }
 
 body.light-mode .premium-grid {
-    background: #f9fafb !important; /* Fundo cinza ultra-leve para área de stats */
+    background: #e5e7eb !important; /* Um tom de cinza mais escuro para diferenciar dentro do card */
     border-top: none !important;
 }
-body.light-mode .premium-divider { background: #e5e7eb !important; }
+body.light-mode .premium-divider { background: #d1d5db !important; }
+
 body.light-mode .premium-value-lg {
     background: none !important;
     -webkit-text-fill-color: #111827 !important;
     color: #111827 !important;
 }
 
-/* --- INPUTS (Fundo Cinza para contrastar com o Card Branco) --- */
-/* Como não temos bordas, o input precisa ter cor de fundo para ser visto */
+/* --- INPUTS (BRANCO) --- */
+/* Como os cards são cinza, os inputs agora são brancos para parecerem "recortes" */
 body.light-mode input, 
 body.light-mode select, 
 body.light-mode textarea,
 body.light-mode .compact-search-input,
 body.light-mode .filter-funnel-btn {
-    background-color: #f3f4f6 !important; /* Cinza claro */
-    border: none !important; /* Sem bordas */
+    background-color: #ffffff !important; /* Input Branco */
+    border: none !important;
     color: #111827 !important;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05) !important; /* Sombra interna sutil */
+    /* Sombra interna muito sutil apenas para profundidade do campo */
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.03) !important; 
 }
 body.light-mode input:focus {
-    background-color: #f9fafb !important;
-    /* Opcional: Anel de foco suave se desejar, ou apenas mudança de cor */
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05), 0 0 0 2px rgba(124, 58, 237, 0.2) !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 0 0 2px #7c3aed !important; /* Foco roxo */
 }
 body.light-mode input::placeholder { color: #9ca3af !important; }
 
-/* Botões de Período/Filtro */
+/* Botões de Filtro */
 body.light-mode .periodo-selector-btn {
-    background-color: #f3f4f6 !important;
+    background-color: #ffffff !important; /* Botão branco no fundo cinza */
     color: #6b7280 !important;
     border: none !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
 }
 body.light-mode .periodo-selector-btn.active {
     background-color: #7c3aed !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.3) !important; /* Sombra roxa no ativo */
+    box-shadow: none !important;
 }
 
-/* --- TEXTOS (Inversão) --- */
+/* --- TEXTOS --- */
 body.light-mode .text-white, 
 body.light-mode .text-gray-100,
 body.light-mode .text-gray-200,
@@ -148,12 +147,10 @@ body.light-mode .text-gray-300,
 body.light-mode .text-gray-400,
 body.light-mode .text-neutral-400,
 body.light-mode .text-\[\#cccccc\],
-body.light-mode .text-\[\#888888\] { color: #4b5563 !important; }
+body.light-mode .text-\[\#888888\] { color: #374151 !important; } /* Cinza mais forte para leitura */
 
 body.light-mode .text-gray-500,
-body.light-mode .text-gray-600,
-body.light-mode .text-neutral-500,
-body.light-mode .text-\[\#666666\] { color: #6b7280 !important; }
+body.light-mode .text-gray-600 { color: #6b7280 !important; }
 
 body.light-mode .app-page-title {
     background: none !important;
@@ -161,14 +158,13 @@ body.light-mode .app-page-title {
     color: #111827 !important;
 }
 
-/* --- ELEMENTOS FLUTUANTES --- */
+/* --- ELEMENTOS ESPECÍFICOS --- */
 
 /* Bottom Nav */
 body.light-mode .bottom-nav {
-    background-color: rgba(255, 255, 255, 0.8) !important; /* Mais translúcido */
-    border: none !important;
-    /* Sombra mais difusa para flutuar bem alto */
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important; 
+    background-color: #f3f4f6 !important; /* Acompanha a cor dos cards */
+    border-top: none !important;
+    box-shadow: none !important; /* Flat */
 }
 body.light-mode .tab-button span { color: #6b7280; }
 body.light-mode .tab-button.active span { color: #7c3aed !important; }
@@ -176,17 +172,17 @@ body.light-mode .tab-button.active span { color: #7c3aed !important; }
 /* Sticky Headers */
 body.light-mode .history-header-sticky,
 body.light-mode .sticky.top-0 {
-    background-color: rgba(242, 242, 247, 0.95) !important; /* Cor igual ao fundo da página */
+    background-color: #ffffff !important; /* Mesma cor do fundo da página */
     border-bottom: none !important;
-    box-shadow: 0 1px 10px rgba(0,0,0,0.03) !important;
+    box-shadow: none !important;
 }
-body.light-mode .sticky h3 { color: #374151 !important; }
+body.light-mode .sticky h3 { color: #111827 !important; }
 
 /* Ícones de Tickers */
 body.light-mode .w-9.h-9.rounded-xl.bg-\[\#151515\],
 body.light-mode .w-10.h-10.rounded-xl.bg-\[\#151515\],
 body.light-mode .w-12.h-12.rounded-2xl.bg-\[\#1C1C1E\] {
-    background-color: #f3f4f6 !important;
+    background-color: #ffffff !important; /* Ícone branco sobre card cinza */
     border: none !important;
     color: #111827 !important;
 }
@@ -194,50 +190,34 @@ body.light-mode .w-9.h-9 span,
 body.light-mode .w-10.h-10, 
 body.light-mode .w-12.h-12 span {
     color: #111827 !important;
-    font-weight: 800 !important;
+    font-weight: 700 !important;
 }
 
-/* Agenda (Carrossel) */
+/* Agenda */
 body.light-mode .agenda-header {
-    background-color: #f3f4f6; /* Header cinza claro */
-    color: #6b7280;
-    border-bottom: none;
+    background-color: #e5e7eb; /* Header um pouco mais escuro que o card */
+    color: #374151;
+    border: none;
 }
 body.light-mode .agenda-footer {
-    background-color: #f9fafb;
-    border-top: 1px solid rgba(0,0,0,0.03); /* Divisor ultra sutil */
+    background-color: #e5e7eb;
+    border: none;
 }
 body.light-mode .agenda-day { color: #111827 !important; }
 
-/* Badges de Status (Pills coloridas sem borda, fundo suave) */
-body.light-mode .bg-green-500\/10, body.light-mode .bg-green-900\/20 {
-    background-color: #dcfce7 !important; 
-    border: none !important;
-    color: #15803d !important;
+/* Authentication Modal */
+body.light-mode #auth-container {
+    background-color: #ffffff !important; /* Modal principal branco */
 }
-body.light-mode .bg-yellow-500\/10, body.light-mode .bg-yellow-900\/20 {
-    background-color: #fef9c3 !important;
-    border: none !important;
-    color: #a16207 !important;
-}
-body.light-mode .bg-red-500\/10 {
-    background-color: #fee2e2 !important;
-    border: none !important;
-    color: #b91c1c !important;
-}
-
-/* Authentication */
 body.light-mode #auth-container input {
-    background-color: #f3f4f6 !important;
-    color: #111827 !important;
-    border: none !important;
+    background-color: #f3f4f6 !important; /* Input cinza no modal branco */
 }
 
 /* Skeletons */
 body.light-mode .skeleton-text,
 body.light-mode .bg-gray-700,
 body.light-mode .bg-gray-800 {
-    background-color: #e5e7eb !important;
+    background-color: #d1d5db !important;
 }
 
 

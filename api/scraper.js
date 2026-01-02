@@ -85,18 +85,26 @@ async function fetchHtmlWithRetry(ticker) {
 }
 
 // --- SCRAPER DE FUNDAMENTOS ---
+// --- EM scraper.js: Substitua a função scrapeFundamentos ---
+
 async function scrapeFundamentos(ticker) {
     try {
         const response = await fetchHtmlWithRetry(ticker);
         const html = response.data;
         const $ = cheerio.load(html);
 
+        // 1. Inicializa com campos de FII E de Ações
         let dados = {
+            // Comuns / FIIs
             dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
-            taxa_adm: 'N/A', cotas_emitidas: 'N/A'
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A',
+            
+            // Novos Exclusivos de Ações
+            pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', 
+            divida_liquida_ebitda: 'N/A', ev_ebitda: 'N/A'
         };
 
         let cotacao_atual = 0;
@@ -107,7 +115,7 @@ async function scrapeFundamentos(ticker) {
             const valor = valorRaw.trim();
             if (!valor) return;
 
-            // Mantida a lógica exata de mapeamento
+            // --- Mapeamentos Existentes (FIIs) ---
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
@@ -125,6 +133,15 @@ async function scrapeFundamentos(ticker) {
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
 
+            // --- Novos Mapeamentos (Ações) ---
+            if (dados.pl === 'N/A' && titulo.includes('p/l')) dados.pl = valor;
+            if (dados.roe === 'N/A' && titulo.includes('roe')) dados.roe = valor;
+            if (dados.lpa === 'N/A' && titulo.includes('lpa')) dados.lpa = valor;
+            if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
+            if (dados.divida_liquida_ebitda === 'N/A' && titulo.includes('div. liq') && titulo.includes('ebitda')) dados.divida_liquida_ebitda = valor;
+            if (dados.ev_ebitda === 'N/A' && titulo.includes('ev/ebitda')) dados.ev_ebitda = valor;
+
+            // Lógica de Patrimônio (Mantida)
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
@@ -145,11 +162,10 @@ async function scrapeFundamentos(ticker) {
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
         const pvpEl = $('._card.vp ._card-body span').first();
-        if (pvpEl.length) dados.pvp = pvpEl.text().trim();
-        const liqEl = $('._card.liquidity ._card-body span').first();
-        if (liqEl.length) dados.liquidez = liqEl.text().trim();
-        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
-        if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
+        if (pvpEl.length) dados.pvp = pvpEl.text().trim(); // P/VP serve para ambos
+        const plEl = $('._card.pl ._card-body span').first(); // NOVO: P/L Card
+        if (plEl.length) dados.pl = plEl.text().trim();
+        
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
@@ -161,7 +177,7 @@ async function scrapeFundamentos(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // Cálculo de Mercado (Fallback)
+        // Cálculo de Mercado (Fallback mantido)
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;

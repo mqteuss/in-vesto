@@ -43,158 +43,175 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     scrollbar-width: none;
 }
 
-/* =========================================   TEMA CLARO (LIGHT MODE) - CORREÇÃO DE CONTRASTE   ========================================= */
-
+/* =========================================
+   TEMA CLARO (LIGHT MODE) - OVERRIDES
+   ========================================= */
 body.light-mode {
-    background-color: #ffffff !important; /* Fundo da página: BRANCO PURO */
-    color: #000000 !important;
+    background-color: #f3f4f6; 
+    color: #1f2937;
 }
 
-/* --- CARDS (O PULO DO GATO: CINZA MAIS FORTE) --- */
-/* Mudamos de um cinza quase branco para #e4e4e7 (Zinc 200) para garantir que o card apareça */
+/* Backgrounds Gerais no Light Mode */
 body.light-mode .card-bg,
+body.light-mode .modal-content,
+body.light-mode .card-drawer,
+body.light-mode .drawer-content,
+body.light-mode .settings-group,
 body.light-mode .wallet-card,
 body.light-mode .history-card,
+body.light-mode #resumo-carteira-card,
 body.light-mode .fav-card,
-body.light-mode .agenda-card,
-body.light-mode .notif-item,
-body.light-mode .settings-group,
 body.light-mode .bg-black,
 body.light-mode .bg-\[\#151515\],
+body.light-mode .bg-\[\#0a0a0a\],
 body.light-mode .bg-\[\#1C1C1E\],
 body.light-mode .bg-\[\#121212\],
 body.light-mode .bg-\[\#111\] {
-    background-color: #f1f1f1 !important; /* CINZA VISÍVEL */
+    background-color: #ffffff !important;
     background-image: none !important;
     border: none !important;
-    box-shadow: none !important; /* Flat design conforme pedido */
-    color: #1c1c1e !important;
+    color: #1f2937 !important;
+    box-shadow: none !important;
 }
 
-/* --- DESTAQUE PARA ÍCONES DENTRO DOS CARDS --- */
-/* Como o card agora é cinza, os quadrados dos ícones devem ser BRANCOS para destacar */
-body.light-mode .w-10.h-10.rounded-2xl, /* Ícones do Dashboard */
-body.light-mode .w-10.h-10.rounded-xl, /* Ícones da Carteira */
-body.light-mode .w-9.h-9.rounded-xl,    /* Ícones do Histórico */
-body.light-mode .settings-icon-box,
-body.light-mode .notif-icon-box {
-    background-color: #ffffff !important; /* Fundo Branco */
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; /* Sutil destaque */
-}
-
-/* --- CARD DE RESUMO (O ÚNICO COM SOMBRA) --- */
-body.light-mode #resumo-carteira-card {
-    background: #f1f1f1 !important; /* Mesmo cinza dos outros */
+/* EXCEÇÃO: Page Content (Gaveta) no Light Mode precisa de borda no topo */
+body.light-mode .page-content {
+    background-color: #ffffff !important;
     border: none !important;
-    /* Sombra suave para destacar como o principal */
-    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15) !important; 
-    z-index: 10;
-}
-/* Remove efeitos de aurora/neblina do dark mode */
-body.light-mode #resumo-carteira-card::before,
-body.light-mode #resumo-carteira-card::after { display: none !important; }
-
-/* Grid de status dentro do card de resumo */
-body.light-mode .premium-grid {
-    background: #e5e5e5 !important; /* Um pouco mais escuro que o card para separar */
-    border-top: none !important;
-}
-body.light-mode .premium-divider { background: #d4d4d4 !important; }
-
-/* Texto do valor principal */
-body.light-mode .premium-value-lg {
-    background: none !important;
-    -webkit-text-fill-color: #000000 !important;
-    color: #000000 !important;
+    border-top: 1px solid #e5e7eb !important; 
+    color: #1f2937 !important;
 }
 
-/* --- INPUTS & CAMPOS (BRANCOS) --- */
-/* Inputs brancos parecem "recortes" no fundo cinza */
+/* Inputs & Forms Light Mode */
 body.light-mode input, 
 body.light-mode select, 
 body.light-mode textarea,
+body.light-mode #carteira-search-input,
 body.light-mode .compact-search-input,
 body.light-mode .filter-funnel-btn,
-body.light-mode .periodo-selector-btn {
-    background-color: #ffffff !important; 
-    border: 1px solid #e5e5e5 !important;
-    color: #000000 !important;
+body.light-mode .periodo-selector-btn,
+body.light-mode .settings-icon-box,
+body.light-mode #add-ativo-modal input,
+body.light-mode #new-password-form input,
+body.light-mode #change-password-form input {
+    background-color: #f9fafb !important;
+    border: none !important; 
+    color: #111827 !important;
+    box-shadow: none !important;
 }
-body.light-mode input::placeholder { color: #a1a1aa !important; }
 
-/* Botões Ativos (Roxo) */
-body.light-mode .periodo-selector-btn.active {
-    background-color: #7c3aed !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.2) !important;
+body.light-mode #auth-container input {
+    background-color: #f3f4f6 !important;
     border: none !important;
+    color: #111827 !important;
 }
 
-/* --- TEXTOS --- */
-/* Inverte tudo que é branco/cinza claro para preto/cinza escuro */
-body.light-mode .text-white, 
+body.light-mode input::placeholder {
+    color: #9ca3af !important;
+}
+
+/* Configurações & Textos Light Mode */
+body.light-mode .settings-label { color: #111827 !important; font-weight: 600; }
+body.light-mode .settings-sub { color: #6b7280 !important; }
+body.light-mode #tab-config h3 { color: #4b5563 !important; }
+
+/* Resumo Carteira (Premium Stat) Light Mode */
+body.light-mode .premium-stat-value { color: #1f2937 !important; }
+body.light-mode .premium-value-lg {
+    background: #111827; 
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: #111827;
+    color: #111827;
+    filter: none;
+}
+body.light-mode .premium-grid {
+    background: transparent;
+    border-top: 1px solid #f3f4f6;
+}
+
+/* Títulos Light Mode */
+body.light-mode .app-page-title {
+    background: #111827 !important;
+    -webkit-background-clip: unset !important;
+    background-clip: unset !important;
+    -webkit-text-fill-color: #111827 !important;
+    color: #111827 !important;
+}
+body.light-mode .app-page-title::after {
+    color: #7c3aed !important;
+    -webkit-text-fill-color: #7c3aed !important;
+}
+
+/* Cores de Texto Genéricas */
+body.light-mode .text-white,
 body.light-mode .text-gray-100,
 body.light-mode .text-gray-200,
-body.light-mode .text-\[\#e5e5e5\] { color: #000000 !important; }
-
 body.light-mode .text-gray-300,
+body.light-mode .text-\[\#e5e5e5\], 
+body.light-mode .text-\[\#cccccc\],
+body.light-mode .text-\[\#888888\],
+body.light-mode .news-card-summary { color: #1f2937 !important; }
+
 body.light-mode .text-gray-400,
-body.light-mode .text-neutral-400,
-body.light-mode .text-\[\#cccccc\] { color: #52525b !important; } /* Zinc 600 */
-
 body.light-mode .text-gray-500,
-body.light-mode .text-gray-600 { color: #71717a !important; } /* Zinc 500 */
+body.light-mode .text-neutral-400,
+body.light-mode .text-neutral-500,
+body.light-mode .text-\[\#666666\] { color: #4b5563 !important; }
 
-body.light-mode .app-page-title {
-    background: none !important;
-    -webkit-text-fill-color: #000000 !important;
-    color: #000000 !important;
-}
-
-/* --- ELEMENTOS ESPECÍFICOS --- */
-
-/* Bottom Nav (Menu Inferior) */
+/* Navegação & Loaders Light Mode */
+body.light-mode .loader-sm, body.light-mode .loader-sm::before, body.light-mode .loader-sm::after { background: #7c3aed !important; }
+body.light-mode ::-webkit-calendar-picker-indicator { filter: invert(0) !important; }
 body.light-mode .bottom-nav {
-    background-color: #f1f1f1 !important; /* Cinza sólido igual aos cards */
-    border: none !important;
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.05) !important;
+    background-color: rgba(255, 255, 255, 0.5) !important;
+    border: none !important; 
+    box-shadow: none !important;
 }
-body.light-mode .tab-button span { color: #71717a; }
+body.light-mode .tab-button span { color: #6b7280; }
 body.light-mode .tab-button.active span { color: #7c3aed !important; }
 
-/* Gaveta que sobe (Page Content) */
-body.light-mode .page-content {
-    background-color: #ffffff !important; /* Mantém fundo branco para leitura */
-    border-top: 1px solid #f1f1f1 !important;
+/* Sticky Headers Light Mode */
+body.light-mode .history-header-sticky,
+body.light-mode .sticky.top-0 {
+    background-color: rgba(255, 255, 255, 0.98) !important;
+    border-bottom: 1px solid #f3f4f6 !important;
+    color: #374151 !important;
 }
 
-/* Ícones de Tickers (Quadrados com Sigla) */
-body.light-mode .w-9.h-9.rounded-xl.bg-\[\#151515\],
-body.light-mode .w-10.h-10.rounded-xl.bg-\[\#151515\],
-body.light-mode .w-12.h-12.rounded-2xl.bg-\[\#1C1C1E\] {
-    background-color: #ffffff !important; /* Ícone Branco */
-    border: 1px solid #e5e5e5 !important;
-    color: #000000 !important;
-}
-body.light-mode .w-9.h-9 span, 
-body.light-mode .w-10.h-10, 
-body.light-mode .w-12.h-12 span {
-    color: #000000 !important;
-    font-weight: 800 !important;
-}
+/* Notificações no Light Mode */
+body.light-mode .notif-card-payment { background: #dcfce7 !important; border-left: none !important; }
+body.light-mode .notif-card-datacom { background: #fef9c3 !important; border-left: none !important; }
+body.light-mode #notifications-drawer .drawer-content { background-color: #ffffff !important; border: none; }
+body.light-mode .notif-item { background-color: #ffffff; border: none; box-shadow: none; }
+body.light-mode .notif-item:hover { background-color: #f9fafb; }
+body.light-mode .notif-icon-box { background-color: #f3f4f6; border: none; }
+body.light-mode .notif-msg { color: #3f3f46; }
+body.light-mode .notif-close-btn { color: #9ca3af; }
+body.light-mode .notif-close-btn:hover { color: #dc2626; background-color: #fee2e2; }
 
-/* --- BADGES E STATUS --- */
-body.light-mode .bg-green-500\/10, body.light-mode .bg-green-900\/20 {
-    background-color: #dcfce7 !important; /* Verde claro sólido */
-    color: #15803d !important;
+/* Overrides Backgrounds Neutros Light Mode */
+body.light-mode .bg-neutral-900,
+body.light-mode .bg-gray-900,
+body.light-mode .bg-gray-800 { background-color: #f3f4f6 !important; border: none !important; }
+body.light-mode .border-\[\#2C2C2E\],
+body.light-mode .border-gray-800,
+body.light-mode .border-neutral-800 { border-color: transparent !important; }
+
+body.light-mode .skeleton-text { background-color: #e5e7eb !important; }
+body.light-mode .skeleton-text::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent); }
+body.light-mode .card-arrow-icon { color: #9ca3af !important; }
+
+/* Light Mode Agenda Colors */
+body.light-mode .square-payment-card {
+    background-color: #ffffff !important;
     border: none !important;
+    box-shadow: none !important;
 }
-body.light-mode .bg-blue-500\/10 {
-    background-color: #dbeafe !important; /* Azul claro sólido */
-    color: #1d4ed8 !important;
-}
-body.light-mode .text-blue-400 { color: #2563eb !important; }
-body.light-mode .text-green-400 { color: #16a34a !important; }
+body.light-mode .square-day { color: #111827; }
+body.light-mode .square-month { color: #6b7280; }
+body.light-mode .square-ticker { color: #374151; }
+body.light-mode .square-value,
+body.light-mode .agenda-value { color: #d97706 !important; } 
+body.light-mode .text-hoje { color: #d97706 !important; }
 
 
 /* =========================================

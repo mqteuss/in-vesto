@@ -44,15 +44,30 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 }
 
 /* =========================================   
-   TEMA CLARO (LIGHT MODE) - PALETA INVERTIDA 
-   (Fundo Branco Puro / Cards Cinza Claro)
+   TEMA CLARO (LIGHT MODE) - CORRIGIDO
+   Fundo: Branco Puro | Cards: Cinza Claro
    ========================================= */
 body.light-mode {
-    background-color: #ffffff; /* FUNDO BRANCO PURO */
+    background-color: #ffffff; 
     color: #1f2937;
 }
 
-/* 1. Cards Gerais no Light Mode (Agora CINZA CLARO) */
+/* 1. LAYOUT / CONTAINER (FUNDO BRANCO) 
+   Isso garante que o fundo da tela seja branco, não cinza. */
+body.light-mode .bg-black,
+body.light-mode .bg-\[\#151515\],
+body.light-mode .bg-\[\#0a0a0a\],
+body.light-mode .bg-\[\#1C1C1E\],
+body.light-mode .bg-\[\#121212\],
+body.light-mode .bg-\[\#111\],
+body.light-mode .page-content {
+    background-color: #ffffff !important;
+    border-color: transparent !important;
+    color: #1f2937 !important;
+}
+
+/* 2. CARDS (CINZA CLARO #f3f4f6)
+   Aqui aplicamos o cinza apenas nos blocos de conteúdo. */
 body.light-mode .card-bg,
 body.light-mode .modal-content,
 body.light-mode .card-drawer,
@@ -60,75 +75,51 @@ body.light-mode .settings-group,
 body.light-mode .wallet-card,
 body.light-mode .history-card,
 body.light-mode .fav-card,
-body.light-mode .bg-black,
-body.light-mode .bg-\[\#151515\],
-body.light-mode .bg-\[\#0a0a0a\],
-body.light-mode .bg-\[\#1C1C1E\],
-body.light-mode .bg-\[\#121212\],
-body.light-mode .bg-\[\#111\] {
-    background-color: #f3f4f6 !important; /* Card Cinza (#f3f4f6) */
+body.light-mode .agenda-card,
+body.light-mode .drawer-content {
+    background-color: #f3f4f6 !important; 
     background-image: none !important;
     
-    /* Borda sutil para manter definição */
+    /* Borda sutil para definir o card no fundo branco */
     border: 1px solid #e5e7eb !important; 
     
     color: #1f2937 !important;
     box-shadow: none !important; 
 }
 
-/* Drawers / Gavetas Internas */
-body.light-mode .drawer-content {
-    background-color: #f3f4f6 !important; /* Cinza */
-    border: 1px solid #e5e7eb !important;
-    color: #1f2937 !important;
-    box-shadow: none !important;
-    border-radius: 1.5rem !important; 
-    overflow: hidden !important;
-}
-
-/* 2. EXCEÇÃO: Card Principal (Resumo) */
+/* 3. CARD RESUMO (MAIN) */
 body.light-mode #resumo-carteira-card {
-    background: #f3f4f6 !important; /* Cinza */
+    background: #f3f4f6 !important; /* Card Cinza */
     border: 1px solid #e5e7eb !important;
-    /* Sombra suave mantida apenas aqui para hierarquia */
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08) !important; 
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important; /* Leve destaque */
     color: #1f2937 !important;
 }
-/* Esconde aurora no light mode */
+/* Remove aurora */
 body.light-mode #resumo-carteira-card::before,
 body.light-mode #resumo-carteira-card::after {
     display: none !important;
 }
 
-/* EXCEÇÃO: Page Content (Gaveta de Detalhes Gigante) */
-body.light-mode .page-content {
-    background-color: #f3f4f6 !important; /* Cinza */
-    border: none !important;
-    border-top: 1px solid #e5e7eb !important; 
-    color: #1f2937 !important;
-}
-
-/* Inputs & Forms Light Mode - AGORA BRANCOS (Para destacar no card cinza) */
+/* 4. INPUTS (BRANCO)
+   Fundo Branco para criar profundidade dentro do Card Cinza */
 body.light-mode input, body.light-mode select, body.light-mode textarea,
 body.light-mode #carteira-search-input,
 body.light-mode .compact-search-input,
-body.light-mode .filter-funnel-btn,
-body.light-mode .periodo-selector-btn,
 body.light-mode .settings-icon-box,
 body.light-mode #add-ativo-modal input,
 body.light-mode #new-password-form input,
 body.light-mode #change-password-form input,
 body.light-mode #historico-search-input,
 body.light-mode #proventos-search-input {
-    background-color: #ffffff !important; /* Input Branco Puro */
-    border: 1px solid #e5e7eb !important; 
+    background-color: #ffffff !important; 
+    border: 1px solid #d1d5db !important; /* Borda um pouco mais forte */
     color: #111827 !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
 }
 
 body.light-mode #auth-container input {
     background-color: #ffffff !important;
-    border: 1px solid #e5e7eb !important;
+    border: 1px solid #d1d5db !important;
     color: #111827 !important;
 }
 
@@ -136,23 +127,27 @@ body.light-mode input::placeholder {
     color: #9ca3af !important;
 }
 
+/* Botões de Filtro/Seleção */
+body.light-mode .periodo-selector-btn,
+body.light-mode .filter-funnel-btn {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #6b7280 !important;
+}
+body.light-mode .periodo-selector-btn.active,
+body.light-mode .patrimonio-range-btn.active,
+body.light-mode .filter-funnel-btn.has-filter {
+    background-color: #1f2937 !important; /* Preto/Cinza Escuro */
+    color: #ffffff !important;
+    border-color: #1f2937 !important;
+}
+
 /* Configurações & Textos Light Mode */
 body.light-mode .settings-label { color: #111827 !important; font-weight: 600; }
 body.light-mode .settings-sub { color: #6b7280 !important; }
 body.light-mode #tab-config h3 { color: #374151 !important; }
 
-/* Botões Seletores Ativos (Invertido para Escuro no Light Mode) */
-body.light-mode .periodo-selector-btn.active,
-body.light-mode .patrimonio-range-btn.active {
-    background-color: #1f2937 !important; 
-    color: #ffffff !important;
-}
-body.light-mode .filter-funnel-btn.has-filter {
-    background-color: #1f2937 !important;
-    color: #ffffff !important;
-}
-
-/* CORREÇÃO: Resumo Carteira (Valores e Barras) */
+/* Resumo Carteira (Valores e Barras) */
 body.light-mode .premium-stat-value { color: #1f2937 !important; }
 body.light-mode .premium-value-lg {
     background: transparent !important; 
@@ -161,16 +156,14 @@ body.light-mode .premium-value-lg {
     filter: none;
 }
 body.light-mode .premium-grid {
-    background: rgba(0,0,0,0.03); /* Leve escurecimento para separar */
+    background: rgba(0,0,0,0.03); 
     border-top: 1px solid #e5e7eb;
 }
 
-/* CORREÇÃO: Títulos das Páginas */
+/* Títulos das Páginas */
 body.light-mode .app-page-title {
-    background: none !important; 
-    -webkit-background-clip: unset !important;
-    background-clip: unset !important;
-    -webkit-text-fill-color: #111827 !important; 
+    background: none !important;
+    -webkit-text-fill-color: #111827 !important;
     color: #111827 !important;
 }
 body.light-mode .app-page-title::after {
@@ -178,37 +171,29 @@ body.light-mode .app-page-title::after {
     -webkit-text-fill-color: #7c3aed !important;
 }
 
-/* CORREÇÃO: Abas do Extrato (Transações / Proventos) */
-body.light-mode .hist-tab-btn {
-    color: #6b7280 !important; 
-}
-body.light-mode .hist-tab-btn.active {
-    color: #111827 !important; 
-}
-body.light-mode .active-tab-indicator {
-    background-color: #7c3aed !important; 
-}
+/* Abas do Extrato */
+body.light-mode .hist-tab-btn { color: #6b7280 !important; }
+body.light-mode .hist-tab-btn.active { color: #111827 !important; }
+body.light-mode .active-tab-indicator { background-color: #7c3aed !important; }
 
-/* Cabeçalhos de Data no Extrato (Sticky) */
+/* Sticky Headers (Fundo Branco com Blur) */
 body.light-mode .sticky.top-0, 
 body.light-mode .history-header-sticky {
-    background-color: rgba(255, 255, 255, 0.95) !important; /* Vidro Branco */
+    background-color: rgba(255, 255, 255, 0.95) !important;
     border-bottom: 1px solid #e5e7eb !important;
     color: #374151 !important;
 }
 body.light-mode .history-header-sticky h3,
-body.light-mode .sticky.top-0 h3 {
-    color: #374151 !important;
-}
+body.light-mode .sticky.top-0 h3 { color: #374151 !important; }
 body.light-mode .bg-neutral-900 {
-    background-color: #ffffff !important; /* Badges de data brancos */
+    background-color: #ffffff !important; 
     color: #374151 !important;
     border: 1px solid #e5e7eb !important;
 }
 body.light-mode .history-month-badge {
     background-color: #ffffff !important;
-    border: 1px solid #e5e7eb !important;
     color: #4b5563 !important;
+    border: 1px solid #e5e7eb !important;
 }
 
 /* Cores de Texto Genéricas */
@@ -217,58 +202,37 @@ body.light-mode .text-gray-100,
 body.light-mode .text-gray-200,
 body.light-mode .text-gray-300,
 body.light-mode .text-\[\#e5e5e5\], 
-body.light-mode .text-\[\#cccccc\],
-body.light-mode .text-\[\#888888\],
 body.light-mode .news-card-summary { color: #1f2937 !important; }
 
 body.light-mode .text-gray-400,
 body.light-mode .text-gray-500,
 body.light-mode .text-neutral-400,
-body.light-mode .text-neutral-500,
-body.light-mode .text-\[\#666666\] { color: #4b5563 !important; }
+body.light-mode .text-neutral-500 { color: #6b7280 !important; }
 
-/* Navegação & Loaders Light Mode */
-body.light-mode .loader-sm, body.light-mode .loader-sm::before, body.light-mode .loader-sm::after { background: #7c3aed !important; }
-body.light-mode ::-webkit-calendar-picker-indicator { filter: invert(0) !important; }
-
+/* Bottom Nav */
 body.light-mode .bottom-nav {
-    background-color: rgba(255, 255, 255, 0.8) !important; /* Vidro Branco */
+    background-color: #ffffff !important; /* Nav Branca */
     border: 1px solid #e5e7eb !important; 
-    box-shadow: 0 4px 20px -5px rgba(0,0,0,0.1) !important;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.05) !important;
 }
-
 body.light-mode .tab-button span { color: #6b7280; }
 body.light-mode .tab-button.active span { color: #7c3aed !important; }
 
-/* Notificações no Light Mode */
+/* Notificações */
 body.light-mode .notif-card-payment { background: #dcfce7 !important; border: 1px solid #bbf7d0 !important; border-left: 3px solid #22c55e !important; }
 body.light-mode .notif-card-datacom { background: #fef9c3 !important; border: 1px solid #fde047 !important; border-left: 3px solid #eab308 !important; }
-body.light-mode #notifications-drawer .drawer-content { background-color: #f3f4f6 !important; border: 1px solid #e5e7eb !important; }
+body.light-mode #notifications-drawer .drawer-content { background-color: #f3f4f6 !important; }
+
 body.light-mode .notif-item { 
-    background-color: #ffffff !important; /* Item branco sobre fundo cinza */
+    background-color: #ffffff !important; /* Item Branco */
     border: 1px solid #e5e7eb; 
-    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02); 
 }
 body.light-mode .notif-item:hover { background-color: #fafafa !important; }
-body.light-mode .notif-icon-box { background-color: #f3f4f6; border: none; }
+body.light-mode .notif-icon-box { background-color: #f3f4f6; }
 body.light-mode .notif-msg { color: #3f3f46; }
-body.light-mode .notif-close-btn { color: #9ca3af; }
-body.light-mode .notif-close-btn:hover { color: #dc2626; background-color: #fee2e2; }
 
-/* Overrides Backgrounds Neutros Light Mode */
-body.light-mode .bg-neutral-900,
-body.light-mode .bg-gray-900,
-body.light-mode .bg-gray-800 { background-color: #f3f4f6 !important; border: none !important; }
-
-body.light-mode .border-\[\#2C2C2E\],
-body.light-mode .border-gray-800,
-body.light-mode .border-neutral-800 { border-color: transparent !important; }
-
-body.light-mode .skeleton-text { background-color: #e5e7eb !important; }
-body.light-mode .skeleton-text::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent); }
-body.light-mode .card-arrow-icon { color: #9ca3af !important; }
-
-/* Light Mode Agenda Colors (Carrossel Pagamentos) */
+/* Agenda (Calendário) */
 body.light-mode .square-payment-card,
 body.light-mode .agenda-card {
     background-color: #f3f4f6 !important; /* Card Cinza */
@@ -276,12 +240,12 @@ body.light-mode .agenda-card {
     box-shadow: none !important;
 }
 body.light-mode .agenda-header {
-    background-color: #e5e7eb; /* Header cinza */
+    background-color: #e5e7eb; 
     color: #4b5563;
     border-bottom: 1px solid #d1d5db;
 }
 body.light-mode .agenda-footer {
-    background-color: #ffffff; /* Footer branco para contraste */
+    background-color: #ffffff; 
     border-top: 1px solid #e5e7eb;
 }
 body.light-mode .agenda-day { color: #111827; }
@@ -292,7 +256,7 @@ body.light-mode .agenda-value { color: #d97706 !important; }
 /* Hoje no Light Mode */
 body.light-mode .agenda-card.is-today {
     border: 1px solid #facc15 !important;
-    background-color: #ffffff !important; /* Destaque Branco */
+    background-color: #ffffff !important;
 }
 body.light-mode .agenda-card.is-today .agenda-header {
     background-color: #facc15;

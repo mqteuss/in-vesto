@@ -127,8 +127,10 @@ const formatDateToInput = (dateString) => {
     }
 };
 
-const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
-const isAcao = (symbol) => symbol && (['3','4','5','6'].some(end => symbol.endsWith(end)));
+// Novos Helpers de Identificação
+const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12') || symbol.endsWith('11B'));
+const isAcao = (symbol) => symbol && (symbol.endsWith('3') || symbol.endsWith('4') || symbol.endsWith('5') || symbol.endsWith('6'));
+const isAtivoValido = (symbol) => isFII(symbol) || isAcao(symbol);
 
 function parseMesAno(mesAnoStr) { 
     try {
@@ -3219,90 +3221,78 @@ async function renderizarCarteira() {
         return Math.max(3, mesesDiff + 2);
     }
 
-// =========================================================================
-// CORREÇÃO: ENVOLVER fiiList DENTRO DE UM OBJETO payload
-// =========================================================================
-
-async function buscarProventosFuturos(force = false) {
-    if (!carteiraCalculada || carteiraCalculada.length === 0) {
-        renderizarProventos([]);
-        return [];
-    }
-
-    // 1. Verifica cache
-    const cacheKey = 'proventos_portfolio_full';
-    if (!force) {
-        const cached = await getCache(cacheKey);
-        if (cached) {
-            console.log("Usando cache de proventos");
-            renderizarProventos(cached);
-            return cached;
-        }
-    }
-
-    // 2. Filtra ativos: FIIs OU Ações
-    const ativosParaBuscar = carteiraCalculada
-        .filter(a => isFII(a.symbol) || isAcao(a.symbol))
-        .map(a => a.symbol);
-
-    if (ativosParaBuscar.length === 0) {
-        renderizarProventos([]);
-        return [];
-    }
-
-    try {
-        const areaProventos = document.getElementById('proventos-lista');
-        if (areaProventos) areaProventos.innerHTML = '<div class="loader-sm"></div><span class="text-xs text-gray-500 ml-2">Buscando dados...</span>';
-
-        // 3. Chamada ao Backend (BFF -> Scraper)
-        // CORREÇÃO AQUI: Adicionado 'payload: { ... }'
-        const response = await fetch('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                mode: 'historico_portfolio', 
-                payload: {  // <--- O Scraper exige este wrapper
-                    fiiList: ativosParaBuscar 
-                }
-            })
-        });
-
-        if (!response.ok) throw new Error('Falha ao buscar proventos');
-
-        const data = await response.json();
-        const historicoGeral = data.json || [];
-
-        // 4. Processamento dos dados
-        const proventosFormatados = historicoGeral.map(item => {
-            const ativoCarteira = carteiraCalculada.find(k => k.symbol === item.symbol);
-            if (!ativoCarteira) return null;
+    // --- FUNÇÃO PRINCIPAL ATUALIZADA ---
+// --- OTIMIZAÇÃO: Leitura de Cache em Paralelo ---
+    async function buscarProventosFuturos(force = false) {
+        const fiiNaCarteira = carteiraCalculada
+            .filter(a => isFII(a.symbol))
+            .map(a => a.symbol);
             
-            const dataPagamento = item.paymentDate; 
-            const valorPorCota = parseFloat(item.value);
-            const totalReceber = valorPorCota * ativoCarteira.quantity;
+        if (fiiNaCarteira.length === 0) return [];
 
-            return {
-                symbol: item.symbol,
-                dataPagamento: dataPagamento,
-                valorPorCota: valorPorCota,
-                total: totalReceber,
-                type: item.type || 'Rendimento'
-            };
-        }).filter(p => p !== null);
+        // Arrays thread-safe (JS é single-thread, então push é seguro)
+        const proventosPool = [];
+        const fiisParaBuscar = [];
 
-        // Salva em cache por 1 hora
-        await setCache(cacheKey, proventosFormatados, 3600 * 1000);
+        // 1. Dispara todas as verificações de cache simultaneamente
+        await Promise.all(fiiNaCarteira.map(async (symbol) => {
+            const cacheKey = `provento_ia_${symbol}`;
+            
+            if (force) {
+                // Não precisamos esperar o delete para continuar a lógica,
+                // mas mantemos o await para garantir consistência se necessário.
+                // Como são operações independentes, o Promise.all gerencia o paralelismo.
+                await vestoDB.delete('apiCache', cacheKey);
+                await removerProventosConhecidos(symbol);
+            }
+            
+            // Tenta pegar do cache
+            const proventoCache = await getCache(cacheKey);
+            
+            if (proventoCache && !force) {
+                proventosPool.push(proventoCache);
+            } else {
+                // Se não tem cache, calcula o limite e marca para busca na API
+                const limiteCalculado = calcularLimiteMeses(symbol);
+                fiisParaBuscar.push({ 
+                    ticker: symbol, 
+                    limit: limiteCalculado 
+                });
+            }
+        }));
+        
+        // 2. Busca na API apenas o que faltou (Batch Request)
+        if (fiisParaBuscar.length > 0) {
+            try {
+                const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
+                
+                if (novosProventos && Array.isArray(novosProventos)) {
+                    // Salva os novos resultados no cache em paralelo também
+                    await Promise.all(novosProventos.map(async (provento) => {
+                        if (provento && provento.symbol && provento.paymentDate) {
+                            const cacheKey = `provento_ia_${provento.symbol}`;
+                            await setCache(cacheKey, provento, CACHE_PROVENTOS); 
+                            proventosPool.push(provento);
 
-        renderizarProventos(proventosFormatados);
-        return proventosFormatados;
-
-    } catch (error) {
-        console.error("Erro ao buscar proventos (BFF):", error);
-        const areaProventos = document.getElementById('proventos-lista');
-        if (areaProventos) areaProventos.innerHTML = '<span class="text-xs text-red-500">Erro ao atualizar.</span>';
-        return [];
+                            const idUnico = provento.symbol + '_' + provento.paymentDate;
+                            const existe = proventosConhecidos.some(p => p.id === idUnico);
+                            
+                            if (!existe) {
+                                const novoProvento = { ...provento, processado: false, id: idUnico };
+                                // Adiciona ao DB e memória
+                                await supabaseDB.addProventoConhecido(novoProvento);
+                                proventosConhecidos.push(novoProvento);
+                            }
+                        }
+                    }));
+                }
+            } catch (error) {
+                console.error("Erro ao buscar novos proventos com Scraper:", error);
+            }
+        }
+        
+        return processarProventosScraper(proventosPool); 
     }
-}
 	
 	async function callScraperProximoProventoAPI(ticker) {
         const body = { mode: 'proximo_provento', payload: { ticker } };
@@ -4081,11 +4071,7 @@ async function handleMostrarDetalhes(symbol) {
     
     // --- 1. INJEÇÃO DO ÍCONE ---
     const iconContainer = document.getElementById('detalhes-icone-container');
-    const sigla = symbol.substring(0, 2); // Ex: WE de WEGE3
-    
-    // Define se é Ação ou FII para lógica visual
-    const ehAcao = isAcao(symbol);
-    const ehFII = isFII(symbol);
+    const sigla = symbol.substring(0, 2);
     
     if (iconContainer) {
         iconContainer.innerHTML = `
@@ -4102,10 +4088,11 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // Reset botões período
+    // --- 2. CORES DOS BOTÕES (NEUTRO ABSOLUTO) ---
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
+        // Fundo preto puro, borda cinza escura neutra, texto cinza neutro
         btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
             isActive 
             ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
@@ -4113,8 +4100,7 @@ async function handleMostrarDetalhes(symbol) {
         }`;
     });
     
-    // Busca Preço (Brapi funciona para ambos)
-    const tickerParaApi = ehFII ? `${symbol}.SA` : symbol;
+    const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
     
@@ -4124,6 +4110,7 @@ async function handleMostrarDetalhes(symbol) {
             precoData = data.results?.[0];
             const isAberto = isB3Open();
             const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
+            
             if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, duracao); 
             else throw new Error(precoData?.error || 'Ativo não encontrado');
         } catch (e) { 
@@ -4135,13 +4122,8 @@ async function handleMostrarDetalhes(symbol) {
     let fundamentos = {};
     let nextProventoData = null;
 
-    // Busca Fundamentos e Dividendos (Ambos usam o scraper agora)
-    if (ehFII || ehAcao) {
-        // Se for FII ou Ação, buscamos histórico e fundamentos
-        if (ehFII) detalhesHistoricoContainer.classList.remove('hidden'); // FII mostra gráfico de proventos sempre
-        // Ações mostram gráfico apenas se tiverem histórico (verificaremos depois)
-        
-        // Dispara fetch do gráfico em background
+    if (isFII(symbol)) {
+        detalhesHistoricoContainer.classList.remove('hidden'); 
         fetchHistoricoScraper(symbol);
         
         try {
@@ -4152,7 +4134,11 @@ async function handleMostrarDetalhes(symbol) {
             fundamentos = fundData || {};
             nextProventoData = provData;
         } catch (e) { console.error("Erro dados extras", e); }
-    } 
+    } else {
+        try {
+            fundamentos = await callScraperFundamentosAPI(symbol) || {};
+        } catch(e) {}
+    }
     
     detalhesLoading.classList.add('hidden');
 
@@ -4186,7 +4172,7 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // Card de Proximo Provento
+        // --- 3. CORREÇÃO DA LINHA DO PROVENTO ---
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
@@ -4202,6 +4188,7 @@ async function handleMostrarDetalhes(symbol) {
             const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
             const textClass = isFuturo ? "text-green-400" : "text-[#666666]";
 
+            // AQUI: border-b border-[#2C2C2E] (Cinza Neutro, sem azul)
             proximoProventoHtml = `
                 <div class="w-full p-3 rounded-2xl border ${borderClass} flex flex-col gap-2 shadow-sm">
                     <div class="flex justify-between items-center border-b border-[#2C2C2E] pb-2 mb-1">
@@ -4222,114 +4209,70 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // ================== LÓGICA DE EXIBIÇÃO DIFERENCIADA ==================
+// --- INICIO DA MODIFICAÇÃO PARA AÇÕES ---
+        const ehFII = isFII(symbol); // Usa o novo helper
+        const ehAcao = isAcao(symbol);
+
+        const dados = { 
+            pvp: fundamentos.pvp || '-', 
+            dy: fundamentos.dy || '-', 
+            pl: fundamentos.pl || '-',      // Novo: Preço sobre Lucro
+            roe: fundamentos.roe || '-',    // Novo: Return on Equity
+            segmento: fundamentos.segmento || '-', 
+            vacancia: fundamentos.vacancia || '-', 
+            vp_cota: fundamentos.vp_cota || '-', 
+            liquidez: fundamentos.liquidez || '-', 
+            val_mercado: fundamentos.val_mercado || '-', 
+            ultimo_rendimento: fundamentos.ultimo_rendimento || '-', 
+            patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
+            variacao_12m: fundamentos.variacao_12m || '-',
+            cnpj: fundamentos.cnpj || '-', 
+            num_cotistas: fundamentos.num_cotistas || '-', 
+            tipo_gestao: fundamentos.tipo_gestao || '-',
+            prazo_duracao: fundamentos.prazo_duracao || '-', 
+            taxa_adm: fundamentos.taxa_adm || '-',           
+            cotas_emitidas: fundamentos.cotas_emitidas || '-' 
+        };
         
-        let indicadoresHtml = '';
-        let listaDadosHtml = '';
-        const renderRow = (label, value) => `
-            <div class="flex justify-between items-center py-3.5 border-b border-[#2C2C2E] last:border-0">
-                <span class="text-sm text-[#888888] font-medium">${label}</span>
-                <span class="text-sm font-semibold text-[#e5e5e5] text-right max-w-[60%] truncate">${value || '-'}</span>
+        // Lógica de cor para variação de 12 meses
+        let corVar12m = 'text-[#888888]'; let icon12m = '';
+        if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
+            corVar12m = 'text-red-500'; icon12m = arrowDown;
+        } else if (dados.variacao_12m !== '0.00%' && dados.variacao_12m !== '-') {
+            corVar12m = 'text-green-500'; icon12m = arrowUp;
+        }
+
+        // Função auxiliar para criar card de indicador condicional
+        const renderStatCard = (label, value, colorClass = 'text-white') => `
+            <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">${label}</span>
+                <span class="text-lg font-bold ${colorClass}">${value}</span>
             </div>
         `;
 
+        // Define quais cards mostrar baseado no tipo de ativo
+        let cardsIndicadoresHtml = '';
+        
         if (ehAcao) {
-            // --- LAYOUT DE AÇÕES ---
-            // Destaques: P/L, P/VP, ROE
-            indicadoresHtml = `
-                <div class="grid grid-cols-3 gap-3 w-full">
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/L</span>
-                        <span class="text-lg font-bold text-white">${fundamentos.pl || '-'}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                        <span class="text-lg font-bold text-white">${fundamentos.pvp || '-'}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">ROE</span>
-                        <span class="text-lg font-bold text-green-400">${fundamentos.roe || '-'}</span>
-                    </div>
-                </div>
+            // Layout para AÇÕES: P/L | P/VP | ROE
+            cardsIndicadoresHtml = `
+                ${renderStatCard('P/L', dados.pl, 'text-blue-400')}
+                ${renderStatCard('P/VP', dados.pvp, 'text-white')}
+                ${renderStatCard('ROE', dados.roe, 'text-green-400')}
             `;
-            
-            listaDadosHtml = `
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
-                    ${renderRow('DY (12m)', fundamentos.dy)}
-                    ${renderRow('Margem Líquida', fundamentos.margem_liquida)}
-                    ${renderRow('Dív. Líq / EBITDA', fundamentos.divida_liquida_ebitda)}
-                    ${renderRow('LPA', fundamentos.lpa)}
-                    ${renderRow('VPA', fundamentos.vpa || fundamentos.vp_cota)}
-                    ${renderRow('Valor de Mercado', fundamentos.val_mercado)}
-                    ${renderRow('Liquidez Diária', fundamentos.liquidez)}
-                </div>
-                
-                <h3 class="text-sm font-bold text-[#666666] uppercase tracking-wider mb-1 mt-2 ml-1">Sobre a Empresa</h3>
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
-                    ${renderRow('Setor/Segmento', fundamentos.segmento)}
-                    ${renderRow('Papel', symbol)}
-                    ${renderRow('Cotação', formatBRL(precoData.regularMarketPrice))}
-                </div>
-            `;
-
-            // Mostra gráfico de proventos para ação também (se tiver dados)
-            detalhesHistoricoContainer.classList.remove('hidden');
-
         } else {
-            // --- LAYOUT PADRÃO (FIIs) ---
-            // Destaques: DY, P/VP, Últ. Rend
-            indicadoresHtml = `
-                <div class="grid grid-cols-3 gap-3 w-full">
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                        <span class="text-lg font-bold text-purple-400">${fundamentos.dy || '-'}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                        <span class="text-lg font-bold text-white">${fundamentos.pvp || '-'}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
-                        <span class="text-lg font-bold text-green-400">${fundamentos.ultimo_rendimento || '-'}</span>
-                    </div>
-                </div>
-            `;
-            
-            listaDadosHtml = `
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
-                    ${renderRow('Liquidez Diária', fundamentos.liquidez)}
-                    ${renderRow('Patrimônio Líquido', fundamentos.patrimonio_liquido)}
-                    ${renderRow('VP por Cota', fundamentos.vp_cota)}
-                    ${renderRow('Valor de Mercado', fundamentos.val_mercado)}
-                    ${renderRow('Vacância', fundamentos.vacancia)}
-                    <div class="flex justify-between items-center py-3.5 border-b border-[#2C2C2E]">
-                        <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
-                        <span class="text-sm font-bold text-[#e5e5e5] text-right flex items-center gap-1">
-                            ${fundamentos.variacao_12m || '-'}
-                        </span>
-                    </div>
-                </div>
-                
-                <h3 class="text-sm font-bold text-[#666666] uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
-                    ${renderRow('Segmento', fundamentos.segmento)}
-                    ${renderRow('Tipo de Fundo', fundamentos.tipo_fundo)}
-                    ${renderRow('Mandato', fundamentos.mandato)}
-                    ${renderRow('Gestão', fundamentos.tipo_gestao)}
-                    ${renderRow('Prazo', fundamentos.prazo_duracao)}
-                    ${renderRow('Taxa Adm.', fundamentos.taxa_adm)}
-                    ${renderRow('Cotistas', fundamentos.num_cotistas)}
-                    ${renderRow('Cotas Emitidas', fundamentos.cotas_emitidas)}
-                    <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm text-[#888888] font-medium">CNPJ</span>
-                        <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${fundamentos.cnpj || '-'}</span>
-                    </div>
-                </div>
+            // Layout para FIIs: DY | P/VP | Últ. Rend
+            cardsIndicadoresHtml = `
+                ${renderStatCard('DY (12m)', dados.dy, 'text-purple-400')}
+                ${renderStatCard('P/VP', dados.pvp, 'text-white')}
+                ${renderStatCard('Últ. Rend.', dados.ultimo_rendimento, 'text-green-400')}
             `;
         }
 
+        // Renderiza o HTML final
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
+                
                 <div class="text-center pb-4 pt-2">
                     <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
                     <span class="text-lg font-bold ${variacaoCor} mt-1 flex items-center justify-center gap-0.5 tracking-tight">
@@ -4337,12 +4280,50 @@ async function handleMostrarDetalhes(symbol) {
                         ${formatPercent(precoData.regularMarketChangePercent)} Hoje
                     </span>
                 </div>
+
                 ${userPosHtml}
+                
                 ${proximoProventoHtml} 
-                ${indicadoresHtml}
-                ${listaDadosHtml}
+
+                <div class="grid grid-cols-3 gap-3 w-full">
+                    ${cardsIndicadoresHtml}
+                </div>
+
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                    ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
+                    ${renderRow('VP por Cota', dados.vp_cota)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                    ${ehFII ? renderRow('Vacância', dados.vacancia) : ''} <div class="flex justify-between items-center py-3.5">
+                        <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
+                        <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
+                            ${icon12m} ${dados.variacao_12m}
+                        </span>
+                    </div>
+                </div>
+                
+                <h3 class="text-sm font-bold text-[#666666] uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
+                
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
+                    ${renderRow('Segmento', dados.segmento)}
+                    
+                    ${ehFII ? renderRow('Tipo de Fundo', dados.tipo_fundo) : ''}
+                    ${ehFII ? renderRow('Mandato', dados.mandato) : ''}
+                    ${ehFII ? renderRow('Gestão', dados.tipo_gestao) : ''}
+                    ${ehFII ? renderRow('Prazo', dados.prazo_duracao) : ''}
+                    ${ehFII ? renderRow('Taxa Adm.', dados.taxa_adm) : ''}
+                    ${ehFII ? renderRow('Cotistas', dados.num_cotistas) : ''}
+                    
+                    ${renderRow(ehAcao ? 'Ações Emitidas' : 'Cotas Emitidas', dados.cotas_emitidas)}
+                    
+                    <div class="flex justify-between items-center py-3.5">
+                        <span class="text-sm text-[#888888] font-medium">CNPJ</span>
+                        <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
+                    </div>
+                </div>
             </div>
         `;
+        // --- FIM DA MODIFICAÇÃO ---
 
     } else {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
@@ -4351,6 +4332,15 @@ async function handleMostrarDetalhes(symbol) {
     renderizarTransacoesDetalhes(symbol);
     atualizarIconeFavorito(symbol);
 }
+
+
+// Substitua a função inteira em app.js
+
+// EM app.js - Substitua a função renderizarTransacoesDetalhes por esta versão:
+
+// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
+
+// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
 
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');

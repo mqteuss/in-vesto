@@ -690,88 +690,100 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 function updateThemeUI() {
-        const isLight = localStorage.getItem('vesto_theme') === 'light';
-        const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const isLight = localStorage.getItem('vesto_theme') === 'light';
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    
+    // 1. Alterna classe no Body
+    if (isLight) {
+        document.body.classList.add('light-mode');
+        if (metaTheme) metaTheme.setAttribute('content', '#f2f2f7');
         
-        // 1. Configurações Globais do Chart.js
-        if (isLight) {
-            document.body.classList.add('light-mode');
-            if (metaTheme) metaTheme.setAttribute('content', '#f9fafb');
-            
-            Chart.defaults.color = '#374151'; 
-            Chart.defaults.borderColor = 'transparent'; // Remove bordas globais
-        } else {
-            document.body.classList.remove('light-mode');
-            if (metaTheme) metaTheme.setAttribute('content', '#000000');
-            
-            Chart.defaults.color = '#9ca3af'; 
-            Chart.defaults.borderColor = 'transparent'; // Remove bordas globais
-        }
-
-        // Ajuste dos botões de Toggle de Tema
-        if (toggleThemeBtn && themeToggleKnob) {
-            if (isLight) {
-                toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-purple-600";
-                themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6";
-            } else {
-                toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-gray-700";
-                themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1";
-            }
-        }
-
-        // 2. Função para forçar atualização profunda nas instâncias já criadas
-        const updateChartColors = (chart) => {
-            if (!chart || !chart.options) return;
-
-            const textColor = isLight ? '#374151' : '#9ca3af';
-            const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(28, 28, 30, 0.95)';
-            const tooltipText = isLight ? '#1f2937' : '#f3f4f6';
-            const tooltipBorder = isLight ? '#e5e7eb' : '#374151';
-            const doughnutBorder = isLight ? '#ffffff' : '#000000'; 
-
-            // REMOVE AS LINHAS DE GRADE (GRID LINES)
-            if (chart.options.scales) {
-                Object.keys(chart.options.scales).forEach(key => {
-                    const scale = chart.options.scales[key];
-                    if (scale.grid) {
-                        scale.grid.display = false;    // Desliga a grade
-                        scale.grid.drawBorder = false; // Desliga a linha do eixo
-                        scale.grid.color = 'transparent';
-                    }
-                    if (scale.ticks) scale.ticks.color = textColor;
-                });
-            }
-
-            // Atualiza Legendas
-            if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
-                chart.options.plugins.legend.labels.color = textColor;
-            }
-
-            // Atualiza Tooltips
-            if (chart.options.plugins && chart.options.plugins.tooltip) {
-                chart.options.plugins.tooltip.backgroundColor = tooltipBg;
-                chart.options.plugins.tooltip.titleColor = tooltipText;
-                chart.options.plugins.tooltip.bodyColor = tooltipText;
-                chart.options.plugins.tooltip.borderColor = tooltipBorder;
-                chart.options.plugins.tooltip.borderWidth = 1;
-            }
-
-            // Borda do Gráfico de Rosca
-            if (chart.config.type === 'doughnut') {
-                if (chart.data.datasets[0]) {
-                    chart.data.datasets[0].borderColor = doughnutBorder;
-                }
-            }
-
-            chart.update();
-        };
-
-        // 3. Aplica a correção em todos os gráficos ativos
-        if (typeof alocacaoChartInstance !== 'undefined') updateChartColors(alocacaoChartInstance);
-        if (typeof patrimonioChartInstance !== 'undefined') updateChartColors(patrimonioChartInstance);
-        if (typeof historicoChartInstance !== 'undefined') updateChartColors(historicoChartInstance);
-        if (typeof detalhesChartInstance !== 'undefined') updateChartColors(detalhesChartInstance);
+        // Cores globais do Chart.js para Light Mode
+        Chart.defaults.color = '#4b5563'; // Gray 600
+        Chart.defaults.borderColor = 'rgba(0,0,0,0.05)'; // Linhas de grade sutis
+    } else {
+        document.body.classList.remove('light-mode');
+        if (metaTheme) metaTheme.setAttribute('content', '#000000');
+        
+        // Cores globais do Chart.js para Dark Mode
+        Chart.defaults.color = '#9ca3af'; // Gray 400
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
     }
+
+    // Toggle Botão Visual
+    if (toggleThemeBtn && themeToggleKnob) {
+        if (isLight) {
+            toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-purple-600";
+            themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6 shadow-sm";
+        } else {
+            toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-gray-700";
+            themeToggleKnob.className = "inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1";
+        }
+    }
+
+    // 2. Função para forçar atualização profunda nas instâncias já criadas
+    const updateChartColors = (chart) => {
+        if (!chart || !chart.options) return;
+
+        const textColor = isLight ? '#374151' : '#9ca3af';
+        const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(28, 28, 30, 0.95)';
+        const tooltipText = isLight ? '#1f2937' : '#f3f4f6';
+        const tooltipBorder = isLight ? '#e5e7eb' : '#374151';
+        
+        // Borda do Donut: Branco no light mode para "cortar" as fatias, Preto no dark
+        const doughnutBorder = isLight ? '#ffffff' : '#141414'; 
+
+        if (chart.options.scales) {
+            Object.keys(chart.options.scales).forEach(key => {
+                const scale = chart.options.scales[key];
+                if (scale.ticks) scale.ticks.color = textColor;
+                if (scale.grid) {
+                    // Remove grade no eixo X geralmente, mantem sutil no Y
+                    scale.grid.color = 'transparent'; 
+                }
+            });
+        }
+
+        // Atualiza Legendas
+        if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+            chart.options.plugins.legend.labels.color = textColor;
+        }
+
+        // Atualiza Tooltips (Sombra e Contraste)
+        if (chart.options.plugins && chart.options.plugins.tooltip) {
+            chart.options.plugins.tooltip.backgroundColor = tooltipBg;
+            chart.options.plugins.tooltip.titleColor = tooltipText;
+            chart.options.plugins.tooltip.bodyColor = tooltipText;
+            chart.options.plugins.tooltip.borderColor = tooltipBorder;
+            chart.options.plugins.tooltip.borderWidth = 1;
+            
+            // Adiciona sombra no tooltip light mode via CSS (ChartJS não suporta shadow nativo fácil, mas o bg ajuda)
+        }
+
+        // Borda do Gráfico de Rosca (Alocação)
+        if (chart.config.type === 'doughnut') {
+            if (chart.data.datasets[0]) {
+                chart.data.datasets[0].borderColor = doughnutBorder;
+                chart.data.datasets[0].borderWidth = 2;
+            }
+        }
+        
+        // Cores do Gráfico de Patrimônio (Linha)
+        if (chart.config.type === 'line' && chart.data.datasets.length > 1) {
+             // Linha de "Investido" (tracejada) precisa escurecer no light mode
+             const colorInvestido = isLight ? '#6b7280' : '#525252';
+             chart.data.datasets[1].borderColor = colorInvestido;
+        }
+
+        chart.update();
+    };
+
+    // 3. Aplica a correção em todos os gráficos ativos
+    if (typeof alocacaoChartInstance !== 'undefined') updateChartColors(alocacaoChartInstance);
+    if (typeof patrimonioChartInstance !== 'undefined') updateChartColors(patrimonioChartInstance);
+    if (typeof historicoChartInstance !== 'undefined') updateChartColors(historicoChartInstance);
+    if (typeof detalhesChartInstance !== 'undefined') updateChartColors(detalhesChartInstance);
+}
 
     updateThemeUI();
 

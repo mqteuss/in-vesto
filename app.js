@@ -189,8 +189,25 @@ function toggleDrawer(symbol) {
     }
 }
 
-// --- CRIAR ITEM DA CARTEIRA (TICKETS NO PROVENTO) ---
-// --- CRIAR ITEM DA CARTEIRA (CORRIGIDO) ---
+// --- FUNÇÃO DE LAZY LOADING (Carrega o Excel só quando precisa) ---
+function loadSheetJS() {
+    return new Promise((resolve, reject) => {
+        // Se a biblioteca já existe na janela, não baixa de novo
+        if (typeof XLSX !== 'undefined') {
+            return resolve();
+        }
+
+        const script = document.createElement('script');
+        script.src = "https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js";
+        script.onload = () => {
+            console.log("Biblioteca XLSX carregada com sucesso.");
+            resolve();
+        };
+        script.onerror = () => reject(new Error("Falha ao baixar a biblioteca Excel. Verifique sua conexão."));
+        document.body.appendChild(script);
+    });
+}
+
 function criarCardElemento(ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -4780,21 +4797,29 @@ periodoSelectorGroup.addEventListener('click', (e) => {
 
 // --- EM app.js (Substitua toda a parte do exportCsvBtn) ---
 
-    if (exportCsvBtn) {
-        exportCsvBtn.addEventListener('click', () => {
+if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', async () => { // Note o 'async' aqui
             if (!transacoes || transacoes.length === 0) {
                 showToast("Sem dados para exportar.");
                 return;
             }
 
-            // Muda o texto do botão para feedback
-            const originalText = exportCsvBtn.querySelector('.settings-label').textContent;
-            exportCsvBtn.querySelector('.settings-label').textContent = "Gerando Excel...";
+            const labelEl = exportCsvBtn.querySelector('.settings-label');
+            const textoOriginal = labelEl.textContent;
+            
+            // Feedback Visual 1: Carregando a Lib
+            labelEl.textContent = "Carregando lib...";
+            exportCsvBtn.disabled = true;
 
             try {
-                // 1. Prepara os dados no formato exato da B3
+                // 1. Baixa a biblioteca agora (se já não tiver baixado)
+                await loadSheetJS();
+
+                // Feedback Visual 2: Gerando arquivo
+                labelEl.textContent = "Gerando Excel...";
+
+                // 2. Prepara os dados (Lógica original mantida)
                 const dadosParaExportar = transacoes.map(t => {
-                    // Formata Data (DD/MM/AAAA)
                     let dataFormatada = '';
                     try {
                         const dataObj = new Date(t.date);
@@ -4809,20 +4834,19 @@ periodoSelectorGroup.addEventListener('click', (e) => {
                     return {
                         "Data do Negócio": dataFormatada,
                         "Tipo de Movimentação": t.type === 'sell' ? 'Venda' : 'Compra',
-                        "Mercado": "Mercado à Vista", // Coluna padrão B3 (Opcional, mas ajuda a ficar igual)
+                        "Mercado": "Mercado à Vista",
                         "Código de Negociação": t.symbol,
                         "Quantidade": t.quantity,
                         "Preço": t.price,
-                        "Valor": t.quantity * t.price // Opcional, mas útil
+                        "Valor": t.quantity * t.price
                     };
                 });
 
-                // 2. Cria a planilha usando a biblioteca SheetJS (XLSX)
+                // 3. Cria o arquivo usando a biblioteca que acabamos de carregar
                 const worksheet = XLSX.utils.json_to_sheet(dadosParaExportar);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Negociações");
 
-                // 3. Gera o arquivo .xlsx e dispara o download
                 const dataHoje = new Date().toISOString().split('T')[0];
                 XLSX.writeFile(workbook, `vesto_backup_b3_${dataHoje}.xlsx`);
 
@@ -4830,32 +4854,44 @@ periodoSelectorGroup.addEventListener('click', (e) => {
 
             } catch (e) {
                 console.error("Erro ao exportar Excel:", e);
-                showToast("Erro ao gerar arquivo Excel.");
+                showToast("Erro: " + e.message);
             } finally {
-                // Restaura o texto do botão
-                exportCsvBtn.querySelector('.settings-label').textContent = originalText;
+                // Restaura o botão
+                labelEl.textContent = textoOriginal;
+                exportCsvBtn.disabled = false;
             }
         });
     }
 	
 	
-	const importExcelBtn = document.getElementById('import-excel-btn');
+const importExcelBtn = document.getElementById('import-excel-btn');
     const importExcelInput = document.getElementById('import-excel-input');
-	if (importExcelBtn && importExcelInput) {
+    
+    if (importExcelBtn && importExcelInput) {
         importExcelBtn.addEventListener('click', () => {
             importExcelInput.click();
         });
 
-        importExcelInput.addEventListener('change', async (e) => {
+        importExcelInput.addEventListener('change', async (e) => { // Note o 'async'
             const file = e.target.files[0];
             if (!file) return;
 
-            const labelOriginal = importExcelBtn.querySelector('.settings-label').textContent;
-            importExcelBtn.querySelector('.settings-label').innerHTML = `<span class="loader-sm"></span> Lendo arquivo...`;
+            const labelEl = importExcelBtn.querySelector('.settings-label');
+            const textoOriginal = labelEl.textContent;
+            
+            // Trava o botão
             importExcelBtn.disabled = true;
 
             try {
+                // 1. Feedback e Carregamento da Lib
+                labelEl.innerHTML = `<span class="loader-sm"></span> Carregando lib...`;
+                await loadSheetJS();
+
+                // 2. Feedback de Leitura
+                labelEl.innerHTML = `<span class="loader-sm"></span> Lendo arquivo...`;
+
                 const data = await file.arrayBuffer();
+                // Agora é seguro chamar o XLSX
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'dd/mm/yyyy' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
@@ -4867,8 +4903,7 @@ periodoSelectorGroup.addEventListener('click', (e) => {
                 let importadosCount = 0;
                 let errosCount = 0;
 
-// ... (dentro do importExcelInput.addEventListener) ...
-
+                // Lógica original de processamento das linhas
                 for (const row of jsonData) {
                     const dateRaw = row['Data do Negócio'] || row['Data'] || row['Date'];
                     const tickerRaw = row['Código de Negociação'] || row['Ativo'] || row['Ticker'];
@@ -4883,38 +4918,34 @@ periodoSelectorGroup.addEventListener('click', (e) => {
                             
                             let type = 'buy';
                             const typeStr = typeRaw ? typeRaw.toString().toLowerCase() : 'compra';
-                            if (typeStr.includes('vend') || typeStr.includes('sell')) {
-                                type = 'sell';
-                            }
+                            if (typeStr.includes('vend') || typeStr.includes('sell')) type = 'sell';
 
+                            // Tratamento de Data
                             let dataISO;
                             if (dateRaw && typeof dateRaw === 'string' && dateRaw.includes('/')) {
                                 const parts = dateRaw.split('/'); 
                                 dataISO = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00`).toISOString();
+                            } else if (dateRaw instanceof Date) {
+                                dataISO = dateRaw.toISOString();
                             } else {
                                 dataISO = new Date().toISOString(); 
                             }
 
-                            // --- CORREÇÃO DO PREÇO AQUI ---
+                            // Tratamento de Números
                             const cleanNumber = (val) => {
                                 if (typeof val === 'number') return val;
                                 if (typeof val === 'string') {
                                     let v = val.replace('R$', '').trim();
-                                    // Se tiver vírgula (ex: "9,25"), troca vírgula por ponto e remove ponto de milhar
-                                    if (v.includes(',')) {
-                                        return parseFloat(v.replace(/\./g, '').replace(',', '.'));
-                                    }
-                                    // Se não tiver vírgula (ex: "9.25"), lê direto
+                                    if (v.includes(',') && v.includes('.')) v = v.replace(/\./g, '').replace(',', '.'); // 1.200,50 -> 1200.50
+                                    else if (v.includes(',')) v = v.replace(',', '.');
                                     return parseFloat(v);
                                 }
                                 return 0;
                             };
-                            // ------------------------------
 
                             const qtd = parseInt(cleanNumber(qtdRaw));
                             const preco = parseFloat(cleanNumber(priceRaw));
 
-                            // Validação extra para evitar importar lixo
                             if (qtd > 0 && preco >= 0 && !isNaN(preco)) {
                                 const novaTransacao = {
                                     id: 'tx_' + Date.now() + Math.random().toString(36).substr(2, 5),
@@ -4929,7 +4960,6 @@ periodoSelectorGroup.addEventListener('click', (e) => {
                                 transacoes.push(novaTransacao);
                                 importadosCount++;
                             }
-
                         } catch (err) {
                             console.error("Erro na linha:", row, err);
                             errosCount++;
@@ -4939,6 +4969,7 @@ periodoSelectorGroup.addEventListener('click', (e) => {
 
                 if (importadosCount > 0) {
                     showToast(`${importadosCount} negociações importadas!`, 'success');
+                    // Atualiza tudo
                     saldoCaixa = 0; 
                     await salvarCaixa();
                     mesesProcessados = [];
@@ -4952,7 +4983,8 @@ periodoSelectorGroup.addEventListener('click', (e) => {
                 console.error("Erro na importação:", e);
                 showToast("Erro ao ler arquivo: " + e.message);
             } finally {
-                importExcelBtn.querySelector('.settings-label').textContent = 'Importar B3/Excel';
+                // Restaura o botão
+                labelEl.textContent = textoOriginal;
                 importExcelBtn.disabled = false;
                 importExcelInput.value = ''; 
             }

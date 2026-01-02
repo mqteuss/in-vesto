@@ -127,7 +127,36 @@ const formatDateToInput = (dateString) => {
     }
 };
 
-const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
+// --- INÍCIO DA SUBSTITUIÇÃO ---
+
+// 1. Nova função inteligente que sabe a diferença entre AÇÃO (3,4) e FII (11,12)
+const getAssetType = (symbol) => {
+    if (!symbol) return 'UNKNOWN';
+    const clean = symbol.toUpperCase().replace('.SA', '');
+    
+    // Verifica se termina com números
+    if (clean.match(/\d$/)) { 
+        // Extrai o final numérico (ex: PETR4 -> 4)
+        const final = parseInt(clean.slice(-2).replace(/^\D+/g, '')); 
+        
+        // Final 3, 4, 5, 6 -> São Ações
+        if ([3, 4, 5, 6].includes(final)) return 'ACAO'; 
+        
+        // Final 11, 12 -> Tratamos como FIIs (Units de ações tbm caem aqui, mas ok por enquanto)
+        if ([11, 12].includes(final)) return 'FII'; 
+    }
+    
+    // Se não tiver número no fim (ex: Tickers americanos) ou for desconhecido -> Ações
+    return 'ACAO'; 
+};
+
+// 2. A função isFII agora pergunta para a função inteligente acima
+const isFII = (symbol) => getAssetType(symbol) === 'FII';
+
+// 3. Helper visual para escrever "ações" ou "cotas" na tela
+const getUnitLabel = (symbol) => isFII(symbol) ? 'cotas' : 'ações';
+
+// --- FIM DA SUBSTITUIÇÃO ---
 
 function parseMesAno(mesAnoStr) { 
     try {
@@ -1883,7 +1912,7 @@ function renderizarNoticias(articles) {
             const drawerId = `news-drawer-${safeLabel}-${index}`;
             
             // Tickers
-            const tickerRegex = /[A-Z]{4}11/g;
+const tickerRegex = /[A-Z]{4}(3|4|11)/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
             if (foundTickers.length > 0) {
@@ -4241,6 +4270,105 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
+// --- EM app.js: Dentro da função handleMostrarDetalhes(symbol) ---
+
+        // 1. Preparação dos dados (Unifica FII e Ações)
+        const dados = { 
+            // Comuns
+            pvp: fundamentos.pvp || '-', 
+            dy: fundamentos.dy || '-', 
+            val_mercado: fundamentos.val_mercado || '-', 
+            variacao_12m: fundamentos.variacao_12m || '-',
+            liquidez: fundamentos.liquidez || '-', 
+            
+            // FIIs
+            segmento: fundamentos.segmento || '-', 
+            tipo_fundo: fundamentos.tipo_fundo || '-',    
+            vacancia: fundamentos.vacancia || '-', 
+            vp_cota: fundamentos.vp_cota || '-', 
+            ultimo_rendimento: fundamentos.ultimo_rendimento || '-', 
+            patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
+            tipo_gestao: fundamentos.tipo_gestao || '-',
+            
+            // Ações (Novos)
+            pl: fundamentos.pl || '-',
+            roe: fundamentos.roe || '-',
+            margem_liquida: fundamentos.margem_liquida || '-',
+            lpa: fundamentos.lpa || '-',
+            divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-',
+            ev_ebitda: fundamentos.ev_ebitda || '-'
+        };
+        
+        // Helper para linhas da tabela
+        const renderRow = (label, value, isLast = false) => `
+            <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
+                <span class="text-sm text-[#888888] font-medium">${label}</span>
+                <span class="text-sm font-semibold text-[#e5e5e5] text-right max-w-[60%] truncate">${value}</span>
+            </div>
+        `;
+
+        // 2. Lógica de Decisão: HTML de FII vs HTML de Ação
+        let indicadoresGridHtml = '';
+        let tabelaDadosHtml = '';
+
+        if (isFII(symbol)) {
+            // --- LAYOUT FII (Mantido) ---
+            indicadoresGridHtml = `
+                <div class="grid grid-cols-3 gap-3 w-full">
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
+                        <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
+                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
+                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
+                    </div>
+                </div>`;
+
+            tabelaDadosHtml = `
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                    ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
+                    ${renderRow('VP por Cota', dados.vp_cota)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                    ${renderRow('Vacância', dados.vacancia)}
+                    ${renderRow('Segmento', dados.segmento)}
+                    ${renderRow('Gestão', dados.tipo_gestao, true)}
+                </div>`;
+        } else {
+            // --- LAYOUT AÇÃO (Novo) ---
+            indicadoresGridHtml = `
+                <div class="grid grid-cols-3 gap-3 w-full">
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/L</span>
+                        <span class="text-lg font-bold text-white">${dados.pl}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
+                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">ROE</span>
+                        <span class="text-lg font-bold text-purple-400">${dados.roe}</span>
+                    </div>
+                </div>`;
+
+            tabelaDadosHtml = `
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
+                    ${renderRow('DY (12m)', dados.dy)}
+                    ${renderRow('Margem Líquida', dados.margem_liquida)}
+                    ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
+                    ${renderRow('LPA', dados.lpa)}
+                    ${renderRow('EV / EBITDA', dados.ev_ebitda)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado, true)}
+                </div>`;
+        }
+
+        // 3. Montagem Final do HTML
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
                 
@@ -4256,58 +4384,19 @@ async function handleMostrarDetalhes(symbol) {
                 
                 ${proximoProventoHtml} 
 
-                <div class="grid grid-cols-3 gap-3 w-full">
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                        <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
-                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
-                    </div>
-                </div>
+                ${indicadoresGridHtml}
 
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
-                    ${renderRow('Liquidez Diária', dados.liquidez)}
-                    ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
-                    ${renderRow('VP por Cota', dados.vp_cota)}
-                    ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${renderRow('Vacância', dados.vacancia)}
-                    <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
-                        <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
-                            ${icon12m} ${dados.variacao_12m}
-                        </span>
-                    </div>
-                </div>
+                ${tabelaDadosHtml}
                 
-                <h3 class="text-sm font-bold text-[#666666] uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
-                
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
-                    ${renderRow('Segmento', dados.segmento)}
-                    ${renderRow('Tipo de Fundo', dados.tipo_fundo)}
-                    ${renderRow('Mandato', dados.mandato)}
-                    ${renderRow('Gestão', dados.tipo_gestao)}
-                    ${renderRow('Prazo', dados.prazo_duracao)}
-                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
-                    ${renderRow('Cotistas', dados.num_cotistas)}
-                    ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
-                    <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm text-[#888888] font-medium">CNPJ</span>
-                        <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
-                    </div>
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4 py-3 flex justify-between items-center">
+                    <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
+                    <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
+                        ${icon12m} ${dados.variacao_12m}
+                    </span>
                 </div>
 
             </div>
         `;
-
-    } else {
-        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
-    }
     
     renderizarTransacoesDetalhes(symbol);
     atualizarIconeFavorito(symbol);

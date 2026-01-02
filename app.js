@@ -3219,79 +3219,89 @@ async function renderizarCarteira() {
         return Math.max(3, mesesDiff + 2);
     }
 
-    // --- FUNÇÃO PRINCIPAL ATUALIZADA ---
-// --- OTIMIZAÇÃO: Leitura de Cache em Paralelo ---
 async function buscarProventosFuturos(force = false) {
-    // ALTERAÇÃO: Agora busca FIIs OU Ações para processar dividendos
-    const ativosParaBuscar = carteiraCalculada
-        .filter(a => isFII(a.symbol) || isAcao(a.symbol)) 
-        .map(a => a.symbol);
-        
-    if (ativosParaBuscar.length === 0) return [];
-
-        // Arrays thread-safe (JS é single-thread, então push é seguro)
-        const proventosPool = [];
-        const fiisParaBuscar = [];
-
-        // 1. Dispara todas as verificações de cache simultaneamente
-        await Promise.all(fiiNaCarteira.map(async (symbol) => {
-            const cacheKey = `provento_ia_${symbol}`;
-            
-            if (force) {
-                // Não precisamos esperar o delete para continuar a lógica,
-                // mas mantemos o await para garantir consistência se necessário.
-                // Como são operações independentes, o Promise.all gerencia o paralelismo.
-                await vestoDB.delete('apiCache', cacheKey);
-                await removerProventosConhecidos(symbol);
-            }
-            
-            // Tenta pegar do cache
-            const proventoCache = await getCache(cacheKey);
-            
-            if (proventoCache && !force) {
-                proventosPool.push(proventoCache);
-            } else {
-                // Se não tem cache, calcula o limite e marca para busca na API
-                const limiteCalculado = calcularLimiteMeses(symbol);
-                fiisParaBuscar.push({ 
-                    ticker: symbol, 
-                    limit: limiteCalculado 
-                });
-            }
-        }));
-        
-        // 2. Busca na API apenas o que faltou (Batch Request)
-        if (fiisParaBuscar.length > 0) {
-            try {
-                const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
-                
-                if (novosProventos && Array.isArray(novosProventos)) {
-                    // Salva os novos resultados no cache em paralelo também
-                    await Promise.all(novosProventos.map(async (provento) => {
-                        if (provento && provento.symbol && provento.paymentDate) {
-                            const cacheKey = `provento_ia_${provento.symbol}`;
-                            await setCache(cacheKey, provento, CACHE_PROVENTOS); 
-                            proventosPool.push(provento);
-
-                            const idUnico = provento.symbol + '_' + provento.paymentDate;
-                            const existe = proventosConhecidos.some(p => p.id === idUnico);
-                            
-                            if (!existe) {
-                                const novoProvento = { ...provento, processado: false, id: idUnico };
-                                // Adiciona ao DB e memória
-                                await supabaseDB.addProventoConhecido(novoProvento);
-                                proventosConhecidos.push(novoProvento);
-                            }
-                        }
-                    }));
-                }
-            } catch (error) {
-                console.error("Erro ao buscar novos proventos com Scraper:", error);
-            }
-        }
-        
-        return processarProventosScraper(proventosPool); 
+    if (!carteiraCalculada || carteiraCalculada.length === 0) {
+        renderizarProventos([]);
+        return [];
     }
+
+    // 1. Verifica cache (para não sobrecarregar o scraper)
+    const cacheKey = 'proventos_portfolio_full';
+    if (!force) {
+        const cached = await getCache(cacheKey);
+        if (cached) {
+            console.log("Usando cache de proventos");
+            renderizarProventos(cached);
+            return cached;
+        }
+    }
+
+    // 2. Filtra ativos: FIIs OU Ações
+    // (Anteriormente era apenas isFII, agora inclui isAcao)
+    const ativosParaBuscar = carteiraCalculada
+        .filter(a => isFII(a.symbol) || isAcao(a.symbol))
+        .map(a => a.symbol);
+
+    if (ativosParaBuscar.length === 0) {
+        renderizarProventos([]);
+        return [];
+    }
+
+    try {
+        // Notifica usuário que está atualizando
+        const areaProventos = document.getElementById('proventos-lista');
+        if (areaProventos) areaProventos.innerHTML = '<div class="loader-sm"></div><span class="text-xs text-gray-500 ml-2">Buscando dados...</span>';
+
+        // 3. Chamada ao Backend (BFF -> Scraper)
+        // Nota: O backend espera o campo "fiiList", então passamos nossos ativos nele.
+        const response = await fetch('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                mode: 'historico_portfolio', 
+                fiiList: ativosParaBuscar // <--- CORREÇÃO: Usamos a nova variável aqui
+            })
+        });
+
+        if (!response.ok) throw new Error('Falha ao buscar proventos');
+
+        const data = await response.json();
+        const historicoGeral = data.json || [];
+
+        // 4. Processamento dos dados
+        // Mapeia o histórico retornado para o formato esperado pelo app
+        const proventosFormatados = historicoGeral.map(item => {
+            const ativoCarteira = carteiraCalculada.find(k => k.symbol === item.symbol);
+            if (!ativoCarteira) return null;
+            
+            // item.paymentDate vem como "YYYY-MM-DD" do scraper
+            const dataPagamento = item.paymentDate; 
+            const valorPorCota = parseFloat(item.value);
+            const totalReceber = valorPorCota * ativoCarteira.quantity;
+
+            return {
+                symbol: item.symbol,
+                dataPagamento: dataPagamento,
+                valorPorCota: valorPorCota,
+                total: totalReceber,
+                type: item.type || 'Rendimento' // Scraper pode retornar 'JCP', 'Dividendo', etc.
+            };
+        }).filter(p => p !== null);
+
+        // Salva em cache (duração curta, ex: 1 hora)
+        await setCache(cacheKey, proventosFormatados, 3600 * 1000);
+
+        renderizarProventos(proventosFormatados);
+        return proventosFormatados;
+
+    } catch (error) {
+        console.error("Erro ao buscar proventos (BFF):", error);
+        // Em caso de erro, tenta limpar a interface ou mostrar msg discreta
+        const areaProventos = document.getElementById('proventos-lista');
+        if (areaProventos) areaProventos.innerHTML = '<span class="text-xs text-red-500">Erro ao atualizar.</span>';
+        return [];
+    }
+}
 	
 	async function callScraperProximoProventoAPI(ticker) {
         const body = { mode: 'proximo_provento', payload: { ticker } };

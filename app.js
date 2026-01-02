@@ -5103,27 +5103,32 @@ if (clearCacheBtn) {
         signupSubmitBtn.classList.remove('hidden');
     }
 
-    async function carregarDadosIniciais() {
-        try {
-            await carregarTransacoes();
-            await carregarPatrimonio();
-            await carregarCaixa();
-            await carregarProventosConhecidos();
-            await carregarHistoricoProcessado();
-            await carregarWatchlist(); 
-            
-            renderizarWatchlist(); 
-            
-            atualizarTodosDados(false); 
-            handleAtualizarNoticias(false); 
-            
-            setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
+async function carregarDadosIniciais() {
+    try {
+        // Dispara todas as requisições ao mesmo tempo
+        await Promise.all([
+            carregarTransacoes(),
+            carregarPatrimonio(),
+            carregarCaixa(),
+            carregarProventosConhecidos(),
+            carregarHistoricoProcessado(),
+            carregarWatchlist()
+        ]);
+        
+        // Renderiza a watchlist (leve)
+        renderizarWatchlist(); 
+        
+        // Inicia cálculos pesados e chamadas externas
+        atualizarTodosDados(false); 
+        handleAtualizarNoticias(false); 
+        
+        setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
 
-        } catch (e) {
-            console.error("Erro ao carregar dados iniciais:", e);
-            showToast("Falha ao carregar dados da nuvem.");
-        }
+    } catch (e) {
+        console.error("Erro ao carregar dados iniciais:", e);
+        showToast("Falha ao carregar dados da nuvem.");
     }
+}
 	
 	// --- LÓGICA DE NOTIFICAÇÕES PUSH ---
     

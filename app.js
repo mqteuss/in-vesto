@@ -127,36 +127,8 @@ const formatDateToInput = (dateString) => {
     }
 };
 
-// --- INÍCIO DA SUBSTITUIÇÃO ---
-
-// 1. Nova função inteligente que sabe a diferença entre AÇÃO (3,4) e FII (11,12)
-const getAssetType = (symbol) => {
-    if (!symbol) return 'UNKNOWN';
-    const clean = symbol.toUpperCase().replace('.SA', '');
-    
-    // Verifica se termina com números
-    if (clean.match(/\d$/)) { 
-        // Extrai o final numérico (ex: PETR4 -> 4)
-        const final = parseInt(clean.slice(-2).replace(/^\D+/g, '')); 
-        
-        // Final 3, 4, 5, 6 -> São Ações
-        if ([3, 4, 5, 6].includes(final)) return 'ACAO'; 
-        
-        // Final 11, 12 -> Tratamos como FIIs (Units de ações tbm caem aqui, mas ok por enquanto)
-        if ([11, 12].includes(final)) return 'FII'; 
-    }
-    
-    // Se não tiver número no fim (ex: Tickers americanos) ou for desconhecido -> Ações
-    return 'ACAO'; 
-};
-
-// 2. A função isFII agora pergunta para a função inteligente acima
-const isFII = (symbol) => getAssetType(symbol) === 'FII';
-
-// 3. Helper visual para escrever "ações" ou "cotas" na tela
-const getUnitLabel = (symbol) => isFII(symbol) ? 'cotas' : 'ações';
-
-// --- FIM DA SUBSTITUIÇÃO ---
+const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
+const isAcao = (symbol) => symbol && (['3','4','5','6'].some(end => symbol.endsWith(end)));
 
 function parseMesAno(mesAnoStr) { 
     try {
@@ -1912,7 +1884,7 @@ function renderizarNoticias(articles) {
             const drawerId = `news-drawer-${safeLabel}-${index}`;
             
             // Tickers
-const tickerRegex = /[A-Z]{4}(3|4|11)/g;
+            const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
             if (foundTickers.length > 0) {
@@ -3249,12 +3221,13 @@ async function renderizarCarteira() {
 
     // --- FUNÇÃO PRINCIPAL ATUALIZADA ---
 // --- OTIMIZAÇÃO: Leitura de Cache em Paralelo ---
-    async function buscarProventosFuturos(force = false) {
-        const fiiNaCarteira = carteiraCalculada
-            .filter(a => isFII(a.symbol))
-            .map(a => a.symbol);
-            
-        if (fiiNaCarteira.length === 0) return [];
+async function buscarProventosFuturos(force = false) {
+    // ALTERAÇÃO: Agora busca FIIs OU Ações para processar dividendos
+    const ativosParaBuscar = carteiraCalculada
+        .filter(a => isFII(a.symbol) || isAcao(a.symbol)) 
+        .map(a => a.symbol);
+        
+    if (ativosParaBuscar.length === 0) return [];
 
         // Arrays thread-safe (JS é single-thread, então push é seguro)
         const proventosPool = [];
@@ -4097,7 +4070,11 @@ async function handleMostrarDetalhes(symbol) {
     
     // --- 1. INJEÇÃO DO ÍCONE ---
     const iconContainer = document.getElementById('detalhes-icone-container');
-    const sigla = symbol.substring(0, 2);
+    const sigla = symbol.substring(0, 2); // Ex: WE de WEGE3
+    
+    // Define se é Ação ou FII para lógica visual
+    const ehAcao = isAcao(symbol);
+    const ehFII = isFII(symbol);
     
     if (iconContainer) {
         iconContainer.innerHTML = `
@@ -4114,7 +4091,7 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // --- 2. CORES DOS BOTÕES (NEUTRO ABSOLUTO) ---
+    // Reset botões período
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
@@ -4125,7 +4102,8 @@ async function handleMostrarDetalhes(symbol) {
         }`;
     });
     
-    const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
+    // Busca Preço (Brapi funciona para ambos)
+    const tickerParaApi = ehFII ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
     
@@ -4135,7 +4113,6 @@ async function handleMostrarDetalhes(symbol) {
             precoData = data.results?.[0];
             const isAberto = isB3Open();
             const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
-            
             if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, duracao); 
             else throw new Error(precoData?.error || 'Ativo não encontrado');
         } catch (e) { 
@@ -4147,8 +4124,13 @@ async function handleMostrarDetalhes(symbol) {
     let fundamentos = {};
     let nextProventoData = null;
 
-    if (isFII(symbol)) {
-        detalhesHistoricoContainer.classList.remove('hidden'); 
+    // Busca Fundamentos e Dividendos (Ambos usam o scraper agora)
+    if (ehFII || ehAcao) {
+        // Se for FII ou Ação, buscamos histórico e fundamentos
+        if (ehFII) detalhesHistoricoContainer.classList.remove('hidden'); // FII mostra gráfico de proventos sempre
+        // Ações mostram gráfico apenas se tiverem histórico (verificaremos depois)
+        
+        // Dispara fetch do gráfico em background
         fetchHistoricoScraper(symbol);
         
         try {
@@ -4159,11 +4141,7 @@ async function handleMostrarDetalhes(symbol) {
             fundamentos = fundData || {};
             nextProventoData = provData;
         } catch (e) { console.error("Erro dados extras", e); }
-    } else {
-        try {
-            fundamentos = await callScraperFundamentosAPI(symbol) || {};
-        } catch(e) {}
-    }
+    } 
     
     detalhesLoading.classList.add('hidden');
 
@@ -4190,13 +4168,14 @@ async function handleMostrarDetalhes(symbol) {
                         <span class="text-[10px] text-[#666666] uppercase tracking-widest font-bold">Sua Posição</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
                             <p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p>
-                            <span class="text-xs text-[#888888] font-medium">(${ativoCarteira.quantity} ${getUnitLabel(symbol)})</span>
+                            <span class="text-xs text-[#888888] font-medium">(${ativoCarteira.quantity} cotas)</span>
                         </div>
                     </div>
                 </div>
             `;
         }
 
+        // Card de Proximo Provento
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
@@ -4232,111 +4211,114 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- CORREÇÃO AQUI: Declaração Única de 'dados' ---
-        const dados = { 
-            // Comuns
-            pvp: fundamentos.pvp || '-', 
-            dy: fundamentos.dy || '-', 
-            val_mercado: fundamentos.val_mercado || '-', 
-            variacao_12m: fundamentos.variacao_12m || '-',
-            liquidez: fundamentos.liquidez || '-', 
-            
-            // FIIs
-            segmento: fundamentos.segmento || '-', 
-            tipo_fundo: fundamentos.tipo_fundo || '-',    
-            vacancia: fundamentos.vacancia || '-', 
-            vp_cota: fundamentos.vp_cota || '-', 
-            ultimo_rendimento: fundamentos.ultimo_rendimento || '-', 
-            patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
-            tipo_gestao: fundamentos.tipo_gestao || '-',
-            
-            // Ações (Novos)
-            pl: fundamentos.pl || '-',
-            roe: fundamentos.roe || '-',
-            margem_liquida: fundamentos.margem_liquida || '-',
-            lpa: fundamentos.lpa || '-',
-            divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-',
-            ev_ebitda: fundamentos.ev_ebitda || '-'
-        };
+        // ================== LÓGICA DE EXIBIÇÃO DIFERENCIADA ==================
         
-        let corVar12m = 'text-[#888888]'; let icon12m = '';
-        if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
-            corVar12m = 'text-red-500'; icon12m = arrowDown;
-        } else if (dados.variacao_12m !== '0.00%' && dados.variacao_12m !== '-') {
-            corVar12m = 'text-green-500'; icon12m = arrowUp;
-        }
-
-        const renderRow = (label, value, isLast = false) => `
-            <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
+        let indicadoresHtml = '';
+        let listaDadosHtml = '';
+        const renderRow = (label, value) => `
+            <div class="flex justify-between items-center py-3.5 border-b border-[#2C2C2E] last:border-0">
                 <span class="text-sm text-[#888888] font-medium">${label}</span>
-                <span class="text-sm font-semibold text-[#e5e5e5] text-right max-w-[60%] truncate">${value}</span>
+                <span class="text-sm font-semibold text-[#e5e5e5] text-right max-w-[60%] truncate">${value || '-'}</span>
             </div>
         `;
 
-        // Lógica de Renderização FII vs AÇÃO
-        let indicadoresGridHtml = '';
-        let tabelaDadosHtml = '';
-
-        if (isFII(symbol)) {
-            // --- FII ---
-            indicadoresGridHtml = `
-                <div class="grid grid-cols-3 gap-3 w-full">
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                        <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
-                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
-                    </div>
-                </div>`;
-
-            tabelaDadosHtml = `
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
-                    ${renderRow('Liquidez Diária', dados.liquidez)}
-                    ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
-                    ${renderRow('VP por Cota', dados.vp_cota)}
-                    ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${renderRow('Vacância', dados.vacancia)}
-                    ${renderRow('Segmento', dados.segmento)}
-                    ${renderRow('Gestão', dados.tipo_gestao, true)}
-                </div>`;
-        } else {
-            // --- AÇÃO ---
-            indicadoresGridHtml = `
+        if (ehAcao) {
+            // --- LAYOUT DE AÇÕES ---
+            // Destaques: P/L, P/VP, ROE
+            indicadoresHtml = `
                 <div class="grid grid-cols-3 gap-3 w-full">
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/L</span>
-                        <span class="text-lg font-bold text-white">${dados.pl}</span>
+                        <span class="text-lg font-bold text-white">${fundamentos.pl || '-'}</span>
                     </div>
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
+                        <span class="text-lg font-bold text-white">${fundamentos.pvp || '-'}</span>
                     </div>
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
                         <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">ROE</span>
-                        <span class="text-lg font-bold text-purple-400">${dados.roe}</span>
+                        <span class="text-lg font-bold text-green-400">${fundamentos.roe || '-'}</span>
                     </div>
-                </div>`;
-
-            tabelaDadosHtml = `
+                </div>
+            `;
+            
+            listaDadosHtml = `
                 <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
-                    ${renderRow('DY (12m)', dados.dy)}
-                    ${renderRow('Margem Líquida', dados.margem_liquida)}
-                    ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
-                    ${renderRow('LPA', dados.lpa)}
-                    ${renderRow('EV / EBITDA', dados.ev_ebitda)}
-                    ${renderRow('Valor de Mercado', dados.val_mercado, true)}
-                </div>`;
+                    ${renderRow('DY (12m)', fundamentos.dy)}
+                    ${renderRow('Margem Líquida', fundamentos.margem_liquida)}
+                    ${renderRow('Dív. Líq / EBITDA', fundamentos.divida_liquida_ebitda)}
+                    ${renderRow('LPA', fundamentos.lpa)}
+                    ${renderRow('VPA', fundamentos.vpa || fundamentos.vp_cota)}
+                    ${renderRow('Valor de Mercado', fundamentos.val_mercado)}
+                    ${renderRow('Liquidez Diária', fundamentos.liquidez)}
+                </div>
+                
+                <h3 class="text-sm font-bold text-[#666666] uppercase tracking-wider mb-1 mt-2 ml-1">Sobre a Empresa</h3>
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
+                    ${renderRow('Setor/Segmento', fundamentos.segmento)}
+                    ${renderRow('Papel', symbol)}
+                    ${renderRow('Cotação', formatBRL(precoData.regularMarketPrice))}
+                </div>
+            `;
+
+            // Mostra gráfico de proventos para ação também (se tiver dados)
+            detalhesHistoricoContainer.classList.remove('hidden');
+
+        } else {
+            // --- LAYOUT PADRÃO (FIIs) ---
+            // Destaques: DY, P/VP, Últ. Rend
+            indicadoresHtml = `
+                <div class="grid grid-cols-3 gap-3 w-full">
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
+                        <span class="text-lg font-bold text-purple-400">${fundamentos.dy || '-'}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
+                        <span class="text-lg font-bold text-white">${fundamentos.pvp || '-'}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
+                        <span class="text-lg font-bold text-green-400">${fundamentos.ultimo_rendimento || '-'}</span>
+                    </div>
+                </div>
+            `;
+            
+            listaDadosHtml = `
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
+                    ${renderRow('Liquidez Diária', fundamentos.liquidez)}
+                    ${renderRow('Patrimônio Líquido', fundamentos.patrimonio_liquido)}
+                    ${renderRow('VP por Cota', fundamentos.vp_cota)}
+                    ${renderRow('Valor de Mercado', fundamentos.val_mercado)}
+                    ${renderRow('Vacância', fundamentos.vacancia)}
+                    <div class="flex justify-between items-center py-3.5 border-b border-[#2C2C2E]">
+                        <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
+                        <span class="text-sm font-bold text-[#e5e5e5] text-right flex items-center gap-1">
+                            ${fundamentos.variacao_12m || '-'}
+                        </span>
+                    </div>
+                </div>
+                
+                <h3 class="text-sm font-bold text-[#666666] uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
+                    ${renderRow('Segmento', fundamentos.segmento)}
+                    ${renderRow('Tipo de Fundo', fundamentos.tipo_fundo)}
+                    ${renderRow('Mandato', fundamentos.mandato)}
+                    ${renderRow('Gestão', fundamentos.tipo_gestao)}
+                    ${renderRow('Prazo', fundamentos.prazo_duracao)}
+                    ${renderRow('Taxa Adm.', fundamentos.taxa_adm)}
+                    ${renderRow('Cotistas', fundamentos.num_cotistas)}
+                    ${renderRow('Cotas Emitidas', fundamentos.cotas_emitidas)}
+                    <div class="flex justify-between items-center py-3.5">
+                        <span class="text-sm text-[#888888] font-medium">CNPJ</span>
+                        <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${fundamentos.cnpj || '-'}</span>
+                    </div>
+                </div>
+            `;
         }
 
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
-                
                 <div class="text-center pb-4 pt-2">
                     <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
                     <span class="text-lg font-bold ${variacaoCor} mt-1 flex items-center justify-center gap-0.5 tracking-tight">
@@ -4344,20 +4326,15 @@ async function handleMostrarDetalhes(symbol) {
                         ${formatPercent(precoData.regularMarketChangePercent)} Hoje
                     </span>
                 </div>
-
                 ${userPosHtml}
                 ${proximoProventoHtml} 
-                ${indicadoresGridHtml}
-                ${tabelaDadosHtml}
-                
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4 py-3 flex justify-between items-center">
-                    <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
-                    <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
-                        ${icon12m} ${dados.variacao_12m}
-                    </span>
-                </div>
+                ${indicadoresHtml}
+                ${listaDadosHtml}
             </div>
         `;
+
+    } else {
+        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }
     
     renderizarTransacoesDetalhes(symbol);

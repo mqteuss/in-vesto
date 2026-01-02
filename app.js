@@ -3560,119 +3560,135 @@ function verificarNotificacoesFinanceiras() {
 	
 async function atualizarTodosDados(force = false) { 
 
-        if (force) {
-            // 1. Feedback Tátil (Vibração leve em Android)
-            if (navigator.vibrate) navigator.vibrate(50);
+    if (force) {
+        // 1. Feedback Tátil (Vibração leve em Android)
+        if (navigator.vibrate) navigator.vibrate(50);
 
-            // 2. Feedback Visual (Mostra os esqueletos de carregamento)
-            renderizarDashboardSkeletons(true);
-            renderizarCarteiraSkeletons(true);
-            
-            // Opcional: Esconder status antigos enquanto carrega
-            dashboardStatus.classList.add('hidden'); 
-        }
+        // 2. Feedback Visual (Mostra os esqueletos de carregamento)
+        renderizarDashboardSkeletons(true);
+        renderizarCarteiraSkeletons(true);
         
-        // --- CÁLCULOS LOCAIS (RÁPIDOS) ---
-        calcularCarteira();
-        await processarDividendosPagos(); 
-        renderizarHistorico();
-        renderizarGraficoPatrimonio(); 
-        
-        // Mostra loading se tiver carteira e não for um refresh forçado (que já tratou acima)
-        if (carteiraCalculada.length > 0 && !force) {
-            dashboardStatus.classList.remove('hidden');
-            dashboardLoading.classList.remove('hidden');
-        }
-        
-        // Animação do ícone de refresh
-        const refreshIcon = refreshButton.querySelector('svg'); 
-        if (force) {
-            refreshIcon.classList.add('spin-animation');
-        }
+        // Opcional: Esconder status antigos enquanto carrega
+        dashboardStatus.classList.add('hidden'); 
+    }
+    
+    // --- CÁLCULOS LOCAIS (RÁPIDOS) ---
+    // Fazemos isso primeiro para mostrar algo imediatamente (mesmo que velho)
+    calcularCarteira();
+    await processarDividendosPagos(); 
+    renderizarHistorico();
+    renderizarGraficoPatrimonio(); 
+    
+    // Mostra loading se tiver carteira e não for um refresh forçado (que já tratou acima)
+    if (carteiraCalculada.length > 0 && !force) {
+        dashboardStatus.classList.remove('hidden');
+        dashboardLoading.classList.remove('hidden');
+    }
+    
+    // Animação do ícone de refresh
+    const refreshIcon = refreshButton.querySelector('svg'); 
+    if (force) {
+        refreshIcon.classList.add('spin-animation');
+    }
 
-        // Se não for forçado, tenta usar cache de proventos primeiro para agilizar
-        if (!force) {
-            const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
-            if (proventosFuturosCache.length > 0) {
-                proventosAtuais = proventosFuturosCache;
-                renderizarProventos();
-            }
+    // Se não for forçado, tenta usar cache de proventos primeiro para agilizar
+    if (!force) {
+        const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
+        if (proventosFuturosCache.length > 0) {
+            proventosAtuais = proventosFuturosCache;
+            renderizarProventos();
         }
-        
-        // Se a carteira estiver vazia, reseta tudo e para por aqui
-        if (carteiraCalculada.length === 0) {
-             precosAtuais = []; 
-             proventosAtuais = []; 
-             await renderizarCarteira(); 
-             renderizarProventos(); 
-             renderizarGraficoHistorico({ labels: [], data: [] }); 
-             refreshIcon.classList.remove('spin-animation');
-             return;
-        }
-
-        // --- BUSCA DE DADOS EXTERNOS (PARALELO) ---
-        // Iniciamos todas as requisições ao mesmo tempo para ganhar tempo
-        const promessaPrecos = buscarPrecosCarteira(force); 
-        const promessaProventos = buscarProventosFuturos(force);
-        const promessaHistorico = buscarHistoricoProventosAgregado(force);
-
-        // Tratamento individual das promessas para renderizar assim que chegarem
-        promessaPrecos.then(async precos => {
-            if (precos.length > 0) {
-                precosAtuais = precos; 
-                await renderizarCarteira(); // Atualiza a lista assim que os preços chegam
-            } else if (precosAtuais.length === 0) { 
-                await renderizarCarteira(); 
-            }
-        }).catch(async err => {
-            console.error("Erro ao buscar preços (BFF):", err);
-            showToast("Erro ao buscar preços."); 
-            if (precosAtuais.length === 0) { await renderizarCarteira(); }
-        });
-
-        promessaProventos.then(async proventosFuturos => {
-            proventosAtuais = processarProventosScraper(proventosConhecidos);
-            renderizarProventos(); // Atualiza o widget de proventos
-            
-            // Re-renderiza a carteira para atualizar as tags de "Data Com" nos cards
-            if (precosAtuais.length > 0) { 
-                await renderizarCarteira(); 
-            }
-        }).catch(async err => {
-            console.error("Erro ao buscar proventos (BFF):", err);
-            if (proventosConhecidos.length > 0) {
-                 proventosAtuais = processarProventosScraper(proventosConhecidos);
-                 renderizarProventos();
-                 if (precosAtuais.length > 0) { await renderizarCarteira(); }
-            } else if (proventosAtuais.length === 0) { 
-                 totalProventosEl.textContent = "Erro"; 
-            }
-        });
-        
-        promessaHistorico.then(({ labels, data }) => {
-            renderizarGraficoHistorico({ labels, data }); // Atualiza o gráfico de barras
-        }).catch(err => {
-            console.error("Erro ao buscar histórico agregado (BFF):", err);
+    }
+    
+    // Se a carteira estiver vazia, reseta tudo e para por aqui
+    if (carteiraCalculada.length === 0) {
+            precosAtuais = []; 
+            proventosAtuais = []; 
+            await renderizarCarteira(); 
+            renderizarProventos(); 
             renderizarGraficoHistorico({ labels: [], data: [] }); 
-        });
-        
-        // --- FINALIZAÇÃO ---
-try {
-            // Espera tudo terminar (sucesso ou falha) para limpar o estado de loading
-            await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
-        } finally {
             refreshIcon.classList.remove('spin-animation');
-            dashboardStatus.classList.add('hidden');
-            dashboardLoading.classList.add('hidden');
-            
-            // Garante que os skeletons sumam no final de tudo
-            renderizarDashboardSkeletons(false);
-            renderizarCarteiraSkeletons(false);
+            return;
+    }
 
-            // CHAMA A FUNÇÃO NOVA AQUI:
+    // --- BUSCA DE DADOS EXTERNOS (PARALELO) ---
+    // Iniciamos todas as requisições ao mesmo tempo para ganhar tempo
+    const promessaPrecos = buscarPrecosCarteira(force); 
+    const promessaProventos = buscarProventosFuturos(force);
+    const promessaHistorico = buscarHistoricoProventosAgregado(force);
+
+    // Tratamento individual das promessas para renderizar assim que chegarem
+    promessaPrecos.then(async precos => {
+        if (precos.length > 0) {
+            precosAtuais = precos; 
+            await renderizarCarteira(); // Atualiza a lista assim que os preços chegam
+        } else if (precosAtuais.length === 0) { 
+            await renderizarCarteira(); 
+        }
+    }).catch(async err => {
+        console.error("Erro ao buscar preços (BFF):", err);
+        showToast("Erro ao buscar preços."); 
+        if (precosAtuais.length === 0) { await renderizarCarteira(); }
+    });
+
+    promessaProventos.then(async proventosFuturos => {
+        // Atualiza a lista com o que veio da API
+        proventosAtuais = processarProventosScraper(proventosConhecidos);
+        
+        // --- CORREÇÃO IMPORTANTE AQUI ---
+        // Força o recálculo do saldo "Recebidos" agora que temos dados novos da nuvem
+        await processarDividendosPagos(); 
+        // --------------------------------
+
+        renderizarProventos(); // Atualiza o widget de proventos
+        
+        // Re-renderiza a carteira para atualizar as tags de "Data Com" nos cards
+        if (precosAtuais.length > 0) { 
+            await renderizarCarteira(); 
+        }
+        
+        // Atualiza gráfico histórico se houver dados novos
+        if (typeof renderizarHistoricoProventos === 'function') {
+             renderizarHistoricoProventos();
+        }
+
+    }).catch(async err => {
+        console.error("Erro ao buscar proventos (BFF):", err);
+        if (proventosConhecidos.length > 0) {
+                proventosAtuais = processarProventosScraper(proventosConhecidos);
+                renderizarProventos();
+                if (precosAtuais.length > 0) { await renderizarCarteira(); }
+        } else if (proventosAtuais.length === 0) { 
+                totalProventosEl.textContent = "Erro"; 
+        }
+    });
+    
+    promessaHistorico.then(({ labels, data }) => {
+        renderizarGraficoHistorico({ labels, data }); // Atualiza o gráfico de barras
+    }).catch(err => {
+        console.error("Erro ao buscar histórico agregado (BFF):", err);
+        renderizarGraficoHistorico({ labels: [], data: [] }); 
+    });
+    
+    // --- FINALIZAÇÃO ---
+    try {
+        // Espera tudo terminar (sucesso ou falha) para limpar o estado de loading
+        await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
+    } finally {
+        refreshIcon.classList.remove('spin-animation');
+        dashboardStatus.classList.add('hidden');
+        dashboardLoading.classList.add('hidden');
+        
+        // Garante que os skeletons sumam no final de tudo
+        renderizarDashboardSkeletons(false);
+        renderizarCarteiraSkeletons(false);
+
+        // Atualiza as notificações
+        if (typeof verificarNotificacoesFinanceiras === 'function') {
             verificarNotificacoesFinanceiras();
         }
-    } // Fim da função atualizarTodosDados
+    }
+}
 
     async function handleToggleFavorito() {
         const symbol = detalhesFavoritoBtn.dataset.symbol;

@@ -4118,7 +4118,6 @@ async function handleMostrarDetalhes(symbol) {
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
-        // Fundo preto puro, borda cinza escura neutra, texto cinza neutro
         btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
             isActive 
             ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
@@ -4191,14 +4190,13 @@ async function handleMostrarDetalhes(symbol) {
                         <span class="text-[10px] text-[#666666] uppercase tracking-widest font-bold">Sua Posição</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
                             <p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p>
-                            <span class="text-xs text-[#888888] font-medium">(${ativoCarteira.quantity} cotas)</span>
+                            <span class="text-xs text-[#888888] font-medium">(${ativoCarteira.quantity} ${getUnitLabel(symbol)})</span>
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        // --- 3. CORREÇÃO DA LINHA DO PROVENTO ---
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
@@ -4214,7 +4212,6 @@ async function handleMostrarDetalhes(symbol) {
             const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
             const textClass = isFuturo ? "text-green-400" : "text-[#666666]";
 
-            // AQUI: border-b border-[#2C2C2E] (Cinza Neutro, sem azul)
             proximoProventoHtml = `
                 <div class="w-full p-3 rounded-2xl border ${borderClass} flex flex-col gap-2 shadow-sm">
                     <div class="flex justify-between items-center border-b border-[#2C2C2E] pb-2 mb-1">
@@ -4235,44 +4232,7 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        const dados = { 
-            pvp: fundamentos.pvp || '-', 
-            dy: fundamentos.dy || '-', 
-            segmento: fundamentos.segmento || '-', 
-            mandato: fundamentos.mandato || '-',          
-            tipo_fundo: fundamentos.tipo_fundo || '-',    
-            vacancia: fundamentos.vacancia || '-', 
-            vp_cota: fundamentos.vp_cota || '-', 
-            liquidez: fundamentos.liquidez || '-', 
-            val_mercado: fundamentos.val_mercado || '-', 
-            ultimo_rendimento: fundamentos.ultimo_rendimento || '-', 
-            patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
-            variacao_12m: fundamentos.variacao_12m || '-',
-            cnpj: fundamentos.cnpj || '-', 
-            num_cotistas: fundamentos.num_cotistas || '-', 
-            tipo_gestao: fundamentos.tipo_gestao || '-',
-            prazo_duracao: fundamentos.prazo_duracao || '-', 
-            taxa_adm: fundamentos.taxa_adm || '-',           
-            cotas_emitidas: fundamentos.cotas_emitidas || '-' 
-        };
-        
-        let corVar12m = 'text-[#888888]'; let icon12m = '';
-        if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
-            corVar12m = 'text-red-500'; icon12m = arrowDown;
-        } else if (dados.variacao_12m !== '0.00%' && dados.variacao_12m !== '-') {
-            corVar12m = 'text-green-500'; icon12m = arrowUp;
-        }
-
-        const renderRow = (label, value, isLast = false) => `
-            <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
-                <span class="text-sm text-[#888888] font-medium">${label}</span>
-                <span class="text-sm font-semibold text-[#e5e5e5] text-right max-w-[60%] truncate">${value}</span>
-            </div>
-        `;
-
-// --- EM app.js: Dentro da função handleMostrarDetalhes(symbol) ---
-
-        // 1. Preparação dos dados (Unifica FII e Ações)
+        // --- CORREÇÃO AQUI: Declaração Única de 'dados' ---
         const dados = { 
             // Comuns
             pvp: fundamentos.pvp || '-', 
@@ -4299,7 +4259,13 @@ async function handleMostrarDetalhes(symbol) {
             ev_ebitda: fundamentos.ev_ebitda || '-'
         };
         
-        // Helper para linhas da tabela
+        let corVar12m = 'text-[#888888]'; let icon12m = '';
+        if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
+            corVar12m = 'text-red-500'; icon12m = arrowDown;
+        } else if (dados.variacao_12m !== '0.00%' && dados.variacao_12m !== '-') {
+            corVar12m = 'text-green-500'; icon12m = arrowUp;
+        }
+
         const renderRow = (label, value, isLast = false) => `
             <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
                 <span class="text-sm text-[#888888] font-medium">${label}</span>
@@ -4307,12 +4273,12 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
-        // 2. Lógica de Decisão: HTML de FII vs HTML de Ação
+        // Lógica de Renderização FII vs AÇÃO
         let indicadoresGridHtml = '';
         let tabelaDadosHtml = '';
 
         if (isFII(symbol)) {
-            // --- LAYOUT FII (Mantido) ---
+            // --- FII ---
             indicadoresGridHtml = `
                 <div class="grid grid-cols-3 gap-3 w-full">
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
@@ -4340,7 +4306,7 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Gestão', dados.tipo_gestao, true)}
                 </div>`;
         } else {
-            // --- LAYOUT AÇÃO (Novo) ---
+            // --- AÇÃO ---
             indicadoresGridHtml = `
                 <div class="grid grid-cols-3 gap-3 w-full">
                     <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
@@ -4368,7 +4334,6 @@ async function handleMostrarDetalhes(symbol) {
                 </div>`;
         }
 
-        // 3. Montagem Final do HTML
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
                 
@@ -4381,11 +4346,8 @@ async function handleMostrarDetalhes(symbol) {
                 </div>
 
                 ${userPosHtml}
-                
                 ${proximoProventoHtml} 
-
                 ${indicadoresGridHtml}
-
                 ${tabelaDadosHtml}
                 
                 <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4 py-3 flex justify-between items-center">
@@ -4394,22 +4356,13 @@ async function handleMostrarDetalhes(symbol) {
                         ${icon12m} ${dados.variacao_12m}
                     </span>
                 </div>
-
             </div>
         `;
+    }
     
     renderizarTransacoesDetalhes(symbol);
     atualizarIconeFavorito(symbol);
 }
-
-
-// Substitua a função inteira em app.js
-
-// EM app.js - Substitua a função renderizarTransacoesDetalhes por esta versão:
-
-// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
-
-// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
 
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');

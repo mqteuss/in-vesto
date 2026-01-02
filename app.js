@@ -3219,13 +3219,17 @@ async function renderizarCarteira() {
         return Math.max(3, mesesDiff + 2);
     }
 
+// =========================================================================
+// CORREÇÃO: ENVOLVER fiiList DENTRO DE UM OBJETO payload
+// =========================================================================
+
 async function buscarProventosFuturos(force = false) {
     if (!carteiraCalculada || carteiraCalculada.length === 0) {
         renderizarProventos([]);
         return [];
     }
 
-    // 1. Verifica cache (para não sobrecarregar o scraper)
+    // 1. Verifica cache
     const cacheKey = 'proventos_portfolio_full';
     if (!force) {
         const cached = await getCache(cacheKey);
@@ -3237,7 +3241,6 @@ async function buscarProventosFuturos(force = false) {
     }
 
     // 2. Filtra ativos: FIIs OU Ações
-    // (Anteriormente era apenas isFII, agora inclui isAcao)
     const ativosParaBuscar = carteiraCalculada
         .filter(a => isFII(a.symbol) || isAcao(a.symbol))
         .map(a => a.symbol);
@@ -3248,18 +3251,19 @@ async function buscarProventosFuturos(force = false) {
     }
 
     try {
-        // Notifica usuário que está atualizando
         const areaProventos = document.getElementById('proventos-lista');
         if (areaProventos) areaProventos.innerHTML = '<div class="loader-sm"></div><span class="text-xs text-gray-500 ml-2">Buscando dados...</span>';
 
         // 3. Chamada ao Backend (BFF -> Scraper)
-        // Nota: O backend espera o campo "fiiList", então passamos nossos ativos nele.
+        // CORREÇÃO AQUI: Adicionado 'payload: { ... }'
         const response = await fetch('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 mode: 'historico_portfolio', 
-                fiiList: ativosParaBuscar // <--- CORREÇÃO: Usamos a nova variável aqui
+                payload: {  // <--- O Scraper exige este wrapper
+                    fiiList: ativosParaBuscar 
+                }
             })
         });
 
@@ -3269,12 +3273,10 @@ async function buscarProventosFuturos(force = false) {
         const historicoGeral = data.json || [];
 
         // 4. Processamento dos dados
-        // Mapeia o histórico retornado para o formato esperado pelo app
         const proventosFormatados = historicoGeral.map(item => {
             const ativoCarteira = carteiraCalculada.find(k => k.symbol === item.symbol);
             if (!ativoCarteira) return null;
             
-            // item.paymentDate vem como "YYYY-MM-DD" do scraper
             const dataPagamento = item.paymentDate; 
             const valorPorCota = parseFloat(item.value);
             const totalReceber = valorPorCota * ativoCarteira.quantity;
@@ -3284,11 +3286,11 @@ async function buscarProventosFuturos(force = false) {
                 dataPagamento: dataPagamento,
                 valorPorCota: valorPorCota,
                 total: totalReceber,
-                type: item.type || 'Rendimento' // Scraper pode retornar 'JCP', 'Dividendo', etc.
+                type: item.type || 'Rendimento'
             };
         }).filter(p => p !== null);
 
-        // Salva em cache (duração curta, ex: 1 hora)
+        // Salva em cache por 1 hora
         await setCache(cacheKey, proventosFormatados, 3600 * 1000);
 
         renderizarProventos(proventosFormatados);
@@ -3296,7 +3298,6 @@ async function buscarProventosFuturos(force = false) {
 
     } catch (error) {
         console.error("Erro ao buscar proventos (BFF):", error);
-        // Em caso de erro, tenta limpar a interface ou mostrar msg discreta
         const areaProventos = document.getElementById('proventos-lista');
         if (areaProventos) areaProventos.innerHTML = '<span class="text-xs text-red-500">Erro ao atualizar.</span>';
         return [];

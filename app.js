@@ -4250,6 +4250,14 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
+        // Função auxiliar para renderizar linhas da tabela (ESTAVA FALTANDO ISSO)
+        const renderRow = (label, value, isLast = false) => `
+            <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
+                <span class="text-sm text-[#888888] font-medium">${label}</span>
+                <span class="text-sm font-semibold text-[#e5e5e5] text-right max-w-[60%] truncate">${value}</span>
+            </div>
+        `;
+
         // Define quais cards mostrar baseado no tipo de ativo
         let cardsIndicadoresHtml = '';
         
@@ -4294,7 +4302,8 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${ehFII ? renderRow('Vacância', dados.vacancia) : ''} <div class="flex justify-between items-center py-3.5">
+                    ${ehFII ? renderRow('Vacância', dados.vacancia) : ''}
+                    <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
                         <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
                             ${icon12m} ${dados.variacao_12m}
@@ -4323,7 +4332,6 @@ async function handleMostrarDetalhes(symbol) {
                 </div>
             </div>
         `;
-        // --- FIM DA MODIFICAÇÃO ---
 
     } else {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';

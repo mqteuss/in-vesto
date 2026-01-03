@@ -3,11 +3,12 @@ const cheerio = require('cheerio');
 const https = require('https');
 
 // --- SETUP OTIMIZADO ---
+// Timeout reduzido para 9s para evitar que o Vercel (que cai em 10s) corte a requisição abruptamente (Erro 500)
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
     maxFreeSockets: 10,
-    timeout: 15000
+    timeout: 9000 
 });
 
 const client = axios.create({
@@ -17,7 +18,7 @@ const client = axios.create({
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br'
     },
-    timeout: 12000
+    timeout: 9000 // Timeout de segurança do Axios
 });
 
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
@@ -40,7 +41,7 @@ function chunkArray(array, size) {
 }
 
 // ---------------------------------------------------------
-// FONTE 1: FUNDAMENTUS (MELHOR PARA AÇÕES - DADOS CADASTRAIS)
+// FONTE 1: FUNDAMENTUS (MELHOR PARA AÇÕES)
 // ---------------------------------------------------------
 async function scrapeFundamentus(ticker) {
     try {
@@ -54,33 +55,30 @@ async function scrapeFundamentus(ticker) {
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'Indeterminado',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A',
-            // --- NOVOS CAMPOS PARA AÇÕES ---
-            pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', divida_liquida_ebitda: 'N/A'
+            pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A'
         };
 
-        $('.label').each((i, el) => {
-            const label = $(el).text().trim().toLowerCase();
-            const valueEl = $(el).next('.data');
-            const valueSpan = valueEl.find('span.txt');
-            let value = valueSpan.length ? valueSpan.text().trim() : valueEl.text().trim();
-            if (!value) return;
+        $('table.w728 tr').each((i, row) => {
+            $(row).find('td.label').each((j, labelCell) => {
+                const label = $(labelCell).text().trim().toLowerCase();
+                const valueCell = $(labelCell).next('td.data');
+                const valueSpan = valueCell.find('span.txt');
+                let value = valueSpan.length ? valueSpan.text().trim() : valueCell.text().trim();
+                if (!value) return;
 
-            if (label.includes('div. yield')) dados.dy = value;
-            if (label.includes('p/vp')) dados.pvp = value;
-            if (label.includes('vol $ med') || label.includes('liq. corr')) dados.liquidez = value;
-            if (label.includes('valor de mercado')) dados.val_mercado = value;
-            if (label.includes('patrim')) dados.patrimonio_liquido = value;
-            if (label.includes('nro. acoes')) dados.cotas_emitidas = value;
-            if (label.includes('setor')) dados.segmento = value;
-            if (label.includes('cotacao')) dados.cotacao_atual = value; 
-            if (label.includes('vpa')) dados.vp_cota = value;
-
-            // --- CAPTURA ESPECÍFICA DE AÇÕES ---
-            if (label.includes('p/l')) dados.pl = value;
-            if (label.includes('roe')) dados.roe = value;
-            if (label.includes('lpa')) dados.lpa = value;
-            if (label.includes('marg. liquida')) dados.margem_liquida = value;
-            if (label.includes('div. liquida/ebitda')) dados.divida_liquida_ebitda = value;
+                if (label.includes('div. yield')) dados.dy = value;
+                if (label.includes('p/vp')) dados.pvp = value;
+                if (label.includes('vol $ med') || label.includes('liq. corr')) dados.liquidez = value;
+                if (label.includes('valor de mercado')) dados.val_mercado = value;
+                if (label.includes('patrim')) dados.patrimonio_liquido = value;
+                if (label.includes('nro. acoes')) dados.cotas_emitidas = value;
+                if (label.includes('setor')) dados.segmento = value;
+                if (label.includes('vpa')) dados.vp_cota = value;
+                if (label.includes('p/l')) dados.pl = value;
+                if (label.includes('roe')) dados.roe = value;
+                if (label.includes('lpa')) dados.lpa = value;
+                if (label.includes('marg. liquida')) dados.margem_liquida = value;
+            });
         });
         
         return dados;
@@ -88,7 +86,7 @@ async function scrapeFundamentus(ticker) {
 }
 
 // ---------------------------------------------------------
-// FONTE 2: INVESTIDOR10 (MELHOR PARA FIIs - DADOS CADASTRAIS)
+// FONTE 2: INVESTIDOR10 (MELHOR PARA FIIs)
 // ---------------------------------------------------------
 function parseExtendedValue(str) {
     if (!str) return 0;
@@ -107,11 +105,15 @@ function formatCurrency(value) {
 async function scrapeInvestidor10(ticker) {
     try {
         let html;
+        let isFII = ticker.toUpperCase().endsWith('11') || ticker.toUpperCase().endsWith('11B');
+        
         try {
-            const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
+            const typePath = isFII ? 'fiis' : 'acoes';
+            const res = await client.get(`https://investidor10.com.br/${typePath}/${ticker.toLowerCase()}/`);
             html = res.data;
         } catch (e) {
-            const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
+            const typePath = isFII ? 'acoes' : 'fiis';
+            const res = await client.get(`https://investidor10.com.br/${typePath}/${ticker.toLowerCase()}/`);
             html = res.data;
         }
 
@@ -122,7 +124,6 @@ async function scrapeInvestidor10(ticker) {
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A',
-            // --- NOVOS CAMPOS PARA AÇÕES ---
             pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A'
         };
         
@@ -130,19 +131,17 @@ async function scrapeInvestidor10(ticker) {
         let num_cotas = 0;
 
         const processPair = (tituloRaw, valorRaw) => {
+            if (!tituloRaw || !valorRaw) return;
             const titulo = tituloRaw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const valor = valorRaw.trim();
-            if (!valor) return;
+            if (!valor || valor === '-') return;
 
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
-            
-            // --- AÇÕES: P/L e ROE ---
             if (dados.pl === 'N/A' && titulo.includes('p/l')) dados.pl = valor;
             if (dados.roe === 'N/A' && titulo.includes('roe')) dados.roe = valor;
             if (dados.lpa === 'N/A' && titulo.includes('lpa')) dados.lpa = valor;
             if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
-            // ------------------------
 
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
@@ -168,7 +167,6 @@ async function scrapeInvestidor10(ticker) {
                      if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
-
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
                 if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
@@ -200,6 +198,9 @@ async function scrapeInvestidor10(ticker) {
     } catch (error) { return null; }
 }
 
+// ---------------------------------------------------------
+// FONTE 3: STATUS INVEST (PROVENTOS) - COM JCP/DIVIDENDO
+// ---------------------------------------------------------
 async function scrapeProventosAPI(ticker) {
     const t = ticker.toUpperCase();
 
@@ -214,7 +215,6 @@ async function scrapeProventosAPI(ticker) {
     };
 
     let earnings = [];
-    // Prioridade FII vs Ação
     if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33')) {
         earnings = await fetchEarnings('fii');
         if (earnings.length === 0) earnings = await fetchEarnings('acao');
@@ -239,8 +239,8 @@ async function scrapeProventosAPI(ticker) {
             paymentDate = dComObj.toISOString().split('T')[0];
         }
 
-        // --- LÓGICA DE TIPOS ---
-        let labelTipo = 'RENDIMENTO'; // Padrão FII
+        // --- CLASSIFICAÇÃO DE TIPO ---
+        let labelTipo = 'RENDIMENTO';
         if (d.et === 1) labelTipo = 'DIVIDENDO';
         if (d.et === 2) labelTipo = 'JCP';
 
@@ -248,8 +248,8 @@ async function scrapeProventosAPI(ticker) {
             dataCom: dataCom,
             paymentDate: paymentDate, 
             value: d.v,
-            typeId: d.et,
-            tipo: labelTipo // Envia o nome amigável
+            type: d.et,
+            tipo: labelTipo
         };
     });
 
@@ -259,62 +259,6 @@ async function scrapeProventosAPI(ticker) {
         return dA - dB;
     });
 }
-
-// ---------------------------------------------------------
-// NO HANDLER PRINCIPAL, ATUALIZE O BLOCO 'historico_12m'
-// ---------------------------------------------------------
-// ...
-        if (mode === 'historico_12m') {
-            if (!payload.ticker) return res.json({ json: [] });
-            
-            const history = await scrapeProventosAPI(payload.ticker);
-            const mapaAgregado = {};
-
-            // Janela de 5 anos para garantir dados suficientes
-            const dataCorte = new Date();
-            dataCorte.setFullYear(dataCorte.getFullYear() - 5);
-            const dataFuturaLimite = new Date();
-            dataFuturaLimite.setFullYear(dataFuturaLimite.getFullYear() + 1);
-
-            history.forEach(h => {
-                if (!h.paymentDate || !h.paymentDate.includes('-')) return;
-                const d = new Date(h.paymentDate + 'T12:00:00');
-                if (isNaN(d.getTime())) return;
-                if (d < dataCorte || d > dataFuturaLimite) return;
-
-                const keySort = h.paymentDate.slice(0, 7); // YYYY-MM
-                
-                if (!mapaAgregado[keySort]) {
-                    mapaAgregado[keySort] = { total: 0, dividendo: 0, jcp: 0, rendimento: 0 };
-                }
-
-                mapaAgregado[keySort].total += h.value;
-                
-                // Separação dos valores por tipo
-                if (h.tipo === 'DIVIDENDO') mapaAgregado[keySort].dividendo += h.value;
-                else if (h.tipo === 'JCP') mapaAgregado[keySort].jcp += h.value;
-                else mapaAgregado[keySort].rendimento += h.value;
-            });
-
-            // Formata para o Front
-            const formatted = Object.entries(mapaAgregado)
-                .sort((a, b) => a[0].localeCompare(b[0])) 
-                .map(([key, dados]) => {
-                    const [ano, mes] = key.split('-');
-                    return { 
-                        mes: `${mes}/${ano.slice(2)}`,
-                        dateIso: `${key}-01`,
-                        valor: dados.total,
-                        // Retorna detalhado
-                        dividendo: dados.dividendo,
-                        jcp: dados.jcp,
-                        rendimento: dados.rendimento
-                    };
-                });
-            
-            return res.status(200).json({ json: formatted });
-        }
-// ...
 
 // ---------------------------------------------------------
 // HANDLER PRINCIPAL
@@ -336,43 +280,41 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // --- FUNDAMENTOS ---
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             const ticker = payload.ticker.toUpperCase();
-            
             let dados = null;
-            // Lógica de Prioridade: FII -> Investidor10, Ação -> Fundamentus
+            
+            // Prioridade Ajustada para evitar N/A
             if (ticker.endsWith('11') || ticker.endsWith('11B')) {
                 dados = await scrapeInvestidor10(ticker);
-                if (!dados) dados = await scrapeFundamentus(ticker);
-            } 
-            else {
-                // Ação: Fundamentus é muito melhor para indicadores como P/L, ROE
+                if (!dados || dados.dy === 'N/A') {
+                     const backup = await scrapeFundamentus(ticker);
+                     if (backup && backup.dy !== 'N/A') dados = backup;
+                     else if (!dados) dados = backup;
+                }
+            } else {
                 dados = await scrapeFundamentus(ticker);
-                if (!dados || dados.val_mercado === 'N/A') dados = await scrapeInvestidor10(ticker);
+                if (!dados || dados.pl === 'N/A') {
+                    const backup = await scrapeInvestidor10(ticker);
+                    if (backup && backup.pl !== 'N/A') dados = backup;
+                    else if (!dados) dados = backup;
+                }
             }
-
             if (!dados) dados = { dy: '-', pvp: '-', segmento: '-' };
             return res.status(200).json({ json: dados });
         }
 
-        // --- PROVENTOS CARTEIRA (Futuros e Passados) ---
         if (mode === 'proventos_carteira') {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
-
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
                     const limit = typeof item === 'string' ? 24 : (item.limit || 24);
-                    
                     const history = await scrapeProventosAPI(ticker);
-                    const recents = history
-                        .filter(h => h.value > 0)
-                        .slice(0, limit);
-
+                    const recents = history.filter(h => h.value > 0).slice(-limit);
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });
@@ -383,28 +325,68 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-        // --- HISTÓRICO 12M ---
+        // --- MODO HISTÓRICO AJUSTADO (5 ANOS + JCP/DIV) ---
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
+            
             const history = await scrapeProventosAPI(payload.ticker);
-            const formatted = history.slice(0, 18).map(h => {
-                if (!h.paymentDate) return null;
-                const [ano, mes] = h.paymentDate.split('-');
-                return { mes: `${mes}/${ano.substring(2)}`, valor: h.value };
-            }).filter(h => h !== null);
+            const mapaAgregado = {};
+
+            // Janela Fixa: 5 anos atrás até 1 ano no futuro
+            // Isso permite que o Frontend filtre exatamente o que quer (3M, 12M) sem buracos
+            const dataCorte = new Date();
+            dataCorte.setFullYear(dataCorte.getFullYear() - 5);
+            
+            const dataFuturaLimite = new Date();
+            dataFuturaLimite.setFullYear(dataFuturaLimite.getFullYear() + 1);
+
+            history.forEach(h => {
+                if (!h.paymentDate || !h.paymentDate.includes('-')) return;
+                
+                const d = new Date(h.paymentDate + 'T12:00:00');
+                if (isNaN(d.getTime())) return;
+                if (d < dataCorte || d > dataFuturaLimite) return;
+
+                const keySort = h.paymentDate.slice(0, 7); // YYYY-MM
+                
+                if (!mapaAgregado[keySort]) {
+                    mapaAgregado[keySort] = { total: 0, dividendo: 0, jcp: 0, rendimento: 0 };
+                }
+                
+                // Soma total e específico por tipo
+                mapaAgregado[keySort].total += h.value;
+                if (h.tipo === 'DIVIDENDO') mapaAgregado[keySort].dividendo += h.value;
+                else if (h.tipo === 'JCP') mapaAgregado[keySort].jcp += h.value;
+                else mapaAgregado[keySort].rendimento += h.value;
+            });
+
+            const formatted = Object.entries(mapaAgregado)
+                .sort((a, b) => a[0].localeCompare(b[0])) 
+                .map(([key, dados]) => {
+                    const [ano, mes] = key.split('-');
+                    return { 
+                        mes: `${mes}/${ano.slice(2)}`,
+                        dateIso: `${key}-01`,
+                        valor: dados.total,
+                        // Detalhamento para gráfico empilhado
+                        dividendo: dados.dividendo,
+                        jcp: dados.jcp,
+                        rendimento: dados.rendimento
+                    };
+                });
+            
             return res.status(200).json({ json: formatted });
         }
 
-        // --- HISTÓRICO PORTFOLIO (PARA O GRÁFICO DE BARRAS) ---
         if (mode === 'historico_portfolio') {
-            if (!payload.fiiList) return res.json({ json: [] });
+             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3); 
             let all = [];
             for (const batch of batches) {
                 const promises = batch.map(async (ticker) => {
                     const history = await scrapeProventosAPI(ticker);
-                    history.slice(0, 24).forEach(h => {
-                        if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
+                    history.forEach(h => {
+                         if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
                     });
                 });
                 await Promise.all(promises);
@@ -413,17 +395,25 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: all });
         }
 
-        // --- PRÓXIMO PROVENTO (Futuro) ---
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeProventosAPI(payload.ticker);
-            const ultimo = history.length > 0 ? history[0] : null;
-            return res.status(200).json({ json: ultimo });
+            const hoje = new Date();
+            hoje.setDate(hoje.getDate() - 30); 
+            
+            const relevantes = history
+                .filter(h => h.paymentDate)
+                .filter(h => new Date(h.paymentDate + 'T12:00:00') >= hoje);
+                
+            const proximo = relevantes.length > 0 ? relevantes[0] : null;
+            return res.status(200).json({ json: proximo });
         }
 
         return res.status(400).json({ error: "Modo desconhecido" });
 
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        // Log para debug no Vercel, mas retorna JSON seguro para o front
+        console.error("Scraper Error:", error);
+        return res.status(500).json({ error: error.message || "Erro interno no scraper" });
     }
 };

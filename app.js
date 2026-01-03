@@ -4512,6 +4512,8 @@ function renderizarTransacoesDetalhes(symbol) {
     
 // --- SUBSTITUA A FUNÇÃO renderHistoricoIADetalhes NO FINAL DO ARQUIVO ---
 
+// --- SUBSTITUA A FUNÇÃO renderHistoricoIADetalhes ---
+
 function renderHistoricoIADetalhes(meses) {
     if (!currentDetalhesHistoricoJSON) {
         return;
@@ -4538,16 +4540,12 @@ function renderHistoricoIADetalhes(meses) {
          `;
     }
 
-    // Filtra e corrige Labels
-    const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
+    // O backend já manda ordenado do mais antigo para o novo.
+    // Pegamos os últimos X meses solicitados.
+    const dadosSlice = currentDetalhesHistoricoJSON.slice(-meses);
     
-    // CORREÇÃO: Garante que o label não seja undefined/defined
-    const labels = dadosFiltrados.map(item => {
-        if(item.mes && !item.mes.includes('undefined')) return item.mes;
-        return '--/--';
-    });
-    
-    const data = dadosFiltrados.map(item => item.valor);
+    const labels = dadosSlice.map(item => item.mes);
+    const data = dadosSlice.map(item => item.valor);
 
     renderizarGraficoProventosDetalhes({ labels, data });
 }

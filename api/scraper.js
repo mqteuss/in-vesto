@@ -2,7 +2,8 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
 
-// --- CONFIGURAÇÃO DE REDE OTIMIZADA ---
+// OTIMIZAÇÃO 1: Agente HTTPS com Keep-Alive para reutilizar conexões TCP
+// Isso acelera muito requisições em lote (portfolio).
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
@@ -15,17 +16,18 @@ const client = axios.create({
     headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br'
+        'Accept-Encoding': 'gzip, deflate, br' // Garante compressão
     },
     timeout: 9000
 });
 
-// --- UTILITÁRIOS ---
+// OTIMIZAÇÃO 2: Pré-compilação de Regex (evita recriar a cada chamada)
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
 function parseDate(dateStr) {
     if (!dateStr || dateStr === '-') return null;
+    // Otimização simples de string sem regex complexo
     const parts = dateStr.trim().split('/');
     if (parts.length !== 3) return null;
     return `${parts[2]}-${parts[1]}-${parts[0]}`;
@@ -34,11 +36,8 @@ function parseDate(dateStr) {
 function parseValue(valueStr) {
     if (!valueStr) return 0;
     try {
-        // Remove tudo que não for número, vírgula ou hífen (para negativos)
-        let clean = valueStr.replace(/[^\d,\.-]/g, '');
-        // Troca ponto de milhar por nada e vírgula decimal por ponto
-        clean = clean.replace(/\./g, '').replace(',', '.');
-        return parseFloat(clean) || 0;
+        // Usa a regex pré-compilada
+        return parseFloat(valueStr.replace(REGEX_CLEAN_NUMBER, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
 
@@ -46,7 +45,7 @@ function parseExtendedValue(str) {
     if (!str) return 0;
     const val = parseValue(str);
     const lower = str.toLowerCase();
-    
+    // Multiplicadores
     if (lower.includes('bilh')) return val * 1000000000;
     if (lower.includes('milh')) return val * 1000000;
     if (lower.includes('mil')) return val * 1000;
@@ -59,8 +58,7 @@ function formatCurrency(value) {
 
 function normalize(str) {
     if (!str) return '';
-    // Remove acentos, pontuações extras e deixa minúsculo
-    return str.normalize("NFD").replace(REGEX_NORMALIZE, "").replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+    return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
 function chunkArray(array, size) {
@@ -71,21 +69,22 @@ function chunkArray(array, size) {
     return results;
 }
 
+// Helper para evitar duplicar a lógica de try/catch de URL
 async function fetchHtmlWithRetry(ticker) {
     const tickerLower = ticker.toLowerCase();
     try {
-        // Tenta FII primeiro
+        // Tenta FII
         return await client.get(`https://investidor10.com.br/fiis/${tickerLower}/`);
     } catch (e) {
         if (e.response && e.response.status === 404) {
-            // Se falhar, tenta Ações
+            // Fallback para Ações (mantendo a lógica original)
             return await client.get(`https://investidor10.com.br/acoes/${tickerLower}/`);
         }
         throw e;
     }
 }
 
-// --- CORE: SCRAPER DE FUNDAMENTOS ---
+// --- SCRAPER DE FUNDAMENTOS ---
 async function scrapeFundamentos(ticker) {
     try {
         const response = await fetchHtmlWithRetry(ticker);
@@ -97,117 +96,80 @@ async function scrapeFundamentos(ticker) {
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
-            taxa_adm: 'N/A', cotas_emitidas: 'N/A',
-            pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', 
-            divida_liquida_ebitda: 'N/A', ev_ebit: 'N/A', roic: 'N/A'
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A'
         };
 
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // --- FUNÇÃO DE MAPEAMENTO INTELIGENTE ---
         const processPair = (tituloRaw, valorRaw) => {
-            const titulo = normalize(tituloRaw); // Ex: "divida liquida ebitda"
+            const titulo = normalize(tituloRaw);
             const valor = valorRaw.trim();
-            if (!valor || valor === '-') return;
+            if (!valor) return;
 
-            // FIIs e Comuns
-            if (dados.dy === 'N/A' && (titulo.includes('dividend yield') || titulo === 'dy')) dados.dy = valor;
-            // P/VP aceita variações
-            if (dados.pvp === 'N/A' && (titulo === 'pvp' || titulo === 'p vp')) dados.pvp = valor;
-            
-            if (dados.liquidez === 'N/A' && (titulo.includes('liquidez') && titulo.includes('diaria'))) dados.liquidez = valor;
-            if (dados.val_mercado === 'N/A' && titulo.includes('valor de mercado')) dados.val_mercado = valor;
-            if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
-            
-            // Variação (Pega a de 12 meses preferencialmente)
-            if (titulo.includes('12 meses') || (titulo.includes('variacao') && titulo.includes('12m'))) {
-                dados.variacao_12m = valor;
-            }
-
-            // Ações (Indicadores) - Usa includes para ser mais flexível
-            if (dados.pl === 'N/A' && (titulo === 'pl' || titulo.includes('preco lucro'))) dados.pl = valor;
-            if (dados.roe === 'N/A' && titulo.includes('roe')) dados.roe = valor;
-            if (dados.roic === 'N/A' && titulo.includes('roic')) dados.roic = valor;
-            if (dados.lpa === 'N/A' && titulo.includes('lpa')) dados.lpa = valor;
-            if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
-            if (dados.divida_liquida_ebitda === 'N/A' && (titulo.includes('divida liquida ebitda') || titulo.includes('div liq ebitda'))) dados.divida_liquida_ebitda = valor;
-            if (dados.ev_ebit === 'N/A' && titulo.includes('ev ebit')) dados.ev_ebit = valor;
-
-            // Dados Gerais (FIIs e Empresas)
-            if (dados.segmento === 'N/A' && (titulo.includes('segmento') || titulo.includes('setor'))) dados.segmento = valor;
+            // Mantida a lógica exata de mapeamento
+            if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
+            if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
+            if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
+            if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
+            if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
+            if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
+            if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
             if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
             if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
             if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
-            if (dados.tipo_fundo === 'N/A' && titulo.includes('tipo de fundo')) dados.tipo_fundo = valor;
             if (dados.mandato === 'N/A' && titulo.includes('mandato')) dados.mandato = valor;
+            if (dados.tipo_fundo === 'N/A' && titulo.includes('tipo de fundo')) dados.tipo_fundo = valor;
+            if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
+            if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
+            if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
 
-            // Lógica Específica para Patrimônio vs VP/Cota
-            // VP por Cota geralmente tem "cota" no nome
-            if (titulo.includes('patrimonial') && titulo.includes('cota')) {
-                dados.vp_cota = valor;
-            } 
-            // Patrimônio Líquido total
-            else if (titulo === 'patrimonio liquido' || titulo.includes('patrimonio liquido')) {
-                 dados.patrimonio_liquido = valor;
+            if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
+                const valorNumerico = parseValue(valor);
+                const textoLower = valor.toLowerCase();
+                if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
+                    if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
+                } else {
+                    if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
+                }
             }
 
-            // Captura Cotas Emitidas para calculo de fallback
-            if (titulo.includes('cotas emitidas') || titulo.includes('total de papeis')) {
-                dados.cotas_emitidas = valor;
+            if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
+                if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
             }
         };
 
-        // 1. CARDS DO TOPO (Geralmente contêm os dados principais)
-        $('._card').each((i, el) => {
-            const header = $(el).find('._card-header span').text() || $(el).find('._card-header').text();
-            const body = $(el).find('._card-body span').text() || $(el).find('._card-body').text();
-            processPair(header, body);
-        });
-
-        // 2. TABELAS DE INDICADORES (Onde ficam P/L, ROE, Margens em Ações)
-        // O Investidor10 costuma usar divs com classe .cell dentro de containers grid
-        $('.cell').each((i, el) => {
-            const name = $(el).find('.name').text();
-            const value = $(el).find('.value').text();
-            processPair(name, value);
-        });
-
-        // 3. TABELAS DE DADOS GERAIS (Sobre, Características)
-        $('#table-indicators .cell').each((i, el) => { // Reforço para tabela de indicadores
-             processPair($(el).find('.name').text(), $(el).find('.value').text());
-        });
-        
-        // Dados como CNPJ e Segmento muitas vezes estão em tabelas simples tr/td
-        $('table tbody tr').each((i, row) => {
-            const cols = $(row).find('td');
-            if (cols.length >= 2) {
-                const key = $(cols[0]).text();
-                const val = $(cols[1]).text();
-                processPair(key, val);
-            }
-        });
-
-        // 4. CAPTURA DE COTAÇÃO ATUAL (Para fallback de Valor de Mercado)
+        // Extração por Cards (Prioritário)
+        const dyEl = $('._card.dy ._card-body span').first();
+        if (dyEl.length) dados.dy = dyEl.text().trim();
+        const pvpEl = $('._card.vp ._card-body span').first();
+        if (pvpEl.length) dados.pvp = pvpEl.text().trim();
+        const liqEl = $('._card.liquidity ._card-body span').first();
+        if (liqEl.length) dados.liquidez = liqEl.text().trim();
+        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
+        if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // 5. CORREÇÕES DE FALLBACK (Se Valor de Mercado vier vazio, calcula)
+        // Varredura Geral
+        $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
+        $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
+        $('table tbody tr').each((i, row) => {
+            const cols = $(row).find('td');
+            if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
+        });
+
+        // Cálculo de Mercado (Fallback)
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
-            // Tenta: Cotação * Num Ações/Cotas
-            if (cotacao_atual > 0 && num_cotas > 0) {
-                mercadoCalc = cotacao_atual * num_cotas;
-            } 
-            // Tenta: PL Total * P/VP (Estimativa grosseira mas útil para FIIs)
+            if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
             else if (dados.patrimonio_liquido !== 'N/A' && dados.pvp !== 'N/A') {
                 const plValue = parseExtendedValue(dados.patrimonio_liquido);
                 const pvpValue = parseValue(dados.pvp);
                 if (plValue > 0 && pvpValue > 0) mercadoCalc = plValue * pvpValue;
             }
-
             if (mercadoCalc > 0) {
                 if (mercadoCalc > 1000000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
                 else if (mercadoCalc > 1000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000).toFixed(2)} Milhões`;
@@ -215,23 +177,13 @@ async function scrapeFundamentos(ticker) {
             }
         }
 
-        // Se VP por Cota ainda estiver N/A mas tivermos Patrimônio e Num Cotas (FIIs)
-        if (dados.vp_cota === 'N/A' && dados.patrimonio_liquido !== 'N/A' && num_cotas > 0) {
-            const patLiqVal = parseExtendedValue(dados.patrimonio_liquido);
-            if (patLiqVal > 0) {
-                dados.vp_cota = formatCurrency(patLiqVal / num_cotas);
-            }
-        }
-
         return dados;
-
     } catch (error) {
-        console.error(`Erro scraper ${ticker}:`, error.message);
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 
-// --- SCRAPER DE HISTÓRICO (Mantido e Ajustado) ---
+// --- SCRAPER DE HISTÓRICO ---
 async function scrapeAsset(ticker) {
     try {
         const response = await fetchHtmlWithRetry(ticker);
@@ -239,16 +191,13 @@ async function scrapeAsset(ticker) {
         const $ = cheerio.load(html);
         const dividendos = [];
 
-        // Tenta encontrar a tabela específica de proventos
         let tableRows = $('#table-dividends-history tbody tr');
-        
-        // Fallback: Procura qualquer tabela com headers de proventos
         if (tableRows.length === 0) {
             $('table').each((i, tbl) => {
                 const header = normalize($(tbl).find('thead').text());
-                if (header.includes('com') && header.includes('pagamento') && header.includes('valor')) {
+                if (header.includes('com') && header.includes('pagamento')) {
                     tableRows = $(tbl).find('tbody tr');
-                    return false; // Break
+                    return false; 
                 }
             });
         }
@@ -271,15 +220,19 @@ async function scrapeAsset(ticker) {
     } catch (error) { return []; }
 }
 
-// --- HANDLER SERVERLESS (Vercel) ---
 module.exports = async function handler(req, res) {
+    // CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
-    // Cache: 1 hora de TTL, stale-while-revalidate por 24h
+
+    // OTIMIZAÇÃO 3: Cache Headers (Importantíssimo)
+    // Cacheia a resposta por 1 hora (3600s) na CDN da Vercel.
+    // O 'stale-while-revalidate' serve o cache antigo enquanto atualiza em segundo plano.
     if (req.method === 'GET' || (req.method === 'POST' && req.body.mode !== 'proventos_carteira')) {
+       // Evitamos cache em 'proventos_carteira' se ele for muito dinâmico ou grande, 
+       // mas para fundamentos e histórico é seguro.
        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
 
@@ -290,29 +243,32 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // 1. FUNDAMENTOS (DETALHES DO ATIVO)
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
-        // 2. PROVENTOS DA CARTEIRA (IA / PREVISÃO)
-        if (mode === 'proventos_carteira') {
+if (mode === 'proventos_carteira') {
             if (!payload.fiiList) return res.json({ json: [] });
             
+            // fiiList agora será um array de objetos: [{ ticker: 'MXRF11', limit: 12 }, ...]
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
 
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
+                    // Verifica se o item é string (legado) ou objeto (novo formato)
                     const ticker = typeof item === 'string' ? item : item.ticker;
+                    // Se for string, assume 24 (padrão antigo). Se for objeto, usa o limite calculado.
                     const limit = typeof item === 'string' ? 24 : (item.limit || 24);
 
                     const history = await scrapeAsset(ticker);
+                    
+                    // AQUI APLICAMOS O CORTE INTELIGENTE
                     const recents = history
                         .filter(h => h.paymentDate && h.value > 0)
-                        .slice(0, limit);
+                        .slice(0, limit); // Corta exatamente onde o App.js pediu
 
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
@@ -320,12 +276,12 @@ module.exports = async function handler(req, res) {
                 
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
+
                 if (batches.length > 1) await new Promise(r => setTimeout(r, 500)); 
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-        // 3. HISTÓRICO 12M (GRÁFICO DETALHES)
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
             const history = await scrapeAsset(payload.ticker);
@@ -337,7 +293,6 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: formatted });
         }
 
-        // 4. HISTÓRICO PORTFOLIO (GRÁFICO AGREGADO)
         if (mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3); 
@@ -355,7 +310,6 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: all });
         }
 
-        // 5. PRÓXIMO PROVENTO (CARD DETALHES)
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);

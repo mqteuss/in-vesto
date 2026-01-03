@@ -82,7 +82,7 @@ async function fetchHtmlWithRetry(ticker) {
             const html = response.data;
             const $ = cheerio.load(html);
             
-            // Validação: se o título não tiver o ticker, fomos redirecionados para a Home errada
+            // Validação: se o título não tiver o ticker, fomos redirecionados para a Home
             const title = $('title').text().toLowerCase();
             const h1 = $('h1').text().toLowerCase();
             if (!title.includes(tickerLower) && !h1.includes(tickerLower)) {
@@ -117,7 +117,7 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // 1. CARDS DO TOPO (Seleção Direta por Classes)
+        // 1. CARDS DO TOPO (Seleção Direta)
         const getCardValue = (className) => {
             const el = $(`._card.${className} ._card-body span`).first();
             return el.length ? el.text().trim() : null;
@@ -132,6 +132,7 @@ async function scrapeFundamentos(ticker) {
         const pvpCard = getCardValue('vp') || getCardValue('p_vp');
         if (pvpCard) dados.pvp = pvpCard;
         
+        // ROE muitas vezes aparece num card para ações
         const roeCard = getCardValue('roe');
         if (roeCard) dados.roe = roeCard;
 
@@ -153,19 +154,20 @@ async function scrapeFundamentos(ticker) {
             
             // Segmento (FII ou Ação - Setor)
             if (dados.segmento === 'N/A') {
-                if (chave.includes('segmento') || chave.includes('setor')) dados.segmento = valor;
+                if (chave.includes('segmento') || chave.includes('setor') || chave === 'segmento de listagem') dados.segmento = valor;
             }
             
-            // Patrimônio Líquido (FIIs usam "Valor Patrimonial")
+            // Patrimônio Líquido (FIIs e Ações)
+            // Lógica: Patrimônio Líquido é um valor GRANDE. VP por Cota é um valor PEQUENO.
             if (dados.patrimonio_liquido === 'N/A') {
                 if (chave === 'patrimonio' || chave.includes('patrimonio liq') || chave.includes('valor patrimonial')) {
-                    // Filtra valores pequenos que seriam VP por Cota
                     const valNum = parseValue(valor);
-                    if (valNum > 1000) dados.patrimonio_liquido = valor;
+                    // Se for maior que 1 milhão, assumimos que é o PL Total
+                    if (valNum > 1000000) dados.patrimonio_liquido = valor;
                 }
             }
             
-            // VP por Cota / VPA
+            // VP por Cota / VPA (FIIs e Ações)
             if (dados.vp_cota === 'N/A') {
                 if (chave.includes('vp por cota') || chave === 'vpa') {
                      dados.vp_cota = valor;
@@ -177,7 +179,7 @@ async function scrapeFundamentos(ticker) {
             
             // Cotistas (FII) vs Acionistas (Ação)
             if (dados.num_cotistas === 'N/A') {
-                if (chave.includes('cotistas') || chave.includes('acionistas') || chave.includes('investidores')) {
+                if (chave.includes('cotistas') || chave.includes('acionistas') || chave.includes('n acionistas')) {
                     dados.num_cotistas = valor;
                 }
             }
@@ -187,7 +189,7 @@ async function scrapeFundamentos(ticker) {
             
             // Tipo (Ação vs Fundo)
             if (dados.tipo_fundo === 'N/A') {
-                if(chave === 'tipo' || chave.includes('tipo de fundo') || chave.includes('classificacao')) dados.tipo_fundo = valor;
+                if(chave === 'tipo' || chave.includes('tipo de fundo') || chave.includes('classificacao') || chave === 'tipo de acao') dados.tipo_fundo = valor;
             }
 
             // --- AÇÕES (Indicadores Corrigidos) ---
@@ -213,7 +215,7 @@ async function scrapeFundamentos(ticker) {
             if (dados.ev_ebit === 'N/A' && chave.includes('ev/ebit')) dados.ev_ebit = valor;
             
             // Num Ações para cálculo de Market Cap (se necessário)
-            if (chave.includes('num. acoes') || chave.includes('cotas emitidas') || chave === 'numero de acoes') {
+            if (chave.includes('num. acoes') || chave.includes('cotas emitidas') || chave === 'numero de acoes' || chave.includes('total de acoes')) {
                  num_cotas = parseExtendedValue(valor);
                  if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
             }
@@ -221,7 +223,8 @@ async function scrapeFundamentos(ticker) {
 
         // --- ESTRATÉGIA DE VARREDURA ---
         
-        // A. Grid Cells (Padrão novo do Investidor10 - Onde ficam LPA, Margens, etc)
+        // A. Grid Cells (Onde ficam os indicadores de Ações)
+        // O site usa div.cell com span.name e span.value
         $('.cell').each((i, el) => {
             const title = $(el).find('.name').text();
             const val = $(el).find('.value').text();
@@ -252,7 +255,8 @@ async function scrapeFundamentos(ticker) {
         if (dados.variacao_12m === 'N/A') {
             // Procura em headers de cards
             $('._card-header').each((i, el) => {
-                if ($(el).text().toLowerCase().includes('12 meses') || $(el).text().toLowerCase().includes('12m')) {
+                const text = $(el).text().toLowerCase();
+                if (text.includes('12 meses') || text.includes('12m')) {
                     const val = $(el).parent().find('._card-body').text().trim();
                     if (val && !val.includes('DY')) { 
                          dados.variacao_12m = val;
@@ -270,7 +274,8 @@ async function scrapeFundamentos(ticker) {
             }
         }
 
-        // 4. CÁLCULO DE VALOR DE MERCADO (Se não achou pronto)
+        // 4. CÁLCULO DE VALOR DE MERCADO (Fallback Inteligente)
+        // Se não achou "Valor de Mercado", calcula: Cotação * Num. Ações
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             if (cotacao_atual > 0 && num_cotas > 0) {
                 const mkt = cotacao_atual * num_cotas;
@@ -283,7 +288,6 @@ async function scrapeFundamentos(ticker) {
         return dados;
 
     } catch (error) {
-        console.error(`Erro scraper ${ticker}:`, error.message);
         return { dy: '-', pvp: '-' };
     }
 }
@@ -327,6 +331,7 @@ async function scrapeAsset(ticker) {
 }
 
 module.exports = async function handler(req, res) {
+    // CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');

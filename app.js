@@ -1556,13 +1556,14 @@ function renderizarHistorico() {
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
-    // Assinatura para evitar re-render desnecessário
+    // Assinatura para evitar re-render desnecessário (Cache de visualização)
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${provSearchTerm}`;
 
-    // Nota: Removi a trava de assinatura aqui para forçar a atualização visual das etiquetas
-    // if (currentSignature === lastHistoricoProventosSignature ...) { return; }
+    if (currentSignature === lastHistoricoProventosSignature && listaHistoricoProventos.children.length > 0) { 
+        return; 
+    }
     
     lastHistoricoProventosSignature = currentSignature;
     listaHistoricoProventos.innerHTML = '';
@@ -1592,6 +1593,7 @@ function renderizarHistoricoProventos() {
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
+        // Filtra apenas itens que o usuário tinha na data com
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1604,6 +1606,7 @@ function renderizarHistoricoProventos() {
 
         if (totalMes === 0) return;
 
+        // Cabeçalho do Mês
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         header.innerHTML = `
@@ -1622,20 +1625,30 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- TRATAMENTO VISUAL DO TIPO (ATUALIZADO) ---
+            // --- TRATAMENTO VISUAL DO TIPO (CORRIGIDO) ---
             let tipoLabel = p.type || 'Rendimento';
             
             // Abreviações para caber no card
             if (tipoLabel === 'Rendimento') tipoLabel = 'Rend.';
-            else if (tipoLabel === 'Dividendo') tipoLabel = 'DIV';
-            else if (tipoLabel === 'JCP') tipoLabel = 'JCP';
-            else if (tipoLabel === 'Rend. Tributado') tipoLabel = 'TRIB'; // Para PETR4
+            else if (tipoLabel === 'Dividendo' || tipoLabel === 'Dividendos') tipoLabel = 'DIV';
+            else if (tipoLabel === 'JCP' || tipoLabel === 'Juros Sobre Capital Próprio') tipoLabel = 'JCP';
+            else if (tipoLabel === 'Rend. Tributado') tipoLabel = 'TRIB';
             else if (tipoLabel === 'Amortização') tipoLabel = 'AMOR';
 
-            // Cor da Badge dependendo do tipo
-            let badgeStyle = 'text-gray-500 bg-[#222] border-[#333]';
-            if (tipoLabel === 'JCP' || tipoLabel === 'TRIB') badgeStyle = 'text-yellow-600 bg-yellow-900/10 border-yellow-900/20';
-            if (tipoLabel === 'DIV') badgeStyle = 'text-green-600 bg-green-900/10 border-green-900/20';
+            // Cores da Badge dependendo do tipo
+            let badgeStyle = 'text-gray-500 bg-[#222] border-[#333]'; // Default (FIIs geralmente)
+
+            if (tipoLabel === 'JCP' || tipoLabel === 'TRIB') {
+                // Amarelo para JCP (Atenção/Tributado)
+                badgeStyle = 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
+            } else if (tipoLabel === 'DIV') {
+                // Verde para Dividendos (Isento)
+                badgeStyle = 'text-green-500 bg-green-500/10 border-green-500/20';
+            } else if (tipoLabel === 'AMOR') {
+                // Azul para Amortização
+                badgeStyle = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+            }
+            // ---------------------------------------------
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';

@@ -4510,39 +4510,47 @@ function renderizarTransacoesDetalhes(symbol) {
         }
     }
     
-    function renderHistoricoIADetalhes(meses) {
-        if (!currentDetalhesHistoricoJSON) {
-            return;
-        }
+// --- SUBSTITUA A FUNÇÃO renderHistoricoIADetalhes NO FINAL DO ARQUIVO ---
 
-        if (currentDetalhesHistoricoJSON.length === 0) {
-            detalhesAiProvento.innerHTML = `
-                <p class="text-sm text-gray-500 text-center py-4">
-                    Sem histórico recente.
-                </p>
-            `;
-            if (detalhesChartInstance) {
-                detalhesChartInstance.destroy();
-                detalhesChartInstance = null;
-            }
-            return;
-        }
-
-        if (!document.getElementById('detalhes-proventos-chart')) {
-             detalhesAiProvento.innerHTML = `
-                <div class="relative h-48 w-full">
-                    <canvas id="detalhes-proventos-chart"></canvas>
-                </div>
-             `;
-        }
-
-        const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
-        
-        const labels = dadosFiltrados.map(item => item.mes);
-        const data = dadosFiltrados.map(item => item.valor);
-
-        renderizarGraficoProventosDetalhes({ labels, data });
+function renderHistoricoIADetalhes(meses) {
+    if (!currentDetalhesHistoricoJSON) {
+        return;
     }
+
+    if (currentDetalhesHistoricoJSON.length === 0) {
+        detalhesAiProvento.innerHTML = `
+            <p class="text-sm text-gray-500 text-center py-4">
+                Sem histórico recente.
+            </p>
+        `;
+        if (detalhesChartInstance) {
+            detalhesChartInstance.destroy();
+            detalhesChartInstance = null;
+        }
+        return;
+    }
+
+    if (!document.getElementById('detalhes-proventos-chart')) {
+         detalhesAiProvento.innerHTML = `
+            <div class="relative h-48 w-full">
+                <canvas id="detalhes-proventos-chart"></canvas>
+            </div>
+         `;
+    }
+
+    // Filtra e corrige Labels
+    const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
+    
+    // CORREÇÃO: Garante que o label não seja undefined/defined
+    const labels = dadosFiltrados.map(item => {
+        if(item.mes && !item.mes.includes('undefined')) return item.mes;
+        return '--/--';
+    });
+    
+    const data = dadosFiltrados.map(item => item.valor);
+
+    renderizarGraficoProventosDetalhes({ labels, data });
+}
     
 // Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];

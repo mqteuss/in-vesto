@@ -127,10 +127,7 @@ const formatDateToInput = (dateString) => {
     }
 };
 
-// Novos Helpers de Identificação
-const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12') || symbol.endsWith('11B'));
-const isAcao = (symbol) => symbol && (symbol.endsWith('3') || symbol.endsWith('4') || symbol.endsWith('5') || symbol.endsWith('6'));
-const isAtivoValido = (symbol) => isFII(symbol) || isAcao(symbol);
+const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
 
 function parseMesAno(mesAnoStr) { 
     try {
@@ -4209,16 +4206,12 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-// --- INICIO DA MODIFICAÇÃO PARA AÇÕES ---
-        const ehFII = isFII(symbol); // Usa o novo helper
-        const ehAcao = isAcao(symbol);
-
         const dados = { 
             pvp: fundamentos.pvp || '-', 
             dy: fundamentos.dy || '-', 
-            pl: fundamentos.pl || '-',      // Novo: Preço sobre Lucro
-            roe: fundamentos.roe || '-',    // Novo: Return on Equity
             segmento: fundamentos.segmento || '-', 
+            mandato: fundamentos.mandato || '-',          
+            tipo_fundo: fundamentos.tipo_fundo || '-',    
             vacancia: fundamentos.vacancia || '-', 
             vp_cota: fundamentos.vp_cota || '-', 
             liquidez: fundamentos.liquidez || '-', 
@@ -4234,7 +4227,6 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-' 
         };
         
-        // Lógica de cor para variação de 12 meses
         let corVar12m = 'text-[#888888]'; let icon12m = '';
         if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
             corVar12m = 'text-red-500'; icon12m = arrowDown;
@@ -4242,15 +4234,6 @@ async function handleMostrarDetalhes(symbol) {
             corVar12m = 'text-green-500'; icon12m = arrowUp;
         }
 
-        // Função auxiliar para criar card de indicador condicional
-        const renderStatCard = (label, value, colorClass = 'text-white') => `
-            <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">${label}</span>
-                <span class="text-lg font-bold ${colorClass}">${value}</span>
-            </div>
-        `;
-
-        // Função auxiliar para renderizar linhas da tabela (ESTAVA FALTANDO ISSO)
         const renderRow = (label, value, isLast = false) => `
             <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
                 <span class="text-sm text-[#888888] font-medium">${label}</span>
@@ -4258,26 +4241,6 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
-        // Define quais cards mostrar baseado no tipo de ativo
-        let cardsIndicadoresHtml = '';
-        
-        if (ehAcao) {
-            // Layout para AÇÕES: P/L | P/VP | ROE
-            cardsIndicadoresHtml = `
-                ${renderStatCard('P/L', dados.pl, 'text-blue-400')}
-                ${renderStatCard('P/VP', dados.pvp, 'text-white')}
-                ${renderStatCard('ROE', dados.roe, 'text-green-400')}
-            `;
-        } else {
-            // Layout para FIIs: DY | P/VP | Últ. Rend
-            cardsIndicadoresHtml = `
-                ${renderStatCard('DY (12m)', dados.dy, 'text-purple-400')}
-                ${renderStatCard('P/VP', dados.pvp, 'text-white')}
-                ${renderStatCard('Últ. Rend.', dados.ultimo_rendimento, 'text-green-400')}
-            `;
-        }
-
-        // Renderiza o HTML final
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
                 
@@ -4294,7 +4257,18 @@ async function handleMostrarDetalhes(symbol) {
                 ${proximoProventoHtml} 
 
                 <div class="grid grid-cols-3 gap-3 w-full">
-                    ${cardsIndicadoresHtml}
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
+                        <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
+                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
+                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
+                    </div>
                 </div>
 
                 <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
@@ -4302,7 +4276,7 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${ehFII ? renderRow('Vacância', dados.vacancia) : ''}
+                    ${renderRow('Vacância', dados.vacancia)}
                     <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
                         <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
@@ -4315,21 +4289,19 @@ async function handleMostrarDetalhes(symbol) {
                 
                 <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
                     ${renderRow('Segmento', dados.segmento)}
-                    
-                    ${ehFII ? renderRow('Tipo de Fundo', dados.tipo_fundo) : ''}
-                    ${ehFII ? renderRow('Mandato', dados.mandato) : ''}
-                    ${ehFII ? renderRow('Gestão', dados.tipo_gestao) : ''}
-                    ${ehFII ? renderRow('Prazo', dados.prazo_duracao) : ''}
-                    ${ehFII ? renderRow('Taxa Adm.', dados.taxa_adm) : ''}
-                    ${ehFII ? renderRow('Cotistas', dados.num_cotistas) : ''}
-                    
-                    ${renderRow(ehAcao ? 'Ações Emitidas' : 'Cotas Emitidas', dados.cotas_emitidas)}
-                    
+                    ${renderRow('Tipo de Fundo', dados.tipo_fundo)}
+                    ${renderRow('Mandato', dados.mandato)}
+                    ${renderRow('Gestão', dados.tipo_gestao)}
+                    ${renderRow('Prazo', dados.prazo_duracao)}
+                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
+                    ${renderRow('Cotistas', dados.num_cotistas)}
+                    ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
                     <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm text-[#888888] font-medium">CNPJ</span>
                         <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
                     </div>
                 </div>
+
             </div>
         `;
 

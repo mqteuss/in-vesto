@@ -2372,7 +2372,7 @@ function renderizarGraficoProventosDetalhes(dados) {
 
     const labels = dados.map(d => d.mes);
     
-    // Separa os datasets
+    // Separa os dados para as pilhas
     const dataDiv = dados.map(d => d.dividendo || 0);
     const dataJCP = dados.map(d => d.jcp || 0);
     const dataRend = dados.map(d => d.rendimento || 0);
@@ -2381,7 +2381,7 @@ function renderizarGraficoProventosDetalhes(dados) {
         detalhesChartInstance.destroy();
     }
 
-    // Configuração de Cores Profissionais
+    // Cores Modernas
     const colorDiv = '#10b981'; // Emerald 500
     const colorJCP = '#fbbf24'; // Amber 400
     const colorRend = '#a855f7'; // Purple 500
@@ -2396,7 +2396,7 @@ function renderizarGraficoProventosDetalhes(dados) {
                     data: dataDiv,
                     backgroundColor: colorDiv,
                     borderRadius: 2,
-                    stack: 'Stack 0'
+                    stack: 'Stack 0' // Define empilhamento
                 },
                 {
                     label: 'JCP',
@@ -2418,7 +2418,7 @@ function renderizarGraficoProventosDetalhes(dados) {
             responsive: true, 
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false }, // Usamos a legenda HTML personalizada
+                legend: { display: false }, // Legenda HTML customizada
                 tooltip: {
                     backgroundColor: '#151515',
                     borderColor: '#333',
@@ -2426,6 +2426,7 @@ function renderizarGraficoProventosDetalhes(dados) {
                     titleColor: '#fff',
                     bodyColor: '#ccc',
                     callbacks: {
+                        // Formata o valor no tooltip
                         label: function(context) {
                             let label = context.dataset.label || '';
                             if (label) { label += ': '; }
@@ -2434,8 +2435,8 @@ function renderizarGraficoProventosDetalhes(dados) {
                             }
                             return label;
                         },
+                        // Adiciona Total no rodapé do tooltip
                         footer: function(tooltipItems) {
-                            // Soma o total da barra no tooltip
                             let total = 0;
                             tooltipItems.forEach(function(tooltipItem) {
                                 total += tooltipItem.parsed.y;
@@ -2447,15 +2448,15 @@ function renderizarGraficoProventosDetalhes(dados) {
             },
             scales: {
                 x: {
-                    stacked: true, // HABILITA O EMPILHAMENTO
+                    stacked: true,
                     grid: { display: false },
                     ticks: { color: '#666', font: { size: 10 } }
                 },
                 y: {
-                    stacked: true, // HABILITA O EMPILHAMENTO
+                    stacked: true,
                     beginAtZero: true,
                     grid: { color: '#222', borderDash: [4, 4] },
-                    ticks: { display: false } // Oculta valores do eixo Y para limpar o visual
+                    ticks: { display: false } // Limpa eixo Y
                 }
             }
         }
@@ -4529,7 +4530,7 @@ function renderHistoricoIADetalhes(meses) {
         return;
     }
 
-    // Cria o container do Canvas + Legenda Personalizada
+    // Cria o container do Canvas + LEGENDA DE CORES
     if (!document.getElementById('detalhes-proventos-chart')) {
          detalhesAiProvento.innerHTML = `
             <div class="relative h-48 w-full">
@@ -4553,15 +4554,20 @@ function renderHistoricoIADetalhes(meses) {
     }
 
     const hoje = new Date();
+    // Filtro Temporal Correto: Hoje menos X meses
     const dataCorte = new Date(hoje.getFullYear(), hoje.getMonth() - meses, 1);
     
-    // Filtra por data
     let dadosFiltrados = currentDetalhesHistoricoJSON.filter(item => {
-        let itemDate = item.dateIso ? new Date(item.dateIso + 'T12:00:00') : new Date();
+        // Usa dateIso vindo do backend ou constrói fallback
+        let itemDate = item.dateIso ? new Date(item.dateIso + 'T12:00:00') : null;
+        if (!itemDate) {
+            const parts = item.mes.split('/');
+            itemDate = new Date(`20${parts[1]}`, parseInt(parts[0]) - 1, 1);
+        }
         return itemDate >= dataCorte;
     });
     
-    // Fallback para não ficar vazio
+    // Se o filtro temporal esvaziou (ex: ativo sem pagamentos no último ano), mostra os últimos 3 disponíveis
     if (dadosFiltrados.length === 0 && currentDetalhesHistoricoJSON.length > 0) {
         dadosFiltrados = currentDetalhesHistoricoJSON.slice(-3);
     }

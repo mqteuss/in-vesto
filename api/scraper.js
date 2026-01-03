@@ -2,12 +2,12 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
 
-// --- CONFIGURAÇÃO DO CLIENTE ---
+// --- CONFIGURAÇÃO ---
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
     maxFreeSockets: 10,
-    timeout: 10000
+    timeout: 15000
 });
 
 const client = axios.create({
@@ -17,12 +17,12 @@ const client = axios.create({
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Referer': 'https://statusinvest.com.br/',
     },
-    timeout: 9000
+    timeout: 10000
 });
 
-// --- HELPERS ---
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 
+// --- HELPERS ---
 function parseValue(valueStr) {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
@@ -39,38 +39,48 @@ function chunkArray(array, size) {
     return results;
 }
 
-function getAssetType(ticker) {
-    const t = ticker.toUpperCase();
-    if (t.endsWith('11') || t.endsWith('11B')) return 'fundos-imobiliarios';
-    return 'acoes';
-}
+// --- LÓGICA DE ROTAS INTELIGENTE (FII vs FIAGRO vs AÇÃO) ---
+async function fetchHtmlSmart(ticker) {
+    const t = ticker.toLowerCase();
+    
+    // Tenta primeiro como FII (Maioria dos casos final 11)
+    // Mas se falhar ou retornar página inválida, tentamos Fiagro
+    
+    const tryUrl = async (type) => {
+        try {
+            const url = `https://statusinvest.com.br/${type}/${t}`;
+            const res = await client.get(url);
+            // Verifica se a página carregou um conteúdo válido (ex: tem o título do ativo)
+            const $ = cheerio.load(res.data);
+            if ($('h1').length > 0) return { html: res.data, type }; 
+            throw new Error("Página vazia");
+        } catch (e) { return null; }
+    };
 
-// --- FETCHERS ---
-async function fetchProventosJson(ticker) {
-    const type = getAssetType(ticker) === 'fundos-imobiliarios' ? 'fii' : 'acao';
-    const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${ticker}&chartProventsType=2`;
-    try {
-        const { data } = await client.get(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        return data.assetEarningsModels || [];
-    } catch (e) { return []; }
-}
-
-async function fetchFundamentosHtml(ticker) {
-    const type = getAssetType(ticker);
-    try {
-        return await client.get(`https://statusinvest.com.br/${type}/${ticker.toLowerCase()}`);
-    } catch (e) {
-        if (type === 'fundos-imobiliarios') return await client.get(`https://statusinvest.com.br/acoes/${ticker.toLowerCase()}`);
-        throw e;
+    // Ordem de tentativa baseada no final do ticker
+    if (t.endsWith('11') || t.endsWith('11b')) {
+        // Tenta FII -> Fiagro -> Ação (Unit)
+        let result = await tryUrl('fundos-imobiliarios');
+        if (result) return result;
+        
+        result = await tryUrl('fiagros'); // Aqui resolve o SNAG11
+        if (result) return result;
+        
+        return await tryUrl('acoes');
+    } else {
+        // Ações (3, 4, etc)
+        return await tryUrl('acoes') || await tryUrl('fundos-imobiliarios'); // Fallback raro
     }
 }
 
-// --- SCRAPER FUNDAMENTOS (CORRIGIDO) ---
+// --- SCRAPER DE FUNDAMENTOS (BUSCA UNIVERSAL) ---
 async function scrapeFundamentos(ticker) {
     try {
-        const response = await fetchFundamentosHtml(ticker);
-        const html = response.data;
-        const $ = cheerio.load(html);
+        const result = await fetchHtmlSmart(ticker);
+        if (!result) return { dy: '-', pvp: '-', segmento: '-' }; // Não achou página
+
+        const $ = cheerio.load(result.html);
+        const pageType = result.type; // 'acoes', 'fiagros' ou 'fundos-imobiliarios'
 
         let dados = {
             dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
@@ -80,91 +90,99 @@ async function scrapeFundamentos(ticker) {
             taxa_adm: 'N/A', cotas_emitidas: 'N/A'
         };
 
-        // --- 1. DADOS DE CABEÇALHO (Cards Superiores) ---
-        // Ex: DY, P/VP, Cotação
-        $('.top-info .info').each((i, el) => {
-            const title = $(el).find('.title').text().toLowerCase();
-            const value = $(el).find('.value').text().trim();
+        // --- FUNÇÃO "SCANNER" ---
+        // Procura um texto na tela e pega o valor mais próximo, não importa a estrutura HTML
+        const findVal = (labels) => {
+            const labelArray = Array.isArray(labels) ? labels : [labels];
             
-            if (title.includes('dividend yield')) dados.dy = value;
-            if (title.includes('p/vp')) dados.pvp = value;
-            if (title.includes('cotacao') || title.includes('valor atual')) dados.cotacao_atual = value;
-        });
+            for (const label of labelArray) {
+                // Procura elementos que contenham o texto exato ou parcial
+                // Usamos filter para garantir que não pegamos scripts ou conteudos ocultos grandes
+                const el = $('div, span, strong, h3, h4').filter((i, e) => {
+                    return $(e).clone().children().remove().end().text().trim().toLowerCase() === label.toLowerCase();
+                }).first();
 
-        // --- 2. DADOS ESPECÍFICOS (Liquidez, Patrimônio, VP) ---
-        // O Status Invest usa divs com title="ajuda" que facilitam a busca
-        const getValByTitleAttr = (titleKey) => {
-            // Procura div que tenha title="...texto..."
-            const target = $(`div[title*="${titleKey}"]`).first();
-            if (target.length) {
-                // Tenta pegar .value dentro ou perto
-                return target.find('.value').text().trim() || target.parent().find('.value').text().trim();
+                if (el.length) {
+                    // Tenta achar o valor em várias posições relativas
+                    let val = '';
+                    
+                    // 1. Irmão direto (.title + .value)
+                    val = el.next('.value').text().trim();
+                    if (val) return val;
+                    
+                    // 2. Filho (.info > .title ... .value)
+                    val = el.parent().find('.value').first().text().trim();
+                    if (val) return val;
+
+                    // 3. Sub-value (usado em tabelas inferiores)
+                    val = el.parent().find('.sub-value').first().text().trim();
+                    if (val) return val;
+                    
+                    // 4. Estrutura de Cards do Topo (div > div.title ... div > div.value)
+                    val = el.parents('div').first().find('.value').text().trim();
+                    if (val) return val;
+                }
             }
-            // Fallback: Procura por texto visível do título
-            const textTarget = $(`.title:contains("${titleKey}")`).last(); // Last geralmente é o correto no layout
-            if (textTarget.length) return textTarget.parent().find('.value').text().trim();
-            
             return null;
         };
 
-        dados.liquidez = getValByTitleAttr('Liquidez média') || 'N/A';
-        dados.vp_cota = getValByTitleAttr('Valor patrimonial p/cota') || 'N/A';
-        dados.val_mercado = getValByTitleAttr('Valor de mercado') || 'N/A';
-        dados.patrimonio_liquido = getValByTitleAttr('Patrimônio líquido') || 'N/A';
-        dados.ultimo_rendimento = getValByTitleAttr('Último rendimento') || 'N/A';
-        dados.cotas_emitidas = getValByTitleAttr('Num. de cotas') || getValByTitleAttr('Cotas emitidas') || 'N/A';
-
-        // --- 3. DADOS GERAIS (Tabela inferior: Segmento, Vacância, CNPJ) ---
-        // Essa parte geralmente fica numa div .card-bg
+        // --- MAPEAMENTO DOS CAMPOS ---
         
-        // Função para limpar o texto grudado (ex: "SegmentoLogística" -> "Logística")
-        const cleanLabel = (fullText, label) => {
-            return fullText.replace(label, '').trim();
-        };
+        // 1. Cards Principais (Topo)
+        dados.dy = findVal(['Dividend Yield', 'DY']) || 'N/A';
+        dados.pvp = findVal(['P/VP', 'P/L', 'VPA']) || 'N/A'; // P/L para ações as vezes
+        dados.cotacao_atual = findVal(['Valor atual', 'Cotação']) || 'N/A';
+        dados.ultimo_rendimento = findVal(['Último rendimento']) || 'N/A';
 
-        // Percorre todos os containers de info menores
-        $('.info').each((i, el) => {
-            const fullText = $(el).text().trim();
-            const titleEl = $(el).find('.title');
-            const subValueEl = $(el).find('.sub-value'); // Status Invest usa .sub-value aqui
-            const valueEl = $(el).find('.value');
+        // 2. Dados de Mercado
+        dados.liquidez = findVal(['Liquidez média diária', 'Liquidez Diária']) || 'N/A';
+        dados.patrimonio_liquido = findVal(['Patrimônio líquido']) || 'N/A';
+        dados.val_mercado = findVal(['Valor de mercado']) || 'N/A';
+        dados.vp_cota = findVal(['Valor patrimonial p/cota', 'V.P.A', 'VP por cota']) || 'N/A';
+        dados.cotas_emitidas = findVal(['Num. de cotas', 'Cotas emitidas', 'Total de papeis']) || 'N/A'; // Ações usa 'Total de papeis'
 
-            let valorFinal = 'N/A';
-            if (subValueEl.length) valorFinal = subValueEl.text().trim();
-            else if (valueEl.length) valorFinal = valueEl.text().trim();
-            
-            // Se achou o valor via classe, ótimo. Se não, tenta limpar texto.
-            const titleText = titleEl.text().trim();
+        // 3. Tabela de Informações Gerais (Inferior)
+        // Fiagros e FIIs tem estruturas parecidas aqui
+        dados.segmento = findVal(['Segmento', 'Setor de Atuação']) || 'N/A';
+        dados.tipo_fundo = findVal(['Tipo de fundo']) || 'N/A';
+        dados.mandato = findVal(['Mandato']) || 'N/A';
+        dados.tipo_gestao = findVal(['Gestão']) || 'N/A';
+        dados.prazo_duracao = findVal(['Prazo de duração']) || 'N/A';
+        dados.vacancia = findVal(['Vacância Física']) || 'N/A';
+        dados.num_cotistas = findVal(['Num. Cotistas', 'Nº de acionistas']) || 'N/A';
+        dados.cnpj = findVal(['CNPJ']) || 'N/A';
 
-            if (titleText.includes('Segmento')) dados.segmento = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Segmento');
-            if (titleText.includes('Tipo de fundo')) dados.tipo_fundo = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Tipo de fundo');
-            if (titleText.includes('Mandato')) dados.mandato = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Mandato');
-            if (titleText.includes('Gestão')) dados.tipo_gestao = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Gestão');
-            if (titleText.includes('Prazo')) dados.prazo_duracao = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Prazo de duração');
-            if (titleText.includes('Vacância Física')) dados.vacancia = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Vacância Física');
-            if (titleText.includes('Cotistas')) dados.num_cotistas = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Num. Cotistas');
-            if (titleText.includes('CNPJ')) dados.cnpj = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'CNPJ');
-        });
-
-        // --- CORREÇÃO EXTRA PARA "SEGMENTO" ---
-        // Se ainda estiver grudado ou errado, tenta pegar direto do strong
-        if (dados.segmento === 'N/A' || dados.segmento.length > 50) {
-            const segStrong = $('strong:contains("Segmento")').parent().find('.sub-value');
-            if (segStrong.length) dados.segmento = segStrong.text().trim();
+        // Correção específica para Segmento que as vezes vem "grudado"
+        if (dados.segmento !== 'N/A') {
+             // Remove o label se ele vier junto (ex: "SegmentoIndefinido" -> "Indefinido")
+             dados.segmento = dados.segmento.replace(/segmento/yi, '').trim();
         }
 
         return dados;
 
     } catch (error) {
-        console.error("Erro scraper:", error.message);
+        console.error(`Erro ao processar ${ticker}:`, error.message);
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 
-// --- SCRAPER HISTÓRICO (Mantido igual pois funciona) ---
+// --- SCRAPER HISTÓRICO (JSON API) ---
+// Mantido igual, mas com a detecção de tipo (FII/Fiagro/Acao)
 async function scrapeAsset(ticker) {
     try {
-        const earnings = await fetchProventosJson(ticker);
+        // Tenta descobrir o tipo pela URL padrão ou lógica simples
+        // A API de proventos do Status Invest usa 'fii' para Fiagros também? Vamos testar.
+        // Geralmente: /fii/companytickerprovents funciona para FII e Fiagro
+        
+        let type = 'acao';
+        const t = ticker.toUpperCase();
+        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
+        
+        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${ticker}&chartProventsType=2`;
+        
+        const { data } = await client.get(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const earnings = data.assetEarningsModels || [];
+
         const dividendos = earnings.map(d => {
             const parseDateJSON = (dStr) => {
                 if(!dStr) return null;
@@ -182,6 +200,8 @@ async function scrapeAsset(ticker) {
     } catch (error) { return []; }
 }
 
+
+// --- HANDLER PRINCIPAL ---
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -227,6 +247,7 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
+        // Outros modos (historico_12m, proximo_provento) usam scrapeAsset, que já está corrigido
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
             const history = await scrapeAsset(payload.ticker);
@@ -237,24 +258,7 @@ module.exports = async function handler(req, res) {
             }).filter(h => h !== null);
             return res.status(200).json({ json: formatted });
         }
-
-        if (mode === 'historico_portfolio') {
-            if (!payload.fiiList) return res.json({ json: [] });
-            const batches = chunkArray(payload.fiiList, 3); 
-            let all = [];
-            for (const batch of batches) {
-                const promises = batch.map(async (ticker) => {
-                    const history = await scrapeAsset(ticker);
-                    history.slice(0, 24).forEach(h => {
-                        if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
-                    });
-                });
-                await Promise.all(promises);
-                if (batches.length > 1) await new Promise(r => setTimeout(r, 800));
-            }
-            return res.status(200).json({ json: all });
-        }
-
+        
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);

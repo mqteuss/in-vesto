@@ -127,20 +127,7 @@ const formatDateToInput = (dateString) => {
     }
 };
 
-const isFII = (symbol) => {
-    if(!symbol) return false;
-    // Lista de exceções comuns de Units (Ações que terminam em 11)
-    const unitsAcoes = ['ALUP11', 'TAEE11', 'KLBN11', 'SAPR11', 'SANB11', 'TIET11', 'BBDC11', 'BPAC11', 'ENGI11', 'SULA11']; 
-    if (unitsAcoes.includes(symbol.toUpperCase())) return false;
-    
-    // Regra padrão
-    return symbol.endsWith('11') || symbol.endsWith('12') || symbol.endsWith('11B');
-};
-
-const isAcao = (symbol) => {
-    if(!symbol) return false;
-    return !isFII(symbol); // Simplificação: se não é FII, tratamos como Ação no layout
-};
+const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
 
 function parseMesAno(mesAnoStr) { 
     try {
@@ -2365,105 +2352,94 @@ function renderizarGraficoHistorico() {
     });
 }
     
-function renderizarGraficoProventosDetalhes(dados) {
-    const canvas = document.getElementById('detalhes-proventos-chart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    const labels = dados.map(d => d.mes);
+    function renderizarGraficoProventosDetalhes({ labels, data }) {
+        const canvas = document.getElementById('detalhes-proventos-chart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
     
-    // Extrai dados seguros (fallback para 0 se undefined)
-    const dataDiv = dados.map(d => d.dividendo || 0);
-    const dataJCP = dados.map(d => d.jcp || 0);
-    const dataRend = dados.map(d => d.rendimento || 0);
-
-    // Destrói instância anterior para evitar erros de renderização
-    if (detalhesChartInstance) {
-        detalhesChartInstance.destroy();
-        detalhesChartInstance = null;
-    }
-
-    // Cores Sólidas e Modernas
-    const colorDiv = '#10b981'; // Emerald 500
-    const colorJCP = '#fbbf24'; // Amber 400
-    const colorRend = '#a855f7'; // Purple 500
-
-    detalhesChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Dividendo',
-                    data: dataDiv,
-                    backgroundColor: colorDiv,
-                    borderRadius: 2,
-                    stack: 'Stack 0' // Empilha na mesma coluna
+        if (!labels || !data || labels.length === 0) {
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null; 
+            }
+            return;
+        }
+    
+        const gradient = ctx.createLinearGradient(0, 0, 0, 192);
+        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
+        
+        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 192);
+        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
+        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
+    
+        if (detalhesChartInstance) {
+            detalhesChartInstance.data.labels = labels;
+            detalhesChartInstance.data.datasets[0].data = data;
+            detalhesChartInstance.data.datasets[0].backgroundColor = gradient;
+            detalhesChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
+            detalhesChartInstance.update();
+        } else {
+            detalhesChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Recebido',
+                        data: data,
+                        backgroundColor: gradient,
+                        hoverBackgroundColor: hoverGradient,
+                        borderColor: 'rgba(192, 132, 252, 0.3)', 
+                        borderWidth: 1,
+                        borderRadius: 4 
+                    }]
                 },
-                {
-                    label: 'JCP',
-                    data: dataJCP,
-                    backgroundColor: colorJCP,
-                    borderRadius: 2,
-                    stack: 'Stack 0'
-                },
-                {
-                    label: 'Rendimento',
-                    data: dataRend,
-                    backgroundColor: colorRend,
-                    borderRadius: 2,
-                    stack: 'Stack 0'
-                }
-            ]
-        },
-        options: {
-            responsive: true, 
-            maintainAspectRatio: false,
-            animation: { duration: 500 }, // Animação rápida
-            plugins: {
-                legend: { display: false }, // Legenda HTML personalizada
-                tooltip: {
-                    backgroundColor: '#151515',
-                    borderColor: '#333',
-                    borderWidth: 1,
-                    titleColor: '#fff',
-                    bodyColor: '#ccc',
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) { label += ': '; }
-                            if (context.parsed.y !== null && context.parsed.y > 0) {
-                                label += formatBRL(context.parsed.y);
-                                return label;
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1A1A1A',
+                            borderColor: '#2A2A2A',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false, 
+                            callbacks: {
+                                title: (context) => `Mês: ${context[0].label}`, 
+                                label: (context) => `Valor: ${formatBRL(context.parsed.y)}`
                             }
-                            return null; // Esconde se for 0
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#2A2A2A' }, 
+                            ticks: { 
+                                display: true,
+                                color: Chart.defaults.color,
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return formatBRL(value);
+                                }
+                            }
                         },
-                        footer: function(tooltipItems) {
-                            let total = 0;
-                            tooltipItems.forEach(function(tooltipItem) {
-                                total += tooltipItem.parsed.y;
-                            });
-                            return 'Total: ' + formatBRL(total);
+                        x: { 
+                            grid: { display: false },
+                            ticks: {
+                                color: Chart.defaults.color,
+                                font: { size: 10 }
+                            }
                         }
                     }
                 }
-            },
-            scales: {
-                x: {
-                    stacked: true, // HABILITA EMPILHAMENTO NO EIXO X
-                    grid: { display: false },
-                    ticks: { color: '#666', font: { size: 10 } }
-                },
-                y: {
-                    stacked: true, // HABILITA EMPILHAMENTO NO EIXO Y
-                    beginAtZero: true,
-                    grid: { color: '#222', borderDash: [4, 4] },
-                    ticks: { display: false }
-                }
-            }
+            });
         }
-    });
-}
+    }
+    
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
 
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
@@ -4083,8 +4059,6 @@ function handleAbrirModalEdicao(id) {
         });
     }
     
-// --- SUBSTITUA A FUNÇÃO handleMostrarDetalhes INTEIRA POR ESTA ---
-
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
@@ -4115,6 +4089,7 @@ async function handleMostrarDetalhes(symbol) {
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
+        // Fundo preto puro, borda cinza escura neutra, texto cinza neutro
         btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
             isActive 
             ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
@@ -4144,19 +4119,23 @@ async function handleMostrarDetalhes(symbol) {
     let fundamentos = {};
     let nextProventoData = null;
 
-    // Lógica para carregar gráfico e fundamentos
-    // O gráfico de proventos históricos também pode ser útil para ações, então carregamos para ambos
-    detalhesHistoricoContainer.classList.remove('hidden'); 
-    fetchHistoricoScraper(symbol);
-    
-    try {
-        const [fundData, provData] = await Promise.all([
-            callScraperFundamentosAPI(symbol),
-            callScraperProximoProventoAPI(symbol)
-        ]);
-        fundamentos = fundData || {};
-        nextProventoData = provData;
-    } catch (e) { console.error("Erro dados extras", e); }
+    if (isFII(symbol)) {
+        detalhesHistoricoContainer.classList.remove('hidden'); 
+        fetchHistoricoScraper(symbol);
+        
+        try {
+            const [fundData, provData] = await Promise.all([
+                callScraperFundamentosAPI(symbol),
+                callScraperProximoProventoAPI(symbol)
+            ]);
+            fundamentos = fundData || {};
+            nextProventoData = provData;
+        } catch (e) { console.error("Erro dados extras", e); }
+    } else {
+        try {
+            fundamentos = await callScraperFundamentosAPI(symbol) || {};
+        } catch(e) {}
+    }
     
     detalhesLoading.classList.add('hidden');
 
@@ -4190,7 +4169,7 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // Próximo Provento (Funciona igual para Ação e FII)
+        // --- 3. CORREÇÃO DA LINHA DO PROVENTO ---
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
@@ -4206,6 +4185,7 @@ async function handleMostrarDetalhes(symbol) {
             const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
             const textClass = isFuturo ? "text-green-400" : "text-[#666666]";
 
+            // AQUI: border-b border-[#2C2C2E] (Cinza Neutro, sem azul)
             proximoProventoHtml = `
                 <div class="w-full p-3 rounded-2xl border ${borderClass} flex flex-col gap-2 shadow-sm">
                     <div class="flex justify-between items-center border-b border-[#2C2C2E] pb-2 mb-1">
@@ -4226,7 +4206,6 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- PREPARAÇÃO DOS DADOS ---
         const dados = { 
             pvp: fundamentos.pvp || '-', 
             dy: fundamentos.dy || '-', 
@@ -4245,12 +4224,7 @@ async function handleMostrarDetalhes(symbol) {
             tipo_gestao: fundamentos.tipo_gestao || '-',
             prazo_duracao: fundamentos.prazo_duracao || '-', 
             taxa_adm: fundamentos.taxa_adm || '-',           
-            cotas_emitidas: fundamentos.cotas_emitidas || '-',
-            // Campos de Ação
-            pl: fundamentos.pl || '-',
-            roe: fundamentos.roe || '-',
-            lpa: fundamentos.lpa || '-',
-            margem_liquida: fundamentos.margem_liquida || '-'
+            cotas_emitidas: fundamentos.cotas_emitidas || '-' 
         };
         
         let corVar12m = 'text-[#888888]'; let icon12m = '';
@@ -4266,80 +4240,6 @@ async function handleMostrarDetalhes(symbol) {
                 <span class="text-sm font-semibold text-[#e5e5e5] text-right max-w-[60%] truncate">${value}</span>
             </div>
         `;
-        
-        // --- RENDERIZAÇÃO CONDICIONAL (FII vs AÇÃO) ---
-        const isAcao = !isFII(symbol); // Detecta se é ação
-        let destaqueCardsHtml = '';
-        let detalhesGeraisHtml = '';
-
-        if (isAcao) {
-            // LAYOUT PARA AÇÕES
-            destaqueCardsHtml = `
-                <div class="grid grid-cols-3 gap-3 w-full">
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/L</span>
-                        <span class="text-lg font-bold text-white">${dados.pl}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">ROE</span>
-                        <span class="text-lg font-bold text-green-400">${dados.roe}</span>
-                    </div>
-                </div>
-            `;
-
-            detalhesGeraisHtml = `
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
-                    ${renderRow('Setor', dados.segmento)}
-                    ${renderRow('DY (12m)', dados.dy)}
-                    ${renderRow('LPA', dados.lpa)}
-                    ${renderRow('Margem Líquida', dados.margem_liquida)}
-                    ${renderRow('Nº Ações', dados.cotas_emitidas)}
-                    <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm text-[#888888] font-medium">CNPJ</span>
-                        <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
-                    </div>
-                </div>
-            `;
-        } else {
-            // LAYOUT PARA FIIs (Mantido Original)
-            destaqueCardsHtml = `
-                <div class="grid grid-cols-3 gap-3 w-full">
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                        <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
-                    </div>
-                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
-                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
-                    </div>
-                </div>
-            `;
-
-            detalhesGeraisHtml = `
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
-                    ${renderRow('Segmento', dados.segmento)}
-                    ${renderRow('Tipo de Fundo', dados.tipo_fundo)}
-                    ${renderRow('Mandato', dados.mandato)}
-                    ${renderRow('Gestão', dados.tipo_gestao)}
-                    ${renderRow('Prazo', dados.prazo_duracao)}
-                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
-                    ${renderRow('Cotistas', dados.num_cotistas)}
-                    ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
-                    <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm text-[#888888] font-medium">CNPJ</span>
-                        <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
-                    </div>
-                </div>
-            `;
-        }
 
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
@@ -4356,14 +4256,27 @@ async function handleMostrarDetalhes(symbol) {
                 
                 ${proximoProventoHtml} 
 
-                ${destaqueCardsHtml}
+                <div class="grid grid-cols-3 gap-3 w-full">
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
+                        <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
+                        <span class="text-lg font-bold text-white">${dados.pvp}</span>
+                    </div>
+                    <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
+                        <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
+                        <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
+                    </div>
+                </div>
 
                 <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${isAcao ? '' : renderRow('Vacância', dados.vacancia)}
+                    ${renderRow('Vacância', dados.vacancia)}
                     <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
                         <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
@@ -4374,7 +4287,20 @@ async function handleMostrarDetalhes(symbol) {
                 
                 <h3 class="text-sm font-bold text-[#666666] uppercase tracking-wider mb-1 mt-2 ml-1">Dados Gerais</h3>
                 
-                ${detalhesGeraisHtml}
+                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl px-4 pt-2">
+                    ${renderRow('Segmento', dados.segmento)}
+                    ${renderRow('Tipo de Fundo', dados.tipo_fundo)}
+                    ${renderRow('Mandato', dados.mandato)}
+                    ${renderRow('Gestão', dados.tipo_gestao)}
+                    ${renderRow('Prazo', dados.prazo_duracao)}
+                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
+                    ${renderRow('Cotistas', dados.num_cotistas)}
+                    ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
+                    <div class="flex justify-between items-center py-3.5">
+                        <span class="text-sm text-[#888888] font-medium">CNPJ</span>
+                        <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
+                    </div>
+                </div>
 
             </div>
         `;
@@ -4386,6 +4312,15 @@ async function handleMostrarDetalhes(symbol) {
     renderizarTransacoesDetalhes(symbol);
     atualizarIconeFavorito(symbol);
 }
+
+
+// Substitua a função inteira em app.js
+
+// EM app.js - Substitua a função renderizarTransacoesDetalhes por esta versão:
+
+// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
+
+// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
 
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');
@@ -4521,61 +4456,41 @@ function renderizarTransacoesDetalhes(symbol) {
         }
     }
     
-// --- SUBSTITUA A FUNÇÃO renderHistoricoIADetalhes ---
+    function renderHistoricoIADetalhes(meses) {
+        if (!currentDetalhesHistoricoJSON) {
+            return;
+        }
 
-function renderHistoricoIADetalhes(meses) {
-    if (!currentDetalhesHistoricoJSON) return;
+        if (currentDetalhesHistoricoJSON.length === 0) {
+            detalhesAiProvento.innerHTML = `
+                <p class="text-sm text-gray-500 text-center py-4">
+                    Sem histórico recente.
+                </p>
+            `;
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null;
+            }
+            return;
+        }
 
-    // Se o array estiver vazio desde a origem
-    if (currentDetalhesHistoricoJSON.length === 0) {
-        detalhesAiProvento.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">Sem histórico recente.</p>`;
-        if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; }
-        return;
+        if (!document.getElementById('detalhes-proventos-chart')) {
+             detalhesAiProvento.innerHTML = `
+                <div class="relative h-48 w-full">
+                    <canvas id="detalhes-proventos-chart"></canvas>
+                </div>
+             `;
+        }
+
+        const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
+        
+        const labels = dadosFiltrados.map(item => item.mes);
+        const data = dadosFiltrados.map(item => item.valor);
+
+        renderizarGraficoProventosDetalhes({ labels, data });
     }
-
-    // Recria o container se necessário
-    if (!document.getElementById('detalhes-proventos-chart')) {
-         detalhesAiProvento.innerHTML = `
-            <div class="relative h-48 w-full">
-                <canvas id="detalhes-proventos-chart"></canvas>
-            </div>
-            <div class="flex justify-center items-center gap-4 mt-3 pb-2 border-t border-[#2C2C2E] pt-2">
-                <div class="flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <span class="text-[10px] text-gray-400 font-bold uppercase">Dividendo</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                    <span class="text-[10px] text-gray-400 font-bold uppercase">JCP</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-                    <span class="text-[10px] text-gray-400 font-bold uppercase">Rendimento</span>
-                </div>
-            </div>
-         `;
-    }
-
-    const hoje = new Date();
-    // Data de corte: Hoje menos X meses
-    const dataCorte = new Date(hoje.getFullYear(), hoje.getMonth() - meses, 1);
     
-    let dadosFiltrados = currentDetalhesHistoricoJSON.filter(item => {
-        // Usa dateIso (YYYY-MM-01) vindo do backend
-        let itemDate = item.dateIso ? new Date(item.dateIso + 'T12:00:00') : null;
-        if (!itemDate) return false;
-        return itemDate >= dataCorte;
-    });
-    
-    // FALLBACK INTELIGENTE:
-    // Se o filtro de tempo retornou vazio (ex: ativo que paga semestralmente e você pediu 3 meses),
-    // pegamos as últimas barras disponíveis para não mostrar tela em branco.
-    if (dadosFiltrados.length === 0 && currentDetalhesHistoricoJSON.length > 0) {
-        dadosFiltrados = currentDetalhesHistoricoJSON.slice(-3); // Pega os últimos 3 registros reais
-    }
-
-    renderizarGraficoProventosDetalhes(dadosFiltrados);
-}
+// Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
 
 function mudarAba(tabId) {

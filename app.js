@@ -2365,94 +2365,102 @@ function renderizarGraficoHistorico() {
     });
 }
     
-    function renderizarGraficoProventosDetalhes({ labels, data }) {
-        const canvas = document.getElementById('detalhes-proventos-chart');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+function renderizarGraficoProventosDetalhes(dados) {
+    const canvas = document.getElementById('detalhes-proventos-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const labels = dados.map(d => d.mes);
     
-        if (!labels || !data || labels.length === 0) {
-            if (detalhesChartInstance) {
-                detalhesChartInstance.destroy();
-                detalhesChartInstance = null; 
-            }
-            return;
-        }
-    
-        const gradient = ctx.createLinearGradient(0, 0, 0, 192);
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
-        
-        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 192);
-        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
-    
-        if (detalhesChartInstance) {
-            detalhesChartInstance.data.labels = labels;
-            detalhesChartInstance.data.datasets[0].data = data;
-            detalhesChartInstance.data.datasets[0].backgroundColor = gradient;
-            detalhesChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            detalhesChartInstance.update();
-        } else {
-            detalhesChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Recebido',
-                        data: data,
-                        backgroundColor: gradient,
-                        hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', 
-                        borderWidth: 1,
-                        borderRadius: 4 
-                    }]
+    // Separa os datasets
+    const dataDiv = dados.map(d => d.dividendo || 0);
+    const dataJCP = dados.map(d => d.jcp || 0);
+    const dataRend = dados.map(d => d.rendimento || 0);
+
+    if (detalhesChartInstance) {
+        detalhesChartInstance.destroy();
+    }
+
+    // Configuração de Cores Profissionais
+    const colorDiv = '#10b981'; // Emerald 500
+    const colorJCP = '#fbbf24'; // Amber 400
+    const colorRend = '#a855f7'; // Purple 500
+
+    detalhesChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Dividendo',
+                    data: dataDiv,
+                    backgroundColor: colorDiv,
+                    borderRadius: 2,
+                    stack: 'Stack 0'
                 },
-                options: {
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#1A1A1A',
-                            borderColor: '#2A2A2A',
-                            borderWidth: 1,
-                            padding: 10,
-                            displayColors: false, 
-                            callbacks: {
-                                title: (context) => `Mês: ${context[0].label}`, 
-                                label: (context) => `Valor: ${formatBRL(context.parsed.y)}`
+                {
+                    label: 'JCP',
+                    data: dataJCP,
+                    backgroundColor: colorJCP,
+                    borderRadius: 2,
+                    stack: 'Stack 0'
+                },
+                {
+                    label: 'Rendimento',
+                    data: dataRend,
+                    backgroundColor: colorRend,
+                    borderRadius: 2,
+                    stack: 'Stack 0'
+                }
+            ]
+        },
+        options: {
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }, // Usamos a legenda HTML personalizada
+                tooltip: {
+                    backgroundColor: '#151515',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    titleColor: '#fff',
+                    bodyColor: '#ccc',
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) { label += ': '; }
+                            if (context.parsed.y !== null) {
+                                label += formatBRL(context.parsed.y);
                             }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: '#2A2A2A' }, 
-                            ticks: { 
-                                display: true,
-                                color: Chart.defaults.color,
-                                font: { size: 10 },
-                                callback: function(value) {
-                                    return formatBRL(value);
-                                }
-                            }
+                            return label;
                         },
-                        x: { 
-                            grid: { display: false },
-                            ticks: {
-                                color: Chart.defaults.color,
-                                font: { size: 10 }
-                            }
+                        footer: function(tooltipItems) {
+                            // Soma o total da barra no tooltip
+                            let total = 0;
+                            tooltipItems.forEach(function(tooltipItem) {
+                                total += tooltipItem.parsed.y;
+                            });
+                            return 'Total: ' + formatBRL(total);
                         }
                     }
                 }
-            });
+            },
+            scales: {
+                x: {
+                    stacked: true, // HABILITA O EMPILHAMENTO
+                    grid: { display: false },
+                    ticks: { color: '#666', font: { size: 10 } }
+                },
+                y: {
+                    stacked: true, // HABILITA O EMPILHAMENTO
+                    beginAtZero: true,
+                    grid: { color: '#222', borderDash: [4, 4] },
+                    ticks: { display: false } // Oculta valores do eixo Y para limpar o visual
+                }
+            }
         }
-    }
-    
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
-
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+    });
+}
 
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
@@ -4513,47 +4521,52 @@ function renderizarTransacoesDetalhes(symbol) {
 // --- SUBSTITUA A FUNÇÃO renderHistoricoIADetalhes ---
 
 function renderHistoricoIADetalhes(meses) {
-    if (!currentDetalhesHistoricoJSON) {
-        return;
-    }
+    if (!currentDetalhesHistoricoJSON) return;
 
     if (currentDetalhesHistoricoJSON.length === 0) {
-        detalhesAiProvento.innerHTML = `
-            <p class="text-sm text-gray-500 text-center py-4">
-                Sem histórico recente.
-            </p>
-        `;
-        if (detalhesChartInstance) {
-            detalhesChartInstance.destroy();
-            detalhesChartInstance = null;
-        }
+        detalhesAiProvento.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">Sem histórico recente.</p>`;
+        if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; }
         return;
     }
 
+    // Cria o container do Canvas + Legenda Personalizada
     if (!document.getElementById('detalhes-proventos-chart')) {
          detalhesAiProvento.innerHTML = `
             <div class="relative h-48 w-full">
                 <canvas id="detalhes-proventos-chart"></canvas>
             </div>
+            <div class="flex justify-center items-center gap-4 mt-3 pb-2 border-t border-[#2C2C2E] pt-2">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span class="text-[10px] text-gray-400 font-bold uppercase">Dividendo</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                    <span class="text-[10px] text-gray-400 font-bold uppercase">JCP</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                    <span class="text-[10px] text-gray-400 font-bold uppercase">Rendimento</span>
+                </div>
+            </div>
          `;
     }
-    
-    let dadosParaMostrar = currentDetalhesHistoricoJSON;
-    
-    // Se tivermos mais dados do que o solicitado, cortamos para pegar os mais RECENTES/FUTUROS (fim do array)
-    if (currentDetalhesHistoricoJSON.length > meses) {
-        dadosParaMostrar = currentDetalhesHistoricoJSON.slice(-meses);
-    }
 
-    // Mapeia e protege contra labels errados
-    const labels = dadosParaMostrar.map(item => {
-        if (!item.mes || item.mes.includes('undefined')) return '--/--';
-        return item.mes;
+    const hoje = new Date();
+    const dataCorte = new Date(hoje.getFullYear(), hoje.getMonth() - meses, 1);
+    
+    // Filtra por data
+    let dadosFiltrados = currentDetalhesHistoricoJSON.filter(item => {
+        let itemDate = item.dateIso ? new Date(item.dateIso + 'T12:00:00') : new Date();
+        return itemDate >= dataCorte;
     });
     
-    const data = dadosParaMostrar.map(item => item.valor);
+    // Fallback para não ficar vazio
+    if (dadosFiltrados.length === 0 && currentDetalhesHistoricoJSON.length > 0) {
+        dadosFiltrados = currentDetalhesHistoricoJSON.slice(-3);
+    }
 
-    renderizarGraficoProventosDetalhes({ labels, data });
+    renderizarGraficoProventosDetalhes(dadosFiltrados);
 }
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
 

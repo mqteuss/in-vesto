@@ -170,6 +170,10 @@ async function scrapeFundamentos(ticker) {
 // PARTE 2: HISTÓRICO -> STATUS INVEST (COM TIPOS DETALHADOS)
 // ---------------------------------------------------------
 
+// ---------------------------------------------------------
+// PARTE 2: HISTÓRICO -> STATUS INVEST (LÓGICA HIERÁRQUICA DE TIPOS)
+// ---------------------------------------------------------
+
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
@@ -192,54 +196,45 @@ async function scrapeAsset(ticker) {
         const earnings = data.assetEarningsModels || [];
 
         const dividendos = earnings.map(d => {
-            // --- PARSE DE DATA BLINDADO ---
+            // --- PARSE DE DATA SEGURO ---
             const parseDateJSON = (dStr) => {
                 if (!dStr || dStr.trim() === '-' || !dStr.includes('/')) return null;
                 const parts = dStr.split('/');
                 if (parts.length !== 3) return null;
-                const dia = parseInt(parts[0]);
-                const mes = parseInt(parts[1]);
-                const ano = parseInt(parts[2]);
-                if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return null;
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
 
-            // --- LÓGICA DE IDENTIFICAÇÃO DO TIPO ---
-            let labelTipo = 'Rendimento'; // Padrão (comum para FIIs)
+            // --- LÓGICA HIERÁRQUICA DE TIPO ---
+            let labelTipo = 'Rendimento'; // Padrão (FIIs geralmente caem aqui)
 
-            // 1. Tenta usar a descrição que vem da API (ex: "Rend. Tributado")
+            // 1. Prioridade Máxima: Códigos Numéricos Oficiais (Ações)
+            if (d.et === 1) labelTipo = 'Dividendo';
+            else if (d.et === 2) labelTipo = 'JCP';
+
+            // 2. Detecção de Casos Especiais via Texto (Sobrescreve se necessário)
             if (d.etD) {
-                labelTipo = d.etD;
-            } 
-            // 2. Se não tiver descrição, usa os códigos conhecidos
-            else {
-                if (d.et === 1) labelTipo = 'Dividendo';
-                else if (d.et === 2) labelTipo = 'JCP';
-            }
-
-            // 3. Normalização para os nomes que você quer no App
-            const upper = labelTipo.toUpperCase();
-
-            if (upper.includes('JUROS') || upper === 'JCP') {
-                labelTipo = 'JCP';
-            } else if (upper.includes('DIVIDENDO')) {
-                labelTipo = 'Dividendo';
-            } else if (upper.includes('TRIBUTADO')) {
-                labelTipo = 'Rend. Tributado'; // Captura o caso específico do PETR4/Outros
-            } else if (upper.includes('RENDIMENTO') || type === 'fii') {
-                // Se for FII e não for tributado, mantemos Rendimento
-                if (labelTipo !== 'Rend. Tributado') labelTipo = 'Rendimento';
+                const desc = d.etD.toUpperCase();
+                
+                // Captura o "Rend. Tributado" explicitamente solicitado
+                if (desc.includes('TRIBUTADO')) {
+                    labelTipo = 'Rend. Tributado';
+                }
+                // Captura Amortizações (Comum em FIIs)
+                else if (desc.includes('AMORTIZA')) {
+                    labelTipo = 'Amortização';
+                }
             }
 
             return {
                 dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
                 value: d.v,
-                type: labelTipo, // Agora retorna: 'JCP', 'Dividendo', 'Rend. Tributado' ou 'Rendimento'
+                type: labelTipo, 
                 rawType: d.et
             };
         });
 
+        // Filtra inválidos e ordena
         const dadosLimpos = dividendos.filter(d => d.paymentDate !== null);
         return dadosLimpos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 

@@ -3198,74 +3198,86 @@ async function renderizarCarteira() {
     }
 
 async function buscarProventosFuturos(force = false) {
-    const ativosCompativeis = carteiraCalculada
-        .filter(a => supportsProventos(a.symbol))
-        .map(a => a.symbol);
-        
-    if (ativosCompativeis.length === 0) return [];
-
-    const proventosPool = [];
-    const ativosParaBuscar = [];
-
-    await Promise.all(ativosCompativeis.map(async (symbol) => {
-        const cacheKey = `provento_ia_${symbol}`;
-        
-        if (force) {
-            await vestoDB.delete('apiCache', cacheKey);
-            await removerProventosConhecidos(symbol);
-        }
-        
-        const proventoCache = await getCache(cacheKey);
-        
-        if (proventoCache && !force) {
-            proventosPool.push(proventoCache);
-        } else {
-            const limiteCalculado = calcularLimiteMeses(symbol);
-            ativosParaBuscar.push({ 
-                ticker: symbol, 
-                limit: limiteCalculado 
-            });
-        }
-    }));
-    
-    if (ativosParaBuscar.length > 0) {
-        try {
-            const novosProventos = await callScraperProventosCarteiraAPI(ativosParaBuscar);
+        // Filtra ativos (Ações + FIIs)
+        const ativosCompativeis = carteiraCalculada
+            .filter(a => supportsProventos(a.symbol))
+            .map(a => a.symbol);
             
-            if (novosProventos && Array.isArray(novosProventos)) {
-                await Promise.all(novosProventos.map(async (provento) => {
-                    if (provento && provento.symbol && provento.paymentDate) {
-                        const cacheKey = `provento_ia_${provento.symbol}`;
-                        await setCache(cacheKey, provento, CACHE_PROVENTOS); 
-                        proventosPool.push(provento);
+        if (ativosCompativeis.length === 0) return [];
 
-                        const idUnico = provento.symbol + '_' + provento.paymentDate;
-                        const existingIndex = proventosConhecidos.findIndex(p => p.id === idUnico);
-                        
-                        if (existingIndex === -1) {
-                            // NOVO: Adiciona
-                            const novoProvento = { ...provento, processado: false, id: idUnico };
-                            await supabaseDB.addProventoConhecido(novoProvento);
-                            proventosConhecidos.push(novoProvento);
-                        } else {
-                            // EXISTENTE: Verifica se precisa corrigir o TIPO (Correção Visual Imediata)
-                            const existing = proventosConhecidos[existingIndex];
-                            if (existing.type !== provento.type) {
-                                // Atualiza na memória para o usuário ver "JCP" imediatamente
-                                proventosConhecidos[existingIndex].type = provento.type;
-                                // (Opcional) Poderíamos atualizar no DB aqui, mas a atualização visual já resolve o incômodo
+        const proventosPool = [];
+        const ativosParaBuscar = [];
+
+        // 1. Verifica cache local
+        await Promise.all(ativosCompativeis.map(async (symbol) => {
+            const cacheKey = `provento_ia_${symbol}`;
+            
+            if (force) {
+                await vestoDB.delete('apiCache', cacheKey);
+                await removerProventosConhecidos(symbol);
+            }
+            
+            const proventoCache = await getCache(cacheKey);
+            
+            if (proventoCache && !force) {
+                proventosPool.push(proventoCache);
+            } else {
+                const limiteCalculado = calcularLimiteMeses(symbol);
+                ativosParaBuscar.push({ 
+                    ticker: symbol, 
+                    limit: limiteCalculado 
+                });
+            }
+        }));
+        
+        // 2. Busca na API apenas o que faltou
+        if (ativosParaBuscar.length > 0) {
+            try {
+                const novosProventos = await callScraperProventosCarteiraAPI(ativosParaBuscar);
+                
+                if (novosProventos && Array.isArray(novosProventos)) {
+                    await Promise.all(novosProventos.map(async (provento) => {
+                        if (provento && provento.symbol && provento.paymentDate) {
+                            
+                            // Salva Cache Individual
+                            const cacheKey = `provento_ia_${provento.symbol}`;
+                            await setCache(cacheKey, provento, CACHE_PROVENTOS); 
+                            proventosPool.push(provento);
+
+                            // LÓGICA DE CORREÇÃO DE DADOS ANTIGOS
+                            const idUnico = provento.symbol + '_' + provento.paymentDate;
+                            
+                            // Procura se já existe na lista carregada do banco
+                            const existingIndex = proventosConhecidos.findIndex(p => p.id === idUnico);
+                            
+                            if (existingIndex === -1) {
+                                // Se não existe, cria novo
+                                const novoProvento = { ...provento, processado: false, id: idUnico };
+                                await supabaseDB.addProventoConhecido(novoProvento);
+                                proventosConhecidos.push(novoProvento);
+                            } else {
+                                // Se já existe, VERIFICA SE O TIPO MUDOU (Ex: era Rendimento -> virou JCP)
+                                const existing = proventosConhecidos[existingIndex];
+                                
+                                if (existing.type !== provento.type) {
+                                    // Atualiza na memória imediatamente para corrigir a visualização
+                                    console.log(`Corrigindo tipo de ${existing.symbol}: ${existing.type} -> ${provento.type}`);
+                                    proventosConhecidos[existingIndex].type = provento.type;
+                                    
+                                    // Opcional: Aqui você poderia chamar um update no banco se tivesse a função,
+                                    // mas só atualizar a memória já resolve o visual na sessão atual.
+                                }
                             }
                         }
-                    }
-                }));
+                    }));
+                }
+            } catch (error) {
+                console.error("Erro ao buscar novos proventos com Scraper:", error);
             }
-        } catch (error) {
-            console.error("Erro ao buscar novos proventos com Scraper:", error);
         }
+        
+        return processarProventosScraper(proventosPool); 
     }
-    
-    return processarProventosScraper(proventosPool); 
-}
 	
 	async function callScraperProximoProventoAPI(ticker) {
         const body = { mode: 'proximo_provento', payload: { ticker } };

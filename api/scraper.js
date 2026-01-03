@@ -140,14 +140,19 @@ async function scrapeInvestidor10(ticker) {
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
 
+            // --- CORREÇÃO DO PATRIMÔNIO LÍQUIDO ---
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
-                if (valor.toLowerCase().includes('mil') || valorNumerico > 10000) {
+                const textoLower = valor.toLowerCase();
+                // Agora verifica explicitamente "milh" OU "bilh" para pegar fundos grandes
+                if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
                      if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
                 } else {
                      if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
+            // ---------------------------------------
+
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
                 if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
@@ -197,6 +202,7 @@ async function scrapeProventosAPI(ticker) {
 
     let earnings = [];
     
+    // Tenta rota inteligente: Se termina em 11, tenta FII, se vazio tenta Ação (UNIT)
     if (t.endsWith('11') || t.endsWith('11B')) {
         earnings = await fetchEarnings('fii');
         if (earnings.length === 0) {
@@ -253,6 +259,7 @@ module.exports = async function handler(req, res) {
             const ticker = payload.ticker.toUpperCase();
             
             let dados = null;
+            // Lógica de Prioridade: FII -> Investidor10, Ação -> Fundamentus
             if (ticker.endsWith('11') || ticker.endsWith('11B')) {
                 dados = await scrapeInvestidor10(ticker);
                 if (!dados) dados = await scrapeFundamentus(ticker);
@@ -304,14 +311,13 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: formatted });
         }
 
-        // --- HISTÓRICO PORTFOLIO (ADICIONADO DE VOLTA!) ---
+        // --- HISTÓRICO PORTFOLIO (PARA O GRÁFICO DE BARRAS) ---
         if (mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3); 
             let all = [];
             for (const batch of batches) {
                 const promises = batch.map(async (ticker) => {
-                    // Usa a nova API JSON também para o histórico acumulado
                     const history = await scrapeProventosAPI(ticker);
                     history.slice(0, 24).forEach(h => {
                         if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });

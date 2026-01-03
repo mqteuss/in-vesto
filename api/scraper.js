@@ -69,7 +69,6 @@ function chunkArray(array, size) {
 async function fetchHtmlWithRetry(ticker) {
     const tickerLower = ticker.toLowerCase();
     const lastChar = tickerLower.slice(-1);
-    // Se termina em 3, 4, 5, 6, provavelmente é Ação.
     const isLikelyStock = ['3', '4', '5', '6'].includes(lastChar);
     
     // Define ordem de prioridade
@@ -83,7 +82,7 @@ async function fetchHtmlWithRetry(ticker) {
             const html = response.data;
             const $ = cheerio.load(html);
             
-            // Validação simples: se o título não tiver o ticker, fomos redirecionados para a Home
+            // Validação: se o título não tiver o ticker, fomos redirecionados para a Home errada
             const title = $('title').text().toLowerCase();
             const h1 = $('h1').text().toLowerCase();
             if (!title.includes(tickerLower) && !h1.includes(tickerLower)) {
@@ -118,7 +117,7 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // 1. CARDS DO TOPO (Seleção Direta)
+        // 1. CARDS DO TOPO (Seleção Direta por Classes)
         const getCardValue = (className) => {
             const el = $(`._card.${className} ._card-body span`).first();
             return el.length ? el.text().trim() : null;
@@ -157,19 +156,19 @@ async function scrapeFundamentos(ticker) {
                 if (chave.includes('segmento') || chave.includes('setor')) dados.segmento = valor;
             }
             
-            // Patrimônio Líquido (Correção: aceita "Patrimônio" solto)
+            // Patrimônio Líquido (FIIs usam "Valor Patrimonial")
             if (dados.patrimonio_liquido === 'N/A') {
-                if (chave === 'patrimonio' || chave.includes('patrimonio liq')) {
-                    dados.patrimonio_liquido = valor;
+                if (chave === 'patrimonio' || chave.includes('patrimonio liq') || chave.includes('valor patrimonial')) {
+                    // Filtra valores pequenos que seriam VP por Cota
+                    const valNum = parseValue(valor);
+                    if (valNum > 1000) dados.patrimonio_liquido = valor;
                 }
             }
             
             // VP por Cota / VPA
             if (dados.vp_cota === 'N/A') {
-                if (chave.includes('vp por cota') || chave === 'vpa' || chave.includes('valor patrimonial')) {
-                     const valNum = parseValue(valor);
-                     // Filtra valores muito altos que seriam o patrimônio total por engano
-                     if (valNum < 1000000) dados.vp_cota = valor;
+                if (chave.includes('vp por cota') || chave === 'vpa') {
+                     dados.vp_cota = valor;
                 }
             }
 
@@ -178,7 +177,9 @@ async function scrapeFundamentos(ticker) {
             
             // Cotistas (FII) vs Acionistas (Ação)
             if (dados.num_cotistas === 'N/A') {
-                if (chave.includes('cotistas') || chave.includes('acionistas')) dados.num_cotistas = valor;
+                if (chave.includes('cotistas') || chave.includes('acionistas') || chave.includes('investidores')) {
+                    dados.num_cotistas = valor;
+                }
             }
             
             if (dados.tipo_gestao === 'N/A' && chave.includes('gestao')) dados.tipo_gestao = valor;
@@ -204,7 +205,7 @@ async function scrapeFundamentos(ticker) {
             
             // Dívida Líquida / EBITDA
             if (dados.divida_liquida_ebitda === 'N/A') {
-                if ((chave.includes('div') && chave.includes('liq') && chave.includes('ebit')) || chave === 'div. liq. / ebitda') {
+                if ((chave.includes('div') && chave.includes('liq') && chave.includes('ebit')) || chave.includes('div.liq/ebit')) {
                     dados.divida_liquida_ebitda = valor;
                 }
             }

@@ -92,7 +92,7 @@ async function fetchHtmlWithRetry(ticker) {
     throw new Error(`Dados não encontrados para ${ticker}`);
 }
 
-// --- SCRAPER DE FUNDAMENTOS (CORRIGIDO) ---
+// --- SCRAPER DE FUNDAMENTOS (VERSÃO FINAL CORRIGIDA) ---
 async function scrapeFundamentos(ticker) {
     try {
         const response = await fetchHtmlWithRetry(ticker);
@@ -133,7 +133,7 @@ async function scrapeFundamentos(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // 2. BUSCA GENÉRICA (VARREDURA TOTAL)
+        // 2. BUSCA GENÉRICA (VARREDURA TOTAL E FLEXÍVEL)
         const processPair = (chaveRaw, valorRaw) => {
             if (!chaveRaw || !valorRaw) return;
             const chave = normalize(chaveRaw);
@@ -145,25 +145,31 @@ async function scrapeFundamentos(ticker) {
             if (dados.val_mercado === 'N/A' && (chave.includes('mercado') || chave === 'valor de mercado')) dados.val_mercado = valor;
             if (dados.ultimo_rendimento === 'N/A' && chave.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
             if (dados.vacancia === 'N/A' && chave.includes('vacancia')) dados.vacancia = valor;
-            if (dados.segmento === 'N/A' && chave.includes('segmento')) dados.segmento = valor;
             
-            // Patrimônio Líquido (Correção)
-            if (dados.patrimonio_liquido === 'N/A' && (chave.includes('patrimonio liquido') || chave === 'patrimonio')) {
-                dados.patrimonio_liquido = valor;
+            // Segmento (pode ser "Setor de Atuação" em ações)
+            if (dados.segmento === 'N/A') {
+                if (chave.includes('segmento') || chave.includes('setor')) dados.segmento = valor;
             }
             
-            // VP por Cota (FII) ou VPA (Ação)
+            // Patrimônio Líquido (Correção: aceita "Patrimônio" solto)
+            if (dados.patrimonio_liquido === 'N/A') {
+                if (chave === 'patrimonio' || chave.includes('patrimonio liq')) {
+                    dados.patrimonio_liquido = valor;
+                }
+            }
+            
+            // VP por Cota / VPA
             if (dados.vp_cota === 'N/A') {
                 if (chave.includes('vp por cota') || chave === 'vpa' || chave.includes('valor patrimonial')) {
                      const valNum = parseValue(valor);
-                     // Filtra valores muito altos que seriam o patrimônio total por engano
                      if (valNum < 1000000) dados.vp_cota = valor;
                 }
             }
 
-            // Metadados (Correção para Cotistas e Tipo)
+            // Metadados
             if (dados.cnpj === 'N/A' && chave.includes('cnpj')) dados.cnpj = valor;
             
+            // Cotistas (FII) vs Acionistas (Ação)
             if (dados.num_cotistas === 'N/A') {
                 if (chave.includes('cotistas') || chave.includes('acionistas')) dados.num_cotistas = valor;
             }
@@ -171,26 +177,34 @@ async function scrapeFundamentos(ticker) {
             if (dados.tipo_gestao === 'N/A' && chave.includes('gestao')) dados.tipo_gestao = valor;
             if (dados.mandato === 'N/A' && chave.includes('mandato')) dados.mandato = valor;
             
+            // Tipo (Ação vs Fundo)
             if (dados.tipo_fundo === 'N/A') {
-                if(chave.includes('tipo de fundo') || chave === 'tipo' || chave.includes('classificacao')) dados.tipo_fundo = valor;
+                if(chave === 'tipo' || chave.includes('tipo de fundo') || chave.includes('classificacao')) dados.tipo_fundo = valor;
             }
 
-            // --- AÇÕES (Indicadores Fundamentalistas Corrigidos) ---
+            // --- AÇÕES (Indicadores Corrigidos) ---
             if (dados.pl === 'N/A' && (chave === 'p/l' || chave === 'pl')) dados.pl = valor;
             if (dados.roe === 'N/A' && chave === 'roe') dados.roe = valor;
             if (dados.roic === 'N/A' && chave === 'roic') dados.roic = valor;
             if (dados.lpa === 'N/A' && chave === 'lpa') dados.lpa = valor;
-            if (dados.margem_liquida === 'N/A' && (chave.includes('margem liquida') || chave.includes('marg. liquida'))) dados.margem_liquida = valor;
             
+            // Margem Líquida (Correção: aceita "Marg. Líquida")
+            if (dados.margem_liquida === 'N/A') {
+                if (chave.includes('margem liquida') || chave.includes('marg. liquida') || chave.includes('marg liquida')) {
+                    dados.margem_liquida = valor;
+                }
+            }
+            
+            // Dívida Líquida / EBITDA (Correção: variações de abreviação)
             if (dados.divida_liquida_ebitda === 'N/A') {
-                if ((chave.includes('div') && chave.includes('liq') && chave.includes('ebit')) || chave === 'div. liq. / ebitda') {
+                if (chave.includes('div') && chave.includes('liq') && chave.includes('ebit')) {
                     dados.divida_liquida_ebitda = valor;
                 }
             }
             
             if (dados.ev_ebit === 'N/A' && chave.includes('ev/ebit')) dados.ev_ebit = valor;
             
-            // Contagem de ações/cotas para fallback de Market Cap
+            // Num Ações para cálculo de Market Cap
             if (chave.includes('num. acoes') || chave.includes('cotas emitidas') || chave === 'numero de acoes') {
                  num_cotas = parseExtendedValue(valor);
                  if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
@@ -199,21 +213,23 @@ async function scrapeFundamentos(ticker) {
 
         // --- ESTRATÉGIA DE VARREDURA ---
         
-        // A. Grid Cells (Padrão novo do Investidor10)
+        // A. Grid Cells (Investidor10 usa muito isso)
         $('.cell').each((i, el) => {
             const title = $(el).find('.name').text();
             const val = $(el).find('.value').text();
             processPair(title, val);
         });
 
-        // B. Tabelas Clássicas
+        // B. Tabelas (Dados técnicos ficam aqui)
         $('table tbody tr').each((i, row) => {
             const tds = $(row).find('td');
+            // Tenta par chave-valor padrão
             if (tds.length >= 2) {
                 processPair($(tds[0]).text(), $(tds[1]).text());
-                if (tds.length >= 4) {
-                    processPair($(tds[2]).text(), $(tds[3]).text());
-                }
+            }
+            // Tenta tabela de 4 colunas (comum em dados técnicos)
+            if (tds.length >= 4) {
+                processPair($(tds[2]).text(), $(tds[3]).text());
             }
         });
 
@@ -224,30 +240,29 @@ async function scrapeFundamentos(ticker) {
             processPair(head, body);
         });
 
-        // 3. RECUPERAÇÃO DA VARIAÇÃO 12M (Específica)
+        // 3. RECUPERAÇÃO DA VARIAÇÃO 12M (Força Bruta)
         if (dados.variacao_12m === 'N/A') {
-            // Tenta buscar pelo texto do header
+            // Procura em headers de cards
             $('._card-header').each((i, el) => {
                 if ($(el).text().toLowerCase().includes('12 meses') || $(el).text().toLowerCase().includes('12m')) {
                     const val = $(el).parent().find('._card-body').text().trim();
-                    if (val && !val.includes('DY')) { // Evita confundir com DY 12m
+                    if (val && !val.includes('DY')) { 
                          dados.variacao_12m = val;
                     }
                 }
             });
-            
-            // Fallback: Grid Cell específica de variação
+            // Procura em cells específicas
             if (dados.variacao_12m === 'N/A') {
                 $('.cell').each((i, el) => {
                      const name = $(el).find('.name').text().toLowerCase();
-                     if (name.includes('variacao') || name.includes('12m')) {
+                     if (name.includes('variacao') || (name.includes('12') && name.includes('m'))) {
                          dados.variacao_12m = $(el).find('.value').text().trim();
                      }
                 });
             }
         }
 
-        // 4. FALLBACK DE VALOR DE MERCADO
+        // 4. CÁLCULO DE VALOR DE MERCADO (Se não achou pronto)
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             if (cotacao_atual > 0 && num_cotas > 0) {
                 const mkt = cotacao_atual * num_cotas;

@@ -167,7 +167,7 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (IDENTIFICAÇÃO ROBUSTA)
+// PARTE 2: HISTÓRICO -> STATUS INVEST (VERSÃO FINAL BLINDADA)
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
@@ -175,6 +175,7 @@ async function scrapeAsset(ticker) {
         const t = ticker.toUpperCase();
         let type = 'acao';
         
+        // Detecção de FIIs
         if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('12')) {
             type = 'fii'; 
         }
@@ -192,7 +193,7 @@ async function scrapeAsset(ticker) {
         const earnings = data.assetEarningsModels || [];
 
         const dividendos = earnings.map(d => {
-            // --- PARSE DE DATA ---
+            // 1. Parse de Data Seguro
             const parseDateJSON = (dStr) => {
                 if (!dStr || dStr.trim() === '-' || !dStr.includes('/')) return null;
                 const parts = dStr.split('/');
@@ -200,36 +201,36 @@ async function scrapeAsset(ticker) {
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
 
-            // --- LÓGICA DE TIPO (PRIORIDADE DUPLA) ---
-            let labelTipo = 'Rendimento'; // Fallback padrão
-            const et = parseInt(d.et);   // Garante que é número
+            // 2. Identificação Rigorosa do Tipo
+            let labelTipo = 'Rendimento'; // Padrão
+            
+            // Força conversão para inteiro para evitar erro de "1" !== 1
+            const etCode = parseInt(d.et, 10);
 
-            // 1. Verifica Códigos Oficiais
-            if (et === 1) labelTipo = 'Dividendo';
-            else if (et === 2) labelTipo = 'JCP';
+            if (etCode === 1) labelTipo = 'Dividendo';
+            else if (etCode === 2) labelTipo = 'JCP';
 
-            // 2. Verifica Descrição de Texto (Para casos específicos)
+            // 3. Refinamento por Texto (Sobrescreve se for específico)
             if (d.etD) {
                 const desc = String(d.etD).toUpperCase();
                 
                 if (desc.includes('TRIBUTADO')) labelTipo = 'Rend. Tributado';
                 else if (desc.includes('AMORTIZA')) labelTipo = 'Amortização';
-                else if (desc.includes('JUROS') && labelTipo === 'Rendimento') labelTipo = 'JCP'; // Reforço
-                else if (desc.includes('DIVIDEND') && labelTipo === 'Rendimento') labelTipo = 'Dividendo'; // Reforço
             }
 
             return {
                 dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
                 value: d.v,
-                type: labelTipo, 
+                type: labelTipo, // Aqui sai: "JCP", "Dividendo", etc.
                 rawType: d.et
             };
         });
 
-        // Filtra sem data e ordena
-        const dadosLimpos = dividendos.filter(d => d.paymentDate !== null);
-        return dadosLimpos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        // Filtra inválidos
+        return dividendos
+            .filter(d => d.paymentDate !== null)
+            .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     } catch (error) { 
         console.error(`Erro StatusInvest API ${ticker}:`, error.message);

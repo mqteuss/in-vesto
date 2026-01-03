@@ -128,6 +128,8 @@ const formatDateToInput = (dateString) => {
 };
 
 const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
+const isAcao = (symbol) => symbol && (symbol.endsWith('3') || symbol.endsWith('4') || symbol.endsWith('5') || symbol.endsWith('6'));
+const supportsProventos = (symbol) => isFII(symbol) || isAcao(symbol);
 
 function parseMesAno(mesAnoStr) { 
     try {
@@ -3218,78 +3220,75 @@ async function renderizarCarteira() {
         return Math.max(3, mesesDiff + 2);
     }
 
-    // --- FUNÇÃO PRINCIPAL ATUALIZADA ---
-// --- OTIMIZAÇÃO: Leitura de Cache em Paralelo ---
-    async function buscarProventosFuturos(force = false) {
-        const fiiNaCarteira = carteiraCalculada
-            .filter(a => isFII(a.symbol))
-            .map(a => a.symbol);
-            
-        if (fiiNaCarteira.length === 0) return [];
-
-        // Arrays thread-safe (JS é single-thread, então push é seguro)
-        const proventosPool = [];
-        const fiisParaBuscar = [];
-
-        // 1. Dispara todas as verificações de cache simultaneamente
-        await Promise.all(fiiNaCarteira.map(async (symbol) => {
-            const cacheKey = `provento_ia_${symbol}`;
-            
-            if (force) {
-                // Não precisamos esperar o delete para continuar a lógica,
-                // mas mantemos o await para garantir consistência se necessário.
-                // Como são operações independentes, o Promise.all gerencia o paralelismo.
-                await vestoDB.delete('apiCache', cacheKey);
-                await removerProventosConhecidos(symbol);
-            }
-            
-            // Tenta pegar do cache
-            const proventoCache = await getCache(cacheKey);
-            
-            if (proventoCache && !force) {
-                proventosPool.push(proventoCache);
-            } else {
-                // Se não tem cache, calcula o limite e marca para busca na API
-                const limiteCalculado = calcularLimiteMeses(symbol);
-                fiisParaBuscar.push({ 
-                    ticker: symbol, 
-                    limit: limiteCalculado 
-                });
-            }
-        }));
+async function buscarProventosFuturos(force = false) {
+    // ALTERAÇÃO: Usa supportsProventos para incluir Ações na busca automática
+    const ativosCompativeis = carteiraCalculada
+        .filter(a => supportsProventos(a.symbol))
+        .map(a => a.symbol);
         
-        // 2. Busca na API apenas o que faltou (Batch Request)
-        if (fiisParaBuscar.length > 0) {
-            try {
-                const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
-                
-                if (novosProventos && Array.isArray(novosProventos)) {
-                    // Salva os novos resultados no cache em paralelo também
-                    await Promise.all(novosProventos.map(async (provento) => {
-                        if (provento && provento.symbol && provento.paymentDate) {
-                            const cacheKey = `provento_ia_${provento.symbol}`;
-                            await setCache(cacheKey, provento, CACHE_PROVENTOS); 
-                            proventosPool.push(provento);
+    if (ativosCompativeis.length === 0) return [];
 
-                            const idUnico = provento.symbol + '_' + provento.paymentDate;
-                            const existe = proventosConhecidos.some(p => p.id === idUnico);
-                            
-                            if (!existe) {
-                                const novoProvento = { ...provento, processado: false, id: idUnico };
-                                // Adiciona ao DB e memória
-                                await supabaseDB.addProventoConhecido(novoProvento);
-                                proventosConhecidos.push(novoProvento);
-                            }
-                        }
-                    }));
-                }
-            } catch (error) {
-                console.error("Erro ao buscar novos proventos com Scraper:", error);
-            }
+    const proventosPool = [];
+    const ativosParaBuscar = [];
+
+    // 1. Verifica cache local para cada ativo em paralelo
+    await Promise.all(ativosCompativeis.map(async (symbol) => {
+        const cacheKey = `provento_ia_${symbol}`;
+        
+        if (force) {
+            await vestoDB.delete('apiCache', cacheKey);
+            await removerProventosConhecidos(symbol);
         }
         
-        return processarProventosScraper(proventosPool); 
+        const proventoCache = await getCache(cacheKey);
+        
+        if (proventoCache && !force) {
+            proventosPool.push(proventoCache);
+        } else {
+            // Se não tem cache, prepara para buscar na API
+            const limiteCalculado = calcularLimiteMeses(symbol);
+            ativosParaBuscar.push({ 
+                ticker: symbol, 
+                limit: limiteCalculado 
+            });
+        }
+    }));
+    
+    // 2. Busca na API apenas o que faltou (Batch Request otimizado)
+    if (ativosParaBuscar.length > 0) {
+        try {
+            const novosProventos = await callScraperProventosCarteiraAPI(ativosParaBuscar);
+            
+            if (novosProventos && Array.isArray(novosProventos)) {
+                // Salva resultados no cache e no estado global
+                await Promise.all(novosProventos.map(async (provento) => {
+                    if (provento && provento.symbol && provento.paymentDate) {
+                        const cacheKey = `provento_ia_${provento.symbol}`;
+                        await setCache(cacheKey, provento, CACHE_PROVENTOS); 
+                        proventosPool.push(provento);
+
+                        // Cria ID único para evitar duplicatas na lista de 'proventosConhecidos'
+                        const idUnico = provento.symbol + '_' + provento.paymentDate;
+                        const existe = proventosConhecidos.some(p => p.id === idUnico);
+                        
+                        if (!existe) {
+                            const novoProvento = { ...provento, processado: false, id: idUnico };
+                            
+                            // Adiciona ao DB persistente e à memória
+                            await supabaseDB.addProventoConhecido(novoProvento);
+                            proventosConhecidos.push(novoProvento);
+                        }
+                    }
+                }));
+            }
+        } catch (error) {
+            console.error("Erro ao buscar novos proventos com Scraper:", error);
+        }
     }
+    
+    // Retorna lista filtrada e processada
+    return processarProventosScraper(proventosPool); 
+}
 	
 	async function callScraperProximoProventoAPI(ticker) {
         const body = { mode: 'proximo_provento', payload: { ticker } };
@@ -3314,62 +3313,80 @@ async function renderizarCarteira() {
         return response.json;
     }
 
-    async function buscarHistoricoProventosAgregado(force = false) {
-        const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
-        if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
+async function buscarHistoricoProventosAgregado(force = false) {
+    // Filtra todos os ativos da carteira que suportam proventos (Ações + FIIs)
+    const ativosCompativeis = carteiraCalculada.filter(a => supportsProventos(a.symbol));
+    
+    // Se não tiver nenhum ativo compatível, retorna gráfico vazio
+    if (ativosCompativeis.length === 0) return { labels: [], data: [] };
 
-        const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
-        const cacheKey = `cache_grafico_historico_${currentUserId}`;
-        
-        if (force) {
-            await vestoDB.delete('apiCache', cacheKey);
-        }
-        
-        let rawDividends = await getCache(cacheKey);
-
-        if (!rawDividends) {
-            try {
-                rawDividends = await callScraperHistoricoPortfolioAPI(fiiSymbols);
-                if (rawDividends && rawDividends.length > 0) {
-                    await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
-                }
-            } catch (e) {
-                console.error("Erro ao buscar histórico agregado:", e);
-                return { labels: [], data: [] }; 
-            }
-        }
-
-        if (!rawDividends || rawDividends.length === 0) return { labels: [], data: [] };
-
-        const aggregator = {};
-
-        rawDividends.forEach(item => {
-            const dataVisualizacao = item.paymentDate || item.dataCom;
-            const dataDireito = item.dataCom || item.paymentDate;
-            
-            if (dataVisualizacao) {
-                const [ano, mes] = dataVisualizacao.split('-'); 
-                const chaveMes = `${mes}/${ano.substring(2)}`; 
-                
-                const qtdNaData = getQuantidadeNaData(item.symbol, dataDireito);
-
-                if (qtdNaData > 0) {
-                    if (!aggregator[chaveMes]) aggregator[chaveMes] = 0;
-                    aggregator[chaveMes] += (item.value * qtdNaData);
-                }
-            }
-        });
-
-        const labels = Object.keys(aggregator).sort((a, b) => {
-            const [mesA, anoA] = a.split('/');
-            const [mesB, anoB] = b.split('/');
-            return new Date(`20${anoA}-${mesA}-01`) - new Date(`20${anoB}-${mesB}-01`);
-        });
-
-        const data = labels.map(label => aggregator[label]);
-
-        return { labels, data };
+    const symbols = ativosCompativeis.map(a => a.symbol);
+    
+    // Chave de cache única por usuário
+    const cacheKey = `cache_grafico_historico_${currentUserId}`;
+    
+    if (force) {
+        await vestoDB.delete('apiCache', cacheKey);
     }
+    
+    let rawDividends = await getCache(cacheKey);
+
+    // Se não está em cache, busca na API (BFF -> Scraper)
+    if (!rawDividends) {
+        try {
+            // Chama o modo 'historico_portfolio' que criamos no passo anterior
+            rawDividends = await callScraperHistoricoPortfolioAPI(symbols);
+            
+            if (rawDividends && rawDividends.length > 0) {
+                // Salva no cache por 24h (CACHE_IA_HISTORICO)
+                await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
+            }
+        } catch (e) {
+            console.error("Erro ao buscar histórico agregado:", e);
+            return { labels: [], data: [] }; 
+        }
+    }
+
+    if (!rawDividends || rawDividends.length === 0) return { labels: [], data: [] };
+
+    // Objeto para agregar valores por mês (ex: "01/24": 150.00)
+    const aggregator = {};
+
+    rawDividends.forEach(item => {
+        // Prefere data de pagamento, usa Data Com como fallback
+        const dataVisualizacao = item.paymentDate || item.dataCom;
+        const dataDireito = item.dataCom || item.paymentDate;
+        
+        if (dataVisualizacao) {
+            // Formata para chave MM/AA
+            const parts = dataVisualizacao.split('-'); // Esperado YYYY-MM-DD
+            const ano = parts[0];
+            const mes = parts[1];
+            const chaveMes = `${mes}/${ano.substring(2)}`; 
+            
+            // Calcula quanto o usuário tinha na Data Com
+            const qtdNaData = getQuantidadeNaData(item.symbol, dataDireito);
+
+            if (qtdNaData > 0) {
+                if (!aggregator[chaveMes]) aggregator[chaveMes] = 0;
+                aggregator[chaveMes] += (item.value * qtdNaData);
+            }
+        }
+    });
+
+    // Ordena as chaves cronologicamente
+    const labels = Object.keys(aggregator).sort((a, b) => {
+        const [mesA, anoA] = a.split('/');
+        const [mesB, anoB] = b.split('/');
+        // Cria data fictícia dia 01 para comparar
+        return new Date(`20${anoA}-${mesA}-01`) - new Date(`20${anoB}-${mesB}-01`);
+    });
+
+    // Mapeia os valores na mesma ordem das labels
+    const data = labels.map(label => aggregator[label]);
+
+    return { labels, data };
+}
     
 // --- FUNÇÃO AUXILIAR: GERENCIAR NOTIFICAÇÕES EXCLUÍDAS ---
 function isNotificationDismissed(id) {
@@ -4060,13 +4077,14 @@ function handleAbrirModalEdicao(id) {
     }
     
 async function handleMostrarDetalhes(symbol) {
+    // 1. Reset de Interface
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
     detalhesPreco.innerHTML = '';
     detalhesAiProvento.innerHTML = ''; 
     detalhesHistoricoContainer.classList.add('hidden');
     
-    // --- 1. INJEÇÃO DO ÍCONE ---
+    // 2. Injeção do Ícone (Sigla no topo)
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
     
@@ -4078,6 +4096,7 @@ async function handleMostrarDetalhes(symbol) {
         `;
     }
     
+    // 3. Reset de Textos e Variáveis de Estado
     detalhesTituloTexto.textContent = symbol;
     detalhesNomeLongo.textContent = 'Carregando...';
     
@@ -4085,11 +4104,10 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // --- 2. CORES DOS BOTÕES (NEUTRO ABSOLUTO) ---
+    // 4. Reset Visual dos Botões de Período (Gráfico)
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
-        // Fundo preto puro, borda cinza escura neutra, texto cinza neutro
         btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
             isActive 
             ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
@@ -4097,6 +4115,7 @@ async function handleMostrarDetalhes(symbol) {
         }`;
     });
     
+    // 5. Busca de Preço (Brapi) com Cache
     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
@@ -4116,11 +4135,15 @@ async function handleMostrarDetalhes(symbol) {
         }
     }
 
+    // 6. Busca de Fundamentos e Proventos (Ações e FIIs)
     let fundamentos = {};
     let nextProventoData = null;
 
-    if (isFII(symbol)) {
+    // Verifica se é Ação ou FII para buscar dados extras (Dividendos/JCP/Histórico)
+    if (supportsProventos(symbol)) {
         detalhesHistoricoContainer.classList.remove('hidden'); 
+        
+        // Dispara busca do gráfico histórico em background
         fetchHistoricoScraper(symbol);
         
         try {
@@ -4132,6 +4155,7 @@ async function handleMostrarDetalhes(symbol) {
             nextProventoData = provData;
         } catch (e) { console.error("Erro dados extras", e); }
     } else {
+        // Se for ETF/BDR, tenta buscar apenas fundamentos básicos se possível
         try {
             fundamentos = await callScraperFundamentosAPI(symbol) || {};
         } catch(e) {}
@@ -4139,9 +4163,11 @@ async function handleMostrarDetalhes(symbol) {
     
     detalhesLoading.classList.add('hidden');
 
+    // 7. Renderização do HTML
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         
+        // Variação de Preço (Hoje)
         const varPercent = precoData.regularMarketChangePercent || 0;
         let variacaoCor = 'text-[#888888]';
         let variacaoIcone = '';
@@ -4151,7 +4177,7 @@ async function handleMostrarDetalhes(symbol) {
         if (varPercent > 0) { variacaoCor = 'text-green-500'; variacaoIcone = arrowUp; } 
         else if (varPercent < 0) { variacaoCor = 'text-red-500'; variacaoIcone = arrowDown; }
         
-        // Posição do Usuário
+        // Renderiza Posição do Usuário (se tiver na carteira)
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
@@ -4169,27 +4195,36 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- 3. CORREÇÃO DA LINHA DO PROVENTO ---
+        // Renderiza Próximo Provento / Último Anúncio
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
             const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
             const hoje = new Date(); hoje.setHours(0,0,0,0);
+            
             let isFuturo = false;
             if(nextProventoData.paymentDate) {
                 const parts = nextProventoData.paymentDate.split('-');
                 const pDate = new Date(parts[0], parts[1]-1, parts[2]);
                 if(pDate >= hoje) isFuturo = true;
             }
+            
             const tituloCard = isFuturo ? "Próximo Pagamento" : "Último Anúncio";
             const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
             const textClass = isFuturo ? "text-green-400" : "text-[#666666]";
 
-            // AQUI: border-b border-[#2C2C2E] (Cinza Neutro, sem azul)
+            // Badge de Tipo (JCP, Dividendo, Rendimento)
+            const tipoLabel = nextProventoData.type 
+                ? `<span class="text-[9px] px-1.5 py-0.5 rounded bg-[#222] text-gray-400 ml-2 border border-[#333] font-bold tracking-wider">${nextProventoData.type.toUpperCase()}</span>` 
+                : '';
+
             proximoProventoHtml = `
                 <div class="w-full p-3 rounded-2xl border ${borderClass} flex flex-col gap-2 shadow-sm">
                     <div class="flex justify-between items-center border-b border-[#2C2C2E] pb-2 mb-1">
-                        <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${tituloCard}</span>
+                        <div class="flex items-center">
+                             <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${tituloCard}</span>
+                             ${tipoLabel}
+                        </div>
                         <span class="text-lg font-bold text-white">${formatBRL(nextProventoData.value)}</span>
                     </div>
                     <div class="flex justify-between text-xs">
@@ -4206,6 +4241,7 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
+        // Normalização dos Dados de Fundamentos
         const dados = { 
             pvp: fundamentos.pvp || '-', 
             dy: fundamentos.dy || '-', 
@@ -4227,6 +4263,7 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-' 
         };
         
+        // Cor da Variação 12m
         let corVar12m = 'text-[#888888]'; let icon12m = '';
         if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
             corVar12m = 'text-red-500'; icon12m = arrowDown;
@@ -4234,6 +4271,7 @@ async function handleMostrarDetalhes(symbol) {
             corVar12m = 'text-green-500'; icon12m = arrowUp;
         }
 
+        // Helper para renderizar linhas da tabela
         const renderRow = (label, value, isLast = false) => `
             <div class="flex justify-between items-center py-3.5 ${isLast ? '' : 'border-b border-[#2C2C2E]'}">
                 <span class="text-sm text-[#888888] font-medium">${label}</span>
@@ -4241,6 +4279,7 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
+        // Montagem Final do HTML
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col gap-3">
                 
@@ -4309,18 +4348,10 @@ async function handleMostrarDetalhes(symbol) {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }
     
+    // 8. Renderiza Histórico de Transações e Favoritos
     renderizarTransacoesDetalhes(symbol);
     atualizarIconeFavorito(symbol);
 }
-
-
-// Substitua a função inteira em app.js
-
-// EM app.js - Substitua a função renderizarTransacoesDetalhes por esta versão:
-
-// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
-
-// --- EM app.js: Substitua a função renderizarTransacoesDetalhes ---
 
 function renderizarTransacoesDetalhes(symbol) {
     const listaContainer = document.getElementById('detalhes-lista-transacoes');

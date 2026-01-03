@@ -45,8 +45,6 @@ function chunkArray(array, size) {
 async function scrapeFundamentus(ticker) {
     try {
         const url = `https://www.fundamentus.com.br/detalhes.php?papel=${ticker.toUpperCase()}`;
-        // Força encoding binary para decodificar ISO-8859-1 se necessário, 
-        // mas o axios moderno com UTF-8 costuma lidar bem se o header estiver certo.
         const { data } = await client.get(url);
         const $ = cheerio.load(data);
 
@@ -117,7 +115,6 @@ async function scrapeInvestidor10(ticker) {
             taxa_adm: 'N/A', cotas_emitidas: 'N/A'
         };
         
-        // Auxiliares para cálculo de mercado
         let cotacao_atual = 0;
         let num_cotas = 0;
 
@@ -143,7 +140,6 @@ async function scrapeInvestidor10(ticker) {
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
 
-            // Lógica restaurada para Patrimônio
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 if (valor.toLowerCase().includes('mil') || valorNumerico > 10000) {
@@ -158,14 +154,12 @@ async function scrapeInvestidor10(ticker) {
             }
         };
         
-        // Pega cotação atual para fallback
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         
-        // Fallback Mercado
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -191,7 +185,6 @@ async function scrapeInvestidor10(ticker) {
 async function scrapeProventosAPI(ticker) {
     const t = ticker.toUpperCase();
 
-    // Função interna que faz a requisição
     const fetchEarnings = async (type) => {
         try {
             const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
@@ -202,16 +195,11 @@ async function scrapeProventosAPI(ticker) {
         } catch (e) { return []; }
     };
 
-    // 1. TENTATIVA INTELIGENTE
-    // Se termina com 11, tenta FII primeiro. Se vier vazio, tenta Ação (Pode ser UNIT como TAEE11)
-    // Se não termina com 11, tenta Ação.
-    
     let earnings = [];
     
     if (t.endsWith('11') || t.endsWith('11B')) {
         earnings = await fetchEarnings('fii');
         if (earnings.length === 0) {
-            // Opa, é um ticker 11 mas não retornou nada como FII. Deve ser UNIT (TAEE11, ALUP11)
             earnings = await fetchEarnings('acao');
         }
     } else {
@@ -232,10 +220,7 @@ async function scrapeProventosAPI(ticker) {
         };
     });
 
-    // Ordena por data de pagamento DECRESCENTE (Futuro -> Presente -> Passado)
-    // Assim, os pagamentos futuros ficam no topo da lista [0]
     return dividendos.sort((a, b) => {
-        // Se não tiver data de pagamento (raro, mas acontece em anúncio), joga pro topo (prioridade)
         if (!a.paymentDate) return -1; 
         if (!b.paymentDate) return 1;
         return new Date(b.paymentDate) - new Date(a.paymentDate);
@@ -268,13 +253,10 @@ module.exports = async function handler(req, res) {
             const ticker = payload.ticker.toUpperCase();
             
             let dados = null;
-            // 1. FII (Termina em 11) -> Tenta Investidor10
             if (ticker.endsWith('11') || ticker.endsWith('11B')) {
                 dados = await scrapeInvestidor10(ticker);
-                // Se falhar (ex: TAEE11 no inv10 FII dá 404), tenta Fundamentus (UNIT)
                 if (!dados) dados = await scrapeFundamentus(ticker);
             } 
-            // 2. AÇÃO -> Tenta Fundamentus
             else {
                 dados = await scrapeFundamentus(ticker);
                 if (!dados || dados.val_mercado === 'N/A') dados = await scrapeInvestidor10(ticker);
@@ -296,9 +278,8 @@ module.exports = async function handler(req, res) {
                     const limit = typeof item === 'string' ? 24 : (item.limit || 24);
                     
                     const history = await scrapeProventosAPI(ticker);
-                    // Pega pagamentos futuros E passados recentes
                     const recents = history
-                        .filter(h => h.value > 0) // Remove zerados
+                        .filter(h => h.value > 0)
                         .slice(0, limit);
 
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
@@ -323,11 +304,29 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: formatted });
         }
 
+        // --- HISTÓRICO PORTFOLIO (ADICIONADO DE VOLTA!) ---
+        if (mode === 'historico_portfolio') {
+            if (!payload.fiiList) return res.json({ json: [] });
+            const batches = chunkArray(payload.fiiList, 3); 
+            let all = [];
+            for (const batch of batches) {
+                const promises = batch.map(async (ticker) => {
+                    // Usa a nova API JSON também para o histórico acumulado
+                    const history = await scrapeProventosAPI(ticker);
+                    history.slice(0, 24).forEach(h => {
+                        if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
+                    });
+                });
+                await Promise.all(promises);
+                if (batches.length > 1) await new Promise(r => setTimeout(r, 600));
+            }
+            return res.status(200).json({ json: all });
+        }
+
         // --- PRÓXIMO PROVENTO (Futuro) ---
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeProventosAPI(payload.ticker);
-            // Como ordenamos datas futuras primeiro, o índice 0 é o próximo pagamento
             const ultimo = history.length > 0 ? history[0] : null;
             return res.status(200).json({ json: ultimo });
         }

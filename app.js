@@ -4510,8 +4510,6 @@ function renderizarTransacoesDetalhes(symbol) {
         }
     }
     
-// --- SUBSTITUA A FUNÇÃO renderHistoricoIADetalhes NO FINAL DO ARQUIVO ---
-
 // --- SUBSTITUA A FUNÇÃO renderHistoricoIADetalhes ---
 
 function renderHistoricoIADetalhes(meses) {
@@ -4539,18 +4537,24 @@ function renderHistoricoIADetalhes(meses) {
             </div>
          `;
     }
-
-    // O backend já manda ordenado do mais antigo para o novo.
-    // Pegamos os últimos X meses solicitados.
-    const dadosSlice = currentDetalhesHistoricoJSON.slice(-meses);
     
-    const labels = dadosSlice.map(item => item.mes);
-    const data = dadosSlice.map(item => item.valor);
+    let dadosParaMostrar = currentDetalhesHistoricoJSON;
+    
+    // Se tivermos mais dados do que o solicitado, cortamos para pegar os mais RECENTES/FUTUROS (fim do array)
+    if (currentDetalhesHistoricoJSON.length > meses) {
+        dadosParaMostrar = currentDetalhesHistoricoJSON.slice(-meses);
+    }
+
+    // Mapeia e protege contra labels errados
+    const labels = dadosParaMostrar.map(item => {
+        if (!item.mes || item.mes.includes('undefined')) return '--/--';
+        return item.mes;
+    });
+    
+    const data = dadosParaMostrar.map(item => item.valor);
 
     renderizarGraficoProventosDetalhes({ labels, data });
 }
-    
-// Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
 
 function mudarAba(tabId) {

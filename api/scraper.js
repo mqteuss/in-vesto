@@ -46,7 +46,7 @@ function chunkArray(array, size) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (MELHOR PARA DADOS CADASTRAIS)
+// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (COM A LÓGICA ORIGINAL RESTAURADA)
 // ---------------------------------------------------------
 
 function parseExtendedValue(str) {
@@ -65,7 +65,6 @@ function formatCurrency(value) {
 
 async function scrapeFundamentos(ticker) {
     try {
-        // Tenta buscar URL de FII, se 404 tenta Ação (Padrão Investidor10)
         let html;
         try {
             const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
@@ -88,7 +87,6 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // Processador de pares Chave/Valor do Investidor10
         const processPair = (tituloRaw, valorRaw) => {
             const titulo = normalize(tituloRaw);
             const valor = valorRaw.trim();
@@ -111,21 +109,24 @@ async function scrapeFundamentos(ticker) {
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
 
+            // --- CORREÇÃO AQUI: Lógica Original Restaurada ---
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
-                if (valorNumerico > 10000 || valor.toLowerCase().includes('mil')) { // Valida se é Patrimônio total
-                     if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
+                const textoLower = valor.toLowerCase();
+                // Verifica se tem "milh", "bilh" ou se é um número muito grande
+                if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
+                    if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
                 } else {
-                     if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
+                    if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
+
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
                 if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
             }
         };
 
-        // Extração Cards Superiores
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
         const pvpEl = $('._card.vp ._card-body span').first();
@@ -137,7 +138,6 @@ async function scrapeFundamentos(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // Varredura de tabelas e células
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         $('table tbody tr').each((i, row) => {
@@ -145,7 +145,6 @@ async function scrapeFundamentos(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // Fallback Mercado
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -168,21 +167,17 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (MELHOR PARA PROVENTOS)
+// PARTE 2: HISTÓRICO -> STATUS INVEST (MANTIDO API JSON)
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
-        
-        // Status Invest usa a rota 'fii' para FIIs e FIAGROS (ex: SNAG11)
-        // Rota 'acao' para ações (ex: PETR4)
         let type = 'acao';
         if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
         
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
-        // Headers OBRIGATÓRIOS para a API do Status Invest não bloquear
         const { data } = await client.get(url, { 
             headers: { 
                 'X-Requested-With': 'XMLHttpRequest',
@@ -193,9 +188,7 @@ async function scrapeAsset(ticker) {
 
         const earnings = data.assetEarningsModels || [];
 
-        // Formata JSON para o padrão do App
         const dividendos = earnings.map(d => {
-            // Converte dd/mm/yyyy -> yyyy-mm-dd
             const parseDateJSON = (dStr) => {
                 if(!dStr) return null;
                 const parts = dStr.split('/');
@@ -203,14 +196,13 @@ async function scrapeAsset(ticker) {
             };
 
             return {
-                dataCom: parseDateJSON(d.ed),      // Data Com
-                paymentDate: parseDateJSON(d.pd),  // Data Pagamento
-                value: d.v,                        // Valor
-                type: d.et                         // Tipo (Rendimento/JCP)
+                dataCom: parseDateJSON(d.ed),
+                paymentDate: parseDateJSON(d.pd),
+                value: d.v,
+                type: d.et
             };
         });
 
-        // Ordena do mais recente para o mais antigo
         return dividendos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     } catch (error) { 
@@ -229,7 +221,6 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Cache (exceto proventos carteira que é pesado)
     if (req.method === 'GET' || req.method === 'POST') {
        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
@@ -241,18 +232,16 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // MODO 1: Fundamentos (Usa Investidor10)
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
-        // MODO 2: Proventos Carteira (Usa Status Invest API)
         if (mode === 'proventos_carteira') {
             if (!payload.fiiList) return res.json({ json: [] });
             
-            const batches = chunkArray(payload.fiiList, 3); // Lotes de 3 para não travar
+            const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
 
             for (const batch of batches) {
@@ -277,28 +266,21 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-        // MODO 3: Histórico 12 Meses (Usa Status Invest API) -> AQUI ESTÁ O QUE VOCÊ PEDIU
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
-            
-            // Pega o histórico completo do Status Invest
             const history = await scrapeAsset(payload.ticker);
-            
-            // Pega os últimos 18 registros (margem de segurança) e formata
             const formatted = history.slice(0, 18).map(h => {
                 if (!h.paymentDate) return null;
                 const [ano, mes] = h.paymentDate.split('-');
                 return { mes: `${mes}/${ano.substring(2)}`, valor: h.value };
             }).filter(h => h !== null);
-            
             return res.status(200).json({ json: formatted });
         }
 
-        // MODO 4: Próximo Provento (Usa Status Invest API)
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);
-            const ultimo = history.length > 0 ? history[0] : null; // O primeiro já é o mais futuro/recente
+            const ultimo = history.length > 0 ? history[0] : null;
             return res.status(200).json({ json: ultimo });
         }
 

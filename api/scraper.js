@@ -20,7 +20,7 @@ const client = axios.create({
     timeout: 9000
 });
 
-// --- HELPERS DE PARSE ---
+// --- HELPERS ---
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 
 function parseValue(valueStr) {
@@ -65,7 +65,7 @@ async function fetchFundamentosHtml(ticker) {
     }
 }
 
-// --- SCRAPER DE FUNDAMENTOS (CORRIGIDO PARA PREENCHER OS DADOS FALTANTES) ---
+// --- SCRAPER FUNDAMENTOS (CORRIGIDO) ---
 async function scrapeFundamentos(ticker) {
     try {
         const response = await fetchFundamentosHtml(ticker);
@@ -80,97 +80,88 @@ async function scrapeFundamentos(ticker) {
             taxa_adm: 'N/A', cotas_emitidas: 'N/A'
         };
 
-        // --- ESTRATÉGIA 1: CARDS DO TOPO (DY, PVP, Cotação) ---
-        // Procura blocos .top-info e pega os valores
-        $('.top-info div').each((i, el) => {
+        // --- 1. DADOS DE CABEÇALHO (Cards Superiores) ---
+        // Ex: DY, P/VP, Cotação
+        $('.top-info .info').each((i, el) => {
             const title = $(el).find('.title').text().toLowerCase();
             const value = $(el).find('.value').text().trim();
             
             if (title.includes('dividend yield')) dados.dy = value;
             if (title.includes('p/vp')) dados.pvp = value;
-            if (title.includes('cotacao') || title.includes('valor atual')) dados.cotacao_atual = value; // auxiliar
+            if (title.includes('cotacao') || title.includes('valor atual')) dados.cotacao_atual = value;
         });
 
-        // --- ESTRATÉGIA 2: VARREDURA GERAL (Liquidez, Patrimônio, etc.) ---
-        // O Status Invest coloca muitas informações em divs com classe .info dentro de containers
-        $('.info').each((i, el) => {
-            const title = $(el).find('.title').text().toLowerCase().trim();
-            const value = $(el).find('.value').text().trim();
-
-            if (!value) return;
-
-            if (title.includes('liquidez media') || title.includes('liquidez diaria')) dados.liquidez = value;
-            if (title.includes('patrimonio liquido')) dados.patrimonio_liquido = value;
-            if (title.includes('valor patrimonial p/cota') || title.includes('vp por cota')) dados.vp_cota = value;
-            if (title.includes('valor de mercado')) dados.val_mercado = value;
-            if (title.includes('ultimo rendimento')) dados.ultimo_rendimento = value;
-            if (title.includes('cotas emitidas')) dados.cotas_emitidas = value;
-        });
-
-        // --- ESTRATÉGIA 3: BUSCA POR LABEL ESPECÍFICO (Dados Gerais, Segmento, Vacância) ---
-        // Esta função procura um texto exato (ex: "Segmento") e tenta achar o valor vizinho
-        const findValueByLabel = (labelText) => {
-            // Procura em strong, h3, spans, divs que contenham o texto
-            let found = null;
-            $('strong, h3, span, div.title').each((i, el) => {
-                if ($(el).text().trim().toLowerCase() === labelText.toLowerCase()) {
-                    // Tenta achar o valor no irmão, no pai, ou na próxima div
-                    const nextVal = $(el).next('.value, .sub-value').text();
-                    const parentVal = $(el).parent().find('.value, .sub-value').text();
-                    // O Status invest as vezes coloca: <div title="Segmento">...<strong class="value">Logística</strong></div>
-                    const parentContainerVal = $(el).parents('.info').find('.value').text();
-
-                    if (nextVal) found = nextVal;
-                    else if (parentVal) found = parentVal;
-                    else if (parentContainerVal) found = parentContainerVal;
-                    return false; // break loop
-                }
-            });
-            return found ? found.trim() : 'N/A';
+        // --- 2. DADOS ESPECÍFICOS (Liquidez, Patrimônio, VP) ---
+        // O Status Invest usa divs com title="ajuda" que facilitam a busca
+        const getValByTitleAttr = (titleKey) => {
+            // Procura div que tenha title="...texto..."
+            const target = $(`div[title*="${titleKey}"]`).first();
+            if (target.length) {
+                // Tenta pegar .value dentro ou perto
+                return target.find('.value').text().trim() || target.parent().find('.value').text().trim();
+            }
+            // Fallback: Procura por texto visível do título
+            const textTarget = $(`.title:contains("${titleKey}")`).last(); // Last geralmente é o correto no layout
+            if (textTarget.length) return textTarget.parent().find('.value').text().trim();
+            
+            return null;
         };
 
-        // Aplica a busca específica para os campos chatos
-        if (dados.segmento === 'N/A') dados.segmento = findValueByLabel('Segmento');
-        if (dados.tipo_fundo === 'N/A') dados.tipo_fundo = findValueByLabel('Tipo de fundo');
-        if (dados.mandato === 'N/A') dados.mandato = findValueByLabel('Mandato');
-        if (dados.tipo_gestao === 'N/A') dados.tipo_gestao = findValueByLabel('Gestão'); // As vezes é 'Gestão'
-        if (dados.prazo_duracao === 'N/A') dados.prazo_duracao = findValueByLabel('Prazo de duração');
-        if (dados.vacancia === 'N/A') dados.vacancia = findValueByLabel('Vacância Física'); // Status Invest usa 'Vacância Física'
-        if (dados.num_cotistas === 'N/A') dados.num_cotistas = findValueByLabel('Num. Cotistas');
-        if (dados.cnpj === 'N/A') dados.cnpj = findValueByLabel('CNPJ');
+        dados.liquidez = getValByTitleAttr('Liquidez média') || 'N/A';
+        dados.vp_cota = getValByTitleAttr('Valor patrimonial p/cota') || 'N/A';
+        dados.val_mercado = getValByTitleAttr('Valor de mercado') || 'N/A';
+        dados.patrimonio_liquido = getValByTitleAttr('Patrimônio líquido') || 'N/A';
+        dados.ultimo_rendimento = getValByTitleAttr('Último rendimento') || 'N/A';
+        dados.cotas_emitidas = getValByTitleAttr('Num. de cotas') || getValByTitleAttr('Cotas emitidas') || 'N/A';
 
-        // --- ESTRATÉGIA 4: CAIXA DE DADOS GERAIS (Fallback para Segmento/Gestão) ---
-        // Às vezes está dentro de uma div card-bg específica
-        if (dados.segmento === 'N/A') {
-             // Tenta pegar direto do bloco de "Dados Gerais" se existir
-             const segmentoTarget = $('strong:contains("Segmento")').parent().find('.sub-value');
-             if (segmentoTarget.length) dados.segmento = segmentoTarget.text().trim();
-        }
+        // --- 3. DADOS GERAIS (Tabela inferior: Segmento, Vacância, CNPJ) ---
+        // Essa parte geralmente fica numa div .card-bg
+        
+        // Função para limpar o texto grudado (ex: "SegmentoLogística" -> "Logística")
+        const cleanLabel = (fullText, label) => {
+            return fullText.replace(label, '').trim();
+        };
 
-        // --- ESTRATÉGIA 5: TAXA DE ADMINISTRAÇÃO (Geralmente texto longo) ---
-        // O Status Invest coloca a taxa num parágrafo ou div solta
-        const taxaEl = $('div:contains("Taxa de Administração")').last().next(); 
-        // Isso é complexo no Status Invest, as vezes está num texto corrido.
-        // Vamos tentar pegar o valor se estiver estruturado
-        if ($('h3:contains("Taxa de Administração")').length) {
-            dados.taxa_adm = $('h3:contains("Taxa de Administração")').parents('.info').find('.value').text().trim();
-        }
+        // Percorre todos os containers de info menores
+        $('.info').each((i, el) => {
+            const fullText = $(el).text().trim();
+            const titleEl = $(el).find('.title');
+            const subValueEl = $(el).find('.sub-value'); // Status Invest usa .sub-value aqui
+            const valueEl = $(el).find('.value');
 
-        // --- TRATAMENTO FINAL DE DADOS ---
-        // Se Patrimônio veio vazio, mas temos cotas e VP
-        if ((dados.patrimonio_liquido === 'N/A' || dados.patrimonio_liquido === '-') && dados.vp_cota !== 'N/A' && dados.cotas_emitidas !== 'N/A') {
-             // Cálculo manual de fallback
+            let valorFinal = 'N/A';
+            if (subValueEl.length) valorFinal = subValueEl.text().trim();
+            else if (valueEl.length) valorFinal = valueEl.text().trim();
+            
+            // Se achou o valor via classe, ótimo. Se não, tenta limpar texto.
+            const titleText = titleEl.text().trim();
+
+            if (titleText.includes('Segmento')) dados.segmento = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Segmento');
+            if (titleText.includes('Tipo de fundo')) dados.tipo_fundo = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Tipo de fundo');
+            if (titleText.includes('Mandato')) dados.mandato = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Mandato');
+            if (titleText.includes('Gestão')) dados.tipo_gestao = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Gestão');
+            if (titleText.includes('Prazo')) dados.prazo_duracao = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Prazo de duração');
+            if (titleText.includes('Vacância Física')) dados.vacancia = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Vacância Física');
+            if (titleText.includes('Cotistas')) dados.num_cotistas = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'Num. Cotistas');
+            if (titleText.includes('CNPJ')) dados.cnpj = valorFinal !== 'N/A' ? valorFinal : cleanLabel(fullText, 'CNPJ');
+        });
+
+        // --- CORREÇÃO EXTRA PARA "SEGMENTO" ---
+        // Se ainda estiver grudado ou errado, tenta pegar direto do strong
+        if (dados.segmento === 'N/A' || dados.segmento.length > 50) {
+            const segStrong = $('strong:contains("Segmento")').parent().find('.sub-value');
+            if (segStrong.length) dados.segmento = segStrong.text().trim();
         }
 
         return dados;
 
     } catch (error) {
-        console.error("Erro scraper fundamentos:", error.message);
+        console.error("Erro scraper:", error.message);
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 
-// --- SCRAPER DE HISTÓRICO (JSON API) ---
+// --- SCRAPER HISTÓRICO (Mantido igual pois funciona) ---
 async function scrapeAsset(ticker) {
     try {
         const earnings = await fetchProventosJson(ticker);
@@ -192,13 +183,11 @@ async function scrapeAsset(ticker) {
 }
 
 module.exports = async function handler(req, res) {
-    // CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Cache
     if (req.method === 'GET' || (req.method === 'POST' && req.body.mode !== 'proventos_carteira')) {
        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
@@ -220,7 +209,6 @@ module.exports = async function handler(req, res) {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
-
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
@@ -250,7 +238,7 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: formatted });
         }
 
-        if (mode === 'historico_portfolio') { // Compatibilidade legada
+        if (mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3); 
             let all = [];

@@ -2,58 +2,34 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
 
-// OTIMIZAÇÃO 1: Agente HTTPS com Keep-Alive para reutilizar conexões TCP
-// Isso acelera muito requisições em lote (portfolio).
+// --- CONFIGURAÇÃO DO CLIENTE ---
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
     maxFreeSockets: 10,
-    timeout: 10000
+    timeout: 15000
 });
 
 const client = axios.create({
     httpsAgent,
     headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br' // Garante compressão
+        'Accept-Encoding': 'gzip, deflate, br'
     },
-    timeout: 9000
+    timeout: 10000
 });
 
-// OTIMIZAÇÃO 2: Pré-compilação de Regex (evita recriar a cada chamada)
+// --- HELPERS GERAIS ---
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
-function parseDate(dateStr) {
-    if (!dateStr || dateStr === '-') return null;
-    // Otimização simples de string sem regex complexo
-    const parts = dateStr.trim().split('/');
-    if (parts.length !== 3) return null;
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-}
-
 function parseValue(valueStr) {
     if (!valueStr) return 0;
+    if (typeof valueStr === 'number') return valueStr; // Suporte a JSON numérico
     try {
-        // Usa a regex pré-compilada
         return parseFloat(valueStr.replace(REGEX_CLEAN_NUMBER, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
-}
-
-function parseExtendedValue(str) {
-    if (!str) return 0;
-    const val = parseValue(str);
-    const lower = str.toLowerCase();
-    // Multiplicadores
-    if (lower.includes('bilh')) return val * 1000000000;
-    if (lower.includes('milh')) return val * 1000000;
-    if (lower.includes('mil')) return val * 1000;
-    return val;
-}
-
-function formatCurrency(value) {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function normalize(str) {
@@ -69,25 +45,41 @@ function chunkArray(array, size) {
     return results;
 }
 
-// Helper para evitar duplicar a lógica de try/catch de URL
-async function fetchHtmlWithRetry(ticker) {
+// ---------------------------------------------------------
+// PARTE 1: FUNDAMENTOS (FONTE: INVESTIDOR10)
+// Código restaurado do arquivo que você enviou
+// ---------------------------------------------------------
+
+function parseExtendedValue(str) {
+    if (!str) return 0;
+    const val = parseValue(str);
+    const lower = str.toLowerCase();
+    if (lower.includes('bilh')) return val * 1000000000;
+    if (lower.includes('milh')) return val * 1000000;
+    if (lower.includes('mil')) return val * 1000;
+    return val;
+}
+
+function formatCurrency(value) {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+async function fetchInvestidor10Html(ticker) {
     const tickerLower = ticker.toLowerCase();
     try {
-        // Tenta FII
         return await client.get(`https://investidor10.com.br/fiis/${tickerLower}/`);
     } catch (e) {
         if (e.response && e.response.status === 404) {
-            // Fallback para Ações (mantendo a lógica original)
             return await client.get(`https://investidor10.com.br/acoes/${tickerLower}/`);
         }
         throw e;
     }
 }
 
-// --- SCRAPER DE FUNDAMENTOS ---
 async function scrapeFundamentos(ticker) {
     try {
-        const response = await fetchHtmlWithRetry(ticker);
+        // Usa Investidor10 (Seu código original)
+        const response = await fetchInvestidor10Html(ticker);
         const html = response.data;
         const $ = cheerio.load(html);
 
@@ -107,7 +99,6 @@ async function scrapeFundamentos(ticker) {
             const valor = valorRaw.trim();
             if (!valor) return;
 
-            // Mantida a lógica exata de mapeamento
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
@@ -134,14 +125,12 @@ async function scrapeFundamentos(ticker) {
                     if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
-
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
                 if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
             }
         };
 
-        // Extração por Cards (Prioritário)
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
         const pvpEl = $('._card.vp ._card-body span').first();
@@ -153,7 +142,6 @@ async function scrapeFundamentos(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // Varredura Geral
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         $('table tbody tr').each((i, row) => {
@@ -161,7 +149,6 @@ async function scrapeFundamentos(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // Cálculo de Mercado (Fallback)
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -183,56 +170,72 @@ async function scrapeFundamentos(ticker) {
     }
 }
 
-// --- SCRAPER DE HISTÓRICO ---
+// ---------------------------------------------------------
+// PARTE 2: HISTÓRICO E PROVENTOS (FONTE: STATUS INVEST API)
+// Mais rápido e preciso para datas futuras
+// ---------------------------------------------------------
+
 async function scrapeAsset(ticker) {
     try {
-        const response = await fetchHtmlWithRetry(ticker);
-        const html = response.data;
-        const $ = cheerio.load(html);
-        const dividendos = [];
+        const t = ticker.toUpperCase();
+        
+        // Determina o tipo para a URL da API (Ações ou FII/Fiagro)
+        // A API de FII do Status Invest geralmente serve para FIIs e Fiagros
+        let type = 'acao';
+        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
+        
+        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
-        let tableRows = $('#table-dividends-history tbody tr');
-        if (tableRows.length === 0) {
-            $('table').each((i, tbl) => {
-                const header = normalize($(tbl).find('thead').text());
-                if (header.includes('com') && header.includes('pagamento')) {
-                    tableRows = $(tbl).find('tbody tr');
-                    return false; 
-                }
-            });
-        }
-
-        tableRows.each((i, el) => {
-            const cols = $(el).find('td');
-            if (cols.length >= 4) {
-                const dataCom = $(cols[1]).text().trim();
-                const dataPag = $(cols[2]).text().trim();
-                const valor = $(cols[3]).text().trim();
-
-                dividendos.push({
-                    dataCom: parseDate(dataCom),
-                    paymentDate: parseDate(dataPag),
-                    value: parseValue(valor)
-                });
-            }
+        // Status Invest exige headers específicos para não bloquear a API
+        const { data } = await client.get(url, { 
+            headers: { 
+                'X-Requested-With': 'XMLHttpRequest',
+                'Referer': 'https://statusinvest.com.br/',
+                'Origin': 'https://statusinvest.com.br'
+            } 
         });
-        return dividendos;
-    } catch (error) { return []; }
+
+        const earnings = data.assetEarningsModels || [];
+
+        // Converte o formato JSON do Status Invest para o formato do seu App
+        const dividendos = earnings.map(d => {
+            // Helper para datas dd/mm/yyyy -> yyyy-mm-dd
+            const parseDateJSON = (dStr) => {
+                if(!dStr) return null;
+                const parts = dStr.split('/');
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            };
+
+            return {
+                dataCom: parseDateJSON(d.ed), // Earn Date
+                paymentDate: parseDateJSON(d.pd), // Payment Date
+                value: d.v, // Value
+                type: d.et // Earnings Type
+            };
+        });
+
+        // Ordena: Mais recente (futuro ou presente) primeiro
+        return dividendos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+    } catch (error) { 
+        console.error(`Erro proventos StatusInvest ${ticker}:`, error.message);
+        return []; 
+    }
 }
 
+// ---------------------------------------------------------
+// MAIN HANDLER
+// ---------------------------------------------------------
+
 module.exports = async function handler(req, res) {
-    // CORS
+    // Headers CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // OTIMIZAÇÃO 3: Cache Headers (Importantíssimo)
-    // Cacheia a resposta por 1 hora (3600s) na CDN da Vercel.
-    // O 'stale-while-revalidate' serve o cache antigo enquanto atualiza em segundo plano.
-    if (req.method === 'GET' || (req.method === 'POST' && req.body.mode !== 'proventos_carteira')) {
-       // Evitamos cache em 'proventos_carteira' se ele for muito dinâmico ou grande, 
-       // mas para fundamentos e histórico é seguro.
+    // Cache (Exceto proventos_carteira que é pesado, mas seguro cachear um pouco)
+    if (req.method === 'GET' || (req.method === 'POST')) {
        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
 
@@ -243,32 +246,31 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
+        // MODO 1: FUNDAMENTOS -> INVESTIDOR10
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
-if (mode === 'proventos_carteira') {
+        // MODO 2: PROVENTOS (Carteira) -> STATUS INVEST (API JSON)
+        if (mode === 'proventos_carteira') {
             if (!payload.fiiList) return res.json({ json: [] });
             
-            // fiiList agora será um array de objetos: [{ ticker: 'MXRF11', limit: 12 }, ...]
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
 
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
-                    // Verifica se o item é string (legado) ou objeto (novo formato)
                     const ticker = typeof item === 'string' ? item : item.ticker;
-                    // Se for string, assume 24 (padrão antigo). Se for objeto, usa o limite calculado.
                     const limit = typeof item === 'string' ? 24 : (item.limit || 24);
 
+                    // Chama Status Invest
                     const history = await scrapeAsset(ticker);
                     
-                    // AQUI APLICAMOS O CORTE INTELIGENTE
                     const recents = history
                         .filter(h => h.paymentDate && h.value > 0)
-                        .slice(0, limit); // Corta exatamente onde o App.js pediu
+                        .slice(0, limit);
 
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
@@ -277,11 +279,13 @@ if (mode === 'proventos_carteira') {
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
 
-                if (batches.length > 1) await new Promise(r => setTimeout(r, 500)); 
+                // Delay pequeno para não tomar block do Status Invest
+                if (batches.length > 1) await new Promise(r => setTimeout(r, 600)); 
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
+        // MODO 3: HISTÓRICO 12M -> STATUS INVEST
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
             const history = await scrapeAsset(payload.ticker);
@@ -293,27 +297,18 @@ if (mode === 'proventos_carteira') {
             return res.status(200).json({ json: formatted });
         }
 
-        if (mode === 'historico_portfolio') {
-            if (!payload.fiiList) return res.json({ json: [] });
-            const batches = chunkArray(payload.fiiList, 3); 
-            let all = [];
-            for (const batch of batches) {
-                const promises = batch.map(async (ticker) => {
-                    const history = await scrapeAsset(ticker);
-                    history.slice(0, 24).forEach(h => {
-                        if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
-                    });
-                });
-                await Promise.all(promises);
-                if (batches.length > 1) await new Promise(r => setTimeout(r, 500));
-            }
-            return res.status(200).json({ json: all });
-        }
-
+        // MODO 4: PRÓXIMO PROVENTO -> STATUS INVEST (Melhor para datas futuras)
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);
+            
+            // Lógica para pegar o próximo (hoje ou futuro)
+            const hoje = new Date().toISOString().split('T')[0];
+            // Como a lista já vem ordenada decrescente (futuro -> passado)
+            // O "primeiro" item da lista geralmente é o anúncio mais recente.
+            // Verifica se é futuro
             const ultimo = history.length > 0 ? history[0] : null;
+            
             return res.status(200).json({ json: ultimo });
         }
 

@@ -167,11 +167,7 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (COM TIPOS DETALHADOS)
-// ---------------------------------------------------------
-
-// ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (LÓGICA HIERÁRQUICA DE TIPOS)
+// PARTE 2: HISTÓRICO -> STATUS INVEST (IDENTIFICAÇÃO ROBUSTA)
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
@@ -196,7 +192,7 @@ async function scrapeAsset(ticker) {
         const earnings = data.assetEarningsModels || [];
 
         const dividendos = earnings.map(d => {
-            // --- PARSE DE DATA SEGURO ---
+            // --- PARSE DE DATA ---
             const parseDateJSON = (dStr) => {
                 if (!dStr || dStr.trim() === '-' || !dStr.includes('/')) return null;
                 const parts = dStr.split('/');
@@ -204,25 +200,22 @@ async function scrapeAsset(ticker) {
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
 
-            // --- LÓGICA HIERÁRQUICA DE TIPO ---
-            let labelTipo = 'Rendimento'; // Padrão (FIIs geralmente caem aqui)
+            // --- LÓGICA DE TIPO (PRIORIDADE DUPLA) ---
+            let labelTipo = 'Rendimento'; // Fallback padrão
+            const et = parseInt(d.et);   // Garante que é número
 
-            // 1. Prioridade Máxima: Códigos Numéricos Oficiais (Ações)
-            if (d.et === 1) labelTipo = 'Dividendo';
-            else if (d.et === 2) labelTipo = 'JCP';
+            // 1. Verifica Códigos Oficiais
+            if (et === 1) labelTipo = 'Dividendo';
+            else if (et === 2) labelTipo = 'JCP';
 
-            // 2. Detecção de Casos Especiais via Texto (Sobrescreve se necessário)
+            // 2. Verifica Descrição de Texto (Para casos específicos)
             if (d.etD) {
-                const desc = d.etD.toUpperCase();
+                const desc = String(d.etD).toUpperCase();
                 
-                // Captura o "Rend. Tributado" explicitamente solicitado
-                if (desc.includes('TRIBUTADO')) {
-                    labelTipo = 'Rend. Tributado';
-                }
-                // Captura Amortizações (Comum em FIIs)
-                else if (desc.includes('AMORTIZA')) {
-                    labelTipo = 'Amortização';
-                }
+                if (desc.includes('TRIBUTADO')) labelTipo = 'Rend. Tributado';
+                else if (desc.includes('AMORTIZA')) labelTipo = 'Amortização';
+                else if (desc.includes('JUROS') && labelTipo === 'Rendimento') labelTipo = 'JCP'; // Reforço
+                else if (desc.includes('DIVIDEND') && labelTipo === 'Rendimento') labelTipo = 'Dividendo'; // Reforço
             }
 
             return {
@@ -234,7 +227,7 @@ async function scrapeAsset(ticker) {
             };
         });
 
-        // Filtra inválidos e ordena
+        // Filtra sem data e ordena
         const dadosLimpos = dividendos.filter(d => d.paymentDate !== null);
         return dadosLimpos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 

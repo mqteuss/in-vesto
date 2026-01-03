@@ -167,19 +167,7 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (MANTIDO API JSON)
-// ---------------------------------------------------------
-
-// ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (ATUALIZADO PARA AÇÕES E JCP)
-// ---------------------------------------------------------
-
-// ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (CORREÇÃO DE DATAS INVÁLIDAS/CMIG4)
-// ---------------------------------------------------------
-
-// ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (CORRIGIDO)
+// PARTE 2: HISTÓRICO -> STATUS INVEST (BLINDADO CONTRA DATAS INVÁLIDAS)
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
@@ -187,7 +175,7 @@ async function scrapeAsset(ticker) {
         const t = ticker.toUpperCase();
         let type = 'acao';
         
-        // Detecta se é FII (final 11, 11B, 12)
+        // Detecção básica de tipo
         if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('12')) {
             type = 'fii'; 
         }
@@ -205,22 +193,33 @@ async function scrapeAsset(ticker) {
         const earnings = data.assetEarningsModels || [];
 
         const dividendos = earnings.map(d => {
-            // --- CORREÇÃO DE DATA INVÁLIDA ---
+            // --- FUNÇÃO DE PARSE ULTRA SEGURA ---
             const parseDateJSON = (dStr) => {
-                // Se for nulo, vazio ou um traço "-", retorna null imediatamente
-                if (!dStr || dStr === '-') return null;
+                // 1. Verifica se é nulo, undefined ou string vazia
+                if (!dStr) return null;
                 
-                // Só processa se tiver o formato correto (com barras)
-                if (dStr.includes('/')) {
-                    const parts = dStr.split('/');
-                    if (parts.length === 3) {
-                        return `${parts[2]}-${parts[1]}-${parts[0]}`;
-                    }
-                }
-                return null;
+                // 2. Verifica se é apenas um traço (comum em proventos sem data definida)
+                if (dStr.trim() === '-') return null;
+                
+                // 3. Verifica se tem o formato esperado DD/MM/YYYY
+                if (!dStr.includes('/')) return null;
+                
+                const parts = dStr.split('/');
+                
+                // 4. Verifica se gerou exatamente 3 partes (Dia, Mês, Ano)
+                if (parts.length !== 3) return null;
+                
+                // 5. Verifica se as partes são números válidos
+                const dia = parseInt(parts[0]);
+                const mes = parseInt(parts[1]);
+                const ano = parseInt(parts[2]);
+                
+                if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return null;
+
+                // Retorna YYYY-MM-DD
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
 
-            // Define o tipo de provento
             let labelTipo = 'Rendimento';
             if (d.et === 1) labelTipo = 'Dividendo';
             else if (d.et === 2) labelTipo = 'JCP';
@@ -236,19 +235,19 @@ async function scrapeAsset(ticker) {
             };
         });
 
-        // Remove itens que não tenham data de pagamento válida para evitar erro no gráfico
-        return dividendos
-            .filter(d => d.paymentDate !== null) 
-            .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        // --- FILTRAGEM FINAL IMPORTANTE ---
+        // Removemos qualquer item onde o paymentDate seja nulo.
+        // Isso impede que o gráfico receba dados sujos ("undefined/defined").
+        const dadosLimpos = dividendos.filter(d => d.paymentDate !== null);
+
+        // Ordena por data de pagamento (Decrescente: Futuro -> Passado)
+        return dadosLimpos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     } catch (error) { 
         console.error(`Erro StatusInvest API ${ticker}:`, error.message);
         return []; 
     }
 }
-// ---------------------------------------------------------
-// HANDLER PRINCIPAL
-// ---------------------------------------------------------
 
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);

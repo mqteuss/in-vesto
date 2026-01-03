@@ -3198,7 +3198,6 @@ async function renderizarCarteira() {
     }
 
 async function buscarProventosFuturos(force = false) {
-    // ALTERAÇÃO: Usa supportsProventos para incluir Ações na busca automática
     const ativosCompativeis = carteiraCalculada
         .filter(a => supportsProventos(a.symbol))
         .map(a => a.symbol);
@@ -3208,7 +3207,6 @@ async function buscarProventosFuturos(force = false) {
     const proventosPool = [];
     const ativosParaBuscar = [];
 
-    // 1. Verifica cache local para cada ativo em paralelo
     await Promise.all(ativosCompativeis.map(async (symbol) => {
         const cacheKey = `provento_ia_${symbol}`;
         
@@ -3222,7 +3220,6 @@ async function buscarProventosFuturos(force = false) {
         if (proventoCache && !force) {
             proventosPool.push(proventoCache);
         } else {
-            // Se não tem cache, prepara para buscar na API
             const limiteCalculado = calcularLimiteMeses(symbol);
             ativosParaBuscar.push({ 
                 ticker: symbol, 
@@ -3231,29 +3228,33 @@ async function buscarProventosFuturos(force = false) {
         }
     }));
     
-    // 2. Busca na API apenas o que faltou (Batch Request otimizado)
     if (ativosParaBuscar.length > 0) {
         try {
             const novosProventos = await callScraperProventosCarteiraAPI(ativosParaBuscar);
             
             if (novosProventos && Array.isArray(novosProventos)) {
-                // Salva resultados no cache e no estado global
                 await Promise.all(novosProventos.map(async (provento) => {
                     if (provento && provento.symbol && provento.paymentDate) {
                         const cacheKey = `provento_ia_${provento.symbol}`;
                         await setCache(cacheKey, provento, CACHE_PROVENTOS); 
                         proventosPool.push(provento);
 
-                        // Cria ID único para evitar duplicatas na lista de 'proventosConhecidos'
                         const idUnico = provento.symbol + '_' + provento.paymentDate;
-                        const existe = proventosConhecidos.some(p => p.id === idUnico);
+                        const existingIndex = proventosConhecidos.findIndex(p => p.id === idUnico);
                         
-                        if (!existe) {
+                        if (existingIndex === -1) {
+                            // NOVO: Adiciona
                             const novoProvento = { ...provento, processado: false, id: idUnico };
-                            
-                            // Adiciona ao DB persistente e à memória
                             await supabaseDB.addProventoConhecido(novoProvento);
                             proventosConhecidos.push(novoProvento);
+                        } else {
+                            // EXISTENTE: Verifica se precisa corrigir o TIPO (Correção Visual Imediata)
+                            const existing = proventosConhecidos[existingIndex];
+                            if (existing.type !== provento.type) {
+                                // Atualiza na memória para o usuário ver "JCP" imediatamente
+                                proventosConhecidos[existingIndex].type = provento.type;
+                                // (Opcional) Poderíamos atualizar no DB aqui, mas a atualização visual já resolve o incômodo
+                            }
                         }
                     }
                 }));
@@ -3263,7 +3264,6 @@ async function buscarProventosFuturos(force = false) {
         }
     }
     
-    // Retorna lista filtrada e processada
     return processarProventosScraper(proventosPool); 
 }
 	

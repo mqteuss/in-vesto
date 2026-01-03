@@ -27,7 +27,6 @@ function parseValue(valueStr) {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
     try {
-        // Remove % e outros caracteres, troca vírgula por ponto
         return parseFloat(valueStr.replace(REGEX_CLEAN_NUMBER, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
@@ -55,11 +54,9 @@ async function scrapeFundamentus(ticker) {
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'Indeterminado',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A',
-            // Ações Específicos
             pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', divida_liquida_ebitda: 'N/A'
         };
 
-        // Varredura de Tabelas (Método Robusto par Label/Data)
         $('table.w728 tr').each((i, row) => {
             $(row).find('td.label').each((j, labelCell) => {
                 const label = $(labelCell).text().trim().toLowerCase();
@@ -79,7 +76,7 @@ async function scrapeFundamentus(ticker) {
                 if (label.includes('cotacao')) dados.cotacao_atual = value; 
                 if (label.includes('vpa')) dados.vp_cota = value;
 
-                // Indicadores de Ações
+                // Ações
                 if (label.includes('p/l')) dados.pl = value;
                 if (label.includes('roe')) dados.roe = value;
                 if (label.includes('lpa')) dados.lpa = value;
@@ -114,13 +111,11 @@ async function scrapeInvestidor10(ticker) {
         let html;
         let isFII = ticker.toUpperCase().endsWith('11') || ticker.toUpperCase().endsWith('11B');
         
-        // Tenta rota correta baseada no ticker
         try {
             const typePath = isFII ? 'fiis' : 'acoes';
             const res = await client.get(`https://investidor10.com.br/${typePath}/${ticker.toLowerCase()}/`);
             html = res.data;
         } catch (e) {
-            // Fallback reverso
             const typePath = isFII ? 'acoes' : 'fiis';
             const res = await client.get(`https://investidor10.com.br/${typePath}/${ticker.toLowerCase()}/`);
             html = res.data;
@@ -178,7 +173,6 @@ async function scrapeInvestidor10(ticker) {
                      if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
-
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
                 if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
@@ -188,9 +182,7 @@ async function scrapeInvestidor10(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // Processa Cards do Topo
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
-        // Processa Tabela de Detalhes
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
@@ -213,7 +205,7 @@ async function scrapeInvestidor10(ticker) {
 }
 
 // ---------------------------------------------------------
-// FONTE 3: STATUS INVEST (PROVENTOS) - COM CORREÇÃO DE DATAS
+// FONTE 3: STATUS INVEST (PROVENTOS)
 // ---------------------------------------------------------
 async function scrapeProventosAPI(ticker) {
     const t = ticker.toUpperCase();
@@ -229,14 +221,10 @@ async function scrapeProventosAPI(ticker) {
     };
 
     let earnings = [];
-    
-    // Lógica Inteligente de Rota
-    if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33') || t.endsWith('34') || t.endsWith('35')) {
-        // Prioriza rota de FIIs
+    if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33')) {
         earnings = await fetchEarnings('fii');
         if (earnings.length === 0) earnings = await fetchEarnings('acao');
     } else {
-        // Prioriza rota de Ações (3, 4, 5, 6, UNITs)
         earnings = await fetchEarnings('acao');
         if (earnings.length === 0) earnings = await fetchEarnings('fii');
     }
@@ -245,23 +233,22 @@ async function scrapeProventosAPI(ticker) {
         const parseDateJSON = (dStr) => {
             if(!dStr) return null;
             const parts = dStr.split('/');
-            return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+            return `${parts[2]}-${parts[1]}-${parts[0]}`; // Retorna YYYY-MM-DD
         };
         
         const dataCom = parseDateJSON(d.ed);
         let paymentDate = parseDateJSON(d.pd);
         
-        // CORREÇÃO CRÍTICA: Se não tem Data Pagamento (Ações provisionadas), usa Data Com + 30 dias (Estimativa)
-        // Isso evita quebras no gráfico e permite listar como "Futuro"
+        // Se a data de pagamento é nula (comum em ações provisionadas), estimamos 30 dias após data com
         if (!paymentDate && dataCom) {
             const dComObj = new Date(dataCom);
-            dComObj.setDate(dComObj.getDate() + 30); // Estima pagamento 1 mês depois
+            dComObj.setDate(dComObj.getDate() + 30); 
             paymentDate = dComObj.toISOString().split('T')[0];
         }
 
         return {
             dataCom: dataCom,
-            paymentDate: paymentDate, // Agora nunca é null se tiver DataCom
+            paymentDate: paymentDate,
             value: d.v,
             type: d.et
         };
@@ -278,7 +265,6 @@ async function scrapeProventosAPI(ticker) {
 // HANDLER PRINCIPAL
 // ---------------------------------------------------------
 module.exports = async function handler(req, res) {
-    // Headers CORS e Cache
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
@@ -295,60 +281,40 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // --- FUNDAMENTOS ---
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             const ticker = payload.ticker.toUpperCase();
-            
             let dados = null;
             
-            // CORREÇÃO DE PRIORIDADE:
-            // 1. Se parece FII (termina em 11), tenta Investidor10 primeiro.
-            // 2. Se parece Ação, tenta Fundamentus primeiro.
-            
             if (ticker.endsWith('11') || ticker.endsWith('11B')) {
-                // Tenta Investidor10 (Melhor FII)
                 dados = await scrapeInvestidor10(ticker);
-                
-                // Se Investidor10 falhou ou retornou N/A no DY, tenta Fundamentus
                 if (!dados || dados.dy === 'N/A') {
                      const backup = await scrapeFundamentus(ticker);
                      if (backup && backup.dy !== 'N/A') dados = backup;
                      else if (!dados) dados = backup;
                 }
-            } 
-            else {
-                // Tenta Fundamentus (Melhor Ação)
+            } else {
                 dados = await scrapeFundamentus(ticker);
-                
-                // Se falhou ou faltou dados cruciais, tenta Investidor10
                 if (!dados || dados.pl === 'N/A') {
                     const backup = await scrapeInvestidor10(ticker);
                     if (backup && backup.pl !== 'N/A') dados = backup;
                     else if (!dados) dados = backup;
                 }
             }
-
             if (!dados) dados = { dy: '-', pvp: '-', segmento: '-' };
             return res.status(200).json({ json: dados });
         }
 
-        // --- PROVENTOS CARTEIRA (Batch) ---
         if (mode === 'proventos_carteira') {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
-
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
                     const limit = typeof item === 'string' ? 24 : (item.limit || 24);
-                    
                     const history = await scrapeProventosAPI(ticker);
-                    const recents = history
-                        .filter(h => h.value > 0)
-                        .slice(0, limit);
-
+                    const recents = history.filter(h => h.value > 0).slice(0, limit);
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });
@@ -359,23 +325,46 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-        // --- HISTÓRICO 12M (Para Gráfico de Detalhes) ---
+        // --- CORREÇÃO AQUI: HISTÓRICO 12M ---
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
+            
             const history = await scrapeProventosAPI(payload.ticker);
-            
-            const formatted = history.slice(0, 18).map(h => {
-                // CORREÇÃO: Evita erro undefined/defined
-                if (!h.paymentDate || !h.paymentDate.includes('-')) return null;
+            const hoje = new Date();
+            const mapaAgregado = {};
+
+            // 1. Agrupa por mês e Filtra futuro
+            history.forEach(h => {
+                if (!h.paymentDate || !h.paymentDate.includes('-')) return;
                 
-                const [ano, mes] = h.paymentDate.split('-');
-                return { mes: `${mes}/${ano.substring(2)}`, valor: h.value };
-            }).filter(h => h !== null);
-            
+                const d = new Date(h.paymentDate + 'T12:00:00'); // Garante fuso
+                if (isNaN(d.getTime())) return;
+                
+                // Se for data futura (ano que vem ou mês que vem), ignora para histórico
+                if (d > hoje) return;
+
+                // Chave de ordenação: YYYY-MM
+                const keySort = h.paymentDate.slice(0, 7); 
+                
+                if (!mapaAgregado[keySort]) mapaAgregado[keySort] = 0;
+                mapaAgregado[keySort] += h.value;
+            });
+
+            // 2. Transforma em Array, Ordena (Antigo -> Novo) e Pega últimos 12
+            const formatted = Object.entries(mapaAgregado)
+                .sort((a, b) => a[0].localeCompare(b[0])) // '2024-01' antes de '2024-02'
+                .slice(-12) // Pega os últimos 12 meses
+                .map(([key, valor]) => {
+                    const [ano, mes] = key.split('-');
+                    return { 
+                        mes: `${mes}/${ano.slice(2)}`, // Retorna MM/YY
+                        valor: valor 
+                    };
+                });
+
             return res.status(200).json({ json: formatted });
         }
 
-        // --- HISTÓRICO PORTFOLIO (Agregado) ---
         if (mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3); 
@@ -393,17 +382,13 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: all });
         }
 
-        // --- PRÓXIMO PROVENTO (Card Destaque) ---
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeProventosAPI(payload.ticker);
-            // Filtra datas futuras ou recentes
             const hoje = new Date();
-            hoje.setDate(hoje.getDate() - 20); // Pega recentes também
-            
+            hoje.setDate(hoje.getDate() - 20); 
             const relevantes = history.filter(h => new Date(h.paymentDate) >= hoje);
             const proximo = relevantes.length > 0 ? relevantes[relevantes.length - 1] : (history[0] || null);
-            
             return res.status(200).json({ json: proximo });
         }
 

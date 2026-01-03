@@ -69,8 +69,10 @@ function chunkArray(array, size) {
 async function fetchHtmlWithRetry(ticker) {
     const tickerLower = ticker.toLowerCase();
     const lastChar = tickerLower.slice(-1);
+    // Se termina em 3, 4, 5, 6, provavelmente é Ação.
     const isLikelyStock = ['3', '4', '5', '6'].includes(lastChar);
     
+    // Define ordem de prioridade
     const urlsToTry = isLikelyStock 
         ? [`https://investidor10.com.br/acoes/${tickerLower}/`, `https://investidor10.com.br/fiis/${tickerLower}/`]
         : [`https://investidor10.com.br/fiis/${tickerLower}/`, `https://investidor10.com.br/acoes/${tickerLower}/`];
@@ -81,6 +83,7 @@ async function fetchHtmlWithRetry(ticker) {
             const html = response.data;
             const $ = cheerio.load(html);
             
+            // Validação simples: se o título não tiver o ticker, fomos redirecionados para a Home
             const title = $('title').text().toLowerCase();
             const h1 = $('h1').text().toLowerCase();
             if (!title.includes(tickerLower) && !h1.includes(tickerLower)) {
@@ -92,7 +95,7 @@ async function fetchHtmlWithRetry(ticker) {
     throw new Error(`Dados não encontrados para ${ticker}`);
 }
 
-// --- SCRAPER DE FUNDAMENTOS (VERSÃO FINAL CORRIGIDA) ---
+// --- SCRAPER DE FUNDAMENTOS (CORRIGIDO) ---
 async function scrapeFundamentos(ticker) {
     try {
         const response = await fetchHtmlWithRetry(ticker);
@@ -107,7 +110,7 @@ async function scrapeFundamentos(ticker) {
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A',
             
-            // Ações
+            // Ações (Novos campos)
             pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', 
             divida_liquida_ebitda: 'N/A', ev_ebit: 'N/A', roic: 'N/A'
         };
@@ -129,11 +132,14 @@ async function scrapeFundamentos(ticker) {
 
         const pvpCard = getCardValue('vp') || getCardValue('p_vp');
         if (pvpCard) dados.pvp = pvpCard;
+        
+        const roeCard = getCardValue('roe');
+        if (roeCard) dados.roe = roeCard;
 
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // 2. BUSCA GENÉRICA (VARREDURA TOTAL E FLEXÍVEL)
+        // 2. VARREDURA GERAL (Grid + Tabelas + Cards)
         const processPair = (chaveRaw, valorRaw) => {
             if (!chaveRaw || !valorRaw) return;
             const chave = normalize(chaveRaw);
@@ -146,7 +152,7 @@ async function scrapeFundamentos(ticker) {
             if (dados.ultimo_rendimento === 'N/A' && chave.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
             if (dados.vacancia === 'N/A' && chave.includes('vacancia')) dados.vacancia = valor;
             
-            // Segmento (pode ser "Setor de Atuação" em ações)
+            // Segmento (FII ou Ação - Setor)
             if (dados.segmento === 'N/A') {
                 if (chave.includes('segmento') || chave.includes('setor')) dados.segmento = valor;
             }
@@ -162,6 +168,7 @@ async function scrapeFundamentos(ticker) {
             if (dados.vp_cota === 'N/A') {
                 if (chave.includes('vp por cota') || chave === 'vpa' || chave.includes('valor patrimonial')) {
                      const valNum = parseValue(valor);
+                     // Filtra valores muito altos que seriam o patrimônio total por engano
                      if (valNum < 1000000) dados.vp_cota = valor;
                 }
             }
@@ -188,23 +195,23 @@ async function scrapeFundamentos(ticker) {
             if (dados.roic === 'N/A' && chave === 'roic') dados.roic = valor;
             if (dados.lpa === 'N/A' && chave === 'lpa') dados.lpa = valor;
             
-            // Margem Líquida (Correção: aceita "Marg. Líquida")
+            // Margem Líquida (Correção: aceita "Marg. Líquida" e variações)
             if (dados.margem_liquida === 'N/A') {
                 if (chave.includes('margem liquida') || chave.includes('marg. liquida') || chave.includes('marg liquida')) {
                     dados.margem_liquida = valor;
                 }
             }
             
-            // Dívida Líquida / EBITDA (Correção: variações de abreviação)
+            // Dívida Líquida / EBITDA
             if (dados.divida_liquida_ebitda === 'N/A') {
-                if (chave.includes('div') && chave.includes('liq') && chave.includes('ebit')) {
+                if ((chave.includes('div') && chave.includes('liq') && chave.includes('ebit')) || chave === 'div. liq. / ebitda') {
                     dados.divida_liquida_ebitda = valor;
                 }
             }
             
             if (dados.ev_ebit === 'N/A' && chave.includes('ev/ebit')) dados.ev_ebit = valor;
             
-            // Num Ações para cálculo de Market Cap
+            // Num Ações para cálculo de Market Cap (se necessário)
             if (chave.includes('num. acoes') || chave.includes('cotas emitidas') || chave === 'numero de acoes') {
                  num_cotas = parseExtendedValue(valor);
                  if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
@@ -213,14 +220,14 @@ async function scrapeFundamentos(ticker) {
 
         // --- ESTRATÉGIA DE VARREDURA ---
         
-        // A. Grid Cells (Investidor10 usa muito isso)
+        // A. Grid Cells (Padrão novo do Investidor10 - Onde ficam LPA, Margens, etc)
         $('.cell').each((i, el) => {
             const title = $(el).find('.name').text();
             const val = $(el).find('.value').text();
             processPair(title, val);
         });
 
-        // B. Tabelas (Dados técnicos ficam aqui)
+        // B. Tabelas (Dados técnicos e gerais)
         $('table tbody tr').each((i, row) => {
             const tds = $(row).find('td');
             // Tenta par chave-valor padrão
@@ -233,7 +240,7 @@ async function scrapeFundamentos(ticker) {
             }
         });
 
-        // C. Cards Internos
+        // C. Cards Internos (Fallback)
         $('._card').each((i, el) => {
             const head = $(el).find('._card-header').text();
             const body = $(el).find('._card-body').text();

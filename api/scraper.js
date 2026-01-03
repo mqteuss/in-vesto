@@ -170,12 +170,23 @@ async function scrapeFundamentos(ticker) {
 // PARTE 2: HISTÓRICO -> STATUS INVEST (MANTIDO API JSON)
 // ---------------------------------------------------------
 
+// ---------------------------------------------------------
+// PARTE 2: HISTÓRICO -> STATUS INVEST (ATUALIZADO PARA AÇÕES E JCP)
+// ---------------------------------------------------------
+
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
         let type = 'acao';
-        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
+        // Se termina em 11, 11B, 12, geralmente é FII ou Unit/ETF.
+        // Ações terminam em 3, 4, 5, 6.
+        if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('12')) {
+            // Pequena verificação extra: se for ETF não tem provento da mesma forma, 
+            // mas assumiremos FII por padrão para o endpoint.
+            type = 'fii'; 
+        }
         
+        // Endpoint que traz tudo (Dividendos, JCP, Rendimentos)
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
         const { data } = await client.get(url, { 
@@ -195,11 +206,20 @@ async function scrapeAsset(ticker) {
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
 
+            // Mapeamento de Tipos de Provento
+            // et: 1 = Dividendo, 2 = JCP, 10 = Rendimento (FII)
+            let labelTipo = 'Rendimento';
+            if (d.et === 1) labelTipo = 'Dividendo';
+            else if (d.et === 2) labelTipo = 'JCP';
+            else if (d.et === 10) labelTipo = 'Rendimento';
+            else if (d.etD) labelTipo = d.etD; // Fallback para a descrição que vem na API
+
             return {
                 dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
                 value: d.v,
-                type: d.et
+                type: labelTipo, // Agora retorna "Dividendo", "JCP" ou "Rendimento"
+                rawType: d.et
             };
         });
 
@@ -210,7 +230,6 @@ async function scrapeAsset(ticker) {
         return []; 
     }
 }
-
 // ---------------------------------------------------------
 // HANDLER PRINCIPAL
 // ---------------------------------------------------------

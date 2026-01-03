@@ -53,7 +53,9 @@ async function scrapeFundamentus(ticker) {
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'Indeterminado',
-            taxa_adm: 'N/A', cotas_emitidas: 'N/A'
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A',
+            // --- NOVOS CAMPOS PARA AÇÕES ---
+            pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', divida_liquida_ebitda: 'N/A'
         };
 
         $('.label').each((i, el) => {
@@ -72,6 +74,13 @@ async function scrapeFundamentus(ticker) {
             if (label.includes('setor')) dados.segmento = value;
             if (label.includes('cotacao')) dados.cotacao_atual = value; 
             if (label.includes('vpa')) dados.vp_cota = value;
+
+            // --- CAPTURA ESPECÍFICA DE AÇÕES ---
+            if (label.includes('p/l')) dados.pl = value;
+            if (label.includes('roe')) dados.roe = value;
+            if (label.includes('lpa')) dados.lpa = value;
+            if (label.includes('marg. liquida')) dados.margem_liquida = value;
+            if (label.includes('div. liquida/ebitda')) dados.divida_liquida_ebitda = value;
         });
         
         return dados;
@@ -112,7 +121,9 @@ async function scrapeInvestidor10(ticker) {
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
-            taxa_adm: 'N/A', cotas_emitidas: 'N/A'
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A',
+            // --- NOVOS CAMPOS PARA AÇÕES ---
+            pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A'
         };
         
         let cotacao_atual = 0;
@@ -125,6 +136,14 @@ async function scrapeInvestidor10(ticker) {
 
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
+            
+            // --- AÇÕES: P/L e ROE ---
+            if (dados.pl === 'N/A' && titulo.includes('p/l')) dados.pl = valor;
+            if (dados.roe === 'N/A' && titulo.includes('roe')) dados.roe = valor;
+            if (dados.lpa === 'N/A' && titulo.includes('lpa')) dados.lpa = valor;
+            if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
+            // ------------------------
+
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
@@ -140,18 +159,15 @@ async function scrapeInvestidor10(ticker) {
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
 
-            // --- CORREÇÃO DO PATRIMÔNIO LÍQUIDO ---
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
-                // Agora verifica explicitamente "milh" OU "bilh" para pegar fundos grandes
                 if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
                      if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
                 } else {
                      if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
-            // ---------------------------------------
 
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
@@ -192,6 +208,7 @@ async function scrapeProventosAPI(ticker) {
 
     const fetchEarnings = async (type) => {
         try {
+            // chartProventsType=2 geralmente agrupa por data de pagamento, funciona bem para Ações e FIIs
             const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
             const { data } = await client.get(url, { 
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Referer': 'https://statusinvest.com.br/' } 
@@ -209,6 +226,7 @@ async function scrapeProventosAPI(ticker) {
             earnings = await fetchEarnings('acao');
         }
     } else {
+        // Se não termina em 11 (ex: PETR4, VALE3), vai direto para ação
         earnings = await fetchEarnings('acao');
     }
 
@@ -222,7 +240,7 @@ async function scrapeProventosAPI(ticker) {
             dataCom: parseDateJSON(d.ed),
             paymentDate: parseDateJSON(d.pd),
             value: d.v,
-            type: d.et
+            type: d.et // 1 = Dividendo, 2 = JCP, etc.
         };
     });
 
@@ -265,6 +283,7 @@ module.exports = async function handler(req, res) {
                 if (!dados) dados = await scrapeFundamentus(ticker);
             } 
             else {
+                // Ação: Fundamentus é muito melhor para indicadores como P/L, ROE
                 dados = await scrapeFundamentus(ticker);
                 if (!dados || dados.val_mercado === 'N/A') dados = await scrapeInvestidor10(ticker);
             }

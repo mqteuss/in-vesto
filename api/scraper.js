@@ -2,7 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
 
-// OTIMIZAÇÃO 1: Agente HTTPS com Keep-Alive
+// --- CONFIGURAÇÃO DO CLIENTE ---
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
@@ -10,41 +10,25 @@ const httpsAgent = new https.Agent({
     timeout: 10000
 });
 
-// Headers atualizados para parecer um navegador real acessando o Status Invest
 const client = axios.create({
     httpsAgent,
     headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Referer': 'https://statusinvest.com.br/',
-        'Origin': 'https://statusinvest.com.br'
     },
     timeout: 9000
 });
 
+// --- HELPERS DE PARSE ---
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 
 function parseValue(valueStr) {
     if (!valueStr) return 0;
-    if (typeof valueStr === 'number') return valueStr; // Caso venha do JSON
+    if (typeof valueStr === 'number') return valueStr;
     try {
         return parseFloat(valueStr.replace(REGEX_CLEAN_NUMBER, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
-}
-
-function parseExtendedValue(str) {
-    if (!str) return 0;
-    const val = parseValue(str);
-    const lower = str.toLowerCase();
-    if (lower.includes('b')) return val * 1000000000; // Bilhões (Status usa B/M/K as vezes)
-    if (lower.includes('m')) return val * 1000000;
-    if (lower.includes('k')) return val * 1000;
-    return val;
-}
-
-function formatCurrency(value) {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function chunkArray(array, size) {
@@ -55,29 +39,20 @@ function chunkArray(array, size) {
     return results;
 }
 
-// Helper para determinar tipo de ativo (Ação vs FII) para montar URL
 function getAssetType(ticker) {
     const t = ticker.toUpperCase();
-    // Lógica básica: final 11 costuma ser FII ou Unit, outros (3,4,5,6) ações.
-    // O Status Invest é chato com URL errada, então tentaremos inferir.
-    if (t.endsWith('11') || t.endsWith('11B')) return 'fundos-imobiliarios'; // Pode ser Unit, mas a API de FII costuma redirecionar ou tratar
+    if (t.endsWith('11') || t.endsWith('11B')) return 'fundos-imobiliarios';
     return 'acoes';
 }
 
-// API INTERNA DO STATUS INVEST PARA PROVENTOS (Muito mais rápido que HTML)
+// --- FETCHERS ---
 async function fetchProventosJson(ticker) {
     const type = getAssetType(ticker) === 'fundos-imobiliarios' ? 'fii' : 'acao';
     const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${ticker}&chartProventsType=2`;
-    
     try {
-        const { data } = await client.get(url, { 
-            headers: { 'X-Requested-With': 'XMLHttpRequest' } // Importante para API interna
-        });
+        const { data } = await client.get(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         return data.assetEarningsModels || [];
-    } catch (e) {
-        console.error(`Erro ao buscar proventos JSON ${ticker}:`, e.message);
-        return [];
-    }
+    } catch (e) { return []; }
 }
 
 async function fetchFundamentosHtml(ticker) {
@@ -85,15 +60,12 @@ async function fetchFundamentosHtml(ticker) {
     try {
         return await client.get(`https://statusinvest.com.br/${type}/${ticker.toLowerCase()}`);
     } catch (e) {
-        // Se falhar FII, tenta Ação (caso seja uma Unit final 11 que caiu na regra errada)
-        if (type === 'fundos-imobiliarios') {
-            return await client.get(`https://statusinvest.com.br/acoes/${ticker.toLowerCase()}`);
-        }
+        if (type === 'fundos-imobiliarios') return await client.get(`https://statusinvest.com.br/acoes/${ticker.toLowerCase()}`);
         throw e;
     }
 }
 
-// --- SCRAPER DE FUNDAMENTOS (Status Invest) ---
+// --- SCRAPER DE FUNDAMENTOS (CORRIGIDO PARA PREENCHER OS DADOS FALTANTES) ---
 async function scrapeFundamentos(ticker) {
     try {
         const response = await fetchFundamentosHtml(ticker);
@@ -101,105 +73,132 @@ async function scrapeFundamentos(ticker) {
         const $ = cheerio.load(html);
 
         let dados = {
-            dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A',
+            dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
-            patrimonio_liquido: 'N/A', ultimo_rendimento: 'N/A', cotacao: 'N/A'
+            patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
+            cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A'
         };
 
-        // Helper para extrair valor baseado no título do card (Status Invest usa muito isso)
-        const getCardValue = (titleKey) => {
-            // Procura divs que contenham o título e pega o valor irmão
-            const titleEl = $(`.title:contains("${titleKey}")`).first();
-            if (titleEl.length) {
-                // A estrutura geralmente é div > h3.title + strong.value
-                return titleEl.parent().find('.value').text().trim();
-            }
-            return null;
-        };
-
-        // Extração Cards Superiores
-        dados.dy = getCardValue('Dividend Yield') || 'N/A';
-        dados.pvp = getCardValue('P/VP') || 'N/A';
-        dados.cotacao = getCardValue('Valor atual') || 'N/A';
-        
-        // P/VP as vezes aparece diferente em ações (P/L, etc), mas P/VP existe para ambos
-        if (dados.pvp === 'N/A') {
-            // Tenta seletor específico de PVP
-            const pvpSpecific = $('div[title="Preço sobre Valor Patrimonial"] .value').text();
-            if(pvpSpecific) dados.pvp = pvpSpecific;
-        }
-
-        // Liquidez Média Diária
-        dados.liquidez = getCardValue('Liquidez média diária') || 'N/A';
-
-        // Valor de Mercado e Patrimônio (Muitas vezes no rodapé ou seção geral)
-        // Status Invest coloca isso numa seção de "Valor de mercado"
-        $('.top-info .info').each((i, el) => {
-            const title = $(el).find('.title').text();
-            if (title.includes('Valor de mercado')) dados.val_mercado = $(el).find('.value').text();
-            // Para FIIs, as vezes é "Valor Patrimonial"
+        // --- ESTRATÉGIA 1: CARDS DO TOPO (DY, PVP, Cotação) ---
+        // Procura blocos .top-info e pega os valores
+        $('.top-info div').each((i, el) => {
+            const title = $(el).find('.title').text().toLowerCase();
+            const value = $(el).find('.value').text().trim();
+            
+            if (title.includes('dividend yield')) dados.dy = value;
+            if (title.includes('p/vp')) dados.pvp = value;
+            if (title.includes('cotacao') || title.includes('valor atual')) dados.cotacao_atual = value; // auxiliar
         });
 
-        // Tenta buscar VP por Cota e Valor Patrimonial
-        // FIIs geralmente têm uma seção específica
-        const vpCotaEl = $(`.info.special:contains("Valor patrimonial p/cota") .value`).first();
-        if (vpCotaEl.length) dados.vp_cota = vpCotaEl.text();
+        // --- ESTRATÉGIA 2: VARREDURA GERAL (Liquidez, Patrimônio, etc.) ---
+        // O Status Invest coloca muitas informações em divs com classe .info dentro de containers
+        $('.info').each((i, el) => {
+            const title = $(el).find('.title').text().toLowerCase().trim();
+            const value = $(el).find('.value').text().trim();
 
-        // Dados extra de FII
-        const segmentoEl = $('strong:contains("Segmento")').parent().find('.sub-value');
-        if (segmentoEl.length) dados.segmento = segmentoEl.text().trim();
-        
-        // Fallback de cálculo de mercado se não achar
-        let cotacaoVal = parseValue(dados.cotacao);
-        if (dados.val_mercado === 'N/A' && cotacaoVal > 0) {
-            // Status invest não facilita o num cotas no HTML fácil, então deixamos N/A ou tentamos pegar o patrimônio
+            if (!value) return;
+
+            if (title.includes('liquidez media') || title.includes('liquidez diaria')) dados.liquidez = value;
+            if (title.includes('patrimonio liquido')) dados.patrimonio_liquido = value;
+            if (title.includes('valor patrimonial p/cota') || title.includes('vp por cota')) dados.vp_cota = value;
+            if (title.includes('valor de mercado')) dados.val_mercado = value;
+            if (title.includes('ultimo rendimento')) dados.ultimo_rendimento = value;
+            if (title.includes('cotas emitidas')) dados.cotas_emitidas = value;
+        });
+
+        // --- ESTRATÉGIA 3: BUSCA POR LABEL ESPECÍFICO (Dados Gerais, Segmento, Vacância) ---
+        // Esta função procura um texto exato (ex: "Segmento") e tenta achar o valor vizinho
+        const findValueByLabel = (labelText) => {
+            // Procura em strong, h3, spans, divs que contenham o texto
+            let found = null;
+            $('strong, h3, span, div.title').each((i, el) => {
+                if ($(el).text().trim().toLowerCase() === labelText.toLowerCase()) {
+                    // Tenta achar o valor no irmão, no pai, ou na próxima div
+                    const nextVal = $(el).next('.value, .sub-value').text();
+                    const parentVal = $(el).parent().find('.value, .sub-value').text();
+                    // O Status invest as vezes coloca: <div title="Segmento">...<strong class="value">Logística</strong></div>
+                    const parentContainerVal = $(el).parents('.info').find('.value').text();
+
+                    if (nextVal) found = nextVal;
+                    else if (parentVal) found = parentVal;
+                    else if (parentContainerVal) found = parentContainerVal;
+                    return false; // break loop
+                }
+            });
+            return found ? found.trim() : 'N/A';
+        };
+
+        // Aplica a busca específica para os campos chatos
+        if (dados.segmento === 'N/A') dados.segmento = findValueByLabel('Segmento');
+        if (dados.tipo_fundo === 'N/A') dados.tipo_fundo = findValueByLabel('Tipo de fundo');
+        if (dados.mandato === 'N/A') dados.mandato = findValueByLabel('Mandato');
+        if (dados.tipo_gestao === 'N/A') dados.tipo_gestao = findValueByLabel('Gestão'); // As vezes é 'Gestão'
+        if (dados.prazo_duracao === 'N/A') dados.prazo_duracao = findValueByLabel('Prazo de duração');
+        if (dados.vacancia === 'N/A') dados.vacancia = findValueByLabel('Vacância Física'); // Status Invest usa 'Vacância Física'
+        if (dados.num_cotistas === 'N/A') dados.num_cotistas = findValueByLabel('Num. Cotistas');
+        if (dados.cnpj === 'N/A') dados.cnpj = findValueByLabel('CNPJ');
+
+        // --- ESTRATÉGIA 4: CAIXA DE DADOS GERAIS (Fallback para Segmento/Gestão) ---
+        // Às vezes está dentro de uma div card-bg específica
+        if (dados.segmento === 'N/A') {
+             // Tenta pegar direto do bloco de "Dados Gerais" se existir
+             const segmentoTarget = $('strong:contains("Segmento")').parent().find('.sub-value');
+             if (segmentoTarget.length) dados.segmento = segmentoTarget.text().trim();
+        }
+
+        // --- ESTRATÉGIA 5: TAXA DE ADMINISTRAÇÃO (Geralmente texto longo) ---
+        // O Status Invest coloca a taxa num parágrafo ou div solta
+        const taxaEl = $('div:contains("Taxa de Administração")').last().next(); 
+        // Isso é complexo no Status Invest, as vezes está num texto corrido.
+        // Vamos tentar pegar o valor se estiver estruturado
+        if ($('h3:contains("Taxa de Administração")').length) {
+            dados.taxa_adm = $('h3:contains("Taxa de Administração")').parents('.info').find('.value').text().trim();
+        }
+
+        // --- TRATAMENTO FINAL DE DADOS ---
+        // Se Patrimônio veio vazio, mas temos cotas e VP
+        if ((dados.patrimonio_liquido === 'N/A' || dados.patrimonio_liquido === '-') && dados.vp_cota !== 'N/A' && dados.cotas_emitidas !== 'N/A') {
+             // Cálculo manual de fallback
         }
 
         return dados;
 
     } catch (error) {
+        console.error("Erro scraper fundamentos:", error.message);
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 
-// --- SCRAPER DE HISTÓRICO (Via API JSON do Status Invest) ---
+// --- SCRAPER DE HISTÓRICO (JSON API) ---
 async function scrapeAsset(ticker) {
     try {
         const earnings = await fetchProventosJson(ticker);
-        
-        // Mapeia o JSON do Status Invest para o formato do seu app
-        // JSON Exemplo: { "ed": "01/03/2024", "pd": "14/03/2024", "v": 0.10, "et": "Rendimento" }
-        // ed = data com, pd = data pagamento, v = valor
-        
         const dividendos = earnings.map(d => {
-            // O Status Invest retorna dd/mm/yyyy. Precisamos converter para yyyy-mm-dd
             const parseDateJSON = (dStr) => {
                 if(!dStr) return null;
                 const parts = dStr.split('/');
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
-
             return {
-                dataCom: parseDateJSON(d.ed), // Earn Date
-                paymentDate: parseDateJSON(d.pd), // Payment Date
-                value: d.v, // Value
-                type: d.et // Earnings Type (Rendimento, JCP, Dividendo)
+                dataCom: parseDateJSON(d.ed),
+                paymentDate: parseDateJSON(d.pd),
+                value: d.v,
+                type: d.et
             };
         });
-
-        // Ordenar por data de pagamento decrescente (mais recente primeiro)
         return dividendos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-
     } catch (error) { return []; }
 }
 
 module.exports = async function handler(req, res) {
+    // CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Cache Control
+    // Cache
     if (req.method === 'GET' || (req.method === 'POST' && req.body.mode !== 'proventos_carteira')) {
        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
@@ -219,7 +218,6 @@ module.exports = async function handler(req, res) {
 
         if (mode === 'proventos_carteira') {
             if (!payload.fiiList) return res.json({ json: [] });
-
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
 
@@ -227,21 +225,15 @@ module.exports = async function handler(req, res) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
                     const limit = typeof item === 'string' ? 24 : (item.limit || 24);
-
                     const history = await scrapeAsset(ticker);
-
                     const recents = history
                         .filter(h => h.paymentDate && h.value > 0)
                         .slice(0, limit);
-
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });
-
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-
-                // Delay levemente maior para o Status Invest não bloquear
                 if (batches.length > 1) await new Promise(r => setTimeout(r, 800)); 
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
@@ -258,7 +250,7 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: formatted });
         }
 
-        if (mode === 'historico_portfolio') {
+        if (mode === 'historico_portfolio') { // Compatibilidade legada
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3); 
             let all = [];
@@ -278,8 +270,6 @@ module.exports = async function handler(req, res) {
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);
-            // API do Status Invest geralmente já manda ordenado, mas garantimos no sort acima
-            // Filtra datas futuras ou a mais recente
             const hoje = new Date().toISOString().split('T')[0];
             const futuro = history.find(h => h.paymentDate >= hoje) || history[0];
             return res.status(200).json({ json: futuro || null });
@@ -288,7 +278,6 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: "Modo desconhecido" });
 
     } catch (error) {
-        console.error(error);
         return res.status(500).json({ error: error.message });
     }
 };

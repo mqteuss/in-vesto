@@ -167,7 +167,7 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (BLINDADO CONTRA DATAS INVÁLIDAS)
+// PARTE 2: HISTÓRICO -> STATUS INVEST (COM TIPOS DETALHADOS)
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
@@ -175,7 +175,6 @@ async function scrapeAsset(ticker) {
         const t = ticker.toUpperCase();
         let type = 'acao';
         
-        // Detecção básica de tipo
         if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('12')) {
             type = 'fii'; 
         }
@@ -193,54 +192,55 @@ async function scrapeAsset(ticker) {
         const earnings = data.assetEarningsModels || [];
 
         const dividendos = earnings.map(d => {
-            // --- FUNÇÃO DE PARSE ULTRA SEGURA ---
+            // --- PARSE DE DATA BLINDADO ---
             const parseDateJSON = (dStr) => {
-                // 1. Verifica se é nulo, undefined ou string vazia
-                if (!dStr) return null;
-                
-                // 2. Verifica se é apenas um traço (comum em proventos sem data definida)
-                if (dStr.trim() === '-') return null;
-                
-                // 3. Verifica se tem o formato esperado DD/MM/YYYY
-                if (!dStr.includes('/')) return null;
-                
+                if (!dStr || dStr.trim() === '-' || !dStr.includes('/')) return null;
                 const parts = dStr.split('/');
-                
-                // 4. Verifica se gerou exatamente 3 partes (Dia, Mês, Ano)
                 if (parts.length !== 3) return null;
-                
-                // 5. Verifica se as partes são números válidos
                 const dia = parseInt(parts[0]);
                 const mes = parseInt(parts[1]);
                 const ano = parseInt(parts[2]);
-                
                 if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return null;
-
-                // Retorna YYYY-MM-DD
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
 
-            let labelTipo = 'Rendimento';
-            if (d.et === 1) labelTipo = 'Dividendo';
-            else if (d.et === 2) labelTipo = 'JCP';
-            else if (d.et === 10) labelTipo = 'Rendimento';
-            else if (d.etD) labelTipo = d.etD;
+            // --- LÓGICA DE IDENTIFICAÇÃO DO TIPO ---
+            let labelTipo = 'Rendimento'; // Padrão (comum para FIIs)
+
+            // 1. Tenta usar a descrição que vem da API (ex: "Rend. Tributado")
+            if (d.etD) {
+                labelTipo = d.etD;
+            } 
+            // 2. Se não tiver descrição, usa os códigos conhecidos
+            else {
+                if (d.et === 1) labelTipo = 'Dividendo';
+                else if (d.et === 2) labelTipo = 'JCP';
+            }
+
+            // 3. Normalização para os nomes que você quer no App
+            const upper = labelTipo.toUpperCase();
+
+            if (upper.includes('JUROS') || upper === 'JCP') {
+                labelTipo = 'JCP';
+            } else if (upper.includes('DIVIDENDO')) {
+                labelTipo = 'Dividendo';
+            } else if (upper.includes('TRIBUTADO')) {
+                labelTipo = 'Rend. Tributado'; // Captura o caso específico do PETR4/Outros
+            } else if (upper.includes('RENDIMENTO') || type === 'fii') {
+                // Se for FII e não for tributado, mantemos Rendimento
+                if (labelTipo !== 'Rend. Tributado') labelTipo = 'Rendimento';
+            }
 
             return {
                 dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
                 value: d.v,
-                type: labelTipo,
+                type: labelTipo, // Agora retorna: 'JCP', 'Dividendo', 'Rend. Tributado' ou 'Rendimento'
                 rawType: d.et
             };
         });
 
-        // --- FILTRAGEM FINAL IMPORTANTE ---
-        // Removemos qualquer item onde o paymentDate seja nulo.
-        // Isso impede que o gráfico receba dados sujos ("undefined/defined").
         const dadosLimpos = dividendos.filter(d => d.paymentDate !== null);
-
-        // Ordena por data de pagamento (Decrescente: Futuro -> Passado)
         return dadosLimpos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     } catch (error) { 

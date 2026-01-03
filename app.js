@@ -3213,6 +3213,7 @@ async function buscarProventosFuturos(force = false) {
             const cacheKey = `provento_ia_${symbol}`;
             
             if (force) {
+                // Se forçado, limpa cache E remove do banco local para garantir re-download
                 await vestoDB.delete('apiCache', cacheKey);
                 await removerProventosConhecidos(symbol);
             }
@@ -3239,33 +3240,39 @@ async function buscarProventosFuturos(force = false) {
                     await Promise.all(novosProventos.map(async (provento) => {
                         if (provento && provento.symbol && provento.paymentDate) {
                             
-                            // Salva Cache Individual
+                            // Salva no Cache do Navegador
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_PROVENTOS); 
                             proventosPool.push(provento);
 
-                            // LÓGICA DE CORREÇÃO DE DADOS ANTIGOS
+                            // --- LÓGICA DE CORREÇÃO (O PULO DO GATO) ---
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
                             
-                            // Procura se já existe na lista carregada do banco
+                            // Verifica se já temos esse provento na lista carregada
                             const existingIndex = proventosConhecidos.findIndex(p => p.id === idUnico);
                             
                             if (existingIndex === -1) {
-                                // Se não existe, cria novo
+                                // Se não existe, adiciona normal
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
                                 await supabaseDB.addProventoConhecido(novoProvento);
                                 proventosConhecidos.push(novoProvento);
                             } else {
-                                // Se já existe, VERIFICA SE O TIPO MUDOU (Ex: era Rendimento -> virou JCP)
+                                // SE JÁ EXISTE, VERIFICA SE O TIPO MUDOU
+                                // Ex: Estava salvo como "Rendimento", mas o Scraper novo diz que é "JCP"
                                 const existing = proventosConhecidos[existingIndex];
                                 
-                                if (existing.type !== provento.type) {
-                                    // Atualiza na memória imediatamente para corrigir a visualização
-                                    console.log(`Corrigindo tipo de ${existing.symbol}: ${existing.type} -> ${provento.type}`);
+                                if (existing.type !== provento.type && provento.type !== 'Rendimento') {
+                                    // Atualiza a memória visual agora
+                                    console.log(`Corrigindo tipo: ${existing.symbol} era ${existing.type}, virou ${provento.type}`);
                                     proventosConhecidos[existingIndex].type = provento.type;
                                     
-                                    // Opcional: Aqui você poderia chamar um update no banco se tivesse a função,
-                                    // mas só atualizar a memória já resolve o visual na sessão atual.
+                                    // Tenta atualizar no banco sobrescrevendo o registro
+                                    try {
+                                        const proventoCorrigido = { ...existing, type: provento.type };
+                                        await supabaseDB.addProventoConhecido(proventoCorrigido);
+                                    } catch(e) {
+                                        console.warn("Erro ao tentar corrigir provento no DB:", e);
+                                    }
                                 }
                             }
                         }

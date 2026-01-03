@@ -65,12 +65,10 @@ function chunkArray(array, size) {
     return results;
 }
 
-// Lógica de URL Inteligente (Tenta Ação ou FII)
+// Lógica de URL Inteligente
 async function fetchHtmlWithRetry(ticker) {
     const tickerLower = ticker.toLowerCase();
     const lastChar = tickerLower.slice(-1);
-    
-    // Se termina em 3, 4, 5, 6, provavelmente é Ação.
     const isLikelyStock = ['3', '4', '5', '6'].includes(lastChar);
     
     const urlsToTry = isLikelyStock 
@@ -83,11 +81,10 @@ async function fetchHtmlWithRetry(ticker) {
             const html = response.data;
             const $ = cheerio.load(html);
             
-            // Validação se a página carregou o ativo correto (evita redirecionamento para Home)
             const title = $('title').text().toLowerCase();
             const h1 = $('h1').text().toLowerCase();
             if (!title.includes(tickerLower) && !h1.includes(tickerLower)) {
-                continue; // Tenta a próxima URL
+                continue; 
             }
             return response;
         } catch (e) { continue; }
@@ -95,7 +92,7 @@ async function fetchHtmlWithRetry(ticker) {
     throw new Error(`Dados não encontrados para ${ticker}`);
 }
 
-// --- SCRAPER DE FUNDAMENTOS (HÍBRIDO ROBUSTO) ---
+// --- SCRAPER DE FUNDAMENTOS (CORRIGIDO) ---
 async function scrapeFundamentos(ticker) {
     try {
         const response = await fetchHtmlWithRetry(ticker);
@@ -118,8 +115,7 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // 1. CARDS DO TOPO (Geralmente P/L, DY, P/VP, Cotação)
-        // O site usa classes específicas nos cards do topo.
+        // 1. CARDS DO TOPO (Seleção Direta)
         const getCardValue = (className) => {
             const el = $(`._card.${className} ._card-body span`).first();
             return el.length ? el.text().trim() : null;
@@ -128,7 +124,7 @@ async function scrapeFundamentos(ticker) {
         const dyCard = getCardValue('dy');
         if (dyCard) dados.dy = dyCard;
         
-        const plCard = getCardValue('pl'); // Ações
+        const plCard = getCardValue('pl'); 
         if (plCard) dados.pl = plCard;
 
         const pvpCard = getCardValue('vp') || getCardValue('p_vp');
@@ -138,9 +134,6 @@ async function scrapeFundamentos(ticker) {
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
         // 2. BUSCA GENÉRICA (VARREDURA TOTAL)
-        // Varre todas as células de dados do site (Tabelas, Grids, Listas)
-        // Isso conserta os FIIs quebrados e pega os dados de Ações que não estão nos cards.
-        
         const processPair = (chaveRaw, valorRaw) => {
             if (!chaveRaw || !valorRaw) return;
             const chave = normalize(chaveRaw);
@@ -149,88 +142,118 @@ async function scrapeFundamentos(ticker) {
 
             // --- FIIs & COMUM ---
             if (dados.liquidez === 'N/A' && chave.includes('liquidez')) dados.liquidez = valor;
-            if (dados.val_mercado === 'N/A' && chave.includes('mercado')) dados.val_mercado = valor;
+            if (dados.val_mercado === 'N/A' && (chave.includes('mercado') || chave === 'valor de mercado')) dados.val_mercado = valor;
             if (dados.ultimo_rendimento === 'N/A' && chave.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
             if (dados.vacancia === 'N/A' && chave.includes('vacancia')) dados.vacancia = valor;
             if (dados.segmento === 'N/A' && chave.includes('segmento')) dados.segmento = valor;
-            if (dados.patrimonio_liquido === 'N/A' && (chave.includes('patrimonio liquido') || chave === 'patrimonio')) dados.patrimonio_liquido = valor;
+            
+            // Patrimônio Líquido (Correção)
+            if (dados.patrimonio_liquido === 'N/A' && (chave.includes('patrimonio liquido') || chave === 'patrimonio')) {
+                dados.patrimonio_liquido = valor;
+            }
             
             // VP por Cota (FII) ou VPA (Ação)
             if (dados.vp_cota === 'N/A') {
                 if (chave.includes('vp por cota') || chave === 'vpa' || chave.includes('valor patrimonial')) {
-                     // Filtra valores gigantes que seriam o patrimônio total
                      const valNum = parseValue(valor);
+                     // Filtra valores muito altos que seriam o patrimônio total por engano
                      if (valNum < 1000000) dados.vp_cota = valor;
                 }
             }
 
-            // Metadados
+            // Metadados (Correção para Cotistas e Tipo)
             if (dados.cnpj === 'N/A' && chave.includes('cnpj')) dados.cnpj = valor;
-            if (dados.num_cotistas === 'N/A' && chave.includes('cotistas')) dados.num_cotistas = valor;
+            
+            if (dados.num_cotistas === 'N/A') {
+                if (chave.includes('cotistas') || chave.includes('acionistas')) dados.num_cotistas = valor;
+            }
+            
             if (dados.tipo_gestao === 'N/A' && chave.includes('gestao')) dados.tipo_gestao = valor;
             if (dados.mandato === 'N/A' && chave.includes('mandato')) dados.mandato = valor;
-            if (dados.tipo_fundo === 'N/A' && chave.includes('tipo de fundo')) dados.tipo_fundo = valor;
+            
+            if (dados.tipo_fundo === 'N/A') {
+                if(chave.includes('tipo de fundo') || chave === 'tipo' || chave.includes('classificacao')) dados.tipo_fundo = valor;
+            }
 
-            // --- AÇÕES (Indicadores Fundamentalistas) ---
+            // --- AÇÕES (Indicadores Fundamentalistas Corrigidos) ---
             if (dados.pl === 'N/A' && (chave === 'p/l' || chave === 'pl')) dados.pl = valor;
             if (dados.roe === 'N/A' && chave === 'roe') dados.roe = valor;
             if (dados.roic === 'N/A' && chave === 'roic') dados.roic = valor;
             if (dados.lpa === 'N/A' && chave === 'lpa') dados.lpa = valor;
-            if (dados.margem_liquida === 'N/A' && chave.includes('margem liquida')) dados.margem_liquida = valor;
-            if (dados.divida_liquida_ebitda === 'N/A' && (chave.includes('div. liq. / ebit') || chave.includes('divida liquida / ebit'))) dados.divida_liquida_ebitda = valor;
+            if (dados.margem_liquida === 'N/A' && (chave.includes('margem liquida') || chave.includes('marg. liquida'))) dados.margem_liquida = valor;
+            
+            if (dados.divida_liquida_ebitda === 'N/A') {
+                if ((chave.includes('div') && chave.includes('liq') && chave.includes('ebit')) || chave === 'div. liq. / ebitda') {
+                    dados.divida_liquida_ebitda = valor;
+                }
+            }
+            
             if (dados.ev_ebit === 'N/A' && chave.includes('ev/ebit')) dados.ev_ebit = valor;
             
-            // Cotas/Ações Totais (para cálculo de Mkt Cap se falhar)
-            if (chave.includes('num. acoes') || chave.includes('cotas emitidas')) {
+            // Contagem de ações/cotas para fallback de Market Cap
+            if (chave.includes('num. acoes') || chave.includes('cotas emitidas') || chave === 'numero de acoes') {
                  num_cotas = parseExtendedValue(valor);
                  if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
             }
         };
 
-        // ESTRATÉGIA DE VARREDURA:
+        // --- ESTRATÉGIA DE VARREDURA ---
         
-        // A. Células de Grid (Padrão novo do site)
+        // A. Grid Cells (Padrão novo do Investidor10)
         $('.cell').each((i, el) => {
             const title = $(el).find('.name').text();
             const val = $(el).find('.value').text();
             processPair(title, val);
         });
 
-        // B. Tabelas Clássicas (Padrão antigo ou dados técnicos)
+        // B. Tabelas Clássicas
         $('table tbody tr').each((i, row) => {
             const tds = $(row).find('td');
             if (tds.length >= 2) {
-                // Tenta pegar chave na col 1 e valor na col 2
                 processPair($(tds[0]).text(), $(tds[1]).text());
-                // Às vezes a tabela tem 4 colunas (chave, valor, chave, valor)
                 if (tds.length >= 4) {
                     processPair($(tds[2]).text(), $(tds[3]).text());
                 }
             }
         });
 
-        // C. Cards (Fallback para texto interno)
+        // C. Cards Internos
         $('._card').each((i, el) => {
             const head = $(el).find('._card-header').text();
             const body = $(el).find('._card-body').text();
             processPair(head, body);
         });
 
-        // 3. FALLBACKS E CORREÇÕES FINAIS
-        
-        // Variação 12m (Geralmente tem classe específica ou span solto)
+        // 3. RECUPERAÇÃO DA VARIAÇÃO 12M (Específica)
         if (dados.variacao_12m === 'N/A') {
-            // Tenta achar spans com setas ou percentuais
-            const spans = $('span').filter((i, el) => $(el).text().includes('%'));
-            // Lógica complexa omitida para simplicidade, assume-se pego na varredura C ou A
+            // Tenta buscar pelo texto do header
+            $('._card-header').each((i, el) => {
+                if ($(el).text().toLowerCase().includes('12 meses') || $(el).text().toLowerCase().includes('12m')) {
+                    const val = $(el).parent().find('._card-body').text().trim();
+                    if (val && !val.includes('DY')) { // Evita confundir com DY 12m
+                         dados.variacao_12m = val;
+                    }
+                }
+            });
+            
+            // Fallback: Grid Cell específica de variação
+            if (dados.variacao_12m === 'N/A') {
+                $('.cell').each((i, el) => {
+                     const name = $(el).find('.name').text().toLowerCase();
+                     if (name.includes('variacao') || name.includes('12m')) {
+                         dados.variacao_12m = $(el).find('.value').text().trim();
+                     }
+                });
+            }
         }
 
-        // Cálculo Valor de Mercado se falhar a leitura direta
+        // 4. FALLBACK DE VALOR DE MERCADO
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             if (cotacao_atual > 0 && num_cotas > 0) {
                 const mkt = cotacao_atual * num_cotas;
                 if (mkt > 1000000000) dados.val_mercado = `R$ ${(mkt / 1000000000).toFixed(2)} Bilhões`;
                 else if (mkt > 1000000) dados.val_mercado = `R$ ${(mkt / 1000000).toFixed(2)} Milhões`;
+                else dados.val_mercado = formatCurrency(mkt);
             }
         }
 
@@ -238,11 +261,11 @@ async function scrapeFundamentos(ticker) {
 
     } catch (error) {
         console.error(`Erro scraper ${ticker}:`, error.message);
-        return { dy: 'N/A', pvp: 'N/A' };
+        return { dy: '-', pvp: '-' };
     }
 }
 
-// --- SCRAPER DE HISTÓRICO (DIVIDENDOS) ---
+// --- SCRAPER DE HISTÓRICO ---
 async function scrapeAsset(ticker) {
     try {
         const response = await fetchHtmlWithRetry(ticker);
@@ -250,10 +273,8 @@ async function scrapeAsset(ticker) {
         const $ = cheerio.load(html);
         const dividendos = [];
 
-        // 1. Tenta achar pelo ID da tabela
         let tableRows = $('#table-dividends-history tbody tr');
         
-        // 2. Fallback: Procura qualquer tabela que tenha "Data Com" e "Pagamento"
         if (tableRows.length === 0) {
             $('table').each((i, tbl) => {
                 const header = normalize($(tbl).find('thead').text());
@@ -283,13 +304,11 @@ async function scrapeAsset(ticker) {
 }
 
 module.exports = async function handler(req, res) {
-    // CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
-    // Cache
     if (req.method === 'GET' || (req.method === 'POST' && req.body.mode !== 'proventos_carteira')) {
        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }

@@ -166,20 +166,18 @@ async function scrapeFundamentos(ticker) {
     }
 }
 
-// ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (BLINDADO)
-// ---------------------------------------------------------
-
+// --- SUBSTITUA A FUNÇÃO scrapeAsset EXISTENTE POR ESTA ---
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
-        let type = 'acao';
+        let typeAsset = 'acao';
         
+        // Detecção simples de FII vs Ação
         if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('12')) {
-            type = 'fii'; 
+            typeAsset = 'fii'; 
         }
         
-        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
+        const url = `https://statusinvest.com.br/${typeAsset}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
         const { data } = await client.get(url, { 
             headers: { 
@@ -200,22 +198,26 @@ async function scrapeAsset(ticker) {
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
 
-            // --- LÓGICA DE TIPO (PRIORIDADE MÚLTIPLA) ---
-            let labelTipo = 'Rendimento';
+            // --- NOVA LÓGICA DE DETECÇÃO DE TIPO (MAIS ROBUSTA) ---
+            let labelTipo = 'Rendimento'; // Default (comum para FIIs)
             
-            // 1. Verifica código numérico (Robustez para string ou number)
-            const etStr = String(d.et).trim();
-            if (etStr === '1') labelTipo = 'Dividendo';
-            else if (etStr === '2') labelTipo = 'JCP';
+            const etStr = String(d.et || '').trim(); // Código numérico
+            const desc = String(d.etD || '').toUpperCase(); // Descrição texto
 
-            // 2. Refinamento por Texto (Garante CMIG4 e outros)
-            if (d.etD) {
-                const desc = String(d.etD).toUpperCase();
-                
-                if (desc.includes('JUROS') || desc.includes('JCP')) labelTipo = 'JCP';
-                else if (desc.includes('DIVIDEND')) labelTipo = 'Dividendo';
-                else if (desc.includes('TRIBUTADO')) labelTipo = 'Rend. Tributado';
-                else if (desc.includes('AMORTIZA')) labelTipo = 'Amortização';
+            // 1. Prioridade: Texto da descrição (é o mais confiável para Ações)
+            if (desc.includes('JUROS') || desc.includes('JCP') || desc.includes('CAPITAL PRÓPRIO')) {
+                labelTipo = 'JCP';
+            } else if (desc.includes('DIVIDEND') || desc.includes('LUCRO')) {
+                labelTipo = 'Dividendo';
+            } else if (desc.includes('TRIBUTADO') || desc.includes('RENDIMENTO')) {
+                // Se for FII, geralmente é Rendimento. Se for Ação, pode ser Rend. Tributado.
+                labelTipo = typeAsset === 'fii' ? 'Rendimento' : 'Rend. Tributado';
+            } else if (desc.includes('AMORTIZA') || desc.includes('RESTITU')) {
+                labelTipo = 'Amortização';
+            } else {
+                // 2. Fallback: Código numérico (StatusInvest padrão)
+                if (etStr === '1') labelTipo = 'Dividendo';
+                else if (etStr === '2') labelTipo = 'JCP';
             }
 
             return {
@@ -223,11 +225,12 @@ async function scrapeAsset(ticker) {
                 paymentDate: parseDateJSON(d.pd),
                 value: d.v,
                 type: labelTipo, 
-                rawType: d.et
+                rawType: d.et,
+                rawDesc: d.etD // Útil para debug se precisar
             };
         });
 
-        // Filtra inválidos e ordena
+        // Filtra inválidos e ordena pela data de pagamento
         return dividendos
             .filter(d => d.paymentDate !== null)
             .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));

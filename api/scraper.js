@@ -3,7 +3,6 @@ const cheerio = require('cheerio');
 const https = require('https');
 
 // --- SETUP OTIMIZADO ---
-// Timeout reduzido para 9s para evitar que o Vercel (que cai em 10s) corte a requisição abruptamente (Erro 500)
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
@@ -18,7 +17,7 @@ const client = axios.create({
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br'
     },
-    timeout: 9000 // Timeout de segurança do Axios
+    timeout: 9000
 });
 
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
@@ -227,12 +226,15 @@ async function scrapeProventosAPI(ticker) {
         const parseDateJSON = (dStr) => {
             if(!dStr) return null;
             const parts = dStr.split('/');
+            if(parts.length !== 3) return null;
+            // Garante formato YYYY-MM-DD
             return `${parts[2]}-${parts[1]}-${parts[0]}`; 
         };
         
         const dataCom = parseDateJSON(d.ed);
         let paymentDate = parseDateJSON(d.pd);
         
+        // Se a data de pagamento é nula (Ação provisionada), usa estimativa Data Com + 30 dias
         if (!paymentDate && dataCom) {
             const dComObj = new Date(dataCom);
             dComObj.setDate(dComObj.getDate() + 30);
@@ -285,7 +287,6 @@ module.exports = async function handler(req, res) {
             const ticker = payload.ticker.toUpperCase();
             let dados = null;
             
-            // Prioridade Ajustada para evitar N/A
             if (ticker.endsWith('11') || ticker.endsWith('11B')) {
                 dados = await scrapeInvestidor10(ticker);
                 if (!dados || dados.dy === 'N/A') {
@@ -325,15 +326,14 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-        // --- MODO HISTÓRICO AJUSTADO (5 ANOS + JCP/DIV) ---
+        // --- HISTÓRICO 12M + PROVENTOS FUTUROS (CORRIGIDO) ---
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
             
             const history = await scrapeProventosAPI(payload.ticker);
             const mapaAgregado = {};
 
-            // Janela Fixa: 5 anos atrás até 1 ano no futuro
-            // Isso permite que o Frontend filtre exatamente o que quer (3M, 12M) sem buracos
+            // Filtro: 5 anos atrás até 1 ano no futuro
             const dataCorte = new Date();
             dataCorte.setFullYear(dataCorte.getFullYear() - 5);
             
@@ -341,7 +341,8 @@ module.exports = async function handler(req, res) {
             dataFuturaLimite.setFullYear(dataFuturaLimite.getFullYear() + 1);
 
             history.forEach(h => {
-                if (!h.paymentDate || !h.paymentDate.includes('-')) return;
+                // Validação RIGOROSA de Data
+                if (!h.paymentDate || !/^\d{4}-\d{2}-\d{2}$/.test(h.paymentDate)) return;
                 
                 const d = new Date(h.paymentDate + 'T12:00:00');
                 if (isNaN(d.getTime())) return;
@@ -349,11 +350,11 @@ module.exports = async function handler(req, res) {
 
                 const keySort = h.paymentDate.slice(0, 7); // YYYY-MM
                 
+                // Inicializa com zeros para evitar NaN
                 if (!mapaAgregado[keySort]) {
                     mapaAgregado[keySort] = { total: 0, dividendo: 0, jcp: 0, rendimento: 0 };
                 }
                 
-                // Soma total e específico por tipo
                 mapaAgregado[keySort].total += h.value;
                 if (h.tipo === 'DIVIDENDO') mapaAgregado[keySort].dividendo += h.value;
                 else if (h.tipo === 'JCP') mapaAgregado[keySort].jcp += h.value;
@@ -363,17 +364,20 @@ module.exports = async function handler(req, res) {
             const formatted = Object.entries(mapaAgregado)
                 .sort((a, b) => a[0].localeCompare(b[0])) 
                 .map(([key, dados]) => {
-                    const [ano, mes] = key.split('-');
+                    // Evita erro de split undefined
+                    const parts = key.split('-');
+                    if (parts.length !== 2) return null;
+                    const [ano, mes] = parts;
+
                     return { 
-                        mes: `${mes}/${ano.slice(2)}`,
-                        dateIso: `${key}-01`,
+                        mes: `${mes}/${ano.slice(2)}`, // MM/YY
+                        dateIso: `${key}-01`,          // YYYY-MM-01
                         valor: dados.total,
-                        // Detalhamento para gráfico empilhado
                         dividendo: dados.dividendo,
                         jcp: dados.jcp,
                         rendimento: dados.rendimento
                     };
-                });
+                }).filter(x => x !== null);
             
             return res.status(200).json({ json: formatted });
         }
@@ -412,7 +416,6 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: "Modo desconhecido" });
 
     } catch (error) {
-        // Log para debug no Vercel, mas retorna JSON seguro para o front
         console.error("Scraper Error:", error);
         return res.status(500).json({ error: error.message || "Erro interno no scraper" });
     }

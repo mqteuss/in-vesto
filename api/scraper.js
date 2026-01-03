@@ -238,7 +238,8 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: dados });
         }
 
-        if (mode === 'proventos_carteira') {
+        // --- ATUALIZAÇÃO: Adicionado 'historico_portfolio' no mesmo bloco ---
+        if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             
             const batches = chunkArray(payload.fiiList, 3);
@@ -247,7 +248,9 @@ module.exports = async function handler(req, res) {
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
-                    const limit = typeof item === 'string' ? 24 : (item.limit || 24);
+                    // Se for historico_portfolio (chart), garantimos um limite maior (ex: 24) se não vier especificado
+                    const defaultLimit = mode === 'historico_portfolio' ? 36 : 24;
+                    const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
 
                     const history = await scrapeAsset(ticker);
                     

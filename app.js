@@ -1553,10 +1553,6 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
-// --- EM app.js: Substitua a função renderizarHistoricoProventos ---
-
-// --- EM app.js: Substitua a função renderizarHistoricoProventos ---
-
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
@@ -1608,20 +1604,14 @@ function renderizarHistoricoProventos() {
 
         if (totalMes === 0) return;
 
-        // Header Mês
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         header.innerHTML = `
-            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">
-                ${mes}
-            </h3>
-            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
-                Recebido: ${formatBRL(totalMes)}
-            </span>
+            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>
+            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">Recebido: ${formatBRL(totalMes)}</span>
         `;
         fragment.appendChild(header);
 
-        // Lista
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1632,12 +1622,8 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
-            const badgeBg = 'bg-green-500/10 border border-green-500/20';
-            
-            // Define o rótulo do tipo
+            // Tratamento visual do TIPO
             let tipoLabel = p.type || 'Rendimento';
-            // Ajuste fino visual se necessário (ex: encurtar)
             if(tipoLabel === 'Rendimento') tipoLabel = 'Rend.';
 
             const item = document.createElement('div');
@@ -1673,7 +1659,6 @@ function renderizarHistoricoProventos() {
             `;
             listaGrupo.appendChild(item);
         });
-        
         fragment.appendChild(listaGrupo);
     });
 
@@ -2676,10 +2661,6 @@ function renderizarGraficoPatrimonio() {
     lastPatrimonioCalcSignature = currentSignature;
 }
 	
-// --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
-
-// --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
-
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
@@ -2731,11 +2712,13 @@ function renderizarTimelinePagamentos() {
         const classeHoje = isHoje ? 'is-today' : '';
         const textoHeader = isHoje ? 'HOJE' : mes;
 
-        // Formata o tipo para exibição curta
+        // --- EXIBIÇÃO DO TIPO (TAG PEQUENA NO TOPO) ---
         let tipoDisplay = prov.type || 'REND';
         if (tipoDisplay === 'Rendimento') tipoDisplay = 'REND';
         if (tipoDisplay === 'Dividendo') tipoDisplay = 'DIV';
-        if (tipoDisplay === 'Rend. Tributado') tipoDisplay = 'TRIB'; // Abreviação para caber
+        if (tipoDisplay === 'JCP') tipoDisplay = 'JCP';
+        if (tipoDisplay === 'Rend. Tributado') tipoDisplay = 'TRIB';
+        if (tipoDisplay === 'Amortização') tipoDisplay = 'AMOR';
 
         const item = document.createElement('div');
         item.className = `agenda-card ${classeHoje}`;
@@ -2743,7 +2726,7 @@ function renderizarTimelinePagamentos() {
         item.innerHTML = `
             <div class="agenda-header flex justify-between items-center px-2">
                 <span>${textoHeader}</span>
-                <span class="text-[9px] opacity-70 font-bold tracking-wider">${tipoDisplay}</span>
+                <span class="text-[9px] opacity-70 font-bold tracking-wider border border-white/20 px-1 rounded">${tipoDisplay}</span>
             </div>
             
             <div class="agenda-body">

@@ -1560,7 +1560,6 @@ function renderizarHistorico() {
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
-    // Smart Check
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${provSearchTerm}`;
@@ -1574,7 +1573,6 @@ function renderizarHistoricoProventos() {
     
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // Filtros
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -1587,9 +1585,6 @@ function renderizarHistoricoProventos() {
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
                 <p class="text-xs text-gray-500">Nenhum provento encontrado.</p>
             </div>`;
         return;
@@ -1637,13 +1632,13 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- REFINAMENTO DE CORES AQUI ---
-            // Ícone Check Verde (text-green-400)
             const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
-            
-            // Fundo verde suave (/10)
             const badgeBg = 'bg-green-500/10 border border-green-500/20';
-            // ---------------------------------
+            
+            // Define o rótulo do tipo
+            let tipoLabel = p.type || 'Rendimento';
+            // Ajuste fino visual se necessário (ex: encurtar)
+            if(tipoLabel === 'Rendimento') tipoLabel = 'Rend.';
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
@@ -1658,9 +1653,9 @@ function renderizarHistoricoProventos() {
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
                             
-                            <div class="${badgeBg} w-6 h-6 flex items-center justify-center rounded-md shrink-0" title="Pago">
-                                ${iconPago}
-                            </div>
+                            <span class="text-[9px] font-bold text-gray-500 bg-[#222] px-1.5 py-[2px] rounded border border-[#333] tracking-wide uppercase">
+                                ${tipoLabel}
+                            </span>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
@@ -2689,7 +2684,6 @@ function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // Define layout de carrossel
     lista.className = 'payment-carousel'; 
 
     if (!proventosAtuais || proventosAtuais.length === 0) {
@@ -2715,7 +2709,6 @@ function renderizarTimelinePagamentos() {
         return;
     }
 
-    // Ordena por data
     pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
     
     lista.innerHTML = '';
@@ -2728,26 +2721,29 @@ function renderizarTimelinePagamentos() {
         const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
 
-        const diffTime = Math.abs(dataObj - hoje);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
         const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
         const totalReceber = prov.value * qtd;
 
-        // Verifica se é hoje para aplicar estilo especial
+        const diffTime = Math.abs(dataObj - hoje);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         const isHoje = diffDays === 0;
         const classeHoje = isHoje ? 'is-today' : '';
-        const textoHeader = isHoje ? 'HOJE' : mes; // Se for hoje, escreve HOJE no topo em vez do mês
+        const textoHeader = isHoje ? 'HOJE' : mes;
+
+        // Formata o tipo para exibição curta
+        let tipoDisplay = prov.type || 'REND';
+        if (tipoDisplay === 'Rendimento') tipoDisplay = 'REND';
+        if (tipoDisplay === 'Dividendo') tipoDisplay = 'DIV';
+        if (tipoDisplay === 'Rend. Tributado') tipoDisplay = 'TRIB'; // Abreviação para caber
 
         const item = document.createElement('div');
-        // Usa a nova classe agenda-card
         item.className = `agenda-card ${classeHoje}`;
         
-        // Estrutura HTML "Folha de Calendário"
         item.innerHTML = `
-            <div class="agenda-header">
-                ${textoHeader}
+            <div class="agenda-header flex justify-between items-center px-2">
+                <span>${textoHeader}</span>
+                <span class="text-[9px] opacity-70 font-bold tracking-wider">${tipoDisplay}</span>
             </div>
             
             <div class="agenda-body">
@@ -2761,9 +2757,7 @@ function renderizarTimelinePagamentos() {
             </div>
         `;
         
-        // Efeito de clique para abrir detalhes
         item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
-        
         lista.appendChild(item);
     });
 

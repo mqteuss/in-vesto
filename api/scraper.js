@@ -174,19 +174,20 @@ async function scrapeFundamentos(ticker) {
 // PARTE 2: HISTÓRICO -> STATUS INVEST (ATUALIZADO PARA AÇÕES E JCP)
 // ---------------------------------------------------------
 
+// ---------------------------------------------------------
+// PARTE 2: HISTÓRICO -> STATUS INVEST (CORREÇÃO DE DATAS INVÁLIDAS/CMIG4)
+// ---------------------------------------------------------
+
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
         let type = 'acao';
-        // Se termina em 11, 11B, 12, geralmente é FII ou Unit/ETF.
-        // Ações terminam em 3, 4, 5, 6.
+        
+        // Detecção básica de tipo para a URL correta
         if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('12')) {
-            // Pequena verificação extra: se for ETF não tem provento da mesma forma, 
-            // mas assumiremos FII por padrão para o endpoint.
             type = 'fii'; 
         }
         
-        // Endpoint que traz tudo (Dividendos, JCP, Rendimentos)
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
         const { data } = await client.get(url, { 
@@ -200,30 +201,44 @@ async function scrapeAsset(ticker) {
         const earnings = data.assetEarningsModels || [];
 
         const dividendos = earnings.map(d => {
+            // --- CORREÇÃO AQUI: Parse Seguro de Data ---
             const parseDateJSON = (dStr) => {
-                if(!dStr) return null;
-                const parts = dStr.split('/');
-                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                // Se for nulo, vazio ou um traço (comum em JCP sem data definida)
+                if (!dStr || dStr === '-') return null;
+                
+                // Se tiver barra, converte DD/MM/YYYY para YYYY-MM-DD
+                if (dStr.includes('/')) {
+                    const parts = dStr.split('/');
+                    if (parts.length === 3) {
+                        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    }
+                }
+                
+                // Retorna null se não conseguiu processar, para evitar "Invalid Date"
+                return null;
             };
 
-            // Mapeamento de Tipos de Provento
-            // et: 1 = Dividendo, 2 = JCP, 10 = Rendimento (FII)
             let labelTipo = 'Rendimento';
             if (d.et === 1) labelTipo = 'Dividendo';
             else if (d.et === 2) labelTipo = 'JCP';
             else if (d.et === 10) labelTipo = 'Rendimento';
-            else if (d.etD) labelTipo = d.etD; // Fallback para a descrição que vem na API
+            else if (d.etD) labelTipo = d.etD;
 
             return {
-                dataCom: parseDateJSON(d.ed),
-                paymentDate: parseDateJSON(d.pd),
+                dataCom: parseDateJSON(d.ed),      // ed = earnings date (Data Com)
+                paymentDate: parseDateJSON(d.pd),  // pd = payment date (Data Pagamento)
                 value: d.v,
-                type: labelTipo, // Agora retorna "Dividendo", "JCP" ou "Rendimento"
+                type: labelTipo,
                 rawType: d.et
             };
         });
 
-        return dividendos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        return dividendos.sort((a, b) => {
+            // Ordenação segura: joga datas nulas para o futuro (ou passado, conforme preferência)
+            const dateA = a.paymentDate ? new Date(a.paymentDate) : new Date(0);
+            const dateB = b.paymentDate ? new Date(b.paymentDate) : new Date(0);
+            return dateB - dateA;
+        });
 
     } catch (error) { 
         console.error(`Erro StatusInvest API ${ticker}:`, error.message);

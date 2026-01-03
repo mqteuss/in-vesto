@@ -35,8 +35,11 @@ const normalize = (str) => str ? str.toLowerCase().normalize("NFD").replace(/[\u
 // Define se é Ação, FII ou BDR para montar a URL correta
 function getInvestidor10Url(ticker) {
     const t = ticker.toUpperCase().trim();
+    // Ações geralmente terminam em 3, 4, 5, 6 (ON, PN, PNA, PNB)
     if (t.endsWith('3') || t.endsWith('4') || t.endsWith('5') || t.endsWith('6')) return `https://investidor10.com.br/acoes/${t}/`;
+    // BDRs
     if (t.endsWith('32') || t.endsWith('33') || t.endsWith('34') || t.endsWith('35')) return `https://investidor10.com.br/bdrs/${t}/`;
+    // Padrão FII (11, 12, B)
     return `https://investidor10.com.br/fiis/${t}/`;
 }
 
@@ -74,6 +77,11 @@ async function scrapeFundamentos(ticker) {
         
         const valPatEl = $('._card.val_patrimonial ._card-body span').first();
         if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
+        
+        // Cotação para fallback de cálculo
+        let cotacao_atual = 0;
+        const cotacaoEl = $('._card.cotacao ._card-body span').first();
+        if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
         // 2. Varredura em Tabelas
         const processPair = (tituloRaw, valorRaw) => {
@@ -112,6 +120,16 @@ async function scrapeFundamentos(ticker) {
             const tds = $(row).find('td');
             if (tds.length >= 2) processPair($(tds[0]).text(), $(tds[1]).text());
         });
+
+        // Fallback: Valor de Mercado calculado se não encontrado
+        if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
+            const qtd = parseValue(dados.cotas_emitidas);
+            if (cotacao_atual > 0 && qtd > 0) {
+                const mkt = cotacao_atual * qtd;
+                if (mkt > 1_000_000_000) dados.val_mercado = `R$ ${(mkt/1_000_000_000).toFixed(2)} B`;
+                else if (mkt > 1_000_000) dados.val_mercado = `R$ ${(mkt/1_000_000).toFixed(2)} M`;
+            }
+        }
 
         return dados;
     } catch (error) {
@@ -167,8 +185,9 @@ async function scrapeHistory(ticker) {
 // --- HELPER PARA BATCH (Evita sobrecarga no Promise.all) ---
 function chunkArray(myArray, chunk_size){
     var results = [];
-    while (myArray.length) {
-        results.push(myArray.splice(0, chunk_size));
+    const arrCopy = [...myArray];
+    while (arrCopy.length) {
+        results.push(arrCopy.splice(0, chunk_size));
     }
     return results;
 }
@@ -216,7 +235,7 @@ export default async function handler(req, res) {
             if (!fiiList || !Array.isArray(fiiList)) return res.json({ json: [] });
             
             // Processa em lotes de 3 para não estourar timeout/bloqueio
-            const batches = chunkArray([...fiiList], 3); 
+            const batches = chunkArray(fiiList, 3); 
             let all = [];
             
             for (const batch of batches) {

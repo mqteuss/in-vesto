@@ -2,34 +2,63 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
 
-// --- SETUP (MANTIDO) ---
+// OTIMIZAÇÃO 1: Agente HTTPS com Keep-Alive para reutilizar conexões TCP
+// Isso acelera muito requisições em lote (portfolio).
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
     maxFreeSockets: 10,
-    timeout: 15000
+    timeout: 10000
 });
 
 const client = axios.create({
     httpsAgent,
     headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Referer': 'https://statusinvest.com.br/',
-        'Cache-Control': 'no-cache', 
+        'Accept-Encoding': 'gzip, deflate, br' // Garante compressão
     },
-    timeout: 12000
+    timeout: 9000
 });
 
+// OTIMIZAÇÃO 2: Pré-compilação de Regex (evita recriar a cada chamada)
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
+const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
-// --- HELPERS (MANTIDOS) ---
+function parseDate(dateStr) {
+    if (!dateStr || dateStr === '-') return null;
+    // Otimização simples de string sem regex complexo
+    const parts = dateStr.trim().split('/');
+    if (parts.length !== 3) return null;
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
 function parseValue(valueStr) {
     if (!valueStr) return 0;
-    if (typeof valueStr === 'number') return valueStr;
     try {
+        // Usa a regex pré-compilada
         return parseFloat(valueStr.replace(REGEX_CLEAN_NUMBER, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
+}
+
+function parseExtendedValue(str) {
+    if (!str) return 0;
+    const val = parseValue(str);
+    const lower = str.toLowerCase();
+    // Multiplicadores
+    if (lower.includes('bilh')) return val * 1000000000;
+    if (lower.includes('milh')) return val * 1000000;
+    if (lower.includes('mil')) return val * 1000;
+    return val;
+}
+
+function formatCurrency(value) {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function normalize(str) {
+    if (!str) return '';
+    return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
 function chunkArray(array, size) {
@@ -40,42 +69,28 @@ function chunkArray(array, size) {
     return results;
 }
 
-// --- NAVEGAÇÃO INTELIGENTE (MANTIDA) ---
-async function fetchHtmlSmart(ticker) {
-    const t = ticker.toLowerCase();
-    const tryUrl = async (category) => {
-        try {
-            const url = `https://statusinvest.com.br/${category}/${t}`;
-            const res = await client.get(url);
-            const $ = cheerio.load(res.data);
-            const hasTitle = $('h1').length > 0;
-            const hasData = $('.value').length > 3; 
-            if (hasTitle && hasData) return { html: res.data, type: category };
-            return null;
-        } catch (e) { return null; }
-    };
-
-    if (t.endsWith('11') || t.endsWith('11b')) {
-        let result = await tryUrl('fundos-imobiliarios'); 
-        if (result) return result;
-        result = await tryUrl('fiagros'); 
-        if (result) return result;
-        return await tryUrl('acoes');
+// Helper para evitar duplicar a lógica de try/catch de URL
+async function fetchHtmlWithRetry(ticker) {
+    const tickerLower = ticker.toLowerCase();
+    try {
+        // Tenta FII
+        return await client.get(`https://investidor10.com.br/fiis/${tickerLower}/`);
+    } catch (e) {
+        if (e.response && e.response.status === 404) {
+            // Fallback para Ações (mantendo a lógica original)
+            return await client.get(`https://investidor10.com.br/acoes/${tickerLower}/`);
+        }
+        throw e;
     }
-    
-    let resultAcao = await tryUrl('acoes');
-    if (resultAcao) return resultAcao;
-    return await tryUrl('fundos-imobiliarios');
 }
 
-// --- SCRAPER FUNDAMENTOS (ATUALIZADO PARA PEGAR OS DADOS FALTANTES) ---
+// --- SCRAPER DE FUNDAMENTOS ---
 async function scrapeFundamentos(ticker) {
     try {
-        const result = await fetchHtmlSmart(ticker);
-        if (!result) return { dy: '-', pvp: '-', segmento: '-' };
+        const response = await fetchHtmlWithRetry(ticker);
+        const html = response.data;
+        const $ = cheerio.load(html);
 
-        const $ = cheerio.load(result.html);
-        
         let dados = {
             dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
@@ -84,112 +99,140 @@ async function scrapeFundamentos(ticker) {
             taxa_adm: 'N/A', cotas_emitidas: 'N/A'
         };
 
-        // --- ESTRATÉGIA 1: BUSCA DIRETA POR TITLE (Resolve Patrimônio e VP) ---
-        // O Status Invest coloca esses dados no topo com atributos title específicos
-        
-        const getValByTitle = (key) => {
-            // Procura div com title="...key..." e pega o filho .value
-            let val = $(`div[title*="${key}"] .value`).text().trim();
-            if (!val) val = $(`div[title*="${key}"]`).find('.value').text().trim();
-            return val;
+        let cotacao_atual = 0;
+        let num_cotas = 0;
+
+        const processPair = (tituloRaw, valorRaw) => {
+            const titulo = normalize(tituloRaw);
+            const valor = valorRaw.trim();
+            if (!valor) return;
+
+            // Mantida a lógica exata de mapeamento
+            if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
+            if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
+            if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
+            if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
+            if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
+            if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
+            if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
+            if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
+            if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
+            if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
+            if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
+            if (dados.mandato === 'N/A' && titulo.includes('mandato')) dados.mandato = valor;
+            if (dados.tipo_fundo === 'N/A' && titulo.includes('tipo de fundo')) dados.tipo_fundo = valor;
+            if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
+            if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
+            if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
+
+            if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
+                const valorNumerico = parseValue(valor);
+                const textoLower = valor.toLowerCase();
+                if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
+                    if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
+                } else {
+                    if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
+                }
+            }
+
+            if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
+                num_cotas = parseValue(valor);
+                if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
+            }
         };
 
-        // Mantendo o que já funcionava
-        dados.val_mercado = getValByTitle('Valor de mercado') || getValByTitle('Valor de Mercado') || 'N/A';
-        dados.liquidez = getValByTitle('Liquidez média') || getValByTitle('Liquidez Diária') || 'N/A';
-        
-        // Novos (Que estavam faltando)
-        dados.patrimonio_liquido = getValByTitle('Patrimônio líquido') || 'N/A';
-        dados.vp_cota = getValByTitle('Valor patrimonial p/cota') || getValByTitle('V.P.A') || 'N/A';
-        dados.cotas_emitidas = getValByTitle('Num. de cotas') || getValByTitle('Total de papeis') || 'N/A';
+        // Extração por Cards (Prioritário)
+        const dyEl = $('._card.dy ._card-body span').first();
+        if (dyEl.length) dados.dy = dyEl.text().trim();
+        const pvpEl = $('._card.vp ._card-body span').first();
+        if (pvpEl.length) dados.pvp = pvpEl.text().trim();
+        const liqEl = $('._card.liquidity ._card-body span').first();
+        if (liqEl.length) dados.liquidez = liqEl.text().trim();
+        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
+        if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
+        const cotacaoEl = $('._card.cotacao ._card-body span').first();
+        if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // --- ESTRATÉGIA 2: VARREDURA DE GRID (Resolve Mandato, Gestão, CNPJ, Cotistas) ---
-        // Varre todas as caixinhas .info na página inteira
-        $('.info').each((i, el) => {
-            const titleRaw = $(el).find('.title').text().toLowerCase().trim();
-            const value = $(el).find('.value').text().trim();
-            
-            if (!value || value === '-') return;
-
-            if (titleRaw.includes('segmento')) dados.segmento = value;
-            if (titleRaw.includes('tipo de fundo')) dados.tipo_fundo = value;
-            if (titleRaw.includes('mandato')) dados.mandato = value;
-            if (titleRaw.includes('gestão')) dados.tipo_gestao = value;
-            if (titleRaw.includes('prazo')) dados.prazo_duracao = value;
-            if (titleRaw.includes('cotistas') || titleRaw.includes('acionistas')) dados.num_cotistas = value;
-            if (titleRaw.includes('cotas emitidas')) dados.cotas_emitidas = value; // Fallback
-            if (titleRaw.includes('vacância física')) dados.vacancia = value;
-            if (titleRaw.includes('cnpj')) dados.cnpj = value;
+        // Varredura Geral
+        $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
+        $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
+        $('table tbody tr').each((i, row) => {
+            const cols = $(row).find('td');
+            if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // --- ESTRATÉGIA 3: BUSCA ESPECÍFICA (Fallbacks) ---
-        
-        // DY e PVP (Geralmente no topo, sem title, apenas texto)
-        const findTopCard = (label) => {
-            return $(`.title:contains("${label}")`).parent().find('.value').text().trim();
-        };
-        dados.dy = findTopCard('Dividend Yield') || 'N/A';
-        dados.pvp = findTopCard('P/VP') || findTopCard('P/L') || 'N/A';
-        dados.cotacao_atual = findTopCard('Valor atual') || 'N/A';
-        dados.ultimo_rendimento = findTopCard('Último rendimento') || 'N/A';
-
-        // Taxa de Administração (Geralmente é um texto longo, precisa de cuidado)
-        // Procura pelo título e pega o strong ou span dentro do próximo container
-        const taxaBlock = $('h3.title:contains("Taxa de Administração")').parent().find('.value').text().trim();
-        if (taxaBlock) dados.taxa_adm = taxaBlock;
-
-        // --- LIMPEZA FINAL ---
-        // SNAG11 (Fiagro) às vezes não tem "Segmento", tem "Setor" ou nada.
-        if (dados.segmento === 'N/A' && result.type === 'fiagros') {
-            dados.segmento = 'Fiagro/Agro'; // Padrão se não achar
+        // Cálculo de Mercado (Fallback)
+        if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
+            let mercadoCalc = 0;
+            if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
+            else if (dados.patrimonio_liquido !== 'N/A' && dados.pvp !== 'N/A') {
+                const plValue = parseExtendedValue(dados.patrimonio_liquido);
+                const pvpValue = parseValue(dados.pvp);
+                if (plValue > 0 && pvpValue > 0) mercadoCalc = plValue * pvpValue;
+            }
+            if (mercadoCalc > 0) {
+                if (mercadoCalc > 1000000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000000).toFixed(2)} Bilhões`;
+                else if (mercadoCalc > 1000000) dados.val_mercado = `R$ ${(mercadoCalc / 1000000).toFixed(2)} Milhões`;
+                else dados.val_mercado = formatCurrency(mercadoCalc);
+            }
         }
-        
-        // Limpar "SegmentoImóveis..." caso ocorra concatenação
-        if (dados.segmento !== 'N/A') dados.segmento = dados.segmento.replace(/segmento/yi, '').trim();
 
         return dados;
-
     } catch (error) {
-        console.error(`Erro fatal ${ticker}:`, error.message);
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 
-// --- SCRAPER HISTÓRICO (MANTIDO IGUAL) ---
+// --- SCRAPER DE HISTÓRICO ---
 async function scrapeAsset(ticker) {
     try {
-        let type = 'acao';
-        const t = ticker.toUpperCase();
-        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
-        
-        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${ticker}&chartProventsType=2`;
-        const { data } = await client.get(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        const earnings = data.assetEarningsModels || [];
+        const response = await fetchHtmlWithRetry(ticker);
+        const html = response.data;
+        const $ = cheerio.load(html);
+        const dividendos = [];
 
-        const dividendos = earnings.map(d => {
-            const parseDateJSON = (dStr) => {
-                if(!dStr) return null;
-                const parts = dStr.split('/');
-                return `${parts[2]}-${parts[1]}-${parts[0]}`;
-            };
-            return {
-                dataCom: parseDateJSON(d.ed),
-                paymentDate: parseDateJSON(d.pd),
-                value: d.v,
-                type: d.et
-            };
+        let tableRows = $('#table-dividends-history tbody tr');
+        if (tableRows.length === 0) {
+            $('table').each((i, tbl) => {
+                const header = normalize($(tbl).find('thead').text());
+                if (header.includes('com') && header.includes('pagamento')) {
+                    tableRows = $(tbl).find('tbody tr');
+                    return false; 
+                }
+            });
+        }
+
+        tableRows.each((i, el) => {
+            const cols = $(el).find('td');
+            if (cols.length >= 4) {
+                const dataCom = $(cols[1]).text().trim();
+                const dataPag = $(cols[2]).text().trim();
+                const valor = $(cols[3]).text().trim();
+
+                dividendos.push({
+                    dataCom: parseDate(dataCom),
+                    paymentDate: parseDate(dataPag),
+                    value: parseValue(valor)
+                });
+            }
         });
-        return dividendos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        return dividendos;
     } catch (error) { return []; }
 }
 
 module.exports = async function handler(req, res) {
+    // CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    // OTIMIZAÇÃO 3: Cache Headers (Importantíssimo)
+    // Cacheia a resposta por 1 hora (3600s) na CDN da Vercel.
+    // O 'stale-while-revalidate' serve o cache antigo enquanto atualiza em segundo plano.
     if (req.method === 'GET' || (req.method === 'POST' && req.body.mode !== 'proventos_carteira')) {
+       // Evitamos cache em 'proventos_carteira' se ele for muito dinâmico ou grande, 
+       // mas para fundamentos e histórico é seguro.
        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
 
@@ -206,25 +249,35 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: dados });
         }
 
-        // --- OUTROS MODOS MANTIDOS IDÊNTICOS ---
-        if (mode === 'proventos_carteira') {
+if (mode === 'proventos_carteira') {
             if (!payload.fiiList) return res.json({ json: [] });
+            
+            // fiiList agora será um array de objetos: [{ ticker: 'MXRF11', limit: 12 }, ...]
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
+
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
+                    // Verifica se o item é string (legado) ou objeto (novo formato)
                     const ticker = typeof item === 'string' ? item : item.ticker;
+                    // Se for string, assume 24 (padrão antigo). Se for objeto, usa o limite calculado.
                     const limit = typeof item === 'string' ? 24 : (item.limit || 24);
+
                     const history = await scrapeAsset(ticker);
+                    
+                    // AQUI APLICAMOS O CORTE INTELIGENTE
                     const recents = history
                         .filter(h => h.paymentDate && h.value > 0)
-                        .slice(0, limit);
+                        .slice(0, limit); // Corta exatamente onde o App.js pediu
+
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });
+                
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-                if (batches.length > 1) await new Promise(r => setTimeout(r, 800)); 
+
+                if (batches.length > 1) await new Promise(r => setTimeout(r, 500)); 
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
@@ -239,13 +292,29 @@ module.exports = async function handler(req, res) {
             }).filter(h => h !== null);
             return res.status(200).json({ json: formatted });
         }
-        
+
+        if (mode === 'historico_portfolio') {
+            if (!payload.fiiList) return res.json({ json: [] });
+            const batches = chunkArray(payload.fiiList, 3); 
+            let all = [];
+            for (const batch of batches) {
+                const promises = batch.map(async (ticker) => {
+                    const history = await scrapeAsset(ticker);
+                    history.slice(0, 24).forEach(h => {
+                        if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
+                    });
+                });
+                await Promise.all(promises);
+                if (batches.length > 1) await new Promise(r => setTimeout(r, 500));
+            }
+            return res.status(200).json({ json: all });
+        }
+
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);
-            const hoje = new Date().toISOString().split('T')[0];
-            const futuro = history.find(h => h.paymentDate >= hoje) || history[0];
-            return res.status(200).json({ json: futuro || null });
+            const ultimo = history.length > 0 ? history[0] : null;
+            return res.status(200).json({ json: ultimo });
         }
 
         return res.status(400).json({ error: "Modo desconhecido" });

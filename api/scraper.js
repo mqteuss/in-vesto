@@ -59,7 +59,7 @@ async function scrapeFundamentos(ticker) {
             taxa_adm: 'N/A', cotas_emitidas: 'N/A'
         };
 
-        // 1. Cards do Topo
+        // 1. Cards do Topo (Seletores CSS específicos)
         const plEl = $('._card.pl ._card-body span').first();
         if (plEl.length) dados.pl = plEl.text().trim();
 
@@ -192,8 +192,8 @@ function chunkArray(myArray, chunk_size){
     return results;
 }
 
-// --- API HANDLER (O PONTO DE ENTRADA DO VERCEL) ---
-export default async function handler(req, res) {
+// --- API HANDLER (USANDO module.exports para compatibilidade Vercel/Node) ---
+module.exports = async (req, res) => {
     // Permite CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -273,6 +273,6 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('API Error:', error);
-        return res.status(500).json({ error: 'Erro interno do servidor' });
+        return res.status(500).json({ error: 'Erro interno do servidor: ' + error.message });
     }
-}
+};

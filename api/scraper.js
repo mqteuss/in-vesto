@@ -76,7 +76,6 @@ async function scrapeFundamentus(ticker) {
                 if (label.includes('cotacao')) dados.cotacao_atual = value; 
                 if (label.includes('vpa')) dados.vp_cota = value;
 
-                // Ações
                 if (label.includes('p/l')) dados.pl = value;
                 if (label.includes('roe')) dados.roe = value;
                 if (label.includes('lpa')) dados.lpa = value;
@@ -143,7 +142,6 @@ async function scrapeInvestidor10(ticker) {
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             
-            // Ações
             if (dados.pl === 'N/A' && titulo.includes('p/l')) dados.pl = valor;
             if (dados.roe === 'N/A' && titulo.includes('roe')) dados.roe = valor;
             if (dados.lpa === 'N/A' && titulo.includes('lpa')) dados.lpa = valor;
@@ -199,7 +197,6 @@ async function scrapeInvestidor10(ticker) {
                 else dados.val_mercado = formatCurrency(mercadoCalc);
             }
         }
-        
         return dados;
     } catch (error) { return null; }
 }
@@ -221,7 +218,7 @@ async function scrapeProventosAPI(ticker) {
     };
 
     let earnings = [];
-    if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33')) {
+    if (t.endsWith('11') || t.endsWith('11B')) {
         earnings = await fetchEarnings('fii');
         if (earnings.length === 0) earnings = await fetchEarnings('acao');
     } else {
@@ -233,31 +230,34 @@ async function scrapeProventosAPI(ticker) {
         const parseDateJSON = (dStr) => {
             if(!dStr) return null;
             const parts = dStr.split('/');
-            return `${parts[2]}-${parts[1]}-${parts[0]}`; // Retorna YYYY-MM-DD
+            // Retorna YYYY-MM-DD
+            return `${parts[2]}-${parts[1]}-${parts[0]}`; 
         };
         
         const dataCom = parseDateJSON(d.ed);
         let paymentDate = parseDateJSON(d.pd);
         
-        // Se a data de pagamento é nula (comum em ações provisionadas), estimamos 30 dias após data com
+        // Se pagamento for nulo, tenta estimar com base na Data Com (+30 dias)
+        // Isso é crucial para ações que anunciam mas não definem pagamento de imediato
         if (!paymentDate && dataCom) {
             const dComObj = new Date(dataCom);
-            dComObj.setDate(dComObj.getDate() + 30); 
+            dComObj.setDate(dComObj.getDate() + 30);
             paymentDate = dComObj.toISOString().split('T')[0];
         }
 
         return {
             dataCom: dataCom,
-            paymentDate: paymentDate,
+            paymentDate: paymentDate, 
             value: d.v,
             type: d.et
         };
     });
 
+    // Ordenação Cronológica (Do mais antigo para o mais novo)
     return dividendos.sort((a, b) => {
-        if (!a.paymentDate) return -1; 
-        if (!b.paymentDate) return 1;
-        return new Date(b.paymentDate) - new Date(a.paymentDate);
+        const dA = a.paymentDate ? new Date(a.paymentDate) : new Date(0);
+        const dB = b.paymentDate ? new Date(b.paymentDate) : new Date(0);
+        return dA - dB;
     });
 }
 
@@ -282,7 +282,7 @@ module.exports = async function handler(req, res) {
         const { mode, payload } = req.body;
 
         if (mode === 'fundamentos') {
-            if (!payload.ticker) return res.json({ json: {} });
+             if (!payload.ticker) return res.json({ json: {} });
             const ticker = payload.ticker.toUpperCase();
             let dados = null;
             
@@ -306,7 +306,7 @@ module.exports = async function handler(req, res) {
         }
 
         if (mode === 'proventos_carteira') {
-            if (!payload.fiiList) return res.json({ json: [] });
+             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3);
             let finalResults = [];
             for (const batch of batches) {
@@ -314,7 +314,9 @@ module.exports = async function handler(req, res) {
                     const ticker = typeof item === 'string' ? item : item.ticker;
                     const limit = typeof item === 'string' ? 24 : (item.limit || 24);
                     const history = await scrapeProventosAPI(ticker);
-                    const recents = history.filter(h => h.value > 0).slice(0, limit);
+                    // Pega recentes (incluindo futuros)
+                    const recents = history.filter(h => h.value > 0).slice(-limit); // slice negativo pega os últimos cronológicos
+                    
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });
@@ -325,55 +327,63 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-        // --- CORREÇÃO AQUI: HISTÓRICO 12M ---
+        // --- CORREÇÃO DEFINITIVA: HISTÓRICO 12M + FUTURO ---
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
             
             const history = await scrapeProventosAPI(payload.ticker);
-            const hoje = new Date();
             const mapaAgregado = {};
 
-            // 1. Agrupa por mês e Filtra futuro
+            // Define a data de corte: 12 meses atrás
+            const umAnoAtras = new Date();
+            umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+            umAnoAtras.setDate(1); // Começo do mês
+
             history.forEach(h => {
+                // Validações básicas
                 if (!h.paymentDate || !h.paymentDate.includes('-')) return;
                 
-                const d = new Date(h.paymentDate + 'T12:00:00'); // Garante fuso
+                const d = new Date(h.paymentDate + 'T12:00:00');
                 if (isNaN(d.getTime())) return;
-                
-                // Se for data futura (ano que vem ou mês que vem), ignora para histórico
-                if (d > hoje) return;
 
-                // Chave de ordenação: YYYY-MM
-                const keySort = h.paymentDate.slice(0, 7); 
+                // FILTRO INTELIGENTE:
+                // Pegamos tudo que é MAIOR que 1 ano atrás.
+                // Isso inclui: O passado recente (últimos 12m) E o futuro (provisões 2025/2026).
+                if (d < umAnoAtras) return;
+
+                const keySort = h.paymentDate.slice(0, 7); // YYYY-MM
                 
                 if (!mapaAgregado[keySort]) mapaAgregado[keySort] = 0;
                 mapaAgregado[keySort] += h.value;
             });
 
-            // 2. Transforma em Array, Ordena (Antigo -> Novo) e Pega últimos 12
+            // Ordena as chaves (YYYY-MM) de forma ASCENDENTE (2024-01 -> 2024-02 -> 2026-01)
+            // Isso garante que o gráfico não fique "de trás para frente"
             const formatted = Object.entries(mapaAgregado)
-                .sort((a, b) => a[0].localeCompare(b[0])) // '2024-01' antes de '2024-02'
-                .slice(-12) // Pega os últimos 12 meses
+                .sort((a, b) => a[0].localeCompare(b[0])) 
                 .map(([key, valor]) => {
                     const [ano, mes] = key.split('-');
                     return { 
-                        mes: `${mes}/${ano.slice(2)}`, // Retorna MM/YY
+                        mes: `${mes}/${ano.slice(2)}`, // MM/YY
                         valor: valor 
                     };
                 });
-
+            
+            // Retorna TUDO que encontrou (passado recente + futuro)
+            // O Front decide quantos meses mostrar, mas aqui garantimos que a ordem está certa.
             return res.status(200).json({ json: formatted });
         }
 
         if (mode === 'historico_portfolio') {
-            if (!payload.fiiList) return res.json({ json: [] });
+             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 3); 
             let all = [];
             for (const batch of batches) {
                 const promises = batch.map(async (ticker) => {
                     const history = await scrapeProventosAPI(ticker);
-                    history.slice(0, 24).forEach(h => {
-                        if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
+                    // Aqui pegamos tudo para o gráfico agregado
+                    history.forEach(h => {
+                         if (h.value > 0) all.push({ symbol: ticker.toUpperCase(), ...h });
                     });
                 });
                 await Promise.all(promises);
@@ -386,9 +396,14 @@ module.exports = async function handler(req, res) {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeProventosAPI(payload.ticker);
             const hoje = new Date();
-            hoje.setDate(hoje.getDate() - 20); 
-            const relevantes = history.filter(h => new Date(h.paymentDate) >= hoje);
-            const proximo = relevantes.length > 0 ? relevantes[relevantes.length - 1] : (history[0] || null);
+            hoje.setDate(hoje.getDate() - 30); 
+            
+            const relevantes = history
+                .filter(h => h.paymentDate)
+                .filter(h => new Date(h.paymentDate + 'T12:00:00') >= hoje);
+                
+            const proximo = relevantes.length > 0 ? relevantes[0] : null; // Pega o primeiro da lista ordenada ASC
+            
             return res.status(200).json({ json: proximo });
         }
 

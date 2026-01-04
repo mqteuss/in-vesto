@@ -128,11 +128,6 @@ const formatDateToInput = (dateString) => {
 };
 
 const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
-const isAcao = (symbol) => {
-    if (!symbol) return false;
-    return !isFII(symbol);
-};
-
 
 function parseMesAno(mesAnoStr) { 
     try {
@@ -1556,15 +1551,17 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
+// --- EM app.js: Substitua a função renderizarHistoricoProventos ---
+
+// --- EM app.js: Substitua a função renderizarHistoricoProventos ---
+
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
-    // --- 1. Smart Check (Performance) ---
-    // Verifica se houve mudanças para evitar re-renderizar a lista inteira sem necessidade
+    // Smart Check
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const termoBusca = provSearchTerm || ''; 
-    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${termoBusca}`;
+    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${provSearchTerm}`;
 
     if (currentSignature === lastHistoricoProventosSignature && listaHistoricoProventos.children.length > 0) {
         return; 
@@ -1575,21 +1572,16 @@ function renderizarHistoricoProventos() {
     
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // --- 2. Filtros e Ordenação ---
+    // Filtros
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
-        
-        // Verifica integridade da data
         const parts = p.paymentDate.split('-');
-        if(parts.length !== 3) return false;
-        
-        // Filtro de Texto (Ticker)
-        const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
-        
-        return buscaValida;
+        const dPag = new Date(parts[0], parts[1]-1, parts[2]);
+        const dataValida = dPag <= hoje;
+        const buscaValida = provSearchTerm === '' || p.symbol.includes(provSearchTerm);
+        return dataValida && buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    // --- 3. Estado Vazio ---
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
@@ -1601,14 +1593,12 @@ function renderizarHistoricoProventos() {
         return;
     }
 
-    // --- 4. Agrupamento e Renderização ---
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
-        // Filtra itens: Só exibe se o usuário tinha quantidade na Data Com
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1619,10 +1609,9 @@ function renderizarHistoricoProventos() {
             return false;
         });
 
-        // Se o mês estiver vazio após o filtro de quantidade, pula
-        if (itensValidos.length === 0) return;
+        if (totalMes === 0) return;
 
-        // Header do Mês (Sticky)
+        // Header Mês
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         header.innerHTML = `
@@ -1635,7 +1624,7 @@ function renderizarHistoricoProventos() {
         `;
         fragment.appendChild(header);
 
-        // Lista de Cards
+        // Lista
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1646,50 +1635,37 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- LÓGICA DE TAGS VISUAIS ---
-            let tipoLabel = '';
-            let tipoClass = '';
+            // --- REFINAMENTO DE CORES AQUI ---
+            // Ícone Check Verde (text-green-400)
+            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
             
-            // Tenta pegar o tipo ou infere string vazia
-            const rawType = (p.type || '').toUpperCase();
-            
-            if (rawType.includes('JCP') || rawType.includes('JUROS')) {
-                // TAG JCP (Laranja)
-                tipoLabel = 'JCP';
-                tipoClass = 'text-[9px] font-bold text-orange-400 bg-orange-900/20 border border-orange-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
-            
-            } else if (rawType.includes('DIV')) {
-                // TAG DIVIDENDO (Azul)
-                tipoLabel = 'DIV';
-                tipoClass = 'text-[9px] font-bold text-blue-400 bg-blue-900/20 border border-blue-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
-            
-            } else if (rawType.includes('TRIB')) {
-                // TAG TRIBUTADO (Roxo) - A CORREÇÃO PARA OS "EM BRANCO"
-                tipoLabel = 'REND'; 
-                tipoClass = 'text-[9px] font-bold text-purple-400 bg-purple-900/20 border border-purple-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
-            }
-            // FIIs normais (rendimentos isentos) continuam sem tag para visual clean
+            // Fundo verde suave (/10)
+            const badgeBg = 'bg-green-500/10 border border-green-500/20';
+            // ---------------------------------
 
             const item = document.createElement('div');
-            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group border-b border-[#1A1A1A] last:border-0';
+            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
 
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
                         <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
                     </div>
                     
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center">
+                        <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
-                            ${tipoLabel ? `<span class="${tipoClass}">${tipoLabel}</span>` : ''}
+                            
+                            <div class="${badgeBg} w-6 h-6 flex items-center justify-center rounded-md shrink-0" title="Pago">
+                                ${iconPago}
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-1.5 text-[11px] text-gray-500 leading-none">
+                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>
                             <span>${qtd} cotas</span>
                             <span>•</span>
-                            <span>${formatBRL(p.value)}/cota</span>
+                            <span>${formatBRL(p.value)}</span>
                         </div>
                     </div>
                 </div>
@@ -1907,7 +1883,7 @@ function renderizarNoticias(articles) {
             const drawerId = `news-drawer-${safeLabel}-${index}`;
             
             // Tickers
-            const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g; 
+            const tickerRegex = /[A-Z]{4}11/g;
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
             if (foundTickers.length > 0) {
@@ -3242,87 +3218,78 @@ async function renderizarCarteira() {
         return Math.max(3, mesesDiff + 2);
     }
 
-async function buscarProventosFuturos(force = false) {
-    const ativosParaBuscar = carteiraCalculada.map(a => a.symbol); 
-    if (ativosParaBuscar.length === 0) return [];
+    // --- FUNÇÃO PRINCIPAL ATUALIZADA ---
+// --- OTIMIZAÇÃO: Leitura de Cache em Paralelo ---
+    async function buscarProventosFuturos(force = false) {
+        const fiiNaCarteira = carteiraCalculada
+            .filter(a => isFII(a.symbol))
+            .map(a => a.symbol);
+            
+        if (fiiNaCarteira.length === 0) return [];
 
-    const proventosPool = [];
-    const listaParaAPI = [];
+        // Arrays thread-safe (JS é single-thread, então push é seguro)
+        const proventosPool = [];
+        const fiisParaBuscar = [];
 
-    // 1. Verifica Cache
-    await Promise.all(ativosParaBuscar.map(async (symbol) => {
-        const cacheKey = `provento_ia_${symbol}`;
-        if (force) {
-            await vestoDB.delete('apiCache', cacheKey);
+        // 1. Dispara todas as verificações de cache simultaneamente
+        await Promise.all(fiiNaCarteira.map(async (symbol) => {
+            const cacheKey = `provento_ia_${symbol}`;
+            
+            if (force) {
+                // Não precisamos esperar o delete para continuar a lógica,
+                // mas mantemos o await para garantir consistência se necessário.
+                // Como são operações independentes, o Promise.all gerencia o paralelismo.
+                await vestoDB.delete('apiCache', cacheKey);
+                await removerProventosConhecidos(symbol);
+            }
+            
+            // Tenta pegar do cache
+            const proventoCache = await getCache(cacheKey);
+            
+            if (proventoCache && !force) {
+                proventosPool.push(proventoCache);
+            } else {
+                // Se não tem cache, calcula o limite e marca para busca na API
+                const limiteCalculado = calcularLimiteMeses(symbol);
+                fiisParaBuscar.push({ 
+                    ticker: symbol, 
+                    limit: limiteCalculado 
+                });
+            }
+        }));
+        
+        // 2. Busca na API apenas o que faltou (Batch Request)
+        if (fiisParaBuscar.length > 0) {
+            try {
+                const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
+                
+                if (novosProventos && Array.isArray(novosProventos)) {
+                    // Salva os novos resultados no cache em paralelo também
+                    await Promise.all(novosProventos.map(async (provento) => {
+                        if (provento && provento.symbol && provento.paymentDate) {
+                            const cacheKey = `provento_ia_${provento.symbol}`;
+                            await setCache(cacheKey, provento, CACHE_PROVENTOS); 
+                            proventosPool.push(provento);
+
+                            const idUnico = provento.symbol + '_' + provento.paymentDate;
+                            const existe = proventosConhecidos.some(p => p.id === idUnico);
+                            
+                            if (!existe) {
+                                const novoProvento = { ...provento, processado: false, id: idUnico };
+                                // Adiciona ao DB e memória
+                                await supabaseDB.addProventoConhecido(novoProvento);
+                                proventosConhecidos.push(novoProvento);
+                            }
+                        }
+                    }));
+                }
+            } catch (error) {
+                console.error("Erro ao buscar novos proventos com Scraper:", error);
+            }
         }
         
-        const proventoCache = await getCache(cacheKey);
-        if (proventoCache && !force) {
-            proventosPool.push(proventoCache);
-        } else {
-            const limiteCalculado = calcularLimiteMeses(symbol);
-            listaParaAPI.push({ ticker: symbol, limit: limiteCalculado });
-        }
-    }));
-    
-    // 2. Busca na API
-    if (listaParaAPI.length > 0) {
-        try {
-            const novosProventos = await callScraperProventosCarteiraAPI(listaParaAPI);
-            const dateRegex = /^\d{4}-\d{2}-\d{2}$/; 
-
-            if (novosProventos && Array.isArray(novosProventos)) {
-                // SET PARA EVITAR COLISÃO DE ID NO MESMO LOTE
-                const idsNesteLote = new Set();
-
-                await Promise.all(novosProventos.map(async (provento) => {
-                    // Validação rigorosa de data
-                    const dataValida = provento.paymentDate && dateRegex.test(provento.paymentDate);
-
-                    if (provento && provento.symbol && dataValida) {
-                        const cacheKey = `provento_ia_${provento.symbol}`;
-                        await setCache(cacheKey, provento, CACHE_PROVENTOS); 
-                        proventosPool.push(provento);
-
-                        // --- CORREÇÃO DE ID ÚNICO ---
-                        const safeType = provento.type || 'REND';
-                        const safeValue = (provento.value || 0).toFixed(4);
-                        
-                        // Gera ID base
-                        let idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
-
-                        // Se esse ID já foi gerado neste loop (colisão), adiciona sufixo
-                        let contador = 2;
-                        while (idsNesteLote.has(idUnico)) {
-                            idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}_v${contador}`;
-                            contador++;
-                        }
-                        idsNesteLote.add(idUnico);
-
-                        // Verifica se já temos esse ID salvo na memória global
-                        const existe = proventosConhecidos.some(p => p.id === idUnico);
-                        
-                        if (!existe) {
-                            const novoProvento = { 
-                                ...provento, 
-                                processado: false, 
-                                id: idUnico,
-                                type: safeType 
-                            };
-                            
-                            await supabaseDB.addProventoConhecido(novoProvento);
-                            proventosConhecidos.push(novoProvento);
-                        }
-                    }
-                }));
-            }
-        } catch (error) {
-            console.error("Erro Scraper:", error);
-        }
+        return processarProventosScraper(proventosPool); 
     }
-    
-    return processarProventosScraper(proventosPool); 
-}
 	
 	async function callScraperProximoProventoAPI(ticker) {
         const body = { mode: 'proximo_provento', payload: { ticker } };
@@ -3347,12 +3314,11 @@ async function buscarProventosFuturos(force = false) {
         return response.json;
     }
 
-async function buscarHistoricoProventosAgregado(force = false) {
-        // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
-        const ativosCarteira = carteiraCalculada.map(a => a.symbol);
-        
-        if (ativosCarteira.length === 0) return { labels: [], data: [] };
+    async function buscarHistoricoProventosAgregado(force = false) {
+        const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
+        if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
 
+        const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
         const cacheKey = `cache_grafico_historico_${currentUserId}`;
         
         if (force) {
@@ -3363,7 +3329,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
 
         if (!rawDividends) {
             try {
-                rawDividends = await callScraperHistoricoPortfolioAPI(ativosCarteira);
+                rawDividends = await callScraperHistoricoPortfolioAPI(fiiSymbols);
                 if (rawDividends && rawDividends.length > 0) {
                     await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
                 }

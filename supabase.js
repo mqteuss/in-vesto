@@ -173,19 +173,16 @@ export async function saveAppState(key, value_json) {
 }
 
 export async function getProventosConhecidos() {
-    // O select('*') já traz a coluna 'type' se ela existir no banco
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
         .select('*'); 
-    
     if (error) throw new Error(handleSupabaseError(error, "getProventosConhecidos"));
     
     if (data) {
         return data.map(item => ({
             ...item,
             paymentDate: item.paymentdate,
-            dataCom: item.datacom,
-            type: item.type || 'REND' // Garante que se vier nulo, assume REND
+            dataCom: item.datacom // <--- ADICIONADO: Recupera a Data Com do banco
         }));
     }
     return [];
@@ -202,14 +199,12 @@ export async function addProventoConhecido(provento) {
         value: provento.value,
         processado: provento.processado,
         paymentdate: provento.paymentDate,
-        datacom: provento.dataCom,
-        type: provento.type || 'REND' // Correção: Garante que o tipo (JCP/DIV) seja salvo
+        datacom: provento.dataCom // <--- ADICIONADO: Salva a Data Com no banco
     };
 
     const { error } = await supabaseClient
         .from('proventosconhecidos') 
         .upsert(proventoParaDB, { onConflict: 'user_id, id' });
-    
     if (error) throw new Error(handleSupabaseError(error, "addProventoConhecido"));
 }
 

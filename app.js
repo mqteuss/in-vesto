@@ -3242,84 +3242,87 @@ async function renderizarCarteira() {
         return Math.max(3, mesesDiff + 2);
     }
 
-// ... dentro de buscarProventosFuturos(force) ...
+async function buscarProventosFuturos(force = false) {
+    const ativosParaBuscar = carteiraCalculada.map(a => a.symbol); 
+    if (ativosParaBuscar.length === 0) return [];
 
-// EM app.js -> Substitua a lógica dentro de buscarProventosFuturos
+    const proventosPool = [];
+    const listaParaAPI = [];
 
-    async function buscarProventosFuturos(force = false) {
-        const ativosParaBuscar = carteiraCalculada.map(a => a.symbol); 
-        if (ativosParaBuscar.length === 0) return [];
-
-        const proventosPool = [];
-        const listaParaAPI = [];
-
-        // 1. Verifica Cache
-        await Promise.all(ativosParaBuscar.map(async (symbol) => {
-            const cacheKey = `provento_ia_${symbol}`;
-            if (force) {
-                await vestoDB.delete('apiCache', cacheKey);
-                // Não removemos proventos conhecidos aqui para evitar piscar a tela, 
-                // o upsert do banco cuida disso.
-            }
-            
-            const proventoCache = await getCache(cacheKey);
-            if (proventoCache && !force) {
-                proventosPool.push(proventoCache);
-            } else {
-                const limiteCalculado = calcularLimiteMeses(symbol);
-                listaParaAPI.push({ ticker: symbol, limit: limiteCalculado });
-            }
-        }));
-        
-        // 2. Busca na API
-        if (listaParaAPI.length > 0) {
-            try {
-                const novosProventos = await callScraperProventosCarteiraAPI(listaParaAPI);
-                const dateRegex = /^\d{4}-\d{2}-\d{2}$/; // Proteção contra data inválida
-
-                if (novosProventos && Array.isArray(novosProventos)) {
-                    await Promise.all(novosProventos.map(async (provento) => {
-                        // Validação rigorosa de data
-                        const dataValida = provento.paymentDate && dateRegex.test(provento.paymentDate);
-
-                        if (provento && provento.symbol && dataValida) {
-                            const cacheKey = `provento_ia_${provento.symbol}`;
-                            await setCache(cacheKey, provento, CACHE_PROVENTOS); 
-                            proventosPool.push(provento);
-
-                            // --- CORREÇÃO CRÍTICA DE ID ---
-                            // Adicionamos o 'type' (DIV/JCP) e o valor no ID para evitar colisão no mesmo dia
-                            // Ex: ITSA4_2025-01-02_JCP_0.234
-                            const safeType = provento.type || 'REND';
-                            const safeValue = (provento.value || 0).toFixed(4);
-                            const idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
-
-                            // Verifica se já temos esse ID exato em memória
-                            const existe = proventosConhecidos.some(p => p.id === idUnico);
-                            
-                            if (!existe) {
-                                const novoProvento = { 
-                                    ...provento, 
-                                    processado: false, 
-                                    id: idUnico,
-                                    type: safeType // Garante que o tipo vai para o objeto
-                                };
-                                
-                                // Tenta salvar. Se a coluna 'type' não existir no banco, 
-                                // ela será ignorada pelo Supabase, mas o ID único garante que o dado fique salvo.
-                                await supabaseDB.addProventoConhecido(novoProvento);
-                                proventosConhecidos.push(novoProvento);
-                            }
-                        }
-                    }));
-                }
-            } catch (error) {
-                console.error("Erro Scraper:", error);
-            }
+    // 1. Verifica Cache
+    await Promise.all(ativosParaBuscar.map(async (symbol) => {
+        const cacheKey = `provento_ia_${symbol}`;
+        if (force) {
+            await vestoDB.delete('apiCache', cacheKey);
         }
         
-        return processarProventosScraper(proventosPool); 
+        const proventoCache = await getCache(cacheKey);
+        if (proventoCache && !force) {
+            proventosPool.push(proventoCache);
+        } else {
+            const limiteCalculado = calcularLimiteMeses(symbol);
+            listaParaAPI.push({ ticker: symbol, limit: limiteCalculado });
+        }
+    }));
+    
+    // 2. Busca na API
+    if (listaParaAPI.length > 0) {
+        try {
+            const novosProventos = await callScraperProventosCarteiraAPI(listaParaAPI);
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/; 
+
+            if (novosProventos && Array.isArray(novosProventos)) {
+                // SET PARA EVITAR COLISÃO DE ID NO MESMO LOTE
+                const idsNesteLote = new Set();
+
+                await Promise.all(novosProventos.map(async (provento) => {
+                    // Validação rigorosa de data
+                    const dataValida = provento.paymentDate && dateRegex.test(provento.paymentDate);
+
+                    if (provento && provento.symbol && dataValida) {
+                        const cacheKey = `provento_ia_${provento.symbol}`;
+                        await setCache(cacheKey, provento, CACHE_PROVENTOS); 
+                        proventosPool.push(provento);
+
+                        // --- CORREÇÃO DE ID ÚNICO ---
+                        const safeType = provento.type || 'REND';
+                        const safeValue = (provento.value || 0).toFixed(4);
+                        
+                        // Gera ID base
+                        let idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
+
+                        // Se esse ID já foi gerado neste loop (colisão), adiciona sufixo
+                        let contador = 2;
+                        while (idsNesteLote.has(idUnico)) {
+                            idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}_v${contador}`;
+                            contador++;
+                        }
+                        idsNesteLote.add(idUnico);
+
+                        // Verifica se já temos esse ID salvo na memória global
+                        const existe = proventosConhecidos.some(p => p.id === idUnico);
+                        
+                        if (!existe) {
+                            const novoProvento = { 
+                                ...provento, 
+                                processado: false, 
+                                id: idUnico,
+                                type: safeType 
+                            };
+                            
+                            await supabaseDB.addProventoConhecido(novoProvento);
+                            proventosConhecidos.push(novoProvento);
+                        }
+                    }
+                }));
+            }
+        } catch (error) {
+            console.error("Erro Scraper:", error);
+        }
     }
+    
+    return processarProventosScraper(proventosPool); 
+}
 	
 	async function callScraperProximoProventoAPI(ticker) {
         const body = { mode: 'proximo_provento', payload: { ticker } };

@@ -173,19 +173,44 @@ export async function saveAppState(key, value_json) {
 }
 
 export async function getProventosConhecidos() {
+    // O select('*') já traz a coluna 'type' se ela existir no banco
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
         .select('*'); 
+    
     if (error) throw new Error(handleSupabaseError(error, "getProventosConhecidos"));
     
     if (data) {
         return data.map(item => ({
             ...item,
             paymentDate: item.paymentdate,
-            dataCom: item.datacom // <--- ADICIONADO: Recupera a Data Com do banco
+            dataCom: item.datacom,
+            type: item.type || 'REND' // Garante que se vier nulo, assume REND
         }));
     }
     return [];
+}
+
+export async function addProventoConhecido(provento) {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) throw new Error("Usuário não autenticado.");
+    
+    const proventoParaDB = {
+        id: provento.id,
+        user_id: user.id,
+        symbol: provento.symbol,
+        value: provento.value,
+        processado: provento.processado,
+        paymentdate: provento.paymentDate,
+        datacom: provento.dataCom,
+        type: provento.type // <--- ESSA É A LINHA QUE FALTAVA PARA SALVAR O JCP/DIV
+    };
+
+    const { error } = await supabaseClient
+        .from('proventosconhecidos') 
+        .upsert(proventoParaDB, { onConflict: 'user_id, id' });
+    
+    if (error) throw new Error(handleSupabaseError(error, "addProventoConhecido"));
 }
 
 export async function addProventoConhecido(provento) {

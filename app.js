@@ -3223,33 +3223,33 @@ async function buscarProventosFuturos(force = false) {
         const proventosPool = [];
         const ativosParaBuscar = [];
 
-        // 1. Verifica cache local (Agora espera receber uma LISTA)
+        // 1. Verifica cache local
         await Promise.all(ativosCompativeis.map(async (symbol) => {
-            // Mudamos a chave para garantir que não pegue o cache "quebrado" antigo
-            const cacheKey = `proventos_lista_v2_${symbol}`;
+            // Mudamos a chave para forçar um cache novo e limpo (v3)
+            const cacheKey = `proventos_lista_v3_${symbol}`;
             
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
-                // Opcional: limpar proventosConhecidos se quiser resetar tudo
-                // await removerProventosConhecidos(symbol);
+                // Removemos do banco para garantir que baixaremos tudo limpo novamente
+                await removerProventosConhecidos(symbol);
             }
             
             const listaCache = await getCache(cacheKey);
             
+            // Se achou lista no cache, usa ela
             if (listaCache && Array.isArray(listaCache) && !force) {
-                // CACHE ENCONTRADO: Adiciona tudo ao pool e restaura na memória
                 listaCache.forEach(p => {
                     proventosPool.push(p);
                     
-                    // --- CORREÇÃO VITAL: Restaura o histórico na memória ---
-                    // Isso garante que o cálculo de "Recebidos" funcione mesmo se o DB falhar
-                    const idUnico = p.id || (p.symbol + '_' + p.paymentDate);
+                    // Restaura na memória global para o cálculo funcionar
+                    const idUnico = p.id;
                     const exists = proventosConhecidos.some(pc => pc.id === idUnico);
                     if (!exists) {
-                        proventosConhecidos.push({ ...p, id: idUnico });
+                        proventosConhecidos.push(p);
                     }
                 });
             } else {
+                // Se não achou, marca para buscar na API
                 const limiteCalculado = calcularLimiteMeses(symbol);
                 ativosParaBuscar.push({ 
                     ticker: symbol, 
@@ -3265,48 +3265,63 @@ async function buscarProventosFuturos(force = false) {
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
                     
-                    // --- AGRUPAMENTO POR ATIVO (FIX) ---
-                    // Agrupa os proventos por símbolo antes de salvar
+                    // Agrupa por ativo para salvar no cache corretamente
                     const mapPorAtivo = {};
                     
                     novosProventos.forEach(provento => {
                         if (provento && provento.symbol && provento.paymentDate) {
                             if (!mapPorAtivo[provento.symbol]) mapPorAtivo[provento.symbol] = [];
+                            
+                            // --- CORREÇÃO DE ID (CRUCIAL) ---
+                            // Adiciona o TIPO ao ID para evitar colisão em dias com múltiplos pagamentos
+                            const tipoSafe = (provento.type || 'REND').replace(/\s+/g, '').toUpperCase();
+                            const idUnico = `${provento.symbol}_${provento.paymentDate}_${tipoSafe}`;
+                            
+                            // Injetamos o ID gerado no objeto provento
+                            provento.id = idUnico; 
+                            
                             mapPorAtivo[provento.symbol].push(provento);
                         }
                     });
 
-                    // Processa e Salva cada grupo
+                    // Processa cada ativo
                     await Promise.all(Object.keys(mapPorAtivo).map(async (symbol) => {
                         const lista = mapPorAtivo[symbol];
-                        const cacheKey = `proventos_lista_v2_${symbol}`;
+                        const cacheKey = `proventos_lista_v3_${symbol}`;
                         
-                        // 1. Salva a LISTA INTEIRA no cache
+                        // 1. Salva a LISTA COMPLETA no cache (corrige o bug do F5)
                         await setCache(cacheKey, lista, CACHE_PROVENTOS);
                         
-                        // 2. Processa individualmente para a memória e DB
-                        lista.forEach(provento => {
+                        // 2. Salva no Banco de Dados e Memória
+                        // Usamos um loop simples para garantir o processamento
+                        for (const provento of lista) {
                             proventosPool.push(provento);
 
-                            const idUnico = provento.symbol + '_' + provento.paymentDate;
-                            const existingIndex = proventosConhecidos.findIndex(p => p.id === idUnico);
+                            // Verifica se já existe na memória
+                            const existingIndex = proventosConhecidos.findIndex(p => p.id === provento.id);
                             
                             if (existingIndex === -1) {
-                                // Novo: Adiciona
-                                const novoProvento = { ...provento, processado: false, id: idUnico };
-                                // Salva no DB sem await para não travar a UI (fire and forget)
-                                supabaseDB.addProventoConhecido(novoProvento).catch(err => console.warn("Erro ao salvar provento DB:", err));
+                                // NOVO: Adiciona
+                                const novoProvento = { ...provento, processado: false };
                                 proventosConhecidos.push(novoProvento);
+                                
+                                // Salva no Supabase com proteção contra erro individual
+                                // Se um falhar, NÃO trava os outros
+                                supabaseDB.addProventoConhecido(novoProvento)
+                                    .catch(err => console.warn(`Falha ao salvar provento ${provento.id}:`, err));
+                                    
                             } else {
-                                // Existente: Atualiza tipo se mudou (Correção JCP/Rendimento)
+                                // EXISTENTE: Atualiza tipo se mudou
                                 const existing = proventosConhecidos[existingIndex];
                                 if (existing.type !== provento.type && provento.type !== 'Rendimento') {
                                     proventosConhecidos[existingIndex].type = provento.type;
+                                    
                                     const proventoCorrigido = { ...existing, type: provento.type };
-                                    supabaseDB.addProventoConhecido(proventoCorrigido).catch(() => {});
+                                    supabaseDB.addProventoConhecido(proventoCorrigido)
+                                        .catch(err => console.warn(`Erro update tipo ${provento.id}:`, err));
                                 }
                             }
-                        });
+                        }
                     }));
                 }
             } catch (error) {

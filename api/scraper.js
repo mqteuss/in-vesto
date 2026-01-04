@@ -166,21 +166,7 @@ async function scrapeFundamentos(ticker) {
     }
 }
 
-// ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (MANTIDO API JSON)
-// ---------------------------------------------------------
-
-// ... (mantenha o código anterior até a função scrapeAsset)
-
-// ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (ATUALIZADO PARA AÇÕES)
-// ---------------------------------------------------------
-
-// EM scraper.v2.js
-
-// ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (CORRIGIDO)
-// ---------------------------------------------------------
+// EM scraper.v2.js -> Substitua a função scrapeAsset
 
 async function scrapeAsset(ticker) {
     try {
@@ -194,45 +180,42 @@ async function scrapeAsset(ticker) {
             headers: { 
                 'X-Requested-With': 'XMLHttpRequest',
                 'Referer': 'https://statusinvest.com.br/',
-                'Origin': 'https://statusinvest.com.br'
+                'User-Agent': 'Mozilla/5.0'
             } 
         });
 
         const earnings = data.assetEarningsModels || [];
 
         const dividendos = earnings.map(d => {
-            // --- CORREÇÃO DE DATA ---
             const parseDateJSON = (dStr) => {
-                // Se for nulo, vazio ou traço, retorna null
                 if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
-                
                 const parts = dStr.split('/');
-                // Garante que temos Dia, Mês e Ano. Se não, retorna null.
                 if (parts.length !== 3) return null;
-                
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
-            // ------------------------
 
-            let labelTipo = 'Rendimento';
+            // Mapeamento Explícito
+            let labelTipo = 'REND'; // Padrão
+            if (d.et === 1) labelTipo = 'DIV';
+            if (d.et === 2) labelTipo = 'JCP';
+            
+            // Se vier texto direto da API (às vezes acontece)
             if (d.etd) {
-                labelTipo = d.etd; 
-            } else if (d.et === 1) {
-                labelTipo = 'Dividendo';
-            } else if (d.et === 2) {
-                labelTipo = 'JCP';
+                const texto = d.etd.toUpperCase();
+                if (texto.includes('JURO')) labelTipo = 'JCP';
+                else if (texto.includes('DIVID')) labelTipo = 'DIV';
             }
 
             return {
                 dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
                 value: d.v,
-                type: labelTipo, 
+                type: labelTipo, // 'JCP', 'DIV' ou 'REND'
                 rawType: d.et
             };
         });
 
-        // Filtra itens que ficaram com data inválida (null) para não quebrar a ordenação
+        // Remove datas inválidas e ordena
         return dividendos
             .filter(d => d.paymentDate !== null) 
             .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
@@ -242,11 +225,6 @@ async function scrapeAsset(ticker) {
         return []; 
     }
 }
-
-
-// ---------------------------------------------------------
-// HANDLER PRINCIPAL
-// ---------------------------------------------------------
 
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);

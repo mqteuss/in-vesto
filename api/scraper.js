@@ -186,34 +186,36 @@ async function scrapeAsset(ticker) {
 
         const earnings = data.assetEarningsModels || [];
 
-        const dividendos = earnings.map(d => {
-            const parseDateJSON = (dStr) => {
-                if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
-                const parts = dStr.split('/');
-                if (parts.length !== 3) return null;
-                return `${parts[2]}-${parts[1]}-${parts[0]}`;
-            };
+const dividendos = earnings.map(d => {
+    const parseDateJSON = (dStr) => {
+        if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
+        const parts = dStr.split('/');
+        if (parts.length !== 3) return null;
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    };
 
-            // Mapeamento Explícito
-            let labelTipo = 'REND'; // Padrão
-            if (d.et === 1) labelTipo = 'DIV';
-            if (d.et === 2) labelTipo = 'JCP';
-            
-            // Se vier texto direto da API (às vezes acontece)
-            if (d.etd) {
-                const texto = d.etd.toUpperCase();
-                if (texto.includes('JURO')) labelTipo = 'JCP';
-                else if (texto.includes('DIVID')) labelTipo = 'DIV';
-            }
+    // Mapeamento Explícito
+    let labelTipo = 'REND'; // Padrão (Fica invisível no app)
+    
+    if (d.et === 1) labelTipo = 'DIV';
+    if (d.et === 2) labelTipo = 'JCP';
+    
+    // Verificação de texto (Prioridade Alta)
+    if (d.etd) {
+        const texto = d.etd.toUpperCase();
+        if (texto.includes('JURO')) labelTipo = 'JCP';
+        else if (texto.includes('DIVID')) labelTipo = 'DIV';
+        else if (texto.includes('TRIBUTADO')) labelTipo = 'REND_TRIB'; // <--- NOVA REGRA AQUI
+    }
 
-            return {
-                dataCom: parseDateJSON(d.ed),
-                paymentDate: parseDateJSON(d.pd),
-                value: d.v,
-                type: labelTipo, // 'JCP', 'DIV' ou 'REND'
-                rawType: d.et
-            };
-        });
+    return {
+        dataCom: parseDateJSON(d.ed),
+        paymentDate: parseDateJSON(d.pd),
+        value: d.v,
+        type: labelTipo,
+        rawType: d.et
+    };
+});
 
         // Remove datas inválidas e ordena
         return dividendos

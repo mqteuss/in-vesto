@@ -1558,11 +1558,14 @@ function renderizarHistorico() {
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
+    const provSearchInput = document.getElementById('proventos-search-input'); // Garante referência ao input
     
-    // Smart Check
+    // Smart Check: Evita re-renderizar se nada mudou
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${provSearchTerm}`;
+    // Adiciona o termo de busca na assinatura para atualizar ao digitar
+    const termoBusca = provSearchTerm || ''; 
+    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${termoBusca}`;
 
     if (currentSignature === lastHistoricoProventosSignature && listaHistoricoProventos.children.length > 0) {
         return; 
@@ -1573,16 +1576,27 @@ function renderizarHistoricoProventos() {
     
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // Filtros
+    // 1. Filtros e Ordenação
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
+        
+        // Verifica se a data é válida
         const parts = p.paymentDate.split('-');
+        if(parts.length !== 3) return false;
+        
         const dPag = new Date(parts[0], parts[1]-1, parts[2]);
-        const dataValida = dPag <= hoje;
-        const buscaValida = provSearchTerm === '' || p.symbol.includes(provSearchTerm);
-        return dataValida && buscaValida;
+        
+        // Filtro de Texto (Ticker)
+        const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
+        
+        // Opcional: Se quiser mostrar apenas passados, descomente abaixo. 
+        // Atualmente mostra tudo (passado e futuro próximo confirmado)
+        // const dataValida = dPag <= hoje; 
+        
+        return buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
+    // Estado Vazio
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
@@ -1594,12 +1608,14 @@ function renderizarHistoricoProventos() {
         return;
     }
 
+    // 2. Agrupamento por Mês
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
+        // Filtra itens: Só mostra se o usuário tinha o ativo na Data Com
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1610,9 +1626,10 @@ function renderizarHistoricoProventos() {
             return false;
         });
 
-        if (totalMes === 0) return;
+        // Se o mês não tem nenhum provento válido (qtd > 0), pula
+        if (itensValidos.length === 0) return;
 
-        // Header Mês
+        // 3. Renderiza Header do Mês
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         header.innerHTML = `
@@ -1625,7 +1642,7 @@ function renderizarHistoricoProventos() {
         `;
         fragment.appendChild(header);
 
-        // Lista
+        // 4. Renderiza Lista de Itens
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1636,45 +1653,43 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- LÓGICA DE TIPO (JCP vs DIVIDENDO) ---
+            // --- LÓGICA DE TAGS (JCP vs DIV) ---
             let tipoLabel = '';
             let tipoClass = '';
             
-            // Se o scraper retornou type (scraper v2 atualizado), usamos ele
-            // Se for FII, geralmente não tem distinção (assume rendimento), mas ações tem.
-            const rawType = p.type ? p.type.toUpperCase() : 'RENDIMENTO';
+            // Tenta pegar o tipo salvo no banco ou infere se não existir
+            const rawType = (p.type || '').toUpperCase();
             
             if (rawType.includes('JCP') || rawType.includes('JUROS')) {
                 tipoLabel = 'JCP';
-                tipoClass = 'text-[9px] font-bold text-orange-400 bg-orange-900/20 border border-orange-900/30 px-1.5 py-0.5 rounded ml-2';
-            } else if (rawType.includes('DIVIDENDO')) {
+                tipoClass = 'text-[9px] font-bold text-orange-400 bg-orange-900/20 border border-orange-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
+            } else if (rawType.includes('DIV')) {
                 tipoLabel = 'DIV';
-                tipoClass = 'text-[9px] font-bold text-blue-400 bg-blue-900/20 border border-blue-900/30 px-1.5 py-0.5 rounded ml-2';
-            } else {
-                // Padrão ou FII
-                tipoLabel = ''; // Não mostra nada para FIIs padrão para manter clean, ou 'REND'
+                tipoClass = 'text-[9px] font-bold text-blue-400 bg-blue-900/20 border border-blue-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
             }
+            // FIIs (Rendimentos) ficam sem tag para manter o visual limpo
 
             const item = document.createElement('div');
-            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
+            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group border-b border-[#1A1A1A] last:border-0';
 
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
+                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm">
                         <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
                     </div>
                     
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-1">
+                        <div class="flex items-center">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
                             ${tipoLabel ? `<span class="${tipoClass}">${tipoLabel}</span>` : ''}
                         </div>
-                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
+                        
+                        <div class="flex items-center gap-1.5 mt-1.5 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>
                             <span>${qtd} cotas</span>
                             <span>•</span>
-                            <span>${formatBRL(p.value)}</span>
+                            <span>${formatBRL(p.value)}/cota</span>
                         </div>
                     </div>
                 </div>
@@ -3229,66 +3244,69 @@ async function renderizarCarteira() {
 
 // ... dentro de buscarProventosFuturos(force) ...
 
+// EM app.js -> Substitua a lógica dentro de buscarProventosFuturos
+
     async function buscarProventosFuturos(force = false) {
-        // ALTERAÇÃO: Agora pega tudo (Ações + FIIs) da carteira
-        const ativosParaBuscar = carteiraCalculada
-            .map(a => a.symbol); 
-            // Se quiser ser explícito: .filter(a => isFII(a.symbol) || isAcao(a.symbol))
-            
+        const ativosParaBuscar = carteiraCalculada.map(a => a.symbol); 
         if (ativosParaBuscar.length === 0) return [];
 
-        // Arrays thread-safe
         const proventosPool = [];
         const listaParaAPI = [];
 
-        // 1. Dispara todas as verificações de cache simultaneamente
+        // 1. Verifica Cache
         await Promise.all(ativosParaBuscar.map(async (symbol) => {
             const cacheKey = `provento_ia_${symbol}`;
-            
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
-                await removerProventosConhecidos(symbol);
+                // Não removemos proventos conhecidos aqui para evitar piscar a tela, 
+                // o upsert do banco cuida disso.
             }
             
-            // Tenta pegar do cache
             const proventoCache = await getCache(cacheKey);
-            
             if (proventoCache && !force) {
                 proventosPool.push(proventoCache);
             } else {
-                // Se não tem cache, calcula o limite e marca para busca na API
                 const limiteCalculado = calcularLimiteMeses(symbol);
-                listaParaAPI.push({ 
-                    ticker: symbol, 
-                    limit: limiteCalculado 
-                });
+                listaParaAPI.push({ ticker: symbol, limit: limiteCalculado });
             }
         }));
         
-        // 2. Busca na API apenas o que faltou
-if (listaParaAPI.length > 0) {
+        // 2. Busca na API
+        if (listaParaAPI.length > 0) {
             try {
                 const novosProventos = await callScraperProventosCarteiraAPI(listaParaAPI);
-                
-                // Regex para garantir formato YYYY-MM-DD
-                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                const dateRegex = /^\d{4}-\d{2}-\d{2}$/; // Proteção contra data inválida
 
                 if (novosProventos && Array.isArray(novosProventos)) {
                     await Promise.all(novosProventos.map(async (provento) => {
-                        
-                        // --- VALIDAÇÃO REFORÇADA AQUI ---
-                        const temDataValida = provento.paymentDate && dateRegex.test(provento.paymentDate);
-                        
-                        if (provento && provento.symbol && temDataValida) {
+                        // Validação rigorosa de data
+                        const dataValida = provento.paymentDate && dateRegex.test(provento.paymentDate);
+
+                        if (provento && provento.symbol && dataValida) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_PROVENTOS); 
                             proventosPool.push(provento);
 
-                            const idUnico = provento.symbol + '_' + provento.paymentDate;
+                            // --- CORREÇÃO CRÍTICA DE ID ---
+                            // Adicionamos o 'type' (DIV/JCP) e o valor no ID para evitar colisão no mesmo dia
+                            // Ex: ITSA4_2025-01-02_JCP_0.234
+                            const safeType = provento.type || 'REND';
+                            const safeValue = (provento.value || 0).toFixed(4);
+                            const idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
+
+                            // Verifica se já temos esse ID exato em memória
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
-                                const novoProvento = { ...provento, processado: false, id: idUnico };
+                                const novoProvento = { 
+                                    ...provento, 
+                                    processado: false, 
+                                    id: idUnico,
+                                    type: safeType // Garante que o tipo vai para o objeto
+                                };
+                                
+                                // Tenta salvar. Se a coluna 'type' não existir no banco, 
+                                // ela será ignorada pelo Supabase, mas o ID único garante que o dado fique salvo.
                                 await supabaseDB.addProventoConhecido(novoProvento);
                                 proventosConhecidos.push(novoProvento);
                             }
@@ -3296,7 +3314,7 @@ if (listaParaAPI.length > 0) {
                     }));
                 }
             } catch (error) {
-                console.error("Erro ao buscar novos proventos com Scraper:", error);
+                console.error("Erro Scraper:", error);
             }
         }
         

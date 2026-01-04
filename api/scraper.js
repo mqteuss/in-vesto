@@ -176,13 +176,18 @@ async function scrapeFundamentos(ticker) {
 // PARTE 2: HISTÓRICO -> STATUS INVEST (ATUALIZADO PARA AÇÕES)
 // ---------------------------------------------------------
 
+// EM scraper.v2.js
+
+// ---------------------------------------------------------
+// PARTE 2: HISTÓRICO -> STATUS INVEST (CORRIGIDO)
+// ---------------------------------------------------------
+
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
         let type = 'acao';
         if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
         
-        // chartProventsType=2 geralmente traz o histórico consolidado (caixa)
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
         const { data } = await client.get(url, { 
@@ -196,17 +201,22 @@ async function scrapeAsset(ticker) {
         const earnings = data.assetEarningsModels || [];
 
         const dividendos = earnings.map(d => {
+            // --- CORREÇÃO DE DATA ---
             const parseDateJSON = (dStr) => {
-                if(!dStr) return null;
+                // Se for nulo, vazio ou traço, retorna null
+                if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
+                
                 const parts = dStr.split('/');
+                // Garante que temos Dia, Mês e Ano. Se não, retorna null.
+                if (parts.length !== 3) return null;
+                
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
+            // ------------------------
 
-            // Mapeamento de Tipos (StatusInvest)
-            // et 1 = Dividendo, et 2 = JCP, et 12/Outros = Rendimento
             let labelTipo = 'Rendimento';
             if (d.etd) {
-                labelTipo = d.etd; // StatusInvest as vezes manda "Dividendo" ou "JCP" aqui
+                labelTipo = d.etd; 
             } else if (d.et === 1) {
                 labelTipo = 'Dividendo';
             } else if (d.et === 2) {
@@ -217,12 +227,15 @@ async function scrapeAsset(ticker) {
                 dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
                 value: d.v,
-                type: labelTipo, // Agora retorna string legível (JCP, Dividendo, etc)
+                type: labelTipo, 
                 rawType: d.et
             };
         });
 
-        return dividendos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        // Filtra itens que ficaram com data inválida (null) para não quebrar a ordenação
+        return dividendos
+            .filter(d => d.paymentDate !== null) 
+            .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     } catch (error) { 
         console.error(`Erro StatusInvest API ${ticker}:`, error.message);

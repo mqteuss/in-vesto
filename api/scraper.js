@@ -170,12 +170,19 @@ async function scrapeFundamentos(ticker) {
 // PARTE 2: HISTÓRICO -> STATUS INVEST (MANTIDO API JSON)
 // ---------------------------------------------------------
 
+// ... (mantenha o código anterior até a função scrapeAsset)
+
+// ---------------------------------------------------------
+// PARTE 2: HISTÓRICO -> STATUS INVEST (ATUALIZADO PARA AÇÕES)
+// ---------------------------------------------------------
+
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
         let type = 'acao';
         if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
         
+        // chartProventsType=2 geralmente traz o histórico consolidado (caixa)
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
         const { data } = await client.get(url, { 
@@ -195,11 +202,23 @@ async function scrapeAsset(ticker) {
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
 
+            // Mapeamento de Tipos (StatusInvest)
+            // et 1 = Dividendo, et 2 = JCP, et 12/Outros = Rendimento
+            let labelTipo = 'Rendimento';
+            if (d.etd) {
+                labelTipo = d.etd; // StatusInvest as vezes manda "Dividendo" ou "JCP" aqui
+            } else if (d.et === 1) {
+                labelTipo = 'Dividendo';
+            } else if (d.et === 2) {
+                labelTipo = 'JCP';
+            }
+
             return {
                 dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
                 value: d.v,
-                type: d.et
+                type: labelTipo, // Agora retorna string legível (JCP, Dividendo, etc)
+                rawType: d.et
             };
         });
 
@@ -210,6 +229,7 @@ async function scrapeAsset(ticker) {
         return []; 
     }
 }
+
 
 // ---------------------------------------------------------
 // HANDLER PRINCIPAL

@@ -150,7 +150,7 @@ export async function saveAppState(key, value_json) {
 }
 
 export async function getProventosConhecidos() {
-    // Busca todas as colunas, incluindo 'type' se existir
+    // Busca tudo, incluindo 'type' e 'datacom'
     const { data, error } = await supabaseClient
         .from('proventosconhecidos') 
         .select('*'); 
@@ -162,13 +162,13 @@ export async function getProventosConhecidos() {
             ...item,
             paymentDate: item.paymentdate,
             dataCom: item.datacom,
-            type: item.type || 'REND' // Garante fallback se vier nulo
+            type: item.type || 'REND' // Fallback se vier nulo
         }));
     }
     return [];
 }
 
-// --- FUNÇÃO DE ADICIONAR PROVENTO (UNIFICADA E CORRIGIDA) ---
+// --- FUNÇÃO CORRIGIDA E UNIFICADA ---
 export async function addProventoConhecido(provento) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
@@ -181,7 +181,7 @@ export async function addProventoConhecido(provento) {
         processado: provento.processado,
         paymentdate: provento.paymentDate,
         datacom: provento.dataCom, // Salva Data Com
-        type: provento.type        // Salva Tipo (JCP/DIV) -> CRUCIAL
+        type: provento.type        // Salva Tipo (JCP/DIV/REND_TRIB) -> CRUCIAL
     };
 
     const { error } = await supabaseClient

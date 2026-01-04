@@ -1558,12 +1558,11 @@ function renderizarHistorico() {
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
-    const provSearchInput = document.getElementById('proventos-search-input'); // Garante referência ao input
     
-    // Smart Check: Evita re-renderizar se nada mudou
+    // --- 1. Smart Check (Performance) ---
+    // Verifica se houve mudanças para evitar re-renderizar a lista inteira sem necessidade
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    // Adiciona o termo de busca na assinatura para atualizar ao digitar
     const termoBusca = provSearchTerm || ''; 
     const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${termoBusca}`;
 
@@ -1576,27 +1575,21 @@ function renderizarHistoricoProventos() {
     
     const hoje = new Date(); hoje.setHours(0,0,0,0);
 
-    // 1. Filtros e Ordenação
+    // --- 2. Filtros e Ordenação ---
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         
-        // Verifica se a data é válida
+        // Verifica integridade da data
         const parts = p.paymentDate.split('-');
         if(parts.length !== 3) return false;
-        
-        const dPag = new Date(parts[0], parts[1]-1, parts[2]);
         
         // Filtro de Texto (Ticker)
         const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
         
-        // Opcional: Se quiser mostrar apenas passados, descomente abaixo. 
-        // Atualmente mostra tudo (passado e futuro próximo confirmado)
-        // const dataValida = dPag <= hoje; 
-        
         return buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    // Estado Vazio
+    // --- 3. Estado Vazio ---
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
@@ -1608,14 +1601,14 @@ function renderizarHistoricoProventos() {
         return;
     }
 
-    // 2. Agrupamento por Mês
+    // --- 4. Agrupamento e Renderização ---
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
     const fragment = document.createDocumentFragment();
 
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
-        // Filtra itens: Só mostra se o usuário tinha o ativo na Data Com
+        // Filtra itens: Só exibe se o usuário tinha quantidade na Data Com
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1626,10 +1619,10 @@ function renderizarHistoricoProventos() {
             return false;
         });
 
-        // Se o mês não tem nenhum provento válido (qtd > 0), pula
+        // Se o mês estiver vazio após o filtro de quantidade, pula
         if (itensValidos.length === 0) return;
 
-        // 3. Renderiza Header do Mês
+        // Header do Mês (Sticky)
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         header.innerHTML = `
@@ -1642,7 +1635,7 @@ function renderizarHistoricoProventos() {
         `;
         fragment.appendChild(header);
 
-        // 4. Renderiza Lista de Itens
+        // Lista de Cards
         const listaGrupo = document.createElement('div');
         listaGrupo.className = 'px-3 pb-2'; 
 
@@ -1653,21 +1646,29 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- LÓGICA DE TAGS (JCP vs DIV) ---
+            // --- LÓGICA DE TAGS VISUAIS ---
             let tipoLabel = '';
             let tipoClass = '';
             
-            // Tenta pegar o tipo salvo no banco ou infere se não existir
+            // Tenta pegar o tipo ou infere string vazia
             const rawType = (p.type || '').toUpperCase();
             
             if (rawType.includes('JCP') || rawType.includes('JUROS')) {
+                // TAG JCP (Laranja)
                 tipoLabel = 'JCP';
                 tipoClass = 'text-[9px] font-bold text-orange-400 bg-orange-900/20 border border-orange-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
+            
             } else if (rawType.includes('DIV')) {
+                // TAG DIVIDENDO (Azul)
                 tipoLabel = 'DIV';
                 tipoClass = 'text-[9px] font-bold text-blue-400 bg-blue-900/20 border border-blue-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
+            
+            } else if (rawType.includes('TRIB')) {
+                // TAG TRIBUTADO (Roxo) - A CORREÇÃO PARA OS "EM BRANCO"
+                tipoLabel = 'REND'; 
+                tipoClass = 'text-[9px] font-bold text-purple-400 bg-purple-900/20 border border-purple-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
             }
-            // FIIs (Rendimentos) ficam sem tag para manter o visual limpo
+            // FIIs normais (rendimentos isentos) continuam sem tag para visual clean
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group border-b border-[#1A1A1A] last:border-0';
@@ -1683,7 +1684,6 @@ function renderizarHistoricoProventos() {
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
                             ${tipoLabel ? `<span class="${tipoClass}">${tipoLabel}</span>` : ''}
                         </div>
-                        
                         <div class="flex items-center gap-1.5 mt-1.5 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>

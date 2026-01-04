@@ -3266,14 +3266,20 @@ async function renderizarCarteira() {
         }));
         
         // 2. Busca na API apenas o que faltou
-        if (listaParaAPI.length > 0) {
+if (listaParaAPI.length > 0) {
             try {
-                // Reutilizamos a rota existente. O Scraper v2 lida com Ações e FIIs.
                 const novosProventos = await callScraperProventosCarteiraAPI(listaParaAPI);
                 
+                // Regex para garantir formato YYYY-MM-DD
+                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
                 if (novosProventos && Array.isArray(novosProventos)) {
                     await Promise.all(novosProventos.map(async (provento) => {
-                        if (provento && provento.symbol && provento.paymentDate) {
+                        
+                        // --- VALIDAÇÃO REFORÇADA AQUI ---
+                        const temDataValida = provento.paymentDate && dateRegex.test(provento.paymentDate);
+                        
+                        if (provento && provento.symbol && temDataValida) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
                             await setCache(cacheKey, provento, CACHE_PROVENTOS); 
                             proventosPool.push(provento);
@@ -3282,7 +3288,6 @@ async function renderizarCarteira() {
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
-                                // Preserva o 'type' (JCP/Dividendo) vindo do scraper
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
                                 await supabaseDB.addProventoConhecido(novoProvento);
                                 proventosConhecidos.push(novoProvento);

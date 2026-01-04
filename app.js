@@ -128,6 +128,11 @@ const formatDateToInput = (dateString) => {
 };
 
 const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
+const isAcao = (symbol) => {
+    if (!symbol) return false;
+    return !isFII(symbol);
+};
+
 
 function parseMesAno(mesAnoStr) { 
     try {
@@ -1551,10 +1556,6 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
-// --- EM app.js: Substitua a função renderizarHistoricoProventos ---
-
-// --- EM app.js: Substitua a função renderizarHistoricoProventos ---
-
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
@@ -1635,13 +1636,24 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- REFINAMENTO DE CORES AQUI ---
-            // Ícone Check Verde (text-green-400)
-            const iconPago = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
+            // --- LÓGICA DE TIPO (JCP vs DIVIDENDO) ---
+            let tipoLabel = '';
+            let tipoClass = '';
             
-            // Fundo verde suave (/10)
-            const badgeBg = 'bg-green-500/10 border border-green-500/20';
-            // ---------------------------------
+            // Se o scraper retornou type (scraper v2 atualizado), usamos ele
+            // Se for FII, geralmente não tem distinção (assume rendimento), mas ações tem.
+            const rawType = p.type ? p.type.toUpperCase() : 'RENDIMENTO';
+            
+            if (rawType.includes('JCP') || rawType.includes('JUROS')) {
+                tipoLabel = 'JCP';
+                tipoClass = 'text-[9px] font-bold text-orange-400 bg-orange-900/20 border border-orange-900/30 px-1.5 py-0.5 rounded ml-2';
+            } else if (rawType.includes('DIVIDENDO')) {
+                tipoLabel = 'DIV';
+                tipoClass = 'text-[9px] font-bold text-blue-400 bg-blue-900/20 border border-blue-900/30 px-1.5 py-0.5 rounded ml-2';
+            } else {
+                // Padrão ou FII
+                tipoLabel = ''; // Não mostra nada para FIIs padrão para manter clean, ou 'REND'
+            }
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
@@ -1653,12 +1665,9 @@ function renderizarHistoricoProventos() {
                     </div>
                     
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
-                            
-                            <div class="${badgeBg} w-6 h-6 flex items-center justify-center rounded-md shrink-0" title="Pago">
-                                ${iconPago}
-                            </div>
+                            ${tipoLabel ? `<span class="${tipoClass}">${tipoLabel}</span>` : ''}
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
@@ -1883,7 +1892,7 @@ function renderizarNoticias(articles) {
             const drawerId = `news-drawer-${safeLabel}-${index}`;
             
             // Tickers
-            const tickerRegex = /[A-Z]{4}11/g;
+            const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g; 
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
             let tickersHtml = '';
             if (foundTickers.length > 0) {
@@ -3218,27 +3227,25 @@ async function renderizarCarteira() {
         return Math.max(3, mesesDiff + 2);
     }
 
-    // --- FUNÇÃO PRINCIPAL ATUALIZADA ---
-// --- OTIMIZAÇÃO: Leitura de Cache em Paralelo ---
-    async function buscarProventosFuturos(force = false) {
-        const fiiNaCarteira = carteiraCalculada
-            .filter(a => isFII(a.symbol))
-            .map(a => a.symbol);
-            
-        if (fiiNaCarteira.length === 0) return [];
+// ... dentro de buscarProventosFuturos(force) ...
 
-        // Arrays thread-safe (JS é single-thread, então push é seguro)
+    async function buscarProventosFuturos(force = false) {
+        // ALTERAÇÃO: Agora pega tudo (Ações + FIIs) da carteira
+        const ativosParaBuscar = carteiraCalculada
+            .map(a => a.symbol); 
+            // Se quiser ser explícito: .filter(a => isFII(a.symbol) || isAcao(a.symbol))
+            
+        if (ativosParaBuscar.length === 0) return [];
+
+        // Arrays thread-safe
         const proventosPool = [];
-        const fiisParaBuscar = [];
+        const listaParaAPI = [];
 
         // 1. Dispara todas as verificações de cache simultaneamente
-        await Promise.all(fiiNaCarteira.map(async (symbol) => {
+        await Promise.all(ativosParaBuscar.map(async (symbol) => {
             const cacheKey = `provento_ia_${symbol}`;
             
             if (force) {
-                // Não precisamos esperar o delete para continuar a lógica,
-                // mas mantemos o await para garantir consistência se necessário.
-                // Como são operações independentes, o Promise.all gerencia o paralelismo.
                 await vestoDB.delete('apiCache', cacheKey);
                 await removerProventosConhecidos(symbol);
             }
@@ -3251,20 +3258,20 @@ async function renderizarCarteira() {
             } else {
                 // Se não tem cache, calcula o limite e marca para busca na API
                 const limiteCalculado = calcularLimiteMeses(symbol);
-                fiisParaBuscar.push({ 
+                listaParaAPI.push({ 
                     ticker: symbol, 
                     limit: limiteCalculado 
                 });
             }
         }));
         
-        // 2. Busca na API apenas o que faltou (Batch Request)
-        if (fiisParaBuscar.length > 0) {
+        // 2. Busca na API apenas o que faltou
+        if (listaParaAPI.length > 0) {
             try {
-                const novosProventos = await callScraperProventosCarteiraAPI(fiisParaBuscar);
+                // Reutilizamos a rota existente. O Scraper v2 lida com Ações e FIIs.
+                const novosProventos = await callScraperProventosCarteiraAPI(listaParaAPI);
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
-                    // Salva os novos resultados no cache em paralelo também
                     await Promise.all(novosProventos.map(async (provento) => {
                         if (provento && provento.symbol && provento.paymentDate) {
                             const cacheKey = `provento_ia_${provento.symbol}`;
@@ -3275,8 +3282,8 @@ async function renderizarCarteira() {
                             const existe = proventosConhecidos.some(p => p.id === idUnico);
                             
                             if (!existe) {
+                                // Preserva o 'type' (JCP/Dividendo) vindo do scraper
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
-                                // Adiciona ao DB e memória
                                 await supabaseDB.addProventoConhecido(novoProvento);
                                 proventosConhecidos.push(novoProvento);
                             }
@@ -3314,11 +3321,12 @@ async function renderizarCarteira() {
         return response.json;
     }
 
-    async function buscarHistoricoProventosAgregado(force = false) {
-        const fiiNaCarteira = carteiraCalculada.filter(a => isFII(a.symbol));
-        if (fiiNaCarteira.length === 0) return { labels: [], data: [] };
+async function buscarHistoricoProventosAgregado(force = false) {
+        // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
+        const ativosCarteira = carteiraCalculada.map(a => a.symbol);
+        
+        if (ativosCarteira.length === 0) return { labels: [], data: [] };
 
-        const fiiSymbols = fiiNaCarteira.map(a => a.symbol);
         const cacheKey = `cache_grafico_historico_${currentUserId}`;
         
         if (force) {
@@ -3329,7 +3337,7 @@ async function renderizarCarteira() {
 
         if (!rawDividends) {
             try {
-                rawDividends = await callScraperHistoricoPortfolioAPI(fiiSymbols);
+                rawDividends = await callScraperHistoricoPortfolioAPI(ativosCarteira);
                 if (rawDividends && rawDividends.length > 0) {
                     await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
                 }

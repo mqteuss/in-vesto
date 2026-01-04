@@ -1556,12 +1556,17 @@ function renderizarHistorico() {
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
-    // Assinatura para evitar re-render desnecessário (Cache de visualização)
+    // Assinatura para Otimização (Mantida e Melhorada)
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${provSearchTerm}`;
+    
+    // checksumTipos: Cria um número único baseado nos tipos. Se "Rendimento" virar "JCP", esse número muda.
+    const checksumTipos = proventosConhecidos.reduce((acc, p) => acc + (p.type ? p.type.length : 0), 0);
+    
+    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${provSearchTerm}-${checksumTipos}`;
 
-    if (currentSignature === lastHistoricoProventosSignature && listaHistoricoProventos.children.length > 0) { 
+    // A "Trava de Assinatura" volta a funcionar aqui, protegendo a performance
+    if (currentSignature === lastHistoricoProventosSignature && listaHistoricoProventos.children.length > 0) {
         return; 
     }
     
@@ -1593,7 +1598,6 @@ function renderizarHistoricoProventos() {
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
-        // Filtra apenas itens que o usuário tinha na data com
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1606,7 +1610,6 @@ function renderizarHistoricoProventos() {
 
         if (totalMes === 0) return;
 
-        // Cabeçalho do Mês
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         header.innerHTML = `
@@ -1625,30 +1628,19 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- TRATAMENTO VISUAL DO TIPO (CORRIGIDO) ---
+            // Tratamento Visual (JCP, TRIB, DIV)
             let tipoLabel = p.type || 'Rendimento';
             
-            // Abreviações para caber no card
             if (tipoLabel === 'Rendimento') tipoLabel = 'Rend.';
-            else if (tipoLabel === 'Dividendo' || tipoLabel === 'Dividendos') tipoLabel = 'DIV';
-            else if (tipoLabel === 'JCP' || tipoLabel === 'Juros Sobre Capital Próprio') tipoLabel = 'JCP';
-            else if (tipoLabel === 'Rend. Tributado') tipoLabel = 'TRIB';
+            else if (tipoLabel === 'Dividendo') tipoLabel = 'DIV';
+            else if (tipoLabel === 'JCP') tipoLabel = 'JCP';
+            else if (tipoLabel === 'Rend. Tributado') tipoLabel = 'TRIB'; 
             else if (tipoLabel === 'Amortização') tipoLabel = 'AMOR';
 
-            // Cores da Badge dependendo do tipo
-            let badgeStyle = 'text-gray-500 bg-[#222] border-[#333]'; // Default (FIIs geralmente)
-
-            if (tipoLabel === 'JCP' || tipoLabel === 'TRIB') {
-                // Amarelo para JCP (Atenção/Tributado)
-                badgeStyle = 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
-            } else if (tipoLabel === 'DIV') {
-                // Verde para Dividendos (Isento)
-                badgeStyle = 'text-green-500 bg-green-500/10 border-green-500/20';
-            } else if (tipoLabel === 'AMOR') {
-                // Azul para Amortização
-                badgeStyle = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-            }
-            // ---------------------------------------------
+            // Cores das Badges
+            let badgeStyle = 'text-gray-500 bg-[#222] border-[#333]';
+            if (tipoLabel === 'JCP' || tipoLabel === 'TRIB') badgeStyle = 'text-yellow-600 bg-yellow-900/10 border-yellow-900/20';
+            if (tipoLabel === 'DIV') badgeStyle = 'text-green-600 bg-green-900/10 border-green-900/20';
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
@@ -1662,7 +1654,6 @@ function renderizarHistoricoProventos() {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
-                            
                             <span class="text-[9px] font-bold px-1.5 py-[2px] rounded border tracking-wide uppercase ${badgeStyle}">
                                 ${tipoLabel}
                             </span>
@@ -3232,20 +3223,32 @@ async function buscarProventosFuturos(force = false) {
         const proventosPool = [];
         const ativosParaBuscar = [];
 
-        // 1. Verifica cache local
+        // 1. Verifica cache local (Agora espera receber uma LISTA)
         await Promise.all(ativosCompativeis.map(async (symbol) => {
-            const cacheKey = `provento_ia_${symbol}`;
+            // Mudamos a chave para garantir que não pegue o cache "quebrado" antigo
+            const cacheKey = `proventos_lista_v2_${symbol}`;
             
             if (force) {
-                // Se forçado, limpa cache E remove da memória para garantir re-download
                 await vestoDB.delete('apiCache', cacheKey);
-                // Não removemos de 'proventosConhecidos' aqui para permitir a comparação e correção abaixo
+                // Opcional: limpar proventosConhecidos se quiser resetar tudo
+                // await removerProventosConhecidos(symbol);
             }
             
-            const proventoCache = await getCache(cacheKey);
+            const listaCache = await getCache(cacheKey);
             
-            if (proventoCache && !force) {
-                proventosPool.push(proventoCache);
+            if (listaCache && Array.isArray(listaCache) && !force) {
+                // CACHE ENCONTRADO: Adiciona tudo ao pool e restaura na memória
+                listaCache.forEach(p => {
+                    proventosPool.push(p);
+                    
+                    // --- CORREÇÃO VITAL: Restaura o histórico na memória ---
+                    // Isso garante que o cálculo de "Recebidos" funcione mesmo se o DB falhar
+                    const idUnico = p.id || (p.symbol + '_' + p.paymentDate);
+                    const exists = proventosConhecidos.some(pc => pc.id === idUnico);
+                    if (!exists) {
+                        proventosConhecidos.push({ ...p, id: idUnico });
+                    }
+                });
             } else {
                 const limiteCalculado = calcularLimiteMeses(symbol);
                 ativosParaBuscar.push({ 
@@ -3261,44 +3264,49 @@ async function buscarProventosFuturos(force = false) {
                 const novosProventos = await callScraperProventosCarteiraAPI(ativosParaBuscar);
                 
                 if (novosProventos && Array.isArray(novosProventos)) {
-                    await Promise.all(novosProventos.map(async (provento) => {
+                    
+                    // --- AGRUPAMENTO POR ATIVO (FIX) ---
+                    // Agrupa os proventos por símbolo antes de salvar
+                    const mapPorAtivo = {};
+                    
+                    novosProventos.forEach(provento => {
                         if (provento && provento.symbol && provento.paymentDate) {
-                            
-                            // Salva no Cache do Navegador (Cache Rápido)
-                            const cacheKey = `provento_ia_${provento.symbol}`;
-                            await setCache(cacheKey, provento, CACHE_PROVENTOS); 
+                            if (!mapPorAtivo[provento.symbol]) mapPorAtivo[provento.symbol] = [];
+                            mapPorAtivo[provento.symbol].push(provento);
+                        }
+                    });
+
+                    // Processa e Salva cada grupo
+                    await Promise.all(Object.keys(mapPorAtivo).map(async (symbol) => {
+                        const lista = mapPorAtivo[symbol];
+                        const cacheKey = `proventos_lista_v2_${symbol}`;
+                        
+                        // 1. Salva a LISTA INTEIRA no cache
+                        await setCache(cacheKey, lista, CACHE_PROVENTOS);
+                        
+                        // 2. Processa individualmente para a memória e DB
+                        lista.forEach(provento => {
                             proventosPool.push(provento);
 
-                            // --- O PULO DO GATO: LÓGICA DE AUTO-CORREÇÃO ---
                             const idUnico = provento.symbol + '_' + provento.paymentDate;
-                            
-                            // Procura esse provento na lista antiga
                             const existingIndex = proventosConhecidos.findIndex(p => p.id === idUnico);
                             
                             if (existingIndex === -1) {
-                                // Se é novo, adiciona normal
+                                // Novo: Adiciona
                                 const novoProvento = { ...provento, processado: false, id: idUnico };
-                                await supabaseDB.addProventoConhecido(novoProvento);
+                                // Salva no DB sem await para não travar a UI (fire and forget)
+                                supabaseDB.addProventoConhecido(novoProvento).catch(err => console.warn("Erro ao salvar provento DB:", err));
                                 proventosConhecidos.push(novoProvento);
                             } else {
-                                // SE JÁ EXISTE, VERIFICA SE O TIPO MUDOU
-                                // Ex: Estava salvo como "Rendimento", mas o Scraper novo diz "Rend. Tributado"
+                                // Existente: Atualiza tipo se mudou (Correção JCP/Rendimento)
                                 const existing = proventosConhecidos[existingIndex];
-                                
-                                // Se o tipo for diferente E o novo tipo não for genérico, atualiza!
                                 if (existing.type !== provento.type && provento.type !== 'Rendimento') {
-                                    
-                                    // 1. Atualiza na memória RAM imediatamente (Visual)
                                     proventosConhecidos[existingIndex].type = provento.type;
-                                    
-                                    // 2. Atualiza no Banco de Dados Local (Persistência)
-                                    // Como o addProventoConhecido geralmente usa "upsert" ou "put",
-                                    // salvar por cima deve atualizar o registro.
                                     const proventoCorrigido = { ...existing, type: provento.type };
-                                    await supabaseDB.addProventoConhecido(proventoCorrigido);
+                                    supabaseDB.addProventoConhecido(proventoCorrigido).catch(() => {});
                                 }
                             }
-                        }
+                        });
                     }));
                 }
             } catch (error) {

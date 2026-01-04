@@ -46,7 +46,7 @@ function chunkArray(array, size) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1.1: FUNDAMENTOS -> INVESTIDOR10 (MELHOR PARA FIIs)
+// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (COM A LÓGICA ORIGINAL RESTAURADA)
 // ---------------------------------------------------------
 
 function parseExtendedValue(str) {
@@ -63,15 +63,13 @@ function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-async function scrapeInvestidor10(ticker) {
+async function scrapeFundamentos(ticker) {
     try {
-        // Tenta URL de FIIs primeiro, pois é o foco deste scraper agora
         let html;
         try {
             const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
             html = res.data;
         } catch (e) {
-            // Fallback genérico
             const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
             html = res.data;
         }
@@ -111,9 +109,11 @@ async function scrapeInvestidor10(ticker) {
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
 
+            // --- CORREÇÃO AQUI: Lógica Original Restaurada ---
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
+                // Verifica se tem "milh", "bilh" ou se é um número muito grande
                 if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
                     if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
                 } else {
@@ -127,7 +127,6 @@ async function scrapeInvestidor10(ticker) {
             }
         };
 
-        // Cards principais
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
         const pvpEl = $('._card.vp ._card-body span').first();
@@ -139,7 +138,6 @@ async function scrapeInvestidor10(ticker) {
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
-        // Varredura geral
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         $('table tbody tr').each((i, row) => {
@@ -147,7 +145,6 @@ async function scrapeInvestidor10(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // Fallback de Valor de Mercado
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -165,130 +162,19 @@ async function scrapeInvestidor10(ticker) {
 
         return dados;
     } catch (error) {
-        console.error("Erro Investidor10:", error.message);
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 
 // ---------------------------------------------------------
-// PARTE 1.2: FUNDAMENTOS -> FUNDAMENTUS (MELHOR PARA AÇÕES)
-// ---------------------------------------------------------
-
-async function scrapeFundamentus(ticker) {
-    try {
-        // Fundamentus usa ISO-8859-1, mas para números o axios padrão geralmente funciona.
-        // Se houver problema com acentuação, focamos nos números.
-        const res = await client.get(`https://www.fundamentus.com.br/detalhes.php?papel=${ticker.toUpperCase()}`, {
-            responseType: 'arraybuffer' // Para tratar encoding se necessário
-        });
-        
-        // Converte buffer para string (simples)
-        const html = res.data.toString('latin1'); 
-        const $ = cheerio.load(html);
-
-        let dados = {
-            dy: 'N/A', pvp: 'N/A', segmento: 'Ações', tipo_fundo: '-', mandato: '-',
-            vacancia: '-', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
-            patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: '-',
-            cnpj: 'N/A', num_cotistas: '-', tipo_gestao: '-', prazo_duracao: '-',
-            taxa_adm: '-', cotas_emitidas: '-'
-        };
-
-        // Função auxiliar para pegar valor baseado no label anterior na tabela
-        const getValByLabel = (label) => {
-            // Procura um <span class="txt"> que contenha o label
-            // O valor geralmente está no próximo <span class="txt"> dentro do próximo <td>
-            // Estrutura: <tr><td class="label"><span>Label</span></td><td class="data"><span>Valor</span></td></tr>
-            
-            // Tenta encontrar o texto exato ou parcial
-            let el = $(`.label span:contains('${label}')`).first();
-            if (el.length) {
-                return el.parent().next('.data').find('span').text().trim();
-            }
-            return null;
-        };
-
-        dados.cotas_emitidas = getValByLabel('Nro. Ações') || 'N/A'; // Usamos campo cotas_emitidas para Ações
-        dados.val_mercado = getValByLabel('Valor de mercado') || 'N/A';
-        dados.patrimonio_liquido = getValByLabel('Patrim. Líq') || 'N/A';
-        
-        // P/VP
-        dados.pvp = getValByLabel('P/VP') || 'N/A';
-        // Ajuste: Fundamentus retorna "1,50", app espera "1,50" (ok)
-        
-        // DY
-        const dyRaw = getValByLabel('Div. Yield');
-        if (dyRaw) dados.dy = dyRaw;
-
-        // VPA (VP por Cota)
-        dados.vp_cota = getValByLabel('VPA') || 'N/A';
-        
-        // Liquidez (Vol $ med (2m))
-        const liqRaw = getValByLabel('Vol $ méd (2m)');
-        if (liqRaw) dados.liquidez = `R$ ${liqRaw}`;
-
-        // Variação 12m (Muitas vezes não tem direto, pegamos "Cotação" e comparamos ou deixamos N/A)
-        // Fundamentus tem "Dia", "Mês", "30 dias", "12 meses" em tabelas separadas no final
-        // Buscamos a tabela de oscilações
-        const var12m = $('td:contains("12 meses")').next('td').find('span').text().trim();
-        if (var12m) dados.variacao_12m = var12m;
-
-        // Segmento / Setor
-        const setor = getValByLabel('Setor');
-        const subsetor = getValByLabel('Subsetor');
-        if (subsetor) dados.segmento = subsetor;
-        else if (setor) dados.segmento = setor;
-
-        // Formatação final de valores grandes para o padrão do App
-        if (dados.val_mercado !== 'N/A') {
-            dados.val_mercado = "R$ " + dados.val_mercado; 
-        }
-        if (dados.patrimonio_liquido !== 'N/A') {
-            dados.patrimonio_liquido = "R$ " + dados.patrimonio_liquido;
-        }
-
-        return dados;
-
-    } catch (e) {
-        console.error("Erro Fundamentus:", e.message);
-        return { dy: '-', pvp: '-', segmento: 'Ações' };
-    }
-}
-
-// ---------------------------------------------------------
-// ROTEADOR DE FUNDAMENTOS
-// ---------------------------------------------------------
-
-async function scrapeFundamentosRouter(ticker) {
-    const t = ticker.toUpperCase();
-    
-    // Se terminar em 11, 11B, 12, 33, 34 -> Provavelmente FII, ETF ou BDR
-    // Vamos priorizar Investidor10 que tem dados imobiliários melhores
-    if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('12')) {
-        return await scrapeInvestidor10(t);
-    }
-    
-    // Se terminar em 3, 4, 5, 6 -> Ações -> Fundamentus
-    if (t.endsWith('3') || t.endsWith('4') || t.endsWith('5') || t.endsWith('6')) {
-        return await scrapeFundamentus(t);
-    }
-    
-    // Default (Investidor10 é mais genérico e seguro)
-    return await scrapeInvestidor10(t);
-}
-
-// ---------------------------------------------------------
-// PARTE 2: HISTÓRICO -> STATUS INVEST (BLINDADO)
+// PARTE 2: HISTÓRICO -> STATUS INVEST (MANTIDO API JSON)
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
         let type = 'acao';
-        
-        if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('12')) {
-            type = 'fii'; 
-        }
+        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
         
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
@@ -303,44 +189,21 @@ async function scrapeAsset(ticker) {
         const earnings = data.assetEarningsModels || [];
 
         const dividendos = earnings.map(d => {
-            // --- PARSE DE DATA ---
             const parseDateJSON = (dStr) => {
-                if (!dStr || dStr.trim() === '-' || !dStr.includes('/')) return null;
+                if(!dStr) return null;
                 const parts = dStr.split('/');
-                if (parts.length !== 3) return null;
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
-
-            // --- LÓGICA DE TIPO (PRIORIDADE MÚLTIPLA) ---
-            let labelTipo = 'Rendimento';
-            
-            // 1. Verifica código numérico
-            const etStr = String(d.et).trim();
-            if (etStr === '1') labelTipo = 'Dividendo';
-            else if (etStr === '2') labelTipo = 'JCP';
-
-            // 2. Refinamento por Texto
-            if (d.etD) {
-                const desc = String(d.etD).toUpperCase();
-                if (desc.includes('JUROS') || desc.includes('JCP')) labelTipo = 'JCP';
-                else if (desc.includes('DIVIDEND')) labelTipo = 'Dividendo';
-                else if (desc.includes('TRIBUTADO')) labelTipo = 'Rend. Tributado';
-                else if (desc.includes('AMORTIZA')) labelTipo = 'Amortização';
-            }
 
             return {
                 dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
                 value: d.v,
-                type: labelTipo, 
-                rawType: d.et
+                type: d.et
             };
         });
 
-        // Filtra inválidos e ordena
-        return dividendos
-            .filter(d => d.paymentDate !== null)
-            .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        return dividendos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     } catch (error) { 
         console.error(`Erro StatusInvest API ${ticker}:`, error.message);
@@ -371,11 +234,11 @@ module.exports = async function handler(req, res) {
 
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
-            // CHAMA O ROTEADOR INTELIGENTE
-            const dados = await scrapeFundamentosRouter(payload.ticker);
+            const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
+        // --- ATUALIZAÇÃO: Adicionado 'historico_portfolio' no mesmo bloco ---
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             
@@ -385,6 +248,7 @@ module.exports = async function handler(req, res) {
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
+                    // Se for historico_portfolio (chart), garantimos um limite maior (ex: 24) se não vier especificado
                     const defaultLimit = mode === 'historico_portfolio' ? 36 : 24;
                     const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
 

@@ -1556,11 +1556,12 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
+// EM app.js - Substitua a função renderizarHistoricoProventos por esta versão:
+
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
     // --- 1. Smart Check (Performance) ---
-    // Verifica se houve mudanças para evitar re-renderizar a lista inteira sem necessidade
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const termoBusca = provSearchTerm || ''; 
@@ -1573,19 +1574,13 @@ function renderizarHistoricoProventos() {
     lastHistoricoProventosSignature = currentSignature;
     listaHistoricoProventos.innerHTML = '';
     
-    const hoje = new Date(); hoje.setHours(0,0,0,0);
-
     // --- 2. Filtros e Ordenação ---
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
-        
-        // Verifica integridade da data
         const parts = p.paymentDate.split('-');
         if(parts.length !== 3) return false;
         
-        // Filtro de Texto (Ticker)
         const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
-        
         return buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
@@ -1608,7 +1603,6 @@ function renderizarHistoricoProventos() {
     Object.keys(grupos).forEach(mes => {
         let totalMes = 0;
         
-        // Filtra itens: Só exibe se o usuário tinha quantidade na Data Com
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1619,10 +1613,9 @@ function renderizarHistoricoProventos() {
             return false;
         });
 
-        // Se o mês estiver vazio após o filtro de quantidade, pula
         if (itensValidos.length === 0) return;
 
-        // Header do Mês (Sticky)
+        // Header do Mês
         const header = document.createElement('div');
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
         header.innerHTML = `
@@ -1646,32 +1639,27 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- LÓGICA DE TAGS VISUAIS ---
-            let tipoLabel = '';
-            let tipoClass = '';
-            
-            // Tenta pegar o tipo ou infere string vazia
+            // --- UX DEFINITIVA: TAGS LIMPAS (SEM ROXO) ---
+            let tagHtml = '';
             const rawType = (p.type || '').toUpperCase();
             
             if (rawType.includes('JCP') || rawType.includes('JUROS')) {
-                // TAG JCP (Laranja)
-                tipoLabel = 'JCP';
-                tipoClass = 'text-[9px] font-bold text-orange-400 bg-orange-900/20 border border-orange-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
+                // JCP: Laranja (Atenção/Imposto) - Mantido para alerta visual
+                tagHtml = `<span class="text-[9px] font-extrabold text-amber-400 bg-amber-900/20 border border-amber-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">JCP</span>`;
             
             } else if (rawType.includes('DIV')) {
-                // TAG DIVIDENDO (Azul)
-                tipoLabel = 'DIV';
-                tipoClass = 'text-[9px] font-bold text-blue-400 bg-blue-900/20 border border-blue-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
+                // DIV: Azul Celeste (Límpido/Isento) - Mantido pela convenção
+                tagHtml = `<span class="text-[9px] font-extrabold text-sky-400 bg-sky-900/20 border border-sky-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">DIV</span>`;
             
-            } else if (rawType.includes('TRIB')) {
-                // TAG TRIBUTADO (Roxo) - A CORREÇÃO PARA OS "EM BRANCO"
-                tipoLabel = 'REND'; 
-                tipoClass = 'text-[9px] font-bold text-purple-400 bg-purple-900/20 border border-purple-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
+            } else {
+                // REND: Cinza Metálico/Gelo (Neutro e Elegante) - SUBSTITUI O ROXO
+                // Usa gray-300 sobre gray-700/40 para contraste sofisticado sem cor forte
+                tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">REND</span>`;
             }
-            // FIIs normais (rendimentos isentos) continuam sem tag para visual clean
 
             const item = document.createElement('div');
-            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group border-b border-[#1A1A1A] last:border-0';
+            // Mantém dimensões idênticas ao histórico de transações
+            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
 
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
@@ -1680,16 +1668,17 @@ function renderizarHistoricoProventos() {
                     </div>
                     
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center">
+                        <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
-                            ${tipoLabel ? `<span class="${tipoClass}">${tipoLabel}</span>` : ''}
+                            ${tagHtml}
                         </div>
-                        <div class="flex items-center gap-1.5 mt-1.5 text-[11px] text-gray-500 leading-none">
+                        
+                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>
                             <span>${qtd} cotas</span>
                             <span>•</span>
-                            <span>${formatBRL(p.value)}/cota</span>
+                            <span>${formatBRL(p.value)}</span>
                         </div>
                     </div>
                 </div>

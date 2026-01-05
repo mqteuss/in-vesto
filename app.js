@@ -5960,30 +5960,42 @@ if (toggleNotifBtn) {
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
 	
-// --- PROTEÇÃO DE GESTOS (Bloqueia troca de aba em áreas específicas) ---
+// --- BLOQUEIO DE GESTOS (FIX DEFINITIVO) ---
 function isolarGestosDoCarrossel() {
-    // Lista de IDs onde o deslize NÃO deve mudar a aba
-    const areasProtegidas = [
-        'carousel-wrapper',              // Atalhos Rápidos (já funciona, mas reforça)
-        'timeline-pagamentos-container', // Container da Agenda
-        'timeline-lista'                 // Lista interna da Agenda
+    const pararPropagacao = (e) => e.stopPropagation();
+
+    // Lista de seletores para bloquear (IDs e Classes)
+    const seletores = [
+        '#carousel-wrapper',              // Atalhos
+        '#timeline-pagamentos-container', // Container da Agenda (ID fixo)
+        '#timeline-lista',                // Lista interna
+        '.no-swipe',                      // Classe manual (Recomendado)
+        '.payment-carousel'               // Classe do seu CSS
     ];
 
-    areasProtegidas.forEach(id => {
-        const elemento = document.getElementById(id);
-        if (elemento) {
-            const parar = (e) => e.stopPropagation();
-            
-            // Bloqueia o evento de "subir" para o controlador das abas
-            elemento.addEventListener('touchstart', parar, { passive: true });
-            elemento.addEventListener('touchmove', parar, { passive: true });
-            elemento.addEventListener('touchend', parar, { passive: true });
-        }
+    // Varre todos os seletores e aplica o bloqueio
+    seletores.forEach(seletor => {
+        const elementos = document.querySelectorAll(seletor);
+        elementos.forEach(el => {
+            // Remove listener antigo para evitar duplicidade
+            el.removeEventListener('touchstart', pararPropagacao);
+            el.removeEventListener('touchmove', pararPropagacao);
+            el.removeEventListener('touchend', pararPropagacao);
+
+            // Adiciona o bloqueio
+            el.addEventListener('touchstart', pararPropagacao, { passive: true });
+            el.addEventListener('touchmove', pararPropagacao, { passive: true });
+            el.addEventListener('touchend', pararPropagacao, { passive: true });
+        });
     });
 }
 
-// Inicia a proteção assim que o app carregar
+// Executa ao carregar a página
 document.addEventListener('DOMContentLoaded', isolarGestosDoCarrossel);
+
+// DICA: Se a agenda for carregada via API (demora para aparecer),
+// chame window.isolarGestosDoCarrossel() logo após renderizar os dados.
+window.isolarGestosDoCarrossel = isolarGestosDoCarrossel;
 
     await init();
 });

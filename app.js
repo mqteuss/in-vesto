@@ -5959,6 +5959,23 @@ if (toggleNotifBtn) {
 	window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
+	
+	function isolarGestosDoCarrossel() {
+        // ID identificado no seu index.html: 'carousel-wrapper'
+        const carrossel = document.getElementById('carousel-wrapper'); 
+
+        if (carrossel) {
+            // Impede que o toque "suba" para a verificação de troca de abas
+            const pararPropagacao = (e) => e.stopPropagation();
+
+            carrossel.addEventListener('touchstart', pararPropagacao, { passive: true });
+            carrossel.addEventListener('touchmove', pararPropagacao, { passive: true });
+            carrossel.addEventListener('touchend', pararPropagacao, { passive: true });
+        }
+    }
+
+    // Garante que roda assim que o HTML carregar
+    document.addEventListener('DOMContentLoaded', isolarGestosDoCarrossel);
 
     await init();
 });

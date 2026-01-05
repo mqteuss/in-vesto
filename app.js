@@ -222,6 +222,16 @@ function criarCardElemento(ativo, dados) {
 
     const sigla = ativo.symbol.substring(0, 2);
     
+    // --- LÓGICA DE ÍCONE (Ação vs FII) ---
+    const ehFii = isFII(ativo.symbol);
+    const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ativo.symbol}.png`;
+    
+    // Se for Ação, tenta carregar imagem. Se falhar, exibe o span de letras (fallback).
+    const iconHtml = !ehFii 
+        ? `<img src="${iconUrl}" alt="${ativo.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
+           <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-white tracking-wider absolute inset-0 z-0">${sigla}</span>`
+        : `<span class="text-xs font-bold text-white tracking-wider">${sigla}</span>`;
+
     // CORREÇÃO: Definindo a cor da barra baseada no lucro/prejuízo
     const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
     
@@ -276,8 +286,8 @@ function criarCardElemento(ativo, dados) {
         <div class="p-3 relative pb-4">
             <div class="flex justify-between items-start mb-1">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 text-white font-bold text-xs shadow-sm">
-                        ${sigla}
+                    <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                        ${iconHtml}
                     </div>
                     
                     <div>
@@ -1424,15 +1434,6 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
-// --- RENDERIZAR HISTÓRICO DE TRANSAÇÕES (VISUAL LIMPO E UNIFORME) ---
-// Em app.js
-
-// Substitua a função renderizarHistorico existente em app.js
-
-// --- EM app.js: Substitua a função renderizarHistorico ---
-
-// --- EM app.js: Substitua a função renderizarHistorico ---
-
 function renderizarHistorico() {
     const listaHistorico = document.getElementById('lista-historico');
     const historicoStatus = document.getElementById('historico-status');
@@ -1499,18 +1500,24 @@ function renderizarHistorico() {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const sigla = t.symbol.substring(0, 2);
 
-            // --- REFINAMENTO DE CORES AQUI ---
-            // Ícones agora usam a cor correspondente (text-green-400 / text-red-400)
+            // --- LÓGICA DE ÍCONE ---
+            const ehFii = isFII(t.symbol);
+            const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
+            const iconHtml = !ehFii 
+                ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
+                   <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 z-0 bg-[#151515]">${sigla}</span>`
+                : `<span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>`;
+
+
+            // Ícones de Compra/Venda
             const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
             const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
 
             const labelContent = isVenda ? iconVenda : iconCompra;
             
-            // Fundo mais suave (opacity /10 em vez de /20)
             const badgeBg = isVenda 
                 ? 'bg-red-500/10 border border-red-500/20' 
                 : 'bg-green-500/10 border border-green-500/20';
-            // ----------------------------------
 
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
             item.setAttribute('data-action', 'edit-row');
@@ -1518,8 +1525,8 @@ function renderizarHistorico() {
 
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
-                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
+                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                        ${iconHtml}
                     </div>
                     
                     <div class="flex-1 min-w-0">
@@ -1555,10 +1562,6 @@ function renderizarHistorico() {
     
     listaHistorico.appendChild(fragment);
 }
-
-// EM app.js - Substitua a função renderizarHistoricoProventos por esta versão:
-
-// EM app.js - Substitua a função renderizarHistoricoProventos por esta versão:
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
@@ -4151,14 +4154,22 @@ async function handleMostrarDetalhes(symbol) {
     // Habilita container de histórico para todos
     detalhesHistoricoContainer.classList.remove('hidden'); 
     
-    // --- 1. INJEÇÃO DO ÍCONE ---
+    // --- 1. INJEÇÃO DO ÍCONE COM LÓGICA OFICIAL ---
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
     
+    const ehFii = isFII(symbol);
+    const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
+    
+    const iconHtml = !ehFii 
+        ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
+           <span class="hidden w-full h-full flex items-center justify-center text-base font-bold text-white tracking-wider absolute inset-0 z-0 bg-[#1C1C1E]">${sigla}</span>`
+        : `<span class="text-base font-bold text-white tracking-wider">${sigla}</span>`;
+    
     if (iconContainer) {
         iconContainer.innerHTML = `
-            <div class="w-12 h-12 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 shadow-sm">
-                <span class="text-base font-bold text-white tracking-wider">${sigla}</span>
+            <div class="w-12 h-12 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                ${iconHtml}
             </div>
         `;
     }
@@ -4218,6 +4229,9 @@ async function handleMostrarDetalhes(symbol) {
     detalhesLoading.classList.add('hidden');
 
     if (precoData) {
+        // ... (RESTANTE DA FUNÇÃO MANTIDO IGUAL - OMITIDO PARA BREVIDADE)
+        // ... Mantenha o restante do código que preenche os preços e fundamentos ...
+        
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         
         const varPercent = precoData.regularMarketChangePercent || 0;
@@ -4373,7 +4387,6 @@ async function handleMostrarDetalhes(symbol) {
                 ${renderRow('Valor de Mercado', dados.val_mercado)}
             `;
         } else {
-            // CORREÇÃO: Readicionando campos que sumiram dos FIIs
             detalhesListHtml = `
                 ${renderRow('Liquidez Diária', dados.liquidez)}
                 ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
@@ -4487,7 +4500,16 @@ function renderizarTransacoesDetalhes(symbol) {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const sigla = t.symbol.substring(0, 2);
             
-            // --- REFINAMENTO DE CORES AQUI ---
+            // --- LÓGICA DE ÍCONE ---
+            const ehFii = isFII(t.symbol);
+            const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
+            const iconHtml = !ehFii 
+                ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
+                   <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 z-0 bg-[#151515]">${sigla}</span>`
+                : `<span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>`;
+            
+            
+            // Ícones de Compra/Venda
             const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
             const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
 
@@ -4496,15 +4518,14 @@ function renderizarTransacoesDetalhes(symbol) {
             const badgeBg = isVenda 
                 ? 'bg-red-500/10 border border-red-500/20' 
                 : 'bg-green-500/10 border border-green-500/20';
-            // --------------------------------
 
             const item = document.createElement('div');
             item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 relative group';
             
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0">
-                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
+                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                        ${iconHtml}
                     </div>
                     
                     <div class="flex-1 min-w-0">

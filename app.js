@@ -4099,7 +4099,7 @@ async function handleMostrarDetalhes(symbol) {
     detalhesPreco.innerHTML = '';
     detalhesAiProvento.innerHTML = ''; 
     
-    // Agora mostramos o container de histórico para Ações também
+    // Habilita container de histórico para todos
     detalhesHistoricoContainer.classList.remove('hidden'); 
     
     // --- 1. INJEÇÃO DO ÍCONE ---
@@ -4154,8 +4154,8 @@ async function handleMostrarDetalhes(symbol) {
     let fundamentos = {};
     let nextProventoData = null;
 
-    // --- MUDANÇA PRINCIPAL: Agora carregamos dados extras para TODOS (Ações e FIIs) ---
-    fetchHistoricoScraper(symbol); // Carrega o gráfico de 12 meses
+    // Busca dados extras (Histórico, Fundamentos e Próx Provento)
+    fetchHistoricoScraper(symbol); 
     
     try {
         const [fundData, provData] = await Promise.all([
@@ -4233,7 +4233,7 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // --- PREPARAÇÃO DOS DADOS (AÇÃO vs FII) ---
+        // Dados Consolidados
         const dados = { 
             // Comuns
             pvp: fundamentos.pvp || '-', 
@@ -4256,13 +4256,15 @@ async function handleMostrarDetalhes(symbol) {
             cnpj: fundamentos.cnpj || '-', 
             num_cotistas: fundamentos.num_cotistas || '-', 
             tipo_gestao: fundamentos.tipo_gestao || '-',
-            taxa_adm: fundamentos.taxa_adm || '-'
+            taxa_adm: fundamentos.taxa_adm || '-',
+            mandato: fundamentos.mandato || '-',
+            prazo_duracao: fundamentos.prazo_duracao || '-',
+            cotas_emitidas: fundamentos.cotas_emitidas || '-'
         };
         
-        // Verifica se é Ação para mudar os cards
         const ehAcao = !isFII(symbol);
 
-        // Grid do Topo (3 cards)
+        // --- GRID DO TOPO (3 Cards) ---
         let gridTopo = '';
         if (ehAcao) {
              gridTopo = `
@@ -4294,6 +4296,7 @@ async function handleMostrarDetalhes(symbol) {
                 </div>`;
         }
 
+        // Seta de Variação
         let corVar12m = 'text-[#888888]'; let icon12m = '';
         if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
             corVar12m = 'text-red-500'; icon12m = arrowDown;
@@ -4308,7 +4311,7 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
 
-        // Renderiza lista de detalhes condicionalmente
+        // --- LISTA DE DETALHES ---
         let detalhesListHtml = '';
         if (ehAcao) {
             detalhesListHtml = `
@@ -4316,10 +4319,12 @@ async function handleMostrarDetalhes(symbol) {
                 ${renderRow('ROE', dados.roe)}
                 ${renderRow('LPA', dados.lpa)}
                 ${renderRow('Margem Líquida', dados.margem_liquida)}
+                ${renderRow('Div. Líq / EBITDA', dados.divida_liquida_ebitda || '-')}
                 ${renderRow('Liquidez Diária', dados.liquidez)}
                 ${renderRow('Valor de Mercado', dados.val_mercado)}
             `;
         } else {
+            // CORREÇÃO: Readicionando campos que sumiram dos FIIs
             detalhesListHtml = `
                 ${renderRow('Liquidez Diária', dados.liquidez)}
                 ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
@@ -4328,8 +4333,16 @@ async function handleMostrarDetalhes(symbol) {
                 ${renderRow('Vacância', dados.vacancia)}
                 ${renderRow('Tipo de Fundo', dados.tipo_fundo)}
                 ${renderRow('Segmento', dados.segmento)}
+                ${renderRow('Mandato', dados.mandato)}
                 ${renderRow('Gestão', dados.tipo_gestao)}
+                ${renderRow('Prazo', dados.prazo_duracao)}
+                ${renderRow('Taxa Adm.', dados.taxa_adm)}
                 ${renderRow('Cotistas', dados.num_cotistas)}
+                ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
+                <div class="flex justify-between items-center py-3.5 border-b border-[#2C2C2E]">
+                    <span class="text-sm text-[#888888] font-medium">CNPJ</span>
+                    <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
+                </div>
             `;
         }
 

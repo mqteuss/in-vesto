@@ -1558,6 +1558,8 @@ function renderizarHistorico() {
 
 // EM app.js - Substitua a função renderizarHistoricoProventos por esta versão:
 
+// EM app.js - Substitua a função renderizarHistoricoProventos por esta versão:
+
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
@@ -1639,32 +1641,43 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- UX DEFINITIVA: TAGS LIMPAS (SEM ROXO) ---
+            // --- LOGICA DE ÍCONES (Ações vs FIIs) ---
+            const ehFii = isFII(p.symbol); // Usa a função helper existente (final 11/12)
+            const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;
+            
+            // Se for Ação (!ehFii), tenta mostrar imagem. Se falhar (onerror), mostra o span de letras.
+            // Se for FII, mostra direto o span de letras.
+            const imageHtml = !ehFii 
+                ? `<img src="${iconUrl}" alt="${p.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />` 
+                : '';
+                
+            const fallbackClass = !ehFii ? 'hidden' : 'flex'; // Oculta o texto inicialmente se for ação (espera imagem)
+
+            // --- TAGS (Sem Roxo) ---
             let tagHtml = '';
             const rawType = (p.type || '').toUpperCase();
             
             if (rawType.includes('JCP') || rawType.includes('JUROS')) {
-                // JCP: Laranja (Atenção/Imposto) - Mantido para alerta visual
+                // JCP: Laranja
                 tagHtml = `<span class="text-[9px] font-extrabold text-amber-400 bg-amber-900/20 border border-amber-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">JCP</span>`;
             
             } else if (rawType.includes('DIV')) {
-                // DIV: Azul Celeste (Límpido/Isento) - Mantido pela convenção
+                // DIV: Azul Celeste
                 tagHtml = `<span class="text-[9px] font-extrabold text-sky-400 bg-sky-900/20 border border-sky-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">DIV</span>`;
             
             } else {
-                // REND: Cinza Metálico/Gelo (Neutro e Elegante) - SUBSTITUI O ROXO
-                // Usa gray-300 sobre gray-700/40 para contraste sofisticado sem cor forte
+                // REND: Cinza Metálico (Substitui o Roxo)
                 tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">REND</span>`;
             }
 
             const item = document.createElement('div');
-            // Mantém dimensões idênticas ao histórico de transações
             item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
 
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
+                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                        ${imageHtml}
+                        <span class="${fallbackClass} w-full h-full items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 bg-[#151515]">${sigla}</span>
                     </div>
                     
                     <div class="flex-1 min-w-0">
@@ -1695,9 +1708,6 @@ function renderizarHistoricoProventos() {
 
     listaHistoricoProventos.appendChild(fragment);
 }
-
-    // 1. Alternar entre Abas (Transações vs Proventos)
-// 1. Alternar entre Abas (Transações vs Proventos)
     if (btnHistTransacoes && btnHistProventos) {
         const viewTransacoes = document.getElementById('view-transacoes');
         const viewProventos = document.getElementById('view-proventos');

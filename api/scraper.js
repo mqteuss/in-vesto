@@ -63,6 +63,7 @@ function formatCurrency(value) {
 function cleanDoubledString(str) {
     if (!str) return "";
     const parts = str.split('R$');
+    // Ex: "R$ 300 Bi R$ 300.000..." -> Pega o do meio
     if (parts.length > 2) {
         return 'R$' + parts[1].trim(); 
     }
@@ -70,7 +71,7 @@ function cleanDoubledString(str) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (FINAL)
+// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (FINAL v2)
 // ---------------------------------------------------------
 
 async function scrapeFundamentos(ticker) {
@@ -98,12 +99,18 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        const processPair = (tituloRaw, valorRaw) => {
+        // Função interna de processamento
+        const processPair = (tituloRaw, valorRaw, origem = 'table') => {
             const titulo = normalize(tituloRaw); 
             
             let valor = valorRaw.trim();
+            
+            // CORREÇÃO: Valor de Mercado duplicado
+            // Se vier dos Cards, confiamos. Se vier da Tabela, limpamos e não sobrescrevemos se já existir.
             if (titulo.includes('mercado')) {
                 valor = cleanDoubledString(valor);
+                // Se já pegamos um valor válido (provavelmente do Card), não sobrescreva com o da tabela que pode ser sujo
+                if (dados.val_mercado !== 'N/A' && origem === 'table') return;
             }
 
             if (!valor) return;
@@ -139,16 +146,17 @@ async function scrapeFundamentos(ticker) {
             
             if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
 
-            // [CORREÇÃO FINAL] Div. Líq / EBITDA 
-            // Agora verifica "div" + "liq" + "ebitda" para pegar abreviações como "Div. Líq."
+            // [CORREÇÃO FINAL: Div. Líq / EBITDA]
+            // Agora usa regex que ignora pontuação, traços e espaços
+            // Ex: "Dív.Líq./EBITDA" vira "divliqebitda"
             if (dados.divida_liquida_ebitda === 'N/A') {
-                const tituloClean = titulo.replace(/[\s\/\.\-]/g, ''); // Remove espaços, barras, pontos e traços
+                const tituloClean = titulo.replace(/[\s\/\.\-]/g, ''); 
                 if (tituloClean.includes('div') && tituloClean.includes('liq') && tituloClean.includes('ebitda')) {
                     dados.divida_liquida_ebitda = valor;
                 }
             }
 
-            // VPA (Ações) e VP/Cota (FIIs)
+            // VPA / VP Cota
             if (dados.vp_cota === 'N/A') {
                 if (titulo === 'vpa' || titulo.replace(/\./g, '') === 'vpa' || titulo.includes('vp por cota')) {
                     dados.vp_cota = valor;
@@ -172,14 +180,15 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
-        // --- VARREDURA ---
+        // --- VARREDURA ROBUSTA ---
 
-        // 1. CARDS DE DESTAQUE
+        // 1. CARDS DE DESTAQUE (Topo)
+        // Prioridade Alta: Pegam DY, Cotação e Valor de Mercado limpos
         $('._card').each((i, el) => {
             const titulo = $(el).find('._card-header').text().trim();
             const valor = $(el).find('._card-body').text().trim();
             
-            processPair(titulo, valor);
+            processPair(titulo, valor, 'card');
 
             if (normalize(titulo).includes('cotacao')) {
                 cotacao_atual = parseValue(valor);
@@ -191,7 +200,7 @@ async function scrapeFundamentos(ticker) {
              if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
         }
 
-        // 2. GRELHA DE INDICADORES
+        // 2. GRELHA DE INDICADORES (Divs .cell)
         $('.cell').each((i, el) => {
             let titulo = $(el).find('.name').text().trim();
             if (!titulo) titulo = $(el).children('span').first().text().trim();
@@ -199,13 +208,28 @@ async function scrapeFundamentos(ticker) {
             let valorEl = $(el).find('.value span').first();
             let valor = (valorEl.length > 0) ? valorEl.text().trim() : $(el).find('.value').text().trim();
             
-            processPair(titulo, valor);
+            processPair(titulo, valor, 'cell');
         });
 
-        // 3. TABELAS
+        // 3. TABELAS (CORREÇÃO PARA DIVIDA LIQUIDA/EBITDA e ROA)
         $('table tbody tr').each((i, row) => {
             const cols = $(row).find('td');
-            if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
+            if (cols.length >= 2) {
+                // Tenta pegar o atributo data-indicator (Método infalível descoberto pelo user)
+                // Ex: data-indicator="DIVIDA_LIQUIDA_EBITDA"
+                const indicatorAttr = $(cols[0]).find('[data-indicator]').attr('data-indicator');
+                
+                let titulo = "";
+                if (indicatorAttr) {
+                    titulo = indicatorAttr.replace(/_/g, ' '); // Converte DIVIDA_LIQUIDA em DIVIDA LIQUIDA
+                } else {
+                    titulo = $(cols[0]).text();
+                }
+
+                // Pega o valor da segunda coluna
+                const valor = $(cols[1]).text();
+                processPair(titulo, valor, 'table');
+            }
         });
 
         // Fallback Valor de Mercado

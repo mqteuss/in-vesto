@@ -2,7 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
 
-// --- AGENTE HTTPS (Anti-Bloqueio) ---
+// --- OTIMIZAÇÃO: AGENTE HTTPS ---
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
@@ -15,10 +15,9 @@ const client = axios.create({
     headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': 'https://investidor10.com.br/'
+        'Accept-Encoding': 'gzip, deflate, br'
     },
-    timeout: 12000
+    timeout: 10000
 });
 
 // --- HELPERS ---
@@ -32,6 +31,23 @@ function parseValue(valueStr) {
         return parseFloat(valueStr.replace(REGEX_CLEAN_NUMBER, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
+
+function normalize(str) {
+    if (!str) return '';
+    return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
+}
+
+function chunkArray(array, size) {
+    const results = [];
+    for (let i = 0; i < array.length; i += size) {
+        results.push(array.slice(i, i + size));
+    }
+    return results;
+}
+
+// ---------------------------------------------------------
+// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (ATUALIZADO)
+// ---------------------------------------------------------
 
 function parseExtendedValue(str) {
     if (!str) return 0;
@@ -47,55 +63,47 @@ function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function normalize(str) {
-    if (!str) return '';
-    // Remove acentos e deixa tudo minúsculo para facilitar o "match"
-    return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
-}
-
-function chunkArray(array, size) {
-    const results = [];
-    for (let i = 0; i < array.length; i += size) {
-        results.push(array.slice(i, i + size));
-    }
-    return results;
-}
-
-// ---------------------------------------------------------
-// 1. SCRAPER PARA FIIs (Mantido a lógica que já funcionava)
-// ---------------------------------------------------------
-async function scrapeInvestidor10FII(ticker) {
+async function scrapeFundamentos(ticker) {
     try {
-        const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
-        const $ = cheerio.load(res.data);
+        let html;
+        try {
+            const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
+            html = res.data;
+        } catch (e) {
+            const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
+            html = res.data;
+        }
+
+        const $ = cheerio.load(html);
 
         let dados = {
             dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
-            taxa_adm: 'N/A', cotas_emitidas: 'N/A'
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A',
+            pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', divida_liquida_ebitda: 'N/A'
         };
 
         let cotacao_atual = 0;
         let num_cotas = 0;
 
         const processPair = (tituloRaw, valorRaw) => {
-            const titulo = normalize(tituloRaw);
+            const titulo = normalize(tituloRaw); // Remove acentos e poe minusculo
             const valor = valorRaw.trim();
             if (!valor) return;
 
+            // --- CAMPOS GERAIS ---
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
-            if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
-            if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
-            if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
-            
-            // Tratamento específico para Variação (FIIs geralmente mostram no card ou tabela)
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
             
+            // --- FIIS ---
+            if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
+            if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
+            if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
             if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
             if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
             if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
@@ -103,8 +111,26 @@ async function scrapeInvestidor10FII(ticker) {
             if (dados.tipo_fundo === 'N/A' && titulo.includes('tipo de fundo')) dados.tipo_fundo = valor;
             if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
-            if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
+            if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas')) dados.cotas_emitidas = valor;
+            
+            // --- AÇÕES ---
+            if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
+            
+            // ROE e LPA as vezes vem como "R.O.E" ou "L.P.A"
+            if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
+            if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
+            
+            if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
+            if (dados.divida_liquida_ebitda === 'N/A' && titulo.includes('div. liquida / ebitda')) dados.divida_liquida_ebitda = valor;
 
+            // VPA (Ações) e VP/Cota (FIIs)
+            if (dados.vp_cota === 'N/A') {
+                if (titulo === 'vpa' || titulo.replace(/\./g, '') === 'vpa' || titulo.includes('vp por cota')) {
+                    dados.vp_cota = valor;
+                }
+            }
+
+            // Lógica de Patrimônio
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
@@ -114,31 +140,53 @@ async function scrapeInvestidor10FII(ticker) {
                     if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
+
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
                 if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
             }
         };
 
-        const dyEl = $('._card.dy ._card-body span').first();
-        if (dyEl.length) dados.dy = dyEl.text().trim();
-        const pvpEl = $('._card.vp ._card-body span').first();
-        if (pvpEl.length) dados.pvp = pvpEl.text().trim();
-        const liqEl = $('._card.liquidity ._card-body span').first();
-        if (liqEl.length) dados.liquidez = liqEl.text().trim();
-        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
-        if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
-        const cotacaoEl = $('._card.cotacao ._card-body span').first();
-        if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
+        // --- 1. CAPTURA DOS CARDS DE DESTAQUE (Topo) ---
+        // Varre todos os cards para garantir captura mesmo sem classes especificas
+        $('._card').each((i, el) => {
+            const titulo = $(el).find('._card-header').text().trim();
+            const valor = $(el).find('._card-body').text().trim();
+            
+            // Processa para os dados principais (DY, PL, PVP)
+            processPair(titulo, valor);
 
-        $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
-        $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
+            // Captura Cotação separadamente
+            if (normalize(titulo).includes('cotacao')) {
+                cotacao_atual = parseValue(valor);
+            }
+        });
+
+        // Fallback: Se a cotação não veio pelo loop, tenta seletor específico
+        if (cotacao_atual === 0) {
+             const cotacaoEl = $('._card.cotacao ._card-body span').first();
+             if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
+        }
+
+        // --- 2. CAPTURA DA GRELHA DE INDICADORES (Divs .cell) ---
+        // ATUALIZAÇÃO IMPORTANTE: Lida com falta de classe .name
+        $('.cell').each((i, el) => {
+            let titulo = $(el).find('.name').text().trim();
+            if (!titulo) {
+                // Tenta pegar o primeiro span (estrutura alternativa do Investidor10)
+                titulo = $(el).children('span').first().text().trim();
+            }
+            const valor = $(el).find('.value').text().trim();
+            processPair(titulo, valor);
+        });
+
+        // --- 3. CAPTURA DE TABELAS ---
         $('table tbody tr').each((i, row) => {
             const cols = $(row).find('td');
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // Fallback Mercado
+        // Fallback para Valor de Mercado se não achar no site
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -156,116 +204,28 @@ async function scrapeInvestidor10FII(ticker) {
 
         return dados;
     } catch (error) {
-        console.error(`Erro FII ${ticker}:`, error.message);
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 
 // ---------------------------------------------------------
-// 2. SCRAPER PARA AÇÕES (CALIBRADO COM O SEU HTML PETR4)
+// PARTE 2: PROVENTOS -> STATUSINVEST (MANTIDO)
 // ---------------------------------------------------------
-async function scrapeInvestidor10Acoes(ticker) {
-    try {
-        const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
-        const $ = cheerio.load(res.data);
 
-        let dados = {
-            dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A',
-            margem_liquida: 'N/A', divida_liquida_ebitda: 'N/A',
-            liquidez: 'N/A', val_mercado: 'N/A', vp_cota: 'N/A', variacao_12m: 'N/A'
-        };
-
-        const processPair = (tituloRaw, valorRaw) => {
-            // Normaliza para: minusculo, sem acento, sem pontos extras
-            // Ex: "Dív. líquida/EBITDA" vira "div liquidabitda" (aprox) ou usamos includes
-            const titulo = normalize(tituloRaw); 
-            const valor = valorRaw.trim();
-
-            if (!valor || valor === '-') return;
-
-            // --- MAPEAMENTO BASEADO NO SEU HTML ---
-            
-            // P/L (No HTML: "P/L")
-            if (titulo === 'pl' || titulo === 'p/l') dados.pl = valor;
-            
-            // P/VP (No HTML: "P/VP")
-            if (titulo === 'pvp' || titulo === 'p/vp') dados.pvp = valor;
-            
-            // DY (No HTML: "Dividend Yield" ou "DY (12M)")
-            if (titulo.includes('dividendyield') || titulo.includes('dy')) dados.dy = valor;
-            
-            // ROE (No HTML: "ROE")
-            if (titulo === 'roe') dados.roe = valor;
-            
-            // LPA (No HTML: "LPA")
-            if (titulo === 'lpa') dados.lpa = valor;
-            
-            // VPA (No HTML: "VPA" - não é V.P.A nem VP/Cota)
-            if (titulo === 'vpa') dados.vp_cota = valor;
-
-            // Valor de Mercado (No HTML: "Valor de mercado")
-            if (titulo.includes('valordemercado')) dados.val_mercado = valor;
-
-            // Liquidez (No HTML: "Liq. média diária")
-            // Usamos 'liq' e 'media' para garantir
-            if (titulo.includes('liq') && titulo.includes('media')) dados.liquidez = valor;
-            // Caso falhe, tenta só liquidez
-            if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
-
-            // Margem Líquida (No HTML: "Margem líquida")
-            if (titulo.includes('margem') && titulo.includes('liquida')) dados.margem_liquida = valor;
-
-            // Dívida Líq / EBITDA (No HTML: "Dív. líquida/EBITDA")
-            if (titulo.includes('div') && titulo.includes('liquida') && titulo.includes('ebitda')) {
-                dados.divida_liquida_ebitda = valor;
-            }
-
-            // Variação 12m (No HTML geralmente "Variação (12M)" ou no card de cotação)
-            if (titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
-        };
-
-        // 1. CARDS DO TOPO (P/L, P/VP, DY...)
-        $('._card').each((i, el) => {
-            const header = $(el).find('._card-header').text();
-            const body = $(el).find('._card-body').text();
-            processPair(header, body);
-        });
-
-        // 2. CÉLULAS DA TABELA (Onde estão VPA, ROE, Margem...)
-        // No seu HTML, a estrutura é <div class="cell"> <div class="name">...</div> <div class="value">...</div> </div>
-        $('.cell').each((i, el) => {
-            const name = $(el).find('.name').text();
-            const val = $(el).find('.value').text();
-            processPair(name, val);
-        });
-
-        // 3. TABELAS (Fallback caso mudem para table)
-        $('table tr').each((i, row) => {
-            const tds = $(row).find('td');
-            if (tds.length >= 2) processPair($(tds[0]).text(), $(tds[1]).text());
-            if (tds.length >= 4) processPair($(tds[2]).text(), $(tds[3]).text());
-        });
-
-        return dados;
-    } catch (e) {
-        console.error(`Erro Ações ${ticker}:`, e.message);
-        return {};
-    }
-}
-
-// ---------------------------------------------------------
-// 3. SCRAPER PROVENTOS (STATUSINVEST)
-// ---------------------------------------------------------
-async function scrapeAssetProventos(ticker) {
+async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
         let type = 'acao';
-        if (t.endsWith('11') || t.endsWith('11B') || t.endsWith('33') || t.endsWith('34')) type = 'fii'; 
+        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
         
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
         const { data } = await client.get(url, { 
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Referer': 'https://statusinvest.com.br/' } 
+            headers: { 
+                'X-Requested-With': 'XMLHttpRequest',
+                'Referer': 'https://statusinvest.com.br/',
+                'User-Agent': 'Mozilla/5.0'
+            } 
         });
 
         const earnings = data.assetEarningsModels || [];
@@ -279,6 +239,7 @@ async function scrapeAssetProventos(ticker) {
             };
 
             let labelTipo = 'REND'; 
+            
             if (d.et === 1) labelTipo = 'DIV';
             if (d.et === 2) labelTipo = 'JCP';
             
@@ -286,7 +247,7 @@ async function scrapeAssetProventos(ticker) {
                 const texto = d.etd.toUpperCase();
                 if (texto.includes('JURO')) labelTipo = 'JCP';
                 else if (texto.includes('DIVID')) labelTipo = 'DIV';
-                else if (texto.includes('TRIBUTADO')) labelTipo = 'REND_TRIB'; 
+                else if (texto.includes('TRIBUTADO')) labelTipo = 'REND_TRIB';
             }
 
             return {
@@ -309,8 +270,9 @@ async function scrapeAssetProventos(ticker) {
 }
 
 // ---------------------------------------------------------
-// API HANDLER (ROTEAMENTO)
+// HANDLER (API)
 // ---------------------------------------------------------
+
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -330,17 +292,7 @@ module.exports = async function handler(req, res) {
 
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
-            
-            const ticker = payload.ticker.toUpperCase();
-            const isFII = ticker.endsWith('11') || ticker.endsWith('11B') || ticker.endsWith('13'); 
-            
-            let dados = {};
-            if (isFII) {
-                dados = await scrapeInvestidor10FII(ticker);
-            } else {
-                dados = await scrapeInvestidor10Acoes(ticker);
-            }
-            
+            const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
@@ -356,7 +308,7 @@ module.exports = async function handler(req, res) {
                     const defaultLimit = mode === 'historico_portfolio' ? 36 : 24;
                     const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
 
-                    const history = await scrapeAssetProventos(ticker);
+                    const history = await scrapeAsset(ticker);
                     
                     const recents = history
                         .filter(h => h.paymentDate && h.value > 0)
@@ -375,7 +327,7 @@ module.exports = async function handler(req, res) {
 
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
-            const history = await scrapeAssetProventos(payload.ticker);
+            const history = await scrapeAsset(payload.ticker);
             const formatted = history.slice(0, 18).map(h => {
                 if (!h.paymentDate) return null;
                 const [ano, mes] = h.paymentDate.split('-');
@@ -386,7 +338,7 @@ module.exports = async function handler(req, res) {
 
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
-            const history = await scrapeAssetProventos(payload.ticker);
+            const history = await scrapeAsset(payload.ticker);
             const ultimo = history.length > 0 ? history[0] : null;
             return res.status(200).json({ json: ultimo });
         }

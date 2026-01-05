@@ -76,12 +76,14 @@ async function scrapeFundamentos(ticker) {
 
         const $ = cheerio.load(html);
 
+        // Adicionados campos específicos de Ações: pl, roe, lpa, margem_liquida
         let dados = {
             dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
-            taxa_adm: 'N/A', cotas_emitidas: 'N/A'
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A',
+            pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', divida_liquida_ebitda: 'N/A'
         };
 
         let cotacao_atual = 0;
@@ -92,14 +94,17 @@ async function scrapeFundamentos(ticker) {
             const valor = valorRaw.trim();
             if (!valor) return;
 
+            // Campos Comuns
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
+            if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
+            if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
+            
+            // Campos FIIs
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
-            if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
-            if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
             if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
             if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
             if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
@@ -108,12 +113,21 @@ async function scrapeFundamentos(ticker) {
             if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
+            
+            // Campos Ações (NOVOS)
+            if (dados.pl === 'N/A' && titulo === 'p/l') dados.pl = valor;
+            if (dados.roe === 'N/A' && titulo === 'roe') dados.roe = valor;
+            if (dados.lpa === 'N/A' && titulo === 'lpa') dados.lpa = valor;
+            if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
+            if (dados.divida_liquida_ebitda === 'N/A' && titulo.includes('div. liquida / ebitda')) dados.divida_liquida_ebitda = valor;
 
-            // --- CORREÇÃO AQUI: Lógica Original Restaurada ---
+            // VPA (Ações) e VP/Cota (FIIs) são análogos
+            if (dados.vp_cota === 'N/A' && (titulo === 'vpa' || titulo.includes('vp por cota'))) dados.vp_cota = valor;
+
+            // Lógica de Patrimônio (Mantida)
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
-                // Verifica se tem "milh", "bilh" ou se é um número muito grande
                 if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
                     if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
                 } else {
@@ -135,6 +149,13 @@ async function scrapeFundamentos(ticker) {
         if (liqEl.length) dados.liquidez = liqEl.text().trim();
         const valPatEl = $('._card.val_patrimonial ._card-body span').first();
         if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
+        
+        // Ações specific cards
+        const plEl = $('._card.pl ._card-body span').first();
+        if (plEl.length) dados.pl = plEl.text().trim();
+        const roeEl = $('._card.roe ._card-body span').first();
+        if (roeEl.length) dados.roe = roeEl.text().trim();
+
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
@@ -165,7 +186,6 @@ async function scrapeFundamentos(ticker) {
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
-
 // EM scraper.v2.js -> Substitua a função scrapeAsset
 
 async function scrapeAsset(ticker) {

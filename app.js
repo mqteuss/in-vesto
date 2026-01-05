@@ -1563,6 +1563,8 @@ function renderizarHistorico() {
     listaHistorico.appendChild(fragment);
 }
 
+// EM app.js - Substitua a função renderizarHistoricoProventos por esta versão:
+
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
@@ -1580,11 +1582,18 @@ function renderizarHistoricoProventos() {
     listaHistoricoProventos.innerHTML = '';
     
     // --- 2. Filtros e Ordenação ---
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); // Zera hora para comparar apenas datas
+
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         if(parts.length !== 3) return false;
         
+        // CORREÇÃO 1: Ocultar proventos futuros ("A Receber")
+        const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (dataPag > hoje) return false;
+
         const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
         return buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
@@ -1596,7 +1605,7 @@ function renderizarHistoricoProventos() {
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p class="text-xs text-gray-500">Nenhum provento encontrado.</p>
+                <p class="text-xs text-gray-500">Nenhum provento efetivado encontrado.</p>
             </div>`;
         return;
     }
@@ -1644,32 +1653,24 @@ function renderizarHistoricoProventos() {
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- LOGICA DE ÍCONES (Ações vs FIIs) ---
-            const ehFii = isFII(p.symbol); // Usa a função helper existente (final 11/12)
+            // Ícones (Lógica Ações vs FIIs)
+            const ehFii = isFII(p.symbol);
             const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;
             
-            // Se for Ação (!ehFii), tenta mostrar imagem. Se falhar (onerror), mostra o span de letras.
-            // Se for FII, mostra direto o span de letras.
             const imageHtml = !ehFii 
                 ? `<img src="${iconUrl}" alt="${p.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />` 
                 : '';
-                
-            const fallbackClass = !ehFii ? 'hidden' : 'flex'; // Oculta o texto inicialmente se for ação (espera imagem)
+            const fallbackClass = !ehFii ? 'hidden' : 'flex';
 
-            // --- TAGS (Sem Roxo) ---
+            // Tags
             let tagHtml = '';
             const rawType = (p.type || '').toUpperCase();
             
             if (rawType.includes('JCP') || rawType.includes('JUROS')) {
-                // JCP: Laranja
                 tagHtml = `<span class="text-[9px] font-extrabold text-amber-400 bg-amber-900/20 border border-amber-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">JCP</span>`;
-            
             } else if (rawType.includes('DIV')) {
-                // DIV: Azul Celeste
                 tagHtml = `<span class="text-[9px] font-extrabold text-sky-400 bg-sky-900/20 border border-sky-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">DIV</span>`;
-            
             } else {
-                // REND: Cinza Metálico (Substitui o Roxo)
                 tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">REND</span>`;
             }
 
@@ -1684,7 +1685,7 @@ function renderizarHistoricoProventos() {
                     </div>
                     
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 h-6">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
                             ${tagHtml}
                         </div>

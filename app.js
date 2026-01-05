@@ -5960,40 +5960,29 @@ if (toggleNotifBtn) {
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
 	
-// --- CORREÇÃO DE CONFLITO DE GESTOS (CARROSSEL vs ABAS) ---
+// --- PROTEÇÃO DE GESTOS (Bloqueia troca de aba em áreas específicas) ---
 function isolarGestosDoCarrossel() {
-    // Lista de IDs que devem bloquear a troca de aba
-    const idsParaBloquear = [
-        'carousel-wrapper',              // Atalhos rápidos
-        'timeline-lista',                // Lista da Agenda de Pagamentos
+    // Lista de IDs onde o deslize NÃO deve mudar a aba
+    const areasProtegidas = [
+        'carousel-wrapper',              // Atalhos Rápidos (já funciona, mas reforça)
         'timeline-pagamentos-container', // Container da Agenda
-        'agenda-cards'                   // Caso você tenha renomeado
+        'timeline-lista'                 // Lista interna da Agenda
     ];
 
-    // Seleciona por ID
-    idsParaBloquear.forEach(id => {
-        const el = document.getElementById(id);
-        bloquearPropagacao(el);
-    });
-
-    // Seleciona qualquer elemento com a classe 'no-swipe' (para uso futuro)
-    document.querySelectorAll('.no-swipe').forEach(el => {
-        bloquearPropagacao(el);
+    areasProtegidas.forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            const parar = (e) => e.stopPropagation();
+            
+            // Bloqueia o evento de "subir" para o controlador das abas
+            elemento.addEventListener('touchstart', parar, { passive: true });
+            elemento.addEventListener('touchmove', parar, { passive: true });
+            elemento.addEventListener('touchend', parar, { passive: true });
+        }
     });
 }
 
-function bloquearPropagacao(elemento) {
-    if (!elemento) return;
-
-    const parar = (e) => e.stopPropagation();
-
-    // Bloqueia a propagação do toque para que o slider principal não "veja" o gesto
-    elemento.addEventListener('touchstart', parar, { passive: true });
-    elemento.addEventListener('touchmove', parar, { passive: true });
-    elemento.addEventListener('touchend', parar, { passive: true });
-}
-
-// Garante que roda assim que o HTML carregar
+// Inicia a proteção assim que o app carregar
 document.addEventListener('DOMContentLoaded', isolarGestosDoCarrossel);
 
     await init();

@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 const https = require('https');
 
 // --- OTIMIZAÇÃO: AGENTE HTTPS ---
+// Configuração para manter a conexão viva e evitar timeouts
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
@@ -15,12 +16,13 @@ const client = axios.create({
     headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br'
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://investidor10.com.br/'
     },
     timeout: 10000
 });
 
-// --- HELPERS ---
+// --- HELPERS (Funções Auxiliares) ---
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
@@ -28,12 +30,14 @@ function parseValue(valueStr) {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
     try {
+        // Remove tudo que não for número, vírgula ou hífen e substitui vírgula por ponto
         return parseFloat(valueStr.replace(REGEX_CLEAN_NUMBER, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
 
 function normalize(str) {
     if (!str) return '';
+    // Remove acentos e coloca em minúsculas
     return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
@@ -44,10 +48,6 @@ function chunkArray(array, size) {
     }
     return results;
 }
-
-// ---------------------------------------------------------
-// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (ATUALIZADO)
-// ---------------------------------------------------------
 
 function parseExtendedValue(str) {
     if (!str) return 0;
@@ -63,13 +63,30 @@ function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// Correção para textos duplicados (ex: "R$ 10 Bi R$ 10.000...")
+function cleanDoubledString(str) {
+    if (!str) return "";
+    const parts = str.split('R$');
+    // Se houver mais de um "R$", pega apenas o primeiro valor válido
+    if (parts.length > 2) {
+        return 'R$' + parts[1].trim(); 
+    }
+    return str;
+}
+
+// ---------------------------------------------------------
+// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (COMPLETO E CORRIGIDO)
+// ---------------------------------------------------------
+
 async function scrapeFundamentos(ticker) {
     try {
         let html;
         try {
+            // Tenta endpoint de FIIs
             const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
             html = res.data;
         } catch (e) {
+            // Tenta endpoint de Ações
             const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
             html = res.data;
         }
@@ -88,19 +105,30 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
+        // Função interna para processar pares Título/Valor encontrados
         const processPair = (tituloRaw, valorRaw) => {
-            const titulo = normalize(tituloRaw); // Remove acentos e poe minusculo
-            const valor = valorRaw.trim();
+            const titulo = normalize(tituloRaw); 
+            
+            // CORREÇÃO: Limpeza do Valor de Mercado duplicado
+            let valor = valorRaw.trim();
+            if (titulo.includes('mercado')) {
+                valor = cleanDoubledString(valor);
+            }
+
             if (!valor) return;
 
-            // --- CAMPOS GERAIS ---
-            if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
+            // --- 1. CAMPOS GERAIS ---
+            // CORREÇÃO: Captura robusta de DY (aceita "Dividend Yield", "DY", "DY (12M)")
+            if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) {
+                dados.dy = valor;
+            }
+            
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
             
-            // --- FIIS ---
+            // --- 2. FIIS ---
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
             if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
@@ -113,15 +141,22 @@ async function scrapeFundamentos(ticker) {
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas')) dados.cotas_emitidas = valor;
             
-            // --- AÇÕES ---
+            // --- 3. AÇÕES ---
             if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
             
-            // ROE e LPA as vezes vem como "R.O.E" ou "L.P.A"
             if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
             if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
             
             if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
-            if (dados.divida_liquida_ebitda === 'N/A' && titulo.includes('div. liquida / ebitda')) dados.divida_liquida_ebitda = valor;
+
+            // CORREÇÃO: Dívida Líquida / EBITDA (Regex/Busca permissiva)
+            if (dados.divida_liquida_ebitda === 'N/A') {
+                // Remove espaços e barras para comparar (ex: "div.liquida/ebitda" -> "div.liquidaebitda")
+                const tituloClean = titulo.replace(/\s/g, '').replace('/', ''); 
+                if (tituloClean.includes('div.liquida') && tituloClean.includes('ebitda')) {
+                    dados.divida_liquida_ebitda = valor;
+                }
+            }
 
             // VPA (Ações) e VP/Cota (FIIs)
             if (dados.vp_cota === 'N/A') {
@@ -130,7 +165,7 @@ async function scrapeFundamentos(ticker) {
                 }
             }
 
-            // Lógica de Patrimônio
+            // Lógica de Patrimônio (Detecta se é valor financeiro alto ou só VP por cota)
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
@@ -147,46 +182,56 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
-        // --- 1. CAPTURA DOS CARDS DE DESTAQUE (Topo) ---
-        // Varre todos os cards para garantir captura mesmo sem classes especificas
+        // --- VARREDURA DO HTML ---
+
+        // 1. CARDS DE DESTAQUE (Topo)
+        // Essencial para pegar DY e Cotação que ficam em destaque
         $('._card').each((i, el) => {
             const titulo = $(el).find('._card-header').text().trim();
             const valor = $(el).find('._card-body').text().trim();
             
-            // Processa para os dados principais (DY, PL, PVP)
             processPair(titulo, valor);
 
-            // Captura Cotação separadamente
             if (normalize(titulo).includes('cotacao')) {
                 cotacao_atual = parseValue(valor);
             }
         });
 
-        // Fallback: Se a cotação não veio pelo loop, tenta seletor específico
+        // Fallback: Tenta seletor específico se cotação não veio pelo loop
         if (cotacao_atual === 0) {
              const cotacaoEl = $('._card.cotacao ._card-body span').first();
              if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
         }
 
-        // --- 2. CAPTURA DA GRELHA DE INDICADORES (Divs .cell) ---
-        // ATUALIZAÇÃO IMPORTANTE: Lida com falta de classe .name
+        // 2. GRELHA DE INDICADORES (Divs .cell)
+        // Verifica .name ou primeiro span (para layouts novos do site)
         $('.cell').each((i, el) => {
             let titulo = $(el).find('.name').text().trim();
             if (!titulo) {
-                // Tenta pegar o primeiro span (estrutura alternativa do Investidor10)
                 titulo = $(el).children('span').first().text().trim();
             }
-            const valor = $(el).find('.value').text().trim();
+            
+            // Tenta pegar valor dentro de .value span (mais preciso) ou .value direto
+            let valorEl = $(el).find('.value span').first();
+            let valor = "";
+            if (valorEl.length > 0) {
+                valor = valorEl.text().trim();
+            } else {
+                valor = $(el).find('.value').text().trim();
+            }
+            
             processPair(titulo, valor);
         });
 
-        // --- 3. CAPTURA DE TABELAS ---
+        // 3. TABELAS (Dados comparativos ou históricos)
         $('table tbody tr').each((i, row) => {
             const cols = $(row).find('td');
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // Fallback para Valor de Mercado se não achar no site
+        // --- CÁLCULOS FINAIS ---
+
+        // Fallback para calcular Valor de Mercado se não encontrado
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -204,6 +249,7 @@ async function scrapeFundamentos(ticker) {
 
         return dados;
     } catch (error) {
+        console.error("Erro no scraper de fundamentos:", error.message);
         return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
@@ -270,15 +316,17 @@ async function scrapeAsset(ticker) {
 }
 
 // ---------------------------------------------------------
-// HANDLER (API)
+// HANDLER (API Entry Point)
 // ---------------------------------------------------------
 
 module.exports = async function handler(req, res) {
+    // Configuração CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    // Cache
     if (req.method === 'GET' || req.method === 'POST') {
        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
@@ -290,12 +338,14 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
+        // Modo: Fundamentos (Investidor10)
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
+        // Modo: Carteira ou Histórico (StatusInvest)
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             
@@ -325,6 +375,7 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
+        // Modo: Histórico 12 Meses
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
             const history = await scrapeAsset(payload.ticker);
@@ -336,6 +387,7 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: formatted });
         }
 
+        // Modo: Próximo Provento
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);

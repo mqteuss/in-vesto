@@ -76,7 +76,6 @@ async function scrapeFundamentos(ticker) {
 
         const $ = cheerio.load(html);
 
-        // Adicionados campos específicos de Ações: pl, roe, lpa, margem_liquida
         let dados = {
             dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
@@ -90,18 +89,18 @@ async function scrapeFundamentos(ticker) {
         let num_cotas = 0;
 
         const processPair = (tituloRaw, valorRaw) => {
-            const titulo = normalize(tituloRaw);
+            const titulo = normalize(tituloRaw); // Remove acentos e poe minusculo
             const valor = valorRaw.trim();
             if (!valor) return;
 
-            // Campos Comuns
+            // --- CAMPOS GERAIS ---
             if (dados.dy === 'N/A' && titulo.includes('dividend yield')) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
             
-            // Campos FIIs
+            // --- FIIS ---
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
             if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
@@ -112,19 +111,28 @@ async function scrapeFundamentos(ticker) {
             if (dados.tipo_fundo === 'N/A' && titulo.includes('tipo de fundo')) dados.tipo_fundo = valor;
             if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
-            if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
+            if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas')) dados.cotas_emitidas = valor;
             
-            // Campos Ações (NOVOS)
-            if (dados.pl === 'N/A' && titulo === 'p/l') dados.pl = valor;
-            if (dados.roe === 'N/A' && titulo === 'roe') dados.roe = valor;
-            if (dados.lpa === 'N/A' && titulo === 'lpa') dados.lpa = valor;
+            // --- AÇÕES (CORREÇÃO DE MATCH) ---
+            // Usamos .includes ou verificação parcial para pegar "V.P.A", "P/L", etc.
+            if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
+            
+            // ROE e LPA as vezes vem como "R.O.E" ou "L.P.A"
+            if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
+            if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
+            
             if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
             if (dados.divida_liquida_ebitda === 'N/A' && titulo.includes('div. liquida / ebitda')) dados.divida_liquida_ebitda = valor;
 
-            // VPA (Ações) e VP/Cota (FIIs) são análogos
-            if (dados.vp_cota === 'N/A' && (titulo === 'vpa' || titulo.includes('vp por cota'))) dados.vp_cota = valor;
+            // VPA (Ações) e VP/Cota (FIIs)
+            if (dados.vp_cota === 'N/A') {
+                // Tenta pegar VPA (Ações) ou VP/Cota (FIIs)
+                if (titulo === 'vpa' || titulo.replace(/\./g, '') === 'vpa' || titulo.includes('vp por cota')) {
+                    dados.vp_cota = valor;
+                }
+            }
 
-            // Lógica de Patrimônio (Mantida)
+            // Lógica de Patrimônio
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
@@ -141,24 +149,20 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
+        // Seletores específicos para garantir dados do topo (Cards coloridos)
         const dyEl = $('._card.dy ._card-body span').first();
         if (dyEl.length) dados.dy = dyEl.text().trim();
+        
         const pvpEl = $('._card.vp ._card-body span').first();
         if (pvpEl.length) dados.pvp = pvpEl.text().trim();
-        const liqEl = $('._card.liquidity ._card-body span').first();
-        if (liqEl.length) dados.liquidez = liqEl.text().trim();
-        const valPatEl = $('._card.val_patrimonial ._card-body span').first();
-        if (valPatEl.length) dados.vp_cota = valPatEl.text().trim();
         
-        // Ações specific cards
         const plEl = $('._card.pl ._card-body span').first();
         if (plEl.length) dados.pl = plEl.text().trim();
-        const roeEl = $('._card.roe ._card-body span').first();
-        if (roeEl.length) dados.roe = roeEl.text().trim();
-
+        
         const cotacaoEl = $('._card.cotacao ._card-body span').first();
         if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
 
+        // Varre todos os cards e tabelas
         $('._card').each((i, el) => processPair($(el).find('._card-header span').text(), $(el).find('._card-body span').text()));
         $('.cell').each((i, el) => processPair($(el).find('.name').text(), $(el).find('.value').text()));
         $('table tbody tr').each((i, row) => {
@@ -166,6 +170,7 @@ async function scrapeFundamentos(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
+        // Fallback para Valor de Mercado se não achar no site
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;

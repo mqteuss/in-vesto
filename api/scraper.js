@@ -3,7 +3,6 @@ const cheerio = require('cheerio');
 const https = require('https');
 
 // --- OTIMIZAÇÃO: AGENTE HTTPS ---
-// Configuração para manter a conexão viva e evitar timeouts
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
@@ -22,7 +21,7 @@ const client = axios.create({
     timeout: 10000
 });
 
-// --- HELPERS (Funções Auxiliares) ---
+// --- HELPERS ---
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
@@ -30,14 +29,12 @@ function parseValue(valueStr) {
     if (!valueStr) return 0;
     if (typeof valueStr === 'number') return valueStr;
     try {
-        // Remove tudo que não for número, vírgula ou hífen e substitui vírgula por ponto
         return parseFloat(valueStr.replace(REGEX_CLEAN_NUMBER, "").replace(',', '.')) || 0;
     } catch (e) { return 0; }
 }
 
 function normalize(str) {
     if (!str) return '';
-    // Remove acentos e coloca em minúsculas
     return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
@@ -63,11 +60,9 @@ function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// Correção para textos duplicados (ex: "R$ 10 Bi R$ 10.000...")
 function cleanDoubledString(str) {
     if (!str) return "";
     const parts = str.split('R$');
-    // Se houver mais de um "R$", pega apenas o primeiro valor válido
     if (parts.length > 2) {
         return 'R$' + parts[1].trim(); 
     }
@@ -75,18 +70,16 @@ function cleanDoubledString(str) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (COMPLETO E CORRIGIDO)
+// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (FINAL)
 // ---------------------------------------------------------
 
 async function scrapeFundamentos(ticker) {
     try {
         let html;
         try {
-            // Tenta endpoint de FIIs
             const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
             html = res.data;
         } catch (e) {
-            // Tenta endpoint de Ações
             const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
             html = res.data;
         }
@@ -105,11 +98,9 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // Função interna para processar pares Título/Valor encontrados
         const processPair = (tituloRaw, valorRaw) => {
             const titulo = normalize(tituloRaw); 
             
-            // CORREÇÃO: Limpeza do Valor de Mercado duplicado
             let valor = valorRaw.trim();
             if (titulo.includes('mercado')) {
                 valor = cleanDoubledString(valor);
@@ -118,7 +109,6 @@ async function scrapeFundamentos(ticker) {
             if (!valor) return;
 
             // --- 1. CAMPOS GERAIS ---
-            // CORREÇÃO: Captura robusta de DY (aceita "Dividend Yield", "DY", "DY (12M)")
             if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) {
                 dados.dy = valor;
             }
@@ -149,11 +139,11 @@ async function scrapeFundamentos(ticker) {
             
             if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
 
-            // CORREÇÃO: Dívida Líquida / EBITDA (Regex/Busca permissiva)
+            // [CORREÇÃO FINAL] Div. Líq / EBITDA 
+            // Agora verifica "div" + "liq" + "ebitda" para pegar abreviações como "Div. Líq."
             if (dados.divida_liquida_ebitda === 'N/A') {
-                // Remove espaços e barras para comparar (ex: "div.liquida/ebitda" -> "div.liquidaebitda")
-                const tituloClean = titulo.replace(/\s/g, '').replace('/', ''); 
-                if (tituloClean.includes('div.liquida') && tituloClean.includes('ebitda')) {
+                const tituloClean = titulo.replace(/[\s\/\.\-]/g, ''); // Remove espaços, barras, pontos e traços
+                if (tituloClean.includes('div') && tituloClean.includes('liq') && tituloClean.includes('ebitda')) {
                     dados.divida_liquida_ebitda = valor;
                 }
             }
@@ -165,7 +155,7 @@ async function scrapeFundamentos(ticker) {
                 }
             }
 
-            // Lógica de Patrimônio (Detecta se é valor financeiro alto ou só VP por cota)
+            // Patrimônio
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
@@ -182,10 +172,9 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
-        // --- VARREDURA DO HTML ---
+        // --- VARREDURA ---
 
-        // 1. CARDS DE DESTAQUE (Topo)
-        // Essencial para pegar DY e Cotação que ficam em destaque
+        // 1. CARDS DE DESTAQUE
         $('._card').each((i, el) => {
             const titulo = $(el).find('._card-header').text().trim();
             const valor = $(el).find('._card-body').text().trim();
@@ -197,41 +186,29 @@ async function scrapeFundamentos(ticker) {
             }
         });
 
-        // Fallback: Tenta seletor específico se cotação não veio pelo loop
         if (cotacao_atual === 0) {
              const cotacaoEl = $('._card.cotacao ._card-body span').first();
              if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
         }
 
-        // 2. GRELHA DE INDICADORES (Divs .cell)
-        // Verifica .name ou primeiro span (para layouts novos do site)
+        // 2. GRELHA DE INDICADORES
         $('.cell').each((i, el) => {
             let titulo = $(el).find('.name').text().trim();
-            if (!titulo) {
-                titulo = $(el).children('span').first().text().trim();
-            }
+            if (!titulo) titulo = $(el).children('span').first().text().trim();
             
-            // Tenta pegar valor dentro de .value span (mais preciso) ou .value direto
             let valorEl = $(el).find('.value span').first();
-            let valor = "";
-            if (valorEl.length > 0) {
-                valor = valorEl.text().trim();
-            } else {
-                valor = $(el).find('.value').text().trim();
-            }
+            let valor = (valorEl.length > 0) ? valorEl.text().trim() : $(el).find('.value').text().trim();
             
             processPair(titulo, valor);
         });
 
-        // 3. TABELAS (Dados comparativos ou históricos)
+        // 3. TABELAS
         $('table tbody tr').each((i, row) => {
             const cols = $(row).find('td');
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // --- CÁLCULOS FINAIS ---
-
-        // Fallback para calcular Valor de Mercado se não encontrado
+        // Fallback Valor de Mercado
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -285,7 +262,6 @@ async function scrapeAsset(ticker) {
             };
 
             let labelTipo = 'REND'; 
-            
             if (d.et === 1) labelTipo = 'DIV';
             if (d.et === 2) labelTipo = 'JCP';
             
@@ -316,17 +292,15 @@ async function scrapeAsset(ticker) {
 }
 
 // ---------------------------------------------------------
-// HANDLER (API Entry Point)
+// HANDLER (API)
 // ---------------------------------------------------------
 
 module.exports = async function handler(req, res) {
-    // Configuração CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Cache
     if (req.method === 'GET' || req.method === 'POST') {
        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
@@ -338,14 +312,12 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // Modo: Fundamentos (Investidor10)
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
-        // Modo: Carteira ou Histórico (StatusInvest)
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             
@@ -375,7 +347,6 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-        // Modo: Histórico 12 Meses
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
             const history = await scrapeAsset(payload.ticker);
@@ -387,7 +358,6 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: formatted });
         }
 
-        // Modo: Próximo Provento
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);

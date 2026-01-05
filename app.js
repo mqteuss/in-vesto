@@ -1560,7 +1560,6 @@ function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     
     // --- 1. Smart Check (Performance) ---
-    // Verifica se houve mudanças para evitar re-renderizar a lista inteira sem necessidade
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const termoBusca = provSearchTerm || ''; 
@@ -1578,14 +1577,9 @@ function renderizarHistoricoProventos() {
     // --- 2. Filtros e Ordenação ---
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
-        
-        // Verifica integridade da data
         const parts = p.paymentDate.split('-');
         if(parts.length !== 3) return false;
-        
-        // Filtro de Texto (Ticker)
         const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
-        
         return buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
@@ -1619,83 +1613,89 @@ function renderizarHistoricoProventos() {
             return false;
         });
 
-        // Se o mês estiver vazio após o filtro de quantidade, pula
         if (itensValidos.length === 0) return;
 
-        // Header do Mês (Sticky)
+        // Header do Mês (Clean e Sticky)
         const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
+        // Adicionamos backdrop-blur e ajustamos as cores para ficarem mais "Dark Mode Native"
+        header.className = 'history-header-sticky flex justify-between items-center mb-2 mt-2 py-3 px-1 sticky top-0 z-10 bg-[#000000]/90 backdrop-blur-md border-b border-[#27272a]';
+        
         header.innerHTML = `
-            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">
+            <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest pl-1 flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
                 ${mes}
             </h3>
-            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
-                Recebido: ${formatBRL(totalMes)}
+            <span class="text-[11px] font-mono font-medium text-purple-300 bg-purple-900/10 px-2 py-0.5 rounded border border-purple-500/10">
+                + ${formatBRL(totalMes)}
             </span>
         `;
         fragment.appendChild(header);
 
         // Lista de Cards
         const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'px-3 pb-2'; 
+        listaGrupo.className = 'px-1 space-y-2 mb-6'; // Espaçamento entre cards em vez de lista contínua
 
         itensValidos.forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            const dia = p.paymentDate.split('-')[2]; 
+            const parts = p.paymentDate.split('-'); // YYYY-MM-DD
+            const dia = parts[2]; 
             const total = p.value * qtd;
             const sigla = p.symbol.substring(0, 2);
             
-            // --- LÓGICA DE TAGS VISUAIS ---
-            let tipoLabel = '';
-            let tipoClass = '';
+            // --- UX CLEAN: Tipagem Minimalista ---
+            let tipoLabel = 'REND'; // Padrão
+            let dotColor = 'bg-emerald-500'; // Cor do "pontinho"
+            let textColor = 'text-emerald-400'; // Cor do texto do valor
             
-            // Tenta pegar o tipo ou infere string vazia
             const rawType = (p.type || '').toUpperCase();
             
             if (rawType.includes('JCP') || rawType.includes('JUROS')) {
-                // TAG JCP (Laranja)
                 tipoLabel = 'JCP';
-                tipoClass = 'text-[9px] font-bold text-orange-400 bg-orange-900/20 border border-orange-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
-            
+                dotColor = 'bg-amber-500'; // Amarelo/Ouro para JCP (Atenção/Imposto)
+                textColor = 'text-amber-400'; 
             } else if (rawType.includes('DIV')) {
-                // TAG DIVIDENDO (Azul)
                 tipoLabel = 'DIV';
-                tipoClass = 'text-[9px] font-bold text-blue-400 bg-blue-900/20 border border-blue-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
-            
-            } else if (rawType.includes('TRIB')) {
-                // TAG TRIBUTADO (Roxo) - A CORREÇÃO PARA OS "EM BRANCO"
-                tipoLabel = 'REND'; 
-                tipoClass = 'text-[9px] font-bold text-purple-400 bg-purple-900/20 border border-purple-900/30 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider';
+                dotColor = 'bg-blue-500'; // Azul para Dividendos
+                textColor = 'text-blue-400';
+            } else {
+                // FIIs geralmente caem aqui (Rendimentos)
+                tipoLabel = 'REND';
+                dotColor = 'bg-emerald-500'; // Verde para Rendimentos FII
+                textColor = 'text-emerald-400';
             }
-            // FIIs normais (rendimentos isentos) continuam sem tag para visual clean
 
             const item = document.createElement('div');
-            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group border-b border-[#1A1A1A] last:border-0';
+            // Card individual flutuante em vez de lista com borda
+            item.className = 'history-card flex items-center justify-between p-3 rounded-2xl bg-[#141414] hover:bg-[#1A1A1A] transition-colors cursor-default group';
 
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>
+                    <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 text-white font-bold text-[10px] tracking-wider border border-[#27272a] group-hover:border-[#3f3f46] transition-colors">
+                        ${sigla}
                     </div>
                     
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center">
-                            <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
-                            ${tipoLabel ? `<span class="${tipoClass}">${tipoLabel}</span>` : ''}
+                    <div class="flex-1 min-w-0 flex flex-col justify-center">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span class="font-bold text-gray-200 text-sm tracking-tight">${p.symbol}</span>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-1.5 text-[11px] text-gray-500 leading-none">
-                            <span class="font-medium text-gray-400">Dia ${dia}</span>
+
+                        <div class="flex items-center gap-1.5 text-[10px] text-gray-500 font-medium">
+                            
+                            <div class="flex items-center gap-1 bg-[#27272a] px-1.5 py-0.5 rounded-[4px]">
+                                <span class="w-1 h-1 rounded-full ${dotColor}"></span>
+                                <span class="text-gray-300 tracking-wider">${tipoLabel}</span>
+                            </div>
+
                             <span>•</span>
-                            <span>${qtd} cotas</span>
-                            <span>•</span>
-                            <span>${formatBRL(p.value)}/cota</span>
+                            <span>Dia ${dia}</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
+                <div class="text-right flex flex-col justify-center items-end">
+                    <span class="text-sm font-bold ${textColor} tracking-tight">+ ${formatBRL(total)}</span>
+                    <span class="text-[10px] text-gray-600 mt-0.5">${qtd} cotas</span>
                 </div>
             `;
             listaGrupo.appendChild(item);

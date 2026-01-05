@@ -5847,25 +5847,29 @@ function saveSearchHistory(term) {
 
     // --- GESTOS (SWIPE) PARA NAVEGAÇÃO ---
 let swipeStartX = 0;
-    let swipeStartY = 0;
+let swipeStartY = 0;
 
 document.addEventListener('touchstart', (e) => {
-        // Bloqueia se houver modal aberto
-        if (document.querySelector('.custom-modal.visible') || 
-            document.querySelector('.page-modal.visible') || 
-            document.querySelector('#ai-modal.visible')) {
-            return;
-        }
-        
-        // --- NOVA CORREÇÃO: Bloqueia swipe se tocar no carrossel de favoritos ---
-        if (e.target.closest('.overflow-x-auto') || e.target.closest('#dashboard-favorites-list')) {
-            return; 
-        }
-        // -----------------------------------------------------------------------
+    // Bloqueia se houver modal aberto
+    if (document.querySelector('.custom-modal.visible') || 
+        document.querySelector('.page-modal.visible') || 
+        document.querySelector('#ai-modal.visible')) {
+        return;
+    }
+    
+    // --- CORREÇÃO APLICADA AQUI ---
+    // Adicionamos '#timeline-pagamentos-container' e '.payment-carousel' para bloquear a troca de aba
+    if (e.target.closest('.overflow-x-auto') || 
+        e.target.closest('#dashboard-favorites-list') || 
+        e.target.closest('#timeline-pagamentos-container') || 
+        e.target.closest('.payment-carousel')) {
+        return; 
+    }
+    // -----------------------------------------------------------------------
 
-        swipeStartX = e.changedTouches[0].screenX;
-        swipeStartY = e.changedTouches[0].screenY;
-    }, { passive: true });
+    swipeStartX = e.changedTouches[0].screenX;
+    swipeStartY = e.changedTouches[0].screenY;
+}, { passive: true });
 
     document.addEventListener('touchend', (e) => {
         if (document.querySelector('.custom-modal.visible') || 
@@ -5960,42 +5964,5 @@ if (toggleNotifBtn) {
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
 	
-// --- BLOQUEIO DE GESTOS (FIX DEFINITIVO) ---
-function isolarGestosDoCarrossel() {
-    const pararPropagacao = (e) => e.stopPropagation();
-
-    // Lista de seletores para bloquear (IDs e Classes)
-    const seletores = [
-        '#carousel-wrapper',              // Atalhos
-        '#timeline-pagamentos-container', // Container da Agenda (ID fixo)
-        '#timeline-lista',                // Lista interna
-        '.no-swipe',                      // Classe manual (Recomendado)
-        '.payment-carousel'               // Classe do seu CSS
-    ];
-
-    // Varre todos os seletores e aplica o bloqueio
-    seletores.forEach(seletor => {
-        const elementos = document.querySelectorAll(seletor);
-        elementos.forEach(el => {
-            // Remove listener antigo para evitar duplicidade
-            el.removeEventListener('touchstart', pararPropagacao);
-            el.removeEventListener('touchmove', pararPropagacao);
-            el.removeEventListener('touchend', pararPropagacao);
-
-            // Adiciona o bloqueio
-            el.addEventListener('touchstart', pararPropagacao, { passive: true });
-            el.addEventListener('touchmove', pararPropagacao, { passive: true });
-            el.addEventListener('touchend', pararPropagacao, { passive: true });
-        });
-    });
-}
-
-// Executa ao carregar a página
-document.addEventListener('DOMContentLoaded', isolarGestosDoCarrossel);
-
-// DICA: Se a agenda for carregada via API (demora para aparecer),
-// chame window.isolarGestosDoCarrossel() logo após renderizar os dados.
-window.isolarGestosDoCarrossel = isolarGestosDoCarrossel;
-
     await init();
 });

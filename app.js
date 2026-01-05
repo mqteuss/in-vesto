@@ -2233,27 +2233,44 @@ function renderizarGraficoHistorico() {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // 1. Dados
+    // 0. Data de Hoje para comparação
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    // 1. Dados Agrupados (Recebido vs A Receber)
     const grupos = {};
+    
     proventosConhecidos.forEach(p => {
         if (!p.paymentDate || p.value <= 0) return;
-        const key = p.paymentDate.substring(0, 7); 
+        
+        const key = p.paymentDate.substring(0, 7); // YYYY-MM
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
         
         if (qtd > 0) {
-            if (!grupos[key]) grupos[key] = 0;
-            grupos[key] += (p.value * qtd);
+            if (!grupos[key]) {
+                grupos[key] = { recebido: 0, aReceber: 0 };
+            }
+
+            // Converter string de data para objeto Date
+            const [ano, mes, dia] = p.paymentDate.split('-');
+            const dataPagamento = new Date(ano, mes - 1, dia);
+            const valorTotal = p.value * qtd;
+
+            if (dataPagamento <= hoje) {
+                grupos[key].recebido += valorTotal;
+            } else {
+                grupos[key].aReceber += valorTotal;
+            }
         }
     });
 
     let mesesOrdenados = Object.keys(grupos).sort();
     
-    // Pega os dados crus (YYYY-MM) antes de formatar, para usarmos no clique
+    // Arrays para o gráfico
     const labelsRaw = [];
-    const dataRaw = [];
-    
-    // Array paralelo para guardar a chave "2025-10" correspondente a cada barra
+    const dataRecebidoRaw = [];
+    const dataAReceberRaw = [];
     const keysMap = []; 
 
     mesesOrdenados.forEach(mesIso => {
@@ -2264,16 +2281,25 @@ function renderizarGraficoHistorico() {
         const anoCurto = anoFull.slice(-2);
         
         labelsRaw.push(`${nomeMes} ${anoCurto}`);
-        dataRaw.push(grupos[mesIso]);
-        keysMap.push(mesIso); // Guarda "2024-05"
+        dataRecebidoRaw.push(grupos[mesIso].recebido);
+        dataAReceberRaw.push(grupos[mesIso].aReceber);
+        keysMap.push(mesIso); // Guarda "2025-05"
     });
 
     // Filtro 12 meses
     const labelsFiltrados = labelsRaw.slice(-12);
-    const dataFiltrados = dataRaw.slice(-12);
-    const keysFiltrados = keysMap.slice(-12); // Keys alinhadas com o filtro
+    const dataRecebidoFiltrados = dataRecebidoRaw.slice(-12);
+    const dataAReceberFiltrados = dataAReceberRaw.slice(-12);
+    const keysFiltrados = keysMap.slice(-12);
     
-    const newDataString = JSON.stringify({ labels: labelsFiltrados, data: dataFiltrados });
+    // Verifica mudança nos dados para evitar re-render desnecessário
+    // (Simplificado: verifica o total combinado para gerar a string de diff)
+    const newDataString = JSON.stringify({ 
+        l: labelsFiltrados, 
+        d1: dataRecebidoFiltrados, 
+        d2: dataAReceberFiltrados 
+    });
+    
     if (newDataString === lastHistoricoData && historicoChartInstance) { return; }
     lastHistoricoData = newDataString; 
 
@@ -2286,7 +2312,10 @@ function renderizarGraficoHistorico() {
     }
     
     const ctx = canvas.getContext('2d');
-    const simplePurpleFill = 'rgba(192, 132, 252, 0.85)'; 
+    
+    // Cores
+    const colorRecebido = 'rgba(192, 132, 252, 0.85)'; // Roxo
+    const colorAReceber = 'rgba(251, 191, 36, 0.85)';  // Amarelo (Amber-400)
     
     const floatingLabelsPlugin = {
         id: 'floatingLabels',
@@ -2298,6 +2327,9 @@ function renderizarGraficoHistorico() {
             
             chart.data.datasets.forEach((dataset, i) => {
                 const meta = chart.getDatasetMeta(i);
+                // Se a barra estiver oculta (hidden), não desenha
+                if (meta.hidden) return;
+
                 meta.data.forEach((bar, index) => {
                     const value = dataset.data[index];
                     if (value > 0) {
@@ -2306,7 +2338,8 @@ function renderizarGraficoHistorico() {
                         ctx.fillStyle = textColor;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'bottom';
-                        ctx.fillText(text, bar.x, bar.y - 5);
+                        // bar.y é o topo do segmento da barra
+                        ctx.fillText(text, bar.x, bar.y - 2);
                     }
                 });
             });
@@ -2322,17 +2355,30 @@ function renderizarGraficoHistorico() {
         type: 'bar',
         data: {
             labels: labelsFiltrados,
-            datasets: [{
-                label: 'Total Recebido',
-                data: dataFiltrados,
-                backgroundColor: simplePurpleFill,
-                borderColor: '#c084fc', 
-                borderWidth: 1,
-                borderRadius: 4,
-                barPercentage: 0.6,
-                // Truque: Salvamos as chaves reais (YYYY-MM) dentro do dataset para acessar no clique
-                rawKeys: keysFiltrados 
-            }]
+            datasets: [
+                {
+                    label: 'A Receber', // Fica em cima na pilha (ordem visual depende do stack, mas geralmente o ultimo dataset fica no topo ou base dependendo da config)
+                    data: dataAReceberFiltrados,
+                    backgroundColor: colorAReceber,
+                    borderColor: '#f59e0b', 
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    stack: 'Stack 0', // Empilhamento
+                    rawKeys: keysFiltrados // Para o clique funcionar
+                },
+                {
+                    label: 'Recebido',
+                    data: dataRecebidoFiltrados,
+                    backgroundColor: colorRecebido,
+                    borderColor: '#c084fc', 
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    stack: 'Stack 0', // Empilhamento
+                    rawKeys: keysFiltrados
+                }
+            ]
         },
         plugins: [floatingLabelsPlugin], 
         options: {
@@ -2345,26 +2391,30 @@ function renderizarGraficoHistorico() {
             onClick: (e, elements, chart) => {
                 if (!elements || elements.length === 0) return;
                 
-                // Pega o índice da barra clicada
-                const index = elements[0].index;
-                const datasetIndex = elements[0].datasetIndex;
+                const element = elements[0];
+                const index = element.index;
+                const datasetIndex = element.datasetIndex;
                 
-                // Recupera o label (Ex: "OUT 25") e a chave crua (Ex: "2025-10")
                 const labelAmigavel = chart.data.labels[index];
+                // Pega a rawKey do dataset clicado
                 const rawKey = chart.data.datasets[datasetIndex].rawKeys[index];
                 
-                // Abre o modal com os detalhes
                 exibirDetalhesProventos(rawKey, labelAmigavel);
             },
             // ------------------------
 
             plugins: {
-                legend: { display: false },
+                legend: { display: true, position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } }, // Habilitei a legenda para distinguir as cores
                 tooltip: { enabled: false } 
             },
             scales: {
-                y: { display: false, beginAtZero: true },
+                y: { 
+                    display: false, 
+                    beginAtZero: true, 
+                    stacked: true // <--- Importante
+                },
                 x: { 
+                    stacked: true, // <--- Importante
                     grid: { display: false }, 
                     ticks: {
                         color: document.body.classList.contains('light-mode') ? '#374151' : '#9ca3af',

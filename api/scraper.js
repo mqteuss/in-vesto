@@ -2,7 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
 
-// --- OTIMIZAÇÃO: AGENTE HTTPS ---
+// --- AGENTE HTTPS (Anti-Bloqueio) ---
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
@@ -49,6 +49,7 @@ function formatCurrency(value) {
 
 function normalize(str) {
     if (!str) return '';
+    // Remove acentos e deixa tudo minúsculo para facilitar o "match"
     return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
@@ -61,7 +62,7 @@ function chunkArray(array, size) {
 }
 
 // ---------------------------------------------------------
-// 1. SCRAPER FIIs (RESTAURADO: VERSÃO QUE FUNCIONAVA)
+// 1. SCRAPER PARA FIIs (Mantido a lógica que já funcionava)
 // ---------------------------------------------------------
 async function scrapeInvestidor10FII(ticker) {
     try {
@@ -91,6 +92,8 @@ async function scrapeInvestidor10FII(ticker) {
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
+            
+            // Tratamento específico para Variação (FIIs geralmente mostram no card ou tabela)
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
             
             if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
@@ -102,19 +105,15 @@ async function scrapeInvestidor10FII(ticker) {
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas emitidas')) dados.cotas_emitidas = valor;
 
-            // --- LÓGICA RESTAURADA PARA VP/COTA E PATRIMÔNIO ---
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
-                // Se for Bilhões/Milhões ou número muito grande, é Patrimônio Total
                 if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
                     if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
                 } else {
-                    // Se for pequeno, é VP por cota
                     if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
                 }
             }
-
             if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
                 num_cotas = parseValue(valor);
                 if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
@@ -139,7 +138,7 @@ async function scrapeInvestidor10FII(ticker) {
             if (cols.length >= 2) processPair($(cols[0]).text(), $(cols[1]).text());
         });
 
-        // Fallback para Valor de Mercado
+        // Fallback Mercado
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -163,7 +162,7 @@ async function scrapeInvestidor10FII(ticker) {
 }
 
 // ---------------------------------------------------------
-// 2. SCRAPER AÇÕES (NOVA VERSÃO ROBUSTA - INVESTIDOR10)
+// 2. SCRAPER PARA AÇÕES (CALIBRADO COM O SEU HTML PETR4)
 // ---------------------------------------------------------
 async function scrapeInvestidor10Acoes(ticker) {
     try {
@@ -177,40 +176,72 @@ async function scrapeInvestidor10Acoes(ticker) {
         };
 
         const processPair = (tituloRaw, valorRaw) => {
-            // Normaliza removendo pontos e acentos (Ex: "V.P.A" -> "vpa")
-            const titulo = normalize(tituloRaw).replace(/\./g, ''); 
+            // Normaliza para: minusculo, sem acento, sem pontos extras
+            // Ex: "Dív. líquida/EBITDA" vira "div liquidabitda" (aprox) ou usamos includes
+            const titulo = normalize(tituloRaw); 
             const valor = valorRaw.trim();
+
             if (!valor || valor === '-') return;
 
-            if (titulo === 'pl') dados.pl = valor;
-            if (titulo === 'pvp') dados.pvp = valor;
-            if (titulo.includes('dividendyield') || titulo === 'dy') dados.dy = valor;
-            if (titulo === 'roe') dados.roe = valor;
-            if (titulo === 'lpa') dados.lpa = valor;
-            if (titulo === 'vpa') dados.vp_cota = valor; // O site usa "V.P.A" que vira "vpa"
+            // --- MAPEAMENTO BASEADO NO SEU HTML ---
             
+            // P/L (No HTML: "P/L")
+            if (titulo === 'pl' || titulo === 'p/l') dados.pl = valor;
+            
+            // P/VP (No HTML: "P/VP")
+            if (titulo === 'pvp' || titulo === 'p/vp') dados.pvp = valor;
+            
+            // DY (No HTML: "Dividend Yield" ou "DY (12M)")
+            if (titulo.includes('dividendyield') || titulo.includes('dy')) dados.dy = valor;
+            
+            // ROE (No HTML: "ROE")
+            if (titulo === 'roe') dados.roe = valor;
+            
+            // LPA (No HTML: "LPA")
+            if (titulo === 'lpa') dados.lpa = valor;
+            
+            // VPA (No HTML: "VPA" - não é V.P.A nem VP/Cota)
+            if (titulo === 'vpa') dados.vp_cota = valor;
+
+            // Valor de Mercado (No HTML: "Valor de mercado")
             if (titulo.includes('valordemercado')) dados.val_mercado = valor;
-            if (titulo.includes('liquidez')) dados.liquidez = valor;
-            if (titulo.includes('margemliquida')) dados.margem_liquida = valor;
-            if (titulo.includes('dividaliquidaebitda')) dados.divida_liquida_ebitda = valor;
+
+            // Liquidez (No HTML: "Liq. média diária")
+            // Usamos 'liq' e 'media' para garantir
+            if (titulo.includes('liq') && titulo.includes('media')) dados.liquidez = valor;
+            // Caso falhe, tenta só liquidez
+            if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
+
+            // Margem Líquida (No HTML: "Margem líquida")
+            if (titulo.includes('margem') && titulo.includes('liquida')) dados.margem_liquida = valor;
+
+            // Dívida Líq / EBITDA (No HTML: "Dív. líquida/EBITDA")
+            if (titulo.includes('div') && titulo.includes('liquida') && titulo.includes('ebitda')) {
+                dados.divida_liquida_ebitda = valor;
+            }
+
+            // Variação 12m (No HTML geralmente "Variação (12M)" ou no card de cotação)
             if (titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
         };
 
-        // 1. Cards do Topo
+        // 1. CARDS DO TOPO (P/L, P/VP, DY...)
         $('._card').each((i, el) => {
             const header = $(el).find('._card-header').text();
             const body = $(el).find('._card-body').text();
             processPair(header, body);
         });
 
-        // 2. Tabelas e Cells
+        // 2. CÉLULAS DA TABELA (Onde estão VPA, ROE, Margem...)
+        // No seu HTML, a estrutura é <div class="cell"> <div class="name">...</div> <div class="value">...</div> </div>
         $('.cell').each((i, el) => {
-            processPair($(el).find('.name').text(), $(el).find('.value').text());
+            const name = $(el).find('.name').text();
+            const val = $(el).find('.value').text();
+            processPair(name, val);
         });
-        
+
+        // 3. TABELAS (Fallback caso mudem para table)
         $('table tr').each((i, row) => {
             const tds = $(row).find('td');
-            // Tabelas as vezes tem: Label | Valor | Label | Valor
             if (tds.length >= 2) processPair($(tds[0]).text(), $(tds[1]).text());
             if (tds.length >= 4) processPair($(tds[2]).text(), $(tds[3]).text());
         });
@@ -278,7 +309,7 @@ async function scrapeAssetProventos(ticker) {
 }
 
 // ---------------------------------------------------------
-// API HANDLER (ROTEAMENTO INTELIGENTE)
+// API HANDLER (ROTEAMENTO)
 // ---------------------------------------------------------
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -297,12 +328,10 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // --- MODO FUNDAMENTOS ---
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             
             const ticker = payload.ticker.toUpperCase();
-            // Detecção de tipo para chamar o scraper correto
             const isFII = ticker.endsWith('11') || ticker.endsWith('11B') || ticker.endsWith('13'); 
             
             let dados = {};
@@ -315,7 +344,6 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: dados });
         }
 
-        // --- MODO PROVENTOS / HISTÓRICO ---
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             

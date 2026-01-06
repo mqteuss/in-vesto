@@ -1498,7 +1498,7 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
-// --- CLASSE DE VIRTUALIZAÇÃO V9 (FIXED VISIBILITY) ---
+// --- CLASSE DE VIRTUALIZAÇÃO SIMPLIFICADA (LITE) ---
 class VirtualScroller {
     constructor(scrollContainer, listContainer, items, renderRowFn) {
         this.scrollContainer = scrollContainer;
@@ -1509,35 +1509,32 @@ class VirtualScroller {
         this.headerHeight = 50; 
         this.rowHeight = 90;
         
-        this.totalHeight = 0;
-        this.positions = [];
-        this.visibleItems = new Map();
-
-        // Limpeza
+        // Limpeza de estilos antigos
         this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
         this.listContainer.style.marginTop = '0px'; 
         
-        // Header Sticky (Overlay)
+        // --- HEADER FIXO ---
         this.stickyHeaderEl = document.createElement('div');
         this.stickyHeaderEl.className = 'virtual-sticky-header hidden';
         
-        // Inserção segura no DOM
-        const parent = this.listContainer.parentNode;
-        if (parent) {
-             // Remove headers antigos se existirem (segurança)
-             const oldHeaders = parent.querySelectorAll('.virtual-sticky-header');
+        // Inserimos o header fixo no container de scroll (que tem position: relative)
+        // Assim ele fica 'preso' no topo visual da aba
+        if (this.scrollContainer) {
+             // Remove headers antigos se houver
+             const oldHeaders = this.scrollContainer.querySelectorAll('.virtual-sticky-header');
              oldHeaders.forEach(el => el.remove());
              
-             parent.insertBefore(this.stickyHeaderEl, this.listContainer);
+             // Insere no topo
+             this.scrollContainer.insertBefore(this.stickyHeaderEl, this.scrollContainer.firstChild);
         }
 
         this.init();
     }
 
     init() {
-        // Começa um pouco abaixo se quiser padding, ou 0 para colar no topo
         let currentY = 0; 
         
+        // Mapeia posições
         this.positions = this.items.map(item => {
             const height = item.type === 'header' ? this.headerHeight : this.rowHeight; 
             const pos = { top: currentY, height, item };
@@ -1545,13 +1542,15 @@ class VirtualScroller {
             return pos;
         });
         
-        this.totalHeight = currentY + 120; 
+        this.totalHeight = currentY + 120; // Espaço extra no final
         this.listContainer.style.height = `${this.totalHeight}px`;
         this.listContainer.classList.add('virtual-list-container');
         
+        // Listener
         this.boundOnScroll = this.onScroll.bind(this);
         this.scrollContainer.addEventListener('scroll', this.boundOnScroll, { passive: true });
         
+        // Render inicial
         this.onScroll();
     }
 
@@ -1560,50 +1559,44 @@ class VirtualScroller {
 
         const scrollTop = this.scrollContainer.scrollTop;
         const viewportHeight = this.scrollContainer.clientHeight;
-        const buffer = 600; // Buffer generoso
+        const buffer = 600; 
 
-        // --- 1. LÓGICA DO HEADER FIXO (STICKY OVERLAY) ---
-        let currentHeader = null;
-        let nextHeaderTop = Infinity;
-        const offsetTrigger = 0; // Ajuste fino se necessário
-
+        // --- 1. ATUALIZAR HEADER FIXO ---
+        // Movemos o header fixo para acompanhar o scroll (simulando position: fixed dentro do relativo)
+        // Isso mantém ele sempre no topo visual da área visível
+        this.stickyHeaderEl.style.transform = `translateY(${scrollTop}px)`;
+        
+        // Descobrir qual mês está no topo
+        // Buscamos o primeiro item cuja posição + altura seja maior que o scrollTop
+        let currentMonthItem = null;
+        
+        // Busca linear simples (suficiente para UI)
+        // Procuramos o último header que começou ANTES do ponto atual
         for (let i = 0; i < this.positions.length; i++) {
-            const pos = this.positions[i];
+            if (this.positions[i].top > scrollTop) break;
             
-            if (pos.item.type === 'header') {
-                if (pos.top <= scrollTop + offsetTrigger) { 
-                    currentHeader = pos.item;
-                } else {
-                    nextHeaderTop = pos.top;
-                    break;
-                }
+            if (this.positions[i].item.type === 'header') {
+                currentMonthItem = this.positions[i].item;
             }
         }
 
-        if (currentHeader) {
-            if (this.stickyHeaderEl.innerHTML !== currentHeader.htmlContent) {
-                this.stickyHeaderEl.innerHTML = currentHeader.htmlContent;
-            }
+        if (currentMonthItem) {
             this.stickyHeaderEl.classList.remove('hidden');
-
-            // Lógica do "Empurrãozinho" (Push Effect)
-            let pushOffset = 0;
-            const distanceToNext = nextHeaderTop - scrollTop;
-            
-            if (distanceToNext < this.headerHeight) {
-                pushOffset = -(this.headerHeight - distanceToNext);
+            if (this.stickyHeaderEl.innerHTML !== currentMonthItem.htmlContent) {
+                this.stickyHeaderEl.innerHTML = currentMonthItem.htmlContent;
             }
-            
-            // O header acompanha o scroll (scrollTop) + o offset de empurrão
-            // Isso faz ele parecer fixo na tela (position: absolute simulando fixed)
-            this.stickyHeaderEl.style.transform = `translateY(${scrollTop + pushOffset}px)`;
-            
         } else {
-            this.stickyHeaderEl.classList.add('hidden');
+            // Se estivermos muito no topo (antes do primeiro header)
+             if (this.positions.length > 0 && this.positions[0].item.type === 'header') {
+                 // Mostra o primeiro header por padrão
+                 this.stickyHeaderEl.classList.remove('hidden');
+                 this.stickyHeaderEl.innerHTML = this.positions[0].item.htmlContent;
+             } else {
+                 this.stickyHeaderEl.classList.add('hidden');
+             }
         }
 
-
-        // --- 2. RENDERIZAÇÃO DA LISTA ---
+        // --- 2. RENDERIZAR LISTA ---
         const startY = Math.max(0, scrollTop - buffer);
         const endY = scrollTop + viewportHeight + buffer;
         const activeIndices = new Set();
@@ -1622,13 +1615,9 @@ class VirtualScroller {
                     el.style.height = `${pos.height}px`;
                     
                     if (pos.item.type === 'header') {
-                         // CORREÇÃO CRUCIAL:
-                         // Renderizamos o conteúdo do header TAMBÉM na lista.
-                         // Adicionamos a classe 'virtual-header-row' para estilizar igual ao sticky.
                          el.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
-                         el.style.zIndex = 2; // Acima dos cards, abaixo do sticky overlay
                     } else {
-                        // Aplica padding lateral no card (já que removemos do container)
+                        // Padding lateral no card
                         el.style.paddingLeft = '16px';
                         el.style.paddingRight = '16px';
                         el.innerHTML = this.renderRowFn(pos.item.data);
@@ -1640,6 +1629,7 @@ class VirtualScroller {
             }
         }
 
+        // Garbage collection
         for (const [index, el] of this.visibleItems.entries()) {
             if (!activeIndices.has(index)) {
                 el.remove();
@@ -1654,12 +1644,9 @@ class VirtualScroller {
         this.listContainer.style.height = '';
         this.listContainer.classList.remove('virtual-list-container');
         this.listContainer.style.marginTop = '';
-        
         this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
         
-        if(this.stickyHeaderEl && this.stickyHeaderEl.parentNode) {
-            this.stickyHeaderEl.parentNode.removeChild(this.stickyHeaderEl);
-        }
+        if(this.stickyHeaderEl) this.stickyHeaderEl.remove();
         
         this.visibleItems.clear();
     }

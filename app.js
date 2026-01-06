@@ -2290,8 +2290,6 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 }
 
 
-// --- AGORA A FUNÇÃO DO GRÁFICO ATUALIZADA (Com suporte a clique) ---
-
 function renderizarGraficoHistorico() {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
@@ -2355,8 +2353,7 @@ function renderizarGraficoHistorico() {
     const dataAReceberFiltrados = dataAReceberRaw.slice(-12);
     const keysFiltrados = keysMap.slice(-12);
     
-    // Verifica mudança nos dados para evitar re-render desnecessário
-    // (Simplificado: verifica o total combinado para gerar a string de diff)
+    // Verifica mudança nos dados
     const newDataString = JSON.stringify({ 
         l: labelsFiltrados, 
         d1: dataRecebidoFiltrados, 
@@ -2377,38 +2374,8 @@ function renderizarGraficoHistorico() {
     const ctx = canvas.getContext('2d');
     
     // Cores
-    const colorRecebido = 'rgba(192, 132, 252, 0.85)'; // Roxo
-    const colorAReceber = 'rgba(251, 191, 36, 0.85)';  // Amarelo (Amber-400)
-    
-    const floatingLabelsPlugin = {
-        id: 'floatingLabels',
-        afterDatasetsDraw(chart) {
-            const { ctx } = chart;
-            ctx.save();
-            const isLight = document.body.classList.contains('light-mode');
-            const textColor = isLight ? '#374151' : '#e5e7eb'; 
-            
-            chart.data.datasets.forEach((dataset, i) => {
-                const meta = chart.getDatasetMeta(i);
-                // Se a barra estiver oculta (hidden), não desenha
-                if (meta.hidden) return;
-
-                meta.data.forEach((bar, index) => {
-                    const value = dataset.data[index];
-                    if (value > 0) {
-                        const text = formatBRL(value); 
-                        ctx.font = 'bold 10px monospace'; 
-                        ctx.fillStyle = textColor;
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'bottom';
-                        // bar.y é o topo do segmento da barra
-                        ctx.fillText(text, bar.x, bar.y - 2);
-                    }
-                });
-            });
-            ctx.restore();
-        }
-    };
+    const colorRecebido = 'rgba(192, 132, 252, 0.9)'; // Roxo (Vesto)
+    const colorAReceber = 'rgba(251, 191, 36, 0.9)';  // Amarelo
     
     if (historicoChartInstance) {
         historicoChartInstance.destroy();
@@ -2420,64 +2387,91 @@ function renderizarGraficoHistorico() {
             labels: labelsFiltrados,
             datasets: [
                 {
-                    label: 'A Receber', // Fica em cima na pilha (ordem visual depende do stack, mas geralmente o ultimo dataset fica no topo ou base dependendo da config)
+                    label: 'A Receber', 
                     data: dataAReceberFiltrados,
                     backgroundColor: colorAReceber,
-                    borderColor: '#f59e0b', 
-                    borderWidth: 1,
                     borderRadius: 4,
                     barPercentage: 0.6,
-                    stack: 'Stack 0', // Empilhamento
-                    rawKeys: keysFiltrados // Para o clique funcionar
+                    stack: 'Stack 0',
+                    rawKeys: keysFiltrados 
                 },
                 {
                     label: 'Recebido',
                     data: dataRecebidoFiltrados,
                     backgroundColor: colorRecebido,
-                    borderColor: '#c084fc', 
-                    borderWidth: 1,
                     borderRadius: 4,
                     barPercentage: 0.6,
-                    stack: 'Stack 0', // Empilhamento
+                    stack: 'Stack 0',
                     rawKeys: keysFiltrados
                 }
             ]
         },
-        plugins: [floatingLabelsPlugin], 
+        // Removemos o plugin 'floatingLabelsPlugin' daqui
         options: {
             responsive: true, 
             maintainAspectRatio: false,
             animation: { duration: 800, easing: 'easeOutQuart' },
-            layout: { padding: { top: 25 } },
+            layout: { padding: { top: 10 } },
             
-            // --- EVENTO DE CLIQUE ---
+            // Interaction: Melhora a resposta ao toque/mouse
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+
+            // --- EVENTO DE CLIQUE (Abre lista) ---
             onClick: (e, elements, chart) => {
                 if (!elements || elements.length === 0) return;
                 
+                // Pega o primeiro elemento da pilha clicada
                 const element = elements[0];
                 const index = element.index;
-                const datasetIndex = element.datasetIndex;
                 
                 const labelAmigavel = chart.data.labels[index];
-                // Pega a rawKey do dataset clicado
-                const rawKey = chart.data.datasets[datasetIndex].rawKeys[index];
+                // Recupera a chave crua (YYYY-MM) de qualquer dataset (ambos tem o mesmo index)
+                const rawKey = chart.data.datasets[0].rawKeys[index];
                 
                 exibirDetalhesProventos(rawKey, labelAmigavel);
             },
             // ------------------------
 
             plugins: {
-                legend: { display: true, position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } }, // Habilitei a legenda para distinguir as cores
-                tooltip: { enabled: false } 
+                legend: { 
+                    display: true, 
+                    position: 'bottom', 
+                    labels: { boxWidth: 10, usePointStyle: true, padding: 20 } 
+                }, 
+                tooltip: { 
+                    enabled: true, // REATIVADO: Tooltips aparecem ao segurar/passar mouse
+                    backgroundColor: 'rgba(21, 21, 21, 0.95)',
+                    titleColor: '#9ca3af',
+                    bodyColor: '#fff',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += formatBRL(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                } 
             },
             scales: {
                 y: { 
-                    display: false, 
-                    beginAtZero: true, 
-                    stacked: true // <--- Importante
+                    display: false, // Eixo Y oculto para visual limpo
+                    stacked: true 
                 },
                 x: { 
-                    stacked: true, // <--- Importante
+                    stacked: true, 
                     grid: { display: false }, 
                     ticks: {
                         color: document.body.classList.contains('light-mode') ? '#374151' : '#9ca3af',

@@ -1621,7 +1621,6 @@ class VirtualScroller {
         this.visibleItems = null; // Evita memory leak
     }
 }
-// Helper para converter o agrupamento de meses em lista plana
 // Helper Simplificado e Robusto
 function flattenHistoricoData(grupos) {
     const flatList = [];
@@ -1629,22 +1628,19 @@ function flattenHistoricoData(grupos) {
         
         // SOMA DO CABEÇALHO
         const totalMes = grupos[mes].reduce((acc, item) => {
-            // 1. Prioridade: Se já calculamos o total antes (Proventos)
             if (item.totalCalculado !== undefined) {
                 return acc + Number(item.totalCalculado);
             }
-            // 2. Fallback: Transações normais (Preço * Quantidade)
             if (item.price && item.quantity) {
                 return acc + (Number(item.price) * Number(item.quantity));
             }
-            // 3. Último caso (apenas valor unitário)
             return acc + Number(item.value || 0);
         }, 0);
         
-        // HTML do Header
+        // HTML do Header (COM FUNDO VERDE E TEXTO VERDE)
         const headerHtml = `
             <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>
-            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+            <span class="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-md border border-green-500/20">
                 Total: ${formatBRL(totalMes)}
             </span>
         `;
@@ -1667,7 +1663,6 @@ function renderizarHistorico() {
 
     if (!listaHistorico) return;
 
-    // Reset se mudou de assinatura
     if (historicoVirtualizer) {
         const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
         const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
@@ -1684,7 +1679,6 @@ function renderizarHistorico() {
         lastHistoricoListSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
     }
     
-    // Filtros
     let dadosFiltrados = transacoes.filter(t => {
         const matchType = histFilterType === 'all' || t.type === histFilterType;
         const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
@@ -1701,9 +1695,11 @@ function renderizarHistorico() {
     
     dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
     const grupos = agruparPorMes(dadosFiltrados, 'date');
+    
+    // Flatten (calcula automaticamente price * quantity)
     const flatItems = flattenHistoricoData(grupos);
 
-    // --- RENDERIZADOR DE LINHA (CARD) ---
+    // --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
@@ -1712,7 +1708,6 @@ function renderizarHistorico() {
         const ehFii = isFII(t.symbol);
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
 
-        // Ícone ajustado para w-10 h-10 (Tamanho Portfolio)
         const iconHtml = !ehFii 
             ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
                <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 z-0 bg-[#151515]">${sigla}</span>`
@@ -1723,7 +1718,6 @@ function renderizarHistorico() {
         const labelContent = isVenda ? iconVenda : iconCompra;
         const badgeBg = isVenda ? 'bg-red-500/10 border border-red-500/20' : 'bg-green-500/10 border border-green-500/20';
 
-        // Ajustes: py-2, w-10 h-10 no icone, text-base no titulo
         return `
             <div class="history-card flex items-center justify-between py-2 px-1 relative group h-full w-full bg-transparent" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
@@ -1732,7 +1726,7 @@ function renderizarHistorico() {
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <h4 class="text-base font-bold text-gray-100 tracking-tight leading-none">${t.symbol}</h4>
+                            <h4 class="text-base font-bold text-white tracking-tight leading-none">${t.symbol}</h4>
                             <div class="${badgeBg} w-5 h-5 flex items-center justify-center rounded-md shrink-0">
                                 ${labelContent}
                             </div>
@@ -1740,7 +1734,7 @@ function renderizarHistorico() {
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>
-                            <span>${t.quantity} un.</span>
+                            <span>${t.quantity} cotas</span>
                         </div>
                     </div>
                 </div>
@@ -1759,7 +1753,6 @@ function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     const scrollContainer = document.getElementById('tab-historico');
     
-    // --- Lógica de Assinatura para evitar re-render desnecessário ---
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const termoBusca = provSearchTerm || ''; 
     const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}`;
@@ -1777,7 +1770,6 @@ function renderizarHistoricoProventos() {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    // 1. Filtra por data e termo de busca
     const proventosIniciais = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -1797,41 +1789,32 @@ function renderizarHistoricoProventos() {
         return;
     }
 
-    // 2. Agrupa por mês e JÁ CALCULA OS TOTAIS (Correção do erro de soma)
     const grupos = agruparPorMes(proventosIniciais, 'paymentDate');
     const gruposLimpos = {};
 
     Object.keys(grupos).forEach(mes => {
-        // Mapeia e filtra ao mesmo tempo
         const itensValidos = [];
-        
         grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            
             if (qtd > 0) {
-                // INJETAMOS O TOTAL AQUI PARA O HEADER USAR DEPOIS
-                p.qtdCalculada = qtd; // Salva para usar no card
-                p.totalCalculado = Number(p.value) * Number(qtd); // Salva para o header somar
+                p.qtdCalculada = qtd; 
+                p.totalCalculado = Number(p.value) * Number(qtd); 
                 itensValidos.push(p);
             }
         });
-
         if (itensValidos.length > 0) {
             gruposLimpos[mes] = itensValidos;
         }
     });
 
-    // 3. Gera lista plana (Agora o flattenHistoricoData vai usar o p.totalCalculado)
     const flatItems = flattenHistoricoData(gruposLimpos);
 
-    // --- RENDERIZADOR DE LINHA (CARD) ---
+    // --- RENDERIZADOR DE LINHA (PROVENTOS) ---
     const rowRenderer = (p) => {
-        // Usa a quantidade que já calculamos no loop acima (performance)
         const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
-        const total = p.totalCalculado; // Usa o total pré-calculado
-        
+        const total = p.totalCalculado; 
         const sigla = p.symbol.substring(0, 2);
         const ehFii = isFII(p.symbol);
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;
@@ -1860,7 +1843,7 @@ function renderizarHistoricoProventos() {
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 h-5">
-                            <h4 class="text-base font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
+                            <h4 class="text-base font-bold text-white tracking-tight leading-none">${p.symbol}</h4>
                             ${tagHtml}
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
@@ -1871,7 +1854,7 @@ function renderizarHistoricoProventos() {
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold text-green-400 tracking-tight">+ ${formatBRL(total)}</span>
+                    <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
                 </div>
             </div>
         `;

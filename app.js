@@ -2987,8 +2987,7 @@ async function renderizarCarteira() {
     // Cria Mapas para acesso rápido a preços
     const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
-    // --- CORREÇÃO AQUI: AGRUPAR PROVENTOS POR TICKET ---
-    // Em vez de salvar um único objeto, salvamos um Array de proventos
+    // Cria Mapa de Proventos (Agrupados em Lista)
     const proventosMap = new Map();
     proventosAtuais.forEach(p => {
         if (!proventosMap.has(p.symbol)) {
@@ -2996,7 +2995,6 @@ async function renderizarCarteira() {
         }
         proventosMap.get(p.symbol).push(p);
     });
-    // ---------------------------------------------------
     
     // Ordena a carteira alfabeticamente
     const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
@@ -3005,7 +3003,7 @@ async function renderizarCarteira() {
     let totalCustoCarteira = 0;
     let dadosGrafico = [];
 
-    // PASS 1: Calcular totais globais da carteira (necessário para a % de alocação)
+    // PASS 1: Calcular totais globais
     carteiraOrdenada.forEach(ativo => {
         const dadoPreco = precosMap.get(ativo.symbol);
         const precoAtual = dadoPreco ? (dadoPreco.regularMarketPrice ?? 0) : 0;
@@ -3020,12 +3018,14 @@ async function renderizarCarteira() {
         carteiraStatus.classList.remove('hidden');
         renderizarDashboardSkeletons(false);
         
-        // Zera os valores do Dashboard
-        totalCarteiraValor.textContent = formatBRL(0);
-        totalCaixaValor.textContent = formatBRL(saldoCaixa);
-        totalCarteiraCusto.textContent = formatBRL(0);
-        totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
-        totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
+        // Zera Dashboard
+        if(totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(0);
+        if(totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
+        if(totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(0);
+        if(totalCarteiraPL) {
+            totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
+            totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
+        }
         
         dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
         dashboardLoading.classList.add('hidden');
@@ -3041,7 +3041,7 @@ async function renderizarCarteira() {
         dashboardStatus.classList.add('hidden');
     }
 
-    // Limpeza de cards que foram removidos (Garbage Collection visual)
+    // Limpeza de cards antigos
     const symbolsNaCarteira = new Set(carteiraOrdenada.map(a => a.symbol));
     const cardsNaTela = listaCarteira.querySelectorAll('[data-symbol]');
     cardsNaTela.forEach(card => {
@@ -3051,13 +3051,26 @@ async function renderizarCarteira() {
         }
     });
 
+    // Define HOJE (zerando horas para comparação correta)
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
     // PASS 2: Renderizar ou Atualizar cada Card
     carteiraOrdenada.forEach((ativo, index) => { 
         const dadoPreco = precosMap.get(ativo.symbol);
         
-        // --- CORREÇÃO: Recupera a LISTA de proventos, não apenas um ---
-        const listaProventos = proventosMap.get(ativo.symbol) || [];
-        const dadoProvento = listaProventos.length > 0 ? listaProventos[0] : null; // Mantém referência para compatibilidade
+        // 1. Pega TODOS os proventos (passados e futuros) desse ativo
+        const listaTodosProventos = proventosMap.get(ativo.symbol) || [];
+
+        // 2. FILTRO: Mantém APENAS os futuros (Data >= Hoje) para exibição na carteira
+        const listaProventosFuturos = listaTodosProventos.filter(p => {
+            if (!p.paymentDate) return false;
+            const parts = p.paymentDate.split('-');
+            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+            return dataPag >= hoje;
+        });
+
+        const dadoProvento = listaProventosFuturos.length > 0 ? listaProventosFuturos[0] : null;
 
         // Dados de Mercado
         let precoAtual = 0, variacao = 0;
@@ -3074,23 +3087,20 @@ async function renderizarCarteira() {
             corVariacao = 'text-yellow-500';
         }
         
-        // Cálculos Financeiros do Ativo
+        // Cálculos Financeiros
         const totalPosicao = precoAtual * ativo.quantity;
         const custoTotal = ativo.precoMedio * ativo.quantity;
         const lucroPrejuizo = totalPosicao - custoTotal;
         const lucroPrejuizoPercent = (custoTotal === 0 || totalPosicao === 0) ? 0 : (lucroPrejuizo / custoTotal) * 100;
-        
-        // Cálculo da Alocação (%)
         const percentWallet = totalValorCarteira > 0 ? (totalPosicao / totalValorCarteira) * 100 : 0;
 
-        // Estilos de Lucro/Prejuízo
         let corPL = 'text-gray-500';
         if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; }
         else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; }
 
-        // --- CORREÇÃO: Calcula o total a receber SOMANDO todos os proventos da lista ---
+        // 3. CALCULA O TOTAL A RECEBER (Somando apenas a lista FILTRADA de futuros)
         let proventoReceber = 0;
-        listaProventos.forEach(p => {
+        listaProventosFuturos.forEach(p => {
              const dataReferencia = p.dataCom || p.paymentDate;
              const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
              if (qtdElegivel > 0) {
@@ -3102,13 +3112,12 @@ async function renderizarCarteira() {
             dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
             totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
             corPL, 
-            dadoProvento,       // Passa o primeiro (fallback)
-            listaProventos,     // Passa a lista completa (IMPORTANTE)
+            dadoProvento,       
+            listaProventos: listaProventosFuturos, // Passa APENAS os futuros para o renderizador do card
             proventoReceber, 
             percentWallet
         };
 
-        // Popula dados para o gráfico de rosca
         if (totalPosicao > 0) { 
             dadosGrafico.push({ symbol: ativo.symbol, totalPosicao: totalPosicao }); 
         }
@@ -3120,8 +3129,6 @@ async function renderizarCarteira() {
             atualizarCardElemento(card, ativo, dadosRender);
         } else {
             card = criarCardElemento(ativo, dadosRender);
-            
-            // Animação de entrada (Stagger)
             card.classList.add('card-stagger');
             const delay = Math.min(index * 50, 500); 
             card.style.animationDelay = `${delay}ms`;
@@ -3157,18 +3164,14 @@ async function renderizarCarteira() {
             totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`; 
         }
         
-        // Salva Snapshot
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
         renderizarTimelinePagamentos();
-        
         await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
     }
     
-    // Renderiza Gráficos
     renderizarGraficoAlocacao(dadosGrafico);
     renderizarGraficoPatrimonio();
     
-    // Filtro de Busca
     if (carteiraSearchInput && carteiraSearchInput.value) {
         const term = carteiraSearchInput.value.trim().toUpperCase();
         const cards = listaCarteira.querySelectorAll('.wallet-card'); 

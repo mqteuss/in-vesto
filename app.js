@@ -1512,8 +1512,8 @@ class VirtualScroller {
         this.renderRowFn = renderRowFn;
         
         // Configurações de altura
-        this.headerHeight = 50; 
-        this.rowHeight = 90;
+        this.headerHeight = 40; 
+        this.rowHeight = 72;
         
         // Limpeza de estilos conflitantes do container original
         this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
@@ -1654,9 +1654,8 @@ function renderizarHistorico() {
 
     if (!listaHistorico) return;
 
-    // Reset se mudou de aba ou filtro, para garantir limpeza
+    // Reset se mudou de assinatura
     if (historicoVirtualizer) {
-        // Se a assinatura mudou, destrói o anterior
         const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
         const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
         
@@ -1665,15 +1664,14 @@ function renderizarHistorico() {
             historicoVirtualizer = null;
             lastHistoricoListSignature = currentSignature;
         } else {
-            return; // Nada mudou
+            return; 
         }
     } else {
-        // Primeira carga
         const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
         lastHistoricoListSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
     }
     
-    // Filtragem
+    // Filtros
     let dadosFiltrados = transacoes.filter(t => {
         const matchType = histFilterType === 'all' || t.type === histFilterType;
         const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
@@ -1692,6 +1690,7 @@ function renderizarHistorico() {
     const grupos = agruparPorMes(dadosFiltrados, 'date');
     const flatItems = flattenHistoricoData(grupos);
 
+    // --- RENDERIZADOR DE LINHA (CARD) ---
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
@@ -1700,39 +1699,41 @@ function renderizarHistorico() {
         const ehFii = isFII(t.symbol);
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
 
+        // Ícone ajustado para w-10 h-10 (Tamanho Portfolio)
         const iconHtml = !ehFii 
             ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-               <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 z-0 bg-[#151515]">${sigla}</span>`
-            : `<span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>`;
+               <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 z-0 bg-[#151515]">${sigla}</span>`
+            : `<span class="text-xs font-bold text-gray-300 tracking-wider">${sigla}</span>`;
 
-        const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-        const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+        const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+        const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
         const labelContent = isVenda ? iconVenda : iconCompra;
         const badgeBg = isVenda ? 'bg-red-500/10 border border-red-500/20' : 'bg-green-500/10 border border-green-500/20';
 
-        // Nota: Removi classes de margin/padding externos para deixar o container controlar
+        // Ajustes: py-2, w-10 h-10 no icone, text-base no titulo
         return `
-            <div class="history-card flex items-center justify-between py-3 px-3 relative group h-full w-full bg-[#141414] rounded-2xl" data-action="edit-row" data-id="${t.id}">
+            <div class="history-card flex items-center justify-between py-2 px-1 relative group h-full w-full bg-transparent" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${iconHtml}
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${t.symbol}</h4>
-                            <div class="${badgeBg} w-6 h-6 flex items-center justify-center rounded-md shrink-0">
+                            <h4 class="text-base font-bold text-gray-100 tracking-tight leading-none">${t.symbol}</h4>
+                            <div class="${badgeBg} w-5 h-5 flex items-center justify-center rounded-md shrink-0">
                                 ${labelContent}
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>
-                            <span>${t.quantity} cotas a ${formatBRL(t.price)}</span>
+                            <span>${t.quantity} un.</span>
                         </div>
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-sm font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
+                    <span class="text-[15px] font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
+                    <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(t.price)}</span>
                 </div>
             </div>
         `;
@@ -1743,7 +1744,7 @@ function renderizarHistorico() {
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
-    const scrollContainer = document.getElementById('tab-historico'); // Mesmo container de scroll
+    const scrollContainer = document.getElementById('tab-historico');
     
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const termoBusca = provSearchTerm || ''; 
@@ -1777,17 +1778,12 @@ function renderizarHistoricoProventos() {
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p class="text-xs text-gray-500">Nenhum provento efetivado encontrado.</p>
+                <p class="text-xs text-gray-500">Nenhum provento efetivado.</p>
             </div>`;
         return;
     }
 
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
-    
-    // Filtra apenas itens com valor > 0 para exibir
     const gruposLimpos = {};
     Object.keys(grupos).forEach(mes => {
         const itensValidos = grupos[mes].filter(p => {
@@ -1800,6 +1796,7 @@ function renderizarHistoricoProventos() {
 
     const flatItems = flattenHistoricoData(gruposLimpos);
 
+    // --- RENDERIZADOR DE LINHA (PROVENTOS) ---
     const rowRenderer = (p) => {
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
@@ -1816,7 +1813,7 @@ function renderizarHistoricoProventos() {
 
         let tagHtml = '';
         const rawType = (p.type || '').toUpperCase();
-        if (rawType.includes('JCP') || rawType.includes('JUROS')) {
+        if (rawType.includes('JCP')) {
             tagHtml = `<span class="text-[9px] font-extrabold text-amber-400 bg-amber-900/20 border border-amber-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">JCP</span>`;
         } else if (rawType.includes('DIV')) {
             tagHtml = `<span class="text-[9px] font-extrabold text-sky-400 bg-sky-900/20 border border-sky-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">DIV</span>`;
@@ -1825,28 +1822,26 @@ function renderizarHistoricoProventos() {
         }
 
         return `
-            <div class="history-card flex items-center justify-between py-3 px-3 relative group h-full w-full">
+            <div class="history-card flex items-center justify-between py-2 px-1 relative group h-full w-full bg-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${imageHtml}
-                        <span class="${fallbackClass} w-full h-full items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 bg-[#151515]">${sigla}</span>
+                        <span class="${fallbackClass} w-full h-full items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 bg-[#151515]">${sigla}</span>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 h-6">
-                            <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
+                        <div class="flex items-center gap-2 h-5">
+                            <h4 class="text-base font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
                             ${tagHtml}
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>
                             <span>${qtd} cotas</span>
-                            <span>•</span>
-                            <span>${formatBRL(p.value)}</span>
                         </div>
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
+                    <span class="text-[15px] font-bold text-green-400 tracking-tight">+ ${formatBRL(total)}</span>
                 </div>
             </div>
         `;

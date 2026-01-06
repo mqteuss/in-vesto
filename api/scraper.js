@@ -23,6 +23,7 @@ const client = axios.create({
 
 // --- HELPERS ---
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
+const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
 function parseValue(valueStr) {
     if (!valueStr) return 0;
@@ -32,9 +33,17 @@ function parseValue(valueStr) {
     } catch (e) { return 0; }
 }
 
-function cleanString(str) {
-    if (!str) return 'N/A';
-    return str.trim();
+function normalize(str) {
+    if (!str) return '';
+    return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
+}
+
+function chunkArray(array, size) {
+    const results = [];
+    for (let i = 0; i < array.length; i += size) {
+        results.push(array.slice(i, i + size));
+    }
+    return results;
 }
 
 function parseExtendedValue(str) {
@@ -47,21 +56,33 @@ function parseExtendedValue(str) {
     return val;
 }
 
+function formatCurrency(value) {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+// Limpa strings duplicadas como "R$ 397,85 Bilhões R$ 397.845..."
+function cleanDoubledString(str) {
+    if (!str) return "";
+    const parts = str.split('R$');
+    // Pega o primeiro valor real (índice 1, pois o índice 0 é vazio antes do primeiro R$)
+    if (parts.length > 2) {
+        return 'R$' + parts[1].trim(); 
+    }
+    return str;
+}
+
 // ---------------------------------------------------------
-// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (OTIMIZADO)
+// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (FINAL v3)
 // ---------------------------------------------------------
 
 async function scrapeFundamentos(ticker) {
     try {
         let html;
-        const t = ticker.toLowerCase();
-        
-        // Tenta primeiro como FII, se falhar ou redirecionar, tenta Ação (lógica simplificada pelo try/catch do axios se retornar 404)
         try {
-            const res = await client.get(`https://investidor10.com.br/fiis/${t}/`);
+            const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
             html = res.data;
         } catch (e) {
-            const res = await client.get(`https://investidor10.com.br/acoes/${t}/`);
+            const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
             html = res.data;
         }
 
@@ -76,87 +97,163 @@ async function scrapeFundamentos(ticker) {
             pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', divida_liquida_ebitda: 'N/A'
         };
 
-        // --- 1. CARDS DO TOPO (Acesso Direto) ---
-        // Cotação
-        const cotacaoStr = $('._card.cotacao .value').text();
-        let cotacao_atual = parseValue(cotacaoStr);
+        let cotacao_atual = 0;
+        let num_cotas = 0;
 
-        // Dividend Yield (DY)
-        const dyStr = $('._card.dy ._card-body span').text(); // Busca direta no card DY
-        if (dyStr) dados.dy = cleanString(dyStr);
+        // Função interna de processamento
+        const processPair = (tituloRaw, valorRaw, origem = 'table', indicatorAttr = null) => {
+            const titulo = normalize(tituloRaw); 
+            let valor = valorRaw.trim();
 
-        // Variação 12M (Geralmente no card ou primeira linha)
-        // Se houver um card específico para variação (comum em alguns layouts), adicione aqui. 
-        // Caso contrário, busca na grid abaixo.
+            // CORREÇÃO: Valor de Mercado duplicado
+            if (titulo.includes('mercado')) {
+                valor = cleanDoubledString(valor);
+                // Se já pegamos um valor válido (do Card), ignora o da tabela para evitar sobrescrita ruim
+                if (dados.val_mercado !== 'N/A' && origem === 'table') return;
+            }
 
-        // --- 2. GRID DE INDICADORES (.cell) (Busca Otimizada) ---
-        
-        // Helper para buscar valor dentro de uma célula pelo título (Case Insensitive logic via Cheerio :contains modificado ou filter)
-        const getCell = (textos) => {
-            // Filtra as células que contêm algum dos textos passados
-            let el = null;
-            $('.cell').each((i, elem) => {
-                const name = $(elem).find('.name').text().toUpperCase();
-                if (textos.some(t => name.includes(t.toUpperCase()))) {
-                    el = $(elem).find('.value');
-                    return false; // break loop
+            if (!valor) return;
+
+            // --- LÓGICA INFALÍVEL VIA DATA-INDICATOR (Se disponível) ---
+            if (indicatorAttr) {
+                const ind = indicatorAttr.toUpperCase();
+                if (ind === 'DIVIDA_LIQUIDA_EBITDA') { dados.divida_liquida_ebitda = valor; return; }
+                if (ind === 'DY') { dados.dy = valor; return; }
+                if (ind === 'P_L') { dados.pl = valor; return; }
+                if (ind === 'P_VP') { dados.pvp = valor; return; }
+                if (ind === 'ROE') { dados.roe = valor; return; }
+                if (ind === 'MARGEM_LIQUIDA') { dados.margem_liquida = valor; return; }
+                // Pode adicionar outros se descobrir os códigos, mas o fallback abaixo resolve o resto
+            }
+
+            // --- LÓGICA DE TEXTO (FALLBACK) ---
+
+            // 1. CAMPOS GERAIS
+            if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) {
+                dados.dy = valor;
+            }
+            if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
+            if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
+            if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
+            if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
+
+            // 2. FIIS
+            if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
+            if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
+            if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
+            if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
+            if (dados.num_cotistas === 'N/A' && titulo.includes('cotistas')) dados.num_cotistas = valor;
+            if (dados.tipo_gestao === 'N/A' && titulo.includes('gestao')) dados.tipo_gestao = valor;
+            if (dados.mandato === 'N/A' && titulo.includes('mandato')) dados.mandato = valor;
+            if (dados.tipo_fundo === 'N/A' && titulo.includes('tipo de fundo')) dados.tipo_fundo = valor;
+            if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
+            if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
+            if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas')) dados.cotas_emitidas = valor;
+
+            // 3. AÇÕES
+            if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
+            if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
+            if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
+            if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
+
+            // [CORREÇÃO FINAL: Div. Líq / EBITDA]
+            // Se não pegou pelo data-indicator, tenta pelo texto com regex flexível (pega "Líq", "Líquida", com ou sem ponto)
+            if (dados.divida_liquida_ebitda === 'N/A') {
+                const tituloClean = titulo.replace(/[\s\/\.\-]/g, ''); 
+                // Ex: "div.líq./ebitda" -> "divliqebitda"
+                if (tituloClean.includes('div') && tituloClean.includes('liq') && tituloClean.includes('ebitda')) {
+                    dados.divida_liquida_ebitda = valor;
                 }
-            });
-            return el ? el.text().trim() : 'N/A';
+            }
+
+            // VPA
+            if (dados.vp_cota === 'N/A') {
+                if (titulo === 'vpa' || titulo.replace(/\./g, '') === 'vpa' || titulo.includes('vp por cota')) {
+                    dados.vp_cota = valor;
+                }
+            }
+
+            // Patrimônio
+            if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
+                const valorNumerico = parseValue(valor);
+                const textoLower = valor.toLowerCase();
+                if (textoLower.includes('milh') || textoLower.includes('bilh') || valorNumerico > 10000) {
+                    if (dados.patrimonio_liquido === 'N/A') dados.patrimonio_liquido = valor;
+                } else {
+                    if (dados.vp_cota === 'N/A') dados.vp_cota = valor;
+                }
+            }
+
+            if (titulo.includes('cotas') && (titulo.includes('emitidas') || titulo.includes('total'))) {
+                num_cotas = parseValue(valor);
+                if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = valor;
+            }
         };
 
-        // Indicadores Gerais e FIIs
-        dados.pvp = getCell(['P/VP']);
-        dados.liquidez = getCell(['LIQUIDEZ DIÁRIA', 'LIQUIDEZ M']);
-        dados.val_mercado = getCell(['VALOR DE MERCADO']);
-        dados.ultimo_rendimento = getCell(['ÚLTIMO RENDIMENTO']);
-        dados.patrimonio_liquido = getCell(['PATRIMÔNIO LÍQUIDO', 'PATRIMONIO LIQUIDO']); // Evita confusão com Valor Patrimonial p/ Cota
-        dados.vp_cota = getCell(['VALOR PATRIMONIAL', 'VPA', 'VP POR COTA']); // Em FIIs muitas vezes aparece como "VALOR PATRIMONIAL" referindo-se a Cota em alguns contextos, ou VP/Cota.
-        
-        // Refinamento: Se VP Cota veio igual a Patrimonio Liquido (erro comum de texto), ajusta
-        if (dados.vp_cota === dados.patrimonio_liquido && dados.vp_cota !== 'N/A') {
-             // Tenta buscar especificamente VP por Cota se existir outra label
-             const vpaSpecific = getCell(['VP POR COTA']);
-             if (vpaSpecific !== 'N/A') dados.vp_cota = vpaSpecific;
+        // --- VARREDURA ---
+
+        // 1. CARDS DE DESTAQUE (Topo)
+        $('._card').each((i, el) => {
+            const titulo = $(el).find('._card-header').text().trim();
+            const valor = $(el).find('._card-body').text().trim();
+            processPair(titulo, valor, 'card');
+
+            if (normalize(titulo).includes('cotacao')) {
+                cotacao_atual = parseValue(valor);
+            }
+        });
+
+        // Fallback Cotação
+        if (cotacao_atual === 0) {
+             const cotacaoEl = $('._card.cotacao ._card-body span').first();
+             if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
         }
 
-        dados.num_cotistas = getCell(['NÚMERO DE COTISTAS', 'COTISTAS']);
-        dados.variacao_12m = getCell(['VARIAÇÃO', '12 MESES']);
-        dados.vacancia = getCell(['VACÂNCIA']);
-        
-        // Dados Cadastrais (Geralmente na tabela de "Informações Básicas" ou células específicas)
-        dados.segmento = getCell(['SEGMENTO']);
-        dados.tipo_fundo = getCell(['TIPO DE FUNDO']);
-        dados.mandato = getCell(['MANDATO']);
-        dados.tipo_gestao = getCell(['TIPO DE GESTÃO', 'GESTÃO']);
-        dados.cnpj = getCell(['CNPJ']);
-        dados.prazo_duracao = getCell(['PRAZO']);
-        dados.taxa_adm = getCell(['TAXA DE ADMINISTRAÇÃO']);
-        dados.cotas_emitidas = getCell(['COTAS EMITIDAS', 'TOTAL DE COTAS']);
+        // 2. GRELHA DE INDICADORES (Divs .cell)
+        $('.cell').each((i, el) => {
+            let titulo = $(el).find('.name').text().trim();
+            if (!titulo) titulo = $(el).children('span').first().text().trim();
 
-        // Indicadores de Ações (Caso seja ação)
-        dados.pl = getCell(['P/L']);
-        dados.roe = getCell(['ROE']);
-        dados.lpa = getCell(['LPA']);
-        dados.margem_liquida = getCell(['MARGEM LÍQUIDA']);
-        dados.divida_liquida_ebitda = getCell(['DÍV. LÍQUIDA/EBITDA', 'DIV. LIQ. / EBITDA']);
+            let valorEl = $(el).find('.value span').first();
+            let valor = (valorEl.length > 0) ? valorEl.text().trim() : $(el).find('.value').text().trim();
 
-        // --- 3. CORREÇÕES FINAIS ---
+            processPair(titulo, valor, 'cell');
+        });
 
-        // Valor de Mercado (Fallback Numérico se estiver N/A)
+        // 3. TABELAS (COM SUPORTE A DATA-INDICATOR)
+        $('table tbody tr').each((i, row) => {
+            const cols = $(row).find('td');
+            if (cols.length >= 2) {
+                // Tenta extrair o "data-indicator" da tag <a> dentro da primeira célula
+                const indicatorAttr = $(cols[0]).find('[data-indicator]').attr('data-indicator');
+
+                const titulo = $(cols[0]).text();
+                const valor = $(cols[1]).text();
+
+                processPair(titulo, valor, 'table', indicatorAttr);
+            }
+        });
+
+        // Fallback final para Valor de Mercado
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
-            let numCotas = parseExtendedValue(dados.cotas_emitidas);
-            if (cotacao_atual > 0 && numCotas > 0) {
-                const mktCap = cotacao_atual * numCotas;
-                dados.val_mercado = mktCap.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            let mercadoCalc = 0;
+            if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
+            else if (dados.patrimonio_liquido !== 'N/A' && dados.pvp !== 'N/A') {
+                const pl = parseExtendedValue(dados.patrimonio_liquido);
+                const pvp = parseValue(dados.pvp);
+                if (pl > 0 && pvp > 0) mercadoCalc = pl * pvp;
+            }
+            if (mercadoCalc > 0) {
+                if (mercadoCalc > 1e9) dados.val_mercado = `R$ ${(mercadoCalc / 1e9).toFixed(2)} Bilhões`;
+                else if (mercadoCalc > 1e6) dados.val_mercado = `R$ ${(mercadoCalc / 1e6).toFixed(2)} Milhões`;
+                else dados.val_mercado = formatCurrency(mercadoCalc);
             }
         }
 
         return dados;
-
     } catch (error) {
         console.error("Erro no scraper de fundamentos:", error.message);
-        return { dy: 'N/A', pvp: 'N/A', error: true };
+        return { dy: '-', pvp: '-', segmento: '-' };
     }
 }
 
@@ -223,14 +320,6 @@ async function scrapeAsset(ticker) {
 // ---------------------------------------------------------
 // HANDLER (API)
 // ---------------------------------------------------------
-
-function chunkArray(array, size) {
-    const results = [];
-    for (let i = 0; i < array.length; i += size) {
-        results.push(array.slice(i, i + size));
-    }
-    return results;
-}
 
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);

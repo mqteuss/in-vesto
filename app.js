@@ -2984,10 +2984,19 @@ async function renderizarCarteira() {
     // Esconde os skeletons de carregamento
     renderizarCarteiraSkeletons(false);
 
-    // Cria Mapas para acesso rápido a preços e proventos
+    // Cria Mapas para acesso rápido a preços
     const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
-    const proventosOrdenados = [...proventosAtuais].sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-    const proventosMap = new Map(proventosOrdenados.map(p => [p.symbol, p]));
+
+    // --- CORREÇÃO AQUI: AGRUPAR PROVENTOS POR TICKET ---
+    // Em vez de salvar um único objeto, salvamos um Array de proventos
+    const proventosMap = new Map();
+    proventosAtuais.forEach(p => {
+        if (!proventosMap.has(p.symbol)) {
+            proventosMap.set(p.symbol, []);
+        }
+        proventosMap.get(p.symbol).push(p);
+    });
+    // ---------------------------------------------------
     
     // Ordena a carteira alfabeticamente
     const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
@@ -3045,7 +3054,10 @@ async function renderizarCarteira() {
     // PASS 2: Renderizar ou Atualizar cada Card
     carteiraOrdenada.forEach((ativo, index) => { 
         const dadoPreco = precosMap.get(ativo.symbol);
-        const dadoProvento = proventosMap.get(ativo.symbol);
+        
+        // --- CORREÇÃO: Recupera a LISTA de proventos, não apenas um ---
+        const listaProventos = proventosMap.get(ativo.symbol) || [];
+        const dadoProvento = listaProventos.length > 0 ? listaProventos[0] : null; // Mantém referência para compatibilidade
 
         // Dados de Mercado
         let precoAtual = 0, variacao = 0;
@@ -3076,18 +3088,24 @@ async function renderizarCarteira() {
         if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; }
         else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; }
 
-        // Proventos Futuros
+        // --- CORREÇÃO: Calcula o total a receber SOMANDO todos os proventos da lista ---
         let proventoReceber = 0;
-        if (dadoProvento && dadoProvento.value > 0) {
-             const dataReferencia = dadoProvento.dataCom || dadoProvento.paymentDate;
+        listaProventos.forEach(p => {
+             const dataReferencia = p.dataCom || p.paymentDate;
              const qtdElegivel = getQuantidadeNaData(ativo.symbol, dataReferencia);
-             proventoReceber = qtdElegivel * dadoProvento.value;
-        }
+             if (qtdElegivel > 0) {
+                 proventoReceber += (qtdElegivel * p.value);
+             }
+        });
 
         const dadosRender = {
             dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
             totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
-            corPL, dadoProvento, proventoReceber, percentWallet
+            corPL, 
+            dadoProvento,       // Passa o primeiro (fallback)
+            listaProventos,     // Passa a lista completa (IMPORTANTE)
+            proventoReceber, 
+            percentWallet
         };
 
         // Popula dados para o gráfico de rosca
@@ -3119,7 +3137,6 @@ async function renderizarCarteira() {
     });
 
     // Atualiza Totais do Dashboard
-// Atualiza Totais do Dashboard
     if (carteiraOrdenada.length > 0) {
         const patrimonioTotalAtivos = totalValorCarteira;
         const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
@@ -3131,15 +3148,12 @@ async function renderizarCarteira() {
         
         renderizarDashboardSkeletons(false);
         
-        // Verificações de segurança (if el) adicionadas aqui:
         if(totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
         if(totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
         if(totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
         
         if(totalCarteiraPL) {
             totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
-            // Nota: removi a classe fixa para respeitar o HTML novo, apenas ajusto a cor se necessário, ou mantenha a classe do HTML
-            // Se quiser forçar a cor verde/vermelha:
             totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`; 
         }
         
@@ -3154,10 +3168,10 @@ async function renderizarCarteira() {
     renderizarGraficoAlocacao(dadosGrafico);
     renderizarGraficoPatrimonio();
     
-    // Filtro de Busca (caso o usuário esteja digitando)
+    // Filtro de Busca
     if (carteiraSearchInput && carteiraSearchInput.value) {
         const term = carteiraSearchInput.value.trim().toUpperCase();
-        const cards = listaCarteira.querySelectorAll('.wallet-card'); // Atualizado class name
+        const cards = listaCarteira.querySelectorAll('.wallet-card'); 
         cards.forEach(card => {
             const symbol = card.dataset.symbol;
             if (symbol && symbol.includes(term)) {

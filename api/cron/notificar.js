@@ -1,6 +1,8 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
-// Certifique-se de que o arquivo scraper.js esteja nomeado corretamente na pasta anterior ou ajuste o caminho abaixo
+
+// IMPORTANTE: Certifique-se de que o arquivo do scraper se chama 'scraper.js'
+// e está no diretório correto. Ajuste o caminho abaixo se necessário.
 const scraperHandler = require('../scraper.js');
 
 webpush.setVapidDetails(
@@ -14,40 +16,53 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Formata dinheiro (R$ 0,00)
+// Formata moeda (R$ 0,00)
 const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+// Função auxiliar para chamar o Scraper internamente
 async function atualizarProventosPeloScraper(fiiList) {
+    // Simula a requisição para o handler do scraper
     const req = { method: 'POST', body: { mode: 'proventos_carteira', payload: { fiiList } } };
     let resultado = [];
+    
+    // Mock do objeto response
     const res = {
         setHeader: () => {},
         status: () => ({ json: (data) => { resultado = data.json; } }),
         json: (data) => { resultado = data.json; }
     };
+
     try {
         await scraperHandler(req, res);
         return resultado || [];
     } catch (e) {
-        console.error("Erro no Scraper:", e);
+        console.error("Erro interno no Scraper:", e.message);
         return [];
     }
 }
 
 module.exports = async function handler(req, res) {
     try {
-        console.log("Iniciando rotina de atualizacao de proventos...");
+        console.log("Iniciando processamento de proventos e notificacoes...");
         const start = Date.now();
 
-        // --- 1. ATUALIZAÇÃO INTELIGENTE ---
+        // ---------------------------------------------------------
+        // 1. ATUALIZAÇÃO DA BASE DE DADOS (CACHE)
+        // ---------------------------------------------------------
+        
+        // Busca símbolos únicos presentes nas carteiras dos usuários
         const { data: ativos } = await supabase.from('transacoes').select('symbol');
 
         if (ativos?.length > 0) {
             const uniqueSymbols = [...new Set(ativos.map(a => a.symbol))];
+            
+            // Busca dados atualizados na B3/Web via Scraper
             const novosDados = await atualizarProventosPeloScraper(uniqueSymbols);
 
             if (novosDados?.length > 0) {
                 const upserts = [];
+                
+                // Mapeia quem possui qual ativo para vincular o provento ao usuário correto
                 const { data: allTransacoes } = await supabase
                     .from('transacoes')
                     .select('user_id, symbol');
@@ -55,6 +70,7 @@ module.exports = async function handler(req, res) {
                 for (const dado of novosDados) {
                     if (!dado.paymentDate || !dado.value) continue;
 
+                    // Filtra usuários que possuem este ativo específico
                     const usersInteressados = allTransacoes
                         .filter(t => t.symbol === dado.symbol)
                         .map(u => u.user_id);
@@ -62,18 +78,26 @@ module.exports = async function handler(req, res) {
                     const usersUnicos = [...new Set(usersInteressados)];
 
                     usersUnicos.forEach(uid => {
+                         // GERAÇÃO DE ID PADRONIZADA: ATIVO_DATA_TIPO
+                         // Ex: BTCI11_2025-10-14_REND
+                         // Isso evita duplicar registros se o valor for corrigido na fonte
+                         const tipoProvento = (dado.type || 'REND').toUpperCase().trim();
+                         const idGerado = `${dado.symbol}_${dado.paymentDate}_${tipoProvento}`;
+
                          upserts.push({
-                             id: `${dado.symbol}_${dado.paymentDate}`,
+                             id: idGerado,
                              user_id: uid,
                              symbol: dado.symbol,
                              value: dado.value,
                              paymentdate: dado.paymentDate,
                              datacom: dado.dataCom,
+                             type: tipoProvento, 
                              processado: false
                          });
                     });
                 }
 
+                // Salva no banco em lotes para performance
                 if (upserts.length > 0) {
                     for (let i = 0; i < upserts.length; i += 200) {
                         await supabase.from('proventosconhecidos')
@@ -83,20 +107,28 @@ module.exports = async function handler(req, res) {
             }
         }
 
-        // --- 2. NOTIFICAÇÃO ---
+        // ---------------------------------------------------------
+        // 2. ENVIO DE NOTIFICAÇÕES PUSH
+        // ---------------------------------------------------------
+        
+        // Define o "Hoje" (Fuso Horário ajustado -3h BRT simples)
         const agora = new Date();
         agora.setHours(agora.getHours() - 3); 
         const hojeString = agora.toISOString().split('T')[0];
         const inicioDoDia = `${hojeString}T00:00:00`;
         const hojeDateObj = new Date(hojeString + 'T00:00:00');
 
+        // Busca eventos relevantes para hoje (Pagamento, Data Com ou Novo Anúncio)
         const { data: proventos } = await supabase
             .from('proventosconhecidos')
             .select('*')
             .or(`paymentdate.eq.${hojeString},datacom.eq.${hojeString},created_at.gte.${inicioDoDia}`);
 
-        if (!proventos?.length) return res.json({ status: 'OK', msg: 'Nenhum evento hoje.' });
+        if (!proventos?.length) {
+            return res.json({ status: 'OK', msg: 'Nenhum evento relevante para hoje.' });
+        }
 
+        // Agrupa eventos por usuário
         const userEvents = {};
         proventos.forEach(p => {
             if (!userEvents[p.user_id]) userEvents[p.user_id] = [];
@@ -106,9 +138,12 @@ module.exports = async function handler(req, res) {
         let totalSent = 0;
         const usersIds = Object.keys(userEvents);
 
+        // Processa notificações em paralelo
         await Promise.all(usersIds.map(async (userId) => {
             try {
                 const eventos = userEvents[userId];
+                
+                // Busca inscrições push do usuário
                 const { data: subs } = await supabase
                     .from('push_subscriptions').select('*').eq('user_id', userId);
 
@@ -116,8 +151,11 @@ module.exports = async function handler(req, res) {
 
                 const matchDate = (f, s) => f && f.startsWith(s);
 
+                // Categoriza os eventos do usuário
                 const pagamentos = eventos.filter(e => matchDate(e.paymentdate, hojeString));
                 const dataComs = eventos.filter(e => matchDate(e.datacom, hojeString));
+                
+                // Lógica para novos anúncios: Criado hoje, não é duplicata de hoje e data futura
                 const novosAnuncios = eventos.filter(e => {
                     const createdToday = (e.created_at || '').startsWith(hojeString);
                     const duplicate = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
@@ -129,19 +167,17 @@ module.exports = async function handler(req, res) {
                     return createdToday && !duplicate && isFuturo;
                 });
 
-                let title = '', body = '';
-                // Ícone padrão
+                let title = '';
+                let body = '';
                 const icon = '/android-chrome-192x192.png'; 
 
-                // --- TEXTOS PROFISSIONAIS E SÓBRIOS ---
+                // Prioridade de Notificação: Pagamento > Data Com > Anúncio
                 if (pagamentos.length > 0) {
-                    // Adicionado "/cota" para evitar ambiguidade sobre o valor total vs unitário
                     const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
-
                     title = 'Crédito de Proventos';
                     body = pagamentos.length === 1 
-                        ? `O pagamento de ${lista} foi realizado hoje.` 
-                        : `Pagamento realizado para ${pagamentos.length} ativos: ${lista}.`;
+                        ? `O ativo ${pagamentos[0].symbol} realizou pagamento de ${fmtBRL(pagamentos[0].value)}/cota hoje.` 
+                        : `Pagamentos realizados hoje: ${lista}.`;
 
                 } else if (dataComs.length > 0) {
                     const lista = dataComs.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
@@ -152,10 +188,10 @@ module.exports = async function handler(req, res) {
                     const lista = novosAnuncios.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).slice(0,3).join(', ');
                     title = 'Comunicado de Proventos';
                     body = novosAnuncios.length === 1
-                        ? `Comunicado: ${novosAnuncios[0].symbol} informou pagamento de ${fmtBRL(novosAnuncios[0].value)}/cota.`
-                        : `Novos anúncios de: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
+                        ? `Comunicado: ${novosAnuncios[0].symbol} anunciou pagamento de ${fmtBRL(novosAnuncios[0].value)}/cota.`
+                        : `Novos anúncios: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
                 } else {
-                    return; 
+                    return; // Sem eventos relevantes para notificar
                 }
 
                 const payload = JSON.stringify({ 
@@ -166,8 +202,10 @@ module.exports = async function handler(req, res) {
                     badge: '/favicon.ico' 
                 });
 
+                // Envia para todos os dispositivos do usuário
                 const pushPromises = subs.map(sub => 
                     webpush.sendNotification(sub.subscription, payload).catch(err => {
+                        // Remove inscrição inválida (410 Gone / 404 Not Found)
                         if (err.statusCode === 410 || err.statusCode === 404) {
                             supabase.from('push_subscriptions').delete().match({ id: sub.id }).then(()=>{});
                         }
@@ -177,16 +215,16 @@ module.exports = async function handler(req, res) {
                 totalSent += pushPromises.length;
 
             } catch (errUser) {
-                console.error(`Erro ao notificar user ${userId}:`, errUser);
+                console.error(`Erro ao processar notificações do usuário ${userId}:`, errUser.message);
             }
         }));
 
         const duration = (Date.now() - start) / 1000;
-        console.log(`Finalizado em ${duration}s. Enviados: ${totalSent}`);
+        console.log(`Processamento concluído em ${duration}s. Notificações enviadas: ${totalSent}`);
         return res.status(200).json({ status: 'Success', sent: totalSent, time: duration });
 
     } catch (error) {
-        console.error('Erro Fatal na CRON:', error);
+        console.error('Erro Fatal na execução do CRON:', error);
         return res.status(500).json({ error: error.message });
     }
 };

@@ -3295,6 +3295,8 @@ async function renderizarCarteira() {
         return Math.max(3, mesesDiff + 2);
     }
 
+// EM app.js - Substitua a função buscarProventosFuturos por esta versão corrigida:
+
 async function buscarProventosFuturos(force = false) {
     const ativosParaBuscar = carteiraCalculada.map(a => a.symbol); 
     if (ativosParaBuscar.length === 0) return [];
@@ -3310,8 +3312,13 @@ async function buscarProventosFuturos(force = false) {
         }
         
         const proventoCache = await getCache(cacheKey);
+        // CORREÇÃO: Verifica se é Array (versão nova) ou Objeto (versão antiga bugada)
         if (proventoCache && !force) {
-            proventosPool.push(proventoCache);
+            if (Array.isArray(proventoCache)) {
+                proventosPool.push(...proventoCache); // Adiciona todos os itens do array
+            } else {
+                proventosPool.push(proventoCache); // Fallback para cache antigo
+            }
         } else {
             const limiteCalculado = calcularLimiteMeses(symbol);
             listaParaAPI.push({ ticker: symbol, limit: limiteCalculado });
@@ -3325,49 +3332,61 @@ async function buscarProventosFuturos(force = false) {
             const dateRegex = /^\d{4}-\d{2}-\d{2}$/; 
 
             if (novosProventos && Array.isArray(novosProventos)) {
-                // SET PARA EVITAR COLISÃO DE ID NO MESMO LOTE
+                
+                // --- NOVA LÓGICA DE CACHE: Agrupar por Ticker ---
+                const proventosPorTicker = {};
+                
+                // Filtra inválidos e agrupa
+                const proventosValidos = novosProventos.filter(p => p && p.symbol && dateRegex.test(p.paymentDate));
+                
+                proventosValidos.forEach(p => {
+                    if (!proventosPorTicker[p.symbol]) {
+                        proventosPorTicker[p.symbol] = [];
+                    }
+                    proventosPorTicker[p.symbol].push(p);
+                });
+
+                // Salva no Cache (Array por Ticker)
+                await Promise.all(Object.keys(proventosPorTicker).map(async (symbol) => {
+                    const lista = proventosPorTicker[symbol];
+                    const cacheKey = `provento_ia_${symbol}`;
+                    await setCache(cacheKey, lista, CACHE_PROVENTOS);
+                    proventosPool.push(...lista);
+                }));
+
+                // --- PROCESSAMENTO DE IDs (Mantido e Ajustado) ---
                 const idsNesteLote = new Set();
 
-                await Promise.all(novosProventos.map(async (provento) => {
-                    // Validação rigorosa de data
-                    const dataValida = provento.paymentDate && dateRegex.test(provento.paymentDate);
+                for (const provento of proventosValidos) {
+                    const safeType = provento.type || 'REND';
+                    const safeValue = (provento.value || 0).toFixed(4);
+                    
+                    // Gera ID base
+                    let idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
 
-                    if (provento && provento.symbol && dataValida) {
-                        const cacheKey = `provento_ia_${provento.symbol}`;
-                        await setCache(cacheKey, provento, CACHE_PROVENTOS); 
-                        proventosPool.push(provento);
-
-                        // --- CORREÇÃO DE ID ÚNICO ---
-                        const safeType = provento.type || 'REND';
-                        const safeValue = (provento.value || 0).toFixed(4);
-                        
-                        // Gera ID base
-                        let idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
-
-                        // Se esse ID já foi gerado neste loop (colisão), adiciona sufixo
-                        let contador = 2;
-                        while (idsNesteLote.has(idUnico)) {
-                            idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}_v${contador}`;
-                            contador++;
-                        }
-                        idsNesteLote.add(idUnico);
-
-                        // Verifica se já temos esse ID salvo na memória global
-                        const existe = proventosConhecidos.some(p => p.id === idUnico);
-                        
-                        if (!existe) {
-                            const novoProvento = { 
-                                ...provento, 
-                                processado: false, 
-                                id: idUnico,
-                                type: safeType 
-                            };
-                            
-                            await supabaseDB.addProventoConhecido(novoProvento);
-                            proventosConhecidos.push(novoProvento);
-                        }
+                    // Se esse ID já foi gerado neste loop (colisão), adiciona sufixo
+                    let contador = 2;
+                    while (idsNesteLote.has(idUnico)) {
+                        idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}_v${contador}`;
+                        contador++;
                     }
-                }));
+                    idsNesteLote.add(idUnico);
+
+                    // Verifica se já temos esse ID salvo na memória global
+                    const existe = proventosConhecidos.some(p => p.id === idUnico);
+                    
+                    if (!existe) {
+                        const novoProvento = { 
+                            ...provento, 
+                            processado: false, 
+                            id: idUnico,
+                            type: safeType 
+                        };
+                        
+                        await supabaseDB.addProventoConhecido(novoProvento);
+                        proventosConhecidos.push(novoProvento);
+                    }
+                }
             }
         } catch (error) {
             console.error("Erro Scraper:", error);

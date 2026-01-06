@@ -353,7 +353,7 @@ module.exports = async function handler(req, res) {
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
-                    const defaultLimit = mode === 'historico_portfolio' ? 12 : 12;
+                    const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
                     const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
 
                     const history = await scrapeAsset(ticker);

@@ -5956,27 +5956,25 @@ function saveSearchHistory(term) {
         });
     }
 
-    // --- GESTOS (SWIPE) PARA NAVEGAÇÃO ---
 let swipeStartX = 0;
 let swipeStartY = 0;
 
 document.addEventListener('touchstart', (e) => {
-    // Bloqueia se houver modal aberto
+    // 1. Bloqueia se houver modal aberto
     if (document.querySelector('.custom-modal.visible') || 
         document.querySelector('.page-modal.visible') || 
         document.querySelector('#ai-modal.visible')) {
         return;
     }
     
-    // --- CORREÇÃO APLICADA AQUI ---
-    // Adicionamos '#timeline-pagamentos-container' e '.payment-carousel' para bloquear a troca de aba
+    // 2. CORREÇÃO AQUI: Bloqueia swipe se tocar em áreas de scroll ou GRÁFICOS
     if (e.target.closest('.overflow-x-auto') || 
         e.target.closest('#dashboard-favorites-list') || 
         e.target.closest('#timeline-pagamentos-container') || 
-        e.target.closest('.payment-carousel')) {
+        e.target.closest('.payment-carousel') || 
+        e.target.closest('canvas')) { // <--- ADICIONADO: Bloqueia se tocar em qualquer gráfico
         return; 
     }
-    // -----------------------------------------------------------------------
 
     swipeStartX = e.changedTouches[0].screenX;
     swipeStartY = e.changedTouches[0].screenY;

@@ -1499,6 +1499,7 @@ function agruparPorMes(itens, dateField) {
 }
 
 // --- CLASSE DE VIRTUALIZAÇÃO CORRIGIDA ---
+// --- CLASSE DE VIRTUALIZAÇÃO CORRIGIDA (V3) ---
 class VirtualScroller {
     constructor(scrollContainer, listContainer, items, renderRowFn) {
         this.scrollContainer = scrollContainer;
@@ -1510,18 +1511,19 @@ class VirtualScroller {
         this.positions = [];
         this.visibleItems = new Map(); 
         
-        // Remove padding original do container para evitar conflitos de layout
+        // Salva padding original
         this.originalPadding = this.listContainer.style.padding;
+        // Remove classes conflitantes
         this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
         
-        // Header Sticky
+        // Cria o Header Sticky
         this.stickyHeaderEl = document.createElement('div');
         this.stickyHeaderEl.className = 'virtual-sticky-header hidden';
         
-        // Inserimos o sticky header ANTES da lista, dentro do scroll container ou pai
-        // O ideal é que ele fique "fixo" visualmente.
-        if (this.scrollContainer.contains(this.listContainer)) {
-             this.scrollContainer.insertBefore(this.stickyHeaderEl, this.listContainer);
+        // CORREÇÃO DO ERRO NotFoundError:
+        // Inserimos o header pegando o pai DIRETO da lista, seja ele quem for
+        if (this.listContainer.parentNode) {
+             this.listContainer.parentNode.insertBefore(this.stickyHeaderEl, this.listContainer);
         }
 
         this.init();
@@ -1529,20 +1531,17 @@ class VirtualScroller {
 
     init() {
         // 1. Pré-calcular posições
-        let currentY = 0; // Começa do 0 relativo ao container
-        
-        // Espaço extra no topo para não colar
-        currentY += 10; 
+        let currentY = 0; 
+        currentY += 10; // Espaço inicial
 
         this.positions = this.items.map(item => {
-            // Ajuste fino das alturas: Cards costumam ter ~80-90px com padding
             const height = item.type === 'header' ? 54 : 90; 
             const pos = { top: currentY, height, item };
             currentY += height;
             return pos;
         });
         
-        this.totalHeight = currentY + 100; // +100px de margem final (pb-20)
+        this.totalHeight = currentY + 100; // Margem final
         
         this.listContainer.style.height = `${this.totalHeight}px`;
         this.listContainer.classList.add('virtual-list-container');
@@ -1550,15 +1549,16 @@ class VirtualScroller {
         this.boundOnScroll = this.onScroll.bind(this);
         this.scrollContainer.addEventListener('scroll', this.boundOnScroll, { passive: true });
         
+        // Força um render inicial
         this.onScroll();
     }
 
     onScroll() {
-        if (!this.listContainer.isConnected) return; // Segurança se mudou de aba
+        if (!this.listContainer.isConnected) return;
 
         const scrollTop = this.scrollContainer.scrollTop;
         const viewportHeight = this.scrollContainer.clientHeight;
-        const buffer = 400; // Buffer maior para evitar tela branca ao scrollar rápido
+        const buffer = 400;
 
         const startY = Math.max(0, scrollTop - buffer);
         const endY = scrollTop + viewportHeight + buffer;
@@ -1566,6 +1566,7 @@ class VirtualScroller {
         // --- STICKY HEADER ---
         let currentHeader = null;
         for (let i = 0; i < this.positions.length; i++) {
+            // Pequeno offset (+60) para a troca do header acontecer na hora visualmente agradável
             if (this.positions[i].top > scrollTop + 60) break;
             if (this.positions[i].item.type === 'header') {
                 currentHeader = this.positions[i].item;
@@ -1573,12 +1574,14 @@ class VirtualScroller {
         }
 
         if (currentHeader) {
-            // Só atualiza se mudou o conteúdo para economizar DOM
             if (this.stickyHeaderEl.innerHTML !== currentHeader.htmlContent) {
                 this.stickyHeaderEl.innerHTML = currentHeader.htmlContent;
             }
             this.stickyHeaderEl.classList.remove('hidden');
-            // Mantém ele no topo visualmente
+            
+            // Ajuste visual: Se o container de scroll for diferente do pai da lista,
+            // precisamos garantir que o translateY compense isso visualmente.
+            // Normalmente translateY(scrollTop) funciona se o header estiver solto no fluxo absoluto
             this.stickyHeaderEl.style.transform = `translateY(${scrollTop}px)`;
         } else {
             this.stickyHeaderEl.classList.add('hidden');
@@ -1598,14 +1601,10 @@ class VirtualScroller {
                     const el = document.createElement('div');
                     el.className = 'virtual-item';
                     el.style.transform = `translateY(${pos.top}px)`;
-                    el.style.height = `${pos.height}px`; // Altura fixa para evitar colapsos
+                    el.style.height = `${pos.height}px`;
                     
                     if (pos.item.type === 'header') {
-                         // Renderiza vazio pois o Sticky cuida do visual, 
-                         // mas mantém o espaço físico no scroll
                          el.innerHTML = ``; 
-                         // Opcional: Debug borders
-                         // el.style.border = '1px solid red';
                     } else {
                         el.innerHTML = this.renderRowFn(pos.item.data);
                     }
@@ -1616,6 +1615,7 @@ class VirtualScroller {
             }
         }
 
+        // Limpeza (Recycle)
         for (const [index, el] of this.visibleItems.entries()) {
             if (!activeIndices.has(index)) {
                 el.remove();
@@ -1630,10 +1630,14 @@ class VirtualScroller {
         this.listContainer.style.height = '';
         this.listContainer.classList.remove('virtual-list-container');
         
-        // Restaura classes originais de padding do Tailwind
+        // Restaura classes do Tailwind
         this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
         
-        if(this.stickyHeaderEl) this.stickyHeaderEl.remove();
+        // Remove o header de forma segura
+        if(this.stickyHeaderEl && this.stickyHeaderEl.parentNode) {
+            this.stickyHeaderEl.parentNode.removeChild(this.stickyHeaderEl);
+        }
+        
         this.visibleItems.clear();
     }
 }

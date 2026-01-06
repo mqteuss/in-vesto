@@ -513,6 +513,10 @@ function atualizarCardElemento(card, ativo, dados) {
 document.addEventListener('DOMContentLoaded', async () => {
 	
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
+	let historicoVirtualizer = null;
+    let proventosVirtualizer = null;
+    const ROW_HEIGHT_CARD = 84;   // Altura estimada do card de transação (pixels)
+    const ROW_HEIGHT_HEADER = 50; // Altura estimada do cabeçalho do mês (pixels)
 	let lastTransacoesSignature = '';    
     let lastPatrimonioCalcSignature = ''; 
     let lastHistoricoListSignature = '';
@@ -1494,8 +1498,157 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
+// --- CLASSE DE VIRTUALIZAÇÃO ---
+class VirtualScroller {
+    constructor(scrollContainer, listContainer, items, renderRowFn) {
+        this.scrollContainer = scrollContainer;
+        this.listContainer = listContainer;
+        this.items = items;
+        this.renderRowFn = renderRowFn;
+        
+        this.totalHeight = 0;
+        this.positions = [];
+        this.visibleItems = new Map(); // Cache de itens DOM ativos
+        
+        // Header Fixo Simulado
+        this.stickyHeaderEl = document.createElement('div');
+        this.stickyHeaderEl.className = 'virtual-sticky-header hidden';
+        this.scrollContainer.parentElement.insertBefore(this.stickyHeaderEl, this.scrollContainer);
+
+        this.init();
+    }
+
+    init() {
+        // 1. Pré-calcular posições Y de todos os itens
+        let currentY = 0;
+        this.positions = this.items.map(item => {
+            const height = item.type === 'header' ? ROW_HEIGHT_HEADER : ROW_HEIGHT_CARD;
+            const pos = { top: currentY, height, item };
+            currentY += height;
+            return pos;
+        });
+        
+        this.totalHeight = currentY;
+        
+        // 2. Definir altura do container para forçar o scrollbar real
+        this.listContainer.style.height = `${this.totalHeight}px`;
+        this.listContainer.classList.add('virtual-list-container');
+        
+        // 3. Listener de Scroll Otimizado
+        this.boundOnScroll = this.onScroll.bind(this);
+        this.scrollContainer.addEventListener('scroll', this.boundOnScroll, { passive: true });
+        
+        // 4. Render inicial
+        this.onScroll();
+    }
+
+    onScroll() {
+        const scrollTop = this.scrollContainer.scrollTop;
+        const viewportHeight = this.scrollContainer.clientHeight;
+        const buffer = 300; // Renderiza pixels extras acima/abaixo para evitar "buracos" no scroll rápido
+
+        const startY = Math.max(0, scrollTop - buffer);
+        const endY = scrollTop + viewportHeight + buffer;
+
+        // --- ATUALIZAÇÃO DO HEADER FIXO (STICKY) ---
+        // Encontra o item "header" mais próximo acima da posição atual
+        let currentHeader = null;
+        // Busca linear simples (rápida para listas < 10k itens, otimizável com busca binária se necessário)
+        for (let i = 0; i < this.positions.length; i++) {
+            if (this.positions[i].top > scrollTop + 60) break; // +60 offset visual
+            if (this.positions[i].item.type === 'header') {
+                currentHeader = this.positions[i].item;
+            }
+        }
+
+        if (currentHeader) {
+            this.stickyHeaderEl.innerHTML = currentHeader.htmlContent; // Reusa o HTML gerado
+            this.stickyHeaderEl.classList.remove('hidden');
+        } else {
+            this.stickyHeaderEl.classList.add('hidden');
+        }
+
+        // --- RENDERIZAÇÃO DOS ITENS ---
+        const activeIndices = new Set();
+
+        // Identifica quais itens estão visíveis
+        // (Poderia ser busca binária, mas linear é ok aqui)
+        for (let i = 0; i < this.positions.length; i++) {
+            const pos = this.positions[i];
+            const bottom = pos.top + pos.height;
+
+            if (bottom >= startY && pos.top <= endY) {
+                activeIndices.add(i);
+                
+                if (!this.visibleItems.has(i)) {
+                    // Cria o elemento se não existir
+                    const el = document.createElement('div');
+                    el.className = 'virtual-item';
+                    el.style.transform = `translateY(${pos.top}px)`;
+                    el.style.height = `${pos.height}px`;
+                    
+                    // Renderiza o conteúdo interno
+                    if (pos.item.type === 'header') {
+                        // Headers dentro da lista são ocultados para não duplicar com o Sticky, 
+                        // ou mantidos para fluxo. Vamos mantê-los invisíveis visualmente para dar espaço.
+                        // Mas para manter simples, renderizamos vazio pois o Sticky cuida disso.
+                         el.innerHTML = `<div style="height:${pos.height}px"></div>`; 
+                    } else {
+                        el.innerHTML = this.renderRowFn(pos.item.data);
+                    }
+
+                    this.listContainer.appendChild(el);
+                    this.visibleItems.set(i, el);
+                }
+            }
+        }
+
+        // Remove itens que saíram da tela (Reciclagem DOM)
+        for (const [index, el] of this.visibleItems.entries()) {
+            if (!activeIndices.has(index)) {
+                el.remove();
+                this.visibleItems.delete(index);
+            }
+        }
+    }
+
+    destroy() {
+        this.scrollContainer.removeEventListener('scroll', this.boundOnScroll);
+        this.listContainer.innerHTML = '';
+        this.listContainer.style.height = '';
+        if(this.stickyHeaderEl) this.stickyHeaderEl.remove();
+        this.visibleItems.clear();
+    }
+}
+
+// Helper para converter o agrupamento de meses em lista plana
+function flattenHistoricoData(grupos) {
+    const flatList = [];
+    Object.keys(grupos).forEach(mes => {
+        // 1. Header Object
+        const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity || 1) * (t.price || t.value), 0);
+        
+        // HTML do Header (String template para reuso)
+        const headerHtml = `
+            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>
+            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
+                ${totalMes > 0 ? 'Total' : 'Mov'}: ${formatBRL(totalMes)}
+            </span>
+        `;
+
+        flatList.push({ type: 'header', month: mes, total: totalMes, htmlContent: headerHtml });
+
+        // 2. Items Objects
+        grupos[mes].forEach(item => {
+            flatList.push({ type: 'row', data: item });
+        });
+    });
+    return flatList;
+}
+
 function renderizarHistorico() {
     const listaHistorico = document.getElementById('lista-historico');
+    const scrollContainer = document.getElementById('tab-historico'); // O container que tem scroll
     const historicoStatus = document.getElementById('historico-status');
     const historicoMensagem = document.getElementById('historico-mensagem');
 
@@ -1505,12 +1658,17 @@ function renderizarHistorico() {
     const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
 
-    if (currentSignature === lastHistoricoListSignature && listaHistorico.children.length > 0) {
+    if (currentSignature === lastHistoricoListSignature && historicoVirtualizer) {
         return; 
     }
     
     lastHistoricoListSignature = currentSignature;
-    listaHistorico.innerHTML = '';
+
+    // Reset Virtualizer anterior se existir
+    if (historicoVirtualizer) {
+        historicoVirtualizer.destroy();
+        historicoVirtualizer = null;
+    }
     
     // Filtragem
     let dadosFiltrados = transacoes.filter(t => {
@@ -1530,69 +1688,39 @@ function renderizarHistorico() {
     // Agrupamento
     dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
     const grupos = agruparPorMes(dadosFiltrados, 'date');
-    const fragment = document.createDocumentFragment();
+    
+    // Flatten Data para Virtualização
+    const flatItems = flattenHistoricoData(grupos);
 
-    Object.keys(grupos).forEach(mes => {
-        // Header Mês
-        const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
-        
-        const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
-        
-        header.innerHTML = `
-            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">
-                ${mes}
-            </h3>
-            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
-                Mov: ${formatBRL(totalMes)}
-            </span>
-        `;
-        fragment.appendChild(header);
+    // Função que retorna HTML de uma linha (Item)
+    const rowRenderer = (t) => {
+        const isVenda = t.type === 'sell';
+        const totalTransacao = t.quantity * t.price;
+        const dia = new Date(t.date).getDate().toString().padStart(2, '0');
+        const sigla = t.symbol.substring(0, 2);
+        const ehFii = isFII(t.symbol);
+        const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
 
-        // Lista de Cards
-        const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'px-3 pb-2'; 
+        const iconHtml = !ehFii 
+            ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
+               <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 z-0 bg-[#151515]">${sigla}</span>`
+            : `<span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>`;
 
-        grupos[mes].forEach(t => {
-            const isVenda = t.type === 'sell';
-            const item = document.createElement('div');
-            const totalTransacao = t.quantity * t.price;
-            const dia = new Date(t.date).getDate().toString().padStart(2, '0');
-            const sigla = t.symbol.substring(0, 2);
+        const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
+        const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
+        const labelContent = isVenda ? iconVenda : iconCompra;
+        const badgeBg = isVenda ? 'bg-red-500/10 border border-red-500/20' : 'bg-green-500/10 border border-green-500/20';
 
-            // --- LÓGICA DE ÍCONE ---
-            const ehFii = isFII(t.symbol);
-            const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
-            const iconHtml = !ehFii 
-                ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-                   <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 z-0 bg-[#151515]">${sigla}</span>`
-                : `<span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>`;
-
-
-            // Ícones de Compra/Venda
-            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
-
-            const labelContent = isVenda ? iconVenda : iconCompra;
-            
-            const badgeBg = isVenda 
-                ? 'bg-red-500/10 border border-red-500/20' 
-                : 'bg-green-500/10 border border-green-500/20';
-
-            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
-            item.setAttribute('data-action', 'edit-row');
-            item.setAttribute('data-id', t.id);
-
-            item.innerHTML = `
+        // Retorna string HTML (sem criar elemento DOM aqui para performance)
+        return `
+            <div class="history-card flex items-center justify-between py-3 px-3 relative group h-full w-full" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${iconHtml}
                     </div>
-                    
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${t.symbol}</h4>
-                            
                             <div class="${badgeBg} w-6 h-6 flex items-center justify-center rounded-md shrink-0">
                                 ${labelContent}
                             </div>
@@ -1604,53 +1732,50 @@ function renderizarHistorico() {
                         </div>
                     </div>
                 </div>
-                
                 <div class="text-right flex flex-col items-end justify-center">
                     <span class="text-sm font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
-                    
-                    <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/80 text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
+                    <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/80 text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                     </button>
                 </div>
-            `;
-            listaGrupo.appendChild(item);
-        });
-        fragment.appendChild(listaGrupo);
-    });
-    
-    listaHistorico.appendChild(fragment);
+            </div>
+        `;
+    };
+
+    // Inicia Virtualização
+    historicoVirtualizer = new VirtualScroller(scrollContainer, listaHistorico, flatItems, rowRenderer);
 }
 
 // EM app.js - Substitua a função renderizarHistoricoProventos por esta versão:
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
+    const scrollContainer = document.getElementById('tab-historico'); // Mesmo container de scroll
     
-    // --- 1. Smart Check (Performance) ---
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
-    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const termoBusca = provSearchTerm || ''; 
-    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${transacoes.length}-${lastTxId}-${termoBusca}`;
+    const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}`;
 
-    if (currentSignature === lastHistoricoProventosSignature && listaHistoricoProventos.children.length > 0) {
+    if (currentSignature === lastHistoricoProventosSignature && proventosVirtualizer) {
         return; 
     }
     
     lastHistoricoProventosSignature = currentSignature;
-    listaHistoricoProventos.innerHTML = '';
+
+    if (proventosVirtualizer) {
+        proventosVirtualizer.destroy();
+        proventosVirtualizer = null;
+    }
     
-    // --- 2. Filtros e Ordenação ---
     const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // Zera hora para comparar apenas datas
+    hoje.setHours(0, 0, 0, 0);
 
     const proventosFiltrados = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         if(parts.length !== 3) return false;
-        
-        // CORREÇÃO 1: Ocultar proventos futuros ("A Receber")
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         if (dataPag > hoje) return false;
 
@@ -1658,7 +1783,6 @@ function renderizarHistoricoProventos() {
         return buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    // --- 3. Estado Vazio ---
     if (proventosFiltrados.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
@@ -1670,86 +1794,57 @@ function renderizarHistoricoProventos() {
         return;
     }
 
-    // --- 4. Agrupamento e Renderização ---
     const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
-    const fragment = document.createDocumentFragment();
-
+    
+    // Filtra apenas itens com valor > 0 para exibir
+    const gruposLimpos = {};
     Object.keys(grupos).forEach(mes => {
-        let totalMes = 0;
-        
         const itensValidos = grupos[mes].filter(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            if (qtd > 0) {
-                totalMes += (p.value * qtd);
-                return true; 
-            }
-            return false;
+            return qtd > 0;
         });
+        if (itensValidos.length > 0) gruposLimpos[mes] = itensValidos;
+    });
 
-        if (itensValidos.length === 0) return;
+    const flatItems = flattenHistoricoData(gruposLimpos);
 
-        // Header do Mês
-        const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center';
-        header.innerHTML = `
-            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">
-                ${mes}
-            </h3>
-            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
-                Recebido: ${formatBRL(totalMes)}
-            </span>
-        `;
-        fragment.appendChild(header);
+    const rowRenderer = (p) => {
+        const dataRef = p.dataCom || p.paymentDate;
+        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+        const dia = p.paymentDate.split('-')[2]; 
+        const total = p.value * qtd;
+        const sigla = p.symbol.substring(0, 2);
+        const ehFii = isFII(p.symbol);
+        const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;
+        
+        const imageHtml = !ehFii 
+            ? `<img src="${iconUrl}" alt="${p.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />` 
+            : '';
+        const fallbackClass = !ehFii ? 'hidden' : 'flex';
 
-        // Lista de Cards
-        const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'px-3 pb-2'; 
+        let tagHtml = '';
+        const rawType = (p.type || '').toUpperCase();
+        if (rawType.includes('JCP') || rawType.includes('JUROS')) {
+            tagHtml = `<span class="text-[9px] font-extrabold text-amber-400 bg-amber-900/20 border border-amber-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">JCP</span>`;
+        } else if (rawType.includes('DIV')) {
+            tagHtml = `<span class="text-[9px] font-extrabold text-sky-400 bg-sky-900/20 border border-sky-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">DIV</span>`;
+        } else {
+            tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">REND</span>`;
+        }
 
-        itensValidos.forEach(p => {
-            const dataRef = p.dataCom || p.paymentDate;
-            const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            const dia = p.paymentDate.split('-')[2]; 
-            const total = p.value * qtd;
-            const sigla = p.symbol.substring(0, 2);
-            
-            // Ícones (Lógica Ações vs FIIs)
-            const ehFii = isFII(p.symbol);
-            const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;
-            
-            const imageHtml = !ehFii 
-                ? `<img src="${iconUrl}" alt="${p.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />` 
-                : '';
-            const fallbackClass = !ehFii ? 'hidden' : 'flex';
-
-            // Tags
-            let tagHtml = '';
-            const rawType = (p.type || '').toUpperCase();
-            
-            if (rawType.includes('JCP') || rawType.includes('JUROS')) {
-                tagHtml = `<span class="text-[9px] font-extrabold text-amber-400 bg-amber-900/20 border border-amber-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">JCP</span>`;
-            } else if (rawType.includes('DIV')) {
-                tagHtml = `<span class="text-[9px] font-extrabold text-sky-400 bg-sky-900/20 border border-sky-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">DIV</span>`;
-            } else {
-                tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">REND</span>`;
-            }
-
-            const item = document.createElement('div');
-            item.className = 'history-card flex items-center justify-between py-3 px-3 relative group';
-
-            item.innerHTML = `
+        return `
+            <div class="history-card flex items-center justify-between py-3 px-3 relative group h-full w-full">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${imageHtml}
                         <span class="${fallbackClass} w-full h-full items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 bg-[#151515]">${sigla}</span>
                     </div>
-                    
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 h-6">
                             <h4 class="text-sm font-bold text-gray-200 tracking-tight leading-none">${p.symbol}</h4>
                             ${tagHtml}
                         </div>
-                        
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>
@@ -1759,18 +1854,14 @@ function renderizarHistoricoProventos() {
                         </div>
                     </div>
                 </div>
-                
                 <div class="text-right flex flex-col items-end justify-center">
                     <span class="text-sm font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
                 </div>
-            `;
-            listaGrupo.appendChild(item);
-        });
-        
-        fragment.appendChild(listaGrupo);
-    });
+            </div>
+        `;
+    };
 
-    listaHistoricoProventos.appendChild(fragment);
+    proventosVirtualizer = new VirtualScroller(scrollContainer, listaHistoricoProventos, flatItems, rowRenderer);
 }
     if (btnHistTransacoes && btnHistProventos) {
         const viewTransacoes = document.getElementById('view-transacoes');

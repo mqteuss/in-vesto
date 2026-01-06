@@ -1498,40 +1498,29 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
-// --- CLASSE DE VIRTUALIZAÇÃO V10 (CORREÇÃO DE CRASH) ---
+// --- CLASSE DE VIRTUALIZAÇÃO V11 (ESTÁVEL - SEM HEADER FLUTUANTE) ---
 class VirtualScroller {
     constructor(scrollContainer, listContainer, items, renderRowFn) {
+        // 1. Inicializa variáveis CRÍTICAS primeiro para evitar crash
+        this.visibleItems = new Map();
+        this.positions = [];
+        this.totalHeight = 0;
+        
         this.scrollContainer = scrollContainer;
         this.listContainer = listContainer;
         this.items = items;
         this.renderRowFn = renderRowFn;
         
-        // --- CORREÇÃO DO ERRO ---
-        // Inicializamos as variáveis de estado IMEDIATAMENTE antes de qualquer coisa
-        this.visibleItems = new Map(); 
-        this.positions = [];
-        this.totalHeight = 0;
-        
+        // Configurações de altura
         this.headerHeight = 50; 
         this.rowHeight = 90;
         
-        // Limpeza de estilos antigos
+        // Limpeza de estilos conflitantes do container original
         this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
         this.listContainer.style.marginTop = '0px'; 
         
-        // --- HEADER FIXO ---
-        this.stickyHeaderEl = document.createElement('div');
-        this.stickyHeaderEl.className = 'virtual-sticky-header hidden';
-        
-        // Inserimos o header fixo no container de scroll
-        if (this.scrollContainer) {
-             // Remove headers antigos se houver (para evitar duplicação em reloads)
-             const oldHeaders = this.scrollContainer.querySelectorAll('.virtual-sticky-header');
-             oldHeaders.forEach(el => el.remove());
-             
-             // Insere no topo
-             this.scrollContainer.insertBefore(this.stickyHeaderEl, this.scrollContainer.firstChild);
-        }
+        // Removemos qualquer lógica de header fixo/sticky aqui.
+        // O código fica muito mais leve.
 
         this.init();
     }
@@ -1539,7 +1528,7 @@ class VirtualScroller {
     init() {
         let currentY = 0; 
         
-        // Mapeia posições
+        // Mapeia posições de TODOS os itens (Headers e Rows)
         this.positions = this.items.map(item => {
             const height = item.type === 'header' ? this.headerHeight : this.rowHeight; 
             const pos = { top: currentY, height, item };
@@ -1547,11 +1536,11 @@ class VirtualScroller {
             return pos;
         });
         
-        this.totalHeight = currentY + 120; // Espaço extra no final
+        this.totalHeight = currentY + 120; // Espaço extra no final (padding bottom)
         this.listContainer.style.height = `${this.totalHeight}px`;
         this.listContainer.classList.add('virtual-list-container');
         
-        // Listener
+        // Listener de Scroll
         this.boundOnScroll = this.onScroll.bind(this);
         this.scrollContainer.addEventListener('scroll', this.boundOnScroll, { passive: true });
         
@@ -1560,58 +1549,28 @@ class VirtualScroller {
     }
 
     onScroll() {
-        // Segurança extra
+        // Verificação de segurança: se a lista foi destruída ou não existe, para.
         if (!this.listContainer.isConnected || !this.visibleItems) return;
 
         const scrollTop = this.scrollContainer.scrollTop;
         const viewportHeight = this.scrollContainer.clientHeight;
-        const buffer = 600; 
+        const buffer = 600; // Renderiza 600px a mais para cima e para baixo (scroll suave)
 
-        // --- 1. ATUALIZAR HEADER FIXO ---
-        // Movemos o header fixo para acompanhar o scroll visualmente
-        this.stickyHeaderEl.style.transform = `translateY(${scrollTop}px)`;
-        
-        // Descobrir qual mês está no topo
-        let currentMonthItem = null;
-        
-        for (let i = 0; i < this.positions.length; i++) {
-            if (this.positions[i].top > scrollTop) break;
-            
-            if (this.positions[i].item.type === 'header') {
-                currentMonthItem = this.positions[i].item;
-            }
-        }
-
-        if (currentMonthItem) {
-            this.stickyHeaderEl.classList.remove('hidden');
-            if (this.stickyHeaderEl.innerHTML !== currentMonthItem.htmlContent) {
-                this.stickyHeaderEl.innerHTML = currentMonthItem.htmlContent;
-            }
-        } else {
-            // Se estivermos no topo absoluto, mostra o primeiro header
-             if (this.positions.length > 0 && this.positions[0].item.type === 'header') {
-                 this.stickyHeaderEl.classList.remove('hidden');
-                 if (this.stickyHeaderEl.innerHTML !== this.positions[0].item.htmlContent) {
-                    this.stickyHeaderEl.innerHTML = this.positions[0].item.htmlContent;
-                 }
-             } else {
-                 this.stickyHeaderEl.classList.add('hidden');
-             }
-        }
-
-        // --- 2. RENDERIZAR LISTA ---
         const startY = Math.max(0, scrollTop - buffer);
         const endY = scrollTop + viewportHeight + buffer;
+        
         const activeIndices = new Set();
 
+        // Loop principal: decide o que desenhar
         for (let i = 0; i < this.positions.length; i++) {
             const pos = this.positions[i];
             const bottom = pos.top + pos.height;
 
+            // Se o item está dentro da área visível (+ buffer)
             if (bottom >= startY && pos.top <= endY) {
                 activeIndices.add(i);
                 
-                // --- AQUI ESTAVA O ERRO ANTES (visibleItems não existia) ---
+                // Se ainda não está no DOM, cria
                 if (!this.visibleItems.has(i)) {
                     const el = document.createElement('div');
                     el.className = 'virtual-item';
@@ -1619,8 +1578,11 @@ class VirtualScroller {
                     el.style.height = `${pos.height}px`;
                     
                     if (pos.item.type === 'header') {
+                         // Renderiza o header como um item normal da lista
                          el.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
+                         // Headers não precisam de padding lateral extra
                     } else {
+                        // Cards precisam de padding lateral
                         el.style.paddingLeft = '16px';
                         el.style.paddingRight = '16px';
                         el.innerHTML = this.renderRowFn(pos.item.data);
@@ -1632,7 +1594,7 @@ class VirtualScroller {
             }
         }
 
-        // Garbage collection
+        // Limpeza: remove itens que saíram da tela
         for (const [index, el] of this.visibleItems.entries()) {
             if (!activeIndices.has(index)) {
                 el.remove();
@@ -1642,18 +1604,21 @@ class VirtualScroller {
     }
 
     destroy() {
-        this.scrollContainer.removeEventListener('scroll', this.boundOnScroll);
+        if (this.scrollContainer) {
+            this.scrollContainer.removeEventListener('scroll', this.boundOnScroll);
+        }
+        
+        // Limpa DOM e Estilos
         this.listContainer.innerHTML = '';
         this.listContainer.style.height = '';
         this.listContainer.classList.remove('virtual-list-container');
         this.listContainer.style.marginTop = '';
         
+        // Restaura estilo original (Opcional, caso você desligue a virtualização)
         this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
         
-        if(this.stickyHeaderEl) this.stickyHeaderEl.remove();
-        
         this.visibleItems.clear();
-        this.visibleItems = null; // Limpa referência
+        this.visibleItems = null; // Evita memory leak
     }
 }
 // Helper para converter o agrupamento de meses em lista plana

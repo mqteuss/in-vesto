@@ -1726,7 +1726,7 @@ function renderizarHistorico() {
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <h4 class="text-base font-bold text-white tracking-tight leading-none">${t.symbol}</h4>
+                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${t.symbol}</h4>
                             <div class="${badgeBg} w-5 h-5 flex items-center justify-center rounded-md shrink-0">
                                 ${labelContent}
                             </div>
@@ -1843,7 +1843,7 @@ function renderizarHistoricoProventos() {
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 h-5">
-                            <h4 class="text-base font-bold text-white tracking-tight leading-none">${p.symbol}</h4>
+                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${p.symbol}</h4>
                             ${tagHtml}
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">

@@ -1498,7 +1498,7 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
-// --- CLASSE DE VIRTUALIZAÇÃO ---
+// --- CLASSE DE VIRTUALIZAÇÃO CORRIGIDA ---
 class VirtualScroller {
     constructor(scrollContainer, listContainer, items, renderRowFn) {
         this.scrollContainer = scrollContainer;
@@ -1508,71 +1508,85 @@ class VirtualScroller {
         
         this.totalHeight = 0;
         this.positions = [];
-        this.visibleItems = new Map(); // Cache de itens DOM ativos
+        this.visibleItems = new Map(); 
         
-        // Header Fixo Simulado
+        // Remove padding original do container para evitar conflitos de layout
+        this.originalPadding = this.listContainer.style.padding;
+        this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
+        
+        // Header Sticky
         this.stickyHeaderEl = document.createElement('div');
         this.stickyHeaderEl.className = 'virtual-sticky-header hidden';
-        this.scrollContainer.parentElement.insertBefore(this.stickyHeaderEl, this.scrollContainer);
+        
+        // Inserimos o sticky header ANTES da lista, dentro do scroll container ou pai
+        // O ideal é que ele fique "fixo" visualmente.
+        if (this.scrollContainer.contains(this.listContainer)) {
+             this.scrollContainer.insertBefore(this.stickyHeaderEl, this.listContainer);
+        }
 
         this.init();
     }
 
     init() {
-        // 1. Pré-calcular posições Y de todos os itens
-        let currentY = 0;
+        // 1. Pré-calcular posições
+        let currentY = 0; // Começa do 0 relativo ao container
+        
+        // Espaço extra no topo para não colar
+        currentY += 10; 
+
         this.positions = this.items.map(item => {
-            const height = item.type === 'header' ? ROW_HEIGHT_HEADER : ROW_HEIGHT_CARD;
+            // Ajuste fino das alturas: Cards costumam ter ~80-90px com padding
+            const height = item.type === 'header' ? 54 : 90; 
             const pos = { top: currentY, height, item };
             currentY += height;
             return pos;
         });
         
-        this.totalHeight = currentY;
+        this.totalHeight = currentY + 100; // +100px de margem final (pb-20)
         
-        // 2. Definir altura do container para forçar o scrollbar real
         this.listContainer.style.height = `${this.totalHeight}px`;
         this.listContainer.classList.add('virtual-list-container');
         
-        // 3. Listener de Scroll Otimizado
         this.boundOnScroll = this.onScroll.bind(this);
         this.scrollContainer.addEventListener('scroll', this.boundOnScroll, { passive: true });
         
-        // 4. Render inicial
         this.onScroll();
     }
 
     onScroll() {
+        if (!this.listContainer.isConnected) return; // Segurança se mudou de aba
+
         const scrollTop = this.scrollContainer.scrollTop;
         const viewportHeight = this.scrollContainer.clientHeight;
-        const buffer = 300; // Renderiza pixels extras acima/abaixo para evitar "buracos" no scroll rápido
+        const buffer = 400; // Buffer maior para evitar tela branca ao scrollar rápido
 
         const startY = Math.max(0, scrollTop - buffer);
         const endY = scrollTop + viewportHeight + buffer;
 
-        // --- ATUALIZAÇÃO DO HEADER FIXO (STICKY) ---
-        // Encontra o item "header" mais próximo acima da posição atual
+        // --- STICKY HEADER ---
         let currentHeader = null;
-        // Busca linear simples (rápida para listas < 10k itens, otimizável com busca binária se necessário)
         for (let i = 0; i < this.positions.length; i++) {
-            if (this.positions[i].top > scrollTop + 60) break; // +60 offset visual
+            if (this.positions[i].top > scrollTop + 60) break;
             if (this.positions[i].item.type === 'header') {
                 currentHeader = this.positions[i].item;
             }
         }
 
         if (currentHeader) {
-            this.stickyHeaderEl.innerHTML = currentHeader.htmlContent; // Reusa o HTML gerado
+            // Só atualiza se mudou o conteúdo para economizar DOM
+            if (this.stickyHeaderEl.innerHTML !== currentHeader.htmlContent) {
+                this.stickyHeaderEl.innerHTML = currentHeader.htmlContent;
+            }
             this.stickyHeaderEl.classList.remove('hidden');
+            // Mantém ele no topo visualmente
+            this.stickyHeaderEl.style.transform = `translateY(${scrollTop}px)`;
         } else {
             this.stickyHeaderEl.classList.add('hidden');
         }
 
-        // --- RENDERIZAÇÃO DOS ITENS ---
+        // --- ITENS ---
         const activeIndices = new Set();
 
-        // Identifica quais itens estão visíveis
-        // (Poderia ser busca binária, mas linear é ok aqui)
         for (let i = 0; i < this.positions.length; i++) {
             const pos = this.positions[i];
             const bottom = pos.top + pos.height;
@@ -1581,18 +1595,17 @@ class VirtualScroller {
                 activeIndices.add(i);
                 
                 if (!this.visibleItems.has(i)) {
-                    // Cria o elemento se não existir
                     const el = document.createElement('div');
                     el.className = 'virtual-item';
                     el.style.transform = `translateY(${pos.top}px)`;
-                    el.style.height = `${pos.height}px`;
+                    el.style.height = `${pos.height}px`; // Altura fixa para evitar colapsos
                     
-                    // Renderiza o conteúdo interno
                     if (pos.item.type === 'header') {
-                        // Headers dentro da lista são ocultados para não duplicar com o Sticky, 
-                        // ou mantidos para fluxo. Vamos mantê-los invisíveis visualmente para dar espaço.
-                        // Mas para manter simples, renderizamos vazio pois o Sticky cuida disso.
-                         el.innerHTML = `<div style="height:${pos.height}px"></div>`; 
+                         // Renderiza vazio pois o Sticky cuida do visual, 
+                         // mas mantém o espaço físico no scroll
+                         el.innerHTML = ``; 
+                         // Opcional: Debug borders
+                         // el.style.border = '1px solid red';
                     } else {
                         el.innerHTML = this.renderRowFn(pos.item.data);
                     }
@@ -1603,7 +1616,6 @@ class VirtualScroller {
             }
         }
 
-        // Remove itens que saíram da tela (Reciclagem DOM)
         for (const [index, el] of this.visibleItems.entries()) {
             if (!activeIndices.has(index)) {
                 el.remove();
@@ -1616,6 +1628,11 @@ class VirtualScroller {
         this.scrollContainer.removeEventListener('scroll', this.boundOnScroll);
         this.listContainer.innerHTML = '';
         this.listContainer.style.height = '';
+        this.listContainer.classList.remove('virtual-list-container');
+        
+        // Restaura classes originais de padding do Tailwind
+        this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
+        
         if(this.stickyHeaderEl) this.stickyHeaderEl.remove();
         this.visibleItems.clear();
     }
@@ -1648,26 +1665,29 @@ function flattenHistoricoData(grupos) {
 
 function renderizarHistorico() {
     const listaHistorico = document.getElementById('lista-historico');
-    const scrollContainer = document.getElementById('tab-historico'); // O container que tem scroll
+    const scrollContainer = document.getElementById('tab-historico'); 
     const historicoStatus = document.getElementById('historico-status');
     const historicoMensagem = document.getElementById('historico-mensagem');
 
     if (!listaHistorico) return;
 
-    // Smart Check
-    const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
-
-    if (currentSignature === lastHistoricoListSignature && historicoVirtualizer) {
-        return; 
-    }
-    
-    lastHistoricoListSignature = currentSignature;
-
-    // Reset Virtualizer anterior se existir
+    // Reset se mudou de aba ou filtro, para garantir limpeza
     if (historicoVirtualizer) {
-        historicoVirtualizer.destroy();
-        historicoVirtualizer = null;
+        // Se a assinatura mudou, destrói o anterior
+        const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+        const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
+        
+        if (currentSignature !== lastHistoricoListSignature) {
+            historicoVirtualizer.destroy();
+            historicoVirtualizer = null;
+            lastHistoricoListSignature = currentSignature;
+        } else {
+            return; // Nada mudou
+        }
+    } else {
+        // Primeira carga
+        const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+        lastHistoricoListSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
     }
     
     // Filtragem
@@ -1685,14 +1705,10 @@ function renderizarHistorico() {
     
     historicoStatus.classList.add('hidden');
     
-    // Agrupamento
     dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
     const grupos = agruparPorMes(dadosFiltrados, 'date');
-    
-    // Flatten Data para Virtualização
     const flatItems = flattenHistoricoData(grupos);
 
-    // Função que retorna HTML de uma linha (Item)
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
@@ -1711,9 +1727,9 @@ function renderizarHistorico() {
         const labelContent = isVenda ? iconVenda : iconCompra;
         const badgeBg = isVenda ? 'bg-red-500/10 border border-red-500/20' : 'bg-green-500/10 border border-green-500/20';
 
-        // Retorna string HTML (sem criar elemento DOM aqui para performance)
+        // Nota: Removi classes de margin/padding externos para deixar o container controlar
         return `
-            <div class="history-card flex items-center justify-between py-3 px-3 relative group h-full w-full" data-action="edit-row" data-id="${t.id}">
+            <div class="history-card flex items-center justify-between py-3 px-3 relative group h-full w-full bg-[#141414] rounded-2xl" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${iconHtml}
@@ -1734,21 +1750,13 @@ function renderizarHistorico() {
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
                     <span class="text-sm font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
-                    <button class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/80 text-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" data-action="delete" data-id="${t.id}" data-symbol="${t.symbol}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
                 </div>
             </div>
         `;
     };
 
-    // Inicia Virtualização
     historicoVirtualizer = new VirtualScroller(scrollContainer, listaHistorico, flatItems, rowRenderer);
 }
-
-// EM app.js - Substitua a função renderizarHistoricoProventos por esta versão:
 
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');

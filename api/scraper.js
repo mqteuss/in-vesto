@@ -368,7 +368,7 @@ module.exports = async function handler(req, res) {
 
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-                if (batches.length > 1) await new Promise(r => setTimeout(r, 600)); 
+                if (batches.length > 1) await new Promise(r => setTimeout(r, 400)); 
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }

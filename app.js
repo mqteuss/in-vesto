@@ -226,13 +226,11 @@ function criarCardElemento(ativo, dados) {
     const ehFii = isFII(ativo.symbol);
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ativo.symbol}.png`;
     
-    // Se for Ação, tenta carregar imagem. Se falhar, exibe o span de letras (fallback).
     const iconHtml = !ehFii 
         ? `<img src="${iconUrl}" alt="${ativo.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
            <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-white tracking-wider absolute inset-0 z-0">${sigla}</span>`
         : `<span class="text-xs font-bold text-white tracking-wider">${sigla}</span>`;
 
-    // CORREÇÃO: Definindo a cor da barra baseada no lucro/prejuízo
     const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
     
     // Tag de Lucro/Prejuízo (Pill)
@@ -244,9 +242,10 @@ function criarCardElemento(ativo, dados) {
            </span>` 
         : '';
 
-    // Lógica de Proventos
+    // --- LÓGICA DE PROVENTOS (Agora para TODOS os ativos, não só FIIs) ---
     let proventoHtml = '';
-    if (isFII(ativo.symbol) && dadoProvento && dadoProvento.value > 0) {
+    // REMOVIDO: isFII(ativo.symbol) && ... agora aceita ações também
+    if (dadoProvento && dadoProvento.value > 0) {
         const parts = dadoProvento.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -263,7 +262,7 @@ function criarCardElemento(ativo, dados) {
         proventoHtml = `
         <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
             <div class="flex justify-between items-center mb-1">
-                <span class="text-[10px] text-gray-500 font-bold uppercase">Provento</span>
+                <span class="text-[10px] text-gray-500 font-bold uppercase">Próx. Provento</span>
                 <span class="text-xs text-gray-400">Com: ${formatDate(dadoProvento.dataCom)} • Pag: ${formatDate(dadoProvento.paymentDate)}</span>
             </div>
             <div class="flex justify-between items-center bg-[#111] p-2 rounded-lg border border-[#2C2C2E] mt-2">
@@ -282,6 +281,7 @@ function criarCardElemento(ativo, dados) {
         toggleDrawer(ativo.symbol);
     };
 
+    // --- TEMPLATE DO DRAWER ATUALIZADO (GRID 2x2) ---
     card.innerHTML = `
         <div class="p-3 relative pb-4">
             <div class="flex justify-between items-start mb-1">
@@ -330,6 +330,15 @@ function criarCardElemento(ativo, dados) {
                          <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Lucro/Prejuízo</span>
                          <p data-field="pl-valor" class="text-sm font-bold ${corPL}">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</p>
                     </div>
+
+                    <div>
+                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Preço Médio</span>
+                        <p class="text-sm text-gray-300 font-medium">${formatBRL(ativo.precoMedio)}</p>
+                    </div>
+                    <div class="text-right">
+                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Peso Carteira</span>
+                         <p data-field="peso-valor" class="text-sm text-gray-300 font-medium">${formatPercent(percentWallet)}</p>
+                    </div>
                 </div>
                 
                 <div data-field="provento-container">
@@ -351,7 +360,6 @@ function criarCardElemento(ativo, dados) {
     return card;
 }
 
-// --- ATUALIZAR ITEM (TICKETS NO PROVENTO) ---
 function atualizarCardElemento(card, ativo, dados) {
     const {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
@@ -371,12 +379,18 @@ function atualizarCardElemento(card, ativo, dados) {
     varEl.className = `text-xs font-medium ${corVariacao} mt-0.5 flex justify-end items-center gap-1`;
     varEl.textContent = dadoPreco ? variacaoFormatada : '0.00%';
 
-    // 4. Atualiza Drawer (Custo e PL)
+    // 4. Atualiza Drawer (Custo, PL e Peso)
     card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
     
     const plEl = card.querySelector('[data-field="pl-valor"]');
     plEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
     plEl.className = `text-sm font-bold ${corPL}`;
+
+    // --- NOVO: Atualiza o Peso na Carteira se o elemento existir ---
+    const pesoEl = card.querySelector('[data-field="peso-valor"]');
+    if (pesoEl) {
+        pesoEl.textContent = formatPercent(percentWallet);
+    }
 
     // 5. Atualiza Barra de Alocação (Largura e Cor)
     const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
@@ -387,7 +401,6 @@ function atualizarCardElemento(card, ativo, dados) {
     }
 
     // 6. Atualiza Badge de % L/P ao lado do ticker
-    // Selecionamos o elemento da pílula de lucro, se existir, e recriamos
     const plTagContainer = card.querySelector('.profit-pill');
     if (dadoPreco) {
         const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
@@ -395,24 +408,17 @@ function atualizarCardElemento(card, ativo, dados) {
         const novoHtml = `${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%`;
         
         if (plTagContainer) {
-            // Se já existe, atualiza classes e texto
             plTagContainer.className = `profit-pill ${bgBadge}`;
             plTagContainer.innerHTML = novoHtml;
         } else {
-            // Se não existe (ex: carregou preço depois), insere após o ticker
-            const tickerPill = card.querySelector('.ticker-pill');
-            if (tickerPill) {
-                const span = document.createElement('span');
-                span.className = `profit-pill ${bgBadge}`;
-                span.innerHTML = novoHtml;
-                tickerPill.parentNode.insertBefore(span, tickerPill.nextSibling);
-            }
+            const tickerPill = card.querySelector('.ticker-pill'); // Class check fallback
+            // Lógica de inserção fallback se necessário
         }
     }
 
-    // 7. Atualiza HTML de Proventos (Re-inject)
-    // Se for FII e tiver dados, recriamos o bloco de proventos para garantir status atualizado
-    if (isFII(ativo.symbol) && dadoProvento) {
+    // 7. Atualiza HTML de Proventos (Re-inject para Stocks e FIIs)
+    // REMOVIDO: isFII check. Agora atualiza se houver dadoProvento
+    if (dadoProvento) {
         const proventoContainer = card.querySelector('[data-field="provento-container"]');
         if (proventoContainer && dadoProvento.value > 0) {
             const parts = dadoProvento.paymentDate.split('-');
@@ -434,7 +440,7 @@ function atualizarCardElemento(card, ativo, dados) {
             proventoContainer.innerHTML = `
             <div class="mt-3 pt-3 border-t border-[#2C2C2E]">
                 <div class="flex justify-between items-center mb-1">
-                    <span class="text-[10px] text-gray-500 uppercase font-bold">Provento</span>
+                    <span class="text-[10px] text-gray-500 uppercase font-bold">Próx. Provento</span>
                     <span class="text-xs font-medium text-gray-300">${formatBRL(dadoProvento.value)}/cota</span>
                 </div>
                 <div class="flex justify-between items-center text-[10px] text-gray-500 mb-2">

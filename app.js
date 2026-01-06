@@ -1622,23 +1622,36 @@ class VirtualScroller {
     }
 }
 // Helper para converter o agrupamento de meses em lista plana
+// Helper Simplificado e Robusto
 function flattenHistoricoData(grupos) {
     const flatList = [];
     Object.keys(grupos).forEach(mes => {
-        // 1. Header Object
-        const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity || 1) * (t.price || t.value), 0);
         
-        // HTML do Header (String template para reuso)
+        // SOMA DO CABEÇALHO
+        const totalMes = grupos[mes].reduce((acc, item) => {
+            // 1. Prioridade: Se já calculamos o total antes (Proventos)
+            if (item.totalCalculado !== undefined) {
+                return acc + Number(item.totalCalculado);
+            }
+            // 2. Fallback: Transações normais (Preço * Quantidade)
+            if (item.price && item.quantity) {
+                return acc + (Number(item.price) * Number(item.quantity));
+            }
+            // 3. Último caso (apenas valor unitário)
+            return acc + Number(item.value || 0);
+        }, 0);
+        
+        // HTML do Header
         const headerHtml = `
             <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>
             <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
-                ${totalMes > 0 ? 'Total' : 'Mov'}: ${formatBRL(totalMes)}
+                Total: ${formatBRL(totalMes)}
             </span>
         `;
 
         flatList.push({ type: 'header', month: mes, total: totalMes, htmlContent: headerHtml });
 
-        // 2. Items Objects
+        // Items
         grupos[mes].forEach(item => {
             flatList.push({ type: 'row', data: item });
         });
@@ -1746,6 +1759,7 @@ function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     const scrollContainer = document.getElementById('tab-historico');
     
+    // --- Lógica de Assinatura para evitar re-render desnecessário ---
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const termoBusca = provSearchTerm || ''; 
     const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}`;
@@ -1753,7 +1767,6 @@ function renderizarHistoricoProventos() {
     if (currentSignature === lastHistoricoProventosSignature && proventosVirtualizer) {
         return; 
     }
-    
     lastHistoricoProventosSignature = currentSignature;
 
     if (proventosVirtualizer) {
@@ -1764,7 +1777,8 @@ function renderizarHistoricoProventos() {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    const proventosFiltrados = proventosConhecidos.filter(p => {
+    // 1. Filtra por data e termo de busca
+    const proventosIniciais = proventosConhecidos.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         if(parts.length !== 3) return false;
@@ -1775,7 +1789,7 @@ function renderizarHistoricoProventos() {
         return buscaValida;
     }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    if (proventosFiltrados.length === 0) {
+    if (proventosIniciais.length === 0) {
         listaHistoricoProventos.innerHTML = `
             <div class="flex flex-col items-center justify-center mt-12 opacity-50">
                 <p class="text-xs text-gray-500">Nenhum provento efetivado.</p>
@@ -1783,25 +1797,41 @@ function renderizarHistoricoProventos() {
         return;
     }
 
-    const grupos = agruparPorMes(proventosFiltrados, 'paymentDate');
+    // 2. Agrupa por mês e JÁ CALCULA OS TOTAIS (Correção do erro de soma)
+    const grupos = agruparPorMes(proventosIniciais, 'paymentDate');
     const gruposLimpos = {};
+
     Object.keys(grupos).forEach(mes => {
-        const itensValidos = grupos[mes].filter(p => {
+        // Mapeia e filtra ao mesmo tempo
+        const itensValidos = [];
+        
+        grupos[mes].forEach(p => {
             const dataRef = p.dataCom || p.paymentDate;
             const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            return qtd > 0;
+            
+            if (qtd > 0) {
+                // INJETAMOS O TOTAL AQUI PARA O HEADER USAR DEPOIS
+                p.qtdCalculada = qtd; // Salva para usar no card
+                p.totalCalculado = Number(p.value) * Number(qtd); // Salva para o header somar
+                itensValidos.push(p);
+            }
         });
-        if (itensValidos.length > 0) gruposLimpos[mes] = itensValidos;
+
+        if (itensValidos.length > 0) {
+            gruposLimpos[mes] = itensValidos;
+        }
     });
 
+    // 3. Gera lista plana (Agora o flattenHistoricoData vai usar o p.totalCalculado)
     const flatItems = flattenHistoricoData(gruposLimpos);
 
-    // --- RENDERIZADOR DE LINHA (PROVENTOS) ---
+    // --- RENDERIZADOR DE LINHA (CARD) ---
     const rowRenderer = (p) => {
-        const dataRef = p.dataCom || p.paymentDate;
-        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+        // Usa a quantidade que já calculamos no loop acima (performance)
+        const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
-        const total = p.value * qtd;
+        const total = p.totalCalculado; // Usa o total pré-calculado
+        
         const sigla = p.symbol.substring(0, 2);
         const ehFii = isFII(p.symbol);
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;

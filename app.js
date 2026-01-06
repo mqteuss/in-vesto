@@ -218,7 +218,7 @@ function criarCardElemento(ativo, dados) {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
         corPL, dadoProvento, percentWallet, 
-        listaProventos = [] // Novo campo esperado: Array de proventos
+        listaProventos = [] 
     } = dados;
 
     const sigla = ativo.symbol.substring(0, 2);
@@ -242,33 +242,27 @@ function criarCardElemento(ativo, dados) {
            </span>` 
         : '';
 
-    // --- LÓGICA DE LISTA DE PROVENTOS (MULTIPLOS PAGAMENTOS) ---
-    let proventosHtml = '';
+    // --- LÓGICA DE LISTA DE PROVENTOS (CORRIGIDA) ---
+    let proventosHtml = ''; // Variável declarada no PLURAL
     
-    // Se não tiver lista mas tiver um dadoProvento solto, cria uma lista com 1 item para manter padrão
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) 
         ? listaProventos 
         : (dadoProvento ? [dadoProvento] : []);
 
-    // Filtra apenas pagamentos futuros ou muito recentes (opcional, aqui assume que a lista já vem filtrada)
-    // Ordena por data de pagamento
     proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
     if (proventosParaExibir.length > 0) {
-        // Calcula o Total a Receber (Soma das parcelas x Quantidade de cotas)
-        // Nota: Assumindo que 'value' é unitário. Se 'valorTotal' já existir no objeto, use-o.
         const totalReceberGeral = proventosParaExibir.reduce((acc, p) => {
             return acc + (p.value * ativo.quantity);
         }, 0);
 
-        // Gera as linhas da tabela
         const linhasHtml = proventosParaExibir.map(p => {
             const parts = p.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             const hoje = new Date(); hoje.setHours(0,0,0,0);
             const isPago = dataPag <= hoje;
             
-            const dataFormatada = formatDate(p.paymentDate).substring(0, 5); // Ex: 15/04
+            const dataFormatada = formatDate(p.paymentDate).substring(0, 5); 
             const valorTotalParcela = p.value * ativo.quantity;
 
             return `
@@ -299,7 +293,6 @@ function criarCardElemento(ativo, dados) {
             </div>
         </div>`;
     } else {
-        // Estado vazio (opcional)
         proventosHtml = `
              <div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
                  <span class="text-[10px] text-gray-600 uppercase font-bold">Sem proventos anunciados</span>
@@ -375,7 +368,7 @@ function criarCardElemento(ativo, dados) {
                 </div>
                 
                 <div data-field="provento-container">
-                    ${proventoHtml}
+                    ${proventosHtml} 
                 </div>
 
                 <div class="flex gap-2 mt-4 pt-2">

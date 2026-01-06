@@ -1498,7 +1498,7 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
-// --- CLASSE DE VIRTUALIZAÇÃO V8 (FIXED INSERTION) ---
+// --- CLASSE DE VIRTUALIZAÇÃO V9 (FIXED VISIBILITY) ---
 class VirtualScroller {
     constructor(scrollContainer, listContainer, items, renderRowFn) {
         this.scrollContainer = scrollContainer;
@@ -1506,7 +1506,6 @@ class VirtualScroller {
         this.items = items;
         this.renderRowFn = renderRowFn;
         
-        // Configurações
         this.headerHeight = 50; 
         this.rowHeight = 90;
         
@@ -1514,29 +1513,29 @@ class VirtualScroller {
         this.positions = [];
         this.visibleItems = new Map();
 
-        // 1. Reset e Limpeza
+        // Limpeza
         this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
         this.listContainer.style.marginTop = '0px'; 
         
-        // 2. Criar Header Sticky
+        // Header Sticky (Overlay)
         this.stickyHeaderEl = document.createElement('div');
         this.stickyHeaderEl.className = 'virtual-sticky-header hidden';
         
-        // --- CORREÇÃO DO ERRO NotFoundError ---
-        // Em vez de tentar adivinhar se é o scrollContainer, usamos o pai direto da lista.
-        // Isso funciona independente de quantas divs existam entre o scroll e a lista.
+        // Inserção segura no DOM
         const parent = this.listContainer.parentNode;
         if (parent) {
+             // Remove headers antigos se existirem (segurança)
+             const oldHeaders = parent.querySelectorAll('.virtual-sticky-header');
+             oldHeaders.forEach(el => el.remove());
+             
              parent.insertBefore(this.stickyHeaderEl, this.listContainer);
-        } else {
-            console.error("VirtualScroller: A lista não está anexada ao DOM.");
         }
 
         this.init();
     }
 
     init() {
-        // Começa em 0.
+        // Começa um pouco abaixo se quiser padding, ou 0 para colar no topo
         let currentY = 0; 
         
         this.positions = this.items.map(item => {
@@ -1546,8 +1545,7 @@ class VirtualScroller {
             return pos;
         });
         
-        // Altura total
-        this.totalHeight = currentY + 100; 
+        this.totalHeight = currentY + 120; 
         this.listContainer.style.height = `${this.totalHeight}px`;
         this.listContainer.classList.add('virtual-list-container');
         
@@ -1562,18 +1560,18 @@ class VirtualScroller {
 
         const scrollTop = this.scrollContainer.scrollTop;
         const viewportHeight = this.scrollContainer.clientHeight;
-        const buffer = 400; 
+        const buffer = 600; // Buffer generoso
 
-        // --- LÓGICA DO HEADER (STICKY NATIVO + PUSH) ---
+        // --- 1. LÓGICA DO HEADER FIXO (STICKY OVERLAY) ---
         let currentHeader = null;
         let nextHeaderTop = Infinity;
-        const headerOffset = 10;
+        const offsetTrigger = 0; // Ajuste fino se necessário
 
         for (let i = 0; i < this.positions.length; i++) {
             const pos = this.positions[i];
             
             if (pos.item.type === 'header') {
-                if (pos.top <= scrollTop + headerOffset) { 
+                if (pos.top <= scrollTop + offsetTrigger) { 
                     currentHeader = pos.item;
                 } else {
                     nextHeaderTop = pos.top;
@@ -1595,17 +1593,17 @@ class VirtualScroller {
             if (distanceToNext < this.headerHeight) {
                 pushOffset = -(this.headerHeight - distanceToNext);
             }
-
-            // Se pushOffset for 0, o CSS sticky cuida de tudo.
-            // Se for negativo, o JS empurra o header pra cima.
-            this.stickyHeaderEl.style.transform = `translateY(${pushOffset}px)`;
+            
+            // O header acompanha o scroll (scrollTop) + o offset de empurrão
+            // Isso faz ele parecer fixo na tela (position: absolute simulando fixed)
+            this.stickyHeaderEl.style.transform = `translateY(${scrollTop + pushOffset}px)`;
             
         } else {
             this.stickyHeaderEl.classList.add('hidden');
         }
 
 
-        // --- RENDERIZAÇÃO DA LISTA ---
+        // --- 2. RENDERIZAÇÃO DA LISTA ---
         const startY = Math.max(0, scrollTop - buffer);
         const endY = scrollTop + viewportHeight + buffer;
         const activeIndices = new Set();
@@ -1624,8 +1622,15 @@ class VirtualScroller {
                     el.style.height = `${pos.height}px`;
                     
                     if (pos.item.type === 'header') {
-                         el.innerHTML = `<div class="virtual-header-row"></div>`; 
+                         // CORREÇÃO CRUCIAL:
+                         // Renderizamos o conteúdo do header TAMBÉM na lista.
+                         // Adicionamos a classe 'virtual-header-row' para estilizar igual ao sticky.
+                         el.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
+                         el.style.zIndex = 2; // Acima dos cards, abaixo do sticky overlay
                     } else {
+                        // Aplica padding lateral no card (já que removemos do container)
+                        el.style.paddingLeft = '16px';
+                        el.style.paddingRight = '16px';
                         el.innerHTML = this.renderRowFn(pos.item.data);
                     }
 
@@ -1652,7 +1657,6 @@ class VirtualScroller {
         
         this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
         
-        // Remoção segura usando o pai direto
         if(this.stickyHeaderEl && this.stickyHeaderEl.parentNode) {
             this.stickyHeaderEl.parentNode.removeChild(this.stickyHeaderEl);
         }

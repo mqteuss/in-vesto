@@ -1498,7 +1498,7 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
-// --- CLASSE DE VIRTUALIZAÇÃO V7 (ZERO JITTER) ---
+// --- CLASSE DE VIRTUALIZAÇÃO V8 (FIXED INSERTION) ---
 class VirtualScroller {
     constructor(scrollContainer, listContainer, items, renderRowFn) {
         this.scrollContainer = scrollContainer;
@@ -1522,19 +1522,21 @@ class VirtualScroller {
         this.stickyHeaderEl = document.createElement('div');
         this.stickyHeaderEl.className = 'virtual-sticky-header hidden';
         
-        // Insere o header ANTES da lista, mas DENTRO do container de scroll
-        // Isso permite que o position: sticky funcione nativamente.
-        if (this.scrollContainer.contains(this.listContainer)) {
-             this.scrollContainer.insertBefore(this.stickyHeaderEl, this.listContainer);
-        } else if (this.listContainer.parentNode) {
-             this.listContainer.parentNode.insertBefore(this.stickyHeaderEl, this.listContainer);
+        // --- CORREÇÃO DO ERRO NotFoundError ---
+        // Em vez de tentar adivinhar se é o scrollContainer, usamos o pai direto da lista.
+        // Isso funciona independente de quantas divs existam entre o scroll e a lista.
+        const parent = this.listContainer.parentNode;
+        if (parent) {
+             parent.insertBefore(this.stickyHeaderEl, this.listContainer);
+        } else {
+            console.error("VirtualScroller: A lista não está anexada ao DOM.");
         }
 
         this.init();
     }
 
     init() {
-        // Começa em 0. O CSS padding-top: 60px na lista cuida do espaçamento visual
+        // Começa em 0.
         let currentY = 0; 
         
         this.positions = this.items.map(item => {
@@ -1562,22 +1564,18 @@ class VirtualScroller {
         const viewportHeight = this.scrollContainer.clientHeight;
         const buffer = 400; 
 
-        // --- LÓGICA DO HEADER (ATUALIZADA) ---
+        // --- LÓGICA DO HEADER (STICKY NATIVO + PUSH) ---
         let currentHeader = null;
         let nextHeaderTop = Infinity;
-
-        // Ajuste fino: offset para considerar quando o header troca
         const headerOffset = 10;
 
         for (let i = 0; i < this.positions.length; i++) {
             const pos = this.positions[i];
             
             if (pos.item.type === 'header') {
-                // Se o header está acima da linha de visão
                 if (pos.top <= scrollTop + headerOffset) { 
                     currentHeader = pos.item;
                 } else {
-                    // O próximo header chegando
                     nextHeaderTop = pos.top;
                     break;
                 }
@@ -1585,32 +1583,24 @@ class VirtualScroller {
         }
 
         if (currentHeader) {
-            // Atualiza texto apenas se mudar
             if (this.stickyHeaderEl.innerHTML !== currentHeader.htmlContent) {
                 this.stickyHeaderEl.innerHTML = currentHeader.htmlContent;
             }
             this.stickyHeaderEl.classList.remove('hidden');
 
-            // --- AQUI ESTÁ A CORREÇÃO DO TREMOR ---
-            // Não usamos mais translateY(scrollTop). O CSS 'sticky' já mantém ele no topo (0).
-            // Só aplicamos transform SE precisarmos empurrar para cima (negativo).
-            
+            // Lógica do "Empurrãozinho" (Push Effect)
             let pushOffset = 0;
-            
-            // Se o próximo header estiver colando no atual
             const distanceToNext = nextHeaderTop - scrollTop;
             
-            // Como usamos margin-bottom: -50px no CSS, a coordenada visual precisa considerar isso
-            // Basicamente: se o próximo header está a menos de 50px do topo visual
             if (distanceToNext < this.headerHeight) {
                 pushOffset = -(this.headerHeight - distanceToNext);
             }
 
-            // Aplica transform APENAS para o efeito push. Se for 0, ele fica parado (nativo).
+            // Se pushOffset for 0, o CSS sticky cuida de tudo.
+            // Se for negativo, o JS empurra o header pra cima.
             this.stickyHeaderEl.style.transform = `translateY(${pushOffset}px)`;
             
         } else {
-            // Topo absoluto da lista (antes do primeiro mês passar)
             this.stickyHeaderEl.classList.add('hidden');
         }
 
@@ -1634,7 +1624,6 @@ class VirtualScroller {
                     el.style.height = `${pos.height}px`;
                     
                     if (pos.item.type === 'header') {
-                         // Mantemos o espaço ocupado na lista, mas vazio ou invisível
                          el.innerHTML = `<div class="virtual-header-row"></div>`; 
                     } else {
                         el.innerHTML = this.renderRowFn(pos.item.data);
@@ -1661,9 +1650,9 @@ class VirtualScroller {
         this.listContainer.classList.remove('virtual-list-container');
         this.listContainer.style.marginTop = '';
         
-        // Restaura estilo original
         this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
         
+        // Remoção segura usando o pai direto
         if(this.stickyHeaderEl && this.stickyHeaderEl.parentNode) {
             this.stickyHeaderEl.parentNode.removeChild(this.stickyHeaderEl);
         }
@@ -1671,7 +1660,6 @@ class VirtualScroller {
         this.visibleItems.clear();
     }
 }
-
 // Helper para converter o agrupamento de meses em lista plana
 function flattenHistoricoData(grupos) {
     const flatList = [];

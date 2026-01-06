@@ -1498,7 +1498,7 @@ function agruparPorMes(itens, dateField) {
     return grupos;
 }
 
-// --- CLASSE DE VIRTUALIZAÇÃO V5 (COM EFEITO PUSH) ---
+// --- CLASSE DE VIRTUALIZAÇÃO V6 (FINAL) ---
 class VirtualScroller {
     constructor(scrollContainer, listContainer, items, renderRowFn) {
         this.scrollContainer = scrollContainer;
@@ -1506,23 +1506,25 @@ class VirtualScroller {
         this.items = items;
         this.renderRowFn = renderRowFn;
         
+        // Configurações
+        this.headerHeight = 50; 
+        this.rowHeight = 90;
+        
         this.totalHeight = 0;
         this.positions = [];
         this.visibleItems = new Map();
-        
-        // Configurações de altura (Pixels)
-        this.headerHeight = 50; 
-        this.rowHeight = 90;
 
-        // Limpeza inicial
+        // 1. Limpeza do Container
         this.originalPadding = this.listContainer.style.padding;
         this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
+        // Importante: Zerar margens para cálculo exato
+        this.listContainer.style.marginTop = '0px'; 
         
-        // Elemento Sticky
+        // 2. Criar Elemento Sticky
         this.stickyHeaderEl = document.createElement('div');
         this.stickyHeaderEl.className = 'virtual-sticky-header hidden';
         
-        // Insere o sticky header logo antes da lista
+        // Insere ANTES da lista, dentro do container de scroll
         if (this.listContainer.parentNode) {
              this.listContainer.parentNode.insertBefore(this.stickyHeaderEl, this.listContainer);
         }
@@ -1531,10 +1533,12 @@ class VirtualScroller {
     }
 
     init() {
+        // Começa do 0 absoluto para alinhar perfeitamente com o topo
         let currentY = 0; 
-        currentY += 10; // Espaço inicial
-
-        // Mapeamento de posições
+        
+        // Se quiser um padding visual no topo da lista, adicione ao primeiro item ou use CSS no container,
+        // mas para o sticky header funcionar bem, 0 é o ideal.
+        
         this.positions = this.items.map(item => {
             const height = item.type === 'header' ? this.headerHeight : this.rowHeight; 
             const pos = { top: currentY, height, item };
@@ -1542,7 +1546,7 @@ class VirtualScroller {
             return pos;
         });
         
-        this.totalHeight = currentY + 120; // Espaço final para scroll
+        this.totalHeight = currentY + 140; // Espaço extra no fim para scroll (padding bottom)
         
         this.listContainer.style.height = `${this.totalHeight}px`;
         this.listContainer.classList.add('virtual-list-container');
@@ -1558,57 +1562,54 @@ class VirtualScroller {
 
         const scrollTop = this.scrollContainer.scrollTop;
         const viewportHeight = this.scrollContainer.clientHeight;
-        const buffer = 400; 
+        const buffer = 400; // Renderiza mais itens fora da tela para fluidez
 
-        // --- LÓGICA DO STICKY HEADER (Efeito Push) ---
-        let activeHeaderItem = null;
+        // --- LÓGICA DO STICKY HEADER (PUSH EFFECT) ---
+        let currentHeader = null;
         let nextHeaderTop = Infinity;
 
-        // 1. Encontrar qual header deveria estar no topo AGORA
-        // Percorremos a lista para achar o último header que já passou pelo topo (top <= scrollTop)
+        // Procura o header ativo (aquele cujo topo já passou ou está no topo)
+        // e o próximo header (que ainda vai chegar)
         for (let i = 0; i < this.positions.length; i++) {
             const pos = this.positions[i];
             
             if (pos.item.type === 'header') {
-                if (pos.top <= scrollTop + 10) { // +10 tolerancia
-                    activeHeaderItem = pos.item;
+                // Se o header está acima (ou exatamente) na linha de scroll
+                if (pos.top <= scrollTop + 1) { 
+                    currentHeader = pos.item;
                 } else {
-                    // Este é o PRIMEIRO header que ainda está abaixo do scroll.
-                    // É ele que vai empurrar o atual.
+                    // Este é o primeiro header ABAIXO da linha de scroll -> O próximo
                     nextHeaderTop = pos.top;
-                    break; // Não precisamos procurar mais longe
+                    break; // Pode parar de procurar
                 }
             }
         }
 
-        if (activeHeaderItem) {
-            // Atualiza HTML apenas se mudou
-            if (this.stickyHeaderEl.innerHTML !== activeHeaderItem.htmlContent) {
-                this.stickyHeaderEl.innerHTML = activeHeaderItem.htmlContent;
+        if (currentHeader) {
+            // Renderiza conteúdo se mudou
+            if (this.stickyHeaderEl.innerHTML !== currentHeader.htmlContent) {
+                this.stickyHeaderEl.innerHTML = currentHeader.htmlContent;
             }
             this.stickyHeaderEl.classList.remove('hidden');
 
-            // CÁLCULO DA POSIÇÃO (Efeito Push)
-            // Por padrão, o header "gruda" no scrollTop atual para parecer fixo na tela
-            let stickyY = scrollTop;
+            // CÁLCULO DE POSIÇÃO
+            // Padrão: O header desce junto com o scroll (ficando "fixo" visualmente)
+            let stickyTranslateY = scrollTop;
 
-            // Se o próximo header estiver chegando perto (distância menor que a altura do header)
-            if (nextHeaderTop < Infinity) {
-                const distanceToNext = nextHeaderTop - scrollTop;
-                if (distanceToNext < this.headerHeight) {
-                    // Empurra o header atual para cima
-                    stickyY -= (this.headerHeight - distanceToNext);
-                }
+            // Push Effect: Se a distância para o próximo header for menor que a altura do header
+            const distanceToNext = nextHeaderTop - scrollTop;
+            if (distanceToNext < this.headerHeight) {
+                // Empurra para cima a diferença
+                stickyTranslateY -= (this.headerHeight - distanceToNext);
             }
 
-            this.stickyHeaderEl.style.transform = `translateY(${stickyY}px)`;
+            this.stickyHeaderEl.style.transform = `translateY(${stickyTranslateY}px)`;
         } else {
-            // Se ainda não passamos por nenhum header (bem no topo da lista)
+            // Nenhum header passou ainda (estamos no topo absoluto da lista)
             this.stickyHeaderEl.classList.add('hidden');
         }
 
-
-        // --- RENDERIZAÇÃO VIRTUAL DA LISTA (Itens normais) ---
+        // --- RENDERIZAÇÃO DOS ITENS ---
         const startY = Math.max(0, scrollTop - buffer);
         const endY = scrollTop + viewportHeight + buffer;
         const activeIndices = new Set();
@@ -1627,8 +1628,7 @@ class VirtualScroller {
                     el.style.height = `${pos.height}px`;
                     
                     if (pos.item.type === 'header') {
-                         // O header dentro da lista precisa existir para ocupar espaço
-                         // mas colocamos ele visualmente idêntico caso o sticky não esteja em cima
+                         // O header fantasma na lista mantém o espaço reservado
                          el.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`; 
                     } else {
                         el.innerHTML = this.renderRowFn(pos.item.data);
@@ -1640,7 +1640,7 @@ class VirtualScroller {
             }
         }
 
-        // Garbage Collection (Remove itens fora da tela)
+        // Remove itens não visíveis
         for (const [index, el] of this.visibleItems.entries()) {
             if (!activeIndices.has(index)) {
                 el.remove();
@@ -1654,6 +1654,9 @@ class VirtualScroller {
         this.listContainer.innerHTML = '';
         this.listContainer.style.height = '';
         this.listContainer.classList.remove('virtual-list-container');
+        this.listContainer.style.marginTop = '';
+        
+        // Restaura estilo original
         this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
         
         if(this.stickyHeaderEl && this.stickyHeaderEl.parentNode) {

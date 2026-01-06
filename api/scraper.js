@@ -353,7 +353,7 @@ module.exports = async function handler(req, res) {
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
-                    const defaultLimit = mode === 'historico_portfolio' ? 36 : 24;
+                    const defaultLimit = mode === 'historico_portfolio' ? 12 : 12;
                     const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
 
                     const history = await scrapeAsset(ticker);
@@ -368,7 +368,7 @@ module.exports = async function handler(req, res) {
 
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-                if (batches.length > 1) await new Promise(r => setTimeout(r, 400)); 
+                if (batches.length > 1) await new Promise(r => setTimeout(r, 200)); 
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }

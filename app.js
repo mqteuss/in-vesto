@@ -1538,7 +1538,7 @@ init() {
         
         // AUMENTEI DE 120 PARA 180 AQUI
         // Isso garante que o último item suba acima da navbar
-        this.totalHeight = currentY + 70; 
+        this.totalHeight = currentY + 100; 
         
         this.listContainer.style.height = `${this.totalHeight}px`;
         this.listContainer.classList.add('virtual-list-container');

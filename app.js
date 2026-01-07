@@ -1525,10 +1525,10 @@ class VirtualScroller {
         this.init();
     }
 
-    init() {
+init() {
         let currentY = 0; 
         
-        // Mapeia posições de TODOS os itens (Headers e Rows)
+        // Mapeia posições de TODOS os itens
         this.positions = this.items.map(item => {
             const height = item.type === 'header' ? this.headerHeight : this.rowHeight; 
             const pos = { top: currentY, height, item };
@@ -1536,15 +1536,16 @@ class VirtualScroller {
             return pos;
         });
         
-        this.totalHeight = currentY + 120; // Espaço extra no final (padding bottom)
+        // AUMENTEI DE 120 PARA 180 AQUI
+        // Isso garante que o último item suba acima da navbar
+        this.totalHeight = currentY + 180; 
+        
         this.listContainer.style.height = `${this.totalHeight}px`;
         this.listContainer.classList.add('virtual-list-container');
         
-        // Listener de Scroll
         this.boundOnScroll = this.onScroll.bind(this);
         this.scrollContainer.addEventListener('scroll', this.boundOnScroll, { passive: true });
         
-        // Render inicial
         this.onScroll();
     }
 

@@ -2135,7 +2135,7 @@ function renderizarNoticias(articles) {
                             ${article.summary ? article.summary : 'Resumo não disponível.'}
                         </div>
                         <div class="mt-4 pl-4">
-                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 px-3 py-1.5 rounded-md">
+                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-white hover:text-gray-200 transition-colors bg-white/10 border border-white/10 px-3 py-1.5 rounded-md hover:bg-white/20">
                                 Ler notícia completa
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>
@@ -2815,7 +2815,7 @@ function renderizarGraficoPatrimonio() {
                         fill: true,
                         backgroundColor: gradientFill,
                         borderColor: colorLinePatrimonio,
-                        borderWidth: 1.5,
+                        borderWidth: 1.8,
                         tension: 0.4,
                         pointRadius: 0, 
                         pointHitRadius: 30,
@@ -2830,7 +2830,7 @@ function renderizarGraficoPatrimonio() {
                         data: dataCusto,
                         fill: false,
                         borderColor: colorLineInvestido,
-                        borderWidth: 1,
+                        borderWidth: 1.3,
                         borderDash: [4, 4],
                         tension: 0.4,
                         pointRadius: 0,

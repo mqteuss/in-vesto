@@ -2251,7 +2251,7 @@ function renderizarGraficoAlocacao(dadosInput) {
                     backgroundColor: colors, 
                     borderColor: borderColor,
                     borderWidth: 0,
-                    spacing: 2,
+                    spacing: 3,
                     borderRadius: 15,
                     hoverOffset: 10
                 }] 

@@ -3108,6 +3108,10 @@ async function renderizarCarteira() {
             totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
             totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
         }
+
+        // Zera DY
+        const elDy = document.getElementById('total-carteira-dy');
+        if (elDy) elDy.textContent = "0.00%";
         
         dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
         dashboardLoading.classList.add('hidden');
@@ -3194,7 +3198,7 @@ async function renderizarCarteira() {
             dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
             totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
             corPL, 
-            dadoProvento,       
+            dadoProvento,        
             listaProventos: listaProventosFuturos, // Passa APENAS os futuros para o renderizador do card
             proventoReceber, 
             percentWallet
@@ -3245,6 +3249,43 @@ async function renderizarCarteira() {
             totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
             totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`; 
         }
+
+        // =========================================================
+        // IMPLEMENTAÇÃO DO DY DA CARTEIRA
+        // =========================================================
+        if (typeof proventosConhecidos !== 'undefined') {
+            const umAnoAtras = new Date();
+            umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+            umAnoAtras.setHours(0,0,0,0);
+
+            const mapDivsPorAcao12m = {};
+            
+            // Calcula total pago por ação nos últimos 12 meses
+            proventosConhecidos.forEach(p => {
+                if (!p.paymentDate || p.value <= 0) return;
+                const dataPag = new Date(p.paymentDate);
+                
+                if (dataPag >= umAnoAtras && dataPag <= new Date()) {
+                    if (!mapDivsPorAcao12m[p.symbol]) mapDivsPorAcao12m[p.symbol] = 0;
+                    mapDivsPorAcao12m[p.symbol] += p.value;
+                }
+            });
+
+            // Aplica aos ativos atuais da carteira
+            let geracaoAnualEstimada = 0;
+            carteiraOrdenada.forEach(ativo => {
+                const dyPorAcao = mapDivsPorAcao12m[ativo.symbol] || 0;
+                geracaoAnualEstimada += (dyPorAcao * ativo.quantity);
+            });
+
+            const dyCarteiraPercent = patrimonioTotalAtivos > 0 ? (geracaoAnualEstimada / patrimonioTotalAtivos) * 100 : 0;
+            const elDy = document.getElementById('total-carteira-dy');
+            
+            if (elDy) {
+                elDy.textContent = `${dyCarteiraPercent.toFixed(2)}%`;
+            }
+        }
+        // =========================================================
         
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
         renderizarTimelinePagamentos();

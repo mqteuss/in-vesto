@@ -148,7 +148,7 @@ module.exports = async function handler(req, res) {
                 
                 // Badge: Sininho monocromático
                 // IMPORTANTE: O arquivo 'sininho.png' DEVE estar dentro da pasta 'public' do projeto
-                const badge = 'https://in-vesto.vercel.app/sininho.png';
+                const badge = 'https://in-vesto.vercel.app/sininhov2.png';
 
                 if (pagamentos.length > 0) {
                     const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');

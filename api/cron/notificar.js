@@ -46,8 +46,7 @@ module.exports = async function handler(req, res) {
 
         if (ativos?.length > 0) {
             const uniqueSymbols = [...new Set(ativos.map(a => a.symbol))];
-
-            // Adicionei verificação extra para garantir que uniqueSymbols não está vazio
+            
             if (uniqueSymbols.length > 0) {
                 const novosDados = await atualizarProventosPeloScraper(uniqueSymbols);
 
@@ -144,9 +143,12 @@ module.exports = async function handler(req, res) {
 
                 let title = '', body = '';
                 
-                // --- ALTERAÇÃO AQUI ---
-                // Mudei para logo-vesto.png. Usei o link completo para garantir que o Android encontre a imagem.
+                // Icon: Imagem grande colorida
                 const icon = 'https://in-vesto.vercel.app/logo-vesto.png'; 
+                
+                // Badge: Sininho monocromático
+                // IMPORTANTE: O arquivo 'sininho.png' DEVE estar dentro da pasta 'public' do projeto
+                const badge = 'https://in-vesto.vercel.app/sininhov2.png';
 
                 if (pagamentos.length > 0) {
                     const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
@@ -170,8 +172,13 @@ module.exports = async function handler(req, res) {
                     return; 
                 }
 
-                // Mantive o badge como '/favicon.ico' conforme seu pedido
-                const payload = JSON.stringify({ title, body, icon, url: '/?tab=tab-carteira', badge: '/favicon.ico' });
+                const payload = JSON.stringify({ 
+                    title, 
+                    body, 
+                    icon, 
+                    badge,
+                    url: '/?tab=tab-carteira'
+                });
 
                 const pushPromises = subs.map(sub => 
                     webpush.sendNotification(sub.subscription, payload).catch(err => {

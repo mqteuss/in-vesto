@@ -110,7 +110,7 @@ self.addEventListener('push', function(event) {
     const options = {
       body: data.body,
       icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-192x192.png', // Ícone monocromático para Android
+      badge: '/sininhov2.png', // Ícone monocromático para Android
       vibrate: [100, 50, 100], // Vibra: Vrumm-pa-Vrumm
       data: {
         dateOfArrival: Date.now(),

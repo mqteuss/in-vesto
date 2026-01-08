@@ -3063,13 +3063,13 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
     }
 
 async function renderizarCarteira() {
-    // Esconde os skeletons de carregamento
+    // 1. Esconde os skeletons de carregamento
     renderizarCarteiraSkeletons(false);
 
-    // Cria Mapas para acesso rápido a preços
+    // 2. Cria Mapas para acesso rápido a preços
     const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
-    // Cria Mapa de Proventos (Agrupados em Lista)
+    // 3. Cria Mapa de Proventos (Agrupados em Lista)
     const proventosMap = new Map();
     proventosAtuais.forEach(p => {
         if (!proventosMap.has(p.symbol)) {
@@ -3078,7 +3078,7 @@ async function renderizarCarteira() {
         proventosMap.get(p.symbol).push(p);
     });
     
-    // Ordena a carteira alfabeticamente
+    // 4. Ordena a carteira alfabeticamente (A-Z)
     const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
     let totalValorCarteira = 0;
@@ -3094,7 +3094,7 @@ async function renderizarCarteira() {
         totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
     });
 
-    // Verifica se a carteira está vazia
+    // 5. Verifica se a carteira está vazia
     if (carteiraOrdenada.length === 0) {
         listaCarteira.innerHTML = ''; 
         carteiraStatus.classList.remove('hidden');
@@ -3109,17 +3109,9 @@ async function renderizarCarteira() {
             totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
         }
 
-        // Zera DY
-const elTooltipValor = document.getElementById('tooltip-dy-valor');
-            if (elTooltipValor) {
-                elTooltipValor.textContent = `${dyCarteiraPercent.toFixed(2)}%`;
-                
-                // Muda cor se for muito bom
-                if (dyCarteiraPercent > 10) elTooltipValor.className = 'text-sm font-bold text-green-400';
-                else elTooltipValor.className = 'text-sm font-bold text-blue-400';
-            }
-        }
-        if (elDy) elDy.textContent = "0.00%";
+        // Zera Tooltip do DY
+        const elTooltipValor = document.getElementById('tooltip-dy-valor');
+        if (elTooltipValor) elTooltipValor.textContent = "0.00%";
         
         dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
         dashboardLoading.classList.add('hidden');
@@ -3153,10 +3145,10 @@ const elTooltipValor = document.getElementById('tooltip-dy-valor');
     carteiraOrdenada.forEach((ativo, index) => { 
         const dadoPreco = precosMap.get(ativo.symbol);
         
-        // 1. Pega TODOS os proventos (passados e futuros) desse ativo
+        // Pega TODOS os proventos desse ativo
         const listaTodosProventos = proventosMap.get(ativo.symbol) || [];
 
-        // 2. FILTRO: Mantém APENAS os futuros (Data >= Hoje) para exibição na carteira
+        // FILTRO: Mantém APENAS os futuros (Data >= Hoje) para exibição na carteira
         const listaProventosFuturos = listaTodosProventos.filter(p => {
             if (!p.paymentDate) return false;
             const parts = p.paymentDate.split('-');
@@ -3192,7 +3184,7 @@ const elTooltipValor = document.getElementById('tooltip-dy-valor');
         if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; }
         else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; }
 
-        // 3. CALCULA O TOTAL A RECEBER (Somando apenas a lista FILTRADA de futuros)
+        // CALCULA O TOTAL A RECEBER (Somando apenas a lista FILTRADA de futuros)
         let proventoReceber = 0;
         listaProventosFuturos.forEach(p => {
              const dataReferencia = p.dataCom || p.paymentDate;
@@ -3207,7 +3199,7 @@ const elTooltipValor = document.getElementById('tooltip-dy-valor');
             totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
             corPL, 
             dadoProvento,        
-            listaProventos: listaProventosFuturos, // Passa APENAS os futuros para o renderizador do card
+            listaProventos: listaProventosFuturos,
             proventoReceber, 
             percentWallet
         };
@@ -3237,7 +3229,7 @@ const elTooltipValor = document.getElementById('tooltip-dy-valor');
         }
     });
 
-    // Atualiza Totais do Dashboard
+    // 6. Atualiza Totais do Dashboard
     if (carteiraOrdenada.length > 0) {
         const patrimonioTotalAtivos = totalValorCarteira;
         const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
@@ -3259,7 +3251,7 @@ const elTooltipValor = document.getElementById('tooltip-dy-valor');
         }
 
         // =========================================================
-        // IMPLEMENTAÇÃO DO DY DA CARTEIRA
+        // LÓGICA DO TOOLTIP DE DY (YIELD ANUAL)
         // =========================================================
         if (typeof proventosConhecidos !== 'undefined') {
             const umAnoAtras = new Date();
@@ -3286,11 +3278,16 @@ const elTooltipValor = document.getElementById('tooltip-dy-valor');
                 geracaoAnualEstimada += (dyPorAcao * ativo.quantity);
             });
 
+            // Calcula porcentagem e atualiza o Tooltip
             const dyCarteiraPercent = patrimonioTotalAtivos > 0 ? (geracaoAnualEstimada / patrimonioTotalAtivos) * 100 : 0;
-            const elDy = document.getElementById('total-carteira-dy');
+            const elTooltipValor = document.getElementById('tooltip-dy-valor');
             
-            if (elDy) {
-                elDy.textContent = `${dyCarteiraPercent.toFixed(2)}%`;
+            if (elTooltipValor) {
+                elTooltipValor.textContent = `${dyCarteiraPercent.toFixed(2)}%`;
+                
+                // Opcional: cor verde se > 10%
+                if (dyCarteiraPercent > 10) elTooltipValor.className = 'text-sm font-bold text-green-400';
+                else elTooltipValor.className = 'text-sm font-bold text-blue-400';
             }
         }
         // =========================================================
@@ -3300,9 +3297,11 @@ const elTooltipValor = document.getElementById('tooltip-dy-valor');
         await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
     }
     
+    // 7. Renderiza os Gráficos Finais
     renderizarGraficoAlocacao(dadosGrafico);
     renderizarGraficoPatrimonio();
     
+    // 8. Filtro de Busca (caso tenha texto digitado)
     if (carteiraSearchInput && carteiraSearchInput.value) {
         const term = carteiraSearchInput.value.trim().toUpperCase();
         const cards = listaCarteira.querySelectorAll('.wallet-card'); 

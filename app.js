@@ -827,7 +827,7 @@ function updateThemeUI() {
         const tooltipBorder = isLight ? '#e5e7eb' : '#374151';
         
         // Borda do Donut: Branco no light mode para "cortar" as fatias, Preto no dark
-        const doughnutBorder = isLight ? '#ffffff' : '#141414'; 
+        const doughnutBorder = isLight ? '#ffffff' : '#121212'; 
 
         if (chart.options.scales) {
             Object.keys(chart.options.scales).forEach(key => {
@@ -2233,7 +2233,7 @@ function renderizarGraficoAlocacao(dadosInput) {
     // 7. Renderiza Gráfico
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
-    const borderColor = isLight ? '#ffffff' : '#000000';
+    const borderColor = isLight ? '#ffffff' : '#121212';
 
     if (alocacaoChartInstance) {
         alocacaoChartInstance.data.labels = labels;
@@ -2250,9 +2250,9 @@ function renderizarGraficoAlocacao(dadosInput) {
                     data: data, 
                     backgroundColor: colors, 
                     borderColor: borderColor,
-                    borderWidth: 2,
-                    spacing: 5,
-                    borderRadius: 20,
+                    borderWidth: 0,
+                    spacing: 2,
+                    borderRadius: 15,
                     hoverOffset: 10
                 }] 
             },
@@ -2901,10 +2901,6 @@ function renderizarGraficoPatrimonio() {
 
     lastPatrimonioCalcSignature = currentSignature;
 }
-	
-// --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
-
-// --- SUBSTITUA A FUNÇÃO renderizarTimelinePagamentos EM app.js ---
 
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');

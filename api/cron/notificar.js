@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
 
-// Ajuste o caminho do scraper conforme a estrutura das suas pastas
+// Ajuste o caminho do scraper conforme necessário
 const scraperHandler = require('../scraper.js');
 
 webpush.setVapidDetails(
@@ -41,50 +41,53 @@ module.exports = async function handler(req, res) {
         console.log("Iniciando processamento...");
         const start = Date.now();
 
-        // 1. ATUALIZAÇÃO DA BASE DE DADOS (Scraper)
+        // 1. ATUALIZAÇÃO DA BASE DE DADOS
         const { data: ativos } = await supabase.from('transacoes').select('symbol');
 
         if (ativos?.length > 0) {
             const uniqueSymbols = [...new Set(ativos.map(a => a.symbol))];
-            const novosDados = await atualizarProventosPeloScraper(uniqueSymbols);
+            
+            if (uniqueSymbols.length > 0) {
+                const novosDados = await atualizarProventosPeloScraper(uniqueSymbols);
 
-            if (novosDados?.length > 0) {
-                const upserts = [];
-                const { data: allTransacoes } = await supabase
-                    .from('transacoes')
-                    .select('user_id, symbol');
+                if (novosDados?.length > 0) {
+                    const upserts = [];
+                    const { data: allTransacoes } = await supabase
+                        .from('transacoes')
+                        .select('user_id, symbol');
 
-                for (const dado of novosDados) {
-                    if (!dado.paymentDate || !dado.value) continue;
+                    for (const dado of novosDados) {
+                        if (!dado.paymentDate || !dado.value) continue;
 
-                    const usersInteressados = allTransacoes
-                        .filter(t => t.symbol === dado.symbol)
-                        .map(u => u.user_id);
+                        const usersInteressados = allTransacoes
+                            .filter(t => t.symbol === dado.symbol)
+                            .map(u => u.user_id);
 
-                    const usersUnicos = [...new Set(usersInteressados)];
+                        const usersUnicos = [...new Set(usersInteressados)];
 
-                    usersUnicos.forEach(uid => {
-                         const tipoProvento = (dado.type || 'REND').toUpperCase().trim();
-                         const valorFormatadoID = parseFloat(dado.value).toFixed(4);
-                         const idGerado = `${dado.symbol}_${dado.paymentDate}_${tipoProvento}_${valorFormatadoID}`;
+                        usersUnicos.forEach(uid => {
+                             const tipoProvento = (dado.type || 'REND').toUpperCase().trim();
+                             const valorFormatadoID = parseFloat(dado.value).toFixed(4);
+                             const idGerado = `${dado.symbol}_${dado.paymentDate}_${tipoProvento}_${valorFormatadoID}`;
 
-                         upserts.push({
-                             id: idGerado,
-                             user_id: uid,
-                             symbol: dado.symbol,
-                             value: dado.value,
-                             paymentdate: dado.paymentDate,
-                             datacom: dado.dataCom,
-                             type: tipoProvento, 
-                             processado: false
-                         });
-                    });
-                }
+                             upserts.push({
+                                 id: idGerado,
+                                 user_id: uid,
+                                 symbol: dado.symbol,
+                                 value: dado.value,
+                                 paymentdate: dado.paymentDate,
+                                 datacom: dado.dataCom,
+                                 type: tipoProvento, 
+                                 processado: false
+                             });
+                        });
+                    }
 
-                if (upserts.length > 0) {
-                    for (let i = 0; i < upserts.length; i += 200) {
-                        await supabase.from('proventosconhecidos')
-                            .upsert(upserts.slice(i, i + 200), { onConflict: 'user_id, id', ignoreDuplicates: true });
+                    if (upserts.length > 0) {
+                        for (let i = 0; i < upserts.length; i += 200) {
+                            await supabase.from('proventosconhecidos')
+                                .upsert(upserts.slice(i, i + 200), { onConflict: 'user_id, id', ignoreDuplicates: true });
+                        }
                     }
                 }
             }
@@ -140,12 +143,11 @@ module.exports = async function handler(req, res) {
 
                 let title = '', body = '';
                 
-                // --- CONFIGURAÇÃO DOS ÍCONES ---
-                // Icon: Imagem grande colorida ao lado do texto
+                // Icon: Imagem grande colorida
                 const icon = 'https://in-vesto.vercel.app/logo-vesto.png'; 
                 
-                // Badge: Ícone pequeno (monocromático/transparente) na barra de status
-                // Deve apontar para o arquivo que você colocou na raiz
+                // Badge: Sininho monocromático
+                // IMPORTANTE: O arquivo 'sininho.png' DEVE estar dentro da pasta 'public' do projeto
                 const badge = 'https://in-vesto.vercel.app/sininho.png';
 
                 if (pagamentos.length > 0) {
@@ -174,8 +176,8 @@ module.exports = async function handler(req, res) {
                     title, 
                     body, 
                     icon, 
-                    url: '/?tab=tab-carteira',
-                    badge: badge 
+                    badge,
+                    url: '/?tab=tab-carteira'
                 });
 
                 const pushPromises = subs.map(sub => 

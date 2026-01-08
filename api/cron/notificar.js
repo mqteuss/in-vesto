@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
 
-// Ajuste o caminho do scraper conforme necessário
+// Ajuste o caminho do scraper conforme a estrutura das suas pastas
 const scraperHandler = require('../scraper.js');
 
 webpush.setVapidDetails(
@@ -41,7 +41,7 @@ module.exports = async function handler(req, res) {
         console.log("Iniciando processamento...");
         const start = Date.now();
 
-        // 1. ATUALIZAÇÃO DA BASE DE DADOS
+        // 1. ATUALIZAÇÃO DA BASE DE DADOS (Scraper)
         const { data: ativos } = await supabase.from('transacoes').select('symbol');
 
         if (ativos?.length > 0) {
@@ -140,8 +140,13 @@ module.exports = async function handler(req, res) {
 
                 let title = '', body = '';
                 
-                // Ícone GRANDE (ao lado do texto)
+                // --- CONFIGURAÇÃO DOS ÍCONES ---
+                // Icon: Imagem grande colorida ao lado do texto
                 const icon = 'https://in-vesto.vercel.app/logo-vesto.png'; 
+                
+                // Badge: Ícone pequeno (monocromático/transparente) na barra de status
+                // Deve apontar para o arquivo que você colocou na raiz
+                const badge = 'https://in-vesto.vercel.app/sininho.png';
 
                 if (pagamentos.length > 0) {
                     const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
@@ -165,12 +170,12 @@ module.exports = async function handler(req, res) {
                     return; 
                 }
 
-                // REMOVIDO O BADGE para usar o padrão do sistema (sininho/chrome)
                 const payload = JSON.stringify({ 
                     title, 
                     body, 
                     icon, 
-                    url: '/?tab=tab-carteira'
+                    url: '/?tab=tab-carteira',
+                    badge: badge 
                 });
 
                 const pushPromises = subs.map(sub => 

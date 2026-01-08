@@ -8,7 +8,7 @@ const APP_FILES = [
   '/supabase.js',
   '/style.css',
   '/style-tailwind.css',
-  '/sininhov2.png', 
+  '/public/sininhov2.png', 
   '/manifest.json',
   '/icons/carteira.png',
   '/icons/noticias.png',

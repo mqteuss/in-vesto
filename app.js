@@ -2072,17 +2072,17 @@ function renderizarNoticias(articles) {
 
             const item = document.createElement('div');
             
-            // --- ESTILOS ---
+            // --- ESTILOS ALTERADOS AQUI (DE ROXO PARA AZUL) ---
             let itemWrapperClass = 'group relative transition-all news-card-interactive ';
             let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
             let badgeDestaque = '';
 
             if (isGlobalFirstItem) {
-                // DESTAQUE (Ajustado para ser menor)
-                itemWrapperClass += 'bg-gradient-to-r from-purple-900/30 to-transparent border-l-[3px] border-purple-500 py-1 my-2 rounded-r-lg';
-                // Mudado de text-lg para text-base (diminuiu um pouco)
+                // DESTAQUE: Mudado de purple para blue
+                itemWrapperClass += 'bg-gradient-to-r from-blue-900/30 to-transparent border-l-[3px] border-blue-500 py-1 my-2 rounded-r-lg';
                 titleClass += 'text-base'; 
-                badgeDestaque = '<span class="inline-block bg-purple-600 text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
+                // BADGE: Mudado de bg-purple-600 para bg-blue-600
+                badgeDestaque = '<span class="inline-block bg-blue-600 text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
                 isGlobalFirstItem = false;
             } else {
                 // NORMAL
@@ -2094,6 +2094,7 @@ function renderizarNoticias(articles) {
             item.setAttribute('data-action', 'toggle-news');
             item.setAttribute('data-target', drawerId);
 
+            // BOTÃO LER NOTÍCIA: Mudado de purple para blue
             item.innerHTML = `
                 <div class="flex items-start gap-4 py-4 px-3 cursor-pointer">
                     <div class="flex-shrink-0 mt-1.5">
@@ -2134,7 +2135,7 @@ function renderizarNoticias(articles) {
                             ${article.summary ? article.summary : 'Resumo não disponível.'}
                         </div>
                         <div class="mt-4 pl-4">
-                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors bg-purple-500/10 px-3 py-1.5 rounded-md">
+                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 px-3 py-1.5 rounded-md">
                                 Ler notícia completa
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>

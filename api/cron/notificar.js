@@ -65,11 +65,7 @@ module.exports = async function handler(req, res) {
 
                     usersUnicos.forEach(uid => {
                          const tipoProvento = (dado.type || 'REND').toUpperCase().trim();
-
-                         // Força 4 casas decimais para manter o padrão do ID
                          const valorFormatadoID = parseFloat(dado.value).toFixed(4);
-
-                         // Gera ID único: BTCI11_2025-10-14_REND_0.1000
                          const idGerado = `${dado.symbol}_${dado.paymentDate}_${tipoProvento}_${valorFormatadoID}`;
 
                          upserts.push({
@@ -144,9 +140,8 @@ module.exports = async function handler(req, res) {
 
                 let title = '', body = '';
                 
-                // --- AQUI ESTÁ A ALTERAÇÃO ---
-                // Define o ícone principal da notificação
-                const icon = '/logo-vesto.png'; 
+                // Ícone GRANDE (ao lado do texto)
+                const icon = 'https://in-vesto.vercel.app/logo-vesto.png'; 
 
                 if (pagamentos.length > 0) {
                     const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
@@ -170,13 +165,12 @@ module.exports = async function handler(req, res) {
                     return; 
                 }
 
-                // O badge (sininho) continua sendo o favicon.ico para ícones monocromáticos da barra de status
+                // REMOVIDO O BADGE para usar o padrão do sistema (sininho/chrome)
                 const payload = JSON.stringify({ 
                     title, 
                     body, 
                     icon, 
-                    url: '/?tab=tab-carteira', 
-                    badge: '/favicon.ico' 
+                    url: '/?tab=tab-carteira'
                 });
 
                 const pushPromises = subs.map(sub => 

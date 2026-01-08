@@ -1512,7 +1512,7 @@ class VirtualScroller {
         this.renderRowFn = renderRowFn;
         
         // Configurações de altura
-        this.headerHeight = 40; 
+        this.headerHeight = 50; 
         this.rowHeight = 72;
         
         // Limpeza de estilos conflitantes do container original
@@ -4655,7 +4655,7 @@ function renderizarTransacoesDetalhes(symbol) {
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
 
         const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2 flex justify-between items-center'; 
+        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-4 flex justify-between items-center'; 
         header.style.top = '-1px'; 
         header.style.margin = '0 -8px 8px -8px'; 
         header.style.borderRadius = '12px'; 

@@ -2253,7 +2253,7 @@ function renderizarGraficoAlocacao(dadosInput) {
                     borderWidth: 0,
                     spacing: 3,
                     borderRadius: 15,
-                    hoverOffset: 10
+                    hoverOffset: 15
                 }] 
             },
             options: {

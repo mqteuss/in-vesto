@@ -3063,13 +3063,13 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
     }
 
 async function renderizarCarteira() {
-    // 1. Esconde os skeletons de carregamento
+    // Esconde os skeletons de carregamento
     renderizarCarteiraSkeletons(false);
 
-    // 2. Cria Mapas para acesso rápido a preços
+    // Cria Mapas para acesso rápido a preços
     const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
-    // 3. Cria Mapa de Proventos (Agrupados em Lista)
+    // Cria Mapa de Proventos (Agrupados em Lista)
     const proventosMap = new Map();
     proventosAtuais.forEach(p => {
         if (!proventosMap.has(p.symbol)) {
@@ -3078,7 +3078,7 @@ async function renderizarCarteira() {
         proventosMap.get(p.symbol).push(p);
     });
     
-    // 4. Ordena a carteira alfabeticamente (A-Z)
+    // Ordena a carteira alfabeticamente
     const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
     let totalValorCarteira = 0;
@@ -3094,7 +3094,7 @@ async function renderizarCarteira() {
         totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
     });
 
-    // 5. Verifica se a carteira está vazia
+    // Verifica se a carteira está vazia
     if (carteiraOrdenada.length === 0) {
         listaCarteira.innerHTML = ''; 
         carteiraStatus.classList.remove('hidden');
@@ -3108,10 +3108,6 @@ async function renderizarCarteira() {
             totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
             totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
         }
-
-        // Zera Tooltip do DY
-        const elTooltipValor = document.getElementById('tooltip-dy-valor');
-        if (elTooltipValor) elTooltipValor.textContent = "0.00%";
         
         dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
         dashboardLoading.classList.add('hidden');
@@ -3145,10 +3141,10 @@ async function renderizarCarteira() {
     carteiraOrdenada.forEach((ativo, index) => { 
         const dadoPreco = precosMap.get(ativo.symbol);
         
-        // Pega TODOS os proventos desse ativo
+        // 1. Pega TODOS os proventos (passados e futuros) desse ativo
         const listaTodosProventos = proventosMap.get(ativo.symbol) || [];
 
-        // FILTRO: Mantém APENAS os futuros (Data >= Hoje) para exibição na carteira
+        // 2. FILTRO: Mantém APENAS os futuros (Data >= Hoje) para exibição na carteira
         const listaProventosFuturos = listaTodosProventos.filter(p => {
             if (!p.paymentDate) return false;
             const parts = p.paymentDate.split('-');
@@ -3184,7 +3180,7 @@ async function renderizarCarteira() {
         if (lucroPrejuizo > 0.01) { corPL = 'text-green-500'; }
         else if (lucroPrejuizo < -0.01) { corPL = 'text-red-500'; }
 
-        // CALCULA O TOTAL A RECEBER (Somando apenas a lista FILTRADA de futuros)
+        // 3. CALCULA O TOTAL A RECEBER (Somando apenas a lista FILTRADA de futuros)
         let proventoReceber = 0;
         listaProventosFuturos.forEach(p => {
              const dataReferencia = p.dataCom || p.paymentDate;
@@ -3198,8 +3194,8 @@ async function renderizarCarteira() {
             dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
             totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
             corPL, 
-            dadoProvento,        
-            listaProventos: listaProventosFuturos,
+            dadoProvento,       
+            listaProventos: listaProventosFuturos, // Passa APENAS os futuros para o renderizador do card
             proventoReceber, 
             percentWallet
         };
@@ -3229,7 +3225,7 @@ async function renderizarCarteira() {
         }
     });
 
-    // 6. Atualiza Totais do Dashboard
+    // Atualiza Totais do Dashboard
     if (carteiraOrdenada.length > 0) {
         const patrimonioTotalAtivos = totalValorCarteira;
         const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
@@ -3249,59 +3245,15 @@ async function renderizarCarteira() {
             totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
             totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`; 
         }
-
-        // =========================================================
-        // LÓGICA DO TOOLTIP DE DY (YIELD ANUAL)
-        // =========================================================
-        if (typeof proventosConhecidos !== 'undefined') {
-            const umAnoAtras = new Date();
-            umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
-            umAnoAtras.setHours(0,0,0,0);
-
-            const mapDivsPorAcao12m = {};
-            
-            // Calcula total pago por ação nos últimos 12 meses
-            proventosConhecidos.forEach(p => {
-                if (!p.paymentDate || p.value <= 0) return;
-                const dataPag = new Date(p.paymentDate);
-                
-                if (dataPag >= umAnoAtras && dataPag <= new Date()) {
-                    if (!mapDivsPorAcao12m[p.symbol]) mapDivsPorAcao12m[p.symbol] = 0;
-                    mapDivsPorAcao12m[p.symbol] += p.value;
-                }
-            });
-
-            // Aplica aos ativos atuais da carteira
-            let geracaoAnualEstimada = 0;
-            carteiraOrdenada.forEach(ativo => {
-                const dyPorAcao = mapDivsPorAcao12m[ativo.symbol] || 0;
-                geracaoAnualEstimada += (dyPorAcao * ativo.quantity);
-            });
-
-            // Calcula porcentagem e atualiza o Tooltip
-            const dyCarteiraPercent = patrimonioTotalAtivos > 0 ? (geracaoAnualEstimada / patrimonioTotalAtivos) * 100 : 0;
-            const elTooltipValor = document.getElementById('tooltip-dy-valor');
-            
-            if (elTooltipValor) {
-                elTooltipValor.textContent = `${dyCarteiraPercent.toFixed(2)}%`;
-                
-                // Opcional: cor verde se > 10%
-                if (dyCarteiraPercent > 10) elTooltipValor.className = 'text-sm font-bold text-green-400';
-                else elTooltipValor.className = 'text-sm font-bold text-blue-400';
-            }
-        }
-        // =========================================================
         
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
         renderizarTimelinePagamentos();
         await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
     }
     
-    // 7. Renderiza os Gráficos Finais
     renderizarGraficoAlocacao(dadosGrafico);
     renderizarGraficoPatrimonio();
     
-    // 8. Filtro de Busca (caso tenha texto digitado)
     if (carteiraSearchInput && carteiraSearchInput.value) {
         const term = carteiraSearchInput.value.trim().toUpperCase();
         const cards = listaCarteira.querySelectorAll('.wallet-card'); 
@@ -3316,99 +3268,28 @@ async function renderizarCarteira() {
     }
 }
 
-function renderizarProventos() {
-    // 1. Elementos da Interface (com verificação de segurança)
-    const elTotalProventos = document.getElementById('total-proventos');
-    const elMediaMensal = document.getElementById('media-mensal-proventos');
-    const elMaiorPagamento = document.getElementById('maior-pagamento');
-    const listaProventos = document.getElementById('lista-historico-proventos'); // Ou o ID da sua lista
-
-    // Se não tiver lista para renderizar, não faz sentido continuar (mas não trava)
-    if (!listaProventos && !elTotalProventos) return;
-
-    // 2. Processamento dos Dados
-    // Pega proventos e ordena por data (mais recente primeiro)
-    const proventosOrdenados = [...proventosConhecidos].sort((a, b) => {
-        const dataA = new Date(a.paymentDate);
-        const dataB = new Date(b.paymentDate);
-        return dataB - dataA;
-    });
-
-    let somaTotal = 0;
-    let maiorPagamentoVal = 0;
-    
-    // Map para agrupar por mês (para calcular média)
-    const mesesComPagamento = new Set();
-
-    proventosOrdenados.forEach(p => {
-        somaTotal += p.value * p.quantity; // Se p.value for unitário, lembre de multiplicar. Se for total, só soma p.value
+    function renderizarProventos() {
+        let totalEstimado = 0;
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
         
-        const totalP = p.value * (p.quantity || 1); // Garante cálculo correto
-        if (totalP > maiorPagamentoVal) maiorPagamentoVal = totalP;
+        proventosAtuais.forEach(provento => {
+            if (provento && typeof provento.value === 'number' && provento.value > 0) {
+                 const parts = provento.paymentDate.split('-');
+                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
 
-        if (p.paymentDate) {
-            mesesComPagamento.add(p.paymentDate.substring(0, 7)); // YYYY-MM
-        }
-    });
-
-    // 3. Atualização Segura do DOM (Aqui estava o erro)
-    
-    // Total Acumulado
-    if (elTotalProventos) {
-        elTotalProventos.textContent = formatBRL(somaTotal);
-    }
-
-    // Média Mensal
-    if (elMediaMensal) {
-        const qtdMeses = mesesComPagamento.size || 1; // Evita divisão por zero
-        const media = somaTotal / qtdMeses;
-        elMediaMensal.textContent = formatBRL(media);
-    }
-
-    // Maior Pagamento
-    if (elMaiorPagamento) {
-        elMaiorPagamento.textContent = formatBRL(maiorPagamentoVal);
-    }
-
-    // 4. Renderiza a Lista (Se existir o elemento da lista)
-    if (listaProventos) {
-        listaProventos.innerHTML = '';
-        
-        if (proventosOrdenados.length === 0) {
-            listaProventos.innerHTML = `
-                <div class="text-center py-8 text-gray-500">
-                    <p class="text-sm">Nenhum provento registrado ainda.</p>
-                </div>
-            `;
-            return;
-        }
-
-        proventosOrdenados.forEach(prov => {
-            const item = document.createElement('div');
-            // Estilo padrão da lista (ajuste conforme seu design atual)
-            item.className = 'flex items-center justify-between p-3 border-b border-white/5 last:border-0';
-            
-            const dataFormatada = new Date(prov.paymentDate).toLocaleDateString('pt-BR');
-            const totalRecebido = prov.value * (prov.quantity || 1);
-
-            item.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center text-[10px] font-bold text-gray-400">
-                        ${prov.symbol.substring(0,2)}
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-sm text-gray-200">${prov.symbol}</h4>
-                        <p class="text-[10px] text-gray-500">${prov.type} • ${dataFormatada}</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="font-bold text-sm text-green-400">+${formatBRL(totalRecebido)}</p>
-                </div>
-            `;
-            listaProventos.appendChild(item);
+                 if (dataPagamento > hoje) {
+                     const dataReferencia = provento.dataCom || provento.paymentDate;
+                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
+                     
+                     if (qtdElegivel > 0) {
+                         totalEstimado += (qtdElegivel * provento.value);
+                     }
+                 }
+            }
         });
+        totalProventosEl.textContent = formatBRL(totalEstimado);
     }
-}
 
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v5_filtered';
@@ -6279,26 +6160,6 @@ if (toggleNotifBtn) {
 	window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
-	
-	document.addEventListener('DOMContentLoaded', () => {
-    const btnInfo = document.getElementById('btn-info-dy');
-    const tooltip = document.getElementById('tooltip-dy');
-
-    if (btnInfo && tooltip) {
-        // Toggle ao clicar no botão
-        btnInfo.addEventListener('click', (e) => {
-            e.stopPropagation();
-            tooltip.classList.toggle('hidden');
-        });
-
-        // Fechar se clicar em qualquer lugar fora
-        document.addEventListener('click', (e) => {
-            if (!tooltip.contains(e.target) && !btnInfo.contains(e.target)) {
-                tooltip.classList.add('hidden');
-            }
-        });
-    }
-});
 	
     await init();
 });

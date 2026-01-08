@@ -6290,37 +6290,33 @@ window.mostrarDyCarteira = async function() {
         const dyFmt = dyVal.toFixed(2) + '%';
         const valFmt = formatBRL(totalVal);
         
-        // 4. Monta o HTML do Modal
+        // 4. HTML Minimalista (Sem caixas, sem gradientes)
         const mensagemHtml = `
-            <div class="flex flex-col gap-5">
-                <div class="bg-[#151515] p-5 rounded-2xl border border-[#2C2C2E] text-center shadow-inner relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
-                    <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-2">Dividend Yield (12m)</span>
-                    <div class="text-4xl font-extrabold text-white tracking-tighter drop-shadow-sm">
-                        ${dyFmt}
-                    </div>
-                    <div class="mt-3 inline-flex items-center gap-2 bg-[#1C1C1E] py-1.5 px-3 rounded-lg border border-[#333]">
-                        <span class="text-[10px] text-gray-400 font-medium">Retorno aprox.:</span>
-                        <span class="text-xs text-green-400 font-bold">${valFmt}</span>
+            <div class="flex flex-col items-center gap-6 pt-2">
+                
+                <div class="text-center">
+                    <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Dividend Yield (12m)</span>
+                    <div class="text-5xl font-bold text-white tracking-tighter">${dyFmt}</div>
+                    <div class="text-sm text-gray-400 font-medium mt-1">
+                        Retorno aprox.: <span class="text-gray-200">${valFmt}</span>
                     </div>
                 </div>
                 
-                <div class="text-sm text-gray-300 space-y-3 px-1 text-left">
-                    <p class="leading-relaxed">
-                        <strong class="text-white">Yield on Current Portfolio:</strong><br>
-                        Esta métrica projeta quanto a sua carteira <u>atual</u> teria rendido se você tivesse essa exata composição nos últimos 12 meses.
+                <div class="w-full h-px bg-[#2C2C2E]"></div>
+
+                <div class="text-sm text-gray-300 leading-relaxed text-left w-full space-y-2">
+                    <p>
+                        O <strong>Yield on Current Portfolio</strong> projeta quanto sua carteira <u>atual</u> teria rendido se você mantivesse exatamente essas posições durante o último ano.
                     </p>
-                    <div class="text-xs text-gray-500 bg-black/50 p-3 rounded-lg border border-white/5">
-                        <ul class="list-disc list-inside space-y-1">
-                            <li>Baseado na quantidade de cotas de <b>hoje</b>.</li>
-                            <li>Considera proventos pagos nos últimos <b>12 meses</b>.</li>
-                        </ul>
-                    </div>
+                    <ul class="list-disc list-inside text-xs text-gray-500 space-y-1 pl-1">
+                        <li>Baseado na quantidade de cotas de <strong>hoje</strong>.</li>
+                        <li>Considera pagamentos dos últimos <strong>12 meses</strong>.</li>
+                    </ul>
                 </div>
             </div>
         `;
 
-        // 5. Abertura MANUAL do Modal (Para permitir HTML)
+        // 5. Abertura MANUAL do Modal (Para interpretar o HTML corretamente)
         const modal = document.getElementById('custom-modal');
         const modalTitle = document.getElementById('custom-modal-title');
         const modalMessage = document.getElementById('custom-modal-message');
@@ -6331,36 +6327,35 @@ window.mostrarDyCarteira = async function() {
         // Configura Conteúdo
         if(modalTitle) modalTitle.textContent = 'Performance de Proventos';
         
-        // --- AQUI ESTÁ A CORREÇÃO PRINCIPAL (innerHTML) ---
+        // --- AQUI ESTÁ A CORREÇÃO: Usamos innerHTML ---
         if(modalMessage) {
             modalMessage.innerHTML = mensagemHtml;
-            // Remove alinhamento central se existir, para o texto longo ficar melhor
             modalMessage.style.textAlign = 'left'; 
         }
 
-        // Ajusta Botões
-        if(btnCancel) btnCancel.style.display = 'none'; // Esconde botão Cancelar
+        // Ajusta Botões (Apenas um botão "OK" simples)
+        if(btnCancel) btnCancel.style.display = 'none'; 
         
         if(btnOk) {
             const oldText = btnOk.innerText;
             const oldOnClick = btnOk.onclick;
             
-            btnOk.innerText = 'Entendi';
+            btnOk.innerText = 'Fechar';
             
-            // Define ação de fechar customizada
+            // Define ação de fechar
             btnOk.onclick = function() {
-                modalContent.classList.add('modal-out');
+                modalContent.classList.add('modal-out'); // Animação de saída
                 setTimeout(() => {
                     modal.classList.remove('visible');
                     modalContent.classList.remove('modal-out');
                     
-                    // Restaura estado original do modal (importante!)
+                    // Restaura estado original do modal
                     if(btnCancel) btnCancel.style.display = 'block';
                     btnOk.innerText = oldText;
                     btnOk.onclick = oldOnClick;
                     if(modalMessage) {
                         modalMessage.innerHTML = '';
-                        modalMessage.style.textAlign = ''; // Restaura alinhamento CSS original
+                        modalMessage.style.textAlign = ''; 
                     }
                 }, 200);
             };

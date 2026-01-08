@@ -6181,5 +6181,187 @@ if (toggleNotifBtn) {
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
 	
+	// ======================================================
+//  LÓGICA DE CÁLCULO DE DY DA CARTEIRA (NOVO RECURSO)
+// ======================================================
+
+/**
+ * Calcula o Dividend Yield (DY) Teórico da carteira atual.
+ * Lógica: Pega a quantidade de cotas que você tem HOJE e aplica
+ * aos proventos pagos por esses ativos nos últimos 12 meses.
+ */
+async function calcularDyCarteiraTeorico() {
+    // 1. Verifica se a carteira já foi calculada e tem ativos
+    if (!carteiraCalculada || carteiraCalculada.length === 0) return 0;
+    
+    // 2. Calcula o valor total financeiro da carteira hoje (Cotação Atual * Qtd)
+    // Usamos 'precosAtuais' que já deve estar populado no app
+    const mapPrecos = new Map(precosAtuais.map(p => [p.symbol, p.regularMarketPrice]));
+    let valorTotalCarteira = 0;
+    
+    carteiraCalculada.forEach(ativo => {
+        const preco = mapPrecos.get(ativo.symbol) || 0;
+        valorTotalCarteira += (preco * ativo.quantity);
+    });
+
+    // Evita divisão por zero
+    if (valorTotalCarteira === 0) return 0;
+
+    // 3. Busca o histórico de proventos dos ativos da carteira
+    // Tenta pegar do cache primeiro para ser rápido (mesma chave do gráfico de histórico)
+    const cacheKey = `cache_grafico_historico_${currentUserId}`;
+    let rawDividends = await getCache(cacheKey);
+
+    // Se não tiver no cache, força uma busca na API
+    if (!rawDividends) {
+        const ativosCarteira = carteiraCalculada.map(a => a.symbol);
+        try {
+            // Chama sua função existente que busca histórico no backend/scraper
+            rawDividends = await callScraperHistoricoPortfolioAPI(ativosCarteira);
+            
+            // Salva no cache se der certo
+            if (rawDividends && rawDividends.length > 0) {
+                await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO); // CACHE_IA_HISTORICO deve ser uma const existente
+            }
+        } catch (e) {
+            console.error("Erro ao calcular DY (API):", e);
+            return 0;
+        }
+    }
+
+    if (!rawDividends || !Array.isArray(rawDividends)) return 0;
+
+    // 4. Define a janela de tempo (Últimos 12 meses a partir de hoje)
+    const hoje = new Date();
+    const umAnoAtras = new Date();
+    umAnoAtras.setFullYear(hoje.getFullYear() - 1);
+    
+    let totalDividendos12m = 0;
+    
+    // Mapa rápido de quantidades: { 'MXRF11': 100, ... }
+    const mapQtd = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
+
+    // 5. Itera sobre cada provento do histórico
+    rawDividends.forEach(div => {
+        // Usa paymentDate preferencialmente, ou dataCom como fallback
+        const dataRefStr = div.paymentDate || div.dataCom;
+        if (!dataRefStr) return;
+
+        const dataRef = new Date(dataRefStr);
+        
+        // Verifica se o pagamento está dentro dos últimos 12 meses
+        if (dataRef >= umAnoAtras && dataRef <= hoje) {
+            // Pega a quantidade que o usuário tem HOJE desse ativo
+            const qtdAtual = mapQtd.get(div.symbol) || 0;
+            
+            // Simula: Se eu tivesse essa quantidade na época, quanto teria recebido?
+            if (qtdAtual > 0) {
+                totalDividendos12m += (Number(div.value) * qtdAtual);
+            }
+        }
+    });
+
+    // 6. Retorna o objeto com % e Valor Absoluto
+    const dyPercent = (totalDividendos12m / valorTotalCarteira) * 100;
+    
+    return { 
+        dyPercent: dyPercent, 
+        totalDiv12m: totalDividendos12m 
+    };
+}
+
+/**
+ * Função chamada pelo clique no botão "?" no HTML
+ * Exibe o Modal com o resultado.
+ */
+window.mostrarDyCarteira = async function() {
+    // Referência ao botão para feedback visual (opcional)
+    const btn = document.querySelector('button[title="Ver DY da Carteira"]');
+    const originalText = btn ? btn.innerText : '?';
+    
+    // Mostra indicador de carregamento simples
+    if(btn) btn.innerText = '...';
+
+    try {
+        // Realiza o cálculo
+        const dados = await calcularDyCarteiraTeorico();
+        
+        // Formata os valores
+        // Se dados for 0 ou inválido, assume 0
+        const dyVal = dados.dyPercent || 0;
+        const totalVal = dados.totalDiv12m || 0;
+
+        const dyFmt = dyVal.toFixed(2) + '%';
+        const valFmt = formatBRL(totalVal); // formatBRL deve ser sua função utilitária existente
+        
+        // Monta o conteúdo HTML do Modal
+        const mensagemHtml = `
+            <div class="flex flex-col gap-5">
+                <div class="bg-[#151515] p-5 rounded-2xl border border-[#2C2C2E] text-center shadow-inner relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
+                    
+                    <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-2">Dividend Yield (12m)</span>
+                    
+                    <div class="text-4xl font-extrabold text-white tracking-tighter drop-shadow-sm">
+                        ${dyFmt}
+                    </div>
+                    
+                    <div class="mt-3 inline-flex items-center gap-2 bg-[#1C1C1E] py-1.5 px-3 rounded-lg border border-[#333]">
+                        <span class="text-[10px] text-gray-400 font-medium">Retorno aprox.:</span>
+                        <span class="text-xs text-green-400 font-bold">${valFmt}</span>
+                    </div>
+                </div>
+                
+                <div class="text-sm text-gray-300 space-y-3 px-1">
+                    <p class="leading-relaxed">
+                        <strong class="text-white">Yield on Current Portfolio:</strong><br>
+                        Esta métrica projeta quanto a sua carteira <u>atual</u> teria rendido se você mantivesse exatamente essas posições durante o último ano.
+                    </p>
+                    <div class="text-xs text-gray-500 bg-black/50 p-3 rounded-lg border border-white/5">
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>Baseado na quantidade de cotas de <b>hoje</b>.</li>
+                            <li>Considera proventos pagos nos últimos <b>12 meses</b>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Exibe o Modal (usando sua função global showModal)
+        // showModal(titulo, mensagem, callbackOk, showCancelButton)
+        showModal('Performance de Proventos', mensagemHtml, () => {});
+
+        // --- AJUSTES VISUAIS PÓS-ABERTURA DO MODAL ---
+        // Ocultar o botão "Cancelar" para ficar apenas informativo
+        const btnCancel = document.getElementById('custom-modal-cancel');
+        if(btnCancel) btnCancel.style.display = 'none';
+        
+        // Ajustar botão "Confirmar" para dizer "Entendi" ou "OK"
+        const btnOk = document.getElementById('custom-modal-ok');
+        if(btnOk) {
+            const oldText = btnOk.innerText;
+            btnOk.innerText = 'Entendi';
+            
+            // Restaura o estado original ao fechar (para não quebrar outros modais)
+            const oldOnClick = btnOk.onclick;
+            btnOk.onclick = function() {
+                if(oldOnClick) oldOnClick();
+                // Pequeno delay para restaurar textos/botões após a animação de fechar
+                setTimeout(() => { 
+                    if(btnCancel) btnCancel.style.display = 'block'; 
+                    btnOk.innerText = oldText;
+                }, 300);
+            };
+        }
+
+    } catch (e) {
+        console.error("Erro ao exibir DY:", e);
+        showToast('Não foi possível calcular o DY no momento.');
+    } finally {
+        // Restaura texto do botão "?"
+        if(btn) btn.innerText = originalText;
+    }
+};
+	
     await init();
 });

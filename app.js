@@ -3110,7 +3110,15 @@ async function renderizarCarteira() {
         }
 
         // Zera DY
-        const elDy = document.getElementById('total-carteira-dy');
+const elTooltipValor = document.getElementById('tooltip-dy-valor');
+            if (elTooltipValor) {
+                elTooltipValor.textContent = `${dyCarteiraPercent.toFixed(2)}%`;
+                
+                // Muda cor se for muito bom
+                if (dyCarteiraPercent > 10) elTooltipValor.className = 'text-sm font-bold text-green-400';
+                else elTooltipValor.className = 'text-sm font-bold text-blue-400';
+            }
+        }
         if (elDy) elDy.textContent = "0.00%";
         
         dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
@@ -6201,6 +6209,26 @@ if (toggleNotifBtn) {
 	window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
+	
+	document.addEventListener('DOMContentLoaded', () => {
+    const btnInfo = document.getElementById('btn-info-dy');
+    const tooltip = document.getElementById('tooltip-dy');
+
+    if (btnInfo && tooltip) {
+        // Toggle ao clicar no botão
+        btnInfo.addEventListener('click', (e) => {
+            e.stopPropagation();
+            tooltip.classList.toggle('hidden');
+        });
+
+        // Fechar se clicar em qualquer lugar fora
+        document.addEventListener('click', (e) => {
+            if (!tooltip.contains(e.target) && !btnInfo.contains(e.target)) {
+                tooltip.classList.add('hidden');
+            }
+        });
+    }
+});
 	
     await init();
 });

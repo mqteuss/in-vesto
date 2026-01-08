@@ -178,65 +178,41 @@
 </div>
                         </div>
 
-<div id="resumo-carteira-card">
+<div id="resumo-carteira-card" class="bg-gradient-to-br from-[#1C1C1E] to-[#141414] border border-white/10 rounded-2xl p-6 relative overflow-visible shadow-xl">
     
-    <div class="premium-content">
+    <button id="btn-info-dy" class="absolute top-4 right-4 w-6 h-6 rounded-full border border-white/20 flex items-center justify-center text-white/40 hover:text-white hover:border-white/50 hover:bg-white/10 transition-all z-20">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+        </svg>
+    </button>
+
+    <div id="tooltip-dy" class="hidden absolute top-12 right-4 w-48 bg-[#252525] border border-white/10 rounded-xl shadow-2xl p-3 z-30 transform transition-all duration-200 origin-top-right">
+        <div class="absolute -top-1.5 right-2 w-3 h-3 bg-[#252525] border-t border-l border-white/10 transform rotate-45"></div>
         
-        <div class="flex flex-col items-center justify-center w-full mt-2 text-center relative z-20">
-            
-            <span class="premium-label mb-1 opacity-80">Patrimônio Líquido</span>
-            
-            <div id="skeleton-total-valor" class="h-12 w-48 bg-gray-800/50 rounded animate-pulse mt-2"></div>
-            
-            <h2 id="total-carteira-valor" class="premium-value-lg hidden mt-1 mb-1">R$ 0,00</h2>
-
-            <h2 id="total-carteira-valor" class="premium-value-lg hidden mt-1 mb-1">R$ 0,00</h2>
-
-            <div class="flex justify-center items-center gap-3 mt-4 scale-90">
-                
-                <div class="premium-badge !mt-0">
-                     <div id="skeleton-total-pl" class="h-3 w-16 bg-gray-700/50 rounded animate-pulse"></div>
-                     <p id="total-carteira-pl" class="text-xs font-bold text-gray-300 hidden">
-                        R$ 0,00 (0%)
-                     </p>
-                </div>
-
-                <div class="premium-badge !mt-0">
-                     <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mr-1">DY 12m</span>
-                     <p id="total-carteira-dy" class="text-xs font-bold text-blue-400">0.00%</p>
-                </div>
-
+        <div class="relative z-10">
+            <p class="text-[10px] text-gray-400 leading-tight mb-2">
+                Yield (retorno) anual da sua carteira baseado nos dividendos dos últimos 12 meses.
+            </p>
+            <div class="flex items-center justify-between border-t border-white/5 pt-2">
+                <span class="text-[10px] font-bold text-gray-300">DY ATUAL</span>
+                <span id="tooltip-dy-valor" class="text-sm font-bold text-blue-400">0.00%</span>
             </div>
         </div>
+    </div>
 
-        <div class="flex-1 min-h-[20px]"></div>
+    <div class="flex flex-col items-center justify-center pt-2">
+        <span class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Patrimônio Total</span>
+        
+        <h2 id="total-carteira-valor" class="premium-value-lg mt-1 mb-1">R$ 0,00</h2>
 
-        <div class="premium-grid relative z-20">
-            
-            <div class="premium-stat-box group cursor-pointer">
-                <span class="premium-stat-sub">Investido</span>
-                <div id="skeleton-total-custo" class="h-4 w-16 bg-gray-800/50 rounded mt-1 animate-pulse"></div>
-                <span id="total-carteira-custo" class="premium-stat-value hidden group-hover:text-purple-400 transition-colors">R$ 0,00</span>
+        <div class="flex justify-center mt-3">
+             <div class="premium-badge !mt-0">
+                 <div id="skeleton-total-pl" class="h-3 w-16 bg-gray-700/50 rounded animate-pulse"></div>
+                 <p id="total-carteira-pl" class="text-xs font-bold text-gray-300 hidden">
+                    R$ 0,00 (0%)
+                 </p>
             </div>
-
-            <div class="premium-divider"></div>
-
-            <div class="premium-stat-box group cursor-pointer">
-                <span class="premium-stat-sub">Recebidos</span>
-                <div id="skeleton-total-caixa" class="h-4 w-16 bg-gray-800/50 rounded mt-1 animate-pulse"></div>
-                <span id="total-caixa-valor" class="premium-stat-value hidden group-hover:text-blue-400 transition-colors">R$ 0,00</span>
-            </div>
-
-            <div class="premium-divider"></div>
-
-            <div class="premium-stat-box group cursor-pointer">
-                <span class="premium-stat-sub">A Receber</span>
-                <div id="skeleton-total-proventos" class="h-4 w-16 bg-gray-800/50 rounded mt-1 animate-pulse"></div>
-                <span id="total-proventos" class="premium-stat-value text-green-400 hidden">R$ 0,00</span>
-            </div>
-
         </div>
-
     </div>
 </div>
 						

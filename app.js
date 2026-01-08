@@ -6275,47 +6275,40 @@ async function calcularDyCarteiraTeorico() {
  * Exibe o Modal com o resultado.
  */
 window.mostrarDyCarteira = async function() {
-    // Referência ao botão para feedback visual (opcional)
+    // 1. Feedback visual no botão
     const btn = document.querySelector('button[title="Ver DY da Carteira"]');
     const originalText = btn ? btn.innerText : '?';
-    
-    // Mostra indicador de carregamento simples
     if(btn) btn.innerText = '...';
 
     try {
-        // Realiza o cálculo
+        // 2. Realiza o cálculo
         const dados = await calcularDyCarteiraTeorico();
         
-        // Formata os valores
-        // Se dados for 0 ou inválido, assume 0
+        // 3. Formata os valores
         const dyVal = dados.dyPercent || 0;
         const totalVal = dados.totalDiv12m || 0;
-
         const dyFmt = dyVal.toFixed(2) + '%';
-        const valFmt = formatBRL(totalVal); // formatBRL deve ser sua função utilitária existente
+        const valFmt = formatBRL(totalVal);
         
-        // Monta o conteúdo HTML do Modal
+        // 4. Monta o HTML do Modal
         const mensagemHtml = `
             <div class="flex flex-col gap-5">
                 <div class="bg-[#151515] p-5 rounded-2xl border border-[#2C2C2E] text-center shadow-inner relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
-                    
                     <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-2">Dividend Yield (12m)</span>
-                    
                     <div class="text-4xl font-extrabold text-white tracking-tighter drop-shadow-sm">
                         ${dyFmt}
                     </div>
-                    
                     <div class="mt-3 inline-flex items-center gap-2 bg-[#1C1C1E] py-1.5 px-3 rounded-lg border border-[#333]">
                         <span class="text-[10px] text-gray-400 font-medium">Retorno aprox.:</span>
                         <span class="text-xs text-green-400 font-bold">${valFmt}</span>
                     </div>
                 </div>
                 
-                <div class="text-sm text-gray-300 space-y-3 px-1">
+                <div class="text-sm text-gray-300 space-y-3 px-1 text-left">
                     <p class="leading-relaxed">
                         <strong class="text-white">Yield on Current Portfolio:</strong><br>
-                        Esta métrica projeta quanto a sua carteira <u>atual</u> teria rendido se você mantivesse exatamente essas posições durante o último ano.
+                        Esta métrica projeta quanto a sua carteira <u>atual</u> teria rendido se você tivesse essa exata composição nos últimos 12 meses.
                     </p>
                     <div class="text-xs text-gray-500 bg-black/50 p-3 rounded-lg border border-white/5">
                         <ul class="list-disc list-inside space-y-1">
@@ -6327,38 +6320,60 @@ window.mostrarDyCarteira = async function() {
             </div>
         `;
 
-        // Exibe o Modal (usando sua função global showModal)
-        // showModal(titulo, mensagem, callbackOk, showCancelButton)
-        showModal('Performance de Proventos', mensagemHtml, () => {});
-
-        // --- AJUSTES VISUAIS PÓS-ABERTURA DO MODAL ---
-        // Ocultar o botão "Cancelar" para ficar apenas informativo
-        const btnCancel = document.getElementById('custom-modal-cancel');
-        if(btnCancel) btnCancel.style.display = 'none';
-        
-        // Ajustar botão "Confirmar" para dizer "Entendi" ou "OK"
+        // 5. Abertura MANUAL do Modal (Para permitir HTML)
+        const modal = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('custom-modal-title');
+        const modalMessage = document.getElementById('custom-modal-message');
+        const modalContent = document.getElementById('custom-modal-content');
         const btnOk = document.getElementById('custom-modal-ok');
+        const btnCancel = document.getElementById('custom-modal-cancel');
+
+        // Configura Conteúdo
+        if(modalTitle) modalTitle.textContent = 'Performance de Proventos';
+        
+        // --- AQUI ESTÁ A CORREÇÃO PRINCIPAL (innerHTML) ---
+        if(modalMessage) {
+            modalMessage.innerHTML = mensagemHtml;
+            // Remove alinhamento central se existir, para o texto longo ficar melhor
+            modalMessage.style.textAlign = 'left'; 
+        }
+
+        // Ajusta Botões
+        if(btnCancel) btnCancel.style.display = 'none'; // Esconde botão Cancelar
+        
         if(btnOk) {
             const oldText = btnOk.innerText;
+            const oldOnClick = btnOk.onclick;
+            
             btnOk.innerText = 'Entendi';
             
-            // Restaura o estado original ao fechar (para não quebrar outros modais)
-            const oldOnClick = btnOk.onclick;
+            // Define ação de fechar customizada
             btnOk.onclick = function() {
-                if(oldOnClick) oldOnClick();
-                // Pequeno delay para restaurar textos/botões após a animação de fechar
-                setTimeout(() => { 
-                    if(btnCancel) btnCancel.style.display = 'block'; 
+                modalContent.classList.add('modal-out');
+                setTimeout(() => {
+                    modal.classList.remove('visible');
+                    modalContent.classList.remove('modal-out');
+                    
+                    // Restaura estado original do modal (importante!)
+                    if(btnCancel) btnCancel.style.display = 'block';
                     btnOk.innerText = oldText;
-                }, 300);
+                    btnOk.onclick = oldOnClick;
+                    if(modalMessage) {
+                        modalMessage.innerHTML = '';
+                        modalMessage.style.textAlign = ''; // Restaura alinhamento CSS original
+                    }
+                }, 200);
             };
         }
+
+        // Exibe o Modal
+        modal.classList.add('visible');
+        modalContent.classList.remove('modal-out');
 
     } catch (e) {
         console.error("Erro ao exibir DY:", e);
         showToast('Não foi possível calcular o DY no momento.');
     } finally {
-        // Restaura texto do botão "?"
         if(btn) btn.innerText = originalText;
     }
 };

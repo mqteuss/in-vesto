@@ -6284,34 +6284,65 @@ async function calcularDyCarteiraTeorico() {
     };
 }
 
-/**
- * Função chamada pelo clique no botão "?" no HTML
- * Exibe o Modal com o resultado.
- */
 window.mostrarDyCarteira = async function() {
-    // 1. Feedback visual no botão
+    // 1. Feedback no botão
     const btn = document.querySelector('button[title="Ver DY da Carteira"]');
     const originalText = btn ? btn.innerText : '?';
     if(btn) btn.innerText = '...';
 
     try {
-        // 2. Realiza o cálculo
+        // 2. Calcula
         const dados = await calcularDyCarteiraTeorico();
         
-        // 3. Formata os valores
+        // 3. Formata valores
         const dyVal = dados.dyPercent || 0;
         const totalVal = dados.totalDiv12m || 0;
         const dyFmt = dyVal.toFixed(2) + '%';
         const valFmt = formatBRL(totalVal);
         
-        // 4. HTML Minimalista (Sem caixas, sem gradientes)
+        // --- 4. LÓGICA DE AVALIAÇÃO (O Sistema de Cores) ---
+        let corTitulo = '';
+        let textoAvaliacao = '';
+        let corBadge = '';
+        
+        if (dyVal < 6) {
+            // Vermelho (Ruim)
+            corTitulo = 'text-red-500';
+            textoAvaliacao = 'Baixo';
+            corBadge = 'bg-red-500/10 text-red-500 border-red-500/20';
+        } else if (dyVal < 10) {
+            // Amarelo (OK/Médio)
+            corTitulo = 'text-yellow-400';
+            textoAvaliacao = 'Bom / OK';
+            corBadge = 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+        } else {
+            // Verde (Ótimo)
+            corTitulo = 'text-green-500'; // ou text-emerald-400
+            textoAvaliacao = 'Excelente';
+            corBadge = 'bg-green-500/10 text-green-500 border-green-500/20';
+        }
+        // ---------------------------------------------------
+
+        // 5. HTML Montado com as cores dinâmicas
         const mensagemHtml = `
             <div class="flex flex-col items-center gap-6 pt-2">
                 
                 <div class="text-center">
-                    <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-1">Dividend Yield (12m)</span>
-                    <div class="text-5xl font-bold text-white tracking-tighter">${dyFmt}</div>
-                    <div class="text-sm text-gray-400 font-medium mt-1">
+                    <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold block mb-2">
+                        Dividend Yield (12m)
+                    </span>
+                    
+                    <div class="text-5xl font-bold ${corTitulo} tracking-tighter drop-shadow-sm transition-colors duration-300">
+                        ${dyFmt}
+                    </div>
+
+                    <div class="mt-3 flex justify-center gap-2">
+                         <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${corBadge}">
+                            ${textoAvaliacao}
+                         </span>
+                    </div>
+
+                    <div class="text-sm text-gray-400 font-medium mt-3">
                         Retorno aprox.: <span class="text-gray-200">${valFmt}</span>
                     </div>
                 </div>
@@ -6320,17 +6351,18 @@ window.mostrarDyCarteira = async function() {
 
                 <div class="text-sm text-gray-300 leading-relaxed text-left w-full space-y-2">
                     <p>
-                        O <strong>Yield on Current Portfolio</strong> projeta quanto sua carteira <u>atual</u> teria rendido se você mantivesse exatamente essas posições durante o último ano.
+                        Este indicador projeta a rentabilidade anual da sua carteira <u>atual</u> baseada nos pagamentos dos últimos 12 meses.
                     </p>
                     <ul class="list-disc list-inside text-xs text-gray-500 space-y-1 pl-1">
-                        <li>Baseado na quantidade de cotas de <strong>hoje</strong>.</li>
-                        <li>Considera pagamentos dos últimos <strong>12 meses</strong>.</li>
+                        <li><span class="text-red-500 font-bold">•</span> Abaixo de 6%: Baixo</li>
+                        <li><span class="text-yellow-400 font-bold">•</span> Entre 6% e 10%: Médio</li>
+                        <li><span class="text-green-500 font-bold">•</span> Acima de 10%: Alto</li>
                     </ul>
                 </div>
             </div>
         `;
 
-        // 5. Abertura MANUAL do Modal (Para interpretar o HTML corretamente)
+        // 6. Abertura do Modal
         const modal = document.getElementById('custom-modal');
         const modalTitle = document.getElementById('custom-modal-title');
         const modalMessage = document.getElementById('custom-modal-message');
@@ -6338,16 +6370,13 @@ window.mostrarDyCarteira = async function() {
         const btnOk = document.getElementById('custom-modal-ok');
         const btnCancel = document.getElementById('custom-modal-cancel');
 
-        // Configura Conteúdo
         if(modalTitle) modalTitle.textContent = 'Performance de Proventos';
         
-        // --- AQUI ESTÁ A CORREÇÃO: Usamos innerHTML ---
         if(modalMessage) {
             modalMessage.innerHTML = mensagemHtml;
             modalMessage.style.textAlign = 'left'; 
         }
 
-        // Ajusta Botões (Apenas um botão "OK" simples)
         if(btnCancel) btnCancel.style.display = 'none'; 
         
         if(btnOk) {
@@ -6356,14 +6385,12 @@ window.mostrarDyCarteira = async function() {
             
             btnOk.innerText = 'Fechar';
             
-            // Define ação de fechar
             btnOk.onclick = function() {
-                modalContent.classList.add('modal-out'); // Animação de saída
+                modalContent.classList.add('modal-out');
                 setTimeout(() => {
                     modal.classList.remove('visible');
                     modalContent.classList.remove('modal-out');
                     
-                    // Restaura estado original do modal
                     if(btnCancel) btnCancel.style.display = 'block';
                     btnOk.innerText = oldText;
                     btnOk.onclick = oldOnClick;
@@ -6375,13 +6402,12 @@ window.mostrarDyCarteira = async function() {
             };
         }
 
-        // Exibe o Modal
         modal.classList.add('visible');
         modalContent.classList.remove('modal-out');
 
     } catch (e) {
         console.error("Erro ao exibir DY:", e);
-        showToast('Não foi possível calcular o DY no momento.');
+        showToast('Não foi possível calcular o DY.');
     } finally {
         if(btn) btn.innerText = originalText;
     }

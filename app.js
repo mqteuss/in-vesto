@@ -6347,7 +6347,7 @@ window.mostrarDyCarteira = async function() {
         const btnOk = document.getElementById('custom-modal-ok');
         const btnCancel = document.getElementById('custom-modal-cancel');
 
-        if(modalTitle) modalTitle.textContent = 'Performance';
+        if(modalTitle) modalTitle.textContent = 'Performance do Portfólio';
         
         if(modalMessage) {
             modalMessage.innerHTML = mensagemHtml;

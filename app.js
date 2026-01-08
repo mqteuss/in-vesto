@@ -2819,7 +2819,7 @@ function renderizarGraficoPatrimonio() {
                         tension: 0.4,
                         pointRadius: 0, 
                         pointHitRadius: 30,
-                        pointHoverRadius: 6,
+                        pointHoverRadius: 4,
                         pointHoverBackgroundColor: '#fff',
                         pointHoverBorderColor: colorLinePatrimonio,
                         pointHoverBorderWidth: 3,

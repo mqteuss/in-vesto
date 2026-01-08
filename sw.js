@@ -118,7 +118,7 @@ self.addEventListener('push', function(event) {
         url: data.url || '/?tab=tab-carteira' // URL para abrir ao clicar
       },
       actions: [
-        { action: 'explore', title: 'Ver Carteira' }
+        { action: 'explore', title: 'Ver Portfólio' }
       ]
     };
 

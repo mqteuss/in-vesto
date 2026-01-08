@@ -2478,11 +2478,13 @@ function renderizarGraficoHistorico() {
     }
     
     const ctx = canvas.getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
     
     // Cores
     const colorRecebido = 'rgba(192, 132, 252, 0.9)'; // Roxo (Vesto)
     const colorAReceber = 'rgba(251, 191, 36, 0.9)';  // Amarelo
-    
+    const legendColor = isLight ? '#374151' : '#9ca3af';
+
     if (historicoChartInstance) {
         historicoChartInstance.destroy();
     }
@@ -2512,14 +2514,12 @@ function renderizarGraficoHistorico() {
                 }
             ]
         },
-        // Removemos o plugin 'floatingLabelsPlugin' daqui
         options: {
             responsive: true, 
             maintainAspectRatio: false,
             animation: { duration: 800, easing: 'easeOutQuart' },
             layout: { padding: { top: 10 } },
             
-            // Interaction: Melhora a resposta ao toque/mouse
             interaction: {
                 mode: 'index',
                 intersect: false,
@@ -2529,34 +2529,48 @@ function renderizarGraficoHistorico() {
             onClick: (e, elements, chart) => {
                 if (!elements || elements.length === 0) return;
                 
-                // Pega o primeiro elemento da pilha clicada
                 const element = elements[0];
                 const index = element.index;
                 
                 const labelAmigavel = chart.data.labels[index];
-                // Recupera a chave crua (YYYY-MM) de qualquer dataset (ambos tem o mesmo index)
                 const rawKey = chart.data.datasets[0].rawKeys[index];
                 
                 exibirDetalhesProventos(rawKey, labelAmigavel);
             },
-            // ------------------------
 
             plugins: {
                 legend: { 
                     display: true, 
                     position: 'bottom', 
-                    labels: { boxWidth: 10, usePointStyle: true, padding: 20 } 
+                    // --- AJUSTE DAS BOLINHAS E HITBOX ---
+                    labels: { 
+                        boxWidth: 6,       // Bolinha menor (era 10)
+                        boxHeight: 6,      // Altura forçada igual largura
+                        usePointStyle: true, 
+                        pointStyle: 'circle',
+                        padding: 20,       // Espaçamento horizontal entre itens
+                        color: legendColor,
+                        font: {
+                            size: 10,      // Fonte menor para alinhar com a bolinha de 6px
+                            weight: '600',
+                            family: "'Plus Jakarta Sans', sans-serif"
+                        },
+                        textAlign: 'center' // Garante alinhamento texto/ícone
+                    } 
                 }, 
                 tooltip: { 
-                    enabled: true, // REATIVADO: Tooltips aparecem ao segurar/passar mouse
-                    backgroundColor: 'rgba(21, 21, 21, 0.95)',
-                    titleColor: '#9ca3af',
-                    bodyColor: '#fff',
-                    borderColor: '#333',
+                    enabled: true,
+                    backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(21, 21, 21, 0.95)',
+                    titleColor: isLight ? '#374151' : '#9ca3af',
+                    bodyColor: isLight ? '#1f2937' : '#fff',
+                    borderColor: isLight ? '#e5e5e5' : '#333',
                     borderWidth: 1,
                     padding: 10,
                     cornerRadius: 8,
                     displayColors: true,
+                    boxWidth: 6,
+                    boxHeight: 6,
+                    usePointStyle: true,
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
@@ -2573,14 +2587,14 @@ function renderizarGraficoHistorico() {
             },
             scales: {
                 y: { 
-                    display: false, // Eixo Y oculto para visual limpo
+                    display: false,
                     stacked: true 
                 },
                 x: { 
                     stacked: true, 
                     grid: { display: false }, 
                     ticks: {
-                        color: document.body.classList.contains('light-mode') ? '#374151' : '#9ca3af',
+                        color: legendColor,
                         font: { size: 10, weight: 'bold' }
                     }
                 }

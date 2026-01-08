@@ -2400,26 +2400,21 @@ function renderizarGraficoHistorico() {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // 0. Data de Hoje para comparação
+    // --- 1. PREPARAÇÃO DOS DADOS (Mantida igual) ---
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    // 1. Dados Agrupados (Recebido vs A Receber)
     const grupos = {};
-    
     proventosConhecidos.forEach(p => {
         if (!p.paymentDate || p.value <= 0) return;
         
-        const key = p.paymentDate.substring(0, 7); // YYYY-MM
+        const key = p.paymentDate.substring(0, 7);
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
         
         if (qtd > 0) {
-            if (!grupos[key]) {
-                grupos[key] = { recebido: 0, aReceber: 0 };
-            }
-
-            // Converter string de data para objeto Date
+            if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
+            
             const [ano, mes, dia] = p.paymentDate.split('-');
             const dataPagamento = new Date(ano, mes - 1, dia);
             const valorTotal = p.value * qtd;
@@ -2433,8 +2428,6 @@ function renderizarGraficoHistorico() {
     });
 
     let mesesOrdenados = Object.keys(grupos).sort();
-    
-    // Arrays para o gráfico
     const labelsRaw = [];
     const dataRecebidoRaw = [];
     const dataAReceberRaw = [];
@@ -2443,52 +2436,114 @@ function renderizarGraficoHistorico() {
     mesesOrdenados.forEach(mesIso => {
         const [anoFull, mesNum] = mesIso.split('-');
         const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
-        
         const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const anoCurto = anoFull.slice(-2);
         
         labelsRaw.push(`${nomeMes} ${anoCurto}`);
         dataRecebidoRaw.push(grupos[mesIso].recebido);
         dataAReceberRaw.push(grupos[mesIso].aReceber);
-        keysMap.push(mesIso); // Guarda "2025-05"
+        keysMap.push(mesIso);
     });
 
-    // Filtro 12 meses
     const labelsFiltrados = labelsRaw.slice(-12);
     const dataRecebidoFiltrados = dataRecebidoRaw.slice(-12);
     const dataAReceberFiltrados = dataAReceberRaw.slice(-12);
     const keysFiltrados = keysMap.slice(-12);
-    
-    // Verifica mudança nos dados
-    const newDataString = JSON.stringify({ 
-        l: labelsFiltrados, 
-        d1: dataRecebidoFiltrados, 
-        d2: dataAReceberFiltrados 
-    });
-    
-    if (newDataString === lastHistoricoData && historicoChartInstance) { return; }
+
+    // Verifica se houve mudança nos dados
+    const newDataString = JSON.stringify({ l: labelsFiltrados, d1: dataRecebidoFiltrados, d2: dataAReceberFiltrados });
+    if (newDataString === lastHistoricoData && historicoChartInstance) return;
     lastHistoricoData = newDataString; 
 
-    if (!labelsFiltrados || labelsFiltrados.length === 0) {
+    if (!labelsFiltrados.length) {
         if (historicoChartInstance) {
             historicoChartInstance.destroy();
             historicoChartInstance = null; 
         }
         return;
     }
-    
+
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     
     // Cores
-    const colorRecebido = 'rgba(192, 132, 252, 0.9)'; // Roxo (Vesto)
+    const colorRecebido = 'rgba(192, 132, 252, 0.9)'; // Roxo
     const colorAReceber = 'rgba(251, 191, 36, 0.9)';  // Amarelo
     const legendColor = isLight ? '#374151' : '#9ca3af';
 
-    if (historicoChartInstance) {
-        historicoChartInstance.destroy();
-    }
+    if (historicoChartInstance) historicoChartInstance.destroy();
 
+    // --- 2. CRIAÇÃO DA LEGENDA HTML PERSONALIZADA ---
+    // Remove legenda antiga se existir
+    const existingLegend = document.getElementById('chart-custom-legend');
+    if (existingLegend) existingLegend.remove();
+
+    // Cria container da legenda
+    const legendContainer = document.createElement('div');
+    legendContainer.id = 'chart-custom-legend';
+    legendContainer.style.display = 'flex';
+    legendContainer.style.justifyContent = 'center';
+    legendContainer.style.gap = '24px';
+    legendContainer.style.marginBottom = '16px';
+    legendContainer.style.fontFamily = "'Plus Jakarta Sans', sans-serif";
+    legendContainer.style.fontSize = '12px'; // Fonte ajustada
+    legendContainer.style.color = legendColor;
+
+    // Função auxiliar para criar item da legenda
+    const createLegendItem = (text, color, datasetIndex) => {
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.cursor = 'pointer';
+        item.style.transition = 'opacity 0.2s';
+        
+        // Bolinha
+        const dot = document.createElement('span');
+        dot.style.width = '8px';  // Tamanho exato da bolinha
+        dot.style.height = '8px';
+        dot.style.backgroundColor = color;
+        dot.style.borderRadius = '50%';
+        dot.style.marginRight = '8px'; // Espaço entre bolinha e texto
+        dot.style.display = 'inline-block';
+
+        // Texto
+        const label = document.createElement('span');
+        label.innerText = text;
+        label.style.fontWeight = '600';
+        label.style.lineHeight = '1'; // Garante alinhamento vertical
+
+        item.appendChild(dot);
+        item.appendChild(label);
+
+        // Ação de Clique (Riscar / Ocultar)
+        item.onclick = () => {
+            const isHidden = historicoChartInstance.getDatasetMeta(datasetIndex).hidden;
+            // Inverte visibilidade
+            historicoChartInstance.setDatasetVisibility(datasetIndex, !isHidden ? false : true);
+            historicoChartInstance.update();
+            
+            // Atualiza visual do botão
+            if (!isHidden) { // Se acabou de esconder
+                item.style.opacity = '0.5';
+                label.style.textDecoration = 'line-through';
+            } else { // Se acabou de mostrar
+                item.style.opacity = '1';
+                label.style.textDecoration = 'none';
+            }
+        };
+
+        return item;
+    };
+
+    // Adiciona os itens (Ordem: A Receber [0], Recebido [1])
+    legendContainer.appendChild(createLegendItem('A Receber', colorAReceber, 0));
+    legendContainer.appendChild(createLegendItem('Recebido', colorRecebido, 1));
+
+    // Insere a legenda ANTES do canvas no DOM
+    canvas.parentNode.insertBefore(legendContainer, canvas);
+
+
+    // --- 3. CONFIGURAÇÃO DO GRÁFICO ---
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -2518,45 +2573,24 @@ function renderizarGraficoHistorico() {
             responsive: true, 
             maintainAspectRatio: false,
             animation: { duration: 800, easing: 'easeOutQuart' },
-            layout: { padding: { top: 10 } },
+            layout: { padding: { top: 0 } },
             
             interaction: {
                 mode: 'index',
                 intersect: false,
             },
 
-            // --- EVENTO DE CLIQUE (Abre lista) ---
             onClick: (e, elements, chart) => {
                 if (!elements || elements.length === 0) return;
-                
-                const element = elements[0];
-                const index = element.index;
-                
+                const index = elements[0].index;
                 const labelAmigavel = chart.data.labels[index];
                 const rawKey = chart.data.datasets[0].rawKeys[index];
-                
                 exibirDetalhesProventos(rawKey, labelAmigavel);
             },
 
             plugins: {
                 legend: { 
-                    display: true, 
-                    position: 'bottom', 
-                    // --- AJUSTE DAS BOLINHAS E HITBOX ---
-                    labels: { 
-                        boxWidth: 6,       // Bolinha menor (era 10)
-                        boxHeight: 6,      // Altura forçada igual largura
-                        usePointStyle: true, 
-                        pointStyle: 'circle',
-                        padding: 20,       // Espaçamento horizontal entre itens
-                        color: legendColor,
-                        font: {
-                            size: 10,      // Fonte menor para alinhar com a bolinha de 6px
-                            weight: '600',
-                            family: "'Plus Jakarta Sans', sans-serif"
-                        },
-                        textAlign: 'center' // Garante alinhamento texto/ícone
-                    } 
+                    display: false // <--- DESATIVAMOS A LEGENDA NATIVA AQUI
                 }, 
                 tooltip: { 
                     enabled: true,
@@ -2574,22 +2608,15 @@ function renderizarGraficoHistorico() {
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += formatBRL(context.parsed.y);
-                            }
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) label += formatBRL(context.parsed.y);
                             return label;
                         }
                     }
                 } 
             },
             scales: {
-                y: { 
-                    display: false,
-                    stacked: true 
-                },
+                y: { display: false, stacked: true },
                 x: { 
                     stacked: true, 
                     grid: { display: false }, 

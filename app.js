@@ -2251,7 +2251,7 @@ function renderizarGraficoAlocacao(dadosInput) {
                     backgroundColor: colors, 
                     borderColor: borderColor,
                     borderWidth: 0,
-                    spacing: 5,
+                    spacing: 4,
                     borderRadius: 10,
                     hoverOffset: 15
                 }] 
@@ -2261,7 +2261,7 @@ function renderizarGraficoAlocacao(dadosInput) {
                 maintainAspectRatio: false,
                 
                 // --- ALTERAÇÃO AQUI: De 85% para 75% (Mais grosso) ---
-                cutout: '75%', 
+                cutout: '77%', 
                 // ----------------------------------------------------
                 
                 layout: { padding: 10 },

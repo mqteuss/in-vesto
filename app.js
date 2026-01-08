@@ -223,8 +223,11 @@ function criarCardElemento(ativo, dados) {
 
     const sigla = ativo.symbol.substring(0, 2);
     
-    // Ícone
+    // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
     const ehFii = isFII(ativo.symbol);
+    const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
+    // ------------------------------------------
+
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ativo.symbol}.png`;
     const iconHtml = !ehFii 
         ? `<img src="${iconUrl}" alt="${ativo.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
@@ -242,8 +245,8 @@ function criarCardElemento(ativo, dados) {
            </span>` 
         : '';
 
-    // --- LÓGICA DE LISTA DE PROVENTOS (CORRIGIDA) ---
-    let proventosHtml = ''; // Variável declarada no PLURAL
+    // --- LÓGICA DE LISTA DE PROVENTOS ---
+    let proventosHtml = '';
     
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) 
         ? listaProventos 
@@ -309,11 +312,12 @@ function criarCardElemento(ativo, dados) {
         toggleDrawer(ativo.symbol);
     };
 
+    // --- APLICAÇÃO DA VARIÁVEL bgIcone ABAIXO ---
     card.innerHTML = `
         <div class="p-3 relative pb-4">
             <div class="flex justify-between items-start mb-1">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${iconHtml}
                     </div>
                     
@@ -1706,12 +1710,17 @@ function renderizarHistorico() {
         const totalTransacao = t.quantity * t.price;
         const dia = new Date(t.date).getDate().toString().padStart(2, '0');
         const sigla = t.symbol.substring(0, 2);
+        
+        // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
         const ehFii = isFII(t.symbol);
+        const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
+        // ------------------------------------------
+
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
 
         const iconHtml = !ehFii 
             ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-               <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 z-0 bg-[#151515]">${sigla}</span>`
+               <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 z-0 ${bgIcone}">${sigla}</span>`
             : `<span class="text-xs font-bold text-gray-300 tracking-wider">${sigla}</span>`;
 
         const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
@@ -1722,7 +1731,7 @@ function renderizarHistorico() {
         return `
             <div class="history-card flex items-center justify-between py-2 px-1 relative group h-full w-full bg-transparent" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${iconHtml}
                     </div>
                     <div class="flex-1 min-w-0">
@@ -1817,7 +1826,12 @@ function renderizarHistoricoProventos() {
         const dia = p.paymentDate.split('-')[2]; 
         const total = p.totalCalculado; 
         const sigla = p.symbol.substring(0, 2);
+        
+        // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
         const ehFii = isFII(p.symbol);
+        const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
+        // ------------------------------------------
+
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;
         
         const imageHtml = !ehFii 
@@ -1838,9 +1852,9 @@ function renderizarHistoricoProventos() {
         return `
             <div class="history-card flex items-center justify-between py-2 px-1 relative group h-full w-full bg-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-10 h-10 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${imageHtml}
-                        <span class="${fallbackClass} w-full h-full items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 bg-[#151515]">${sigla}</span>
+                        <span class="${fallbackClass} w-full h-full items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 ${bgIcone}">${sigla}</span>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 h-5">
@@ -4337,17 +4351,21 @@ async function handleMostrarDetalhes(symbol) {
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
     
+    // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
     const ehFii = isFII(symbol);
+    const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
+    // ------------------------------------------
+
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
     
     const iconHtml = !ehFii 
         ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-           <span class="hidden w-full h-full flex items-center justify-center text-base font-bold text-white tracking-wider absolute inset-0 z-0 bg-[#1C1C1E]">${sigla}</span>`
+           <span class="hidden w-full h-full flex items-center justify-center text-base font-bold text-white tracking-wider absolute inset-0 z-0 ${bgIcone}">${sigla}</span>`
         : `<span class="text-base font-bold text-white tracking-wider">${sigla}</span>`;
     
     if (iconContainer) {
         iconContainer.innerHTML = `
-            <div class="w-12 h-12 rounded-2xl bg-[#1C1C1E] border border-neutral-800 flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+            <div class="w-12 h-12 rounded-2xl ${bgIcone} border border-neutral-800 flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                 ${iconHtml}
             </div>
         `;
@@ -4408,9 +4426,6 @@ async function handleMostrarDetalhes(symbol) {
     detalhesLoading.classList.add('hidden');
 
     if (precoData) {
-        // ... (RESTANTE DA FUNÇÃO MANTIDO IGUAL - OMITIDO PARA BREVIDADE)
-        // ... Mantenha o restante do código que preenche os preços e fundamentos ...
-        
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         
         const varPercent = precoData.regularMarketChangePercent || 0;
@@ -4655,6 +4670,7 @@ function renderizarTransacoesDetalhes(symbol) {
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
 
         const header = document.createElement('div');
+        // Mudei mb-2 para mb-4 aqui também, para alinhar com o "respiro" que você pediu antes
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-4 flex justify-between items-center'; 
         header.style.top = '-1px'; 
         header.style.margin = '0 -8px 8px -8px'; 
@@ -4681,12 +4697,16 @@ function renderizarTransacoesDetalhes(symbol) {
             
             // --- LÓGICA DE ÍCONE ---
             const ehFii = isFII(t.symbol);
+            
+            // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
+            const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
+            // ------------------------------------------
+            
             const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
             const iconHtml = !ehFii 
                 ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-                   <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 z-0 bg-[#151515]">${sigla}</span>`
+                   <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 z-0 ${bgIcone}">${sigla}</span>`
                 : `<span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>`;
-            
             
             // Ícones de Compra/Venda
             const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
@@ -4703,7 +4723,7 @@ function renderizarTransacoesDetalhes(symbol) {
             
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                     <div class="w-9 h-9 rounded-xl bg-[#151515] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                     <div class="w-9 h-9 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${iconHtml}
                     </div>
                     

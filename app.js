@@ -3316,28 +3316,99 @@ async function renderizarCarteira() {
     }
 }
 
-    function renderizarProventos() {
-        let totalEstimado = 0;
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        
-        proventosAtuais.forEach(provento => {
-            if (provento && typeof provento.value === 'number' && provento.value > 0) {
-                 const parts = provento.paymentDate.split('-');
-                 const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]);
+function renderizarProventos() {
+    // 1. Elementos da Interface (com verificação de segurança)
+    const elTotalProventos = document.getElementById('total-proventos');
+    const elMediaMensal = document.getElementById('media-mensal-proventos');
+    const elMaiorPagamento = document.getElementById('maior-pagamento');
+    const listaProventos = document.getElementById('lista-historico-proventos'); // Ou o ID da sua lista
 
-                 if (dataPagamento > hoje) {
-                     const dataReferencia = provento.dataCom || provento.paymentDate;
-                     const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-                     
-                     if (qtdElegivel > 0) {
-                         totalEstimado += (qtdElegivel * provento.value);
-                     }
-                 }
-            }
-        });
-        totalProventosEl.textContent = formatBRL(totalEstimado);
+    // Se não tiver lista para renderizar, não faz sentido continuar (mas não trava)
+    if (!listaProventos && !elTotalProventos) return;
+
+    // 2. Processamento dos Dados
+    // Pega proventos e ordena por data (mais recente primeiro)
+    const proventosOrdenados = [...proventosConhecidos].sort((a, b) => {
+        const dataA = new Date(a.paymentDate);
+        const dataB = new Date(b.paymentDate);
+        return dataB - dataA;
+    });
+
+    let somaTotal = 0;
+    let maiorPagamentoVal = 0;
+    
+    // Map para agrupar por mês (para calcular média)
+    const mesesComPagamento = new Set();
+
+    proventosOrdenados.forEach(p => {
+        somaTotal += p.value * p.quantity; // Se p.value for unitário, lembre de multiplicar. Se for total, só soma p.value
+        
+        const totalP = p.value * (p.quantity || 1); // Garante cálculo correto
+        if (totalP > maiorPagamentoVal) maiorPagamentoVal = totalP;
+
+        if (p.paymentDate) {
+            mesesComPagamento.add(p.paymentDate.substring(0, 7)); // YYYY-MM
+        }
+    });
+
+    // 3. Atualização Segura do DOM (Aqui estava o erro)
+    
+    // Total Acumulado
+    if (elTotalProventos) {
+        elTotalProventos.textContent = formatBRL(somaTotal);
     }
+
+    // Média Mensal
+    if (elMediaMensal) {
+        const qtdMeses = mesesComPagamento.size || 1; // Evita divisão por zero
+        const media = somaTotal / qtdMeses;
+        elMediaMensal.textContent = formatBRL(media);
+    }
+
+    // Maior Pagamento
+    if (elMaiorPagamento) {
+        elMaiorPagamento.textContent = formatBRL(maiorPagamentoVal);
+    }
+
+    // 4. Renderiza a Lista (Se existir o elemento da lista)
+    if (listaProventos) {
+        listaProventos.innerHTML = '';
+        
+        if (proventosOrdenados.length === 0) {
+            listaProventos.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p class="text-sm">Nenhum provento registrado ainda.</p>
+                </div>
+            `;
+            return;
+        }
+
+        proventosOrdenados.forEach(prov => {
+            const item = document.createElement('div');
+            // Estilo padrão da lista (ajuste conforme seu design atual)
+            item.className = 'flex items-center justify-between p-3 border-b border-white/5 last:border-0';
+            
+            const dataFormatada = new Date(prov.paymentDate).toLocaleDateString('pt-BR');
+            const totalRecebido = prov.value * (prov.quantity || 1);
+
+            item.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded bg-gray-800 flex items-center justify-center text-[10px] font-bold text-gray-400">
+                        ${prov.symbol.substring(0,2)}
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm text-gray-200">${prov.symbol}</h4>
+                        <p class="text-[10px] text-gray-500">${prov.type} • ${dataFormatada}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold text-sm text-green-400">+${formatBRL(totalRecebido)}</p>
+                </div>
+            `;
+            listaProventos.appendChild(item);
+        });
+    }
+}
 
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v5_filtered';

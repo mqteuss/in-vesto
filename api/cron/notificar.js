@@ -20,7 +20,7 @@ const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currenc
 async function atualizarProventosPeloScraper(fiiList) {
     const req = { method: 'POST', body: { mode: 'proventos_carteira', payload: { fiiList } } };
     let resultado = [];
-    
+
     const res = {
         setHeader: () => {},
         status: () => ({ json: (data) => { resultado = data.json; } }),
@@ -65,13 +65,11 @@ module.exports = async function handler(req, res) {
 
                     usersUnicos.forEach(uid => {
                          const tipoProvento = (dado.type || 'REND').toUpperCase().trim();
-                         
-                         // --- CORREÇÃO FINAL DO ID ---
-                         // Força 4 casas decimais para bater com o padrão da sua imagem
-                         // Ex: 0.1 vira "0.1000"
+
+                         // Força 4 casas decimais para manter o padrão do ID
                          const valorFormatadoID = parseFloat(dado.value).toFixed(4);
-                         
-                         // Gera: BTCI11_2025-10-14_REND_0.1000
+
+                         // Gera ID único: BTCI11_2025-10-14_REND_0.1000
                          const idGerado = `${dado.symbol}_${dado.paymentDate}_${tipoProvento}_${valorFormatadoID}`;
 
                          upserts.push({
@@ -96,7 +94,7 @@ module.exports = async function handler(req, res) {
             }
         }
 
-        // 2. ENVIO DE NOTIFICAÇÕES (MANTIDO IGUAL)
+        // 2. ENVIO DE NOTIFICAÇÕES
         const agora = new Date();
         agora.setHours(agora.getHours() - 3); 
         const hojeString = agora.toISOString().split('T')[0];
@@ -145,7 +143,10 @@ module.exports = async function handler(req, res) {
                 });
 
                 let title = '', body = '';
-                const icon = '/android-chrome-192x192.png'; 
+                
+                // --- AQUI ESTÁ A ALTERAÇÃO ---
+                // Define o ícone principal da notificação
+                const icon = '/logo-vesto.png'; 
 
                 if (pagamentos.length > 0) {
                     const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
@@ -169,7 +170,14 @@ module.exports = async function handler(req, res) {
                     return; 
                 }
 
-                const payload = JSON.stringify({ title, body, icon, url: '/?tab=tab-carteira', badge: '/favicon.ico' });
+                // O badge (sininho) continua sendo o favicon.ico para ícones monocromáticos da barra de status
+                const payload = JSON.stringify({ 
+                    title, 
+                    body, 
+                    icon, 
+                    url: '/?tab=tab-carteira', 
+                    badge: '/favicon.ico' 
+                });
 
                 const pushPromises = subs.map(sub => 
                     webpush.sendNotification(sub.subscription, payload).catch(err => {

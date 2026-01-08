@@ -16,6 +16,7 @@ const APP_FILES = [
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
   'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
+  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
   'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];

@@ -60,11 +60,9 @@ function formatCurrency(value) {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// Limpa strings duplicadas como "R$ 397,85 Bilhões R$ 397.845..."
 function cleanDoubledString(str) {
     if (!str) return "";
     const parts = str.split('R$');
-    // Pega o primeiro valor real (índice 1)
     if (parts.length > 2) {
         return 'R$' + parts[1].trim(); 
     }
@@ -99,7 +97,7 @@ async function scrapeFundamentos(ticker) {
             num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A',
 
-            // Ações (Novos Campos)
+            // Ações
             margem_liquida: 'N/A', margem_bruta: 'N/A', margem_ebit: 'N/A',
             divida_liquida_ebitda: 'N/A', divida_liquida_pl: 'N/A', ev_ebitda: 'N/A',
             payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A'
@@ -108,21 +106,18 @@ async function scrapeFundamentos(ticker) {
         let cotacao_atual = 0;
         let num_cotas = 0;
 
-        // Função interna de processamento
         const processPair = (tituloRaw, valorRaw, origem = 'table', indicatorAttr = null) => {
             const titulo = normalize(tituloRaw); 
             let valor = valorRaw.trim();
 
-            // CORREÇÃO: Valor de Mercado duplicado
             if (titulo.includes('mercado')) {
                 valor = cleanDoubledString(valor);
-                // Se já pegamos um valor válido (do Card), ignora o da tabela
                 if (dados.val_mercado !== 'N/A' && origem === 'table') return;
             }
 
             if (!valor) return;
 
-            // --- LÓGICA INFALÍVEL VIA DATA-INDICATOR (Se disponível) ---
+            // --- DATA-INDICATOR (Prioridade) ---
             if (indicatorAttr) {
                 const ind = indicatorAttr.toUpperCase();
                 if (ind === 'DIVIDA_LIQUIDA_EBITDA') { dados.divida_liquida_ebitda = valor; return; }
@@ -133,16 +128,16 @@ async function scrapeFundamentos(ticker) {
                 if (ind === 'MARGEM_LIQUIDA') { dados.margem_liquida = valor; return; }
             }
 
-            // --- LÓGICA DE TEXTO (FALLBACK) ---
-
-            // 1. CAMPOS GERAIS
+            // --- FALLBACK POR TEXTO ---
+            
+            // Geral
             if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
 
-            // 2. FIIS
+            // FIIs
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
             if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
@@ -156,41 +151,33 @@ async function scrapeFundamentos(ticker) {
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas')) dados.cotas_emitidas = valor;
             if (dados.publico_alvo === 'N/A' && titulo.includes('publico') && titulo.includes('alvo')) dados.publico_alvo = valor;
 
-            // 3. AÇÕES
+            // Ações
             if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
             if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
             if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
             
-            // Margens
+            // Margens & Payout
             if (titulo.includes('margem liquida')) dados.margem_liquida = valor;
             if (titulo.includes('margem bruta')) dados.margem_bruta = valor;
             if (titulo.includes('margem ebit')) dados.margem_ebit = valor;
-
-            // Payout
             if (titulo.includes('payout')) dados.payout = valor;
 
-            // EV/EBITDA
+            // EV e Dívidas
             if (titulo.includes('ev/ebitda')) dados.ev_ebitda = valor;
-
-            // Dívidas
             const tClean = titulo.replace(/[\s\/\.\-]/g, ''); 
             if (dados.divida_liquida_ebitda === 'N/A') {
                 if (tClean.includes('div') && tClean.includes('liq') && tClean.includes('ebitda')) dados.divida_liquida_ebitda = valor;
             }
             if (tClean.includes('div') && tClean.includes('liq') && tClean.includes('patrim')) dados.divida_liquida_pl = valor;
 
-            // CAGR (Crescimento)
+            // CAGR
             if (titulo.includes('cagr') && titulo.includes('receita')) dados.cagr_receita_5a = valor;
             if (titulo.includes('cagr') && titulo.includes('lucro')) dados.cagr_lucros_5a = valor;
 
-            // VPA
+            // VPA/Patrimônio
             if (dados.vp_cota === 'N/A') {
-                if (titulo === 'vpa' || titulo.replace(/\./g, '') === 'vpa' || titulo.includes('vp por cota')) {
-                    dados.vp_cota = valor;
-                }
+                if (titulo === 'vpa' || titulo.replace(/\./g, '') === 'vpa' || titulo.includes('vp por cota')) dados.vp_cota = valor;
             }
-
-            // Patrimônio (Fallback VPA)
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
@@ -207,48 +194,35 @@ async function scrapeFundamentos(ticker) {
             }
         };
 
-        // --- VARREDURA ---
-
-        // 1. CARDS DE DESTAQUE (Topo)
+        // --- EXECUÇÃO ---
         $('._card').each((i, el) => {
             const titulo = $(el).find('._card-header').text().trim();
             const valor = $(el).find('._card-body').text().trim();
             processPair(titulo, valor, 'card');
-
-            if (normalize(titulo).includes('cotacao')) {
-                cotacao_atual = parseValue(valor);
-            }
+            if (normalize(titulo).includes('cotacao')) cotacao_atual = parseValue(valor);
         });
 
-        // Fallback Cotação
         if (cotacao_atual === 0) {
-             const cotacaoEl = $('._card.cotacao ._card-body span').first();
-             if (cotacaoEl.length) cotacao_atual = parseValue(cotacaoEl.text());
+             const cEl = $('._card.cotacao ._card-body span').first();
+             if (cEl.length) cotacao_atual = parseValue(cEl.text());
         }
 
-        // 2. GRELHA DE INDICADORES (Divs .cell)
         $('.cell').each((i, el) => {
             let titulo = $(el).find('.name').text().trim();
             if (!titulo) titulo = $(el).children('span').first().text().trim();
-
             let valorEl = $(el).find('.value span').first();
             let valor = (valorEl.length > 0) ? valorEl.text().trim() : $(el).find('.value').text().trim();
-
             processPair(titulo, valor, 'cell');
         });
 
-        // 3. TABELAS (COM SUPORTE A DATA-INDICATOR)
         $('table tbody tr').each((i, row) => {
             const cols = $(row).find('td');
             if (cols.length >= 2) {
                 const indicatorAttr = $(cols[0]).find('[data-indicator]').attr('data-indicator');
-                const titulo = $(cols[0]).text();
-                const valor = $(cols[1]).text();
-                processPair(titulo, valor, 'table', indicatorAttr);
+                processPair($(cols[0]).text(), $(cols[1]).text(), 'table', indicatorAttr);
             }
         });
 
-        // Fallback final para Valor de Mercado
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -266,14 +240,10 @@ async function scrapeFundamentos(ticker) {
 
         return dados;
     } catch (error) {
-        console.error("Erro no scraper de fundamentos:", error.message);
-        return { dy: '-', pvp: '-', segmento: '-' };
+        console.error("Erro scraper:", error.message);
+        return { dy: '-', pvp: '-' };
     }
 }
-
-// ---------------------------------------------------------
-// PARTE 2: PROVENTOS -> STATUSINVEST (MANTIDO)
-// ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
     try {
@@ -300,18 +270,15 @@ async function scrapeAsset(ticker) {
                 if (parts.length !== 3) return null;
                 return `${parts[2]}-${parts[1]}-${parts[0]}`;
             };
-
             let labelTipo = 'REND'; 
             if (d.et === 1) labelTipo = 'DIV';
             if (d.et === 2) labelTipo = 'JCP';
-
             if (d.etd) {
                 const texto = d.etd.toUpperCase();
                 if (texto.includes('JURO')) labelTipo = 'JCP';
                 else if (texto.includes('DIVID')) labelTipo = 'DIV';
                 else if (texto.includes('TRIBUTADO')) labelTipo = 'REND_TRIB';
             }
-
             return {
                 dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
@@ -321,19 +288,13 @@ async function scrapeAsset(ticker) {
             };
         });
 
-        return dividendos
-            .filter(d => d.paymentDate !== null) 
-            .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        return dividendos.filter(d => d.paymentDate !== null).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     } catch (error) { 
         console.error(`Erro StatusInvest API ${ticker}:`, error.message);
         return []; 
     }
 }
-
-// ---------------------------------------------------------
-// HANDLER (API)
-// ---------------------------------------------------------
 
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -360,26 +321,18 @@ module.exports = async function handler(req, res) {
 
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
-
             const batches = chunkArray(payload.fiiList, 5);
             let finalResults = [];
-
             for (const batch of batches) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
                     const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
                     const limit = typeof item === 'string' ? defaultLimit : (item.limit || defaultLimit);
-
                     const history = await scrapeAsset(ticker);
-
-                    const recents = history
-                        .filter(h => h.paymentDate && h.value > 0)
-                        .slice(0, limit);
-
+                    const recents = history.filter(h => h.paymentDate && h.value > 0).slice(0, limit);
                     if (recents.length > 0) return recents.map(r => ({ symbol: ticker.toUpperCase(), ...r }));
                     return null;
                 });
-
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
                 if (batches.length > 1) await new Promise(r => setTimeout(r, 200)); 
@@ -406,7 +359,6 @@ module.exports = async function handler(req, res) {
         }
 
         return res.status(400).json({ error: "Modo desconhecido" });
-
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }

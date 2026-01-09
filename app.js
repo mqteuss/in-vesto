@@ -4359,16 +4359,14 @@ async function handleMostrarDetalhes(symbol) {
     detalhesLoading.classList.remove('hidden');
     detalhesPreco.innerHTML = '';
     detalhesAiProvento.innerHTML = ''; 
-    
-    // Habilita container de histórico para todos
     detalhesHistoricoContainer.classList.remove('hidden'); 
     
     // --- 1. ÍCONE E CABEÇALHO ---
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
     const ehFii = isFII(symbol);
+    const ehAcao = !ehFii;
     
-    // Fundo do ícone (Sólido, sem borda)
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
     
@@ -4389,22 +4387,16 @@ async function handleMostrarDetalhes(symbol) {
     detalhesNomeLongo.textContent = 'Carregando...';
     
     currentDetalhesSymbol = symbol;
-    currentDetalhesMeses = 3; 
-    currentDetalhesHistoricoJSON = null; 
     
-    // Reset Botões de Período
+    // Reset Botões
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
-        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
-            isActive 
-            ? 'bg-purple-600 text-white shadow-md active' 
-            : 'bg-[#151515] text-[#888888]'
-        }`;
+        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888]'}`;
     });
     
-    // --- 2. BUSCA DE DADOS ---
-    const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
+    // --- 2. DADOS ---
+    const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
     
@@ -4412,47 +4404,77 @@ async function handleMostrarDetalhes(symbol) {
         try {
             const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
             precoData = data.results?.[0];
-            const isAberto = isB3Open();
-            const duracao = isAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
-            
-            if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, duracao); 
-            else throw new Error(precoData?.error || 'Ativo não encontrado');
-        } catch (e) { 
-            precoData = null; 
-            showToast("Erro ao buscar preço."); 
-        }
+            if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
+        } catch (e) { precoData = null; }
     }
 
     let fundamentos = {};
     let nextProventoData = null;
-
     fetchHistoricoScraper(symbol); 
     
     try {
-        const [fundData, provData] = await Promise.all([
-            callScraperFundamentosAPI(symbol),
-            callScraperProximoProventoAPI(symbol)
-        ]);
+        const [fundData, provData] = await Promise.all([callScraperFundamentosAPI(symbol), callScraperProximoProventoAPI(symbol)]);
         fundamentos = fundData || {};
         nextProventoData = provData;
-    } catch (e) { console.error("Erro dados extras", e); }
+    } catch (e) { console.error(e); }
     
     detalhesLoading.classList.add('hidden');
 
     // --- 3. CONSTRUÇÃO DO HTML ---
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
-        
         const varPercent = precoData.regularMarketChangePercent || 0;
-        let variacaoCor = 'text-[#888888]';
-        let variacaoIcone = '';
-        const arrowUp = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>`;
-        const arrowDown = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mb-0.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>`;
+        let variacaoCor = varPercent > 0 ? 'text-green-500' : (varPercent < 0 ? 'text-red-500' : 'text-[#888888]');
+        const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
 
-        if (varPercent > 0) { variacaoCor = 'text-green-500'; variacaoIcone = arrowUp; } 
-        else if (varPercent < 0) { variacaoCor = 'text-red-500'; variacaoIcone = arrowDown; }
-        
-        // Posição do Usuário (Card Sólido)
+        // Prepara Dados
+        const dados = { 
+            pvp: fundamentos.pvp || '-', dy: fundamentos.dy || '-', val_mercado: fundamentos.val_mercado || '-', 
+            liquidez: fundamentos.liquidez || '-', variacao_12m: fundamentos.variacao_12m || '-', vp_cota: fundamentos.vp_cota || '-',
+            pl: fundamentos.pl || '-', roe: fundamentos.roe || '-', lpa: fundamentos.lpa || '-', margem_liquida: fundamentos.margem_liquida || '-',
+            segmento: fundamentos.segmento || '-', tipo_fundo: fundamentos.tipo_fundo || '-', vacancia: fundamentos.vacancia || '-', 
+            ultimo_rendimento: fundamentos.ultimo_rendimento || '-', patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
+            cnpj: fundamentos.cnpj || '-', num_cotistas: fundamentos.num_cotistas || '-', tipo_gestao: fundamentos.tipo_gestao || '-',
+            taxa_adm: fundamentos.taxa_adm || '-', mandato: fundamentos.mandato || '-', prazo_duracao: fundamentos.prazo_duracao || '-',
+            cotas_emitidas: fundamentos.cotas_emitidas || '-', divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-',
+            publico_alvo: fundamentos.publico_alvo || '-' // <--- NOVO
+        };
+
+        // --- CÁLCULO MAGIC NUMBER (FIIs) ---
+        let magicNumberHtml = '';
+        if (ehFii && dados.ultimo_rendimento !== '-' && dados.ultimo_rendimento !== 'N/A') {
+            try {
+                // Limpa string "R$ 0,80" -> 0.80
+                const rendStr = dados.ultimo_rendimento.replace('R$', '').replace('.', '').replace(',', '.').trim();
+                const rendimento = parseFloat(rendStr);
+                const precoAtual = precoData.regularMarketPrice;
+                
+                if (rendimento > 0 && precoAtual > 0) {
+                    const magicNumber = Math.ceil(precoAtual / rendimento);
+                    const custoMagic = magicNumber * precoAtual;
+                    
+                    magicNumberHtml = `
+                        <div class="details-group-card mt-3 mb-2 relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <svg class="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg>
+                            </div>
+                            <div class="flex justify-between items-center py-3">
+                                <div>
+                                    <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Magic Number</span>
+                                    <span class="text-xs text-[#888] font-medium block">Cotas para reinvestir</span>
+                                </div>
+                                <div class="text-right z-10">
+                                    <span class="text-2xl font-bold text-white tracking-tighter">${magicNumber}</span>
+                                    <span class="text-[10px] text-[#666] block font-medium">Investimento: ~${formatBRL(custoMagic)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch(e) { console.log('Erro calc magic number', e); }
+        }
+
+        // Posição do Usuário
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
@@ -4470,24 +4492,23 @@ async function handleMostrarDetalhes(symbol) {
                          <span class="text-xs text-gray-500 font-medium block">Quantidade</span>
                          <span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
 
-        // Próximo Provento (Card Sólido com destaque)
+        // Próximo Provento
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
-            const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
             const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
+            const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
+            
+            // Verifica se é futuro
             const hoje = new Date(); hoje.setHours(0,0,0,0);
             let isFuturo = false;
             if(nextProventoData.paymentDate) {
                 const parts = nextProventoData.paymentDate.split('-');
-                const pDate = new Date(parts[0], parts[1]-1, parts[2]);
-                if(pDate >= hoje) isFuturo = true;
+                if(new Date(parts[0], parts[1]-1, parts[2]) >= hoje) isFuturo = true;
             }
-            const tituloCard = isFuturo ? "Próximo Pagamento" : "Último Anúncio";
-            // Se for futuro: fundo verde bem escuro. Se passado: fundo padrão de card (#151515)
+            
             const bgClass = isFuturo ? "bg-[#0f291e]" : "bg-[#151515]"; 
             const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
             const valueClass = isFuturo ? "text-green-400" : "text-white";
@@ -4496,178 +4517,86 @@ async function handleMostrarDetalhes(symbol) {
                 <h4 class="details-category-title">Proventos</h4>
                 <div class="w-full p-4 rounded-[1.5rem] ${bgClass} flex flex-col gap-3">
                     <div class="flex justify-between items-center pb-2 border-b border-white/5">
-                        <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${tituloCard}</span>
+                        <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${isFuturo ? "Próximo Pagamento" : "Último Anúncio"}</span>
                         <span class="text-xl font-bold ${valueClass}">${formatBRL(nextProventoData.value)}</span>
                     </div>
                     <div class="flex justify-between text-xs pt-1">
-                        <div class="text-left">
-                            <span class="block text-[#666666] mb-0.5 font-medium">Data Com</span>
-                            <span class="text-[#e5e5e5] font-bold">${dataComFmt}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="block text-[#666666] mb-0.5 font-medium">Pagamento</span>
-                            <span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span>
-                        </div>
+                        <div class="text-left"><span class="block text-[#666] mb-0.5 font-medium">Data Com</span><span class="text-[#e5e5e5] font-bold">${dataComFmt}</span></div>
+                        <div class="text-right"><span class="block text-[#666] mb-0.5 font-medium">Pagamento</span><span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span></div>
                     </div>
-                </div>
-            `;
-        }
-
-        const dados = { 
-            pvp: fundamentos.pvp || '-', 
-            dy: fundamentos.dy || '-', 
-            val_mercado: fundamentos.val_mercado || '-', 
-            liquidez: fundamentos.liquidez || '-',
-            variacao_12m: fundamentos.variacao_12m || '-',
-            vp_cota: fundamentos.vp_cota || '-',
-            pl: fundamentos.pl || '-',
-            roe: fundamentos.roe || '-',
-            lpa: fundamentos.lpa || '-',
-            margem_liquida: fundamentos.margem_liquida || '-',
-            segmento: fundamentos.segmento || '-', 
-            tipo_fundo: fundamentos.tipo_fundo || '-', 
-            vacancia: fundamentos.vacancia || '-', 
-            ultimo_rendimento: fundamentos.ultimo_rendimento || '-', 
-            patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
-            cnpj: fundamentos.cnpj || '-', 
-            num_cotistas: fundamentos.num_cotistas || '-', 
-            tipo_gestao: fundamentos.tipo_gestao || '-',
-            taxa_adm: fundamentos.taxa_adm || '-',
-            mandato: fundamentos.mandato || '-',
-            prazo_duracao: fundamentos.prazo_duracao || '-',
-            cotas_emitidas: fundamentos.cotas_emitidas || '-',
-            divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-'
-        };
-        
-        const ehAcao = !isFII(symbol);
-
-        // --- GRID PRINCIPAL (3 Cards Sólidos) ---
-        let gridTopo = '';
-        if (ehAcao) {
-             gridTopo = `
-                <div class="details-highlight-card">
-                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/L</span>
-                    <span class="text-base font-bold text-white">${dados.pl}</span>
-                </div>
-                <div class="details-highlight-card">
-                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                    <span class="text-base font-bold text-white">${dados.pvp}</span>
-                </div>
-                <div class="details-highlight-card">
-                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                    <span class="text-base font-bold text-purple-400">${dados.dy}</span>
-                </div>`;
-        } else {
-             gridTopo = `
-                <div class="details-highlight-card">
-                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                    <span class="text-base font-bold text-purple-400">${dados.dy}</span>
-                </div>
-                <div class="details-highlight-card">
-                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                    <span class="text-base font-bold text-white">${dados.pvp}</span>
-                </div>
-                <div class="details-highlight-card">
-                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
-                    <span class="text-base font-bold text-green-400">${dados.ultimo_rendimento}</span>
                 </div>`;
         }
 
-        // Helper para renderizar linhas
-        const renderRow = (label, value) => `
-            <div class="details-row">
-                <span class="details-label">${label}</span>
-                <span class="details-value">${value}</span>
-            </div>
-        `;
+        // Grid Destaques
+        let gridTopo = ehAcao ? 
+            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/L</span><span class="text-base font-bold text-white">${dados.pl}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-purple-400">${dados.dy}</span></div>` :
+            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-purple-400">${dados.dy}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span><span class="text-base font-bold text-green-400">${dados.ultimo_rendimento}</span></div>`;
 
-        // --- LISTAS CATEGORIZADAS ---
-        let listasCategorizadasHtml = '';
+        const renderRow = (l, v) => `<div class="details-row"><span class="details-label">${l}</span><span class="details-value">${v}</span></div>`;
 
+        // Listas Categorizadas (Adicionado Magic Number e Público Alvo)
+        let listasHtml = '';
         if (ehAcao) {
-            // AÇÕES: Valuation, Eficiência, Geral
-            listasCategorizadasHtml = `
+            listasHtml = `
                 <h4 class="details-category-title">Valuation</h4>
                 <div class="details-group-card">
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${renderRow('VPA (VP/Cota)', dados.vp_cota)}
-                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                    ${renderRow('VPA', dados.vp_cota)}
+                    ${renderRow('Liquidez', dados.liquidez)}
                 </div>
-
                 <h4 class="details-category-title">Eficiência</h4>
                 <div class="details-group-card">
                     ${renderRow('ROE', dados.roe)}
                     ${renderRow('LPA', dados.lpa)}
                     ${renderRow('Margem Líquida', dados.margem_liquida)}
                     ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
-                </div>
-            `;
+                </div>`;
         } else {
-            // FIIs: Geral, Fundo, Gestão
-            listasCategorizadasHtml = `
-                <h4 class="details-category-title">Métricas</h4>
+            listasHtml = `
+                ${magicNumberHtml} <h4 class="details-category-title">Métricas</h4>
                 <div class="details-group-card">
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
-
                 <h4 class="details-category-title">Sobre o Fundo</h4>
                 <div class="details-group-card">
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Tipo', dados.tipo_fundo)}
+                    ${renderRow('Público Alvo', dados.publico_alvo)}
                     ${renderRow('Vacância', dados.vacancia)}
                     ${renderRow('Gestão', dados.tipo_gestao)}
-                    ${renderRow('Mandato', dados.mandato)}
                 </div>
-
                 <h4 class="details-category-title">Taxas & Infos</h4>
                 <div class="details-group-card">
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('Num. Cotistas', dados.num_cotistas)}
-                    ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}
-                </div>
-            `;
-        }
-
-        // Variação 12 Meses (Separado)
-        let corVar12m = 'text-[#888888]'; let icon12m = '';
-        if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
-            corVar12m = 'text-red-500'; icon12m = arrowDown;
-        } else if (dados.variacao_12m !== '0.00%' && dados.variacao_12m !== '-') {
-            corVar12m = 'text-green-500'; icon12m = arrowUp;
+                </div>`;
         }
 
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col">
-                
                 <div class="text-center pb-6 pt-4">
                     <h2 class="text-[3.5rem] font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
                     <span class="text-base font-bold ${variacaoCor} mt-2 flex items-center justify-center gap-1 tracking-tight">
-                        ${variacaoIcone}
-                        ${formatPercent(precoData.regularMarketChangePercent)} Hoje
+                        ${variacaoIcone} ${formatPercent(varPercent)} Hoje
                     </span>
                     <span class="text-xs font-medium text-[#444] mt-1 block tracking-wide">
-                        Variação 12m: <span class="${corVar12m}">${dados.variacao_12m}</span>
+                        Variação 12m: <span class="${dados.variacao_12m?.includes('-') ? 'text-red-500' : 'text-green-500'}">${dados.variacao_12m}</span>
                     </span>
                 </div>
-
                 ${userPosHtml}
-                
-                ${proximoProventoHtml} 
-
+                ${proximoProventoHtml}
                 <h4 class="details-category-title">Indicadores</h4>
-                <div class="grid grid-cols-3 gap-2 w-full mb-2">
-                    ${gridTopo}
-                </div>
-
-                ${listasCategorizadasHtml}
-
-            </div>
-        `;
-
+                <div class="grid grid-cols-3 gap-2 w-full mb-2">${gridTopo}</div>
+                ${listasHtml}
+            </div>`;
     } else {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }

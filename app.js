@@ -4352,9 +4352,6 @@ function handleAbrirModalEdicao(id) {
         });
     }
     
-// EM app.js - Substitua a função handleMostrarDetalhes completa:
-
-// Função para substituir a existente no app.js
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
@@ -4442,7 +4439,7 @@ async function handleMostrarDetalhes(symbol) {
         let variacaoCor = varPercent > 0 ? 'text-green-500' : (varPercent < 0 ? 'text-red-500' : 'text-[#888888]');
         const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
 
-        // Prepara Dados Completos
+        // Prepara Dados
         const dados = { 
             // Básicos
             pvp: fundamentos.pvp || '-', dy: fundamentos.dy || '-', val_mercado: fundamentos.val_mercado || '-', 
@@ -4615,7 +4612,7 @@ async function handleMostrarDetalhes(symbol) {
 
         const renderRow = (l, v) => `<div class="details-row"><span class="details-label">${l}</span><span class="details-value">${v}</span></div>`;
 
-        // Listas Categorizadas
+        // Listas Categorizadas (Com Payout incluso)
         let listasHtml = '';
         if (ehAcao) {
             listasHtml = `
@@ -4635,6 +4632,7 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Margem Bruta', dados.margem_bruta)}
                     ${renderRow('Margem EBIT', dados.margem_ebit)}
                     ${renderRow('Margem Líquida', dados.margem_liquida)}
+                    ${renderRow('Payout', dados.payout)}
                 </div>
 
                 <h4 class="details-category-title">Crescimento (5 Anos)</h4>

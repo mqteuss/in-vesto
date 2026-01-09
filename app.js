@@ -4354,6 +4354,7 @@ function handleAbrirModalEdicao(id) {
     
 // EM app.js - Substitua a função handleMostrarDetalhes completa:
 
+// Função para substituir a existente no app.js
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
@@ -4387,15 +4388,21 @@ async function handleMostrarDetalhes(symbol) {
     detalhesNomeLongo.textContent = 'Carregando...';
     
     currentDetalhesSymbol = symbol;
+    currentDetalhesMeses = 3; 
+    currentDetalhesHistoricoJSON = null; 
     
-    // Reset Botões
+    // Reset Botões de Período
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
-        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888]'}`;
+        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
+            isActive 
+            ? 'bg-purple-600 text-white shadow-md active' 
+            : 'bg-[#151515] text-[#888888]'
+        }`;
     });
     
-    // --- 2. DADOS ---
+    // --- 2. BUSCA DE DADOS ---
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
@@ -4404,19 +4411,27 @@ async function handleMostrarDetalhes(symbol) {
         try {
             const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
             precoData = data.results?.[0];
-            if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
-        } catch (e) { precoData = null; }
+            if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO); 
+            else throw new Error(precoData?.error || 'Ativo não encontrado');
+        } catch (e) { 
+            precoData = null; 
+            showToast("Erro ao buscar preço."); 
+        }
     }
 
     let fundamentos = {};
     let nextProventoData = null;
+
     fetchHistoricoScraper(symbol); 
     
     try {
-        const [fundData, provData] = await Promise.all([callScraperFundamentosAPI(symbol), callScraperProximoProventoAPI(symbol)]);
+        const [fundData, provData] = await Promise.all([
+            callScraperFundamentosAPI(symbol),
+            callScraperProximoProventoAPI(symbol)
+        ]);
         fundamentos = fundData || {};
         nextProventoData = provData;
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Erro dados extras", e); }
     
     detalhesLoading.classList.add('hidden');
 
@@ -4427,24 +4442,86 @@ async function handleMostrarDetalhes(symbol) {
         let variacaoCor = varPercent > 0 ? 'text-green-500' : (varPercent < 0 ? 'text-red-500' : 'text-[#888888]');
         const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
 
-        // Prepara Dados
+        // Prepara Dados Completos
         const dados = { 
+            // Básicos
             pvp: fundamentos.pvp || '-', dy: fundamentos.dy || '-', val_mercado: fundamentos.val_mercado || '-', 
             liquidez: fundamentos.liquidez || '-', variacao_12m: fundamentos.variacao_12m || '-', vp_cota: fundamentos.vp_cota || '-',
-            pl: fundamentos.pl || '-', roe: fundamentos.roe || '-', lpa: fundamentos.lpa || '-', margem_liquida: fundamentos.margem_liquida || '-',
+            // Ações
+            pl: fundamentos.pl || '-', roe: fundamentos.roe || '-', lpa: fundamentos.lpa || '-', 
+            margem_liquida: fundamentos.margem_liquida || '-', margem_bruta: fundamentos.margem_bruta || '-', margem_ebit: fundamentos.margem_ebit || '-',
+            divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-', divida_liquida_pl: fundamentos.divida_liquida_pl || '-',
+            ev_ebitda: fundamentos.ev_ebitda || '-', payout: fundamentos.payout || '-', 
+            cagr_receita: fundamentos.cagr_receita_5a || '-', cagr_lucros: fundamentos.cagr_lucros_5a || '-',
+            // FIIs
             segmento: fundamentos.segmento || '-', tipo_fundo: fundamentos.tipo_fundo || '-', vacancia: fundamentos.vacancia || '-', 
             ultimo_rendimento: fundamentos.ultimo_rendimento || '-', patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
             cnpj: fundamentos.cnpj || '-', num_cotistas: fundamentos.num_cotistas || '-', tipo_gestao: fundamentos.tipo_gestao || '-',
-            taxa_adm: fundamentos.taxa_adm || '-', mandato: fundamentos.mandato || '-', prazo_duracao: fundamentos.prazo_duracao || '-',
-            cotas_emitidas: fundamentos.cotas_emitidas || '-', divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-',
-            publico_alvo: fundamentos.publico_alvo || '-' // <--- NOVO
+            taxa_adm: fundamentos.taxa_adm || '-', mandato: fundamentos.mandato || '-', publico_alvo: fundamentos.publico_alvo || '-',
+            cotas_emitidas: fundamentos.cotas_emitidas || '-'
         };
+
+        // --- CÁLCULO DE VALUATION (AÇÕES) ---
+        let grahamHtml = '';
+        let bazinHtml = '';
+        
+        if (ehAcao) {
+            const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+            const lpa = parseVal(dados.lpa);
+            const vpa = parseVal(dados.vp_cota);
+            const dyVal = parseVal(dados.dy);
+            const preco = precoData.regularMarketPrice;
+
+            // 1. Graham (Raiz de 22.5 * LPA * VPA)
+            if (lpa > 0 && vpa > 0) {
+                const vi = Math.sqrt(22.5 * lpa * vpa);
+                const margemSeguranca = ((vi - preco) / preco) * 100;
+                const corGraham = margemSeguranca > 0 ? 'text-green-400' : 'text-red-400';
+                
+                grahamHtml = `
+                    <div class="details-group-card mt-3 relative overflow-hidden">
+                        <div class="flex justify-between items-center py-3 px-1">
+                            <div>
+                                <span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Graham</span>
+                                <span class="text-xs text-[#888] font-medium block">Preço Justo</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xl font-bold text-white tracking-tighter">${formatBRL(vi)}</span>
+                                <span class="text-[10px] ${corGraham} block font-medium">Upside: ${margemSeguranca.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 2. Bazin (Preço Teto 6% -> (Preço * DY%) / 0.06)
+            if (dyVal > 0) {
+                const dividendosAnuais = preco * (dyVal / 100);
+                const bazinPrice = dividendosAnuais / 0.06;
+                const upsideBazin = ((bazinPrice - preco) / preco) * 100;
+                const corBazin = upsideBazin > 0 ? 'text-green-400' : 'text-red-400';
+
+                bazinHtml = `
+                    <div class="details-group-card mt-2 mb-2 relative overflow-hidden">
+                        <div class="flex justify-between items-center py-3 px-1">
+                            <div>
+                                <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Bazin</span>
+                                <span class="text-xs text-[#888] font-medium block">Preço Teto (6%)</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xl font-bold text-white tracking-tighter">${formatBRL(bazinPrice)}</span>
+                                <span class="text-[10px] ${corBazin} block font-medium">Upside: ${upsideBazin.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
 
         // --- CÁLCULO MAGIC NUMBER (FIIs) ---
         let magicNumberHtml = '';
         if (ehFii && dados.ultimo_rendimento !== '-' && dados.ultimo_rendimento !== 'N/A') {
             try {
-                // Limpa string "R$ 0,80" -> 0.80
                 const rendStr = dados.ultimo_rendimento.replace('R$', '').replace('.', '').replace(',', '.').trim();
                 const rendimento = parseFloat(rendStr);
                 const precoAtual = precoData.regularMarketPrice;
@@ -4538,26 +4615,45 @@ async function handleMostrarDetalhes(symbol) {
 
         const renderRow = (l, v) => `<div class="details-row"><span class="details-label">${l}</span><span class="details-value">${v}</span></div>`;
 
-        // Listas Categorizadas (Adicionado Magic Number e Público Alvo)
+        // Listas Categorizadas
         let listasHtml = '';
         if (ehAcao) {
             listasHtml = `
+                ${grahamHtml}
+                ${bazinHtml}
                 <h4 class="details-category-title">Valuation</h4>
                 <div class="details-group-card">
+                    ${renderRow('P/L', dados.pl)}
+                    ${renderRow('P/VP', dados.pvp)}
+                    ${renderRow('EV / EBITDA', dados.ev_ebitda)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${renderRow('VPA', dados.vp_cota)}
-                    ${renderRow('Liquidez', dados.liquidez)}
                 </div>
-                <h4 class="details-category-title">Eficiência</h4>
+
+                <h4 class="details-category-title">Rentabilidade & Eficiência</h4>
                 <div class="details-group-card">
                     ${renderRow('ROE', dados.roe)}
-                    ${renderRow('LPA', dados.lpa)}
+                    ${renderRow('Margem Bruta', dados.margem_bruta)}
+                    ${renderRow('Margem EBIT', dados.margem_ebit)}
                     ${renderRow('Margem Líquida', dados.margem_liquida)}
+                </div>
+
+                <h4 class="details-category-title">Crescimento (5 Anos)</h4>
+                <div class="details-group-card">
+                    ${renderRow('CAGR Receitas', dados.cagr_receita)}
+                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
+                </div>
+
+                <h4 class="details-category-title">Saúde Financeira</h4>
+                <div class="details-group-card">
+                    ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
                     ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
-                </div>`;
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                </div>
+            `;
         } else {
             listasHtml = `
-                ${magicNumberHtml} <h4 class="details-category-title">Métricas</h4>
+                ${magicNumberHtml}
+                <h4 class="details-category-title">Métricas</h4>
                 <div class="details-group-card">
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
@@ -4597,6 +4693,7 @@ async function handleMostrarDetalhes(symbol) {
                 <div class="grid grid-cols-3 gap-2 w-full mb-2">${gridTopo}</div>
                 ${listasHtml}
             </div>`;
+
     } else {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }

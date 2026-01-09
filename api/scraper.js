@@ -64,7 +64,7 @@ function formatCurrency(value) {
 function cleanDoubledString(str) {
     if (!str) return "";
     const parts = str.split('R$');
-    // Pega o primeiro valor real (índice 1, pois o índice 0 é vazio antes do primeiro R$)
+    // Pega o primeiro valor real (índice 1)
     if (parts.length > 2) {
         return 'R$' + parts[1].trim(); 
     }
@@ -72,7 +72,7 @@ function cleanDoubledString(str) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1: FUNDAMENTOS -> INVESTIDOR10 (FINAL v3)
+// PARTE 1: FUNDAMENTOS -> INVESTIDOR10
 // ---------------------------------------------------------
 
 async function scrapeFundamentos(ticker) {
@@ -89,12 +89,20 @@ async function scrapeFundamentos(ticker) {
         const $ = cheerio.load(html);
 
         let dados = {
-            dy: 'N/A', pvp: 'N/A', segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A',
-            vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
-            patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
-            cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
-            taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A', // <--- NOVO CAMPO ADICIONADO
-            pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', divida_liquida_ebitda: 'N/A'
+            // Campos Comuns
+            dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
+            val_mercado: 'N/A', liquidez: 'N/A', variacao_12m: 'N/A',
+
+            // FIIs
+            segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A', vacancia: 'N/A',
+            patrimonio_liquido: 'N/A', ultimo_rendimento: 'N/A', cnpj: 'N/A',
+            num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A',
+
+            // Ações (Novos Campos)
+            margem_liquida: 'N/A', margem_bruta: 'N/A', margem_ebit: 'N/A',
+            divida_liquida_ebitda: 'N/A', divida_liquida_pl: 'N/A', ev_ebitda: 'N/A',
+            payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A'
         };
 
         let cotacao_atual = 0;
@@ -108,7 +116,7 @@ async function scrapeFundamentos(ticker) {
             // CORREÇÃO: Valor de Mercado duplicado
             if (titulo.includes('mercado')) {
                 valor = cleanDoubledString(valor);
-                // Se já pegamos um valor válido (do Card), ignora o da tabela para evitar sobrescrita ruim
+                // Se já pegamos um valor válido (do Card), ignora o da tabela
                 if (dados.val_mercado !== 'N/A' && origem === 'table') return;
             }
 
@@ -128,9 +136,7 @@ async function scrapeFundamentos(ticker) {
             // --- LÓGICA DE TEXTO (FALLBACK) ---
 
             // 1. CAMPOS GERAIS
-            if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) {
-                dados.dy = valor;
-            }
+            if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
@@ -148,25 +154,34 @@ async function scrapeFundamentos(ticker) {
             if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas')) dados.cotas_emitidas = valor;
-            
-            // --- NOVA LÓGICA: PÚBLICO ALVO ---
-            if (dados.publico_alvo === 'N/A' && titulo.includes('publico') && titulo.includes('alvo')) {
-                dados.publico_alvo = valor;
-            }
+            if (dados.publico_alvo === 'N/A' && titulo.includes('publico') && titulo.includes('alvo')) dados.publico_alvo = valor;
 
             // 3. AÇÕES
             if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
             if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
             if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
-            if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
+            
+            // Margens
+            if (titulo.includes('margem liquida')) dados.margem_liquida = valor;
+            if (titulo.includes('margem bruta')) dados.margem_bruta = valor;
+            if (titulo.includes('margem ebit')) dados.margem_ebit = valor;
 
-            // [CORREÇÃO: Div. Líq / EBITDA]
+            // Payout
+            if (titulo.includes('payout')) dados.payout = valor;
+
+            // EV/EBITDA
+            if (titulo.includes('ev/ebitda')) dados.ev_ebitda = valor;
+
+            // Dívidas
+            const tClean = titulo.replace(/[\s\/\.\-]/g, ''); 
             if (dados.divida_liquida_ebitda === 'N/A') {
-                const tituloClean = titulo.replace(/[\s\/\.\-]/g, ''); 
-                if (tituloClean.includes('div') && tituloClean.includes('liq') && tituloClean.includes('ebitda')) {
-                    dados.divida_liquida_ebitda = valor;
-                }
+                if (tClean.includes('div') && tClean.includes('liq') && tClean.includes('ebitda')) dados.divida_liquida_ebitda = valor;
             }
+            if (tClean.includes('div') && tClean.includes('liq') && tClean.includes('patrim')) dados.divida_liquida_pl = valor;
+
+            // CAGR (Crescimento)
+            if (titulo.includes('cagr') && titulo.includes('receita')) dados.cagr_receita_5a = valor;
+            if (titulo.includes('cagr') && titulo.includes('lucro')) dados.cagr_lucros_5a = valor;
 
             // VPA
             if (dados.vp_cota === 'N/A') {
@@ -175,7 +190,7 @@ async function scrapeFundamentos(ticker) {
                 }
             }
 
-            // Patrimônio
+            // Patrimônio (Fallback VPA)
             if (titulo.includes('patrimonial') || titulo.includes('patrimonio')) {
                 const valorNumerico = parseValue(valor);
                 const textoLower = valor.toLowerCase();
@@ -226,12 +241,9 @@ async function scrapeFundamentos(ticker) {
         $('table tbody tr').each((i, row) => {
             const cols = $(row).find('td');
             if (cols.length >= 2) {
-                // Tenta extrair o "data-indicator" da tag <a> dentro da primeira célula
                 const indicatorAttr = $(cols[0]).find('[data-indicator]').attr('data-indicator');
-
                 const titulo = $(cols[0]).text();
                 const valor = $(cols[1]).text();
-
                 processPair(titulo, valor, 'table', indicatorAttr);
             }
         });

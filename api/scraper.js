@@ -93,7 +93,7 @@ async function scrapeFundamentos(ticker) {
             vacancia: 'N/A', vp_cota: 'N/A', liquidez: 'N/A', val_mercado: 'N/A',
             patrimonio_liquido: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
             cnpj: 'N/A', num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
-            taxa_adm: 'N/A', cotas_emitidas: 'N/A',
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A', // <--- NOVO CAMPO ADICIONADO
             pl: 'N/A', roe: 'N/A', lpa: 'N/A', margem_liquida: 'N/A', divida_liquida_ebitda: 'N/A'
         };
 
@@ -123,7 +123,6 @@ async function scrapeFundamentos(ticker) {
                 if (ind === 'P_VP') { dados.pvp = valor; return; }
                 if (ind === 'ROE') { dados.roe = valor; return; }
                 if (ind === 'MARGEM_LIQUIDA') { dados.margem_liquida = valor; return; }
-                // Pode adicionar outros se descobrir os códigos, mas o fallback abaixo resolve o resto
             }
 
             // --- LÓGICA DE TEXTO (FALLBACK) ---
@@ -149,6 +148,11 @@ async function scrapeFundamentos(ticker) {
             if (dados.prazo_duracao === 'N/A' && titulo.includes('prazo')) dados.prazo_duracao = valor;
             if (dados.taxa_adm === 'N/A' && titulo.includes('taxa') && titulo.includes('administracao')) dados.taxa_adm = valor;
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas')) dados.cotas_emitidas = valor;
+            
+            // --- NOVA LÓGICA: PÚBLICO ALVO ---
+            if (dados.publico_alvo === 'N/A' && titulo.includes('publico') && titulo.includes('alvo')) {
+                dados.publico_alvo = valor;
+            }
 
             // 3. AÇÕES
             if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
@@ -156,11 +160,9 @@ async function scrapeFundamentos(ticker) {
             if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
             if (dados.margem_liquida === 'N/A' && titulo.includes('margem liquida')) dados.margem_liquida = valor;
 
-            // [CORREÇÃO FINAL: Div. Líq / EBITDA]
-            // Se não pegou pelo data-indicator, tenta pelo texto com regex flexível (pega "Líq", "Líquida", com ou sem ponto)
+            // [CORREÇÃO: Div. Líq / EBITDA]
             if (dados.divida_liquida_ebitda === 'N/A') {
                 const tituloClean = titulo.replace(/[\s\/\.\-]/g, ''); 
-                // Ex: "div.líq./ebitda" -> "divliqebitda"
                 if (tituloClean.includes('div') && tituloClean.includes('liq') && tituloClean.includes('ebitda')) {
                     dados.divida_liquida_ebitda = valor;
                 }

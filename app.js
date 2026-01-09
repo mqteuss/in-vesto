@@ -6342,33 +6342,33 @@ window.mostrarDyCarteira = async function() {
         const dyFmt = dyVal.toFixed(2) + '%';
         const valFmt = formatBRL(totalVal);
         
-        // --- CORES DINÂMICAS (Apenas Texto) ---
+        // --- CORES DINÂMICAS ---
         let corTitulo = '';
         let textoAvaliacao = '';
-        let corTextoBadge = ''; // Cor do texto da avaliação
+        let corTextoBadge = '';
         
         if (dyVal < 6) {
             corTitulo = 'text-red-500';
             textoAvaliacao = 'Baixo';
-            corTextoBadge = '#ef4444'; // Vermelho
+            corTextoBadge = '#ef4444';
         } else if (dyVal < 10) {
-            corTitulo = 'text-yellow-400'; // Amarelo mais legível
+            corTitulo = 'text-yellow-400';
             textoAvaliacao = 'Bom';
-            corTextoBadge = '#facc15'; // Amarelo
+            corTextoBadge = '#facc15';
         } else {
             corTitulo = 'text-green-500';
             textoAvaliacao = 'Excelente';
-            corTextoBadge = '#22c55e'; // Verde
+            corTextoBadge = '#22c55e';
         }
 
-        // --- HTML POLIDO (Usa as classes padrão do style.css) ---
+        // --- HTML COMPACTO ---
         const mensagemHtml = `
-            <div class="flex flex-col items-center w-full pt-2">
-                <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-4 block">
+            <div class="flex flex-col items-center w-full pt-1">
+                <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">
                     Dividend Yield (12m)
                 </span>
                 
-                <div class="text-[4rem] font-bold ${corTitulo} tracking-tighter leading-none mb-8 drop-shadow-sm">
+                <div class="text-5xl font-bold ${corTitulo} tracking-tighter leading-none mb-5 drop-shadow-sm">
                     ${dyFmt}
                 </div>
 
@@ -6393,7 +6393,7 @@ window.mostrarDyCarteira = async function() {
         const btnOk = document.getElementById('custom-modal-ok');
         const btnCancel = document.getElementById('custom-modal-cancel');
 
-        if(modalTitle) modalTitle.textContent = 'Performance da Carteira';
+        if(modalTitle) modalTitle.textContent = 'Performance'; // Título mais curto também
         
         if(modalMessage) {
             modalMessage.innerHTML = mensagemHtml;
@@ -6409,7 +6409,7 @@ window.mostrarDyCarteira = async function() {
             
             btnOk.innerText = 'Fechar';
             
-            // Botão menor e mais discreto
+            // Botão compacto
             btnOk.className = 'py-2 px-6 bg-[#1C1C1E] border border-[#2C2C2E] text-white text-xs font-bold rounded-full shadow-sm active:scale-95 transition-transform hover:bg-[#252525]';
 
             btnOk.onclick = function() {
@@ -6418,7 +6418,6 @@ window.mostrarDyCarteira = async function() {
                     modal.classList.remove('visible');
                     modalContent.classList.remove('modal-out');
                     
-                    // Restaura estado original do modal
                     if(btnCancel) btnCancel.style.display = 'block';
                     btnOk.innerText = oldText;
                     btnOk.onclick = oldOnClick;

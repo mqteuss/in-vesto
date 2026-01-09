@@ -4352,6 +4352,8 @@ function handleAbrirModalEdicao(id) {
         });
     }
     
+// EM app.js - Substitua a função handleMostrarDetalhes completa:
+
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
@@ -4361,15 +4363,13 @@ async function handleMostrarDetalhes(symbol) {
     // Habilita container de histórico para todos
     detalhesHistoricoContainer.classList.remove('hidden'); 
     
-    // --- 1. INJEÇÃO DO ÍCONE COM LÓGICA OFICIAL ---
+    // --- 1. ÍCONE E CABEÇALHO ---
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
-    
-    // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
     const ehFii = isFII(symbol);
+    
+    // Fundo do ícone (Sólido, sem borda)
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
-    // ------------------------------------------
-
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
     
     const iconHtml = !ehFii 
@@ -4379,7 +4379,7 @@ async function handleMostrarDetalhes(symbol) {
     
     if (iconContainer) {
         iconContainer.innerHTML = `
-            <div class="w-12 h-12 rounded-2xl ${bgIcone} border border-neutral-800 flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+            <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                 ${iconHtml}
             </div>
         `;
@@ -4392,17 +4392,18 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // --- 2. RESET BOTÕES ---
+    // Reset Botões de Período
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
-        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
+        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
             isActive 
-            ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
-            : 'bg-black border-[#2C2C2E] text-[#888888] hover:text-white hover:border-[#444]'
+            ? 'bg-purple-600 text-white shadow-md active' 
+            : 'bg-[#151515] text-[#888888]'
         }`;
     });
     
+    // --- 2. BUSCA DE DADOS ---
     const tickerParaApi = isFII(symbol) ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
@@ -4425,7 +4426,6 @@ async function handleMostrarDetalhes(symbol) {
     let fundamentos = {};
     let nextProventoData = null;
 
-    // Busca dados extras (Histórico, Fundamentos e Próx Provento)
     fetchHistoricoScraper(symbol); 
     
     try {
@@ -4439,6 +4439,7 @@ async function handleMostrarDetalhes(symbol) {
     
     detalhesLoading.classList.add('hidden');
 
+    // --- 3. CONSTRUÇÃO DO HTML ---
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         
@@ -4451,24 +4452,29 @@ async function handleMostrarDetalhes(symbol) {
         if (varPercent > 0) { variacaoCor = 'text-green-500'; variacaoIcone = arrowUp; } 
         else if (varPercent < 0) { variacaoCor = 'text-red-500'; variacaoIcone = arrowDown; }
         
-        // Posição do Usuário
+        // Posição do Usuário (Card Sólido)
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
             userPosHtml = `
-                <div class="w-full p-4 bg-black border border-[#2C2C2E] rounded-2xl flex justify-between items-center shadow-sm">
-                    <div class="text-left">
-                        <span class="text-[10px] text-[#666666] uppercase tracking-widest font-bold">Sua Posição</span>
+                <h4 class="details-category-title">Sua Posição</h4>
+                <div class="details-group-card flex justify-between items-center py-4 px-5">
+                    <div>
+                        <span class="text-xs text-gray-500 font-medium block">Total Investido</span>
                         <div class="flex items-baseline gap-2 mt-0.5">
                             <p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p>
-                            <span class="text-xs text-[#888888] font-medium">(${ativoCarteira.quantity} cotas)</span>
                         </div>
+                    </div>
+                    <div class="text-right">
+                         <span class="text-xs text-gray-500 font-medium block">Quantidade</span>
+                         <span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span>
                     </div>
                 </div>
             `;
         }
 
+        // Próximo Provento (Card Sólido com destaque)
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
@@ -4481,44 +4487,43 @@ async function handleMostrarDetalhes(symbol) {
                 if(pDate >= hoje) isFuturo = true;
             }
             const tituloCard = isFuturo ? "Próximo Pagamento" : "Último Anúncio";
-            const borderClass = isFuturo ? "border-green-500/30 bg-green-900/10" : "border-[#2C2C2E] bg-black";
-            const textClass = isFuturo ? "text-green-400" : "text-[#666666]";
+            // Se for futuro: fundo verde bem escuro. Se passado: fundo padrão de card (#151515)
+            const bgClass = isFuturo ? "bg-[#0f291e]" : "bg-[#151515]"; 
+            const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
+            const valueClass = isFuturo ? "text-green-400" : "text-white";
 
             proximoProventoHtml = `
-                <div class="w-full p-3 rounded-2xl border ${borderClass} flex flex-col gap-2 shadow-sm">
-                    <div class="flex justify-between items-center border-b border-[#2C2C2E] pb-2 mb-1">
+                <h4 class="details-category-title">Proventos</h4>
+                <div class="w-full p-4 rounded-[1.5rem] ${bgClass} flex flex-col gap-3">
+                    <div class="flex justify-between items-center pb-2 border-b border-white/5">
                         <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${tituloCard}</span>
-                        <span class="text-lg font-bold text-white">${formatBRL(nextProventoData.value)}</span>
+                        <span class="text-xl font-bold ${valueClass}">${formatBRL(nextProventoData.value)}</span>
                     </div>
-                    <div class="flex justify-between text-xs">
-                        <div class="text-center">
-                            <span class="block text-[#666666] mb-0.5">Data Com</span>
-                            <span class="text-[#cccccc] font-medium">${dataComFmt}</span>
+                    <div class="flex justify-between text-xs pt-1">
+                        <div class="text-left">
+                            <span class="block text-[#666666] mb-0.5 font-medium">Data Com</span>
+                            <span class="text-[#e5e5e5] font-bold">${dataComFmt}</span>
                         </div>
-                        <div class="text-center">
-                            <span class="block text-[#666666] mb-0.5">Pagamento</span>
-                            <span class="text-[#cccccc] font-medium">${dataPagFmt}</span>
+                        <div class="text-right">
+                            <span class="block text-[#666666] mb-0.5 font-medium">Pagamento</span>
+                            <span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span>
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        // Dados Consolidados
         const dados = { 
-            // Comuns
             pvp: fundamentos.pvp || '-', 
             dy: fundamentos.dy || '-', 
             val_mercado: fundamentos.val_mercado || '-', 
             liquidez: fundamentos.liquidez || '-',
             variacao_12m: fundamentos.variacao_12m || '-',
             vp_cota: fundamentos.vp_cota || '-',
-            // Ações
             pl: fundamentos.pl || '-',
             roe: fundamentos.roe || '-',
             lpa: fundamentos.lpa || '-',
             margem_liquida: fundamentos.margem_liquida || '-',
-            // FIIs
             segmento: fundamentos.segmento || '-', 
             tipo_fundo: fundamentos.tipo_fundo || '-', 
             vacancia: fundamentos.vacancia || '-', 
@@ -4530,44 +4535,104 @@ async function handleMostrarDetalhes(symbol) {
             taxa_adm: fundamentos.taxa_adm || '-',
             mandato: fundamentos.mandato || '-',
             prazo_duracao: fundamentos.prazo_duracao || '-',
-            cotas_emitidas: fundamentos.cotas_emitidas || '-'
+            cotas_emitidas: fundamentos.cotas_emitidas || '-',
+            divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-'
         };
         
         const ehAcao = !isFII(symbol);
 
-        // --- GRID DO TOPO (3 Cards) ---
+        // --- GRID PRINCIPAL (3 Cards Sólidos) ---
         let gridTopo = '';
         if (ehAcao) {
              gridTopo = `
-                <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                    <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/L</span>
-                    <span class="text-lg font-bold text-white">${dados.pl}</span>
+                <div class="details-highlight-card">
+                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/L</span>
+                    <span class="text-base font-bold text-white">${dados.pl}</span>
                 </div>
-                <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                    <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                    <span class="text-lg font-bold text-white">${dados.pvp}</span>
+                <div class="details-highlight-card">
+                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
+                    <span class="text-base font-bold text-white">${dados.pvp}</span>
                 </div>
-                <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                    <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                    <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
+                <div class="details-highlight-card">
+                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
+                    <span class="text-base font-bold text-purple-400">${dados.dy}</span>
                 </div>`;
         } else {
              gridTopo = `
-                <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                    <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
-                    <span class="text-lg font-bold text-purple-400">${dados.dy}</span>
+                <div class="details-highlight-card">
+                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">DY (12m)</span>
+                    <span class="text-base font-bold text-purple-400">${dados.dy}</span>
                 </div>
-                <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                    <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
-                    <span class="text-lg font-bold text-white">${dados.pvp}</span>
+                <div class="details-highlight-card">
+                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">P/VP</span>
+                    <span class="text-base font-bold text-white">${dados.pvp}</span>
                 </div>
-                <div class="p-3 bg-black border border-[#2C2C2E] rounded-2xl flex flex-col justify-center items-center shadow-sm">
-                    <span class="text-[10px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
-                    <span class="text-lg font-bold text-green-400">${dados.ultimo_rendimento}</span>
+                <div class="details-highlight-card">
+                    <span class="text-[9px] text-[#666666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span>
+                    <span class="text-base font-bold text-green-400">${dados.ultimo_rendimento}</span>
                 </div>`;
         }
 
-        // Seta de Variação
+        // Helper para renderizar linhas
+        const renderRow = (label, value) => `
+            <div class="details-row">
+                <span class="details-label">${label}</span>
+                <span class="details-value">${value}</span>
+            </div>
+        `;
+
+        // --- LISTAS CATEGORIZADAS ---
+        let listasCategorizadasHtml = '';
+
+        if (ehAcao) {
+            // AÇÕES: Valuation, Eficiência, Geral
+            listasCategorizadasHtml = `
+                <h4 class="details-category-title">Valuation</h4>
+                <div class="details-group-card">
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                    ${renderRow('VPA (VP/Cota)', dados.vp_cota)}
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                </div>
+
+                <h4 class="details-category-title">Eficiência</h4>
+                <div class="details-group-card">
+                    ${renderRow('ROE', dados.roe)}
+                    ${renderRow('LPA', dados.lpa)}
+                    ${renderRow('Margem Líquida', dados.margem_liquida)}
+                    ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
+                </div>
+            `;
+        } else {
+            // FIIs: Geral, Fundo, Gestão
+            listasCategorizadasHtml = `
+                <h4 class="details-category-title">Métricas</h4>
+                <div class="details-group-card">
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                    ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
+                    ${renderRow('VP por Cota', dados.vp_cota)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                </div>
+
+                <h4 class="details-category-title">Sobre o Fundo</h4>
+                <div class="details-group-card">
+                    ${renderRow('Segmento', dados.segmento)}
+                    ${renderRow('Tipo', dados.tipo_fundo)}
+                    ${renderRow('Vacância', dados.vacancia)}
+                    ${renderRow('Gestão', dados.tipo_gestao)}
+                    ${renderRow('Mandato', dados.mandato)}
+                </div>
+
+                <h4 class="details-category-title">Taxas & Infos</h4>
+                <div class="details-group-card">
+                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
+                    ${renderRow('Num. Cotistas', dados.num_cotistas)}
+                    ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
+                    ${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}
+                </div>
+            `;
+        }
+
+        // Variação 12 Meses (Separado)
         let corVar12m = 'text-[#888888]'; let icon12m = '';
         if (dados.variacao_12m && dados.variacao_12m !== '-' && dados.variacao_12m.includes('-')) {
             corVar12m = 'text-red-500'; icon12m = arrowDown;
@@ -4575,55 +4640,17 @@ async function handleMostrarDetalhes(symbol) {
             corVar12m = 'text-green-500'; icon12m = arrowUp;
         }
 
-        const renderRow = (label, value) => `
-            <div class="flex justify-between items-center py-3.5 border-b border-[#2C2C2E] last:border-0">
-                <span class="text-sm text-[#888888] font-medium">${label}</span>
-                <span class="text-sm font-semibold text-[#e5e5e5] text-right max-w-[60%] truncate">${value}</span>
-            </div>
-        `;
-
-        // --- LISTA DE DETALHES ---
-        let detalhesListHtml = '';
-        if (ehAcao) {
-            detalhesListHtml = `
-                ${renderRow('VPA (VP/Cota)', dados.vp_cota)}
-                ${renderRow('ROE', dados.roe)}
-                ${renderRow('LPA', dados.lpa)}
-                ${renderRow('Margem Líquida', dados.margem_liquida)}
-                ${renderRow('Div. Líq / EBITDA', dados.divida_liquida_ebitda || '-')}
-                ${renderRow('Liquidez Diária', dados.liquidez)}
-                ${renderRow('Valor de Mercado', dados.val_mercado)}
-            `;
-        } else {
-            detalhesListHtml = `
-                ${renderRow('Liquidez Diária', dados.liquidez)}
-                ${renderRow('Patrimônio Líquido', dados.patrimonio_liquido)}
-                ${renderRow('VP por Cota', dados.vp_cota)}
-                ${renderRow('Valor de Mercado', dados.val_mercado)}
-                ${renderRow('Vacância', dados.vacancia)}
-                ${renderRow('Tipo de Fundo', dados.tipo_fundo)}
-                ${renderRow('Segmento', dados.segmento)}
-                ${renderRow('Mandato', dados.mandato)}
-                ${renderRow('Gestão', dados.tipo_gestao)}
-                ${renderRow('Prazo', dados.prazo_duracao)}
-                ${renderRow('Taxa Adm.', dados.taxa_adm)}
-                ${renderRow('Cotistas', dados.num_cotistas)}
-                ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
-                <div class="flex justify-between items-center py-3.5 border-b border-[#2C2C2E]">
-                    <span class="text-sm text-[#888888] font-medium">CNPJ</span>
-                    <span class="text-xs font-mono text-[#666666] select-all bg-[#1A1A1A] px-2 py-1 rounded truncate max-w-[150px] text-right border border-[#2C2C2E]">${dados.cnpj}</span>
-                </div>
-            `;
-        }
-
         detalhesPreco.innerHTML = `
-            <div class="col-span-12 w-full flex flex-col gap-3">
+            <div class="col-span-12 w-full flex flex-col">
                 
-                <div class="text-center pb-4 pt-2">
-                    <h2 class="text-5xl font-bold text-white tracking-tighter">${formatBRL(precoData.regularMarketPrice)}</h2>
-                    <span class="text-lg font-bold ${variacaoCor} mt-1 flex items-center justify-center gap-0.5 tracking-tight">
+                <div class="text-center pb-6 pt-4">
+                    <h2 class="text-[3.5rem] font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
+                    <span class="text-base font-bold ${variacaoCor} mt-2 flex items-center justify-center gap-1 tracking-tight">
                         ${variacaoIcone}
                         ${formatPercent(precoData.regularMarketChangePercent)} Hoje
+                    </span>
+                    <span class="text-xs font-medium text-[#444] mt-1 block tracking-wide">
+                        Variação 12m: <span class="${corVar12m}">${dados.variacao_12m}</span>
                     </span>
                 </div>
 
@@ -4631,19 +4658,13 @@ async function handleMostrarDetalhes(symbol) {
                 
                 ${proximoProventoHtml} 
 
-                <div class="grid grid-cols-3 gap-3 w-full">
+                <h4 class="details-category-title">Indicadores</h4>
+                <div class="grid grid-cols-3 gap-2 w-full mb-2">
                     ${gridTopo}
                 </div>
 
-                <div class="w-full bg-black border border-[#2C2C2E] rounded-2xl overflow-hidden px-4">
-                    ${detalhesListHtml}
-                    <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm text-[#888888] font-medium">Var. 12 Meses</span>
-                        <span class="text-sm font-bold ${corVar12m} text-right flex items-center gap-1">
-                            ${icon12m} ${dados.variacao_12m}
-                        </span>
-                    </div>
-                </div>
+                ${listasCategorizadasHtml}
+
             </div>
         `;
 

@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/notificar",
-      "schedule": "0 21 * * *"
+      "schedule": "0 12,22 * * *"
     }
   ],
   "headers": [

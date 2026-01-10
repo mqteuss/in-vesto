@@ -4388,14 +4388,11 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
-    // Reset Botões de Período
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
         btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
-            isActive 
-            ? 'bg-purple-600 text-white shadow-md active' 
-            : 'bg-[#151515] text-[#888888]'
+            isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888]'
         }`;
     });
     
@@ -4439,18 +4436,14 @@ async function handleMostrarDetalhes(symbol) {
         let variacaoCor = varPercent > 0 ? 'text-green-500' : (varPercent < 0 ? 'text-red-500' : 'text-[#888888]');
         const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
 
-        // Prepara Dados
         const dados = { 
-            // Básicos
             pvp: fundamentos.pvp || '-', dy: fundamentos.dy || '-', val_mercado: fundamentos.val_mercado || '-', 
             liquidez: fundamentos.liquidez || '-', variacao_12m: fundamentos.variacao_12m || '-', vp_cota: fundamentos.vp_cota || '-',
-            // Ações
             pl: fundamentos.pl || '-', roe: fundamentos.roe || '-', lpa: fundamentos.lpa || '-', 
             margem_liquida: fundamentos.margem_liquida || '-', margem_bruta: fundamentos.margem_bruta || '-', margem_ebit: fundamentos.margem_ebit || '-',
             divida_liquida_ebitda: fundamentos.divida_liquida_ebitda || '-', divida_liquida_pl: fundamentos.divida_liquida_pl || '-',
             ev_ebitda: fundamentos.ev_ebitda || '-', payout: fundamentos.payout || '-', 
             cagr_receita: fundamentos.cagr_receita_5a || '-', cagr_lucros: fundamentos.cagr_lucros_5a || '-',
-            // FIIs
             segmento: fundamentos.segmento || '-', tipo_fundo: fundamentos.tipo_fundo || '-', vacancia: fundamentos.vacancia || '-', 
             ultimo_rendimento: fundamentos.ultimo_rendimento || '-', patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
             cnpj: fundamentos.cnpj || '-', num_cotistas: fundamentos.num_cotistas || '-', tipo_gestao: fundamentos.tipo_gestao || '-',
@@ -4459,8 +4452,8 @@ async function handleMostrarDetalhes(symbol) {
         };
 
         // --- CÁLCULO DE VALUATION (AÇÕES) ---
-        let grahamHtml = '';
-        let bazinHtml = '';
+        let valuationHtml = '';
+        let magicNumberHtml = '';
         
         if (ehAcao) {
             const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
@@ -4469,13 +4462,13 @@ async function handleMostrarDetalhes(symbol) {
             const dyVal = parseVal(dados.dy);
             const preco = precoData.regularMarketPrice;
 
-            // 1. Graham (Raiz de 22.5 * LPA * VPA)
+            // 1. Graham
             if (lpa > 0 && vpa > 0) {
                 const vi = Math.sqrt(22.5 * lpa * vpa);
                 const margemSeguranca = ((vi - preco) / preco) * 100;
                 const corGraham = margemSeguranca > 0 ? 'text-green-400' : 'text-red-400';
                 
-                grahamHtml = `
+                valuationHtml += `
                     <div class="details-group-card mt-3 relative overflow-hidden">
                         <div class="flex justify-between items-center py-3 px-1">
                             <div>
@@ -4491,14 +4484,14 @@ async function handleMostrarDetalhes(symbol) {
                 `;
             }
 
-            // 2. Bazin (Preço Teto 6% -> (Preço * DY%) / 0.06)
+            // 2. Bazin
             if (dyVal > 0) {
                 const dividendosAnuais = preco * (dyVal / 100);
                 const bazinPrice = dividendosAnuais / 0.06;
                 const upsideBazin = ((bazinPrice - preco) / preco) * 100;
                 const corBazin = upsideBazin > 0 ? 'text-green-400' : 'text-red-400';
 
-                bazinHtml = `
+                valuationHtml += `
                     <div class="details-group-card mt-2 mb-2 relative overflow-hidden">
                         <div class="flex justify-between items-center py-3 px-1">
                             <div>
@@ -4516,13 +4509,11 @@ async function handleMostrarDetalhes(symbol) {
         }
 
         // --- CÁLCULO MAGIC NUMBER (FIIs) ---
-        let magicNumberHtml = '';
         if (ehFii && dados.ultimo_rendimento !== '-' && dados.ultimo_rendimento !== 'N/A') {
             try {
                 const rendStr = dados.ultimo_rendimento.replace('R$', '').replace('.', '').replace(',', '.').trim();
                 const rendimento = parseFloat(rendStr);
                 const precoAtual = precoData.regularMarketPrice;
-                
                 if (rendimento > 0 && precoAtual > 0) {
                     const magicNumber = Math.ceil(precoAtual / rendimento);
                     const custoMagic = magicNumber * precoAtual;
@@ -4574,15 +4565,12 @@ async function handleMostrarDetalhes(symbol) {
         if (nextProventoData && nextProventoData.value > 0) {
             const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
             const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
-            
-            // Verifica se é futuro
             const hoje = new Date(); hoje.setHours(0,0,0,0);
             let isFuturo = false;
             if(nextProventoData.paymentDate) {
                 const parts = nextProventoData.paymentDate.split('-');
                 if(new Date(parts[0], parts[1]-1, parts[2]) >= hoje) isFuturo = true;
             }
-            
             const bgClass = isFuturo ? "bg-[#0f291e]" : "bg-[#151515]"; 
             const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
             const valueClass = isFuturo ? "text-green-400" : "text-white";
@@ -4601,7 +4589,7 @@ async function handleMostrarDetalhes(symbol) {
                 </div>`;
         }
 
-        // --- GRID DESTAQUES (CORRIGIDO PARA BRANCO) ---
+        // Grid Destaques
         let gridTopo = ehAcao ? 
             `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/L</span><span class="text-base font-bold text-white">${dados.pl}</span></div>
              <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
@@ -4616,8 +4604,7 @@ async function handleMostrarDetalhes(symbol) {
         let listasHtml = '';
         if (ehAcao) {
             listasHtml = `
-                ${grahamHtml}
-                ${bazinHtml}
+                ${valuationHtml}
                 <h4 class="details-category-title">Valuation</h4>
                 <div class="details-group-card">
                     ${renderRow('P/L', dados.pl)}
@@ -4625,7 +4612,6 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('EV / EBITDA', dados.ev_ebitda)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
-
                 <h4 class="details-category-title">Rentabilidade & Eficiência</h4>
                 <div class="details-group-card">
                     ${renderRow('ROE', dados.roe)}
@@ -4634,20 +4620,17 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Margem Líquida', dados.margem_liquida)}
                     ${renderRow('Payout', dados.payout)}
                 </div>
-
                 <h4 class="details-category-title">Crescimento (5 Anos)</h4>
                 <div class="details-group-card">
                     ${renderRow('CAGR Receitas', dados.cagr_receita)}
                     ${renderRow('CAGR Lucros', dados.cagr_lucros)}
                 </div>
-
                 <h4 class="details-category-title">Saúde Financeira</h4>
                 <div class="details-group-card">
                     ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
                     ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
                     ${renderRow('Liquidez Diária', dados.liquidez)}
-                </div>
-            `;
+                </div>`;
         } else {
             listasHtml = `
                 ${magicNumberHtml}
@@ -6456,6 +6439,41 @@ window.mostrarDyCarteira = async function() {
         if(btn) btn.innerText = originalText;
     }
 };
+
+// Adicione no app.js
+async function atualizarWidgetIpca() {
+    try {
+        // Ajuste aqui para usar a sua função fetchBFF ou fetch direto
+        const res = await fetch('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'ipca', payload: {} })
+        });
+        
+        if (!res.ok) throw new Error('Falha ao buscar IPCA');
+        const data = await res.json();
+        const ipca = data.json;
+
+        if (ipca) {
+            const elValor = document.getElementById('ipca-valor-12m');
+            if(elValor) elValor.textContent = ipca.acumulado_12m || '-';
+            
+            const elMes = document.getElementById('ipca-mes-badge');
+            if(elMes) {
+                elMes.textContent = `Mês: ${ipca.valor_mes}`;
+                // Alerta vermelho se inflação mensal > 0.5%
+                const valMes = parseFloat(ipca.valor_mes.replace(',', '.').replace('%',''));
+                if (valMes > 0.5) {
+                    elMes.className = "text-[10px] font-bold bg-red-500/10 text-red-400 px-2 py-1 rounded-full";
+                } else {
+                    elMes.className = "text-[10px] font-bold bg-orange-500/10 text-orange-400 px-2 py-1 rounded-full";
+                }
+            }
+        }
+    } catch (e) { console.error("Erro Widget IPCA", e); }
+}
+
+atualizarWidgetIpca();
 	
     await init();
 });

@@ -6474,6 +6474,84 @@ async function atualizarWidgetIpca() {
 }
 
 atualizarWidgetIpca();
+
+// ... (seu código atual do app.js) ...
+
+
+// --- SISTEMA DE MODAIS ---
+
+function abrirModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+
+    // Sincronizar dados do widget para o modal (Exemplo IPCA)
+    if (modalId === 'modal-ipca') {
+        const valorWidget = document.getElementById('ipca-valor-12m')?.textContent;
+        const mesWidget = document.getElementById('ipca-mes-badge')?.textContent;
+        
+        if(valorWidget) document.getElementById('modal-ipca-valor').textContent = valorWidget;
+        if(mesWidget) document.getElementById('modal-ipca-mes').textContent = mesWidget;
+    }
+
+    // Lógica para sincronizar os outros widgets (adicione se quiser)
+    if (modalId === 'modal-selic') {
+        const valorWidget = document.getElementById('selic-valor')?.textContent;
+        if(valorWidget) document.getElementById('modal-selic-valor-modal').textContent = valorWidget;
+    }
+    if (modalId === 'modal-ifix') {
+        const valorWidget = document.getElementById('ifix-valor')?.textContent;
+        if(valorWidget) document.getElementById('modal-ifix-valor-modal').textContent = valorWidget;
+    }
+    if (modalId === 'modal-cdi') {
+        const valorWidget = document.getElementById('cdi-valor')?.textContent;
+        if(valorWidget) document.getElementById('modal-cdi-valor-modal').textContent = valorWidget;
+    }
+
+    // Mostrar modal
+    modal.classList.remove('hidden');
+    // Pequeno delay para permitir a animação CSS acontecer
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        const content = modal.querySelector('.modal-content');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    }, 10);
+    
+    // Travar scroll do corpo
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModal(event, modalId) {
+    // Se o clique foi no overlay (fundo escuro) ou botão de fechar (event null)
+    if (!event || event.target.id === modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+
+        // Animação de saída
+        modal.classList.add('opacity-0');
+        const content = modal.querySelector('.modal-content');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.style.overflow = ''; // Destravar scroll
+        }, 300); // Tempo igual ao duration-300 do CSS
+    }
+}
+
+// Fechar com tecla ESC
+document.addEventListener('keydown', function(event) {
+    if (event.key === "Escape") {
+        const modaisAbertos = document.querySelectorAll('.modal-overlay:not(.hidden)');
+        modaisAbertos.forEach(modal => fecharModal(null, modal.id));
+    }
+});
+
+// --- IMPORTANTE: TORNAR GLOBAL ---
+// Adicione estas linhas para que o onclick="" do HTML funcione
+window.abrirModal = abrirModal;
+window.fecharModal = fecharModal;
 	
     await init();
 });

@@ -2,6 +2,16 @@
 
 import * as supabaseDB from './supabase.js';
 
+let activeWidget = null;
+let chartPatrimonioInstance = null;
+let chartAlocacaoInstance = null;
+let chartProventosInstance = null;
+
+// COLE O SEU TRECHO AQUI:
+window.carteiraCalculada = window.carteiraCalculada || [];
+window.historicoPatrimonio = window.historicoPatrimonio || []; 
+window.historicoProventos = window.historicoProventos || { labels: [], valores: [] };
+
 // --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
 window.dismissNotificationGlobal = function(id, btnElement) {
     const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
@@ -519,8 +529,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
 	let historicoVirtualizer = null;
     let proventosVirtualizer = null;
-    const ROW_HEIGHT_CARD = 84;   // Altura estimada do card de transação (pixels)
-    const ROW_HEIGHT_HEADER = 50; // Altura estimada do cabeçalho do mês (pixels)
+    const ROW_HEIGHT_CARD = 84;
+    const ROW_HEIGHT_HEADER = 50;
 	let lastTransacoesSignature = '';    
     let lastPatrimonioCalcSignature = ''; 
     let lastHistoricoListSignature = '';
@@ -2165,143 +2175,112 @@ function renderizarNoticias(articles) {
     fiiNewsList.appendChild(fragment);
 }
 
-// EM app.js
+// --- FUNÇÃO DE RENDERIZAR ALOCAÇÃO (SUBSTITUIR A ANTIGA) ---
+function renderizarGraficoAlocacao() {
+    // 1. Segurança: Só desenha se o modal estiver aberto
+    if (activeWidget !== 'alocacao') return;
 
-// --- EM app.js: Substitua a função renderizarGraficoAlocacao ---
-
-function renderizarGraficoAlocacao(dadosInput) {
-    const canvas = document.getElementById('alocacao-chart');
-    const centerValueEl = document.getElementById('center-chart-value');
-    const legendContainer = document.getElementById('alocacao-legend');
-    
+    // 2. Busca o canvas novo
+    const canvas = document.getElementById('modal-alocacao-chart');
     if (!canvas) return;
-
-    // 1. PREPARAÇÃO DOS DADOS
-    let dadosGrafico = dadosInput;
-
-    if (!dadosGrafico) {
-        const mapPrecos = {};
-        if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
-            precosAtuais.forEach(p => mapPrecos[p.symbol] = p.regularMarketPrice);
-        }
-
-        dadosGrafico = carteiraCalculada.map(item => {
-            const precoAtual = mapPrecos[item.symbol] || item.precoMedio;
-            return {
-                symbol: item.symbol,
-                totalPosicao: item.quantity * precoAtual
-            };
-        }).filter(d => d.totalPosicao > 0.01);
-    }
-
-    dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
-
-    // 2. SMART CHECK
-    const labels = dadosGrafico.map(d => d.symbol);
-    const data = dadosGrafico.map(d => d.totalPosicao);
-    const totalGeral = data.reduce((acc, curr) => acc + curr, 0);
-
-    const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
-    const legendExists = legendContainer ? legendContainer.children.length > 0 : true;
-
-    if (newDataString === lastAlocacaoData && alocacaoChartInstance && legendExists) {
-        return; 
-    }
-
-    lastAlocacaoData = newDataString;
-
-    // 3. Atualiza valor central
-    if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
-
-    // 4. Limpeza se vazio
-    if (dadosGrafico.length === 0) {
-        if (alocacaoChartInstance) {
-            alocacaoChartInstance.destroy();
-            alocacaoChartInstance = null;
-        }
-        if(legendContainer) legendContainer.innerHTML = '';
-        if(centerValueEl) centerValueEl.textContent = 'R$ 0,00';
+    
+    // 3. Prepara dados (Usa a variável global 'carteiraCalculada')
+    // Se não houver dados, não faz nada
+    if (typeof carteiraCalculada === 'undefined' || !carteiraCalculada || carteiraCalculada.length === 0) {
         return;
     }
 
-    // 5. Cores
-    const gerarPaletaPremium = (num) => {
-        const coresBase = [
-            '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
-            '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'
-        ];
-        return Array.from({length: num}, (_, i) => coresBase[i % coresBase.length]);
-    };
-    const colors = gerarPaletaPremium(labels.length);
+    // Filtra posições muito pequenas (menor que R$ 10) para não poluir o gráfico
+    // E ordena do maior para o menor
+    let dadosGrafico = carteiraCalculada
+        .map(item => ({
+            symbol: item.symbol,
+            total: item.quantity * (item.regularMarketPrice || 0)
+        }))
+        .filter(d => d.total > 10) 
+        .sort((a,b) => b.total - a.total);
 
-    // 6. Legenda Externa
-    if(legendContainer) {
-        legendContainer.innerHTML = labels.map((label, i) => `
-            <div class="flex items-center gap-1.5">
-                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${colors[i]}"></span>
-                <span class="text-[11px] font-bold text-gray-400 tracking-wide">${label}</span>
-            </div>
-        `).join('');
+    const labels = dadosGrafico.map(d => d.symbol);
+    const valores = dadosGrafico.map(d => d.total);
+    const totalGeral = valores.reduce((acc, curr) => acc + curr, 0);
+
+    // 4. Atualiza Texto Central do Modal
+    const elTotal = document.getElementById('modal-alocacao-total');
+    if(elTotal) elTotal.innerText = formatBRL(totalGeral);
+
+    const ctx = canvas.getContext('2d');
+    
+    // 5. Destrói gráfico anterior se existir (evita bug de hover)
+    if (chartAlocacaoInstance) {
+        chartAlocacaoInstance.destroy();
+        chartAlocacaoInstance = null;
     }
 
-    // 7. Renderiza Gráfico
-    const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-    const borderColor = isLight ? '#ffffff' : '#121212';
+    // 6. Paleta de Cores (Roxa/Azul Premium)
+    const colors = [
+        '#8b5cf6', '#6366f1', '#a855f7', '#3b82f6', 
+        '#ec4899', '#d946ef', '#64748b', '#475569'
+    ];
 
-    if (alocacaoChartInstance) {
-        alocacaoChartInstance.data.labels = labels;
-        alocacaoChartInstance.data.datasets[0].data = data;
-        alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
-        alocacaoChartInstance.data.datasets[0].borderColor = borderColor;
-        alocacaoChartInstance.update();
-    } else {
-        alocacaoChartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: { 
-                labels: labels, 
-                datasets: [{ 
-                    data: data, 
-                    backgroundColor: colors, 
-                    borderColor: borderColor,
-                    borderWidth: 0,
-                    spacing: 4,
-                    borderRadius: 10,
-                    hoverOffset: 15
-                }] 
-            },
-            options: {
-                responsive: true, 
-                maintainAspectRatio: false,
-                
-                // --- ALTERAÇÃO AQUI: De 85% para 75% (Mais grosso) ---
-                cutout: '77%', 
-                // ----------------------------------------------------
-                
-                layout: { padding: 10 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 20, 0.95)',
-                        titleColor: isLight ? '#1f2937' : '#fff',
-                        bodyColor: isLight ? '#4b5563' : '#e5e7eb',
-                        borderColor: isLight ? '#e5e7eb' : '#333',
-                        borderWidth: 1,
-                        padding: 12,
-                        cornerRadius: 12,
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return ` ${label}: ${percent}% (${formatBRL(value)})`;
-                            }
+    // 7. Criação do Gráfico
+    chartAlocacaoInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: colors,
+                borderWidth: 0,
+                hoverOffset: 15 // Efeito de destaque ao passar o mouse
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%', // Rosca mais fina e moderna
+            plugins: {
+                legend: { display: false }, // Legenda nativa desligada (usaremos a customizada)
+                tooltip: {
+                    backgroundColor: '#1C1C1E',
+                    titleColor: '#fff',
+                    bodyColor: '#ccc',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 8,
+                    callbacks: { 
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const percentage = totalGeral > 0 ? ((value / totalGeral) * 100).toFixed(1) + '%' : '0%';
+                            return ` ${label}: ${formatBRL(value)} (${percentage})`;
                         }
                     }
                 }
+            },
+            animation: {
+                animateScale: true,
+                animateRotate: true
             }
-        });
+        }
+    });
+
+    // 8. Gera Legenda HTML Customizada (Abaixo do gráfico)
+    const legendDiv = document.getElementById('modal-alocacao-legend');
+    if(legendDiv) {
+        legendDiv.innerHTML = labels.map((label, i) => {
+            const val = valores[i];
+            const perc = totalGeral > 0 ? ((val/totalGeral)*100).toFixed(0) : 0;
+            const color = colors[i % colors.length];
+            
+            return `
+            <div class="flex items-center gap-1.5 bg-[#1C1C1E] px-3 py-1.5 rounded-lg border border-[#2C2C2E]">
+                <div class="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_${color}]" style="background-color: ${color}"></div>
+                <span class="text-xs font-bold text-gray-300">${label}</span>
+                <span class="text-[10px] text-gray-500 font-mono ml-1">${perc}%</span>
+            </div>
+            `;
+        }).join('');
     }
 }
 
@@ -2688,246 +2667,94 @@ function renderizarGraficoHistorico() {
         }
     }
     
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
-
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
-
+// --- FUNÇÃO DE RENDERIZAR PATRIMÔNIO (SUBSTITUIR A ANTIGA) ---
 function renderizarGraficoPatrimonio() {
-    const canvas = document.getElementById('patrimonio-chart');
+    // 1. Segurança
+    if (activeWidget !== 'patrimonio') return;
+    
+    const canvas = document.getElementById('modal-patrimonio-chart');
     if (!canvas) return;
-    
-    // Smart Check
-    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
-    const lastPatId = lastItem ? lastItem.date : 'none';
-    const lastPatVal = lastItem ? lastItem.value : 0;
-    
-    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
-    if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
+    // 2. Verificação de dados (Assumindo que você tem uma variável 'historicoPatrimonio' ou similar)
+    // Se não tiver a variável global, crie um array vazio para não quebrar
+    let dados = (typeof historicoPatrimonio !== 'undefined') ? historicoPatrimonio : [];
+    
+    // Se estiver vazio, tenta simular ou retornar
+    if (dados.length === 0) {
+        // Opcional: Desenhar um gráfico vazio ou mensagem
         return; 
     }
 
+    const labels = dados.map(p => p.data); // Ex: 'Jan/24', 'Fev/24'
+    const valores = dados.map(p => p.valor); // Valores numéricos
+
     const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-
-    // Cores
-    const colorLinePatrimonio = '#c084fc'; 
-    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
-    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
-    const colorText = isLight ? '#6b7280' : '#737373'; 
-
-    // 1. LÓGICA DE DATAS LIMITE
-    const hoje = new Date();
-    hoje.setHours(23, 59, 59, 999);
     
-    let dataCorte;
-    
-    if (currentPatrimonioRange === '1M') {
-        dataCorte = new Date(hoje);
-        dataCorte.setDate(hoje.getDate() - 30);
-    } else if (currentPatrimonioRange === '6M') {
-        dataCorte = new Date(hoje);
-        dataCorte.setMonth(hoje.getMonth() - 6);
-    } else if (currentPatrimonioRange === '1Y') {
-        dataCorte = new Date(hoje);
-        dataCorte.setFullYear(hoje.getFullYear() - 1);
-    } else if (currentPatrimonioRange === '5Y') {
-        dataCorte = new Date(hoje);
-        dataCorte.setFullYear(hoje.getFullYear() - 5);
-    } else {
-        dataCorte = new Date('2000-01-01'); // 'ALL'
-    }
-    
-    dataCorte.setHours(0, 0, 0, 0);
+    // 3. Gradiente Bonito (Roxo Transparente)
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.5)'); // Roxo forte no topo
+    gradient.addColorStop(1, 'rgba(139, 92, 246, 0)');   // Transparente embaixo
 
-    // 2. Filtra dados brutos
-    let dadosOrdenados = [...patrimonio]
-        .filter(p => {
-             const parts = p.date.split('-'); 
-             const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
-             return dataPonto >= dataCorte;
-        })
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    // --- AGRUPAMENTO MENSAL (Apenas para 6M, 1Y, 5Y) ---
-    if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
-        const grupos = {};
-        dadosOrdenados.forEach(p => {
-            const chaveMes = p.date.substring(0, 7); 
-            grupos[chaveMes] = p; 
-        });
-        dadosOrdenados = Object.values(grupos);
-        dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
+    // 4. Reset da Instância
+    if (chartPatrimonioInstance) {
+        chartPatrimonioInstance.destroy();
+        chartPatrimonioInstance = null;
     }
 
-    if (dadosOrdenados.length === 0) {
-        if (patrimonioChartInstance) {
-            patrimonioChartInstance.destroy();
-            patrimonioChartInstance = null;
-        }
-        return;
-    }
-
-    // 3. Prepara Arrays (Labels e Dados)
-    const labels = [];
-    const dataValor = [];
-    
-    // Cálculo Otimizado do Investido
-    const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
-    let custoAcumulado = 0;
-    let txIndex = 0;
-    const dataCusto = [];
-
-    dadosOrdenados.forEach(p => {
-        // Parse da data
-        const parts = p.date.split('-');
-        const d = new Date(parts[0], parts[1]-1, parts[2]);
-        
-        const dia = String(d.getDate()).padStart(2, '0');
-        const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const ano = d.getFullYear().toString().slice(-2); // Pega '23', '24', '25'
-
-        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA (CORRIGIDA) ---
-        if (currentPatrimonioRange === '1M') {
-             // 1M: "15 FEV" (Ano implícito pelo curto prazo)
-             labels.push([dia, mes]); 
-        } else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
-             // Períodos Longos (Mensal): "FEV 25"
-             labels.push([mes, ano]); 
-        } else {
-             // TUDO: "15 FEV 25" (Precisa do ano para diferenciar)
-             labels.push([dia, mes, ano]); 
-        }
-
-        // Valor Patrimônio
-        dataValor.push(p.value);
-
-        // Avança o custo acumulado
-        const dataPontoLimite = new Date(p.date + 'T23:59:59');
-        while(txIndex < txOrdenadas.length) {
-            const tx = txOrdenadas[txIndex];
-            const dataTx = new Date(tx.date);
-            if (dataTx <= dataPontoLimite) {
-                if (tx.type === 'buy') custoAcumulado += (tx.quantity * tx.price);
-                if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
-                txIndex++;
-            } else {
-                break;
-            }
-        }
-        dataCusto.push(custoAcumulado);
-    });
-
-    // 4. Configuração do Gráfico
-    const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
-    gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
-
-    const animationConfig = patrimonioChartInstance ? false : { duration: 1000, easing: 'easeOutQuart' };
-
-    if (patrimonioChartInstance) {
-        patrimonioChartInstance.data.labels = labels;
-        patrimonioChartInstance.data.datasets[0].data = dataValor;
-        patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        patrimonioChartInstance.update('none'); 
-    } else {
-        patrimonioChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Patrimônio',
-                        data: dataValor,
-                        fill: true,
-                        backgroundColor: gradientFill,
-                        borderColor: colorLinePatrimonio,
-                        borderWidth: 1.8,
-                        tension: 0.4,
-                        pointRadius: 0, 
-                        pointHitRadius: 30,
-                        pointHoverRadius: 4,
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: colorLinePatrimonio,
-                        pointHoverBorderWidth: 3,
-                        order: 1
-                    },
-                    {
-                        label: 'Investido',
-                        data: dataCusto,
-                        fill: false,
-                        borderColor: colorLineInvestido,
-                        borderWidth: 1.3,
-                        borderDash: [4, 4],
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHitRadius: 10,
-                        pointHoverRadius: 0,
-                        order: 2
-                    }
-                ]
+    // 5. Configuração do Gráfico
+    chartPatrimonioInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Patrimônio',
+                data: valores,
+                borderColor: '#8b5cf6', // Roxo Neon
+                backgroundColor: gradient,
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4, // Curva suave
+                pointRadius: 0, // Sem bolinhas (aparecem só no hover)
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: animationConfig,
-                layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: '#151515',
-                        titleColor: '#9ca3af',
-                        bodyColor: '#fff',
-                        bodyFont: { weight: 'bold', size: 13 },
-                        borderColor: '#2C2C2E',
-                        borderWidth: 1,
-                        padding: 10,
-                        displayColors: true,
-                        callbacks: {
-                            // Junta as linhas [Dia, Mês, Ano] em uma linha só no Tooltip: "15 FEV 25"
-                            title: function(context) {
-                                const label = context[0].label;
-                                return Array.isArray(label) ? label.join(' ') : label;
-                            },
-                            label: (context) => context.dataset.label + ': ' + formatBRL(context.parsed.y)
-                        }
-                    }
-                },
-                scales: {
-                    y: { 
-                        display: true,
-                        position: 'right',
-                        grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
-                        ticks: {
-                            color: colorText,
-                            font: { size: 10, family: 'monospace' },
-                            maxTicksLimit: 6,
-                            callback: function(value) {
-                                if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
-                                return value;
-                            }
-                        }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { 
-                            display: true,
-                            maxRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 6, 
-                            color: colorText,
-                            font: { size: 10, weight: 'bold' }
-                        } 
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1C1C1E',
+                    titleColor: '#fff',
+                    bodyColor: '#ccc',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: (c) => ` ${formatBRL(c.parsed.y)}`
                     }
                 }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    grid: { display: false },
+                    ticks: { 
+                        color: '#555', 
+                        font: { size: 10 },
+                        maxTicksLimit: 6 // Limita labels no eixo X
+                    }
+                },
+                y: {
+                    display: false // Minimalista (sem eixo Y visível)
+                }
             }
-        });
-    }
-
-    lastPatrimonioCalcSignature = currentSignature;
+        }
+    });
 }
 
 function renderizarTimelinePagamentos() {
@@ -3852,160 +3679,188 @@ function verificarNotificacoesFinanceiras() {
 }
 	
 async function atualizarTodosDados(force = false) { 
+    console.log(`🔄 Atualizando dados... (Force: ${force})`);
 
+    // Elementos de UI
+    const dashboardStatus = document.getElementById('dashboard-status');
+    const dashboardLoading = document.getElementById('dashboard-loading');
+    const refreshButton = document.getElementById('refresh-button');
+    const refreshIcon = refreshButton ? refreshButton.querySelector('svg') : null;
+
+    // 1. Feedback Imediato ao Usuário
     if (force) {
-        // 1. Feedback Tátil (Vibração leve em Android)
+        // Feedback Tátil (Vibração leve em Android)
         if (navigator.vibrate) navigator.vibrate(50);
 
-        // 2. Feedback Visual (Mostra os esqueletos de carregamento)
-        renderizarDashboardSkeletons(true);
-        renderizarCarteiraSkeletons(true);
+        // Feedback Visual (Animação do ícone)
+        if (refreshIcon) refreshIcon.classList.add('spin-animation');
+
+        // Mostra esqueletos se as funções existirem
+        if (typeof renderizarDashboardSkeletons === 'function') renderizarDashboardSkeletons(true);
+        if (typeof renderizarCarteiraSkeletons === 'function') renderizarCarteiraSkeletons(true);
         
-        // Opcional: Esconder status antigos enquanto carrega
-        dashboardStatus.classList.add('hidden'); 
+        // Esconde status antigos enquanto carrega
+        if (dashboardStatus) dashboardStatus.classList.add('hidden'); 
     }
     
-    // --- CÁLCULOS LOCAIS (RÁPIDOS) ---
-    // Fazemos isso primeiro para mostrar algo imediatamente (mesmo que velho)
-    calcularCarteira();
-    await processarDividendosPagos(); 
-    renderizarHistorico();
-    renderizarGraficoPatrimonio(); 
-    
-    // Mostra loading se tiver carteira e não for um refresh forçado (que já tratou acima)
-    if (carteiraCalculada.length > 0 && !force) {
+    // Mostra loading simples se não for forçado
+    if (carteiraCalculada.length > 0 && !force && dashboardStatus) {
         dashboardStatus.classList.remove('hidden');
-        dashboardLoading.classList.remove('hidden');
-    }
-    
-    // Animação do ícone de refresh
-    const refreshIcon = refreshButton.querySelector('svg'); 
-    if (force) {
-        refreshIcon.classList.add('spin-animation');
+        if (dashboardLoading) dashboardLoading.classList.remove('hidden');
     }
 
-    // Se não for forçado, tenta usar cache de proventos primeiro para agilizar
-    if (!force) {
-        const proventosFuturosCache = processarProventosScraper(proventosConhecidos);
-        if (proventosFuturosCache.length > 0) {
-            proventosAtuais = proventosFuturosCache;
-            renderizarProventos();
+    try {
+        // --- CÁLCULOS LOCAIS (RÁPIDOS) ---
+        // Calcula com o que já tem na memória para exibir algo instantaneamente
+        calcularCarteira();
+        
+        // Se a função existir, processa dividendos locais
+        if (typeof processarDividendosPagos === 'function') {
+            await processarDividendosPagos(); 
         }
-    }
-    
-    // Se a carteira estiver vazia, reseta tudo e para por aqui
-    if (carteiraCalculada.length === 0) {
+
+        // Renderiza listas (Texto apenas, nada de gráficos pesados)
+        renderizarListaCarteira();
+        if (typeof renderizarTimeline === 'function') renderizarTimeline();
+        if (typeof renderizarHistorico === 'function') renderizarHistorico();
+        
+        // Se a carteira estiver vazia, reseta e para
+        if (carteiraCalculada.length === 0) {
             precosAtuais = []; 
             proventosAtuais = []; 
-            await renderizarCarteira(); 
-            renderizarProventos(); 
-            renderizarGraficoHistorico({ labels: [], data: [] }); 
-            refreshIcon.classList.remove('spin-animation');
-            return;
-    }
-
-    // --- BUSCA DE DADOS EXTERNOS (PARALELO) ---
-    // Iniciamos todas as requisições ao mesmo tempo para ganhar tempo
-    const promessaPrecos = buscarPrecosCarteira(force); 
-    const promessaProventos = buscarProventosFuturos(force);
-    const promessaHistorico = buscarHistoricoProventosAgregado(force);
-
-    // Tratamento individual das promessas para renderizar assim que chegarem
-    promessaPrecos.then(async precos => {
-        if (precos.length > 0) {
-            precosAtuais = precos; 
-            await renderizarCarteira(); // Atualiza a lista assim que os preços chegam
-        } else if (precosAtuais.length === 0) { 
-            await renderizarCarteira(); 
-        }
-    }).catch(async err => {
-        console.error("Erro ao buscar preços (BFF):", err);
-        showToast("Erro ao buscar preços."); 
-        if (precosAtuais.length === 0) { await renderizarCarteira(); }
-    });
-
-    promessaProventos.then(async proventosFuturos => {
-        // Atualiza a lista com o que veio da API
-        proventosAtuais = processarProventosScraper(proventosConhecidos);
-        
-        // --- CORREÇÃO IMPORTANTE AQUI ---
-        // Força o recálculo do saldo "Recebidos" agora que temos dados novos da nuvem
-        await processarDividendosPagos(); 
-        // --------------------------------
-
-        renderizarProventos(); // Atualiza o widget de proventos
-        
-        // Re-renderiza a carteira para atualizar as tags de "Data Com" nos cards
-        if (precosAtuais.length > 0) { 
-            await renderizarCarteira(); 
-        }
-        
-        // Atualiza gráfico histórico se houver dados novos
-        if (typeof renderizarHistoricoProventos === 'function') {
-             renderizarHistoricoProventos();
+            await renderizarCarteira(); // Renderiza estado vazio
+            
+            // Limpa gráficos globais se existirem
+            if (typeof renderizarProventos === 'function') renderizarProventos(); 
+            
+            return; // Sai da função
         }
 
-    }).catch(async err => {
-        console.error("Erro ao buscar proventos (BFF):", err);
-        if (proventosConhecidos.length > 0) {
-                proventosAtuais = processarProventosScraper(proventosConhecidos);
-                renderizarProventos();
-                if (precosAtuais.length > 0) { await renderizarCarteira(); }
-        } else if (proventosAtuais.length === 0) { 
-                totalProventosEl.textContent = "Erro"; 
+        // --- BUSCA DE DADOS EXTERNOS (PARALELO) ---
+        // Dispara todas as requisições simultaneamente
+        const promises = [];
+
+        // 1. Preços (Cotações)
+        const promessaPrecos = buscarPrecosCarteira(force)
+            .then(async precos => {
+                if (precos && precos.length > 0) {
+                    precosAtuais = precos; 
+                    calcularCarteira(); // Recalcula totais com preços novos
+                    atualizarCardResumo(); // Atualiza card do topo
+                    await renderizarCarteira(); // Atualiza lista
+                }
+            })
+            .catch(err => console.error("Erro preços:", err));
+        promises.push(promessaPrecos);
+
+        // 2. Proventos
+        const promessaProventos = buscarProventosFuturos(force)
+            .then(async proventosFuturos => {
+                // Se sua função retorna dados, atualize as variáveis globais aqui
+                // Exemplo: proventosAtuais = proventosFuturos;
+                
+                if (typeof processarDividendosPagos === 'function') {
+                    await processarDividendosPagos(); 
+                }
+                
+                // Atualiza Timeline e Widget (Texto)
+                if (typeof renderizarTimeline === 'function') renderizarTimeline();
+                if (typeof renderizarProventos === 'function') renderizarProventos(); // Apenas atualiza dados internos
+                
+                // Atualiza tags "Data Com" na lista
+                if (precosAtuais.length > 0) await renderizarCarteira(); 
+            })
+            .catch(err => console.error("Erro proventos:", err));
+        promises.push(promessaProventos);
+
+        // 3. Histórico (Para o Gráfico de Barras - Apenas busca dados)
+        if (typeof buscarHistoricoProventosAgregado === 'function') {
+            const promessaHistorico = buscarHistoricoProventosAgregado(force)
+                .then(dados => {
+                    // ARMAZENA DADOS GLOBALMENTE, MAS NÃO RENDERIZA O GRÁFICO AINDA
+                    if (dados) {
+                        window.historicoProventos = dados; // Salva para quando abrir o modal
+                    }
+                })
+                .catch(err => console.error("Erro histórico:", err));
+            promises.push(promessaHistorico);
         }
-    });
-    
-    promessaHistorico.then(({ labels, data }) => {
-        renderizarGraficoHistorico({ labels, data }); // Atualiza o gráfico de barras
-    }).catch(err => {
-        console.error("Erro ao buscar histórico agregado (BFF):", err);
-        renderizarGraficoHistorico({ labels: [], data: [] }); 
-    });
-    
-    // --- FINALIZAÇÃO ---
-    try {
-        // Espera tudo terminar (sucesso ou falha) para limpar o estado de loading
-        await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
+
+        // 4. IPCA (Novo Widget)
+        if (typeof atualizarWidgetIpca === 'function') {
+            promises.push(atualizarWidgetIpca());
+        }
+
+        // Aguarda todas as requisições terminarem (Promises)
+        await Promise.allSettled(promises);
+
+    } catch (error) {
+        console.error("❌ Erro fatal atualização:", error);
+        if (typeof showToast === 'function') showToast("Erro ao atualizar dados", "error");
     } finally {
-        refreshIcon.classList.remove('spin-animation');
-        dashboardStatus.classList.add('hidden');
-        dashboardLoading.classList.add('hidden');
+        // --- LIMPEZA DE ESTADO (SEMPRE RODA) ---
+        if (refreshIcon) refreshIcon.classList.remove('spin-animation');
         
-        // Garante que os skeletons sumam no final de tudo
-        renderizarDashboardSkeletons(false);
-        renderizarCarteiraSkeletons(false);
+        if (dashboardStatus) dashboardStatus.classList.add('hidden');
+        if (dashboardLoading) dashboardLoading.classList.add('hidden');
+        
+        // Remove Skeletons
+        if (typeof renderizarDashboardSkeletons === 'function') renderizarDashboardSkeletons(false);
+        if (typeof renderizarCarteiraSkeletons === 'function') renderizarCarteiraSkeletons(false);
 
-        // Atualiza as notificações
+        // Checa Notificações
         if (typeof verificarNotificacoesFinanceiras === 'function') {
             verificarNotificacoesFinanceiras();
         }
+        
+        console.log("✅ Atualização concluída.");
     }
 }
 
-    async function handleToggleFavorito() {
-        const symbol = detalhesFavoritoBtn.dataset.symbol;
-        if (!symbol) return;
+async function handleToggleFavorito() {
+    // Busca elemento do botão de favorito no modal de detalhes
+    const detalhesFavoritoBtn = document.getElementById('detalhes-favorito-btn');
+    if (!detalhesFavoritoBtn) return;
 
-        const isFavorite = watchlist.some(item => item.symbol === symbol);
-
-        try {
-            if (isFavorite) {
-                await supabaseDB.deleteWatchlist(symbol);
-                watchlist = watchlist.filter(item => item.symbol !== symbol);
-            } else {
-                const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
-                await supabaseDB.addWatchlist(newItem);
-                watchlist.push(newItem);
-            }
-            
-            atualizarIconeFavorito(symbol); 
-            renderizarWatchlist(); 
-        } catch (e) {
-            console.error("Erro ao salvar favorito:", e);
-            showToast("Erro ao salvar favorito.");
-        }
+    const symbol = detalhesFavoritoBtn.dataset.symbol;
+    if (!symbol) {
+        console.warn("Nenhum símbolo encontrado para favoritar");
+        return;
     }
+
+    // Verifica se já está na lista global 'watchlist'
+    // Certifique-se que a variável 'watchlist' está definida no topo do seu arquivo
+    const isFavorite = watchlist.some(item => item.symbol === symbol);
+
+    try {
+        // Feedback visual imediato (Otimista)
+        atualizarIconeFavorito(symbol, !isFavorite); // Inverte estado visualmente antes de salvar
+
+        if (isFavorite) {
+            // REMOVER
+            await supabaseDB.deleteWatchlist(symbol);
+            watchlist = watchlist.filter(item => item.symbol !== symbol);
+            if (typeof showToast === 'function') showToast(`${symbol} removido dos favoritos`);
+        } else {
+            // ADICIONAR
+            const newItem = { symbol: symbol, addedAt: new Date().toISOString() };
+            await supabaseDB.addWatchlist(newItem);
+            watchlist.push(newItem);
+            if (typeof showToast === 'function') showToast(`${symbol} adicionado aos favoritos`);
+        }
+        
+        // Atualiza a lista horizontal na home se a função existir
+        if (typeof renderizarWatchlist === 'function') {
+            renderizarWatchlist(); 
+        }
+
+    } catch (e) {
+        console.error("Erro ao salvar favorito:", e);
+        // Reverte ícone em caso de erro
+        atualizarIconeFavorito(symbol, isFavorite); 
+        if (typeof showToast === 'function') showToast("Erro ao salvar favorito", "error");
+    }
+}
 
 async function handleCompartilharAtivo() {
         if (!currentDetalhesSymbol) return;
@@ -6474,6 +6329,97 @@ async function atualizarWidgetIpca() {
 }
 
 atualizarWidgetIpca();
+
+
+window.abrirModalWidget = function(tipo) {
+    activeWidget = tipo;
+    
+    // Elementos do DOM
+    const modal = document.getElementById('widget-page-modal');
+    const content = document.getElementById('widget-page-content');
+    const titleEl = document.getElementById('widget-modal-title');
+    const subEl = document.getElementById('widget-modal-subtitle');
+    
+    // Esconde todas as seções internas antes de mostrar a escolhida
+    document.querySelectorAll('.widget-section').forEach(el => el.classList.add('hidden'));
+
+    // Configuração baseada no botão clicado
+    if (tipo === 'patrimonio') {
+        titleEl.textContent = 'Evolução Patrimonial';
+        subEl.textContent = 'Crescimento consolidado da carteira';
+        document.getElementById('content-patrimonio').classList.remove('hidden');
+        
+        // Pequeno delay para a animação CSS não engasgar o desenho do gráfico
+        setTimeout(() => renderizarGraficoPatrimonio(), 200);
+    } 
+    else if (tipo === 'alocacao') {
+        titleEl.textContent = 'Alocação de Ativos';
+        subEl.textContent = 'Distribuição por ativo no portfólio';
+        document.getElementById('content-alocacao').classList.remove('hidden');
+        
+        setTimeout(() => renderizarGraficoAlocacao(), 200);
+    }
+    else if (tipo === 'proventos') {
+        titleEl.textContent = 'Proventos Recebidos';
+        subEl.textContent = 'Histórico de dividendos e rendimentos';
+        document.getElementById('content-proventos').classList.remove('hidden');
+        
+        setTimeout(() => renderizarGraficoHistorico(), 200);
+    }
+    else if (tipo === 'ipca') {
+        titleEl.textContent = 'Índice IPCA';
+        subEl.textContent = 'Inflação oficial acumulada (IBGE)';
+        document.getElementById('content-ipca').classList.remove('hidden');
+        
+        // Sincroniza dados do card pequeno para o modal grande manualmente
+        const val12m = document.getElementById('ipca-valor-12m')?.textContent || '--';
+        const rawBadge = document.getElementById('ipca-mes-badge')?.textContent || '';
+        // Exemplo de texto do badge: "Mês: 0.54%" -> Pega só o valor
+        const valMes = rawBadge.includes(':') ? rawBadge.split(':')[1].trim() : '--';
+        
+        const elModal12m = document.getElementById('modal-ipca-12m');
+        const elModalMes = document.getElementById('modal-ipca-mes-valor');
+        
+        if (elModal12m) elModal12m.textContent = val12m;
+        if (elModalMes) elModalMes.textContent = valMes;
+    }
+
+    // Exibe Modal (Remove classes que escondem)
+    if (modal && content) {
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        content.style.transform = 'translateY(0)';
+        document.body.style.overflow = 'hidden'; // Trava rolagem da página de trás
+    }
+};
+
+window.fecharModalWidget = function() {
+    activeWidget = null;
+    const modal = document.getElementById('widget-page-modal');
+    const content = document.getElementById('widget-page-content');
+    
+    if (content) {
+        // Desliza para baixo
+        content.style.transform = 'translateY(100%)';
+    }
+    
+    // Aguarda a animação terminar para esconder o fundo
+    setTimeout(() => {
+        if (modal) {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.body.style.overflow = ''; // Destrava rolagem
+        }
+    }, 300);
+};
+
+// Listener para fechar clicando fora (no fundo preto)
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('widget-page-modal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) window.fecharModalWidget();
+        });
+    }
+});
 	
     await init();
 });

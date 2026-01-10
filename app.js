@@ -1247,16 +1247,12 @@ function hideAddModal() {
         }, 400); 
     }
 
-async function carregarTransacoes() {
-        const dados = await supabaseDB.getTransacoes();
-        transacoes = dados || []; // Proteção contra undefined
+    async function carregarTransacoes() {
+        transacoes = await supabaseDB.getTransacoes();
     }
     
-async function carregarPatrimonio() {
+    async function carregarPatrimonio() {
          let allPatrimonio = await supabaseDB.getPatrimonio();
-         allPatrimonio = allPatrimonio || []; // Proteção contra undefined
-         
-         // Ordena para garantir (caso venha desordenado)
          allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
          
          if (allPatrimonio.length > 365) {
@@ -1290,23 +1286,21 @@ async function salvarSnapshotPatrimonio(totalValor) {
     }
 }
 
-async function carregarCaixa() {
+    async function carregarCaixa() {
         const caixaState = await supabaseDB.getAppState('saldoCaixa');
-        saldoCaixa = caixaState ? (caixaState.value || 0) : 0;
+        saldoCaixa = caixaState ? caixaState.value : 0;
     }
 
     async function salvarCaixa() {
         await supabaseDB.saveAppState('saldoCaixa', { value: saldoCaixa });
     }
 
-async function carregarProventosConhecidos() {
-        const dados = await supabaseDB.getProventosConhecidos();
-        proventosConhecidos = dados || []; // Proteção contra undefined
+    async function carregarProventosConhecidos() {
+        proventosConhecidos = await supabaseDB.getProventosConhecidos();
     }
     
-async function carregarWatchlist() {
-        const dados = await supabaseDB.getWatchlist();
-        watchlist = dados || []; // Proteção essencial para o forEach
+    async function carregarWatchlist() {
+        watchlist = await supabaseDB.getWatchlist();
     }
 
 // 2. SUBSTITUA A FUNÇÃO renderizarWatchlist ATUAL POR ESTA:
@@ -1364,9 +1358,9 @@ function renderizarWatchlist() {
         detalhesFavoritoBtn.dataset.symbol = symbol; 
     }
 
-async function carregarHistoricoProcessado() {
+    async function carregarHistoricoProcessado() {
         const histState = await supabaseDB.getAppState('historicoProcessado');
-        mesesProcessados = histState ? (histState.value || []) : [];
+        mesesProcessados = histState ? histState.value : [];
     }
 
     async function salvarHistoricoProcessado() {
@@ -2385,7 +2379,6 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     modal.classList.add('visible');
 }
 
-
 function renderizarGraficoHistorico({ labels, data }, forceRender = false) {
         const canvas = document.getElementById('historico-proventos-chart-modal');
         if (!canvas) return;
@@ -2561,24 +2554,6 @@ function renderizarGraficoHistorico({ labels, data }, forceRender = false) {
         }
     }
     
-/* ============================================================
-   GRÁFICO PATRIMÔNIO (COMPLETO)
-   ============================================================ */
-
-// Função auxiliar para os botões do modal
-window.alterarPeriodoPatrimonio = function(btn, range) {
-    // Atualiza UI dos botões
-    document.querySelectorAll('.patrimonio-range-btn').forEach(b => {
-        b.classList.remove('active', 'bg-white', 'text-black');
-        b.classList.add('text-gray-400');
-    });
-    btn.classList.add('active', 'text-white');
-    
-    currentPatrimonioRange = range;
-    lastPatrimonioCalcSignature = ''; // Força recalculo
-    renderizarGraficoPatrimonio();
-}
-
 function renderizarGraficoPatrimonio(forceRender = false) {
         // Novo ID do canvas dentro do modal
         const canvas = document.getElementById('patrimonio-chart-modal');
@@ -3484,7 +3459,7 @@ async function buscarProventosFuturos(force = false) {
     }
 
 async function buscarHistoricoProventosAgregado(force = false) {
-        // Remove filtro exclusivo de FIIs
+        // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
         const ativosCarteira = carteiraCalculada.map(a => a.symbol);
         
         if (ativosCarteira.length === 0) return { labels: [], data: [] };
@@ -3500,7 +3475,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
         if (!rawDividends) {
             try {
                 rawDividends = await callScraperHistoricoPortfolioAPI(ativosCarteira);
-                if (rawDividends && Array.isArray(rawDividends) && rawDividends.length > 0) {
+                if (rawDividends && rawDividends.length > 0) {
                     await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO);
                 }
             } catch (e) {
@@ -3509,10 +3484,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
             }
         }
 
-        // --- CORREÇÃO: Validação estrita de Array antes do forEach ---
-        if (!rawDividends || !Array.isArray(rawDividends) || rawDividends.length === 0) {
-            return { labels: [], data: [] };
-        }
+        if (!rawDividends || rawDividends.length === 0) return { labels: [], data: [] };
 
         const aggregator = {};
 
@@ -6321,156 +6293,41 @@ window.mostrarDyCarteira = async function() {
 };
 
 // Adicione no app.js
-/* ============================================================
-   LÓGICA IPCA
-   ============================================================ */
-// Variável global para armazenar dados IPCA carregados
-window.ipcaDataCache = null;
-
 async function atualizarWidgetIpca() {
     try {
-        // Faz a chamada ao seu backend (scraper)
+        // Ajuste aqui para usar a sua função fetchBFF ou fetch direto
         const res = await fetch('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'ipca', payload: {} })
         });
         
-        if (!res.ok) throw new Error('Erro API IPCA');
+        if (!res.ok) throw new Error('Falha ao buscar IPCA');
         const data = await res.json();
-        const ipca = data.json; // Supondo estrutura { json: { acumulado_12m: "4.5%", ... } }
+        const ipca = data.json;
 
         if (ipca) {
-            window.ipcaDataCache = ipca; // Salva para usar no modal
-
-            // Atualiza o Card da Dashboard (Pequeno)
             const elValor = document.getElementById('ipca-valor-12m');
             if(elValor) elValor.textContent = ipca.acumulado_12m || '-';
             
             const elMes = document.getElementById('ipca-mes-badge');
             if(elMes) {
                 elMes.textContent = `Mês: ${ipca.valor_mes}`;
-                // Estilização condicional (vermelho se inflação alta)
-                const valMesNumerico = parseFloat(ipca.valor_mes.replace(',', '.').replace('%',''));
-                
-                if (valMesNumerico > 0.5) {
+                // Alerta vermelho se inflação mensal > 0.5%
+                const valMes = parseFloat(ipca.valor_mes.replace(',', '.').replace('%',''));
+                if (valMes > 0.5) {
                     elMes.className = "text-[10px] font-bold bg-red-500/10 text-red-400 px-2 py-1 rounded-full";
                 } else {
                     elMes.className = "text-[10px] font-bold bg-orange-500/10 text-orange-400 px-2 py-1 rounded-full";
                 }
             }
         }
-    } catch (e) { 
-        console.error("Erro ao buscar IPCA:", e); 
-    }
-}
-
-// Função chamada ao abrir o Modal IPCA
-function popularModalIpca() {
-    if (!window.ipcaDataCache) {
-        // Se não tem dados, tenta buscar de novo
-        atualizarWidgetIpca().then(() => {
-            if(window.ipcaDataCache) popularModalIpca();
-        });
-        return;
-    }
-    
-    const dados = window.ipcaDataCache;
-    
-    // Popula campos do Modal
-    const el12m = document.getElementById('modal-ipca-12m');
-    const elMesRef = document.getElementById('modal-ipca-mes-nome');
-    const elMesVal = document.getElementById('modal-ipca-mes-valor');
-    const elAno = document.getElementById('modal-ipca-ano');
-    
-    if(el12m) el12m.textContent = dados.acumulado_12m;
-    if(elMesRef) elMesRef.textContent = dados.mes_referencia || 'Último Fechamento';
-    if(elMesVal) elMesVal.textContent = dados.valor_mes;
-    if(elAno) elAno.textContent = dados.acumulado_ano;
+    } catch (e) { console.error("Erro Widget IPCA", e); }
 }
 
 atualizarWidgetIpca();
-
-// Função genérica para abrir (com animação de entrada)
-function abrirModalGenerico(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-    const content = modal.querySelector('.page-content');
-    
-    modal.classList.add('visible'); // Mostra o backdrop
-    
-    // Pequeno delay para permitir que o display:block seja processado antes da transform
-    setTimeout(() => {
-        content.style.transform = 'translateY(0)';
-    }, 10);
-    
-    document.body.style.overflow = 'hidden'; // Trava scroll do fundo
-}
-
-// Função genérica para fechar (com animação de saída)
-window.fecharModalDashboard = function(id) {
-    const modal = document.getElementById(id);
-    if (!modal) return;
-    const content = modal.querySelector('.page-content');
-    
-    // Anima descida
-    content.style.transform = 'translateY(100%)';
-    
-    // Espera animação terminar para esconder
-    setTimeout(() => {
-        modal.classList.remove('visible');
-        document.body.style.overflow = '';
-    }, 300);
-}
-
-// Listeners para fechar ao clicar fora (Backdrop click)
-['patrimonio-modal', 'alocacao-modal', 'proventos-modal', 'ipca-modal'].forEach(id => {
-    const modal = document.getElementById(id);
-    if(modal) {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) window.fecharModalDashboard(id);
-        });
-    }
-});
-
-// --- FUNÇÕES ESPECÍFICAS DE ABERTURA ---
-
-window.abrirModalPatrimonio = function() {
-    abrirModalGenerico('patrimonio-modal');
-    // Força renderização imediata com os dados atuais
-    // Reseta assinatura para forçar redesenho no novo canvas
-    lastPatrimonioCalcSignature = ''; 
-    renderizarGraficoPatrimonio();
-    
-    // Atualiza textos do rodapé do modal
-    const totalPat = document.getElementById('total-carteira-valor')?.textContent || 'R$ 0,00';
-    const totalCusto = document.getElementById('total-carteira-custo')?.textContent || 'R$ 0,00';
-    
-    const elModalTotal = document.getElementById('modal-pat-total');
-    const elModalCusto = document.getElementById('modal-pat-custo');
-    if(elModalTotal) elModalTotal.textContent = totalPat;
-    if(elModalCusto) elModalCusto.textContent = totalCusto;
-};
-
-window.abrirModalAlocacao = function() {
-    abrirModalGenerico('alocacao-modal');
-    lastAlocacaoData = ''; // Força redesenho
-    renderizarGraficoAlocacao();
-};
-
-window.abrirModalProventos = function() {
-    abrirModalGenerico('proventos-modal');
-    lastHistoricoData = ''; // Força redesenho
-    renderizarGraficoHistorico();
-};
-
-window.abrirModalIPCA = function() {
-    abrirModalGenerico('ipca-modal');
-    // Dados já devem estar carregados na variável global window.ipcaData (veja abaixo)
-    popularModalIpca();
-};
-
-// --- FUNÇÃO REUTILIZÁVEL: SWIPE DOWN PARA FECHAR MODAL ---
+	
+	// --- FUNÇÃO REUTILIZÁVEL: SWIPE DOWN PARA FECHAR MODAL ---
     function setupModalSwipe(modalId, closeCallback) {
         const modalEl = document.getElementById(modalId);
         if (!modalEl) return;

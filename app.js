@@ -6361,10 +6361,10 @@ window.mostrarDyCarteira = async function() {
             corTextoBadge = '#22c55e';
         }
 
-        // --- HTML COMPACTO ---
+        // --- HTML (Card interno mais claro para contraste) ---
         const mensagemHtml = `
             <div class="flex flex-col items-center w-full pt-1">
-                <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">
+                <span class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1 block">
                     Dividend Yield (12m)
                 </span>
                 
@@ -6372,14 +6372,14 @@ window.mostrarDyCarteira = async function() {
                     ${dyFmt}
                 </div>
 
-                <div class="details-group-card w-full">
-                    <div class="details-row">
-                        <span class="details-label">Classificação</span>
+                <div class="details-group-card w-full" style="background-color: #252525 !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);">
+                    <div class="details-row" style="border-bottom-color: rgba(255,255,255,0.05);">
+                        <span class="details-label" style="color: #9ca3af;">Classificação</span>
                         <span class="details-value font-bold" style="color: ${corTextoBadge}">${textoAvaliacao}</span>
                     </div>
                     <div class="details-row">
-                        <span class="details-label">Retorno Aprox.</span>
-                        <span class="details-value">${valFmt}</span>
+                        <span class="details-label" style="color: #9ca3af;">Retorno Aprox.</span>
+                        <span class="details-value text-white">${valFmt}</span>
                     </div>
                 </div>
             </div>
@@ -6393,8 +6393,15 @@ window.mostrarDyCarteira = async function() {
         const btnOk = document.getElementById('custom-modal-ok');
         const btnCancel = document.getElementById('custom-modal-cancel');
 
-        if(modalTitle) modalTitle.textContent = 'Performance'; // Título mais curto também
+        if(modalTitle) modalTitle.textContent = 'Performance';
         
+        // --- ALTERAÇÃO VISUAL DO MODAL (TEMPORÁRIA) ---
+        // Aplica o fundo Cinza Chumbo (#1C1C1E) ao modal inteiro
+        if(modalContent) {
+            modalContent.style.backgroundColor = '#1C1C1E';
+            modalContent.style.border = '1px solid #2C2C2E';
+        }
+
         if(modalMessage) {
             modalMessage.innerHTML = mensagemHtml;
             modalMessage.style.textAlign = 'center'; 
@@ -6409,8 +6416,8 @@ window.mostrarDyCarteira = async function() {
             
             btnOk.innerText = 'Fechar';
             
-            // Botão compacto
-            btnOk.className = 'py-2 px-6 bg-[#1C1C1E] border border-[#2C2C2E] text-white text-xs font-bold rounded-full shadow-sm active:scale-95 transition-transform hover:bg-[#252525]';
+            // Botão compacto combinando com o tema
+            btnOk.className = 'py-2 px-6 bg-[#2C2C2E] border border-[#3f3f46] text-white text-xs font-bold rounded-full shadow-md active:scale-95 transition-transform hover:bg-[#3f3f46]';
 
             btnOk.onclick = function() {
                 modalContent.classList.add('modal-out');
@@ -6418,6 +6425,13 @@ window.mostrarDyCarteira = async function() {
                     modal.classList.remove('visible');
                     modalContent.classList.remove('modal-out');
                     
+                    // --- LIMPEZA DE ESTILOS ---
+                    // Restaura o fundo original do modal (para não afetar outras telas)
+                    if(modalContent) {
+                        modalContent.style.backgroundColor = '';
+                        modalContent.style.border = '';
+                    }
+
                     if(btnCancel) btnCancel.style.display = 'block';
                     btnOk.innerText = oldText;
                     btnOk.onclick = oldOnClick;

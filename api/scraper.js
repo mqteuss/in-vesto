@@ -77,9 +77,11 @@ async function scrapeFundamentos(ticker) {
     try {
         let html;
         try {
+            // Tenta FIIs primeiro
             const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
             html = res.data;
         } catch (e) {
+            // Se falhar, tenta Ações
             const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
             html = res.data;
         }
@@ -97,7 +99,7 @@ async function scrapeFundamentos(ticker) {
             num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A',
 
-            // Ações
+            // Ações (Novos Campos)
             margem_liquida: 'N/A', margem_bruta: 'N/A', margem_ebit: 'N/A',
             divida_liquida_ebitda: 'N/A', divida_liquida_pl: 'N/A', ev_ebitda: 'N/A',
             payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A'
@@ -129,7 +131,6 @@ async function scrapeFundamentos(ticker) {
             }
 
             // --- FALLBACK POR TEXTO ---
-            
             // Geral
             if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
@@ -245,6 +246,10 @@ async function scrapeFundamentos(ticker) {
     }
 }
 
+// ---------------------------------------------------------
+// PARTE 2: PROVENTOS -> STATUSINVEST
+// ---------------------------------------------------------
+
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
@@ -296,6 +301,44 @@ async function scrapeAsset(ticker) {
     }
 }
 
+// ---------------------------------------------------------
+// PARTE 3: IPCA -> INVESTIDOR10 (NOVO)
+// ---------------------------------------------------------
+
+async function scrapeIpca() {
+    try {
+        const url = 'https://investidor10.com.br/indices/ipca/';
+        const { data } = await client.get(url);
+        const $ = cheerio.load(data);
+
+        let dados = {
+            indice: 'IPCA',
+            valor_mes: '0,00%',
+            acumulado_12m: '0,00%',
+            acumulado_ano: '0,00%'
+        };
+
+        // Estratégia: Pega dos Cards de Destaque
+        $('._card').each((i, el) => {
+            const titulo = $(el).find('._card-header').text().trim().toLowerCase();
+            const valor = $(el).find('._card-body').text().trim();
+
+            if (titulo.includes('mês')) dados.valor_mes = valor;
+            if (titulo.includes('12 meses')) dados.acumulado_12m = valor;
+            if (titulo.includes('ano')) dados.acumulado_ano = valor;
+        });
+
+        return dados;
+    } catch (error) {
+        console.error("Erro IPCA:", error.message);
+        return { acumulado_12m: '-', valor_mes: '-' };
+    }
+}
+
+// ---------------------------------------------------------
+// HANDLER (API)
+// ---------------------------------------------------------
+
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -312,6 +355,12 @@ module.exports = async function handler(req, res) {
     try {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
+
+        // --- NOVO MODO: IPCA ---
+        if (mode === 'ipca') {
+            const dados = await scrapeIpca();
+            return res.status(200).json({ json: dados });
+        }
 
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });

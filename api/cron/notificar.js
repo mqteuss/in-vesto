@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
-const fetch = require('node-fetch'); // Certifique-se de que node-fetch esteja instalado ou use fetch nativo do Node 18+
+// REMOVIDO: const fetch = require('node-fetch'); <-- Não é necessário no Node 18+
 
 // Ajuste o caminho do scraper conforme necessário
 const scraperHandler = require('../scraper.js');
@@ -36,7 +36,6 @@ async function atualizarPatrimonioJob() {
         if (!transacoes || transacoes.length === 0) return 0;
 
         // 2. Mapear Carteiras por Usuário
-        // Estrutura: { userID: { 'PETR4': 100, 'VALE3': 50 } }
         const userHoldings = {};
         const uniqueSymbols = new Set();
 
@@ -52,18 +51,17 @@ async function atualizarPatrimonioJob() {
             uniqueSymbols.add(tx.symbol);
         });
 
-        // 3. Buscar Preços (Batch Request na Brapi)
-        // Se houver muitos ativos, idealmente quebrar em chunks, mas aqui faremos direto
+        // 3. Buscar Preços (Usando fetch nativo)
         const symbolsArray = Array.from(uniqueSymbols);
         const pricesMap = {};
 
         if (symbolsArray.length > 0) {
             const token = process.env.BRAPI_API_TOKEN;
-            // Para simplificar, assumimos que todos cabem na URL. 
-            // Se for muito grande (>50), teria que fazer paginação.
+            // IMPORTANTE: Brapi aceita múltiplos tickers separados por vírgula
             const tickersString = symbolsArray.join(','); 
             const url = `https://brapi.dev/api/quote/${tickersString}?token=${token}`;
             
+            // O fetch aqui agora é o nativo do Node.js
             const response = await fetch(url);
             const json = await response.json();
             
@@ -74,13 +72,12 @@ async function atualizarPatrimonioJob() {
             }
         }
 
-        // 4. Mapear Saldo em Caixa
+        // 4. Mapear Saldo em Caixa e Calcular Totais
         const userCash = {};
         appStates.forEach(item => {
             userCash[item.user_id] = item.value_json?.value || 0;
         });
 
-        // 5. Calcular Totais e Preparar Upsert
         const hoje = new Date();
         hoje.setHours(hoje.getHours() - 3); // Ajuste fuso BR
         const dataHoje = hoje.toISOString().split('T')[0];
@@ -104,7 +101,6 @@ async function atualizarPatrimonioJob() {
             const caixa = userCash[userId] || 0;
             const patrimonioTotal = totalAtivos + caixa;
 
-            // Só salva se tiver algo (evita salvar zeros desnecessários de contas antigas)
             if (patrimonioTotal > 0 || caixa > 0) {
                 snapshots.push({
                     user_id: userId,
@@ -114,9 +110,8 @@ async function atualizarPatrimonioJob() {
             }
         });
 
-        // 6. Salvar no Banco
+        // 5. Salvar no Banco
         if (snapshots.length > 0) {
-            // Upsert em lotes de 100 para não estourar limite
             for (let i = 0; i < snapshots.length; i += 100) {
                 const batch = snapshots.slice(i, i + 100);
                 const { error } = await supabase
@@ -136,6 +131,8 @@ async function atualizarPatrimonioJob() {
         return 0;
     }
 }
+
+// ... Resto do código permanece igual ...
 
 async function atualizarProventosPeloScraper(fiiList) {
     const req = { method: 'POST', body: { mode: 'proventos_carteira', payload: { fiiList } } };
@@ -161,9 +158,7 @@ module.exports = async function handler(req, res) {
         console.log("Iniciando processamento Cron...");
         const start = Date.now();
 
-        // -----------------------------------------------------------
-        // 1. ATUALIZAÇÃO DA BASE DE PROVENTOS (Lógica Existente)
-        // -----------------------------------------------------------
+        // 1. ATUALIZAÇÃO DA BASE DE DADOS (PROVENTOS)
         const { data: ativos } = await supabase.from('transacoes').select('symbol');
 
         if (ativos?.length > 0) {
@@ -174,9 +169,7 @@ module.exports = async function handler(req, res) {
 
                 if (novosDados?.length > 0) {
                     const upserts = [];
-                    const { data: allTransacoes } = await supabase
-                        .from('transacoes')
-                        .select('user_id, symbol');
+                    const { data: allTransacoes } = await supabase.from('transacoes').select('user_id, symbol');
 
                     for (const dado of novosDados) {
                         if (!dado.paymentDate || !dado.value) continue;
@@ -215,14 +208,10 @@ module.exports = async function handler(req, res) {
             }
         }
 
-        // -----------------------------------------------------------
-        // 2. NOVO: ATUALIZAÇÃO AUTOMÁTICA DE PATRIMÔNIO
-        // -----------------------------------------------------------
+        // 2. ATUALIZAÇÃO AUTOMÁTICA DE PATRIMÔNIO
         const totalSnapshots = await atualizarPatrimonioJob();
 
-        // -----------------------------------------------------------
-        // 3. ENVIO DE NOTIFICAÇÕES (Lógica Existente)
-        // -----------------------------------------------------------
+        // 3. ENVIO DE NOTIFICAÇÕES
         const agora = new Date();
         agora.setHours(agora.getHours() - 3); 
         const hojeString = agora.toISOString().split('T')[0];
@@ -323,7 +312,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ status: 'Success', sent: totalSent, snapshots: totalSnapshots, time: duration });
 
     } catch (error) {
-        console.error('Erro Fatal no Cron:', error);
+        console.error('Erro Fatal:', error);
         return res.status(500).json({ error: error.message });
     }
 };

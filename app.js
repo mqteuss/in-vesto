@@ -2165,103 +2165,97 @@ function renderizarNoticias(articles) {
     fiiNewsList.appendChild(fragment);
 }
 
-function renderizarGraficoAlocacao(dadosInput, forceRender = false) {
-        const canvas = document.getElementById('alocacao-chart-modal');
-        const centerValueEl = document.getElementById('center-chart-value-modal');
-        const legendContainer = document.getElementById('alocacao-legend-modal');
-        
-        if (!canvas) return;
+// EM app.js
 
-        // Verifica se modal está aberto
-        const modalContent = document.querySelector('#alocacao-page-modal .page-content');
-        const isModalOpen = modalContent && modalContent.style.transform === 'translateY(0px)';
+// --- EM app.js: Substitua a função renderizarGraficoAlocacao ---
 
-        if (!isModalOpen && !forceRender) return;
+function renderizarGraficoAlocacao(dadosInput) {
+    const canvas = document.getElementById('alocacao-chart');
+    const centerValueEl = document.getElementById('center-chart-value');
+    const legendContainer = document.getElementById('alocacao-legend');
+    
+    if (!canvas) return;
 
-        // 1. PREPARAÇÃO DOS DADOS
-        let dadosGrafico = dadosInput;
+    // 1. PREPARAÇÃO DOS DADOS
+    let dadosGrafico = dadosInput;
 
-        if (!dadosGrafico) {
-            const mapPrecos = {};
-            if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
-                precosAtuais.forEach(p => mapPrecos[p.symbol] = p.regularMarketPrice);
-            }
-
-            dadosGrafico = carteiraCalculada.map(item => {
-                const precoAtual = mapPrecos[item.symbol] || item.precoMedio;
-                return {
-                    symbol: item.symbol,
-                    totalPosicao: item.quantity * precoAtual
-                };
-            }).filter(d => d.totalPosicao > 0.01);
+    if (!dadosGrafico) {
+        const mapPrecos = {};
+        if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
+            precosAtuais.forEach(p => mapPrecos[p.symbol] = p.regularMarketPrice);
         }
 
-        dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
+        dadosGrafico = carteiraCalculada.map(item => {
+            const precoAtual = mapPrecos[item.symbol] || item.precoMedio;
+            return {
+                symbol: item.symbol,
+                totalPosicao: item.quantity * precoAtual
+            };
+        }).filter(d => d.totalPosicao > 0.01);
+    }
 
-        const labels = dadosGrafico.map(d => d.symbol);
-        const data = dadosGrafico.map(d => d.totalPosicao);
-        const totalGeral = data.reduce((acc, curr) => acc + curr, 0);
+    dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
-        // Smart Check: Se dados iguais, aborta (a menos que forceRender seja true)
-        const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
-        if (newDataString === lastAlocacaoData && alocacaoChartInstance && !forceRender) {
-            return; 
-        }
-        lastAlocacaoData = newDataString;
+    // 2. SMART CHECK
+    const labels = dadosGrafico.map(d => d.symbol);
+    const data = dadosGrafico.map(d => d.totalPosicao);
+    const totalGeral = data.reduce((acc, curr) => acc + curr, 0);
 
-        // Atualiza valor central do Donut
-        if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
+    const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
+    const legendExists = legendContainer ? legendContainer.children.length > 0 : true;
 
-        if (dadosGrafico.length === 0) {
-            if (alocacaoChartInstance) {
-                alocacaoChartInstance.destroy();
-                alocacaoChartInstance = null;
-            }
-            if(legendContainer) legendContainer.innerHTML = '';
-            if(centerValueEl) centerValueEl.textContent = 'R$ 0,00';
-            return;
-        }
+    if (newDataString === lastAlocacaoData && alocacaoChartInstance && legendExists) {
+        return; 
+    }
 
-        // Cores
-        const gerarPaletaPremium = (num) => {
-            const coresBase = [
-                '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
-                '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'
-            ];
-            return Array.from({length: num}, (_, i) => coresBase[i % coresBase.length]);
-        };
-        const colors = gerarPaletaPremium(labels.length);
+    lastAlocacaoData = newDataString;
 
-        // --- LEGENDA DETALHADA PARA O MODAL ---
-        if(legendContainer) {
-            legendContainer.innerHTML = labels.map((label, i) => {
-                const value = data[i];
-                const percentage = totalGeral > 0 ? ((value / totalGeral) * 100).toFixed(1) : 0;
-                
-                return `
-                <div class="flex items-center justify-between p-3 bg-[#151515] rounded-xl border border-[#27272a]">
-                    <div class="flex items-center gap-3">
-                        <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${colors[i]}"></span>
-                        <span class="text-sm font-bold text-gray-200">${label}</span>
-                    </div>
-                    <div class="text-right">
-                        <span class="block text-sm font-bold text-white tracking-tight">${formatBRL(value)}</span>
-                        <span class="block text-[10px] text-gray-500 font-medium">${percentage}%</span>
-                    </div>
-                </div>`;
-            }).join('');
-        }
+    // 3. Atualiza valor central
+    if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
 
-        // --- RENDERIZAR GRÁFICO ---
-        const ctx = canvas.getContext('2d');
-        const isLight = document.body.classList.contains('light-mode');
-        // Borda da cor do fundo do modal (#09090b) para "recortar" as fatias
-        const borderColor = isLight ? '#ffffff' : '#09090b'; 
-
+    // 4. Limpeza se vazio
+    if (dadosGrafico.length === 0) {
         if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
+            alocacaoChartInstance = null;
         }
+        if(legendContainer) legendContainer.innerHTML = '';
+        if(centerValueEl) centerValueEl.textContent = 'R$ 0,00';
+        return;
+    }
 
+    // 5. Cores
+    const gerarPaletaPremium = (num) => {
+        const coresBase = [
+            '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
+            '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'
+        ];
+        return Array.from({length: num}, (_, i) => coresBase[i % coresBase.length]);
+    };
+    const colors = gerarPaletaPremium(labels.length);
+
+    // 6. Legenda Externa
+    if(legendContainer) {
+        legendContainer.innerHTML = labels.map((label, i) => `
+            <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${colors[i]}"></span>
+                <span class="text-[11px] font-bold text-gray-400 tracking-wide">${label}</span>
+            </div>
+        `).join('');
+    }
+
+    // 7. Renderiza Gráfico
+    const ctx = canvas.getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
+    const borderColor = isLight ? '#ffffff' : '#121212';
+
+    if (alocacaoChartInstance) {
+        alocacaoChartInstance.data.labels = labels;
+        alocacaoChartInstance.data.datasets[0].data = data;
+        alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
+        alocacaoChartInstance.data.datasets[0].borderColor = borderColor;
+        alocacaoChartInstance.update();
+    } else {
         alocacaoChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: { 
@@ -2270,24 +2264,46 @@ function renderizarGraficoAlocacao(dadosInput, forceRender = false) {
                     data: data, 
                     backgroundColor: colors, 
                     borderColor: borderColor,
-                    borderWidth: 3, // Borda mais grossa para separar bem no fundo escuro
-                    spacing: 0,
-                    borderRadius: 0,
-                    hoverOffset: 10
+                    borderWidth: 0,
+                    spacing: 4,
+                    borderRadius: 10,
+                    hoverOffset: 15
                 }] 
             },
             options: {
                 responsive: true, 
                 maintainAspectRatio: false,
-                cutout: '80%', // Donut mais fino
-                layout: { padding: 20 },
+                
+                // --- ALTERAÇÃO AQUI: De 85% para 75% (Mais grosso) ---
+                cutout: '77%', 
+                // ----------------------------------------------------
+                
+                layout: { padding: 10 },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { enabled: false } // Tooltip desligado pois já temos a legenda detalhada
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 20, 0.95)',
+                        titleColor: isLight ? '#1f2937' : '#fff',
+                        bodyColor: isLight ? '#4b5563' : '#e5e7eb',
+                        borderColor: isLight ? '#e5e7eb' : '#333',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return ` ${label}: ${percent}% (${formatBRL(value)})`;
+                            }
+                        }
+                    }
                 }
             }
         });
     }
+}
 
 // --- EM app.js: Adicione esta função auxiliar (pode ser antes da renderizarGraficoHistorico) ---
 
@@ -2379,95 +2395,213 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     modal.classList.add('visible');
 }
 
-function renderizarGraficoHistorico({ labels, data }, forceRender = false) {
-        const canvas = document.getElementById('historico-proventos-chart-modal');
-        if (!canvas) return;
 
-        // Verifica abertura do modal
-        const modalContent = document.querySelector('#proventos-page-modal .page-content');
-        const isModalOpen = modalContent && modalContent.style.transform === 'translateY(0px)';
+function renderizarGraficoHistorico() {
+    const canvas = document.getElementById('historico-proventos-chart');
+    if (!canvas) return;
 
-        if (!isModalOpen && !forceRender) return;
-        
-        const newDataString = JSON.stringify({ l: labels, d: data });
-        // Se dados iguais, aborta (exceto forceRender)
-        if (newDataString === lastHistoricoData && historicoChartInstance && !forceRender) { return; }
-        lastHistoricoData = newDataString; 
+    // 0. Data de Hoje para comparação
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
 
-        const ctx = canvas.getContext('2d');
-        const isLight = document.body.classList.contains('light-mode');
+    // 1. Dados Agrupados (Recebido vs A Receber)
+    const grupos = {};
+    
+    proventosConhecidos.forEach(p => {
+        if (!p.paymentDate || p.value <= 0) return;
         
-        // Separa dados em Recebido e A Receber (Lógica Simplificada para visualização agregada)
-        // Aqui usamos apenas uma cor principal para o histórico agregado no modal
+        const key = p.paymentDate.substring(0, 7); // YYYY-MM
+        const dataRef = p.dataCom || p.paymentDate;
+        const qtd = getQuantidadeNaData(p.symbol, dataRef);
         
+        if (qtd > 0) {
+            if (!grupos[key]) {
+                grupos[key] = { recebido: 0, aReceber: 0 };
+            }
+
+            // Converter string de data para objeto Date
+            const [ano, mes, dia] = p.paymentDate.split('-');
+            const dataPagamento = new Date(ano, mes - 1, dia);
+            const valorTotal = p.value * qtd;
+
+            if (dataPagamento <= hoje) {
+                grupos[key].recebido += valorTotal;
+            } else {
+                grupos[key].aReceber += valorTotal;
+            }
+        }
+    });
+
+    let mesesOrdenados = Object.keys(grupos).sort();
+    
+    // Arrays para o gráfico
+    const labelsRaw = [];
+    const dataRecebidoRaw = [];
+    const dataAReceberRaw = [];
+    const keysMap = []; 
+
+    mesesOrdenados.forEach(mesIso => {
+        const [anoFull, mesNum] = mesIso.split('-');
+        const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
+        
+        const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const anoCurto = anoFull.slice(-2);
+        
+        labelsRaw.push(`${nomeMes} ${anoCurto}`);
+        dataRecebidoRaw.push(grupos[mesIso].recebido);
+        dataAReceberRaw.push(grupos[mesIso].aReceber);
+        keysMap.push(mesIso); // Guarda "2025-05"
+    });
+
+    // Filtro 12 meses
+    const labelsFiltrados = labelsRaw.slice(-12);
+    const dataRecebidoFiltrados = dataRecebidoRaw.slice(-12);
+    const dataAReceberFiltrados = dataAReceberRaw.slice(-12);
+    const keysFiltrados = keysMap.slice(-12);
+    
+    // Verifica mudança nos dados
+    const newDataString = JSON.stringify({ 
+        l: labelsFiltrados, 
+        d1: dataRecebidoFiltrados, 
+        d2: dataAReceberFiltrados 
+    });
+    
+    if (newDataString === lastHistoricoData && historicoChartInstance) { return; }
+    lastHistoricoData = newDataString; 
+
+    if (!labelsFiltrados || labelsFiltrados.length === 0) {
         if (historicoChartInstance) {
             historicoChartInstance.destroy();
+            historicoChartInstance = null; 
         }
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
+    
+    // Cores
+    const colorRecebido = 'rgba(192, 132, 252, 0.9)'; // Roxo (Vesto)
+    const colorAReceber = 'rgba(251, 191, 36, 0.9)';  // Amarelo
+    const legendColor = isLight ? '#374151' : '#9ca3af';
 
-        historicoChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Proventos',
-                    data: data,
-                    backgroundColor: '#c084fc', // Roxo Vesto
+    if (historicoChartInstance) {
+        historicoChartInstance.destroy();
+    }
+
+    historicoChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labelsFiltrados,
+            datasets: [
+                {
+                    label: 'A Receber', 
+                    data: dataAReceberFiltrados,
+                    backgroundColor: colorAReceber,
                     borderRadius: 4,
-                    barPercentage: 0.6
-                }]
+                    barPercentage: 0.6,
+                    stack: 'Stack 0',
+                    rawKeys: keysFiltrados 
+                },
+                {
+                    label: 'Recebido',
+                    data: dataRecebidoFiltrados,
+                    backgroundColor: colorRecebido,
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    stack: 'Stack 0',
+                    rawKeys: keysFiltrados
+                }
+            ]
+        },
+        options: {
+            responsive: true, 
+            maintainAspectRatio: false,
+            animation: { duration: 800, easing: 'easeOutQuart' },
+            layout: { padding: { top: 10 } },
+            
+            interaction: {
+                mode: 'index',
+                intersect: false,
             },
-            options: {
-                responsive: true, 
-                maintainAspectRatio: false,
-                animation: { duration: 800 },
-                scales: {
-                    y: { 
-                        display: false, // Remove eixo Y
-                    },
-                    x: { 
-                        grid: { display: false }, 
-                        ticks: {
-                            color: isLight ? '#666' : '#888',
-                            font: { size: 10, weight: 'bold' }
+
+            // --- EVENTO DE CLIQUE (Abre lista) ---
+            onClick: (e, elements, chart) => {
+                if (!elements || elements.length === 0) return;
+                
+                const element = elements[0];
+                const index = element.index;
+                
+                const labelAmigavel = chart.data.labels[index];
+                const rawKey = chart.data.datasets[0].rawKeys[index];
+                
+                exibirDetalhesProventos(rawKey, labelAmigavel);
+            },
+
+            plugins: {
+                legend: { 
+                    display: true, 
+                    position: 'bottom', 
+                    // --- AJUSTE DAS BOLINHAS E HITBOX ---
+                    labels: { 
+                        boxWidth: 6,       // Bolinha menor (era 10)
+                        boxHeight: 6,      // Altura forçada igual largura
+                        usePointStyle: true, 
+                        pointStyle: 'circle',
+                        padding: 20,       // Espaçamento horizontal entre itens
+                        color: legendColor,
+                        font: {
+                            size: 10,      // Fonte menor para alinhar com a bolinha de 6px
+                            weight: '600',
+                            family: "'Plus Jakarta Sans', sans-serif"
+                        },
+                        textAlign: 'center' // Garante alinhamento texto/ícone
+                    } 
+                }, 
+                tooltip: { 
+                    enabled: true,
+                    backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(21, 21, 21, 0.95)',
+                    titleColor: isLight ? '#374151' : '#9ca3af',
+                    bodyColor: isLight ? '#1f2937' : '#fff',
+                    borderColor: isLight ? '#e5e5e5' : '#333',
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    boxWidth: 6,
+                    boxHeight: 6,
+                    usePointStyle: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += formatBRL(context.parsed.y);
+                            }
+                            return label;
                         }
                     }
+                } 
+            },
+            scales: {
+                y: { 
+                    display: false,
+                    stacked: true 
                 },
-                plugins: {
-                    legend: { display: false }, 
-                    tooltip: { 
-                        enabled: true,
-                        backgroundColor: '#151515',
-                        titleColor: '#ccc',
-                        bodyColor: '#fff',
-                        borderColor: '#333',
-                        borderWidth: 1,
-                        padding: 10,
-                        callbacks: {
-                            label: function(context) {
-                                return 'Total: ' + formatBRL(context.parsed.y);
-                            }
-                        }
-                    } 
-                },
-                // Ao clicar na barra, mostra detalhes do mês (reutiliza sua função existente)
-                onClick: (e, elements, chart) => {
-                    if (!elements || elements.length === 0) return;
-                    
-                    const element = elements[0];
-                    const index = element.index;
-                    const labelAmigavel = chart.data.labels[index];
-                    
-                    // Tenta reconstruir a chave YYYY-MM para a função de detalhes
-                    // Isso assume que o label está no formato "MMM AA" ou similar.
-                    // Se sua função exibirDetalhesProventos precisar da chave exata, 
-                    // precisaremos passar 'rawKeys' igual na função antiga.
-                    
-                    // Exemplo simples: chama o modal de detalhes (se você tiver as rawKeys salvas)
-                    // exibirDetalhesProventos(rawKey, labelAmigavel);
+                x: { 
+                    stacked: true, 
+                    grid: { display: false }, 
+                    ticks: {
+                        color: legendColor,
+                        font: { size: 10, weight: 'bold' }
+                    }
                 }
             }
-        });
-    }
+        }
+    });
+}
     
     function renderizarGraficoProventosDetalhes({ labels, data }) {
         const canvas = document.getElementById('detalhes-proventos-chart');
@@ -2554,145 +2688,150 @@ function renderizarGraficoHistorico({ labels, data }, forceRender = false) {
         }
     }
     
-function renderizarGraficoPatrimonio(forceRender = false) {
-        // Novo ID do canvas dentro do modal
-        const canvas = document.getElementById('patrimonio-chart-modal');
-        if (!canvas) return;
-        
-        // Verifica se o modal está aberto (pela posição CSS transform)
-        // Se não estiver aberto e não for forçado (forceRender), não faz nada
-        const modalContent = document.querySelector('#patrimonio-page-modal .page-content');
-        const isModalOpen = modalContent && modalContent.style.transform === 'translateY(0px)';
-        
-        if (!isModalOpen && !forceRender) {
-            return;
-        }
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
 
-        // --- LÓGICA DE DADOS (Mantida a original para consistência) ---
-        // Smart Check: Evita reprocessamento se os dados não mudaram
-        const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-        const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
-        const lastPatId = lastItem ? lastItem.date : 'none';
-        const lastPatVal = lastItem ? lastItem.value : 0;
-        
-        const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
 
-        // Se a assinatura for igual E já existe instância, aborta (exceto se forceRender)
-        if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance && !forceRender) {
-            return; 
-        }
+function renderizarGraficoPatrimonio() {
+    const canvas = document.getElementById('patrimonio-chart');
+    if (!canvas) return;
+    
+    // Smart Check
+    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+    const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
+    const lastPatId = lastItem ? lastItem.date : 'none';
+    const lastPatVal = lastItem ? lastItem.value : 0;
+    
+    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
-        const ctx = canvas.getContext('2d');
-        const isLight = document.body.classList.contains('light-mode');
+    if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
+        return; 
+    }
 
-        // Cores do Tema
-        const colorLinePatrimonio = '#c084fc'; 
-        const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
-        const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
-        const colorText = isLight ? '#6b7280' : '#737373'; 
+    const ctx = canvas.getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
 
-        // Filtro de Datas
-        const hoje = new Date();
-        hoje.setHours(23, 59, 59, 999);
-        let dataCorte;
-        
-        if (currentPatrimonioRange === '1M') {
-            dataCorte = new Date(hoje);
-            dataCorte.setDate(hoje.getDate() - 30);
-        } else if (currentPatrimonioRange === '6M') {
-            dataCorte = new Date(hoje);
-            dataCorte.setMonth(hoje.getMonth() - 6);
-        } else if (currentPatrimonioRange === '1Y') {
-            dataCorte = new Date(hoje);
-            dataCorte.setFullYear(hoje.getFullYear() - 1);
-        } else if (currentPatrimonioRange === '5Y') {
-            dataCorte = new Date(hoje);
-            dataCorte.setFullYear(hoje.getFullYear() - 5);
-        } else {
-            dataCorte = new Date('2000-01-01'); // 'ALL'
-        }
-        dataCorte.setHours(0, 0, 0, 0);
+    // Cores
+    const colorLinePatrimonio = '#c084fc'; 
+    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
+    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
+    const colorText = isLight ? '#6b7280' : '#737373'; 
 
-        // Processamento dos Arrays
-        let dadosOrdenados = [...patrimonio]
-            .filter(p => {
-                 const parts = p.date.split('-'); 
-                 const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
-                 return dataPonto >= dataCorte;
-            })
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+    // 1. LÓGICA DE DATAS LIMITE
+    const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999);
+    
+    let dataCorte;
+    
+    if (currentPatrimonioRange === '1M') {
+        dataCorte = new Date(hoje);
+        dataCorte.setDate(hoje.getDate() - 30);
+    } else if (currentPatrimonioRange === '6M') {
+        dataCorte = new Date(hoje);
+        dataCorte.setMonth(hoje.getMonth() - 6);
+    } else if (currentPatrimonioRange === '1Y') {
+        dataCorte = new Date(hoje);
+        dataCorte.setFullYear(hoje.getFullYear() - 1);
+    } else if (currentPatrimonioRange === '5Y') {
+        dataCorte = new Date(hoje);
+        dataCorte.setFullYear(hoje.getFullYear() - 5);
+    } else {
+        dataCorte = new Date('2000-01-01'); // 'ALL'
+    }
+    
+    dataCorte.setHours(0, 0, 0, 0);
 
-        // Agrupamento Mensal (Apenas para períodos longos)
-        if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
-            const grupos = {};
-            dadosOrdenados.forEach(p => {
-                const chaveMes = p.date.substring(0, 7); 
-                grupos[chaveMes] = p; 
-            });
-            dadosOrdenados = Object.values(grupos);
-            dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
-        }
+    // 2. Filtra dados brutos
+    let dadosOrdenados = [...patrimonio]
+        .filter(p => {
+             const parts = p.date.split('-'); 
+             const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
+             return dataPonto >= dataCorte;
+        })
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        if (dadosOrdenados.length === 0) {
-            if (patrimonioChartInstance) {
-                patrimonioChartInstance.destroy();
-                patrimonioChartInstance = null;
-            }
-            return;
-        }
-
-        const labels = [];
-        const dataValor = [];
-        const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
-        let custoAcumulado = 0;
-        let txIndex = 0;
-        const dataCusto = [];
-
+    // --- AGRUPAMENTO MENSAL (Apenas para 6M, 1Y, 5Y) ---
+    if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
+        const grupos = {};
         dadosOrdenados.forEach(p => {
-            const parts = p.date.split('-');
-            const d = new Date(parts[0], parts[1]-1, parts[2]);
-            
-            const dia = String(d.getDate()).padStart(2, '0');
-            const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-            const ano = d.getFullYear().toString().slice(-2);
-
-            if (currentPatrimonioRange === '1M') {
-                 labels.push([dia, mes]); 
-            } else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
-                 labels.push([mes, ano]); 
-            } else {
-                 labels.push([dia, mes, ano]); 
-            }
-
-            dataValor.push(p.value);
-
-            // Calcula Investido
-            const dataPontoLimite = new Date(p.date + 'T23:59:59');
-            while(txIndex < txOrdenadas.length) {
-                const tx = txOrdenadas[txIndex];
-                const dataTx = new Date(tx.date);
-                if (dataTx <= dataPontoLimite) {
-                    if (tx.type === 'buy') custoAcumulado += (tx.quantity * tx.price);
-                    if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
-                    txIndex++;
-                } else {
-                    break;
-                }
-            }
-            dataCusto.push(custoAcumulado);
+            const chaveMes = p.date.substring(0, 7); 
+            grupos[chaveMes] = p; 
         });
+        dadosOrdenados = Object.values(grupos);
+        dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
 
-        // Configuração do Gradiente
-        const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-        gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
-        gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
-
-        // Destrói instância antiga para recriar no novo modal
+    if (dadosOrdenados.length === 0) {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.destroy();
+            patrimonioChartInstance = null;
+        }
+        return;
+    }
+
+    // 3. Prepara Arrays (Labels e Dados)
+    const labels = [];
+    const dataValor = [];
+    
+    // Cálculo Otimizado do Investido
+    const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
+    let custoAcumulado = 0;
+    let txIndex = 0;
+    const dataCusto = [];
+
+    dadosOrdenados.forEach(p => {
+        // Parse da data
+        const parts = p.date.split('-');
+        const d = new Date(parts[0], parts[1]-1, parts[2]);
+        
+        const dia = String(d.getDate()).padStart(2, '0');
+        const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const ano = d.getFullYear().toString().slice(-2); // Pega '23', '24', '25'
+
+        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA (CORRIGIDA) ---
+        if (currentPatrimonioRange === '1M') {
+             // 1M: "15 FEV" (Ano implícito pelo curto prazo)
+             labels.push([dia, mes]); 
+        } else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
+             // Períodos Longos (Mensal): "FEV 25"
+             labels.push([mes, ano]); 
+        } else {
+             // TUDO: "15 FEV 25" (Precisa do ano para diferenciar)
+             labels.push([dia, mes, ano]); 
         }
 
-        // --- CRIAÇÃO DO GRÁFICO ---
+        // Valor Patrimônio
+        dataValor.push(p.value);
+
+        // Avança o custo acumulado
+        const dataPontoLimite = new Date(p.date + 'T23:59:59');
+        while(txIndex < txOrdenadas.length) {
+            const tx = txOrdenadas[txIndex];
+            const dataTx = new Date(tx.date);
+            if (dataTx <= dataPontoLimite) {
+                if (tx.type === 'buy') custoAcumulado += (tx.quantity * tx.price);
+                if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
+                txIndex++;
+            } else {
+                break;
+            }
+        }
+        dataCusto.push(custoAcumulado);
+    });
+
+    // 4. Configuração do Gráfico
+    const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
+    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
+    gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
+
+    const animationConfig = patrimonioChartInstance ? false : { duration: 1000, easing: 'easeOutQuart' };
+
+    if (patrimonioChartInstance) {
+        patrimonioChartInstance.data.labels = labels;
+        patrimonioChartInstance.data.datasets[0].data = dataValor;
+        patrimonioChartInstance.data.datasets[1].data = dataCusto;
+        patrimonioChartInstance.update('none'); 
+    } else {
         patrimonioChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
@@ -2704,7 +2843,7 @@ function renderizarGraficoPatrimonio(forceRender = false) {
                         fill: true,
                         backgroundColor: gradientFill,
                         borderColor: colorLinePatrimonio,
-                        borderWidth: 2, // Um pouco mais grosso no modal
+                        borderWidth: 1.8,
                         tension: 0.4,
                         pointRadius: 0, 
                         pointHitRadius: 30,
@@ -2719,8 +2858,8 @@ function renderizarGraficoPatrimonio(forceRender = false) {
                         data: dataCusto,
                         fill: false,
                         borderColor: colorLineInvestido,
-                        borderWidth: 1.5,
-                        borderDash: [5, 5],
+                        borderWidth: 1.3,
+                        borderDash: [4, 4],
                         tension: 0.4,
                         pointRadius: 0,
                         pointHitRadius: 10,
@@ -2732,8 +2871,8 @@ function renderizarGraficoPatrimonio(forceRender = false) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: { duration: 1000, easing: 'easeOutQuart' },
-                layout: { padding: { left: 0, right: 10, top: 20, bottom: 10 } },
+                animation: animationConfig,
+                layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },
@@ -2745,9 +2884,10 @@ function renderizarGraficoPatrimonio(forceRender = false) {
                         bodyFont: { weight: 'bold', size: 13 },
                         borderColor: '#2C2C2E',
                         borderWidth: 1,
-                        padding: 12,
+                        padding: 10,
                         displayColors: true,
                         callbacks: {
+                            // Junta as linhas [Dia, Mês, Ano] em uma linha só no Tooltip: "15 FEV 25"
                             title: function(context) {
                                 const label = context[0].label;
                                 return Array.isArray(label) ? label.join(' ') : label;
@@ -2772,15 +2912,23 @@ function renderizarGraficoPatrimonio(forceRender = false) {
                         }
                     },
                     x: {
-                        display: false, // Oculta eixo X para visual mais limpo no modal
-                        grid: { display: false }
+                        grid: { display: false },
+                        ticks: { 
+                            display: true,
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 6, 
+                            color: colorText,
+                            font: { size: 10, weight: 'bold' }
+                        } 
                     }
                 }
             }
         });
-
-        lastPatrimonioCalcSignature = currentSignature;
     }
+
+    lastPatrimonioCalcSignature = currentSignature;
+}
 
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
@@ -6326,178 +6474,6 @@ async function atualizarWidgetIpca() {
 }
 
 atualizarWidgetIpca();
-	
-// --- FUNÇÃO REUTILIZÁVEL: SWIPE DOWN PARA FECHAR MODAL ---
-    function setupModalSwipe(modalId, closeCallback) {
-        const modalEl = document.getElementById(modalId);
-        if (!modalEl) return;
-        
-        const contentEl = modalEl.querySelector('.page-content');
-        if (!contentEl) return;
-
-        let startY = 0;
-        let currentY = 0;
-        let isDragging = false;
-        
-        const scrollableEl = contentEl.querySelector('.overflow-y-auto');
-
-        contentEl.addEventListener('touchstart', (e) => {
-            if (scrollableEl && scrollableEl.scrollTop <= 0) {
-                startY = e.touches[0].clientY;
-                isDragging = true;
-                contentEl.style.transition = 'none';
-            }
-        }, { passive: true });
-
-        contentEl.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            currentY = e.touches[0].clientY;
-            const diff = currentY - startY;
-
-            if (diff > 0) {
-                if (e.cancelable) e.preventDefault();
-                contentEl.style.transform = `translateY(${diff}px)`;
-            }
-        }, { passive: false });
-
-        contentEl.addEventListener('touchend', (e) => {
-            if (!isDragging) return;
-            isDragging = false;
-            
-            const diff = currentY - startY;
-            contentEl.style.transition = 'transform 0.3s ease-in-out';
-
-            if (diff > 120) {
-                closeCallback();
-            } else {
-                contentEl.style.transform = '';
-            }
-            startY = 0;
-            currentY = 0;
-        });
-    }
-
-    // --- FUNÇÕES GLOBAIS DE ABERTURA/FECHAMENTO (CORRIGIDAS) ---
-
-    // 1. PATRIMÔNIO
-    window.abrirModalPatrimonio = function() {
-        const modal = document.getElementById('patrimonio-page-modal');
-        const content = modal.querySelector('.page-content');
-        
-        // CORREÇÃO: Usa 'visible' para ativar o fade-in do fundo preto
-        modal.classList.add('visible');
-        modal.classList.remove('hidden'); // Garante que não tenha hidden
-        
-        // Reseta posição antes de animar
-        content.style.transform = 'translateY(100%)'; 
-        
-        requestAnimationFrame(() => {
-            content.style.transform = 'translateY(0)';
-        });
-        
-        renderizarGraficoPatrimonio(true); 
-    };
-
-    window.fecharModalPatrimonio = function() {
-        const modal = document.getElementById('patrimonio-page-modal');
-        const content = modal.querySelector('.page-content');
-        
-        // Desliza para baixo
-        content.style.transform = 'translateY(100%)';
-        
-        // Remove a classe visible para o fundo sumir (após breve delay se quiser, ou imediato)
-        setTimeout(() => {
-            modal.classList.remove('visible');
-        }, 100); 
-    };
-
-    // 2. ALOCAÇÃO
-    window.abrirModalAlocacao = function() {
-        const modal = document.getElementById('alocacao-page-modal');
-        const content = modal.querySelector('.page-content');
-        
-        modal.classList.add('visible');
-        modal.classList.remove('hidden');
-        content.style.transform = 'translateY(100%)';
-        
-        requestAnimationFrame(() => {
-            content.style.transform = 'translateY(0)';
-        });
-        
-        renderizarGraficoAlocacao(null, true);
-    };
-
-    window.fecharModalAlocacao = function() {
-        const modal = document.getElementById('alocacao-page-modal');
-        const content = modal.querySelector('.page-content');
-        content.style.transform = 'translateY(100%)';
-        setTimeout(() => { modal.classList.remove('visible'); }, 100);
-    };
-
-    // 3. PROVENTOS (HISTÓRICO)
-    window.abrirModalProventos = function() {
-        const modal = document.getElementById('proventos-page-modal');
-        const content = modal.querySelector('.page-content');
-        
-        modal.classList.add('visible');
-        modal.classList.remove('hidden');
-        content.style.transform = 'translateY(100%)';
-        
-        requestAnimationFrame(() => {
-            content.style.transform = 'translateY(0)';
-        });
-        
-        buscarHistoricoProventosAgregado().then(({ labels, data }) => {
-            renderizarGraficoHistorico({ labels, data }, true);
-        });
-    };
-
-    window.fecharModalProventos = function() {
-        const modal = document.getElementById('proventos-page-modal');
-        const content = modal.querySelector('.page-content');
-        content.style.transform = 'translateY(100%)';
-        setTimeout(() => { modal.classList.remove('visible'); }, 100);
-    };
-
-    // 4. IPCA
-    window.abrirModalIpca = function() {
-        const modal = document.getElementById('ipca-page-modal');
-        const content = modal.querySelector('.page-content');
-        
-        modal.classList.add('visible');
-        modal.classList.remove('hidden');
-        content.style.transform = 'translateY(100%)';
-        
-        requestAnimationFrame(() => {
-            content.style.transform = 'translateY(0)';
-        });
-
-        const elValorDash = document.getElementById('ipca-valor-12m');
-        const elValorModal = document.getElementById('modal-ipca-valor');
-        const elBadgeDash = document.getElementById('ipca-mes-badge');
-        const elMesModal = document.getElementById('modal-ipca-mes');
-
-        if(elValorDash && elValorModal) {
-            elValorModal.textContent = elValorDash.textContent;
-        }
-        if(elBadgeDash && elMesModal) {
-            const textoMes = elBadgeDash.textContent.replace('Mês: ', '').trim();
-            elMesModal.textContent = `Referência: ${textoMes}`;
-        }
-    };
-
-    window.fecharModalIpca = function() {
-        const modal = document.getElementById('ipca-page-modal');
-        const content = modal.querySelector('.page-content');
-        content.style.transform = 'translateY(100%)';
-        setTimeout(() => { modal.classList.remove('visible'); }, 100);
-    };
-
-    // --- INICIALIZAÇÃO DOS LISTENERS DE SWIPE ---
-    setupModalSwipe('patrimonio-page-modal', window.fecharModalPatrimonio);
-    setupModalSwipe('alocacao-page-modal', window.fecharModalAlocacao);
-    setupModalSwipe('proventos-page-modal', window.fecharModalProventos);
-    setupModalSwipe('ipca-page-modal', window.fecharModalIpca);
 	
     await init();
 });

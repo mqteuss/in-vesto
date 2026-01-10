@@ -2168,8 +2168,7 @@ function renderizarNoticias(articles) {
 /* ============================================================
    GRÁFICO ALOCAÇÃO (COMPLETO)
    ============================================================ */
-let alocacaoChartInstance = null;
-let lastAlocacaoData = '';
+
 
 function renderizarGraficoAlocacao(dadosInput) {
     const canvas = document.getElementById('alocacao-chart-modal');
@@ -2380,7 +2379,6 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 /* ============================================================
    GRÁFICO PROVENTOS (COMPLETO)
    ============================================================ */
-let historicoChartInstance = null;
 
 function renderizarGraficoHistorico() {
     const canvas = document.getElementById('proventos-chart-modal');
@@ -2552,9 +2550,6 @@ function renderizarGraficoHistorico() {
 /* ============================================================
    GRÁFICO PATRIMÔNIO (COMPLETO)
    ============================================================ */
-let patrimonioChartInstance = null;
-let lastPatrimonioCalcSignature = '';
-let currentPatrimonioRange = 'ALL'; // Padrão
 
 // Função auxiliar para os botões do modal
 window.alterarPeriodoPatrimonio = function(btn, range) {

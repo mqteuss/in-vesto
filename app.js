@@ -2165,144 +2165,125 @@ function renderizarNoticias(articles) {
     fiiNewsList.appendChild(fragment);
 }
 
-// EM app.js
-
-// --- EM app.js: Substitua a função renderizarGraficoAlocacao ---
+/* ============================================================
+   GRÁFICO ALOCAÇÃO (COMPLETO)
+   ============================================================ */
+let alocacaoChartInstance = null;
+let lastAlocacaoData = '';
 
 function renderizarGraficoAlocacao(dadosInput) {
-    const canvas = document.getElementById('alocacao-chart');
-    const centerValueEl = document.getElementById('center-chart-value');
-    const legendContainer = document.getElementById('alocacao-legend');
-    
+    const canvas = document.getElementById('alocacao-chart-modal');
     if (!canvas) return;
+    
+    const modal = document.getElementById('alocacao-modal');
+    if (!modal || modal.classList.contains('opacity-0')) return;
 
-    // 1. PREPARAÇÃO DOS DADOS
+    // Se não receber dadosInput, calcula baseado na variavel global 'carteiraCalculada'
     let dadosGrafico = dadosInput;
-
-    if (!dadosGrafico) {
+    if (!dadosGrafico && typeof carteiraCalculada !== 'undefined') {
+        // Mapeia preços atuais
         const mapPrecos = {};
-        if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
+        if (typeof precosAtuais !== 'undefined') {
             precosAtuais.forEach(p => mapPrecos[p.symbol] = p.regularMarketPrice);
         }
 
         dadosGrafico = carteiraCalculada.map(item => {
-            const precoAtual = mapPrecos[item.symbol] || item.precoMedio;
+            const preco = mapPrecos[item.symbol] || item.precoMedio;
             return {
                 symbol: item.symbol,
-                totalPosicao: item.quantity * precoAtual
+                totalPosicao: item.quantity * preco
             };
-        }).filter(d => d.totalPosicao > 0.01);
+        }).filter(d => d.totalPosicao > 1); // Filtra posições irrisórias
     }
 
+    if (!dadosGrafico || dadosGrafico.length === 0) return;
+
+    // Ordena do maior para o menor
     dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
 
-    // 2. SMART CHECK
+    // Renderiza Lista HTML abaixo do gráfico
+    const listaContainer = document.getElementById('alocacao-lista-modal');
+    const totalGeral = dadosGrafico.reduce((acc, curr) => acc + curr.totalPosicao, 0);
+    
+    // Atualiza texto central
+    const centerText = document.getElementById('modal-alocacao-center');
+    if(centerText) centerText.textContent = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalGeral);
+
+    if (listaContainer) {
+        listaContainer.innerHTML = dadosGrafico.map((d, index) => {
+            const pct = (d.totalPosicao / totalGeral) * 100;
+            // Gera cores progressivas (Roxo -> Azul -> Cinza)
+            const hue = 260 - (index * 15); 
+            const colorStr = `hsl(${hue}, 70%, 60%)`;
+            
+            return `
+            <div class="flex justify-between items-center py-3 px-4 bg-[#1C1C1E] rounded-xl border border-[#2C2C2E]">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-[#2C2C2E] flex items-center justify-center overflow-hidden">
+                         <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${d.symbol}.png" 
+                              class="w-full h-full object-cover" 
+                              onerror="this.style.display='none'">
+                         <span class="text-[10px] text-gray-500 absolute" style="z-index:-1">IMG</span>
+                    </div>
+                    <div>
+                        <span class="font-bold text-white text-sm block">${d.symbol}</span>
+                        <div class="w-24 h-1.5 bg-[#333] rounded-full mt-1.5 overflow-hidden">
+                            <div class="h-full rounded-full" style="width: ${pct}%; background-color: ${colorStr}"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="font-bold text-white text-sm block">
+                        ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.totalPosicao)}
+                    </span>
+                    <span class="text-xs text-gray-400 font-medium">${pct.toFixed(1)}%</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // Configuração do ChartJS Doughnut
     const labels = dadosGrafico.map(d => d.symbol);
-    const data = dadosGrafico.map(d => d.totalPosicao);
-    const totalGeral = data.reduce((acc, curr) => acc + curr, 0);
+    const dataValues = dadosGrafico.map(d => d.totalPosicao);
+    
+    // Gera paleta de cores dinâmica baseada no roxo
+    const backgroundColors = dadosGrafico.map((_, i) => `hsl(${260 - (i * 15)}, 70%, 60%)`);
 
-    const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
-    const legendExists = legendContainer ? legendContainer.children.length > 0 : true;
-
-    if (newDataString === lastAlocacaoData && alocacaoChartInstance && legendExists) {
-        return; 
-    }
-
-    lastAlocacaoData = newDataString;
-
-    // 3. Atualiza valor central
-    if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
-
-    // 4. Limpeza se vazio
-    if (dadosGrafico.length === 0) {
-        if (alocacaoChartInstance) {
-            alocacaoChartInstance.destroy();
-            alocacaoChartInstance = null;
-        }
-        if(legendContainer) legendContainer.innerHTML = '';
-        if(centerValueEl) centerValueEl.textContent = 'R$ 0,00';
-        return;
-    }
-
-    // 5. Cores
-    const gerarPaletaPremium = (num) => {
-        const coresBase = [
-            '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
-            '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'
-        ];
-        return Array.from({length: num}, (_, i) => coresBase[i % coresBase.length]);
-    };
-    const colors = gerarPaletaPremium(labels.length);
-
-    // 6. Legenda Externa
-    if(legendContainer) {
-        legendContainer.innerHTML = labels.map((label, i) => `
-            <div class="flex items-center gap-1.5">
-                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${colors[i]}"></span>
-                <span class="text-[11px] font-bold text-gray-400 tracking-wide">${label}</span>
-            </div>
-        `).join('');
-    }
-
-    // 7. Renderiza Gráfico
     const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-    const borderColor = isLight ? '#ffffff' : '#121212';
+    if (alocacaoChartInstance) alocacaoChartInstance.destroy();
 
-    if (alocacaoChartInstance) {
-        alocacaoChartInstance.data.labels = labels;
-        alocacaoChartInstance.data.datasets[0].data = data;
-        alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
-        alocacaoChartInstance.data.datasets[0].borderColor = borderColor;
-        alocacaoChartInstance.update();
-    } else {
-        alocacaoChartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: { 
-                labels: labels, 
-                datasets: [{ 
-                    data: data, 
-                    backgroundColor: colors, 
-                    borderColor: borderColor,
-                    borderWidth: 0,
-                    spacing: 4,
-                    borderRadius: 10,
-                    hoverOffset: 15
-                }] 
-            },
-            options: {
-                responsive: true, 
-                maintainAspectRatio: false,
-                
-                // --- ALTERAÇÃO AQUI: De 85% para 75% (Mais grosso) ---
-                cutout: '77%', 
-                // ----------------------------------------------------
-                
-                layout: { padding: 10 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 20, 0.95)',
-                        titleColor: isLight ? '#1f2937' : '#fff',
-                        bodyColor: isLight ? '#4b5563' : '#e5e7eb',
-                        borderColor: isLight ? '#e5e7eb' : '#333',
-                        borderWidth: 1,
-                        padding: 12,
-                        cornerRadius: 12,
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return ` ${label}: ${percent}% (${formatBRL(value)})`;
-                            }
+    alocacaoChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: dataValues,
+                backgroundColor: backgroundColors,
+                borderWidth: 0,
+                spacing: 4,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '80%', // Centro vazado grande
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1c1c1e',
+                    bodyColor: '#fff',
+                    callbacks: {
+                        label: function(context) {
+                            const val = context.parsed;
+                            const pct = (val / totalGeral) * 100;
+                            return ` ${pct.toFixed(1)}% (${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)})`;
                         }
                     }
                 }
             }
-        });
-    }
+        }
+    });
 }
 
 // --- EM app.js: Adicione esta função auxiliar (pode ser antes da renderizarGraficoHistorico) ---
@@ -2396,207 +2377,87 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 }
 
 
+/* ============================================================
+   GRÁFICO PROVENTOS (COMPLETO)
+   ============================================================ */
+let historicoChartInstance = null;
+
 function renderizarGraficoHistorico() {
-    const canvas = document.getElementById('historico-proventos-chart');
+    const canvas = document.getElementById('proventos-chart-modal');
     if (!canvas) return;
 
-    // 0. Data de Hoje para comparação
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const modal = document.getElementById('proventos-modal');
+    if (!modal || modal.classList.contains('opacity-0')) return;
 
-    // 1. Dados Agrupados (Recebido vs A Receber)
-    const grupos = {};
+    // Valida dados globais (proventos recebidos)
+    if (typeof proventos === 'undefined' || !Array.isArray(proventos)) return;
+
+    // Agrupa proventos por mês (YYYY-MM)
+    const agrupado = {};
     
-    proventosConhecidos.forEach(p => {
-        if (!p.paymentDate || p.value <= 0) return;
-        
-        const key = p.paymentDate.substring(0, 7); // YYYY-MM
-        const dataRef = p.dataCom || p.paymentDate;
-        const qtd = getQuantidadeNaData(p.symbol, dataRef);
-        
-        if (qtd > 0) {
-            if (!grupos[key]) {
-                grupos[key] = { recebido: 0, aReceber: 0 };
-            }
-
-            // Converter string de data para objeto Date
-            const [ano, mes, dia] = p.paymentDate.split('-');
-            const dataPagamento = new Date(ano, mes - 1, dia);
-            const valorTotal = p.value * qtd;
-
-            if (dataPagamento <= hoje) {
-                grupos[key].recebido += valorTotal;
-            } else {
-                grupos[key].aReceber += valorTotal;
-            }
-        }
+    // Define janela de 12 meses (ou pega tudo, dependendo da sua preferência)
+    // Aqui estou pegando os últimos 12 meses com dados para ficar bonito
+    
+    proventos.forEach(prov => {
+        // prov.date deve ser 'YYYY-MM-DD' e prov.total deve ser number
+        const mesChave = prov.date.substring(0, 7); // '2023-05'
+        if (!agrupado[mesChave]) agrupado[mesChave] = 0;
+        agrupado[mesChave] += prov.total;
     });
 
-    let mesesOrdenados = Object.keys(grupos).sort();
-    
-    // Arrays para o gráfico
-    const labelsRaw = [];
-    const dataRecebidoRaw = [];
-    const dataAReceberRaw = [];
-    const keysMap = []; 
+    // Converte para array e ordena
+    const arrayDados = Object.keys(agrupado).map(key => {
+        return { date: key, value: agrupado[key] };
+    }).sort((a, b) => a.date.localeCompare(b.date));
 
-    mesesOrdenados.forEach(mesIso => {
-        const [anoFull, mesNum] = mesIso.split('-');
-        const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
-        
-        const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const anoCurto = anoFull.slice(-2);
-        
-        labelsRaw.push(`${nomeMes} ${anoCurto}`);
-        dataRecebidoRaw.push(grupos[mesIso].recebido);
-        dataAReceberRaw.push(grupos[mesIso].aReceber);
-        keysMap.push(mesIso); // Guarda "2025-05"
+    // Se tiver mais de 12 meses, pega os ultimos 12
+    const dadosFinais = arrayDados.slice(-12);
+
+    const labels = dadosFinais.map(d => {
+        const [ano, mes] = d.date.split('-');
+        const dateObj = new Date(ano, mes - 1, 1);
+        return dateObj.toLocaleString('pt-BR', { month: 'short' }).toUpperCase();
     });
 
-    // Filtro 12 meses
-    const labelsFiltrados = labelsRaw.slice(-12);
-    const dataRecebidoFiltrados = dataRecebidoRaw.slice(-12);
-    const dataAReceberFiltrados = dataAReceberRaw.slice(-12);
-    const keysFiltrados = keysMap.slice(-12);
-    
-    // Verifica mudança nos dados
-    const newDataString = JSON.stringify({ 
-        l: labelsFiltrados, 
-        d1: dataRecebidoFiltrados, 
-        d2: dataAReceberFiltrados 
-    });
-    
-    if (newDataString === lastHistoricoData && historicoChartInstance) { return; }
-    lastHistoricoData = newDataString; 
+    const values = dadosFinais.map(d => d.value);
 
-    if (!labelsFiltrados || labelsFiltrados.length === 0) {
-        if (historicoChartInstance) {
-            historicoChartInstance.destroy();
-            historicoChartInstance = null; 
-        }
-        return;
-    }
-    
     const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-    
-    // Cores
-    const colorRecebido = 'rgba(192, 132, 252, 0.9)'; // Roxo (Vesto)
-    const colorAReceber = 'rgba(251, 191, 36, 0.9)';  // Amarelo
-    const legendColor = isLight ? '#374151' : '#9ca3af';
-
-    if (historicoChartInstance) {
-        historicoChartInstance.destroy();
-    }
+    if (historicoChartInstance) historicoChartInstance.destroy();
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labelsFiltrados,
-            datasets: [
-                {
-                    label: 'A Receber', 
-                    data: dataAReceberFiltrados,
-                    backgroundColor: colorAReceber,
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    stack: 'Stack 0',
-                    rawKeys: keysFiltrados 
-                },
-                {
-                    label: 'Recebido',
-                    data: dataRecebidoFiltrados,
-                    backgroundColor: colorRecebido,
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    stack: 'Stack 0',
-                    rawKeys: keysFiltrados
-                }
-            ]
+            labels: labels,
+            datasets: [{
+                label: 'Proventos',
+                data: values,
+                backgroundColor: '#22c55e', // Green 500
+                borderRadius: 4,
+                barThickness: 12, // Barras finas e elegantes
+            }]
         },
         options: {
-            responsive: true, 
+            responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 800, easing: 'easeOutQuart' },
-            layout: { padding: { top: 10 } },
-            
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-
-            // --- EVENTO DE CLIQUE (Abre lista) ---
-            onClick: (e, elements, chart) => {
-                if (!elements || elements.length === 0) return;
-                
-                const element = elements[0];
-                const index = element.index;
-                
-                const labelAmigavel = chart.data.labels[index];
-                const rawKey = chart.data.datasets[0].rawKeys[index];
-                
-                exibirDetalhesProventos(rawKey, labelAmigavel);
-            },
-
             plugins: {
-                legend: { 
-                    display: true, 
-                    position: 'bottom', 
-                    // --- AJUSTE DAS BOLINHAS E HITBOX ---
-                    labels: { 
-                        boxWidth: 6,       // Bolinha menor (era 10)
-                        boxHeight: 6,      // Altura forçada igual largura
-                        usePointStyle: true, 
-                        pointStyle: 'circle',
-                        padding: 20,       // Espaçamento horizontal entre itens
-                        color: legendColor,
-                        font: {
-                            size: 10,      // Fonte menor para alinhar com a bolinha de 6px
-                            weight: '600',
-                            family: "'Plus Jakarta Sans', sans-serif"
-                        },
-                        textAlign: 'center' // Garante alinhamento texto/ícone
-                    } 
-                }, 
-                tooltip: { 
-                    enabled: true,
-                    backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(21, 21, 21, 0.95)',
-                    titleColor: isLight ? '#374151' : '#9ca3af',
-                    bodyColor: isLight ? '#1f2937' : '#fff',
-                    borderColor: isLight ? '#e5e5e5' : '#333',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    boxWidth: 6,
-                    boxHeight: 6,
-                    usePointStyle: true,
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1c1c1e',
                     callbacks: {
                         label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += formatBRL(context.parsed.y);
-                            }
-                            return label;
+                            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
                         }
                     }
-                } 
+                }
             },
             scales: {
-                y: { 
-                    display: false,
-                    stacked: true 
+                y: {
+                    grid: { color: '#333', borderDash: [4, 4] },
+                    ticks: { color: '#666', font: { size: 10 } }
                 },
-                x: { 
-                    stacked: true, 
-                    grid: { display: false }, 
-                    ticks: {
-                        color: legendColor,
-                        font: { size: 10, weight: 'bold' }
-                    }
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#666', font: { size: 10 } }
                 }
             }
         }
@@ -2688,41 +2549,58 @@ function renderizarGraficoHistorico() {
         }
     }
     
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+/* ============================================================
+   GRÁFICO PATRIMÔNIO (COMPLETO)
+   ============================================================ */
+let patrimonioChartInstance = null;
+let lastPatrimonioCalcSignature = '';
+let currentPatrimonioRange = 'ALL'; // Padrão
 
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+// Função auxiliar para os botões do modal
+window.alterarPeriodoPatrimonio = function(btn, range) {
+    // Atualiza UI dos botões
+    document.querySelectorAll('.patrimonio-range-btn').forEach(b => {
+        b.classList.remove('active', 'bg-white', 'text-black');
+        b.classList.add('text-gray-400');
+    });
+    btn.classList.add('active', 'text-white');
+    
+    currentPatrimonioRange = range;
+    lastPatrimonioCalcSignature = ''; // Força recalculo
+    renderizarGraficoPatrimonio();
+}
 
 function renderizarGraficoPatrimonio() {
-    const canvas = document.getElementById('patrimonio-chart');
+    // 1. Definição do Canvas Alvo (Agora no Modal)
+    const canvas = document.getElementById('patrimonio-chart-modal');
     if (!canvas) return;
-    
-    // Smart Check
-    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
-    const lastPatId = lastItem ? lastItem.date : 'none';
-    const lastPatVal = lastItem ? lastItem.value : 0;
-    
-    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
-    if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
-        return; 
+    // Se o modal não estiver visivel, não gasta processamento
+    const modal = document.getElementById('patrimonio-modal');
+    if (!modal || modal.classList.contains('opacity-0')) return;
+
+    // 2. Validação de Dados Globais
+    if (typeof patrimonio === 'undefined' || !Array.isArray(patrimonio) || patrimonio.length === 0) {
+        return; // Sem dados ainda
+    }
+
+    // 3. Smart Check (Evitar processamento desnecessário)
+    // Cria uma string única baseada no estado atual dos dados
+    const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
+    const lastItem = patrimonio[patrimonio.length - 1];
+    const signature = `MODAL-${currentPatrimonioRange}-${patrimonio.length}-${lastItem.date}-${lastItem.value}-${lastTxId}`;
+
+    if (signature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
+        return; // Nada mudou, mantém gráfico atual
     }
 
     const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-
-    // Cores
-    const colorLinePatrimonio = '#c084fc'; 
-    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
-    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
-    const colorText = isLight ? '#6b7280' : '#737373'; 
-
-    // 1. LÓGICA DE DATAS LIMITE
+    
+    // 4. Lógica de Filtragem de Datas (Range)
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
-    
-    let dataCorte;
-    
+    let dataCorte = new Date('2000-01-01'); // Padrão (ALL)
+
     if (currentPatrimonioRange === '1M') {
         dataCorte = new Date(hoje);
         dataCorte.setDate(hoje.getDate() - 30);
@@ -2735,199 +2613,177 @@ function renderizarGraficoPatrimonio() {
     } else if (currentPatrimonioRange === '5Y') {
         dataCorte = new Date(hoje);
         dataCorte.setFullYear(hoje.getFullYear() - 5);
-    } else {
-        dataCorte = new Date('2000-01-01'); // 'ALL'
     }
-    
-    dataCorte.setHours(0, 0, 0, 0);
+    dataCorte.setHours(0,0,0,0);
 
-    // 2. Filtra dados brutos
-    let dadosOrdenados = [...patrimonio]
-        .filter(p => {
-             const parts = p.date.split('-'); 
-             const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
-             return dataPonto >= dataCorte;
-        })
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Filtra array de patrimônio
+    let dadosFiltrados = patrimonio.filter(p => {
+        const parts = p.date.split('-'); // Esperado formato YYYY-MM-DD
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        return d >= dataCorte;
+    }).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- AGRUPAMENTO MENSAL (Apenas para 6M, 1Y, 5Y) ---
-    if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
+    if (dadosFiltrados.length === 0) return;
+
+    // Otimização: Se for range longo, agrupar por mês para não poluir o gráfico
+    if (['1Y', '5Y', 'ALL'].includes(currentPatrimonioRange) && dadosFiltrados.length > 60) {
         const grupos = {};
-        dadosOrdenados.forEach(p => {
-            const chaveMes = p.date.substring(0, 7); 
-            grupos[chaveMes] = p; 
+        dadosFiltrados.forEach(p => {
+            const mesChave = p.date.substring(0, 7); // YYYY-MM
+            // Pega sempre o último registro do mês
+            grupos[mesChave] = p;
         });
-        dadosOrdenados = Object.values(grupos);
-        dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
+        dadosFiltrados = Object.values(grupos).sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
-    if (dadosOrdenados.length === 0) {
-        if (patrimonioChartInstance) {
-            patrimonioChartInstance.destroy();
-            patrimonioChartInstance = null;
-        }
-        return;
-    }
-
-    // 3. Prepara Arrays (Labels e Dados)
+    // 5. Preparação dos Arrays para o ChartJS
     const labels = [];
-    const dataValor = [];
+    const dataPatrimonio = [];
+    const dataCusto = [];
     
-    // Cálculo Otimizado do Investido
-    const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Prepara transações para calculo de custo histórico
+    const txOrdenadas = (typeof transacoes !== 'undefined') 
+        ? [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date))
+        : [];
+        
     let custoAcumulado = 0;
     let txIndex = 0;
-    const dataCusto = [];
 
-    dadosOrdenados.forEach(p => {
-        // Parse da data
+    // Loop principal de construção dos pontos
+    dadosFiltrados.forEach(p => {
+        // Formata data para label
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
-        
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const ano = d.getFullYear().toString().slice(-2); // Pega '23', '24', '25'
+        const ano = d.getFullYear().toString().slice(-2);
 
-        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA (CORRIGIDA) ---
         if (currentPatrimonioRange === '1M') {
-             // 1M: "15 FEV" (Ano implícito pelo curto prazo)
-             labels.push([dia, mes]); 
-        } else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
-             // Períodos Longos (Mensal): "FEV 25"
-             labels.push([mes, ano]); 
+            labels.push(`${dia}/${mes}`);
         } else {
-             // TUDO: "15 FEV 25" (Precisa do ano para diferenciar)
-             labels.push([dia, mes, ano]); 
+            labels.push(`${mes}/${ano}`);
         }
 
-        // Valor Patrimônio
-        dataValor.push(p.value);
+        dataPatrimonio.push(p.value);
 
-        // Avança o custo acumulado
-        const dataPontoLimite = new Date(p.date + 'T23:59:59');
+        // Calcula custo investido até esta data (p.date)
+        const dataPonto = new Date(p.date + 'T23:59:59');
+        
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
             const dataTx = new Date(tx.date);
-            if (dataTx <= dataPontoLimite) {
+            
+            if (dataTx <= dataPonto) {
+                // Soma compras, subtrai vendas
                 if (tx.type === 'buy') custoAcumulado += (tx.quantity * tx.price);
-                if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
+                else if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
                 txIndex++;
             } else {
-                break;
+                break; // Próxima transação é no futuro em relação a este ponto
             }
         }
         dataCusto.push(custoAcumulado);
     });
 
-    // 4. Configuração do Gráfico
-    const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
-    gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
-
-    const animationConfig = patrimonioChartInstance ? false : { duration: 1000, easing: 'easeOutQuart' };
-
+    // 6. Configuração e Criação do Gráfico
     if (patrimonioChartInstance) {
-        patrimonioChartInstance.data.labels = labels;
-        patrimonioChartInstance.data.datasets[0].data = dataValor;
-        patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        patrimonioChartInstance.update('none'); 
-    } else {
-        patrimonioChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Patrimônio',
-                        data: dataValor,
-                        fill: true,
-                        backgroundColor: gradientFill,
-                        borderColor: colorLinePatrimonio,
-                        borderWidth: 1.8,
-                        tension: 0.4,
-                        pointRadius: 0, 
-                        pointHitRadius: 30,
-                        pointHoverRadius: 4,
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: colorLinePatrimonio,
-                        pointHoverBorderWidth: 3,
-                        order: 1
-                    },
-                    {
-                        label: 'Investido',
-                        data: dataCusto,
-                        fill: false,
-                        borderColor: colorLineInvestido,
-                        borderWidth: 1.3,
-                        borderDash: [4, 4],
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHitRadius: 10,
-                        pointHoverRadius: 0,
-                        order: 2
-                    }
-                ]
+        patrimonioChartInstance.destroy();
+    }
+
+    // Gradiente Roxo
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(124, 58, 237, 0.5)'); // Roxo forte
+    gradient.addColorStop(1, 'rgba(124, 58, 237, 0)');
+
+    patrimonioChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Patrimônio',
+                    data: dataPatrimonio,
+                    borderColor: '#8b5cf6', // Violeta 500
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    tension: 0.4, // Curva suave
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    fill: true
+                },
+                {
+                    label: 'Investido',
+                    data: dataCusto,
+                    borderColor: '#525252', // Cinza escuro
+                    borderWidth: 2,
+                    borderDash: [6, 6], // Linha tracejada
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: animationConfig,
-                layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: '#151515',
-                        titleColor: '#9ca3af',
-                        bodyColor: '#fff',
-                        bodyFont: { weight: 'bold', size: 13 },
-                        borderColor: '#2C2C2E',
-                        borderWidth: 1,
-                        padding: 10,
-                        displayColors: true,
-                        callbacks: {
-                            // Junta as linhas [Dia, Mês, Ano] em uma linha só no Tooltip: "15 FEV 25"
-                            title: function(context) {
-                                const label = context[0].label;
-                                return Array.isArray(label) ? label.join(' ') : label;
-                            },
-                            label: (context) => context.dataset.label + ': ' + formatBRL(context.parsed.y)
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1c1c1e',
+                    titleColor: '#fff',
+                    bodyColor: '#ccc',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                            }
+                            return label;
                         }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        color: '#666',
+                        maxTicksLimit: 6,
+                        font: { size: 10 }
                     }
                 },
-                scales: {
-                    y: { 
-                        display: true,
-                        position: 'right',
-                        grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
-                        ticks: {
-                            color: colorText,
-                            font: { size: 10, family: 'monospace' },
-                            maxTicksLimit: 6,
-                            callback: function(value) {
-                                if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
-                                return value;
-                            }
-                        }
+                y: {
+                    position: 'right',
+                    grid: {
+                        color: '#333',
+                        borderDash: [4, 4]
                     },
-                    x: {
-                        grid: { display: false },
-                        ticks: { 
-                            display: true,
-                            maxRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 6, 
-                            color: colorText,
-                            font: { size: 10, weight: 'bold' }
-                        } 
+                    ticks: {
+                        color: '#666',
+                        font: { size: 10 },
+                        callback: function(value) {
+                            if(value >= 1000) return (value/1000).toFixed(0) + 'k';
+                            return value;
+                        }
                     }
                 }
             }
-        });
-    }
+        }
+    });
 
-    lastPatrimonioCalcSignature = currentSignature;
+    lastPatrimonioCalcSignature = signature;
 }
 
 function renderizarTimelinePagamentos() {
@@ -6441,39 +6297,154 @@ window.mostrarDyCarteira = async function() {
 };
 
 // Adicione no app.js
+/* ============================================================
+   LÓGICA IPCA
+   ============================================================ */
+// Variável global para armazenar dados IPCA carregados
+window.ipcaDataCache = null;
+
 async function atualizarWidgetIpca() {
     try {
-        // Ajuste aqui para usar a sua função fetchBFF ou fetch direto
+        // Faz a chamada ao seu backend (scraper)
         const res = await fetch('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'ipca', payload: {} })
         });
         
-        if (!res.ok) throw new Error('Falha ao buscar IPCA');
+        if (!res.ok) throw new Error('Erro API IPCA');
         const data = await res.json();
-        const ipca = data.json;
+        const ipca = data.json; // Supondo estrutura { json: { acumulado_12m: "4.5%", ... } }
 
         if (ipca) {
+            window.ipcaDataCache = ipca; // Salva para usar no modal
+
+            // Atualiza o Card da Dashboard (Pequeno)
             const elValor = document.getElementById('ipca-valor-12m');
             if(elValor) elValor.textContent = ipca.acumulado_12m || '-';
             
             const elMes = document.getElementById('ipca-mes-badge');
             if(elMes) {
                 elMes.textContent = `Mês: ${ipca.valor_mes}`;
-                // Alerta vermelho se inflação mensal > 0.5%
-                const valMes = parseFloat(ipca.valor_mes.replace(',', '.').replace('%',''));
-                if (valMes > 0.5) {
+                // Estilização condicional (vermelho se inflação alta)
+                const valMesNumerico = parseFloat(ipca.valor_mes.replace(',', '.').replace('%',''));
+                
+                if (valMesNumerico > 0.5) {
                     elMes.className = "text-[10px] font-bold bg-red-500/10 text-red-400 px-2 py-1 rounded-full";
                 } else {
                     elMes.className = "text-[10px] font-bold bg-orange-500/10 text-orange-400 px-2 py-1 rounded-full";
                 }
             }
         }
-    } catch (e) { console.error("Erro Widget IPCA", e); }
+    } catch (e) { 
+        console.error("Erro ao buscar IPCA:", e); 
+    }
+}
+
+// Função chamada ao abrir o Modal IPCA
+function popularModalIpca() {
+    if (!window.ipcaDataCache) {
+        // Se não tem dados, tenta buscar de novo
+        atualizarWidgetIpca().then(() => {
+            if(window.ipcaDataCache) popularModalIpca();
+        });
+        return;
+    }
+    
+    const dados = window.ipcaDataCache;
+    
+    // Popula campos do Modal
+    const el12m = document.getElementById('modal-ipca-12m');
+    const elMesRef = document.getElementById('modal-ipca-mes-nome');
+    const elMesVal = document.getElementById('modal-ipca-mes-valor');
+    const elAno = document.getElementById('modal-ipca-ano');
+    
+    if(el12m) el12m.textContent = dados.acumulado_12m;
+    if(elMesRef) elMesRef.textContent = dados.mes_referencia || 'Último Fechamento';
+    if(elMesVal) elMesVal.textContent = dados.valor_mes;
+    if(elAno) elAno.textContent = dados.acumulado_ano;
 }
 
 atualizarWidgetIpca();
+
+// Função genérica para abrir (com animação de entrada)
+function abrirModalGenerico(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    const content = modal.querySelector('.page-content');
+    
+    modal.classList.add('visible'); // Mostra o backdrop
+    
+    // Pequeno delay para permitir que o display:block seja processado antes da transform
+    setTimeout(() => {
+        content.style.transform = 'translateY(0)';
+    }, 10);
+    
+    document.body.style.overflow = 'hidden'; // Trava scroll do fundo
+}
+
+// Função genérica para fechar (com animação de saída)
+window.fecharModalDashboard = function(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    const content = modal.querySelector('.page-content');
+    
+    // Anima descida
+    content.style.transform = 'translateY(100%)';
+    
+    // Espera animação terminar para esconder
+    setTimeout(() => {
+        modal.classList.remove('visible');
+        document.body.style.overflow = '';
+    }, 300);
+}
+
+// Listeners para fechar ao clicar fora (Backdrop click)
+['patrimonio-modal', 'alocacao-modal', 'proventos-modal', 'ipca-modal'].forEach(id => {
+    const modal = document.getElementById(id);
+    if(modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) window.fecharModalDashboard(id);
+        });
+    }
+});
+
+// --- FUNÇÕES ESPECÍFICAS DE ABERTURA ---
+
+window.abrirModalPatrimonio = function() {
+    abrirModalGenerico('patrimonio-modal');
+    // Força renderização imediata com os dados atuais
+    // Reseta assinatura para forçar redesenho no novo canvas
+    lastPatrimonioCalcSignature = ''; 
+    renderizarGraficoPatrimonio();
+    
+    // Atualiza textos do rodapé do modal
+    const totalPat = document.getElementById('total-carteira-valor')?.textContent || 'R$ 0,00';
+    const totalCusto = document.getElementById('total-carteira-custo')?.textContent || 'R$ 0,00';
+    
+    const elModalTotal = document.getElementById('modal-pat-total');
+    const elModalCusto = document.getElementById('modal-pat-custo');
+    if(elModalTotal) elModalTotal.textContent = totalPat;
+    if(elModalCusto) elModalCusto.textContent = totalCusto;
+};
+
+window.abrirModalAlocacao = function() {
+    abrirModalGenerico('alocacao-modal');
+    lastAlocacaoData = ''; // Força redesenho
+    renderizarGraficoAlocacao();
+};
+
+window.abrirModalProventos = function() {
+    abrirModalGenerico('proventos-modal');
+    lastHistoricoData = ''; // Força redesenho
+    renderizarGraficoHistorico();
+};
+
+window.abrirModalIPCA = function() {
+    abrirModalGenerico('ipca-modal');
+    // Dados já devem estar carregados na variável global window.ipcaData (veja abaixo)
+    popularModalIpca();
+};
 	
     await init();
 });

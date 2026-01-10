@@ -1,16 +1,14 @@
-const { createClient } = require('@supabase/supabase-js');
-const webpush = require('web-push');
+import { createClient } from '@supabase/supabase-js';
+import webpush from 'web-push';
 
-// Tenta importar o scraper se existir
-let scraperHandler;
-try { scraperHandler = require('../scraper.js'); } catch (e) { }
-
+// Configurações do WebPush
 webpush.setVapidDetails(
   'mailto:mh.umateus@gmail.com',
   process.env.VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY
 );
 
+// Inicializa Supabase
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -18,12 +16,33 @@ const supabase = createClient(
 
 const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// --- 1. FUNÇÃO DE PREÇOS (Para calcular Patrimônio) ---
+// --- IMPORTAÇÃO DINÂMICA DO SCRAPER ---
+// Tenta carregar o scraper de locais diferentes para evitar erro de caminho
+let scraperHandler = null;
+async function carregarScraper() {
+    if (scraperHandler) return scraperHandler;
+    try {
+        // Tenta buscar na mesma pasta (ex: /api/scraper.js)
+        let mod = await import('./scraper.js');
+        scraperHandler = mod.default;
+    } catch (e1) {
+        try {
+            // Tenta buscar na pasta anterior (ex: ../scraper.js)
+            let mod = await import('../scraper.js');
+            scraperHandler = mod.default;
+        } catch (e2) {
+            console.warn("Aviso: scraper.js não encontrado. A atualização de proventos novos será pulada.");
+        }
+    }
+    return scraperHandler;
+}
+
+// --- 1. FUNÇÃO DE PREÇOS (BRAPI) ---
 async function buscarPrecosBrapi(tickers) {
     if (!tickers || tickers.length === 0) return {};
     const uniqueTickers = [...new Set(tickers)];
     
-    // Limita a 40 tickers por requisição para evitar URL muito longa
+    // Limita tamanho da URL
     const tickersString = uniqueTickers.slice(0, 40).map(t => t.endsWith('11') || t.endsWith('3') || t.endsWith('4') ? t + '.SA' : t).join(',');
     
     try {
@@ -46,25 +65,21 @@ async function buscarPrecosBrapi(tickers) {
     }
 }
 
-// --- 2. JOB: ATUALIZAR PATRIMÔNIO (Snapshot Diário) ---
+// --- 2. JOB: ATUALIZAR PATRIMÔNIO (Snapshot) ---
 async function atualizarPatrimonioJob() {
     console.log(">> Iniciando Snapshot de Patrimônio...");
     
-    // A. Busca dados
     const { data: transacoes } = await supabase.from('transacoes').select('user_id, symbol, type, quantity');
     const { data: appStates } = await supabase.from('appstate').select('user_id, value_json').eq('key', 'saldoCaixa');
     
     if (!transacoes || transacoes.length === 0) return;
 
-    // B. Busca Preços Atuais
     const todosAtivos = transacoes.map(t => t.symbol);
     const mapaPrecos = await buscarPrecosBrapi(todosAtivos);
     
-    // C. Mapeia Caixa dos Usuários
     const caixaPorUser = {};
     if (appStates) appStates.forEach(r => caixaPorUser[r.user_id] = r.value_json?.value || 0);
 
-    // D. Calcula Carteira em Memória
     const portfolios = {}; 
     transacoes.forEach(tx => {
         if (!portfolios[tx.user_id]) portfolios[tx.user_id] = {};
@@ -75,10 +90,9 @@ async function atualizarPatrimonioJob() {
         else if (tx.type === 'sell') portfolios[tx.user_id][tx.symbol] -= qtd;
     });
 
-    // E. Gera os Snapshots
     const snapshots = [];
     const hoje = new Date();
-    hoje.setHours(hoje.getHours() - 3); // Ajuste Fuso Brasil
+    hoje.setHours(hoje.getHours() - 3); 
     const dataHoje = hoje.toISOString().split('T')[0];
 
     for (const userId of Object.keys(portfolios)) {
@@ -92,7 +106,6 @@ async function atualizarPatrimonioJob() {
         
         const totalGeral = totalAtivos + (caixaPorUser[userId] || 0);
         
-        // Só salva se tiver algum valor
         if (totalGeral > 0) {
             snapshots.push({ 
                 user_id: userId, 
@@ -102,7 +115,6 @@ async function atualizarPatrimonioJob() {
         }
     }
 
-    // F. Salva no Banco
     if (snapshots.length > 0) {
         await supabase.from('patrimonio').upsert(snapshots, { onConflict: 'user_id, date' });
         console.log(`>> Patrimônio salvo para ${snapshots.length} usuários.`);
@@ -111,29 +123,32 @@ async function atualizarPatrimonioJob() {
 
 // --- 3. HELPER: BUSCAR PROVENTOS VIA SCRAPER ---
 async function atualizarProventosPeloScraper(fiiList) {
-    if (!scraperHandler) return [];
+    const handler = await carregarScraper();
+    if (!handler) return [];
+
     const req = { method: 'POST', body: { mode: 'proventos_carteira', payload: { fiiList } } };
     let resultado = [];
+    
+    // Mock de Response object para reutilizar a lógica do scraper existente
     const res = {
         setHeader: () => {},
         status: () => ({ json: (data) => { resultado = data.json; } }),
         json: (data) => { resultado = data.json; }
     };
     try {
-        await scraperHandler(req, res);
+        await handler(req, res);
         return resultado || [];
     } catch (e) { return []; }
 }
 
 // ==========================================
-// HANDLER PRINCIPAL (Executado pelo Cron)
+// HANDLER PRINCIPAL (Export Default - ESM)
 // ==========================================
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
     try {
-        console.log("Iniciando Cron Job (Patrimônio + Proventos)...");
+        console.log("Iniciando Cron Job (ESM)...");
         const start = Date.now();
         
-        // Definições de Data
         const agora = new Date();
         agora.setHours(agora.getHours() - 3);
         const hojeString = agora.toISOString().split('T')[0];
@@ -175,7 +190,6 @@ module.exports = async function handler(req, res) {
                         });
                     }
                     
-                    // Salva em lotes de 200
                     for (let i = 0; i < upserts.length; i += 200) {
                         await supabase.from('proventosconhecidos')
                             .upsert(upserts.slice(i, i + 200), { onConflict: 'user_id, id', ignoreDuplicates: true });
@@ -200,11 +214,9 @@ module.exports = async function handler(req, res) {
         const { data: allSubs } = await supabase.from('push_subscriptions').select('*');
         
         if (!allSubs?.length) {
-            const duration = (Date.now() - start) / 1000;
-            return res.json({ status: 'Success', msg: 'Sem inscritos.', time: duration });
+            return res.status(200).json({ status: 'Success', msg: 'Sem inscritos.' });
         }
 
-        // Agrupa Dados por Usuário
         const userMap = {};
         allSubs.forEach(sub => {
             if (!userMap[sub.user_id]) userMap[sub.user_id] = { subs: [], proventos: [] };
@@ -225,7 +237,6 @@ module.exports = async function handler(req, res) {
 
             const matchDate = (f, s) => f && f.startsWith(s);
             
-            // Filtros de Eventos
             const pagamentos = eventos.filter(e => matchDate(e.paymentdate, hojeString));
             const dataComs = eventos.filter(e => matchDate(e.datacom, hojeString));
             const novosAnuncios = eventos.filter(e => {
@@ -239,7 +250,7 @@ module.exports = async function handler(req, res) {
                 return created && !isDup && isValido;
             });
 
-            // Lógica de Prioridade da Mensagem (Formato Original)
+            // Lógica de Prioridade (Formato Original)
             let title = '', body = '';
             const icon = 'https://in-vesto.vercel.app/logo-vesto.png';
             const badge = 'https://in-vesto.vercel.app/sininhov2.png';

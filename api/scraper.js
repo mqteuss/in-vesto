@@ -305,6 +305,7 @@ async function scrapeAsset(ticker) {
 // PARTE 3: IPCA -> INVESTIDOR10 (NOVO)
 // ---------------------------------------------------------
 
+// --- FUNÇÃO CORRIGIDA PARA LER A TABELA ---
 async function scrapeIpca() {
     try {
         const url = 'https://investidor10.com.br/indices/ipca/';
@@ -318,17 +319,32 @@ async function scrapeIpca() {
             acumulado_ano: '0,00%'
         };
 
-        // Estratégia: Pega dos Cards de Destaque
-        $('._card').each((i, el) => {
-            const titulo = $(el).find('._card-header').text().trim().toLowerCase();
-            const valor = $(el).find('._card-body').text().trim();
+        // Procura por todas as tabelas na página
+        $('table').each((i, table) => {
+            // Verifica se é a tabela correta olhando os cabeçalhos
+            const headers = $(table).find('thead tr th, tr th').text().toLowerCase();
+            
+            if (headers.includes('variação em %') && headers.includes('acumulado 12 meses')) {
+                // Achamos a tabela! Vamos pegar a primeira linha de dados (mais recente)
+                const primeiraLinha = $(table).find('tbody tr').first();
+                const colunas = primeiraLinha.find('td');
 
-            if (titulo.includes('mês')) dados.valor_mes = valor;
-            if (titulo.includes('12 meses')) dados.acumulado_12m = valor;
-            if (titulo.includes('ano')) dados.acumulado_ano = valor;
+                if (colunas.length >= 4) {
+                    // Coluna 1: Variação no Mês (0,33)
+                    dados.valor_mes = $(colunas[1]).text().trim() + '%';
+                    
+                    // Coluna 2: Acumulado no Ano (4,26)
+                    dados.acumulado_ano = $(colunas[2]).text().trim() + '%';
+                    
+                    // Coluna 3: Acumulado 12 Meses (4,26)
+                    dados.acumulado_12m = $(colunas[3]).text().trim() + '%';
+                }
+                return false; // Para o loop assim que achar
+            }
         });
 
         return dados;
+
     } catch (error) {
         console.error("Erro IPCA:", error.message);
         return { acumulado_12m: '-', valor_mes: '-' };
@@ -411,4 +427,5 @@ module.exports = async function handler(req, res) {
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
+
 };

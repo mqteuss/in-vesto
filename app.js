@@ -6327,7 +6327,7 @@ async function atualizarWidgetIpca() {
 
 atualizarWidgetIpca();
 	
-	// --- FUNÇÃO REUTILIZÁVEL: SWIPE DOWN PARA FECHAR MODAL ---
+// --- FUNÇÃO REUTILIZÁVEL: SWIPE DOWN PARA FECHAR MODAL ---
     function setupModalSwipe(modalId, closeCallback) {
         const modalEl = document.getElementById(modalId);
         if (!modalEl) return;
@@ -6339,15 +6339,12 @@ atualizarWidgetIpca();
         let currentY = 0;
         let isDragging = false;
         
-        // Elemento que permite scroll (para verificar se está no topo)
         const scrollableEl = contentEl.querySelector('.overflow-y-auto');
 
         contentEl.addEventListener('touchstart', (e) => {
-            // Só ativa o arraste se o scroll interno estiver no topo (0)
             if (scrollableEl && scrollableEl.scrollTop <= 0) {
                 startY = e.touches[0].clientY;
                 isDragging = true;
-                // Remove transição durante o arraste para ser instantâneo
                 contentEl.style.transition = 'none';
             }
         }, { passive: true });
@@ -6357,9 +6354,7 @@ atualizarWidgetIpca();
             currentY = e.touches[0].clientY;
             const diff = currentY - startY;
 
-            // Só move se for para baixo (positivo)
             if (diff > 0) {
-                // Se o modal tem scroll, impede que a página de fundo role
                 if (e.cancelable) e.preventDefault();
                 contentEl.style.transform = `translateY(${diff}px)`;
             }
@@ -6370,53 +6365,50 @@ atualizarWidgetIpca();
             isDragging = false;
             
             const diff = currentY - startY;
-            
-            // Restaura a transição suave para o "snap" final
             contentEl.style.transition = 'transform 0.3s ease-in-out';
 
-            // Se arrastou mais de 120px, fecha o modal
             if (diff > 120) {
                 closeCallback();
             } else {
-                // Caso contrário, volta para a posição original (aberto)
                 contentEl.style.transform = '';
             }
-            
             startY = 0;
             currentY = 0;
         });
     }
 
-    // --- FUNÇÕES GLOBAIS DE ABERTURA/FECHAMENTO (Ligadas ao HTML onclick) ---
+    // --- FUNÇÕES GLOBAIS DE ABERTURA/FECHAMENTO (CORRIGIDAS) ---
 
     // 1. PATRIMÔNIO
     window.abrirModalPatrimonio = function() {
         const modal = document.getElementById('patrimonio-page-modal');
         const content = modal.querySelector('.page-content');
         
-        // Remove hidden (caso tenha) e reseta posição
-        modal.classList.remove('hidden');
+        // CORREÇÃO: Usa 'visible' para ativar o fade-in do fundo preto
+        modal.classList.add('visible');
+        modal.classList.remove('hidden'); // Garante que não tenha hidden
+        
+        // Reseta posição antes de animar
         content.style.transform = 'translateY(100%)'; 
         
-        // Força reflow para animação funcionar
         requestAnimationFrame(() => {
             content.style.transform = 'translateY(0)';
         });
         
-        // Renderiza o gráfico agora que o modal está visível
-        // Passamos 'true' para forçar a renderização mesmo se os dados não mudaram
         renderizarGraficoPatrimonio(true); 
     };
 
     window.fecharModalPatrimonio = function() {
         const modal = document.getElementById('patrimonio-page-modal');
         const content = modal.querySelector('.page-content');
+        
+        // Desliza para baixo
         content.style.transform = 'translateY(100%)';
         
-        // Espera a animação terminar para esconder completamente (opcional)
+        // Remove a classe visible para o fundo sumir (após breve delay se quiser, ou imediato)
         setTimeout(() => {
-            // modal.classList.add('hidden'); // Se quiser usar display:none
-        }, 300);
+            modal.classList.remove('visible');
+        }, 100); 
     };
 
     // 2. ALOCAÇÃO
@@ -6424,6 +6416,7 @@ atualizarWidgetIpca();
         const modal = document.getElementById('alocacao-page-modal');
         const content = modal.querySelector('.page-content');
         
+        modal.classList.add('visible');
         modal.classList.remove('hidden');
         content.style.transform = 'translateY(100%)';
         
@@ -6438,6 +6431,7 @@ atualizarWidgetIpca();
         const modal = document.getElementById('alocacao-page-modal');
         const content = modal.querySelector('.page-content');
         content.style.transform = 'translateY(100%)';
+        setTimeout(() => { modal.classList.remove('visible'); }, 100);
     };
 
     // 3. PROVENTOS (HISTÓRICO)
@@ -6445,6 +6439,7 @@ atualizarWidgetIpca();
         const modal = document.getElementById('proventos-page-modal');
         const content = modal.querySelector('.page-content');
         
+        modal.classList.add('visible');
         modal.classList.remove('hidden');
         content.style.transform = 'translateY(100%)';
         
@@ -6452,7 +6447,6 @@ atualizarWidgetIpca();
             content.style.transform = 'translateY(0)';
         });
         
-        // Garante que o gráfico seja renderizado no novo canvas
         buscarHistoricoProventosAgregado().then(({ labels, data }) => {
             renderizarGraficoHistorico({ labels, data }, true);
         });
@@ -6462,6 +6456,7 @@ atualizarWidgetIpca();
         const modal = document.getElementById('proventos-page-modal');
         const content = modal.querySelector('.page-content');
         content.style.transform = 'translateY(100%)';
+        setTimeout(() => { modal.classList.remove('visible'); }, 100);
     };
 
     // 4. IPCA
@@ -6469,6 +6464,7 @@ atualizarWidgetIpca();
         const modal = document.getElementById('ipca-page-modal');
         const content = modal.querySelector('.page-content');
         
+        modal.classList.add('visible');
         modal.classList.remove('hidden');
         content.style.transform = 'translateY(100%)';
         
@@ -6476,7 +6472,6 @@ atualizarWidgetIpca();
             content.style.transform = 'translateY(0)';
         });
 
-        // Sincroniza dados do card pequeno para o modal grande
         const elValorDash = document.getElementById('ipca-valor-12m');
         const elValorModal = document.getElementById('modal-ipca-valor');
         const elBadgeDash = document.getElementById('ipca-mes-badge');
@@ -6486,7 +6481,6 @@ atualizarWidgetIpca();
             elValorModal.textContent = elValorDash.textContent;
         }
         if(elBadgeDash && elMesModal) {
-            // Limpa o texto "Mês: " se existir
             const textoMes = elBadgeDash.textContent.replace('Mês: ', '').trim();
             elMesModal.textContent = `Referência: ${textoMes}`;
         }
@@ -6496,10 +6490,10 @@ atualizarWidgetIpca();
         const modal = document.getElementById('ipca-page-modal');
         const content = modal.querySelector('.page-content');
         content.style.transform = 'translateY(100%)';
+        setTimeout(() => { modal.classList.remove('visible'); }, 100);
     };
 
     // --- INICIALIZAÇÃO DOS LISTENERS DE SWIPE ---
-    // Chame isso uma vez na inicialização
     setupModalSwipe('patrimonio-page-modal', window.fecharModalPatrimonio);
     setupModalSwipe('alocacao-page-modal', window.fecharModalAlocacao);
     setupModalSwipe('proventos-page-modal', window.fecharModalProventos);

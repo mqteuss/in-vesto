@@ -224,6 +224,31 @@ async function scrapeFundamentos(ticker) {
             }
         });
 
+        // --- FIX: BUSCA ESPECÍFICA PARA COTAS (FIIs) ---
+        // O valor muitas vezes fica no header de cálculo "Cotas x Valor"
+        const cotasHeader = $('.quota-min .value').first().text().trim();
+        if (cotasHeader) {
+             const v = parseValue(cotasHeader);
+             if (v > 0) {
+                 num_cotas = v;
+                 if (dados.cotas_emitidas === 'N/A') dados.cotas_emitidas = cotasHeader;
+             }
+        }
+        
+        // Fallback para box2 (mobile/outro layout)
+        if (dados.cotas_emitidas === 'N/A') {
+             $('.box2').each((i, el) => {
+                const txt = $(el).text().toLowerCase();
+                if(txt.includes('cotas')) {
+                    const val = $(el).find('.value').text().trim();
+                    if(val) {
+                        dados.cotas_emitidas = val;
+                        num_cotas = parseValue(val);
+                    }
+                }
+             });
+        }
+
         if (dados.val_mercado === 'N/A' || dados.val_mercado === '-') {
             let mercadoCalc = 0;
             if (cotacao_atual > 0 && num_cotas > 0) mercadoCalc = cotacao_atual * num_cotas;
@@ -449,4 +474,5 @@ module.exports = async function handler(req, res) {
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
+
 };

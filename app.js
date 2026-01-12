@@ -2700,30 +2700,39 @@ function renderizarGraficoHistorico() {
     }
     
 function openPatrimonioModal() {
+    if(!patrimonioPageModal) return;
+
+    // 1. Mostra o modal
     patrimonioPageModal.classList.add('visible');
-    patrimonioPageContent.style.transform = ''; // Reseta transformações de drag anteriores
+    patrimonioPageContent.style.transform = ''; 
     patrimonioPageContent.classList.remove('closing');
-    document.body.style.overflow = 'hidden'; // Bloqueia scroll do fundo
+    document.body.style.overflow = 'hidden';
     
-    // Atualiza valores extras do modal se existirem
+    // 2. Atualiza textos do Header do modal
     if(modalPatrimonioValor && totalCarteiraValor) {
         modalPatrimonioValor.textContent = totalCarteiraValor.textContent;
-        // Copia o efeito blur se estiver em modo privacidade
-        modalPatrimonioValor.className = totalCarteiraValor.className.replace('text-2xl', 'text-lg'); 
+        // Mantém a classe de blur/privacidade se houver
+        if(totalCarteiraValor.classList.contains('blur-sm')) {
+            modalPatrimonioValor.classList.add('blur-sm');
+        } else {
+            modalPatrimonioValor.classList.remove('blur-sm');
+        }
     }
     if(modalCustoValor && totalCarteiraCusto) {
         modalCustoValor.textContent = totalCarteiraCusto.textContent;
     }
-
-    // Força re-renderização/resize do gráfico agora que o container mudou de tamanho/visibilidade
-    setTimeout(() => {
-        if(patrimonioChartInstance) {
-            patrimonioChartInstance.resize();
-            patrimonioChartInstance.update();
-        } else {
-            renderizarGraficoPatrimonio();
-        }
-    }, 150);
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            if (patrimonioChartInstance) {
+                // Força o Chart.js a reler o tamanho do container pai
+                patrimonioChartInstance.resize();
+                patrimonioChartInstance.update('none'); // Update sem animação para ser rápido
+            } else {
+                // Se o gráfico ainda não existia (primeira vez), cria ele
+                renderizarGraficoPatrimonio();
+            }
+        }, 50); // 50ms é suficiente
+    });
 }
 
 function closePatrimonioModal() {

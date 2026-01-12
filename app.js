@@ -2688,35 +2688,26 @@ function renderizarGraficoHistorico() {
         }
     }
     
-function renderizarGraficoPatrimonio(forceRender = false) {
-    const container = document.getElementById('chart-container');
-    // Tentamos pegar o canvas, mas se ele não existir (foi destruído), não tem problema ainda
-    let canvas = document.getElementById('patrimonio-chart');
-    
-    // Smart Check (Ignora se for forceRender)
-    if (!forceRender && window.patrimonioChartInstance && canvas) {
-        const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-        const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
-        const lastPatId = lastItem ? lastItem.date : 'none';
-        const lastPatVal = lastItem ? lastItem.value : 0;
-        const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
 
-        if (currentSignature === lastPatrimonioCalcSignature) {
-            // Verifica se o gráfico ainda está "vivo" no DOM
-            if (window.patrimonioChartInstance.canvas === canvas) return;
-        }
+// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+
+function renderizarGraficoPatrimonio() {
+    const canvas = document.getElementById('patrimonio-chart');
+    if (!canvas) return;
+    
+    // Smart Check
+    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+    const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
+    const lastPatId = lastItem ? lastItem.date : 'none';
+    const lastPatVal = lastItem ? lastItem.value : 0;
+    
+    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
+
+    if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
+        return; 
     }
 
-    // Se não tiver container, aborta
-    if (!container) return;
-
-    // Se o canvas não existe (foi limpo no modal), a gente deixa o código criar ou pega o existente
-    if (!canvas) {
-        canvas = document.createElement('canvas');
-        canvas.id = 'patrimonio-chart';
-        container.appendChild(canvas);
-    }
-    
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
 
@@ -2726,66 +2717,93 @@ function renderizarGraficoPatrimonio(forceRender = false) {
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // --- FILTRAGEM DE DADOS (Igual ao seu original) ---
+    // 1. LÓGICA DE DATAS LIMITE
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
+    
     let dataCorte;
     
     if (currentPatrimonioRange === '1M') {
-        dataCorte = new Date(hoje); dataCorte.setDate(hoje.getDate() - 30);
+        dataCorte = new Date(hoje);
+        dataCorte.setDate(hoje.getDate() - 30);
     } else if (currentPatrimonioRange === '6M') {
-        dataCorte = new Date(hoje); dataCorte.setMonth(hoje.getMonth() - 6);
+        dataCorte = new Date(hoje);
+        dataCorte.setMonth(hoje.getMonth() - 6);
     } else if (currentPatrimonioRange === '1Y') {
-        dataCorte = new Date(hoje); dataCorte.setFullYear(hoje.getFullYear() - 1);
+        dataCorte = new Date(hoje);
+        dataCorte.setFullYear(hoje.getFullYear() - 1);
     } else if (currentPatrimonioRange === '5Y') {
-        dataCorte = new Date(hoje); dataCorte.setFullYear(hoje.getFullYear() - 5);
+        dataCorte = new Date(hoje);
+        dataCorte.setFullYear(hoje.getFullYear() - 5);
     } else {
-        dataCorte = new Date('2000-01-01');
+        dataCorte = new Date('2000-01-01'); // 'ALL'
     }
+    
     dataCorte.setHours(0, 0, 0, 0);
 
-    let dadosOrdenados = [...patrimonio].filter(p => {
-        const parts = p.date.split('-'); 
-        return new Date(parts[0], parts[1] - 1, parts[2]) >= dataCorte;
-    }).sort((a, b) => new Date(a.date) - new Date(b.date));
+    // 2. Filtra dados brutos
+    let dadosOrdenados = [...patrimonio]
+        .filter(p => {
+             const parts = p.date.split('-'); 
+             const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
+             return dataPonto >= dataCorte;
+        })
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Agrupamento Mensal
+    // --- AGRUPAMENTO MENSAL (Apenas para 6M, 1Y, 5Y) ---
     if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
-        dadosOrdenados.forEach(p => { grupos[p.date.substring(0, 7)] = p; });
-        dadosOrdenados = Object.values(grupos).sort((a, b) => new Date(a.date) - new Date(b.date));
+        dadosOrdenados.forEach(p => {
+            const chaveMes = p.date.substring(0, 7); 
+            grupos[chaveMes] = p; 
+        });
+        dadosOrdenados = Object.values(grupos);
+        dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
-    // Se não tiver dados, limpa gráfico e sai
     if (dadosOrdenados.length === 0) {
-        if (window.patrimonioChartInstance) {
-            window.patrimonioChartInstance.destroy();
-            window.patrimonioChartInstance = null;
+        if (patrimonioChartInstance) {
+            patrimonioChartInstance.destroy();
+            patrimonioChartInstance = null;
         }
         return;
     }
 
-    // Prepara Arrays
+    // 3. Prepara Arrays (Labels e Dados)
     const labels = [];
     const dataValor = [];
+    
+    // Cálculo Otimizado do Investido
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;
     const dataCusto = [];
 
     dadosOrdenados.forEach(p => {
+        // Parse da data
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
+        
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const ano = d.getFullYear().toString().slice(-2);
+        const ano = d.getFullYear().toString().slice(-2); // Pega '23', '24', '25'
 
-        if (currentPatrimonioRange === '1M') labels.push([dia, mes]);
-        else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]);
-        else labels.push([dia, mes, ano]);
+        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA (CORRIGIDA) ---
+        if (currentPatrimonioRange === '1M') {
+             // 1M: "15 FEV" (Ano implícito pelo curto prazo)
+             labels.push([dia, mes]); 
+        } else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
+             // Períodos Longos (Mensal): "FEV 25"
+             labels.push([mes, ano]); 
+        } else {
+             // TUDO: "15 FEV 25" (Precisa do ano para diferenciar)
+             labels.push([dia, mes, ano]); 
+        }
 
+        // Valor Patrimônio
         dataValor.push(p.value);
 
+        // Avança o custo acumulado
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
@@ -2794,37 +2812,60 @@ function renderizarGraficoPatrimonio(forceRender = false) {
                 if (tx.type === 'buy') custoAcumulado += (tx.quantity * tx.price);
                 if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
                 txIndex++;
-            } else { break; }
+            } else {
+                break;
+            }
         }
         dataCusto.push(custoAcumulado);
     });
 
-    // --- CRIAÇÃO DO GRÁFICO ---
-    // Sempre destruímos se for forceRender para evitar bugs visuais
-    if (forceRender && window.patrimonioChartInstance) {
-        window.patrimonioChartInstance.destroy();
-        window.patrimonioChartInstance = null;
-    }
-
+    // 4. Configuração do Gráfico
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
-    
-    const animationConfig = (window.patrimonioChartInstance && !forceRender) ? false : { duration: 1000, easing: 'easeOutQuart' };
 
-    if (window.patrimonioChartInstance) {
-        window.patrimonioChartInstance.data.labels = labels;
-        window.patrimonioChartInstance.data.datasets[0].data = dataValor;
-        window.patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        window.patrimonioChartInstance.update();
+    const animationConfig = patrimonioChartInstance ? false : { duration: 1000, easing: 'easeOutQuart' };
+
+    if (patrimonioChartInstance) {
+        patrimonioChartInstance.data.labels = labels;
+        patrimonioChartInstance.data.datasets[0].data = dataValor;
+        patrimonioChartInstance.data.datasets[1].data = dataCusto;
+        patrimonioChartInstance.update('none'); 
     } else {
-        window.patrimonioChartInstance = new Chart(ctx, {
+        patrimonioChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'Patrimônio', data: dataValor, fill: true, backgroundColor: gradientFill, borderColor: colorLinePatrimonio, borderWidth: 1.8, tension: 0.4, pointRadius: 0, pointHitRadius: 30, pointHoverRadius: 4, pointHoverBackgroundColor: '#fff', pointHoverBorderColor: colorLinePatrimonio, pointHoverBorderWidth: 3, order: 1 },
-                    { label: 'Investido', data: dataCusto, fill: false, borderColor: colorLineInvestido, borderWidth: 1.3, borderDash: [4, 4], tension: 0.4, pointRadius: 0, pointHitRadius: 10, pointHoverRadius: 0, order: 2 }
+                    {
+                        label: 'Patrimônio',
+                        data: dataValor,
+                        fill: true,
+                        backgroundColor: gradientFill,
+                        borderColor: colorLinePatrimonio,
+                        borderWidth: 1.8,
+                        tension: 0.4,
+                        pointRadius: 0, 
+                        pointHitRadius: 30,
+                        pointHoverRadius: 4,
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: colorLinePatrimonio,
+                        pointHoverBorderWidth: 3,
+                        order: 1
+                    },
+                    {
+                        label: 'Investido',
+                        data: dataCusto,
+                        fill: false,
+                        borderColor: colorLineInvestido,
+                        borderWidth: 1.3,
+                        borderDash: [4, 4],
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                        pointHoverRadius: 0,
+                        order: 2
+                    }
                 ]
             },
             options: {
@@ -2836,23 +2877,57 @@ function renderizarGraficoPatrimonio(forceRender = false) {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        enabled: true, backgroundColor: '#151515', titleColor: '#9ca3af', bodyColor: '#fff', bodyFont: { weight: 'bold', size: 13 }, borderColor: '#2C2C2E', borderWidth: 1, padding: 10, displayColors: true,
+                        enabled: true,
+                        backgroundColor: '#151515',
+                        titleColor: '#9ca3af',
+                        bodyColor: '#fff',
+                        bodyFont: { weight: 'bold', size: 13 },
+                        borderColor: '#2C2C2E',
+                        borderWidth: 1,
+                        padding: 10,
+                        displayColors: true,
                         callbacks: {
-                            title: (c) => Array.isArray(c[0].label) ? c[0].label.join(' ') : c[0].label,
-                            label: (c) => c.dataset.label + ': ' + formatBRL(c.parsed.y)
+                            // Junta as linhas [Dia, Mês, Ano] em uma linha só no Tooltip: "15 FEV 25"
+                            title: function(context) {
+                                const label = context[0].label;
+                                return Array.isArray(label) ? label.join(' ') : label;
+                            },
+                            label: (context) => context.dataset.label + ': ' + formatBRL(context.parsed.y)
                         }
                     }
                 },
                 scales: {
-                    y: { display: true, position: 'right', grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false }, ticks: { color: colorText, font: { size: 10, family: 'monospace' }, maxTicksLimit: 6, callback: (v) => v >= 1000 ? 'R$ ' + (v/1000).toFixed(1) + 'k' : v } },
-                    x: { grid: { display: false }, ticks: { display: true, maxRotation: 0, autoSkip: true, maxTicksLimit: 6, color: colorText, font: { size: 10, weight: 'bold' } } }
+                    y: { 
+                        display: true,
+                        position: 'right',
+                        grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
+                        ticks: {
+                            color: colorText,
+                            font: { size: 10, family: 'monospace' },
+                            maxTicksLimit: 6,
+                            callback: function(value) {
+                                if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
+                                return value;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { 
+                            display: true,
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 6, 
+                            color: colorText,
+                            font: { size: 10, weight: 'bold' }
+                        } 
+                    }
                 }
             }
         });
     }
 
-    // Salva assinatura
-    lastPatrimonioCalcSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
+    lastPatrimonioCalcSignature = currentSignature;
 }
 
 function renderizarTimelinePagamentos() {
@@ -6399,146 +6474,6 @@ async function atualizarWidgetIpca() {
 }
 
 atualizarWidgetIpca();
-
-// ADICIONAR NO app.js
-
-    // --- LÓGICA DO MODAL DE PERFORMANCE ---
-    const perfModal = document.getElementById('performance-page-modal');
-    const perfContent = document.getElementById('tab-performance');
-    const perfScroll = document.getElementById('performance-conteudo-scroll');
-    
-    // Variáveis para gesto de Swipe Down
-    let perfTouchStartY = 0;
-    let perfTouchMoveY = 0;
-    let isDraggingPerf = false;
-
-window.abrirModalPerformance = function() {
-    const perfModal = document.getElementById('performance-page-modal');
-    const perfContent = document.getElementById('tab-performance');
-    const containerGrafico = document.getElementById('chart-container');
-    
-    if(!perfModal || !perfContent) return;
-    
-    // Atualiza Resumos
-    const totalInvestido = document.getElementById('total-carteira-custo')?.textContent || '---';
-    const totalPatrimonio = document.getElementById('total-carteira-valor')?.textContent || '---';
-    
-    const elInv = document.getElementById('modal-total-investido');
-    const elPat = document.getElementById('modal-patrimonio-atual');
-    
-    if(elInv) elInv.textContent = totalInvestido;
-    if(elPat) elPat.textContent = totalPatrimonio;
-
-    // Abre Modal
-    perfModal.classList.add('visible');
-    perfContent.classList.remove('closing');
-    perfContent.style.transform = ''; 
-    document.body.style.overflow = 'hidden'; 
-
-    // --- CORREÇÃO DE GRÁFICO (RECRIAÇÃO DO DOM) ---
-    // 1. Destrói instância do Chart.js se existir
-    if (window.patrimonioChartInstance) {
-        window.patrimonioChartInstance.destroy();
-        window.patrimonioChartInstance = null;
-    }
-
-    // 2. Limpa o container e cria um Canvas NOVO do zero
-    // Isso evita problemas de dimensão 0 e "ghost canvas"
-    if (containerGrafico) {
-        containerGrafico.innerHTML = ''; // Apaga tudo dentro
-        const novoCanvas = document.createElement('canvas');
-        novoCanvas.id = 'patrimonio-chart';
-        containerGrafico.appendChild(novoCanvas);
-    }
-    
-    // 3. Aguarda animação CSS e desenha
-    setTimeout(() => {
-        if (typeof renderizarGraficoPatrimonio === 'function') {
-            renderizarGraficoPatrimonio(true); // true = forceRender
-        }
-    }, 300); 
-};
-
-window.fecharModalPerformance = function() {
-    const perfModal = document.getElementById('performance-page-modal');
-    const perfContent = document.getElementById('tab-performance');
-    
-    if(!perfModal || !perfContent) return;
-
-    perfContent.classList.add('closing');
-    perfModal.classList.remove('visible');
-    document.body.style.overflow = '';
-    
-    // Opcional: Destruir o gráfico ao fechar para economizar memória
-    setTimeout(() => {
-        if (window.patrimonioChartInstance) {
-            window.patrimonioChartInstance.destroy();
-            window.patrimonioChartInstance = null;
-        }
-    }, 300);
-};
-
-// Fechar ao clicar no fundo
-const perfModalEl = document.getElementById('performance-page-modal');
-if(perfModalEl) {
-    perfModalEl.addEventListener('click', (e) => {
-        if (e.target === perfModalEl) window.fecharModalPerformance();
-    });
-}
-
-// --- GESTOS SWIPE DOWN (PERFORMANCE) ---
-const perfContentEl = document.getElementById('tab-performance');
-const perfScrollEl = document.getElementById('performance-conteudo-scroll');
-let perfTouchStartY = 0;
-let isDraggingPerf = false;
-
-if(perfContentEl && perfScrollEl) {
-    perfContentEl.addEventListener('touchstart', (e) => {
-        // Só arrasta se o scroll interno estiver no topo
-        if (perfScrollEl.scrollTop <= 0) {
-            perfTouchStartY = e.touches[0].clientY;
-            isDraggingPerf = true;
-        } else {
-            isDraggingPerf = false;
-        }
-    }, { passive: true });
-
-    perfContentEl.addEventListener('touchmove', (e) => {
-        if (!isDraggingPerf) return;
-        
-        const currentY = e.touches[0].clientY;
-        const diff = currentY - perfTouchStartY;
-        
-        if (diff > 0) {
-            // CORREÇÃO CRUCIAL: Verifica e.cancelable antes de prevenir
-            if (e.cancelable) {
-                e.preventDefault(); 
-            }
-            perfContentEl.style.transition = 'none'; 
-            perfContentEl.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false }); // passive: false permite o preventDefault
-
-    perfContentEl.addEventListener('touchend', (e) => {
-        if (!isDraggingPerf) return;
-        isDraggingPerf = false;
-        
-        // Verifica deslocamento atual
-        const style = window.getComputedStyle(perfContentEl);
-        const matrix = new WebKitCSSMatrix(style.transform);
-        const currentTranslateY = matrix.m42; 
-
-        perfContentEl.style.transition = 'transform 0.4s ease-in-out';
-        
-        if (currentTranslateY > 120) {
-            window.fecharModalPerformance();
-        } else {
-            perfContentEl.style.transform = ''; 
-        }
-        
-        perfTouchStartY = 0;
-    });
-}
 	
     await init();
 });

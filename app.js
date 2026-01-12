@@ -2197,55 +2197,62 @@ function renderizarNoticias(articles) {
     fiiNewsList.appendChild(fragment);
 }
 
-// --- VERSÃO PROFISSIONAL DO GRÁFICO DE ALOCAÇÃO ---
+// --- VERSÃO PROFISSIONAL DO GRÁFICO DE ALOCAÇÃO (CORRIGIDA) ---
 function renderizarGraficoAlocacao() {
-    const ctx = document.getElementById('alocacao-chart');
-    if (!ctx) return;
+    const canvas = document.getElementById('alocacao-chart');
+    if (!canvas) return;
 
     // 1. Destruir gráfico anterior para não sobrepor
     if (alocacaoChartInstance) {
         alocacaoChartInstance.destroy();
+        alocacaoChartInstance = null;
     }
 
     // 2. Cores Premium (Paleta Vesto)
     const paletaCores = [
-        '#8B5CF6', // Roxo Principal
-        '#10B981', // Verde Sucesso
-        '#3B82F6', // Azul Primary
-        '#F59E0B', // Amber Aviso
-        '#EC4899', // Pink
+        '#8B5CF6', // Roxo
+        '#10B981', // Verde
+        '#3B82F6', // Azul
+        '#F59E0B', // Laranja
+        '#EC4899', // Rosa
         '#6366F1', // Indigo
-        '#EF4444', // Red
+        '#EF4444', // Vermelho
         '#14B8A6'  // Teal
     ];
 
-    // 3. Processamento de Dados (Calcula totais por categoria)
-    // Supõe que 'investimentos' é sua array global de ativos.
-    const categoriasMap = {};
+    // 3. Processamento de Dados (Usa carteiraCalculada e precosAtuais)
+    // Cria mapa de preços para acesso rápido
+    const mapPrecos = new Map();
+    if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
+        precosAtuais.forEach(p => mapPrecos.set(p.symbol, p.regularMarketPrice));
+    }
+
     let totalGeral = 0;
+    const dadosAtivos = [];
 
-    investimentos.forEach(ativo => {
-        // Normaliza a categoria (ex: "FII", "AÇÃO", "Cripto")
-        const cat = ativo.tipo || 'Outros'; 
-        const valor = (ativo.precoMedio || 0) * (ativo.quantidade || 0); // Ou valor atual se tiver
-        
-        if (!categoriasMap[cat]) categoriasMap[cat] = 0;
-        categoriasMap[cat] += valor;
-        totalGeral += valor;
-    });
+    // Itera sobre a carteiraCalculada (variável global correta)
+    if (typeof carteiraCalculada !== 'undefined') {
+        carteiraCalculada.forEach(ativo => {
+            // Usa preço atual se tiver, senão usa preço médio
+            const preco = mapPrecos.get(ativo.symbol) || ativo.precoMedio || 0;
+            const valorTotal = preco * ativo.quantity;
 
-    // Converte para Arrays ordenados
-    const labels = Object.keys(categoriasMap);
-    const dataValues = Object.values(categoriasMap);
+            if (valorTotal > 0.01) { // Filtra posições zeradas
+                totalGeral += valorTotal;
+                dadosAtivos.push({
+                    label: ativo.symbol,
+                    value: valorTotal,
+                    qtd: ativo.quantity
+                });
+            }
+        });
+    }
 
-    // Ordenar do maior para o menor
-    const dadosOrdenados = labels.map((label, i) => ({
-        label,
-        value: dataValues[i]
-    })).sort((a, b) => b.value - a.value);
+    // Ordenar do maior para o menor valor
+    dadosAtivos.sort((a, b) => b.value - a.value);
 
-    const sortedLabels = dadosOrdenados.map(d => d.label);
-    const sortedValues = dadosOrdenados.map(d => d.value);
+    const sortedLabels = dadosAtivos.map(d => d.label);
+    const sortedValues = dadosAtivos.map(d => d.value);
 
     // 4. Atualiza o Texto Central (Total)
     const elTotalCenter = document.getElementById('alocacao-total-center');
@@ -2255,7 +2262,16 @@ function renderizarGraficoAlocacao() {
         });
     }
 
+    // Se não tiver dados, sai
+    if (dadosAtivos.length === 0) return;
+
     // 5. Configuração do Gráfico (Chart.js)
+    const ctx = canvas.getContext('2d');
+    
+    // Detecta tema para a cor da borda (para "cortar" as fatias)
+    const isLight = document.body.classList.contains('light-mode');
+    const borderColor = isLight ? '#ffffff' : '#151515'; // #151515 é a cor do fundo do card
+
     alocacaoChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -2263,30 +2279,30 @@ function renderizarGraficoAlocacao() {
             datasets: [{
                 data: sortedValues,
                 backgroundColor: paletaCores,
-                borderWidth: 0, // Sem borda para visual flat
-                hoverOffset: 10, // Efeito ao passar o mouse
-                borderRadius: 5 // Bordas arredondadas nos segmentos
+                borderWidth: 2, 
+                borderColor: borderColor,
+                hoverOffset: 10, 
+                borderRadius: 5 
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '75%', // Rosca mais fina (Fica mais elegante)
+            cutout: '75%', // Rosca fina
             plugins: {
-                legend: { display: false }, // Esconde a legenda padrão feia
+                legend: { display: false }, 
                 tooltip: {
-                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
-                    titleColor: '#fff',
-                    bodyColor: '#ccc',
-                    borderColor: '#333',
+                    backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(20, 20, 20, 0.95)',
+                    titleColor: isLight ? '#333' : '#fff',
+                    bodyColor: isLight ? '#555' : '#ccc',
+                    borderColor: isLight ? '#ddd' : '#333',
                     borderWidth: 1,
                     padding: 12,
                     cornerRadius: 12,
-                    displayColors: true,
                     callbacks: {
                         label: function(context) {
                             const val = context.raw;
-                            const pct = ((val / totalGeral) * 100).toFixed(1) + '%';
+                            const pct = totalGeral > 0 ? ((val / totalGeral) * 100).toFixed(1) + '%' : '0%';
                             return ` ${pct} (${val.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})`;
                         }
                     }
@@ -2299,32 +2315,29 @@ function renderizarGraficoAlocacao() {
         }
     });
 
-    // 6. Gerar a Legenda HTML Customizada (A lista abaixo do gráfico)
+    // 6. Gerar a Legenda HTML Customizada
     const legendContainer = document.getElementById('alocacao-legend-container');
     if (legendContainer) {
-        legendContainer.innerHTML = ''; // Limpa anterior
+        legendContainer.innerHTML = ''; 
 
-        dadosOrdenados.forEach((item, index) => {
+        dadosAtivos.forEach((item, index) => {
             const cor = paletaCores[index % paletaCores.length];
-            const porcentagem = ((item.value / totalGeral) * 100).toFixed(1);
+            const porcentagem = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
             const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-            // Cria o HTML do Card da Legenda
             const itemHTML = `
-                <div class="flex items-center justify-between p-4 bg-[#151515] rounded-[1.25rem] border border-[#2C2C2E] active:scale-[0.98] transition-transform">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: ${cor}20;">
-                            <div class="w-3 h-3 rounded-full shadow-[0_0_8px_${cor}]" style="background-color: ${cor};"></div>
-                        </div>
+                <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-xl border border-[#2C2C2E] mb-2 active:scale-[0.98] transition-transform">
+                    <div class="flex items-center gap-3">
+                        <div class="w-2 h-8 rounded-full" style="background-color: ${cor};"></div>
                         <div class="flex flex-col">
                             <span class="text-sm font-bold text-white uppercase">${item.label}</span>
-                            <span class="text-[11px] text-gray-500 font-medium">${dadosOrdenados.length} Ativos</span>
+                            <span class="text-[10px] text-gray-500 font-medium">${item.qtd} cotas</span>
                         </div>
                     </div>
                     
                     <div class="flex flex-col items-end">
                         <span class="text-sm font-bold text-white">${porcentagem}%</span>
-                        <span class="text-[11px] text-gray-500">${valorFormatado}</span>
+                        <span class="text-[10px] text-gray-500">${valorFormatado}</span>
                     </div>
                 </div>
             `;

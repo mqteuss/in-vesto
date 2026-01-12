@@ -2616,7 +2616,6 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     const agrupado = {};
     let totalMes = 0;
 
-    // Lógica de agrupar os pagamentos (Mantida igual)
     proventosConhecidos.forEach(p => {
         if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
         const dataRef = p.dataCom || p.paymentDate;
@@ -2646,22 +2645,16 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
 
     lista.forEach(item => {
         const percent = ((item.valorTotal / totalMes) * 100).toFixed(1);
-        const diaPagamento = item.dataPag.split('-')[2]; // Pega o dia (DD)
+        const diaPagamento = item.dataPag.split('-')[2];
         
-        // --- MUDANÇA: URL Correta do Logo ---
-        const iconUrl = `https://raw.githubusercontent.com/atar-g/invest-logos/main/${item.symbol.toUpperCase()}.png`;
-        
+        // --- CORREÇÃO REAL: Iniciais de 2 letras (Estilo do App) ---
+        const tickerInitials = item.symbol.substring(0, 2);
+
         const cardHTML = `
             <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl border border-[#2C2C2E] mb-2 active:scale-[0.98] transition-transform">
                 
-                <div class="w-10 h-10 rounded-full bg-[#1C1C1E] p-0.5 flex-shrink-0 overflow-hidden relative">
-                    <img src="${iconUrl}" 
-                         class="w-full h-full object-cover rounded-full" 
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"/>
-                    
-                    <div class="w-full h-full rounded-full flex items-center justify-center text-[10px] font-bold text-white hidden bg-[#2C2C2E]">
-                        ${item.symbol.substring(0, 2)}
-                    </div>
+                <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
+                     <span class="text-xs font-bold text-white tracking-wider">${tickerInitials}</span>
                 </div>
 
                 <div class="flex-1 min-w-0">
@@ -2680,7 +2673,6 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
         container.insertAdjacentHTML('beforeend', cardHTML);
     });
 
-    // Rodapé com o total do mês
     const totalHTML = `
         <div class="mt-4 pt-4 border-t border-[#2C2C2E] flex justify-between items-center px-2 pb-8">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total ${labelAmigavel}</span>

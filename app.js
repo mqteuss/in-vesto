@@ -2454,156 +2454,206 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 }
 
 
-function renderizarGraficoHistorico(dadosExternos = null) {
-    const canvas = document.getElementById('historico-proventos-chart');
+function renderizarGraficoHistorico(dados, periodo = '1Y') {
+    const canvas = document.getElementById('historico-chart');
     if (!canvas) return;
 
-    // --- PROCESSAMENTO DE DADOS ---
-    let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
-
-    if (dadosExternos && dadosExternos.labels) {
-        labelsFiltrados = dadosExternos.labels;
-        dataRecebidoFiltrados = dadosExternos.data; 
-        dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0); 
-    }
+    // --- 1. PREPARAÇÃO DOS DADOS DO IPCA ---
+    // Cria um mapa "MM/YYYY" -> "Valor IPCA" para acesso rápido
+    const mapIpca = {};
     
-    // Dados Locais (Padrão)
-    const grupos = {};
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    // Tenta pegar do cache global ou variável global (dependendo de como seu app carrega)
+    // Se você tiver uma variável global 'ipcaCacheData', usamos ela.
+    // Caso contrário, tentamos pegar do localStorage para garantir.
+    let dadosIpcaRef = (typeof ipcaCacheData !== 'undefined') ? ipcaCacheData : null;
+    if (!dadosIpcaRef) {
+        try {
+            dadosIpcaRef = JSON.parse(localStorage.getItem('vesto_ipca_data') || 'null');
+        } catch(e) {}
+    }
 
-    proventosConhecidos.forEach(p => {
-        if (!p.paymentDate || p.value <= 0) return;
-        const key = p.paymentDate.substring(0, 7); // YYYY-MM
-        const dataRef = p.dataCom || p.paymentDate;
-        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+    if (dadosIpcaRef && dadosIpcaRef.historico) {
+        dadosIpcaRef.historico.forEach(item => {
+            // O formato do IPCA geralmente vem como "Jan/2025" ou "01/2025"
+            // Vamos normalizar para comparar com os dividendos
+            mapIpca[item.mes] = item.valor;
+            
+            // Fallback: Tenta mapear nomes de meses para números (Jan -> 01)
+            const parts = item.mes.split('/');
+            if (parts.length === 2) {
+                const mapMeses = {'Jan':'01', 'Fev':'02', 'Mar':'03', 'Abr':'04', 'Mai':'05', 'Jun':'06', 'Jul':'07', 'Ago':'08', 'Set':'09', 'Out':'10', 'Nov':'11', 'Dez':'12'};
+                if (mapMeses[parts[0]]) {
+                    mapIpca[`${mapMeses[parts[0]]}/${parts[1]}`] = item.valor;
+                }
+            }
+        });
+    }
+
+    // --- 2. FILTRAGEM DE PERÍODO (Mantendo sua lógica original) ---
+    // Pega os últimos X meses baseado no período selecionado
+    let mesesParaMostrar = 12;
+    if (periodo === '6M') mesesParaMostrar = 6;
+    if (periodo === 'ALL') mesesParaMostrar = 999; // Todo histórico
+
+    // Pega apenas os últimos N meses dos dados
+    // Assumindo que 'dados.labels' e 'dados.values' estão ordenados cronologicamente
+    const totalItems = dados.labels.length;
+    const startIndex = Math.max(0, totalItems - mesesParaMostrar);
+
+    const labelsCorte = dados.labels.slice(startIndex);
+    const valuesCorte = dados.values.slice(startIndex);
+
+    // --- 3. CÁLCULO DA EROSÃO ---
+    const dataErosao = valuesCorte.map((valorDividendo, index) => {
+        const mesLabel = labelsCorte[index]; // Ex: "Jan/25" ou "01/2025"
         
-        if (qtd > 0) {
-            if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
-            const [ano, mes, dia] = p.paymentDate.split('-');
-            const dataPagamento = new Date(ano, mes - 1, dia);
-            const valorTotal = p.value * qtd;
-
-            if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
-            else grupos[key].aReceber += valorTotal;
+        // Tenta encontrar o IPCA exato para este mês
+        // Precisamos tratar o formato da label para bater com o formato do IPCA
+        // Se a label for "Jan/25", precisamos achar "Jan/2025"
+        let ipcaMes = 0;
+        
+        // Tentativa de match flexível de data
+        const partsLabel = mesLabel.split('/'); // ["Jan", "25"]
+        if (partsLabel.length === 2) {
+            // Tenta reconstruir ano completo "2025"
+            const anoFull = partsLabel[1].length === 2 ? `20${partsLabel[1]}` : partsLabel[1];
+            const chaveBusca = `${partsLabel[0]}/${anoFull}`; // "Jan/2025"
+            
+            if (mapIpca[chaveBusca] !== undefined) {
+                ipcaMes = mapIpca[chaveBusca];
+            }
         }
+
+        // CÁLCULO: Quanto do dividendo foi "comido" pela inflação deste mês?
+        // Se IPCA for 0.5%, a erosão é 0.5% do valor do dividendo.
+        // Se IPCA for negativo (deflação), tecnicamente houve ganho real, então erosão é 0 (ou negativa).
+        const erosao = valorDividendo * (ipcaMes / 100);
+        return erosao;
     });
 
-    let mesesOrdenados = Object.keys(grupos).sort();
-    const labelsRaw = [];
-    const dataR = [];
-    const dataA = [];
-    const keysRaw = [];
-
-    mesesOrdenados.forEach(mesIso => {
-        const [anoFull, mesNum] = mesIso.split('-');
-        const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
-        const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const anoCurto = anoFull.slice(-2);
-        
-        labelsRaw.push(`${nomeMes}/${anoCurto}`);
-        dataR.push(grupos[mesIso].recebido);
-        dataA.push(grupos[mesIso].aReceber);
-        keysRaw.push(mesIso);
-    });
-
-    labelsFiltrados = labelsRaw.slice(-12);
-    dataRecebidoFiltrados = dataR.slice(-12);
-    dataAReceberFiltrados = dataA.slice(-12);
-    keysFiltrados = keysRaw.slice(-12);
-
+    // --- 4. RENDERIZAÇÃO DO GRÁFICO ---
     if (historicoChartInstance) {
         historicoChartInstance.destroy();
     }
 
     const ctx = canvas.getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
     
-    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
-    const colorRecebido = '#8B5CF6'; 
-    const colorAReceber = '#333333'; 
+    // Cores Vesto
+    const colorBar = '#c084fc'; // Roxo Principal
+    const colorErosao = '#ef4444'; // Vermelho (Erosão)
+    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+    const colorText = isLight ? '#666' : '#888';
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labelsFiltrados,
+            labels: labelsCorte,
             datasets: [
                 {
-                    label: 'A Receber', 
-                    data: dataAReceberFiltrados,
-                    backgroundColor: colorAReceber,
-                    borderRadius: 4,
+                    label: 'Proventos',
+                    data: valuesCorte,
+                    backgroundColor: colorBar,
+                    borderRadius: 6,
+                    borderSkipped: false,
                     barPercentage: 0.6,
-                    stack: 'Stack 0',
-                    rawKeys: keysFiltrados 
+                    categoryPercentage: 0.8,
+                    order: 2 // Fica atrás da linha
                 },
                 {
-                    label: 'Recebido',
-                    data: dataRecebidoFiltrados,
-                    backgroundColor: colorRecebido,
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    stack: 'Stack 0',
-                    rawKeys: keysFiltrados
+                    label: 'Erosão (IPCA)',
+                    data: dataErosao,
+                    type: 'line', // Linha sobreposta
+                    borderColor: colorErosao,
+                    backgroundColor: colorErosao,
+                    borderWidth: 2,
+                    pointRadius: 3, // Bolinha nos pontos
+                    pointBackgroundColor: '#151515', // Miolo escuro
+                    pointBorderColor: colorErosao,
+                    pointBorderWidth: 2,
+                    tension: 0.4, // Curva suave
+                    order: 1 // Fica na frente das barras
                 }
             ]
         },
         options: {
-            responsive: true, 
+            responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 600 },
-            layout: { padding: { top: 10, bottom: 0 } },
-            interaction: { mode: 'index', intersect: false },
-            
-            // --- AQUI: INTERAÇÃO DE CLIQUE NA BARRA ---
-            onClick: (e, elements) => {
-                if (!elements || elements.length === 0) return;
-                
-                const index = elements[0].index;
-                const labelAmigavel = labelsFiltrados[index]; 
-                const rawKey = keysFiltrados[index]; 
-                
-                // Chama a função que preenche a lista lá embaixo
-                renderizarListaProventosMes(rawKey, labelAmigavel);
-            },
-
             plugins: {
-                // --- ISSO REMOVE A LEGENDA INTERNA/ABAIXO DO GRÁFICO ---
-                legend: { display: false }, 
-                
-                tooltip: { 
-                    enabled: true,
-                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: colorText,
+                        usePointStyle: true,
+                        boxWidth: 6,
+                        font: { size: 10 }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#151515',
                     titleColor: '#fff',
                     bodyColor: '#ccc',
                     borderColor: '#333',
                     borderWidth: 1,
-                    displayColors: false,
+                    padding: 10,
+                    displayColors: true,
                     callbacks: {
                         label: function(context) {
-                            if(context.parsed.y === 0) return null;
-                            return formatBRL(context.parsed.y);
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += formatBRL(context.parsed.y);
+                            }
+                            return label;
+                        },
+                        afterBody: function(tooltipItems) {
+                            // Adiciona informação extra sobre o ganho real
+                            const dividendo = tooltipItems[0].parsed.y;
+                            // Precisamos achar o valor da erosão correspondente (está no dataset 1)
+                            // Mas tooltipItems pode vir só com o dataset que o mouse está em cima.
+                            // Vamos pegar pelo index direto dos dados originais
+                            const index = tooltipItems[0].dataIndex;
+                            const erosao = dataErosao[index];
+                            
+                            // Ganho Real
+                            const real = valuesCorte[index] - erosao;
+                            
+                            return `\nGanho Real: ${formatBRL(real)}`;
                         }
                     }
-                } 
+                }
             },
             scales: {
-                y: { display: false, stacked: true },
-                x: { 
-                    stacked: true, 
-                    grid: { display: false }, 
+                y: {
+                    display: true,
+                    position: 'right',
+                    grid: {
+                        color: colorGrid,
+                        borderDash: [4, 4],
+                        drawBorder: false
+                    },
                     ticks: {
-                        color: '#666',
-                        font: { size: 10, weight: '600' }
+                        color: colorText,
+                        font: { size: 10 },
+                        callback: function(value) {
+                            if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
+                            return value;
+                        }
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        color: colorText,
+                        font: { size: 10 }
                     }
                 }
             }
         }
     });
-    
-    // Seleciona automaticamente o último mês ao carregar
-    if (keysFiltrados.length > 0) {
-        const lastIdx = keysFiltrados.length - 1;
-        renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
-    }
 }
     
 function renderizarListaProventosMes(anoMes, labelAmigavel) {

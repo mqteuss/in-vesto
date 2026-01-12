@@ -4972,6 +4972,76 @@ function renderizarTransacoesDetalhes(symbol) {
 
         renderizarGraficoProventosDetalhes({ labels, data });
     }
+	
+	function renderizarGraficoProventosDetalhes(dados) {
+    const canvas = document.getElementById('detalhes-proventos-chart');
+    if (!canvas) return;
+
+    // Destrói gráfico anterior se existir para evitar sobreposição
+    if (detalhesChartInstance) {
+        detalhesChartInstance.destroy();
+        detalhesChartInstance = null;
+    }
+
+    const ctx = canvas.getContext('2d');
+    
+    // Configuração visual (Barra roxa vibrante)
+    const corBarra = '#8b5cf6'; 
+    const corBarraHover = '#7c3aed';
+
+    detalhesChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dados.labels,
+            datasets: [{
+                label: 'Proventos',
+                data: dados.data,
+                backgroundColor: corBarra,
+                hoverBackgroundColor: corBarraHover,
+                borderRadius: 4,
+                barPercentage: 0.6,
+                categoryPercentage: 0.8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }, // Esconde legenda
+                tooltip: {
+                    backgroundColor: '#151515',
+                    titleColor: '#fff',
+                    bodyColor: '#ccc',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return formatBRL(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    display: false, // Esconde eixo Y para visual mais limpo
+                    grid: { display: false }
+                },
+                x: {
+                    grid: { display: false, drawBorder: false },
+                    ticks: {
+                        color: '#666',
+                        font: { size: 10, weight: 'bold' }
+                    }
+                }
+            },
+            animation: {
+                duration: 500,
+                easing: 'easeOutQuart'
+            }
+        }
+    });
+}
     
 // Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];

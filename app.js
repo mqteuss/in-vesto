@@ -2454,175 +2454,156 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 }
 
 
-// --- FUNÇÃO DO GRÁFICO DE PERFORMANCE (DASHBOARD) ---
-function renderizarGraficoHistorico(dados, periodo = '1Y') {
-    const canvas = document.getElementById('historico-chart');
+function renderizarGraficoHistorico(dadosExternos = null) {
+    const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // --- 1. PREPARAÇÃO DOS DADOS DO IPCA ---
-    const mapIpca = {};
-    let dadosIpcaRef = (typeof ipcaCacheData !== 'undefined') ? ipcaCacheData : null;
+    // --- PROCESSAMENTO DE DADOS ---
+    let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
+
+    if (dadosExternos && dadosExternos.labels) {
+        labelsFiltrados = dadosExternos.labels;
+        dataRecebidoFiltrados = dadosExternos.data; 
+        dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0); 
+    }
     
-    // Tenta fallback do localStorage
-    if (!dadosIpcaRef) {
-        try {
-            dadosIpcaRef = JSON.parse(localStorage.getItem('vesto_ipca_data') || 'null');
-        } catch(e) {}
-    }
+    // Dados Locais (Padrão)
+    const grupos = {};
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
-    if (dadosIpcaRef && dadosIpcaRef.historico) {
-        dadosIpcaRef.historico.forEach(item => {
-            mapIpca[item.mes] = item.valor;
-            // Fallback para formatos (Jan/2025 -> 01/2025)
-            const parts = item.mes.split('/');
-            if (parts.length === 2) {
-                const mapMeses = {'Jan':'01', 'Fev':'02', 'Mar':'03', 'Abr':'04', 'Mai':'05', 'Jun':'06', 'Jul':'07', 'Ago':'08', 'Set':'09', 'Out':'10', 'Nov':'11', 'Dez':'12'};
-                if (mapMeses[parts[0]]) {
-                    mapIpca[`${mapMeses[parts[0]]}/${parts[1]}`] = item.valor;
-                }
-            }
-        });
-    }
-
-    // --- 2. FILTRAGEM DE PERÍODO ---
-    let mesesParaMostrar = 12;
-    if (periodo === '6M') mesesParaMostrar = 6;
-    if (periodo === 'ALL') mesesParaMostrar = 999;
-
-    // Proteção se dados vierem nulos
-    if (!dados || !dados.labels || !dados.values) return;
-
-    const totalItems = dados.labels.length;
-    const startIndex = Math.max(0, totalItems - mesesParaMostrar);
-
-    const labelsCorte = dados.labels.slice(startIndex);
-    const valuesCorte = dados.values.slice(startIndex);
-
-    // --- 3. CÁLCULO DA EROSÃO ---
-    const dataErosao = valuesCorte.map((valorDividendo, index) => {
-        const mesLabel = labelsCorte[index]; 
-        let ipcaMes = 0;
+    proventosConhecidos.forEach(p => {
+        if (!p.paymentDate || p.value <= 0) return;
+        const key = p.paymentDate.substring(0, 7); // YYYY-MM
+        const dataRef = p.dataCom || p.paymentDate;
+        const qtd = getQuantidadeNaData(p.symbol, dataRef);
         
-        // Busca o IPCA do mês correspondente
-        if (mapIpca[mesLabel] !== undefined) {
-            ipcaMes = mapIpca[mesLabel];
-        } else {
-            // Tenta reconstruir chave (Ex: Jan/25 -> Jan/2025)
-            const partsLabel = mesLabel.split('/');
-            if (partsLabel.length === 2) {
-                const anoFull = partsLabel[1].length === 2 ? `20${partsLabel[1]}` : partsLabel[1];
-                const chaveBusca = `${partsLabel[0]}/${anoFull}`;
-                if (mapIpca[chaveBusca] !== undefined) ipcaMes = mapIpca[chaveBusca];
-            }
-        }
+        if (qtd > 0) {
+            if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
+            const [ano, mes, dia] = p.paymentDate.split('-');
+            const dataPagamento = new Date(ano, mes - 1, dia);
+            const valorTotal = p.value * qtd;
 
-        // Erosão = Valor * (IPCA / 100)
-        return valorDividendo * (ipcaMes / 100);
+            if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
+            else grupos[key].aReceber += valorTotal;
+        }
     });
 
-    // --- 4. RENDERIZAÇÃO DO GRÁFICO (DASHBOARD) ---
-    // Usa 'historicoChartInstance' (variável global do dashboard)
-    if (typeof historicoChartInstance !== 'undefined' && historicoChartInstance) {
+    let mesesOrdenados = Object.keys(grupos).sort();
+    const labelsRaw = [];
+    const dataR = [];
+    const dataA = [];
+    const keysRaw = [];
+
+    mesesOrdenados.forEach(mesIso => {
+        const [anoFull, mesNum] = mesIso.split('-');
+        const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
+        const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const anoCurto = anoFull.slice(-2);
+        
+        labelsRaw.push(`${nomeMes}/${anoCurto}`);
+        dataR.push(grupos[mesIso].recebido);
+        dataA.push(grupos[mesIso].aReceber);
+        keysRaw.push(mesIso);
+    });
+
+    labelsFiltrados = labelsRaw.slice(-12);
+    dataRecebidoFiltrados = dataR.slice(-12);
+    dataAReceberFiltrados = dataA.slice(-12);
+    keysFiltrados = keysRaw.slice(-12);
+
+    if (historicoChartInstance) {
         historicoChartInstance.destroy();
     }
 
     const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
     
-    // Cores
-    const colorBar = '#c084fc'; 
-    const colorErosao = '#ef4444'; // Vermelho para a erosão
-    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
-    const colorText = isLight ? '#666' : '#888';
+    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
+    const colorRecebido = '#8B5CF6'; 
+    const colorAReceber = '#333333'; 
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labelsCorte,
+            labels: labelsFiltrados,
             datasets: [
                 {
-                    label: 'Proventos',
-                    data: valuesCorte,
-                    backgroundColor: colorBar,
-                    borderRadius: 6,
-                    borderSkipped: false,
+                    label: 'A Receber', 
+                    data: dataAReceberFiltrados,
+                    backgroundColor: colorAReceber,
+                    borderRadius: 4,
                     barPercentage: 0.6,
-                    categoryPercentage: 0.8,
-                    order: 2
+                    stack: 'Stack 0',
+                    rawKeys: keysFiltrados 
                 },
                 {
-                    label: 'Erosão (IPCA)',
-                    data: dataErosao,
-                    type: 'line', // Linha sobreposta
-                    borderColor: colorErosao,
-                    backgroundColor: colorErosao,
-                    borderWidth: 2,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#151515',
-                    pointBorderColor: colorErosao,
-                    pointBorderWidth: 2,
-                    tension: 0.4,
-                    order: 1
+                    label: 'Recebido',
+                    data: dataRecebidoFiltrados,
+                    backgroundColor: colorRecebido,
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    stack: 'Stack 0',
+                    rawKeys: keysFiltrados
                 }
             ]
         },
         options: {
-            responsive: true,
+            responsive: true, 
             maintainAspectRatio: false,
+            animation: { duration: 600 },
+            layout: { padding: { top: 10, bottom: 0 } },
+            interaction: { mode: 'index', intersect: false },
+            
+            // --- AQUI: INTERAÇÃO DE CLIQUE NA BARRA ---
+            onClick: (e, elements) => {
+                if (!elements || elements.length === 0) return;
+                
+                const index = elements[0].index;
+                const labelAmigavel = labelsFiltrados[index]; 
+                const rawKey = keysFiltrados[index]; 
+                
+                // Chama a função que preenche a lista lá embaixo
+                renderizarListaProventosMes(rawKey, labelAmigavel);
+            },
+
             plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: { color: colorText, usePointStyle: true, boxWidth: 6, font: { size: 10 } }
-                },
-                tooltip: {
-                    backgroundColor: '#151515',
+                // --- ISSO REMOVE A LEGENDA INTERNA/ABAIXO DO GRÁFICO ---
+                legend: { display: false }, 
+                
+                tooltip: { 
+                    enabled: true,
+                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
                     titleColor: '#fff',
                     bodyColor: '#ccc',
                     borderColor: '#333',
                     borderWidth: 1,
-                    padding: 10,
-                    displayColors: true,
+                    displayColors: false,
                     callbacks: {
                         label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            if (context.parsed.y !== null) label += formatBRL(context.parsed.y);
-                            return label;
-                        },
-                        afterBody: function(tooltipItems) {
-                            if (tooltipItems.length > 0) {
-                                const index = tooltipItems[0].dataIndex;
-                                const bruto = valuesCorte[index];
-                                const erosao = dataErosao[index];
-                                const real = bruto - erosao;
-                                return `\nGanho Real: ${formatBRL(real)}`;
-                            }
+                            if(context.parsed.y === 0) return null;
+                            return formatBRL(context.parsed.y);
                         }
                     }
-                }
+                } 
             },
             scales: {
-                y: {
-                    display: true,
-                    position: 'right',
-                    grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
+                y: { display: false, stacked: true },
+                x: { 
+                    stacked: true, 
+                    grid: { display: false }, 
                     ticks: {
-                        color: colorText,
-                        font: { size: 10 },
-                        callback: function(value) {
-                            if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
-                            return value;
-                        }
+                        color: '#666',
+                        font: { size: 10, weight: '600' }
                     }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: colorText, font: { size: 10 } }
                 }
             }
         }
     });
+    
+    // Seleciona automaticamente o último mês ao carregar
+    if (keysFiltrados.length > 0) {
+        const lastIdx = keysFiltrados.length - 1;
+        renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
+    }
 }
     
 function renderizarListaProventosMes(anoMes, labelAmigavel) {

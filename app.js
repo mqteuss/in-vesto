@@ -2816,50 +2816,67 @@ function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
 
-    // --- 1. CÁLCULO DO AO VIVO (Real-Time) ---
+    // --- 1. PREPARAÇÃO DE PREÇOS (CRUCIAL PARA DIFERENCIAR "AO VIVO" DE "INVESTIDO") ---
+    // Cria um mapa com as cotações mais recentes que vieram da API
+    const mapPrecos = new Map();
+    if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
+        precosAtuais.forEach(p => {
+            if (p.symbol && p.regularMarketPrice) {
+                mapPrecos.set(p.symbol, p.regularMarketPrice);
+            }
+        });
+    }
+
+    // --- 2. CÁLCULO DOS TOTAIS ---
     let totalAtualLive = 0;
     let custoTotalLive = 0;
 
     if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
         carteiraCalculada.forEach(ativo => {
-            const preco = ativo.regularMarketPrice || ativo.precoMedio || 0;
-            totalAtualLive += preco * ativo.quantity;
-            custoTotalLive += (ativo.precoMedio || 0) * ativo.quantity;
+            // Tenta pegar: 1º Preço da API (Live) -> 2º Preço salvo no ativo -> 3º Preço Médio (Fallback)
+            const precoLive = mapPrecos.get(ativo.symbol) || ativo.regularMarketPrice || ativo.precoMedio || 0;
+            
+            // Custo é SEMPRE o preço médio
+            const precoCusto = ativo.precoMedio || 0;
+
+            totalAtualLive += precoLive * ativo.quantity;
+            custoTotalLive += precoCusto * ativo.quantity;
         });
     }
 
-    // --- 2. ATUALIZAÇÃO DOS 3 CARDS ---
-    // Atualizamos os cards SEMPRE, independente do gráfico
+    // --- 3. ATUALIZAÇÃO DOS 3 CARDS ---
     
-    // Card 1: AO VIVO
+    // Card 1: AO VIVO (Valor de Mercado)
     const elLive = document.getElementById('modal-patrimonio-live');
     if (elLive) {
         elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elLive.className = totalAtualLive >= custoTotalLive 
-            ? "text-sm font-bold text-[#4ade80] mt-1 truncate" 
-            : "text-sm font-bold text-white mt-1 truncate";
+        
+        // Define cor baseada no Lucro/Prejuízo (Ao Vivo vs Investido)
+        if (totalAtualLive > custoTotalLive) {
+            elLive.className = "text-sm font-bold text-[#4ade80] mt-1 truncate"; // Verde (Lucro)
+        } else if (totalAtualLive < custoTotalLive) {
+            elLive.className = "text-sm font-bold text-red-400 mt-1 truncate"; // Vermelho (Prejuízo)
+        } else {
+            elLive.className = "text-sm font-bold text-white mt-1 truncate"; // Igual (Neutro)
+        }
     }
 
-    // Card 3: INVESTIDO
+    // Card 3: INVESTIDO (Custo)
     const elCusto = document.getElementById('modal-custo-valor');
     if (elCusto) {
         elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // --- 3. DEFINIÇÃO DA ASSINATURA (CORREÇÃO DO ERRO) ---
-    // Criamos uma "assinatura" única baseada no estado atual para evitar processamento inútil do gráfico
+    // --- 4. VERIFICAÇÃO DE ASSINATURA (Evita redesenho desnecessário) ---
     const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
     const txCount = (typeof transacoes !== 'undefined') ? transacoes.length : 0;
-    
-    // A assinatura agora inclui o valor 'Live' para atualizar se o preço mudar
     const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
 
-    // OTIMIZAÇÃO: Se a assinatura for idêntica à última, paramos aqui (os cards já foram atualizados)
     if (typeof lastPatrimonioCalcSignature !== 'undefined' && currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
         return;
     }
 
-    // --- 4. PREPARAÇÃO DO GRÁFICO (Histórico Puro) ---
+    // --- 5. PREPARAÇÃO DO GRÁFICO (HISTÓRICO) ---
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     
@@ -2869,6 +2886,7 @@ function renderizarGraficoPatrimonio() {
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
+    // Definição de datas limite
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     let dataCorte;
@@ -2887,6 +2905,7 @@ function renderizarGraficoPatrimonio() {
     }
     dataCorte.setHours(0, 0, 0, 0);
 
+    // Filtra histórico
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
@@ -2895,6 +2914,7 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    // Agrupamento para períodos longos
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -2905,7 +2925,7 @@ function renderizarGraficoPatrimonio() {
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
-    // Card 2: GRÁFICO (Último Ponto do Histórico)
+    // Card 2: GRÁFICO (Valor do último ponto histórico)
     const elChartVal = document.getElementById('modal-patrimonio-chart-val');
     if (elChartVal) {
         if (dadosOrdenados.length > 0) {
@@ -2921,15 +2941,15 @@ function renderizarGraficoPatrimonio() {
             patrimonioChartInstance.destroy();
             patrimonioChartInstance = null;
         }
-        // Mesmo sem dados, salvamos a assinatura para não ficar tentando recriar
         lastPatrimonioCalcSignature = currentSignature;
         return;
     }
 
+    // Gera Labels e Dados
     const labels = [];
     const dataValor = [];
     
-    // Lógica de Custo
+    // Lógica de Custo Histórico
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;
@@ -2968,6 +2988,7 @@ function renderizarGraficoPatrimonio() {
         dataCusto.push(custoAcumulado);
     });
 
+    // --- 6. RENDERIZAÇÃO ---
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
@@ -3074,7 +3095,6 @@ function renderizarGraficoPatrimonio() {
         });
     }
 
-    // Agora 'currentSignature' existe e o código funcionará
     lastPatrimonioCalcSignature = currentSignature;
 }
 

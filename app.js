@@ -6817,31 +6817,47 @@ function renderizarGraficoIpca(dados) {
     
     if (!dados || !dados.historico) return;
 
-    // --- NOVO: PREPARAÇÃO DOS DADOS DE PATRIMÔNIO ---
-    // Cria um mapa 'YYYY-MM' -> Valor da Carteira (Último registro do mês)
+    // --- 1. PREPARAÇÃO DOS DADOS DE PATRIMÔNIO (Map: YYYY-MM -> Valor) ---
     const mapPatrimonio = {};
-    // Verifica se a variável global 'patrimonio' existe (usada no gráfico de evolução)
     if (typeof patrimonio !== 'undefined' && Array.isArray(patrimonio)) {
         patrimonio.forEach(p => {
             if (p.date && p.value) {
-                // p.date é YYYY-MM-DD, pegamos YYYY-MM
                 const key = p.date.substring(0, 7); 
-                // Sobrescreve para garantir que pegamos o último valor do mês
                 mapPatrimonio[key] = p.value;
             }
         });
     }
+
+    // --- 2. PREPARAÇÃO DOS DADOS DE PROVENTOS (Map: YYYY-MM -> Total Recebido) ---
+    const mapProventos = {};
+    if (typeof proventosConhecidos !== 'undefined' && Array.isArray(proventosConhecidos)) {
+        proventosConhecidos.forEach(p => {
+            // Verifica data válida
+            if (!p.paymentDate) return;
+            const key = p.paymentDate.substring(0, 7); // YYYY-MM
+            
+            // Calcula o total recebido neste pagamento (Valor * Qtd na data)
+            // Usa a função global getQuantidadeNaData se disponível
+            const qtd = (typeof getQuantidadeNaData === 'function') 
+                ? getQuantidadeNaData(p.symbol, p.paymentDate) 
+                : 0;
+                
+            if (qtd > 0) {
+                const total = p.value * qtd;
+                mapProventos[key] = (mapProventos[key] || 0) + total;
+            }
+        });
+    }
     
-    // Helper para converter "Jan/2025" ou "01/2025" para "2025-01"
+    // Helper para datas
     const getYearMonthKey = (mesStr) => {
         if (!mesStr) return null;
         const parts = mesStr.includes('/') ? mesStr.split('/') : [mesStr];
-        if (parts.length < 2) return null; // Precisa do ano
+        if (parts.length < 2) return null;
         
         let m = parts[0].toLowerCase().trim();
         let y = parts[1].trim();
         
-        // Mapa de meses (aceita PT-BR e números)
         const monthMap = {
             'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06',
             'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
@@ -6849,39 +6865,80 @@ function renderizarGraficoIpca(dados) {
             'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
         };
         
-        // Retorna formato YYYY-MM
         if (!isNaN(m)) return `${y}-${m.padStart(2, '0')}`;
         if (monthMap[m]) return `${y}-${monthMap[m]}`;
         return null;
     };
 
-    // --- PARTE 1: RENDERIZAR A LISTA ---
+    // --- 3. RENDERIZAR A LISTA ---
     if(listaContainer) {
         listaContainer.innerHTML = '';
         
         [...dados.historico].reverse().forEach(item => {
-            const valor = item.valor;
+            const valor = item.valor; // Inflação do mês
             const ymKey = getYearMonthKey(item.mes);
             
-            // --- CÁLCULO DA EROSÃO ---
-            let impactoReais = 0;
-            let temDadosCarteira = false;
-            
+            // --- CÁLCULO DA EROSÃO DO PATRIMÔNIO ---
+            let erosaoPatHtml = '';
             if (ymKey && mapPatrimonio[ymKey]) {
                 const saldoMes = mapPatrimonio[ymKey];
-                // Erosão = Saldo * (Inflação / 100)
-                impactoReais = saldoMes * (valor / 100);
-                temDadosCarteira = true;
+                const impactoReais = saldoMes * (valor / 100);
+                
+                const isPerda = impactoReais > 0; 
+                const sinal = isPerda ? '-' : '+';
+                const corErosao = isPerda ? 'text-red-400' : 'text-green-400';
+                const valorErosaoFmt = Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                
+                erosaoPatHtml = `
+                    <div class="flex items-center gap-2 justify-end mt-0.5">
+                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Patrimônio</span>
+                        <span class="text-[11px] font-bold ${corErosao}">${sinal}${valorErosaoFmt}</span>
+                    </div>
+                `;
+            } else {
+                erosaoPatHtml = `
+                    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-40">
+                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Patrimônio</span>
+                        <span class="text-[11px] text-gray-500 font-bold">--</span>
+                    </div>
+                `;
             }
 
-            // Cores do Badge de %
+            // --- CÁLCULO DA EROSÃO DOS PROVENTOS (NOVO) ---
+            let erosaoDivHtml = '';
+            if (ymKey && mapProventos[ymKey]) {
+                const proventosMes = mapProventos[ymKey];
+                const impactoDiv = proventosMes * (valor / 100);
+                
+                const isPerdaDiv = impactoDiv > 0;
+                const sinalDiv = isPerdaDiv ? '-' : '+';
+                const corErosaoDiv = isPerdaDiv ? 'text-red-400' : 'text-green-400';
+                const valorErosaoDivFmt = Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                
+                erosaoDivHtml = `
+                    <div class="flex items-center gap-2 justify-end mt-0.5">
+                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Proventos</span>
+                        <span class="text-[11px] font-bold ${corErosaoDiv}">${sinalDiv}${valorErosaoDivFmt}</span>
+                    </div>
+                `;
+            } else {
+                // Se não teve proventos no mês, mostra vazio ou traço (optei por traço suave)
+                erosaoDivHtml = `
+                    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-30">
+                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Proventos</span>
+                        <span class="text-[11px] text-gray-500 font-bold">--</span>
+                    </div>
+                `;
+            }
+
+            // Cores do Badge de IPCA
             let corTexto = 'text-white';
             let barraCor = 'bg-orange-500';
             
-            if (valor >= 0.5) { // Inflação Alta
+            if (valor >= 0.5) {
                 corTexto = 'text-red-400';
                 barraCor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
-            } else if (valor < 0) { // Deflação
+            } else if (valor < 0) {
                 corTexto = 'text-green-400';
                 barraCor = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
             } else {
@@ -6889,52 +6946,26 @@ function renderizarGraficoIpca(dados) {
                 barraCor = 'bg-orange-500';
             }
             
-            // Formatação Visual da Erosão
-            let erosaoHTML = '';
-            if (temDadosCarteira) {
-                // Se impacto positivo (inflação), é ruim para o bolso -> Vermelho (-)
-                // Se impacto negativo (deflação), é bom -> Verde (+)
-                const isPerda = impactoReais > 0; 
-                const sinal = isPerda ? '-' : '+';
-                const corErosao = isPerda ? 'text-red-400' : 'text-green-400';
-                const valorErosaoFmt = Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                
-                erosaoHTML = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5">
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Erosão</span>
-                        <span class="text-[11px] font-bold ${corErosao}">${sinal}${valorErosaoFmt}</span>
-                    </div>
-                `;
-            } else {
-                erosaoHTML = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-40">
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Erosão</span>
-                        <span class="text-[11px] text-gray-500 font-bold">--</span>
-                    </div>
-                `;
-            }
-
-            // Tratamento do nome do mês
             let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
 
             const html = `
             <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-2xl mb-2">
                 <div class="flex items-center gap-3">
-                    <div class="w-1.5 h-10 rounded-full ${barraCor}"></div>
-                    
-                    <div class="flex flex-col">
+                    <div class="w-1.5 h-12 rounded-full ${barraCor}"></div> <div class="flex flex-col">
                         <span class="text-sm font-bold text-white capitalize">${mesNome}</span>
                         <span class="text-[10px] text-gray-500 font-medium">${ano}</span>
                     </div>
                 </div>
                 
                 <div class="flex flex-col items-end">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 mb-1">
                         <span class="text-[10px] text-gray-500 font-medium uppercase">IPCA</span>
                         <span class="text-sm font-bold ${corTexto}">${valor.toFixed(2)}%</span>
                     </div>
                     
-                    ${erosaoHTML}
+                    ${erosaoPatHtml}
+
+                    ${erosaoDivHtml}
                 </div>
             </div>`;
             
@@ -6942,7 +6973,7 @@ function renderizarGraficoIpca(dados) {
         });
     }
 
-    // --- PARTE 2: GRÁFICO (Mantém igual) ---
+    // --- 4. GRÁFICO (Mantém igual) ---
     if (!canvas) return;
     if (ipcaChartInstance) ipcaChartInstance.destroy();
 

@@ -6590,18 +6590,18 @@ atualizarWidgetIpca();
     }
 
     // --- LÓGICA DE SWIPE DOWN (ARRASTAR PARA FECHAR) - IDENTICA AO DETALHES ---
+// --- LÓGICA DE SWIPE DOWN (PATRIMÔNIO) ---
     if (patrimonioPageContent) {
-        // Seleciona o container interno que tem scroll (ajuste a classe se necessário)
         const scrollContainer = patrimonioPageContent.querySelector('.overflow-y-auto');
 
         patrimonioPageContent.addEventListener('touchstart', (e) => {
-            // Só inicia o arrasto se o scroll estiver no topo
+            // CORREÇÃO: Se tocar no gráfico, não inicia o arrasto do modal
+            if (e.target.tagName === 'CANVAS') return;
+
             if (scrollContainer && scrollContainer.scrollTop === 0) {
                 touchStartPatrimonioY = e.touches[0].clientY;
-                touchMovePatrimonioY = touchStartPatrimonioY; // Inicializa igual
+                touchMovePatrimonioY = touchStartPatrimonioY;
                 isDraggingPatrimonio = true;
-                
-                // CRUCIAL: Remove a transição durante o arrasto para acompanhar o dedo instantaneamente
                 patrimonioPageContent.style.transition = 'none'; 
             }
         }, { passive: true });
@@ -6611,9 +6611,7 @@ atualizarWidgetIpca();
             touchMovePatrimonioY = e.touches[0].clientY;
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
             
-            // Só move visualmente se for para baixo (positivo)
             if (diff > 0) {
-                // Impede o "pull-to-refresh" nativo do navegador
                 if (e.cancelable) e.preventDefault(); 
                 patrimonioPageContent.style.transform = `translateY(${diff}px)`;
             }
@@ -6622,19 +6620,15 @@ atualizarWidgetIpca();
         patrimonioPageContent.addEventListener('touchend', (e) => {
             if (!isDraggingPatrimonio) return;
             isDraggingPatrimonio = false;
-            
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
             
-            // Restaura a transição suave (física de mola/slide)
             patrimonioPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
             
-            // Se arrastou mais de 120px, fecha. Senão, volta ao topo.
             if (diff > 120) {
                 closePatrimonioModal();
             } else {
                 patrimonioPageContent.style.transform = '';
             }
-            
             touchStartPatrimonioY = 0;
             touchMovePatrimonioY = 0;
         });
@@ -6657,47 +6651,50 @@ if (proventosPageModal) {
 }
 
 // Swipe Down para fechar (Proventos)
-if (proventosPageContent) {
-    const scrollContainerProv = proventosPageContent.querySelector('.overflow-y-auto');
+// --- LÓGICA DE SWIPE DOWN (PROVENTOS) ---
+    if (proventosPageContent) {
+        const scrollContainerProv = proventosPageContent.querySelector('.overflow-y-auto');
 
-    proventosPageContent.addEventListener('touchstart', (e) => {
-        if (scrollContainerProv && scrollContainerProv.scrollTop === 0) {
-            touchStartProventosY = e.touches[0].clientY;
-            touchMoveProventosY = touchStartProventosY;
-            isDraggingProventos = true;
-            proventosPageContent.style.transition = 'none'; 
-        }
-    }, { passive: true });
+        proventosPageContent.addEventListener('touchstart', (e) => {
+            // CORREÇÃO: Se tocar no gráfico, não inicia o arrasto do modal
+            if (e.target.tagName === 'CANVAS') return;
 
-    proventosPageContent.addEventListener('touchmove', (e) => {
-        if (!isDraggingProventos) return;
-        touchMoveProventosY = e.touches[0].clientY;
-        const diff = touchMoveProventosY - touchStartProventosY;
-        
-        if (diff > 0) {
-            if (e.cancelable) e.preventDefault(); 
-            proventosPageContent.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false });
+            if (scrollContainerProv && scrollContainerProv.scrollTop === 0) {
+                touchStartProventosY = e.touches[0].clientY;
+                touchMoveProventosY = touchStartProventosY;
+                isDraggingProventos = true;
+                proventosPageContent.style.transition = 'none'; 
+            }
+        }, { passive: true });
 
-    proventosPageContent.addEventListener('touchend', (e) => {
-        if (!isDraggingProventos) return;
-        isDraggingProventos = false;
-        
-        const diff = touchMoveProventosY - touchStartProventosY;
-        
-        proventosPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        
-        if (diff > 120) {
-            closeProventosModal();
-        } else {
-            proventosPageContent.style.transform = '';
-        }
-        
-        touchStartProventosY = 0;
-        touchMoveProventosY = 0;
-    });
-}
+        proventosPageContent.addEventListener('touchmove', (e) => {
+            if (!isDraggingProventos) return;
+            touchMoveProventosY = e.touches[0].clientY;
+            const diff = touchMoveProventosY - touchStartProventosY;
+            
+            if (diff > 0) {
+                if (e.cancelable) e.preventDefault(); 
+                proventosPageContent.style.transform = `translateY(${diff}px)`;
+            }
+        }, { passive: false });
+
+        proventosPageContent.addEventListener('touchend', (e) => {
+            if (!isDraggingProventos) return;
+            isDraggingProventos = false;
+            
+            const diff = touchMoveProventosY - touchStartProventosY;
+            
+            proventosPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            
+            if (diff > 120) {
+                closeProventosModal();
+            } else {
+                proventosPageContent.style.transform = '';
+            }
+            touchStartProventosY = 0;
+            touchMoveProventosY = 0;
+        });
+    }
 
 // --- LISTENERS DO MODAL DE ALOCAÇÃO ---
 
@@ -6716,47 +6713,50 @@ if (alocacaoPageModal) {
 }
 
 // Swipe Down Logic (Alocação)
-if (alocacaoPageContent) {
-    const scrollContainerAloc = alocacaoPageContent.querySelector('.overflow-y-auto');
+// --- LÓGICA DE SWIPE DOWN (ALOCAÇÃO) ---
+    if (alocacaoPageContent) {
+        const scrollContainerAloc = alocacaoPageContent.querySelector('.overflow-y-auto');
 
-    alocacaoPageContent.addEventListener('touchstart', (e) => {
-        if (scrollContainerAloc && scrollContainerAloc.scrollTop === 0) {
-            touchStartAlocacaoY = e.touches[0].clientY;
-            touchMoveAlocacaoY = touchStartAlocacaoY;
-            isDraggingAlocacao = true;
-            alocacaoPageContent.style.transition = 'none'; 
-        }
-    }, { passive: true });
+        alocacaoPageContent.addEventListener('touchstart', (e) => {
+            // CORREÇÃO: Se tocar no gráfico, não inicia o arrasto do modal
+            if (e.target.tagName === 'CANVAS') return;
 
-    alocacaoPageContent.addEventListener('touchmove', (e) => {
-        if (!isDraggingAlocacao) return;
-        touchMoveAlocacaoY = e.touches[0].clientY;
-        const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
-        
-        if (diff > 0) {
-            if (e.cancelable) e.preventDefault(); 
-            alocacaoPageContent.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false });
+            if (scrollContainerAloc && scrollContainerAloc.scrollTop === 0) {
+                touchStartAlocacaoY = e.touches[0].clientY;
+                touchMoveAlocacaoY = touchStartAlocacaoY;
+                isDraggingAlocacao = true;
+                alocacaoPageContent.style.transition = 'none'; 
+            }
+        }, { passive: true });
 
-    alocacaoPageContent.addEventListener('touchend', (e) => {
-        if (!isDraggingAlocacao) return;
-        isDraggingAlocacao = false;
-        
-        const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
-        
-        alocacaoPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        
-        if (diff > 120) {
-            closeAlocacaoModal();
-        } else {
-            alocacaoPageContent.style.transform = '';
-        }
-        
-        touchStartAlocacaoY = 0;
-        touchMoveAlocacaoY = 0;
-    });
-}
+        alocacaoPageContent.addEventListener('touchmove', (e) => {
+            if (!isDraggingAlocacao) return;
+            touchMoveAlocacaoY = e.touches[0].clientY;
+            const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
+            
+            if (diff > 0) {
+                if (e.cancelable) e.preventDefault(); 
+                alocacaoPageContent.style.transform = `translateY(${diff}px)`;
+            }
+        }, { passive: false });
+
+        alocacaoPageContent.addEventListener('touchend', (e) => {
+            if (!isDraggingAlocacao) return;
+            isDraggingAlocacao = false;
+            
+            const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
+            
+            alocacaoPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            
+            if (diff > 120) {
+                closeAlocacaoModal();
+            } else {
+                alocacaoPageContent.style.transform = '';
+            }
+            touchStartAlocacaoY = 0;
+            touchMoveAlocacaoY = 0;
+        });
+    }
 	
     await init();
 });

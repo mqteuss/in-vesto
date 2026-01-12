@@ -6754,7 +6754,7 @@ function renderizarGraficoIpca(dados) {
     
     if (!dados || !dados.historico) return;
 
-    // --- PARTE 1: RENDERIZAR A LISTA (O QUE ESTAVA FALTANDO) ---
+    // --- PARTE 1: RENDERIZAR A LISTA (SEM BORDAS) ---
     if(listaContainer) {
         listaContainer.innerHTML = '';
         
@@ -6777,11 +6777,12 @@ function renderizarGraficoIpca(dados) {
                 barraCor = 'bg-orange-500';
             }
             
-            // Tratamento do nome do mês (ex: "Jan/2025" -> Mes: Jan, Ano: 2025)
+            // Tratamento do nome do mês
             let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
             
+            // CORREÇÃO AQUI: Removido 'border' e 'border-[#2C2C2E]', alterado para 'rounded-2xl'
             const html = `
-            <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-xl mb-2 border border-[#2C2C2E]">
+            <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-2xl mb-2">
                 <div class="flex items-center gap-3">
                     <div class="w-1.5 h-10 rounded-full ${barraCor}"></div>
                     
@@ -6815,11 +6816,9 @@ function renderizarGraficoIpca(dados) {
     }
 
     const ctx = canvas.getContext('2d');
-    // Pega apenas as 3 primeiras letras do mês para o eixo X
     const labels = dados.historico.map(d => d.mes.split('/')[0].substring(0,3)); 
     const values = dados.historico.map(d => d.valor);
     
-    // Verde para deflação, Laranja/Vermelho para inflação
     const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316');
 
     ipcaChartInstance = new Chart(ctx, {

@@ -2616,6 +2616,7 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     const agrupado = {};
     let totalMes = 0;
 
+    // Lógica de agrupar os pagamentos (Mantida igual)
     proventosConhecidos.forEach(p => {
         if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
         const dataRef = p.dataCom || p.paymentDate;
@@ -2645,42 +2646,46 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
 
     lista.forEach(item => {
         const percent = ((item.valorTotal / totalMes) * 100).toFixed(1);
-        const diaPagamento = item.dataPag.split('-')[2];
-        const ehFii = isFII(item.symbol); 
-        const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
-        const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.symbol}.png`;
+        const diaPagamento = item.dataPag.split('-')[2]; // Pega o dia (DD)
         
-        const iconHtml = !ehFii 
-            ? `<img src="${iconUrl}" class="w-full h-full object-contain p-0.5 rounded-md" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');"/>
-               <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-500">${item.symbol.substring(0,2)}</span>`
-            : `<span class="text-[10px] font-bold text-gray-400">${item.symbol.substring(0,2)}</span>`;
-
+        // --- MUDANÇA: URL Correta do Logo ---
+        const iconUrl = `https://raw.githubusercontent.com/atar-g/invest-logos/main/${item.symbol.toUpperCase()}.png`;
+        
         const cardHTML = `
-            <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-xl mb-2 active:scale-[0.98] transition-transform">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg ${bgIcone} flex items-center justify-center relative overflow-hidden border border-[#2C2C2E]">
-                        ${iconHtml}
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold text-white uppercase">${item.symbol}</span>
-                        <span class="text-[10px] text-gray-500 font-medium">Dia ${diaPagamento} • ${item.qtd} cotas</span>
+            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl border border-[#2C2C2E] mb-2 active:scale-[0.98] transition-transform">
+                
+                <div class="w-10 h-10 rounded-full bg-[#1C1C1E] p-0.5 flex-shrink-0 overflow-hidden relative">
+                    <img src="${iconUrl}" 
+                         class="w-full h-full object-cover rounded-full" 
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"/>
+                    
+                    <div class="w-full h-full rounded-full flex items-center justify-center text-[10px] font-bold text-white hidden bg-[#2C2C2E]">
+                        ${item.symbol.substring(0, 2)}
                     </div>
                 </div>
-                <div class="flex flex-col items-end">
-                    <span class="text-sm font-bold text-white tracking-tight">${formatBRL(item.valorTotal)}</span>
-                    <span class="text-[10px] text-gray-500 font-medium">${percent}% do mês</span>
+
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="text-sm font-bold text-white uppercase">${item.symbol}</span>
+                        <span class="text-sm font-bold text-[#4ade80] tracking-tight">${formatBRL(item.valorTotal)}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500 font-medium">Dia ${diaPagamento} • ${item.qtd} cotas</span>
+                        <span class="text-[10px] text-gray-500 font-medium">${percent}% do total</span>
+                    </div>
                 </div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', cardHTML);
     });
 
+    // Rodapé com o total do mês
     const totalHTML = `
-        <div class="mt-4 pt-4 border-t border-[#2C2C2E] flex justify-between items-center px-2">
+        <div class="mt-4 pt-4 border-t border-[#2C2C2E] flex justify-between items-center px-2 pb-8">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total ${labelAmigavel}</span>
             <span class="text-lg font-bold text-white tracking-tight">${formatBRL(totalMes)}</span>
         </div>
-        <div class="h-6"></div>
     `;
     container.insertAdjacentHTML('beforeend', totalHTML);
 }

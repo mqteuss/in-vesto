@@ -2197,142 +2197,138 @@ function renderizarNoticias(articles) {
     fiiNewsList.appendChild(fragment);
 }
 
-// EM app.js
+// --- VERSÃO PROFISSIONAL DO GRÁFICO DE ALOCAÇÃO ---
+function renderizarGraficoAlocacao() {
+    const ctx = document.getElementById('alocacao-chart');
+    if (!ctx) return;
 
-// --- EM app.js: Substitua a função renderizarGraficoAlocacao ---
-
-function renderizarGraficoAlocacao(dadosInput) {
-    const canvas = document.getElementById('alocacao-chart');
-    const centerValueEl = document.getElementById('center-chart-value');
-    const legendContainer = document.getElementById('alocacao-legend');
-    
-    if (!canvas) return;
-
-    // 1. PREPARAÇÃO DOS DADOS
-    let dadosGrafico = dadosInput;
-
-    if (!dadosGrafico) {
-        const mapPrecos = {};
-        if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
-            precosAtuais.forEach(p => mapPrecos[p.symbol] = p.regularMarketPrice);
-        }
-
-        dadosGrafico = carteiraCalculada.map(item => {
-            const precoAtual = mapPrecos[item.symbol] || item.precoMedio;
-            return {
-                symbol: item.symbol,
-                totalPosicao: item.quantity * precoAtual
-            };
-        }).filter(d => d.totalPosicao > 0.01);
-    }
-
-    dadosGrafico.sort((a, b) => b.totalPosicao - a.totalPosicao);
-
-    // 2. SMART CHECK
-    const labels = dadosGrafico.map(d => d.symbol);
-    const data = dadosGrafico.map(d => d.totalPosicao);
-    const totalGeral = data.reduce((acc, curr) => acc + curr, 0);
-
-    const newDataString = `${labels.join(',')}-${data.join(',')}-${totalGeral.toFixed(2)}`;
-    const legendExists = legendContainer ? legendContainer.children.length > 0 : true;
-
-    if (newDataString === lastAlocacaoData && alocacaoChartInstance && legendExists) {
-        return; 
-    }
-
-    lastAlocacaoData = newDataString;
-
-    // 3. Atualiza valor central
-    if(centerValueEl) centerValueEl.textContent = formatBRL(totalGeral);
-
-    // 4. Limpeza se vazio
-    if (dadosGrafico.length === 0) {
-        if (alocacaoChartInstance) {
-            alocacaoChartInstance.destroy();
-            alocacaoChartInstance = null;
-        }
-        if(legendContainer) legendContainer.innerHTML = '';
-        if(centerValueEl) centerValueEl.textContent = 'R$ 0,00';
-        return;
-    }
-
-    // 5. Cores
-    const gerarPaletaPremium = (num) => {
-        const coresBase = [
-            '#7c3aed', '#a78bfa', '#4c1d95', '#d8b4fe', 
-            '#6d28d9', '#2e1065', '#c4b5fd', '#5b21b6'
-        ];
-        return Array.from({length: num}, (_, i) => coresBase[i % coresBase.length]);
-    };
-    const colors = gerarPaletaPremium(labels.length);
-
-    // 6. Legenda Externa
-    if(legendContainer) {
-        legendContainer.innerHTML = labels.map((label, i) => `
-            <div class="flex items-center gap-1.5">
-                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${colors[i]}"></span>
-                <span class="text-[11px] font-bold text-gray-400 tracking-wide">${label}</span>
-            </div>
-        `).join('');
-    }
-
-    // 7. Renderiza Gráfico
-    const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-    const borderColor = isLight ? '#ffffff' : '#121212';
-
+    // 1. Destruir gráfico anterior para não sobrepor
     if (alocacaoChartInstance) {
-        alocacaoChartInstance.data.labels = labels;
-        alocacaoChartInstance.data.datasets[0].data = data;
-        alocacaoChartInstance.data.datasets[0].backgroundColor = colors;
-        alocacaoChartInstance.data.datasets[0].borderColor = borderColor;
-        alocacaoChartInstance.update();
-    } else {
-        alocacaoChartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: { 
-                labels: labels, 
-                datasets: [{ 
-                    data: data, 
-                    backgroundColor: colors, 
-                    borderColor: borderColor,
-                    borderWidth: 0,
-                    spacing: 4,
-                    borderRadius: 10,
-                    hoverOffset: 15
-                }] 
-            },
-            options: {
-                responsive: true, 
-                maintainAspectRatio: false,
-                
-                // --- ALTERAÇÃO AQUI: De 85% para 75% (Mais grosso) ---
-                cutout: '77%', 
-                // ----------------------------------------------------
-                
-                layout: { padding: 10 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 20, 0.95)',
-                        titleColor: isLight ? '#1f2937' : '#fff',
-                        bodyColor: isLight ? '#4b5563' : '#e5e7eb',
-                        borderColor: isLight ? '#e5e7eb' : '#333',
-                        borderWidth: 1,
-                        padding: 12,
-                        cornerRadius: 12,
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return ` ${label}: ${percent}% (${formatBRL(value)})`;
-                            }
+        alocacaoChartInstance.destroy();
+    }
+
+    // 2. Cores Premium (Paleta Vesto)
+    const paletaCores = [
+        '#8B5CF6', // Roxo Principal
+        '#10B981', // Verde Sucesso
+        '#3B82F6', // Azul Primary
+        '#F59E0B', // Amber Aviso
+        '#EC4899', // Pink
+        '#6366F1', // Indigo
+        '#EF4444', // Red
+        '#14B8A6'  // Teal
+    ];
+
+    // 3. Processamento de Dados (Calcula totais por categoria)
+    // Supõe que 'investimentos' é sua array global de ativos.
+    const categoriasMap = {};
+    let totalGeral = 0;
+
+    investimentos.forEach(ativo => {
+        // Normaliza a categoria (ex: "FII", "AÇÃO", "Cripto")
+        const cat = ativo.tipo || 'Outros'; 
+        const valor = (ativo.precoMedio || 0) * (ativo.quantidade || 0); // Ou valor atual se tiver
+        
+        if (!categoriasMap[cat]) categoriasMap[cat] = 0;
+        categoriasMap[cat] += valor;
+        totalGeral += valor;
+    });
+
+    // Converte para Arrays ordenados
+    const labels = Object.keys(categoriasMap);
+    const dataValues = Object.values(categoriasMap);
+
+    // Ordenar do maior para o menor
+    const dadosOrdenados = labels.map((label, i) => ({
+        label,
+        value: dataValues[i]
+    })).sort((a, b) => b.value - a.value);
+
+    const sortedLabels = dadosOrdenados.map(d => d.label);
+    const sortedValues = dadosOrdenados.map(d => d.value);
+
+    // 4. Atualiza o Texto Central (Total)
+    const elTotalCenter = document.getElementById('alocacao-total-center');
+    if(elTotalCenter) {
+        elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', { 
+            style: 'currency', currency: 'BRL', maximumFractionDigits: 0 
+        });
+    }
+
+    // 5. Configuração do Gráfico (Chart.js)
+    alocacaoChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: sortedLabels,
+            datasets: [{
+                data: sortedValues,
+                backgroundColor: paletaCores,
+                borderWidth: 0, // Sem borda para visual flat
+                hoverOffset: 10, // Efeito ao passar o mouse
+                borderRadius: 5 // Bordas arredondadas nos segmentos
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%', // Rosca mais fina (Fica mais elegante)
+            plugins: {
+                legend: { display: false }, // Esconde a legenda padrão feia
+                tooltip: {
+                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                    titleColor: '#fff',
+                    bodyColor: '#ccc',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 12,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            const val = context.raw;
+                            const pct = ((val / totalGeral) * 100).toFixed(1) + '%';
+                            return ` ${pct} (${val.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})`;
                         }
                     }
                 }
+            },
+            animation: {
+                animateScale: true,
+                animateRotate: true
             }
+        }
+    });
+
+    // 6. Gerar a Legenda HTML Customizada (A lista abaixo do gráfico)
+    const legendContainer = document.getElementById('alocacao-legend-container');
+    if (legendContainer) {
+        legendContainer.innerHTML = ''; // Limpa anterior
+
+        dadosOrdenados.forEach((item, index) => {
+            const cor = paletaCores[index % paletaCores.length];
+            const porcentagem = ((item.value / totalGeral) * 100).toFixed(1);
+            const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            // Cria o HTML do Card da Legenda
+            const itemHTML = `
+                <div class="flex items-center justify-between p-4 bg-[#151515] rounded-[1.25rem] border border-[#2C2C2E] active:scale-[0.98] transition-transform">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: ${cor}20;">
+                            <div class="w-3 h-3 rounded-full shadow-[0_0_8px_${cor}]" style="background-color: ${cor};"></div>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-white uppercase">${item.label}</span>
+                            <span class="text-[11px] text-gray-500 font-medium">${dadosOrdenados.length} Ativos</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col items-end">
+                        <span class="text-sm font-bold text-white">${porcentagem}%</span>
+                        <span class="text-[11px] text-gray-500">${valorFormatado}</span>
+                    </div>
+                </div>
+            `;
+            legendContainer.insertAdjacentHTML('beforeend', itemHTML);
         });
     }
 }

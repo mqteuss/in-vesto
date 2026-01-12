@@ -1020,6 +1020,7 @@
 </div>
 
 <div id="alocacao-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="alocacao-title" role="dialog" aria-modal="true">
+    
     <div id="tab-alocacao-content" class="page-content w-full h-[85vh] rounded-t-[2rem] shadow-2xl bg-black border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform">
         
         <div class="sticky top-0 bg-black z-30 rounded-t-[2rem]">
@@ -1046,17 +1047,28 @@
 
         <div class="overflow-y-auto h-[calc(85vh-90px)] p-4 pt-0 custom-scroll">
             
-            <div class="relative w-full h-72 flex items-center justify-center bg-[#121212] rounded-3xl p-4 border border-[#2C2C2E] shadow-inner mb-6">
-                <canvas id="alocacao-chart"></canvas>
+            <div class="relative w-full flex flex-col items-center justify-center bg-[#151515] rounded-[2rem] p-6 border border-[#2C2C2E] mb-6 shadow-xl">
+                <div class="relative w-64 h-64">
+                    <canvas id="alocacao-chart"></canvas>
+                    
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Total</span>
+                        <span id="alocacao-total-center" class="text-xl font-bold text-white mt-1">...</span>
+                    </div>
+                </div>
             </div>
 
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 px-2">Detalhamento</h3>
-            <div id="alocacao-legend-container" class="space-y-2">
+            <div class="flex items-center justify-between px-2 mb-3">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Detalhamento</h3>
+                <span class="text-[10px] text-gray-600 bg-[#1C1C1E] px-2 py-1 rounded-full border border-[#2C2C2E]">Ordenado por Valor</span>
+            </div>
+
+            <div id="alocacao-legend-container" class="space-y-3 pb-10">
                 </div>
             
-            <div class="h-10"></div> </div>
-    </div>
-</div>
+        </div>
+    
+    </div> </div>
         
         <div id="new-password-modal" class="custom-modal fixed inset-0 z-[70] items-center justify-center p-4 bg-black bg-opacity-80 backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="modal-content card-bg rounded-3xl p-6 w-full max-w-sm shadow-xl transition-all" style="opacity: 0; transform: scale(0.95);">

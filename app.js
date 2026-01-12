@@ -2209,59 +2209,69 @@ function renderizarNoticias(articles) {
     fiiNewsList.appendChild(fragment);
 }
 
-// --- VERSÃO FINAL DO GRÁFICO DE ALOCAÇÃO (SEM BORDAS + CORREÇÃO DE ERRO) ---
-function renderizarGraficoAlocacao() {
+function renderizarGraficoAlocacao(isRetry = false) {
     const canvas = document.getElementById('alocacao-chart');
     if (!canvas) return;
 
-    // 1. REMOÇÃO VISUAL DAS BORDAS (Fix automático)
-    // Remove a borda do card pai definido no HTML
+    // --- 1. REMOÇÃO VISUAL DAS BORDAS ---
     const cardContainer = canvas.closest('.border'); 
     if (cardContainer) {
         cardContainer.classList.remove('border', 'border-[#2C2C2E]');
         cardContainer.style.border = 'none';
-        cardContainer.style.boxShadow = 'none'; // Remove sombra para ficar totalmente "flat" (opcional)
+        cardContainer.style.boxShadow = 'none';
     }
 
-    // 2. Destruir gráfico anterior para não sobrepor
-    if (alocacaoChartInstance) {
-        alocacaoChartInstance.destroy();
-        alocacaoChartInstance = null;
+    // --- 2. DETECÇÃO DE PREÇOS (AUTORRECUPERAÇÃO) ---
+    const temPrecos = typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais) && precosAtuais.length > 0;
+    
+    if (!window.alocacaoRetryCount) window.alocacaoRetryCount = 0;
+
+    if (!temPrecos && window.alocacaoRetryCount < 5) {
+        window.alocacaoRetryTimer = setTimeout(() => {
+            window.alocacaoRetryCount++;
+            renderizarGraficoAlocacao(true);
+        }, 800);
+    } else if (temPrecos) {
+        window.alocacaoRetryCount = 0;
+        if (window.alocacaoRetryTimer) clearTimeout(window.alocacaoRetryTimer);
     }
 
-    // 3. Cores Premium (Paleta Vesto)
-    const paletaCores = [
-        '#8B5CF6', // Roxo
-        '#10B981', // Verde
-        '#3B82F6', // Azul
-        '#F59E0B', // Laranja
-        '#EC4899', // Rosa
-        '#6366F1', // Indigo
-        '#EF4444', // Vermelho
-        '#14B8A6'  // Teal
-    ];
-
-    // 4. Processamento de Dados (CORRIGIDO: usa carteiraCalculada)
+    // --- 3. MAPA DE PREÇOS ROBUSTO (Para bater com o Patrimônio) ---
     const mapPrecos = new Map();
-    if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
-        precosAtuais.forEach(p => mapPrecos.set(p.symbol, p.regularMarketPrice));
+    if (temPrecos) {
+        precosAtuais.forEach(p => {
+            const sym = p.symbol || p.ticker || p.codigo;
+            const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
+            if (sym && val) {
+                mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
+            }
+        });
     }
 
+    // --- 4. CÁLCULO DOS TOTAIS ---
     let totalGeral = 0;
     const dadosAtivos = [];
 
-    // Verificação de segurança para evitar o erro "investimentos is not defined"
     if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
         carteiraCalculada.forEach(ativo => {
-            const preco = mapPrecos.get(ativo.symbol) || ativo.precoMedio || 0;
-            const valorTotal = preco * ativo.quantity;
+            const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
+            const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
+            const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
+
+            // Tenta pegar o preço na ordem: Ao Vivo Global -> Do Ativo (Cache) -> Preço Médio (Fallback)
+            let precoLive = mapPrecos.get(ticker);
+            if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
+            if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
+
+            const valorTotal = precoLive * qtd;
 
             if (valorTotal > 0.01) { 
                 totalGeral += valorTotal;
                 dadosAtivos.push({
-                    label: ativo.symbol,
+                    label: ticker,
                     value: valorTotal,
-                    qtd: ativo.quantity
+                    qtd: qtd,
+                    color: '' // Será preenchido depois
                 });
             }
         });
@@ -2270,20 +2280,43 @@ function renderizarGraficoAlocacao() {
     // Ordenar do maior para o menor valor
     dadosAtivos.sort((a, b) => b.value - a.value);
 
+    // --- 5. CORES ---
+    const paletaCores = [
+        '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B', 
+        '#EC4899', '#6366F1', '#EF4444', '#14B8A6'
+    ];
+    
+    dadosAtivos.forEach((d, i) => {
+        d.color = paletaCores[i % paletaCores.length];
+    });
+
     const sortedLabels = dadosAtivos.map(d => d.label);
     const sortedValues = dadosAtivos.map(d => d.value);
+    const sortedColors = dadosAtivos.map(d => d.color);
 
-    // 5. Atualiza o Texto Central (Total)
+    // --- 6. ATUALIZA TEXTO CENTRAL (TOTAL) ---
     const elTotalCenter = document.getElementById('alocacao-total-center');
     if(elTotalCenter) {
+        // CORREÇÃO AQUI: Removido 'maximumFractionDigits: 0'
+        // Agora ele usa o padrão BRL (2 casas decimais)
         elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', { 
-            style: 'currency', currency: 'BRL', maximumFractionDigits: 0 
+            style: 'currency', currency: 'BRL'
         });
     }
 
-    if (dadosAtivos.length === 0) return;
+    if (dadosAtivos.length === 0) {
+        if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) {
+            alocacaoChartInstance.destroy();
+            alocacaoChartInstance = null;
+        }
+        return;
+    }
 
-    // 6. Configuração do Gráfico (Chart.js)
+    // --- 7. RENDERIZAÇÃO DO GRÁFICO ---
+    if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) {
+        alocacaoChartInstance.destroy();
+    }
+
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     const borderColor = isLight ? '#ffffff' : '#151515'; 
@@ -2294,7 +2327,7 @@ function renderizarGraficoAlocacao() {
             labels: sortedLabels,
             datasets: [{
                 data: sortedValues,
-                backgroundColor: paletaCores,
+                backgroundColor: sortedColors,
                 borderWidth: 2, 
                 borderColor: borderColor,
                 hoverOffset: 10, 
@@ -2324,41 +2357,42 @@ function renderizarGraficoAlocacao() {
                     }
                 }
             },
-            animation: {
-                animateScale: true,
-                animateRotate: true
-            }
+            animation: { animateScale: true, animateRotate: true }
         }
     });
 
-    // 7. Gerar a Legenda HTML (SEM BORDAS)
+    // --- 8. ATUALIZA A LEGENDA ABAIXO ---
     const legendContainer = document.getElementById('alocacao-legend-container');
     if (legendContainer) {
         legendContainer.innerHTML = ''; 
 
-        dadosAtivos.forEach((item, index) => {
-            const cor = paletaCores[index % paletaCores.length];
-            const porcentagem = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
-            const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        dadosAtivos.forEach(item => {
+            const percent = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
+            const tickerInitials = item.label.substring(0, 2);
 
-            // REMOVIDO: border border-[#2C2C2E]
-            const itemHTML = `
-                <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-xl mb-2 active:scale-[0.98] transition-transform">
-                    <div class="flex items-center gap-3">
-                        <div class="w-2 h-8 rounded-full" style="background-color: ${cor};"></div>
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-white uppercase">${item.label}</span>
-                            <span class="text-[10px] text-gray-500 font-medium">${item.qtd} cotas</span>
-                        </div>
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2';
+            
+            div.innerHTML = `
+                <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
+                    <span class="text-xs font-bold text-white tracking-wider">${tickerInitials}</span>
+                </div>
+
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-bold text-white truncate">${item.label}</span>
+                        <span class="text-sm font-bold text-white">R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
                     
-                    <div class="flex flex-col items-end">
-                        <span class="text-sm font-bold text-white">${porcentagem}%</span>
-                        <span class="text-[10px] text-gray-500">${valorFormatado}</span>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 h-2 bg-[#2C2C2E] rounded-full overflow-hidden">
+                            <div class="h-full rounded-full" style="width: ${percent}%; background-color: ${item.color}"></div>
+                        </div>
+                        <span class="text-xs text-gray-400 w-10 text-right">${percent}%</span>
                     </div>
                 </div>
             `;
-            legendContainer.insertAdjacentHTML('beforeend', itemHTML);
+            legendContainer.appendChild(div);
         });
     }
 }

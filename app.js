@@ -3235,10 +3235,12 @@ async function renderizarCarteira() {
         dashboardLoading.classList.add('hidden');
         dashboardStatus.classList.remove('hidden');
         
-        renderizarGraficoAlocacao([]);
-        renderizarGraficoHistorico({ labels: [], data: [] });
+        // --- LAZY LOAD: COMENTADO PARA NÃO INICIAR AUTOMATICAMENTE ---
+        // renderizarGraficoAlocacao([]);
+        // renderizarGraficoHistorico({ labels: [], data: [] });
+        // renderizarGraficoPatrimonio();
+
         await salvarSnapshotPatrimonio(saldoCaixa);
-        renderizarGraficoPatrimonio();
         return; 
     } else {
         carteiraStatus.classList.add('hidden');
@@ -3369,12 +3371,13 @@ async function renderizarCarteira() {
         }
         
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
-        renderizarTimelinePagamentos();
+        renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
         await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
     }
     
-    renderizarGraficoAlocacao(dadosGrafico);
-    renderizarGraficoPatrimonio();
+    // --- LAZY LOAD: COMENTADO PARA NÃO INICIAR AUTOMATICAMENTE ---
+    // renderizarGraficoAlocacao(dadosGrafico);
+    // renderizarGraficoPatrimonio();
     
     if (carteiraSearchInput && carteiraSearchInput.value) {
         const term = carteiraSearchInput.value.trim().toUpperCase();

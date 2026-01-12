@@ -2442,98 +2442,72 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 }
 
 
-function renderizarGraficoHistorico() {
+function renderizarGraficoHistorico(dadosExternos = null) {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // 0. Data de Hoje para comparação
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    // --- PROCESSAMENTO DE DADOS ---
+    let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
 
-    // 1. Dados Agrupados (Recebido vs A Receber)
-    const grupos = {};
+    if (dadosExternos && dadosExternos.labels) {
+        labelsFiltrados = dadosExternos.labels;
+        dataRecebidoFiltrados = dadosExternos.data; 
+        dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0); 
+    }
     
+    // Dados Locais (Padrão)
+    const grupos = {};
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+
     proventosConhecidos.forEach(p => {
         if (!p.paymentDate || p.value <= 0) return;
-        
         const key = p.paymentDate.substring(0, 7); // YYYY-MM
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
         
         if (qtd > 0) {
-            if (!grupos[key]) {
-                grupos[key] = { recebido: 0, aReceber: 0 };
-            }
-
-            // Converter string de data para objeto Date
+            if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
             const [ano, mes, dia] = p.paymentDate.split('-');
             const dataPagamento = new Date(ano, mes - 1, dia);
             const valorTotal = p.value * qtd;
 
-            if (dataPagamento <= hoje) {
-                grupos[key].recebido += valorTotal;
-            } else {
-                grupos[key].aReceber += valorTotal;
-            }
+            if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
+            else grupos[key].aReceber += valorTotal;
         }
     });
 
     let mesesOrdenados = Object.keys(grupos).sort();
-    
-    // Arrays para o gráfico
     const labelsRaw = [];
-    const dataRecebidoRaw = [];
-    const dataAReceberRaw = [];
-    const keysMap = []; 
+    const dataR = [];
+    const dataA = [];
+    const keysRaw = [];
 
     mesesOrdenados.forEach(mesIso => {
         const [anoFull, mesNum] = mesIso.split('-');
         const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
-        
         const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const anoCurto = anoFull.slice(-2);
         
-        labelsRaw.push(`${nomeMes} ${anoCurto}`);
-        dataRecebidoRaw.push(grupos[mesIso].recebido);
-        dataAReceberRaw.push(grupos[mesIso].aReceber);
-        keysMap.push(mesIso); // Guarda "2025-05"
+        labelsRaw.push(`${nomeMes}/${anoCurto}`);
+        dataR.push(grupos[mesIso].recebido);
+        dataA.push(grupos[mesIso].aReceber);
+        keysRaw.push(mesIso);
     });
 
-    // Filtro 12 meses
-    const labelsFiltrados = labelsRaw.slice(-12);
-    const dataRecebidoFiltrados = dataRecebidoRaw.slice(-12);
-    const dataAReceberFiltrados = dataAReceberRaw.slice(-12);
-    const keysFiltrados = keysMap.slice(-12);
-    
-    // Verifica mudança nos dados
-    const newDataString = JSON.stringify({ 
-        l: labelsFiltrados, 
-        d1: dataRecebidoFiltrados, 
-        d2: dataAReceberFiltrados 
-    });
-    
-    if (newDataString === lastHistoricoData && historicoChartInstance) { return; }
-    lastHistoricoData = newDataString; 
-
-    if (!labelsFiltrados || labelsFiltrados.length === 0) {
-        if (historicoChartInstance) {
-            historicoChartInstance.destroy();
-            historicoChartInstance = null; 
-        }
-        return;
-    }
-    
-    const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-    
-    // Cores
-    const colorRecebido = 'rgba(192, 132, 252, 0.9)'; // Roxo (Vesto)
-    const colorAReceber = 'rgba(251, 191, 36, 0.9)';  // Amarelo
-    const legendColor = isLight ? '#374151' : '#9ca3af';
+    labelsFiltrados = labelsRaw.slice(-12);
+    dataRecebidoFiltrados = dataR.slice(-12);
+    dataAReceberFiltrados = dataA.slice(-12);
+    keysFiltrados = keysRaw.slice(-12);
 
     if (historicoChartInstance) {
         historicoChartInstance.destroy();
     }
+
+    const ctx = canvas.getContext('2d');
+    
+    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
+    const colorRecebido = '#8B5CF6'; 
+    const colorAReceber = '#333333'; 
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -2563,176 +2537,141 @@ function renderizarGraficoHistorico() {
         options: {
             responsive: true, 
             maintainAspectRatio: false,
-            animation: { duration: 800, easing: 'easeOutQuart' },
-            layout: { padding: { top: 10 } },
+            animation: { duration: 600 },
+            layout: { padding: { top: 10, bottom: 0 } },
+            interaction: { mode: 'index', intersect: false },
             
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-
-            // --- EVENTO DE CLIQUE (Abre lista) ---
-            onClick: (e, elements, chart) => {
+            // --- AQUI: INTERAÇÃO DE CLIQUE NA BARRA ---
+            onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
                 
-                const element = elements[0];
-                const index = element.index;
+                const index = elements[0].index;
+                const labelAmigavel = labelsFiltrados[index]; 
+                const rawKey = keysFiltrados[index]; 
                 
-                const labelAmigavel = chart.data.labels[index];
-                const rawKey = chart.data.datasets[0].rawKeys[index];
-                
-                exibirDetalhesProventos(rawKey, labelAmigavel);
+                // Chama a função que preenche a lista lá embaixo
+                renderizarListaProventosMes(rawKey, labelAmigavel);
             },
 
             plugins: {
-                legend: { 
-                    display: true, 
-                    position: 'bottom', 
-                    // --- AJUSTE DAS BOLINHAS E HITBOX ---
-                    labels: { 
-                        boxWidth: 6,       // Bolinha menor (era 10)
-                        boxHeight: 6,      // Altura forçada igual largura
-                        usePointStyle: true, 
-                        pointStyle: 'circle',
-                        padding: 20,       // Espaçamento horizontal entre itens
-                        color: legendColor,
-                        font: {
-                            size: 10,      // Fonte menor para alinhar com a bolinha de 6px
-                            weight: '600',
-                            family: "'Plus Jakarta Sans', sans-serif"
-                        },
-                        textAlign: 'center' // Garante alinhamento texto/ícone
-                    } 
-                }, 
+                // --- ISSO REMOVE A LEGENDA INTERNA/ABAIXO DO GRÁFICO ---
+                legend: { display: false }, 
+                
                 tooltip: { 
                     enabled: true,
-                    backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(21, 21, 21, 0.95)',
-                    titleColor: isLight ? '#374151' : '#9ca3af',
-                    bodyColor: isLight ? '#1f2937' : '#fff',
-                    borderColor: isLight ? '#e5e5e5' : '#333',
+                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                    titleColor: '#fff',
+                    bodyColor: '#ccc',
+                    borderColor: '#333',
                     borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    boxWidth: 6,
-                    boxHeight: 6,
-                    usePointStyle: true,
+                    displayColors: false,
                     callbacks: {
                         label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += formatBRL(context.parsed.y);
-                            }
-                            return label;
+                            if(context.parsed.y === 0) return null;
+                            return formatBRL(context.parsed.y);
                         }
                     }
                 } 
             },
             scales: {
-                y: { 
-                    display: false,
-                    stacked: true 
-                },
+                y: { display: false, stacked: true },
                 x: { 
                     stacked: true, 
                     grid: { display: false }, 
                     ticks: {
-                        color: legendColor,
-                        font: { size: 10, weight: 'bold' }
+                        color: '#666',
+                        font: { size: 10, weight: '600' }
                     }
                 }
             }
         }
     });
+    
+    // Seleciona automaticamente o último mês ao carregar
+    if (keysFiltrados.length > 0) {
+        const lastIdx = keysFiltrados.length - 1;
+        renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
+    }
 }
     
-    function renderizarGraficoProventosDetalhes({ labels, data }) {
-        const canvas = document.getElementById('detalhes-proventos-chart');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+function renderizarListaProventosMes(anoMes, labelAmigavel) {
+    const container = document.getElementById('proventos-lista-container');
+    const labelMes = document.getElementById('proventos-mes-selecionado');
     
-        if (!labels || !data || labels.length === 0) {
-            if (detalhesChartInstance) {
-                detalhesChartInstance.destroy();
-                detalhesChartInstance = null; 
+    if (!container) return;
+    if (labelMes) labelMes.textContent = labelAmigavel;
+
+    const agrupado = {};
+    let totalMes = 0;
+
+    proventosConhecidos.forEach(p => {
+        if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
+        const dataRef = p.dataCom || p.paymentDate;
+        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+        if (qtd > 0) {
+            const total = p.value * qtd;
+            if (!agrupado[p.symbol]) {
+                agrupado[p.symbol] = {
+                    symbol: p.symbol,
+                    valorTotal: 0,
+                    qtd: qtd,
+                    dataPag: p.paymentDate
+                };
             }
-            return;
+            agrupado[p.symbol].valorTotal += total;
+            totalMes += total;
         }
-    
-        const gradient = ctx.createLinearGradient(0, 0, 0, 192);
-        gradient.addColorStop(0, 'rgba(192, 132, 252, 0.9)'); 
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.9)');  
-        
-        const hoverGradient = ctx.createLinearGradient(0, 0, 0, 192);
-        hoverGradient.addColorStop(0, 'rgba(216, 180, 254, 1)'); 
-        hoverGradient.addColorStop(1, 'rgba(139, 92, 246, 1)');  
-    
-        if (detalhesChartInstance) {
-            detalhesChartInstance.data.labels = labels;
-            detalhesChartInstance.data.datasets[0].data = data;
-            detalhesChartInstance.data.datasets[0].backgroundColor = gradient;
-            detalhesChartInstance.data.datasets[0].hoverBackgroundColor = hoverGradient;
-            detalhesChartInstance.update();
-        } else {
-            detalhesChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Recebido',
-                        data: data,
-                        backgroundColor: gradient,
-                        hoverBackgroundColor: hoverGradient,
-                        borderColor: 'rgba(192, 132, 252, 0.3)', 
-                        borderWidth: 1,
-                        borderRadius: 4 
-                    }]
-                },
-                options: {
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#1A1A1A',
-                            borderColor: '#2A2A2A',
-                            borderWidth: 1,
-                            padding: 10,
-                            displayColors: false, 
-                            callbacks: {
-                                title: (context) => `Mês: ${context[0].label}`, 
-                                label: (context) => `Valor: ${formatBRL(context.parsed.y)}`
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: '#2A2A2A' }, 
-                            ticks: { 
-                                display: true,
-                                color: Chart.defaults.color,
-                                font: { size: 10 },
-                                callback: function(value) {
-                                    return formatBRL(value);
-                                }
-                            }
-                        },
-                        x: { 
-                            grid: { display: false },
-                            ticks: {
-                                color: Chart.defaults.color,
-                                font: { size: 10 }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+    });
+
+    const lista = Object.values(agrupado).sort((a, b) => b.valorTotal - a.valorTotal);
+    container.innerHTML = ''; 
+
+    if (lista.length === 0) {
+        container.innerHTML = `<p class="text-center text-gray-600 text-xs py-8">Nenhum pagamento registrado.</p>`;
+        return;
     }
+
+    lista.forEach(item => {
+        const percent = ((item.valorTotal / totalMes) * 100).toFixed(1);
+        const diaPagamento = item.dataPag.split('-')[2];
+        const ehFii = isFII(item.symbol); 
+        const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
+        const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.symbol}.png`;
+        
+        const iconHtml = !ehFii 
+            ? `<img src="${iconUrl}" class="w-full h-full object-contain p-0.5 rounded-md" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');"/>
+               <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-500">${item.symbol.substring(0,2)}</span>`
+            : `<span class="text-[10px] font-bold text-gray-400">${item.symbol.substring(0,2)}</span>`;
+
+        const cardHTML = `
+            <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-xl mb-2 active:scale-[0.98] transition-transform">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg ${bgIcone} flex items-center justify-center relative overflow-hidden border border-[#2C2C2E]">
+                        ${iconHtml}
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-white uppercase">${item.symbol}</span>
+                        <span class="text-[10px] text-gray-500 font-medium">Dia ${diaPagamento} • ${item.qtd} cotas</span>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end">
+                    <span class="text-sm font-bold text-white tracking-tight">${formatBRL(item.valorTotal)}</span>
+                    <span class="text-[10px] text-gray-500 font-medium">${percent}% do mês</span>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', cardHTML);
+    });
+
+    const totalHTML = `
+        <div class="mt-4 pt-4 border-t border-[#2C2C2E] flex justify-between items-center px-2">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total ${labelAmigavel}</span>
+            <span class="text-lg font-bold text-white tracking-tight">${formatBRL(totalMes)}</span>
+        </div>
+        <div class="h-6"></div>
+    `;
+    container.insertAdjacentHTML('beforeend', totalHTML);
+}
     
 function openPatrimonioModal() {
     if(!patrimonioPageModal) return;

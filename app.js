@@ -572,6 +572,17 @@ const modalCustoValor = document.getElementById('modal-custo-valor');
 let isDraggingPatrimonio = false;
 let touchStartPatrimonioY = 0;
 let touchMovePatrimonioY = 0;
+
+// --- REFERÊNCIAS DO MODAL DE PROVENTOS ---
+const btnOpenProventos = document.getElementById('btn-open-proventos');
+const proventosPageModal = document.getElementById('proventos-page-modal');
+const proventosPageContent = document.getElementById('tab-proventos-content');
+const proventosVoltarBtn = document.getElementById('proventos-voltar-btn');
+
+// Controle de arrastar (Swipe Down) - Proventos
+let isDraggingProventos = false;
+let touchStartProventosY = 0;
+let touchMoveProventosY = 0;
     // -------------------------------------------
     
     const vestoDB = {
@@ -2750,6 +2761,37 @@ function closePatrimonioModal() {
         // 4. Libera o scroll da página principal
         document.body.style.overflow = '';
     }
+	
+	function openProventosModal() {
+    if(!proventosPageModal) return;
+
+    proventosPageModal.classList.add('visible');
+    proventosPageContent.style.transform = ''; 
+    proventosPageContent.classList.remove('closing');
+    document.body.style.overflow = 'hidden';
+
+    // Redimensiona o gráfico de histórico (Barras)
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            if (historicoChartInstance) {
+                historicoChartInstance.resize();
+                historicoChartInstance.update('none');
+            } else {
+                // Se não existir ainda, renderiza
+                renderizarGraficoHistorico(); 
+            }
+        }, 50);
+    });
+}
+
+function closeProventosModal() {
+    if(!proventosPageContent) return;
+    
+    proventosPageContent.style.transform = '';
+    proventosPageContent.classList.add('closing');
+    proventosPageModal.classList.remove('visible');
+    document.body.style.overflow = '';
+}
 
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
@@ -6601,6 +6643,65 @@ atualizarWidgetIpca();
             touchMovePatrimonioY = 0;
         });
     }
+	
+	// --- LISTENERS DO MODAL DE PROVENTOS ---
+
+if (btnOpenProventos) {
+    btnOpenProventos.addEventListener('click', openProventosModal);
+}
+
+if (proventosVoltarBtn) {
+    proventosVoltarBtn.addEventListener('click', closeProventosModal);
+}
+
+if (proventosPageModal) {
+    proventosPageModal.addEventListener('click', (e) => {
+        if (e.target === proventosPageModal) closeProventosModal();
+    });
+}
+
+// Swipe Down para fechar (Proventos)
+if (proventosPageContent) {
+    const scrollContainerProv = proventosPageContent.querySelector('.overflow-y-auto');
+
+    proventosPageContent.addEventListener('touchstart', (e) => {
+        if (scrollContainerProv && scrollContainerProv.scrollTop === 0) {
+            touchStartProventosY = e.touches[0].clientY;
+            touchMoveProventosY = touchStartProventosY;
+            isDraggingProventos = true;
+            proventosPageContent.style.transition = 'none'; 
+        }
+    }, { passive: true });
+
+    proventosPageContent.addEventListener('touchmove', (e) => {
+        if (!isDraggingProventos) return;
+        touchMoveProventosY = e.touches[0].clientY;
+        const diff = touchMoveProventosY - touchStartProventosY;
+        
+        if (diff > 0) {
+            if (e.cancelable) e.preventDefault(); 
+            proventosPageContent.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false });
+
+    proventosPageContent.addEventListener('touchend', (e) => {
+        if (!isDraggingProventos) return;
+        isDraggingProventos = false;
+        
+        const diff = touchMoveProventosY - touchStartProventosY;
+        
+        proventosPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        
+        if (diff > 120) {
+            closeProventosModal();
+        } else {
+            proventosPageContent.style.transform = '';
+        }
+        
+        touchStartProventosY = 0;
+        touchMoveProventosY = 0;
+    });
+}
 	
     await init();
 });

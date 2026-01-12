@@ -281,22 +281,28 @@
         </div>
     </div>
 
-    <div class="card-bg p-4 rounded-[1.5rem] flex flex-col justify-between h-40 cursor-pointer relative overflow-hidden group active:scale-[0.98] transition-all hover:border-green-900/30" data-toggle-drawer="proventos-chart-drawer">
-        <div class="flex justify-between items-start">
-            <div class="w-10 h-10 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
+<div id="btn-open-proventos" class="col-span-2 card-bg relative overflow-hidden rounded-[1.5rem] p-5 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#111]">
+    <div class="flex flex-col z-10">
+        <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </div>
-        <div>
-            <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Histórico</span>
-            <span class="text-lg font-bold text-white block leading-tight mt-1">Proventos</span>
-        </div>
-        <div class="absolute bottom-4 right-4 flex items-end gap-1 opacity-30">
-            <div class="w-1.5 h-3 bg-green-500 rounded-sm"></div>
-            <div class="w-1.5 h-5 bg-green-500 rounded-sm"></div>
-            <div class="w-1.5 h-4 bg-green-500 rounded-sm"></div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Proventos</span>
+        <div class="flex items-baseline gap-1.5 mt-0.5">
+            <span id="total-proventos" class="text-xl font-bold text-white">...</span>
+            <span class="text-[10px] text-gray-500 font-medium">Est. Mês</span>
         </div>
     </div>
+    
+    <div class="absolute right-4 bottom-[-10px] opacity-15 pointer-events-none">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-32 w-32 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+    </div>
+    
+    <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center border border-[#2C2C2E]">
+        <svg class="w-4 h-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+    </div>
+</div>
 
 <div class="col-span-2">
     <div id="alocacao-chart-drawer" class="card-drawer">
@@ -312,11 +318,6 @@
         </div>
     </div>
 
-    <div id="proventos-chart-drawer" class="card-drawer">
-        <div id="historico-grafico-container" class="drawer-content relative h-64 pt-4 bg-[#121212] rounded-3xl p-2 mb-2 shadow-inner">
-            <canvas id="historico-proventos-chart"></canvas>
-        </div>
-    </div>
 </div>
 
 <div class="card-bg p-4 rounded-[1.5rem] flex flex-col justify-between h-40 relative overflow-hidden group hover:border-orange-900/30 transition-all cursor-default">
@@ -975,6 +976,56 @@
                     <p id="modal-custo-valor" class="text-lg font-bold text-gray-300 mt-1">...</p>
                 </div>
             </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="proventos-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="proventos-title" role="dialog" aria-modal="true">
+    <div id="tab-proventos-content" class="page-content w-full h-[85vh] rounded-t-[2rem] shadow-2xl bg-black border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform">
+        
+        <div class="sticky top-0 bg-black z-30 rounded-t-[2rem]">
+            <div class="w-full flex justify-center pt-3 pb-1">
+                <div class="w-12 h-1.5 bg-[#2C2C2E] rounded-full"></div>
+            </div>
+
+            <div class="flex justify-between items-center px-5 pb-4 pt-2">
+                <div class="flex items-center gap-4 flex-1 min-w-0">
+                    <div class="w-12 h-12 rounded-2xl bg-[#1C1C1E] flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-white leading-none">Proventos</h1>
+                        <p class="text-xs font-normal text-[#888888] mt-1">Histórico de Pagamentos</p>
+                    </div>
+                </div>
+                
+                <button id="proventos-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="overflow-y-auto h-[calc(85vh-90px)] p-4 pt-0 custom-scroll">
+            
+            <div class="flex items-center gap-2 mb-6 px-2">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-[#c084fc] shadow-[0_0_8px_rgba(192,132,252,0.5)]"></span>
+                    <span class="text-[10px] font-bold text-gray-300 tracking-wide">Recebido</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]"></span>
+                    <span class="text-[10px] font-bold text-amber-400 tracking-wide">A Receber</span>
+                </div>
+            </div>
+
+            <div class="relative w-full h-80 bg-[#121212] rounded-3xl p-2 border border-[#2C2C2E] shadow-inner mb-6">
+                <canvas id="historico-proventos-chart"></canvas>
+            </div>
+            
+            <p class="text-center text-xs text-gray-500 mb-8">
+                Toque nas barras para ver os detalhes de cada mês.
+            </p>
 
         </div>
     </div>

@@ -6610,19 +6610,19 @@ function renderizarGraficoIpca(dados) {
     const canvas = document.getElementById('ipca-chart');
     const listaContainer = document.getElementById('ipca-lista-container');
     
-    if (!canvas || !dados || !dados.historico) return;
+    if (!dados || !dados.historico) return;
 
-    // 1. RENDERIZAR LISTA DETALHADA (IGUAL À TABELA)
+    // --- PARTE 1: RENDERIZAR A LISTA (O QUE ESTAVA FALTANDO) ---
     if(listaContainer) {
         listaContainer.innerHTML = '';
         
-        // Reverte novamente para mostrar o mês mais recente no topo da lista (Dez -> Jan)
+        // Clona e inverte para mostrar do mais recente (topo) para o mais antigo
         [...dados.historico].reverse().forEach(item => {
             const valor = item.valor;
             
-            // Cores: Vermelho para inflação alta (>0.5), Laranja normal, Verde para deflação
+            // Definição de Cores
             let corTexto = 'text-white';
-            let barraCor = 'bg-orange-500';
+            let barraCor = 'bg-orange-500'; // Cor padrão
             
             if (valor >= 0.5) {
                 corTexto = 'text-red-400';
@@ -6635,7 +6635,7 @@ function renderizarGraficoIpca(dados) {
                 barraCor = 'bg-orange-500';
             }
             
-            // Tratamento do nome do mês
+            // Tratamento do nome do mês (ex: "Jan/2025" -> Mes: Jan, Ano: 2025)
             let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
             
             const html = `
@@ -6660,20 +6660,25 @@ function renderizarGraficoIpca(dados) {
                     </div>
                 </div>
             </div>`;
+            
             listaContainer.insertAdjacentHTML('beforeend', html);
         });
     }
 
-    // 2. RENDERIZAR GRÁFICO (Sem mudanças na lógica, apenas visual clean)
+    // --- PARTE 2: RENDERIZAR O GRÁFICO ---
+    if (!canvas) return;
+
     if (ipcaChartInstance) {
         ipcaChartInstance.destroy();
     }
 
     const ctx = canvas.getContext('2d');
+    // Pega apenas as 3 primeiras letras do mês para o eixo X
     const labels = dados.historico.map(d => d.mes.split('/')[0].substring(0,3)); 
     const values = dados.historico.map(d => d.valor);
     
-    const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316'); // Verde ou Laranja
+    // Verde para deflação, Laranja/Vermelho para inflação
+    const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316');
 
     ipcaChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -6696,8 +6701,9 @@ function renderizarGraficoIpca(dados) {
                     titleColor: '#fff',
                     borderColor: '#333',
                     borderWidth: 1,
+                    displayColors: false,
                     callbacks: {
-                        label: (ctx) => `Mensal: ${ctx.raw}%`
+                        label: (ctx) => ` IPCA: ${ctx.raw}%`
                     }
                 }
             },

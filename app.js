@@ -2843,7 +2843,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // --- 3. CÁLCULO DOS TOTAIS ---
+    // --- 3. CÁLCULO DOS TOTAIS (CARD) ---
     let totalAtualLive = 0;
     let custoTotalLive = 0;
 
@@ -2862,11 +2862,10 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // --- 4. ATUALIZAÇÃO DOS CARDS (SEM COR VERDE) ---
+    // --- 4. ATUALIZAÇÃO DOS CARDS ---
     const elLive = document.getElementById('modal-patrimonio-live');
     if (elLive) {
         elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        // MUDANÇA AQUI: Sempre branco, sem lógica de cores
         elLive.className = "text-sm font-bold text-white mt-1 truncate";
     }
 
@@ -2951,6 +2950,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     const labels = [];
     const dataValor = [];
     
+    // --- CORREÇÃO DO INVESTIDO (ARREDONDAMENTO) ---
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;
@@ -2979,8 +2979,19 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             const tx = txOrdenadas[txIndex];
             const dataTx = new Date(tx.date);
             if (dataTx <= dataPontoLimite) {
-                if (tx.type === 'buy') custoAcumulado += (tx.quantity * tx.price);
-                if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
+                // CORREÇÃO: Usar parseFloat e toFixed(2) para cortar dízimas
+                let operacao = (tx.quantity * tx.price);
+                
+                if (tx.type === 'buy') {
+                    custoAcumulado += operacao;
+                }
+                if (tx.type === 'sell') {
+                    custoAcumulado -= operacao;
+                }
+                
+                // FORÇA O ARREDONDAMENTO A CADA PASSO
+                custoAcumulado = parseFloat(custoAcumulado.toFixed(2));
+                
                 txIndex++;
             } else {
                 break;

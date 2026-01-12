@@ -2454,18 +2454,19 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 }
 
 
-function renderizarGraficoHistorico(dados, periodo = '1Y') {
-    const canvas = document.getElementById('historico-chart');
+function renderizarHistoricoProventos(dados, periodo = '1Y') {
+    // 1. ID CORRETO DO CANVAS (Aba Proventos)
+    const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // --- 1. PREPARAÇÃO DOS DADOS DO IPCA ---
-    // Cria um mapa "MM/YYYY" -> "Valor IPCA" para acesso rápido
+    // Verificação de segurança dos dados de entrada
+    if (!dados || !dados.labels || !dados.values) return;
+
+    // --- 2. PREPARAÇÃO DOS DADOS DO IPCA ---
     const mapIpca = {};
-    
-    // Tenta pegar do cache global ou variável global (dependendo de como seu app carrega)
-    // Se você tiver uma variável global 'ipcaCacheData', usamos ela.
-    // Caso contrário, tentamos pegar do localStorage para garantir.
     let dadosIpcaRef = (typeof ipcaCacheData !== 'undefined') ? ipcaCacheData : null;
+    
+    // Tenta recuperar do localStorage se a variável global estiver vazia
     if (!dadosIpcaRef) {
         try {
             dadosIpcaRef = JSON.parse(localStorage.getItem('vesto_ipca_data') || 'null');
@@ -2474,11 +2475,8 @@ function renderizarGraficoHistorico(dados, periodo = '1Y') {
 
     if (dadosIpcaRef && dadosIpcaRef.historico) {
         dadosIpcaRef.historico.forEach(item => {
-            // O formato do IPCA geralmente vem como "Jan/2025" ou "01/2025"
-            // Vamos normalizar para comparar com os dividendos
             mapIpca[item.mes] = item.valor;
-            
-            // Fallback: Tenta mapear nomes de meses para números (Jan -> 01)
+            // Fallback para formatos diferentes (Jan vs 01)
             const parts = item.mes.split('/');
             if (parts.length === 2) {
                 const mapMeses = {'Jan':'01', 'Fev':'02', 'Mar':'03', 'Abr':'04', 'Mai':'05', 'Jun':'06', 'Jul':'07', 'Ago':'08', 'Set':'09', 'Out':'10', 'Nov':'11', 'Dez':'12'};
@@ -2489,63 +2487,54 @@ function renderizarGraficoHistorico(dados, periodo = '1Y') {
         });
     }
 
-    // --- 2. FILTRAGEM DE PERÍODO (Mantendo sua lógica original) ---
-    // Pega os últimos X meses baseado no período selecionado
+    // --- 3. FILTRAGEM DE PERÍODO ---
     let mesesParaMostrar = 12;
     if (periodo === '6M') mesesParaMostrar = 6;
-    if (periodo === 'ALL') mesesParaMostrar = 999; // Todo histórico
+    if (periodo === 'ALL') mesesParaMostrar = 999;
 
-    // Pega apenas os últimos N meses dos dados
-    // Assumindo que 'dados.labels' e 'dados.values' estão ordenados cronologicamente
     const totalItems = dados.labels.length;
     const startIndex = Math.max(0, totalItems - mesesParaMostrar);
 
     const labelsCorte = dados.labels.slice(startIndex);
     const valuesCorte = dados.values.slice(startIndex);
 
-    // --- 3. CÁLCULO DA EROSÃO ---
+    // --- 4. CÁLCULO DA EROSÃO ---
     const dataErosao = valuesCorte.map((valorDividendo, index) => {
-        const mesLabel = labelsCorte[index]; // Ex: "Jan/25" ou "01/2025"
-        
-        // Tenta encontrar o IPCA exato para este mês
-        // Precisamos tratar o formato da label para bater com o formato do IPCA
-        // Se a label for "Jan/25", precisamos achar "Jan/2025"
+        const mesLabel = labelsCorte[index]; 
         let ipcaMes = 0;
         
-        // Tentativa de match flexível de data
-        const partsLabel = mesLabel.split('/'); // ["Jan", "25"]
-        if (partsLabel.length === 2) {
-            // Tenta reconstruir ano completo "2025"
-            const anoFull = partsLabel[1].length === 2 ? `20${partsLabel[1]}` : partsLabel[1];
-            const chaveBusca = `${partsLabel[0]}/${anoFull}`; // "Jan/2025"
-            
-            if (mapIpca[chaveBusca] !== undefined) {
-                ipcaMes = mapIpca[chaveBusca];
+        // Tenta encontrar o IPCA do mês
+        if (mapIpca[mesLabel] !== undefined) {
+            ipcaMes = mapIpca[mesLabel];
+        } else {
+            // Tenta reconstruir chave (Ex: Jan/25 -> Jan/2025)
+            const partsLabel = mesLabel.split('/');
+            if (partsLabel.length === 2) {
+                const anoFull = partsLabel[1].length === 2 ? `20${partsLabel[1]}` : partsLabel[1];
+                const chaveBusca = `${partsLabel[0]}/${anoFull}`;
+                if (mapIpca[chaveBusca] !== undefined) ipcaMes = mapIpca[chaveBusca];
             }
         }
 
-        // CÁLCULO: Quanto do dividendo foi "comido" pela inflação deste mês?
-        // Se IPCA for 0.5%, a erosão é 0.5% do valor do dividendo.
-        // Se IPCA for negativo (deflação), tecnicamente houve ganho real, então erosão é 0 (ou negativa).
-        const erosao = valorDividendo * (ipcaMes / 100);
-        return erosao;
+        // Erosão = Valor * (IPCA / 100)
+        return valorDividendo * (ipcaMes / 100);
     });
 
-    // --- 4. RENDERIZAÇÃO DO GRÁFICO ---
-    if (historicoChartInstance) {
-        historicoChartInstance.destroy();
+    // --- 5. RENDERIZAÇÃO DO GRÁFICO ---
+    // Usa uma variável global específica para este gráfico para evitar conflitos
+    if (window.proventosChartInstance) {
+        window.proventosChartInstance.destroy();
     }
 
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     
-    // Cores Vesto
-    const colorBar = '#c084fc'; // Roxo Principal
-    const colorErosao = '#ef4444'; // Vermelho (Erosão)
+    const colorBar = '#c084fc'; 
+    const colorErosao = '#ef4444'; 
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
     const colorText = isLight ? '#666' : '#888';
 
-    historicoChartInstance = new Chart(ctx, {
+    window.proventosChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labelsCorte,
@@ -2558,21 +2547,21 @@ function renderizarGraficoHistorico(dados, periodo = '1Y') {
                     borderSkipped: false,
                     barPercentage: 0.6,
                     categoryPercentage: 0.8,
-                    order: 2 // Fica atrás da linha
+                    order: 2
                 },
                 {
                     label: 'Erosão (IPCA)',
                     data: dataErosao,
-                    type: 'line', // Linha sobreposta
+                    type: 'line',
                     borderColor: colorErosao,
                     backgroundColor: colorErosao,
                     borderWidth: 2,
-                    pointRadius: 3, // Bolinha nos pontos
-                    pointBackgroundColor: '#151515', // Miolo escuro
+                    pointRadius: 3,
+                    pointBackgroundColor: '#151515',
                     pointBorderColor: colorErosao,
                     pointBorderWidth: 2,
-                    tension: 0.4, // Curva suave
-                    order: 1 // Fica na frente das barras
+                    tension: 0.4,
+                    order: 1
                 }
             ]
         },
@@ -2583,12 +2572,7 @@ function renderizarGraficoHistorico(dados, periodo = '1Y') {
                 legend: {
                     display: true,
                     position: 'bottom',
-                    labels: {
-                        color: colorText,
-                        usePointStyle: true,
-                        boxWidth: 6,
-                        font: { size: 10 }
-                    }
+                    labels: { color: colorText, usePointStyle: true, boxWidth: 6, font: { size: 10 } }
                 },
                 tooltip: {
                     backgroundColor: '#151515',
@@ -2601,27 +2585,20 @@ function renderizarGraficoHistorico(dados, periodo = '1Y') {
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                label += formatBRL(context.parsed.y);
-                            }
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) label += formatBRL(context.parsed.y);
                             return label;
                         },
                         afterBody: function(tooltipItems) {
-                            // Adiciona informação extra sobre o ganho real
-                            const dividendo = tooltipItems[0].parsed.y;
-                            // Precisamos achar o valor da erosão correspondente (está no dataset 1)
-                            // Mas tooltipItems pode vir só com o dataset que o mouse está em cima.
-                            // Vamos pegar pelo index direto dos dados originais
-                            const index = tooltipItems[0].dataIndex;
-                            const erosao = dataErosao[index];
-                            
-                            // Ganho Real
-                            const real = valuesCorte[index] - erosao;
-                            
-                            return `\nGanho Real: ${formatBRL(real)}`;
+                            // Cálculo do Ganho Real no Tooltip
+                            // Precisamos garantir que estamos acessando o index correto
+                            if (tooltipItems.length > 0) {
+                                const index = tooltipItems[0].dataIndex;
+                                const bruto = valuesCorte[index];
+                                const erosao = dataErosao[index];
+                                const real = bruto - erosao;
+                                return `\nGanho Real: ${formatBRL(real)}`;
+                            }
                         }
                     }
                 }
@@ -2630,11 +2607,7 @@ function renderizarGraficoHistorico(dados, periodo = '1Y') {
                 y: {
                     display: true,
                     position: 'right',
-                    grid: {
-                        color: colorGrid,
-                        borderDash: [4, 4],
-                        drawBorder: false
-                    },
+                    grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
                     ticks: {
                         color: colorText,
                         font: { size: 10 },
@@ -2646,10 +2619,7 @@ function renderizarGraficoHistorico(dados, periodo = '1Y') {
                 },
                 x: {
                     grid: { display: false },
-                    ticks: {
-                        color: colorText,
-                        font: { size: 10 }
-                    }
+                    ticks: { color: colorText, font: { size: 10 } }
                 }
             }
         }

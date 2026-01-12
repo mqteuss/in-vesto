@@ -2646,14 +2646,12 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     lista.forEach(item => {
         const percent = ((item.valorTotal / totalMes) * 100).toFixed(1);
         const diaPagamento = item.dataPag.split('-')[2];
-        
-        // --- CORREÇÃO REAL: Iniciais de 2 letras (Estilo do App) ---
         const tickerInitials = item.symbol.substring(0, 2);
 
         const cardHTML = `
             <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl border border-[#2C2C2E] mb-2 active:scale-[0.98] transition-transform">
                 
-                <div class="w-10 h-10 rounded-xl bg-[#1C1C1E] flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
+                <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
                      <span class="text-xs font-bold text-white tracking-wider">${tickerInitials}</span>
                 </div>
 

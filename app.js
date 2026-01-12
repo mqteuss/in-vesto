@@ -6474,6 +6474,106 @@ async function atualizarWidgetIpca() {
 }
 
 atualizarWidgetIpca();
+
+// ADICIONAR NO app.js
+
+    // --- LÓGICA DO MODAL DE PERFORMANCE ---
+    const perfModal = document.getElementById('performance-page-modal');
+    const perfContent = document.getElementById('tab-performance');
+    const perfScroll = document.getElementById('performance-conteudo-scroll');
+    
+    // Variáveis para gesto de Swipe Down
+    let perfTouchStartY = 0;
+    let perfTouchMoveY = 0;
+    let isDraggingPerf = false;
+
+    window.abrirModalPerformance = function() {
+        if(!perfModal || !perfContent) return;
+        
+        // Atualiza os textos de resumo no modal (pegando do dashboard)
+        const totalInvestido = document.getElementById('total-carteira-custo')?.textContent || '---';
+        const totalPatrimonio = document.getElementById('total-carteira-valor')?.textContent || '---';
+        
+        const elInv = document.getElementById('modal-total-investido');
+        const elPat = document.getElementById('modal-patrimonio-atual');
+        
+        if(elInv) elInv.textContent = totalInvestido;
+        if(elPat) elPat.textContent = totalPatrimonio;
+
+        // Abre Modal
+        perfModal.classList.add('visible');
+        perfContent.classList.remove('closing');
+        perfContent.style.transform = ''; 
+        document.body.style.overflow = 'hidden'; // Trava scroll do fundo
+        
+        // Força renderização do gráfico (o canvas mudou de lugar/tamanho)
+        // Pequeno delay para garantir que a transição CSS iniciou e o container tem tamanho
+        setTimeout(() => {
+            if(patrimonioChartInstance) {
+                patrimonioChartInstance.resize();
+            } else {
+                renderizarGraficoPatrimonio();
+            }
+        }, 100);
+    };
+
+    window.fecharModalPerformance = function() {
+        if(!perfModal || !perfContent) return;
+        
+        perfContent.classList.add('closing'); // Classe CSS que joga para baixo
+        perfContent.style.transform = ''; 
+        perfModal.classList.remove('visible');
+        document.body.style.overflow = '';
+    };
+
+    // Fechar ao clicar fora (no backdrop escuro)
+    if(perfModal) {
+        perfModal.addEventListener('click', (e) => {
+            if (e.target === perfModal) window.fecharModalPerformance();
+        });
+    }
+
+    // Gesto Swipe Down para fechar
+    if(perfContent) {
+        perfContent.addEventListener('touchstart', (e) => {
+            // Só ativa o drag se o scroll interno estiver no topo
+            if (perfScroll.scrollTop <= 0) {
+                perfTouchStartY = e.touches[0].clientY;
+                isDraggingPerf = true;
+                perfContent.style.transition = 'none'; // Remove transição para arrastar suave
+            }
+        }, { passive: true });
+
+        perfContent.addEventListener('touchmove', (e) => {
+            if (!isDraggingPerf) return;
+            perfTouchMoveY = e.touches[0].clientY;
+            const diff = perfTouchMoveY - perfTouchStartY;
+            
+            // Só move se for para baixo (positivo)
+            if (diff > 0) {
+                e.preventDefault(); // Evita scroll da página
+                perfContent.style.transform = `translateY(${diff}px)`;
+            }
+        }, { passive: false });
+
+        perfContent.addEventListener('touchend', (e) => {
+            if (!isDraggingPerf) return;
+            isDraggingPerf = false;
+            const diff = perfTouchMoveY - perfTouchStartY;
+            
+            // Restaura transição CSS
+            perfContent.style.transition = 'transform 0.4s ease-in-out';
+            
+            // Se arrastou mais de 120px, fecha. Senão, volta.
+            if (diff > 120) {
+                window.fecharModalPerformance();
+            } else {
+                perfContent.style.transform = ''; // Volta ao topo (0px)
+            }
+            perfTouchStartY = 0;
+            perfTouchMoveY = 0;
+        });
+    }
 	
     await init();
 });

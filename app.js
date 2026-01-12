@@ -2971,6 +2971,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     }
 
     // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS ---
+// --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (VERSÃO COMPACTA) ---
     const elVariacao = document.getElementById('stat-variacao');
     const elDrawdown = document.getElementById('stat-drawdown');
     const elVolatilidade = document.getElementById('stat-volatilidade');
@@ -2978,23 +2979,29 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     if (elVariacao) {
         const sinal = variacaoPercent >= 0 ? '+' : '';
         elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
+        // MUDANÇA: text-sm (antes text-lg)
         elVariacao.className = variacaoPercent >= 0 
-            ? "text-lg font-bold text-[#4ade80] z-10" 
-            : "text-lg font-bold text-red-400 z-10";
+            ? "text-sm font-bold text-[#4ade80]" 
+            : "text-sm font-bold text-red-400";
     }
+
     if (elDrawdown) {
         elDrawdown.textContent = `${drawdownDisplay}%`;
+        // MUDANÇA: text-sm
         elDrawdown.className = parseFloat(drawdownDisplay) < 0 
-            ? "text-lg font-bold text-red-400 z-10" 
-            : "text-lg font-bold text-gray-400 z-10";
+            ? "text-sm font-bold text-red-400" 
+            : "text-sm font-bold text-gray-400";
     }
+
     if (elVolatilidade) {
         let corVol = "text-white";
         if (volatilidade < 10) corVol = "text-[#4ade80]";
         else if (volatilidade < 20) corVol = "text-[#F59E0B]";
         else corVol = "text-[#EF4444]";
+        
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
-        elVolatilidade.className = `text-lg font-bold ${corVol} z-10`;
+        // MUDANÇA: text-sm
+        elVolatilidade.className = `text-sm font-bold ${corVol}`;
     }
 
     // --- 8. AGRUPAMENTO MENSAL (PARA 6M E 1Y) ---

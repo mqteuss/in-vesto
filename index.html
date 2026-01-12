@@ -939,35 +939,30 @@
 </div>
 
 <div class="mt-4 mb-6">
-    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">Análise de Risco & Retorno</h3>
+    <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Análise de Risco</h3>
     
-    <div class="grid grid-cols-1 gap-3">
-        
-        <div class="bg-[#1A1A1C] p-4 rounded-2xl flex items-center justify-between relative overflow-hidden group">
-            <div class="absolute right-0 top-0 h-full w-1 bg-[#8B5CF6]"></div> <div class="flex flex-col z-10">
-                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Resultado do Período</span>
-                <span class="text-xs text-gray-600 mt-0.5">Variação nominal</span>
+    <div class="grid grid-cols-1 gap-2"> <div class="bg-[#1A1A1C] px-3 py-2.5 rounded-xl flex items-center justify-between border-l-2 border-[#8B5CF6]">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Resultado</span>
+                <span class="text-[10px] text-gray-600">No período</span>
             </div>
-            <span id="stat-variacao" class="text-lg font-bold text-white z-10">--</span>
-            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#8B5CF6]/5 group-hover:to-[#8B5CF6]/10 transition-all"></div>
+            <span id="stat-variacao" class="text-sm font-bold text-white">--</span>
         </div>
 
-        <div class="bg-[#1A1A1C] p-4 rounded-2xl flex items-center justify-between relative overflow-hidden group">
-            <div class="absolute right-0 top-0 h-full w-1 bg-[#EF4444]"></div> <div class="flex flex-col z-10">
-                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Maior Queda</span>
-                <span class="text-xs text-gray-600 mt-0.5">Drawdown máximo no período</span>
+        <div class="bg-[#1A1A1C] px-3 py-2.5 rounded-xl flex items-center justify-between border-l-2 border-[#EF4444]">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Maior Queda</span>
+                <span class="text-[10px] text-gray-600">Drawdown máx.</span>
             </div>
-            <span id="stat-drawdown" class="text-lg font-bold text-white z-10">--</span>
-            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#EF4444]/5 group-hover:to-[#EF4444]/10 transition-all"></div>
+            <span id="stat-drawdown" class="text-sm font-bold text-white">--</span>
         </div>
 
-        <div class="bg-[#1A1A1C] p-4 rounded-2xl flex items-center justify-between relative overflow-hidden group">
-            <div class="absolute right-0 top-0 h-full w-1 bg-[#F59E0B]"></div> <div class="flex flex-col z-10">
-                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Volatilidade</span>
-                <span class="text-xs text-gray-600 mt-0.5">Oscilação média dos preços</span>
+        <div class="bg-[#1A1A1C] px-3 py-2.5 rounded-xl flex items-center justify-between border-l-2 border-[#F59E0B]">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Volatilidade</span>
+                <span class="text-[10px] text-gray-600">Risco anualizado</span>
             </div>
-            <span id="stat-volatilidade" class="text-lg font-bold text-white z-10">--</span>
-            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#F59E0B]/5 group-hover:to-[#F59E0B]/10 transition-all"></div>
+            <span id="stat-volatilidade" class="text-sm font-bold text-white">--</span>
         </div>
 
     </div>

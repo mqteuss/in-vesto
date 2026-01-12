@@ -594,6 +594,18 @@ const alocacaoVoltarBtn = document.getElementById('alocacao-voltar-btn');
 let isDraggingAlocacao = false;
 let touchStartAlocacaoY = 0;
 let touchMoveAlocacaoY = 0;
+
+// --- REFERÊNCIAS MODAL IPCA ---
+const btnOpenIpca = document.getElementById('btn-open-ipca');
+const ipcaPageModal = document.getElementById('ipca-page-modal');
+const ipcaPageContent = document.getElementById('tab-ipca-content');
+const ipcaVoltarBtn = document.getElementById('ipca-voltar-btn');
+let ipcaChartInstance = null;
+let isDraggingIpca = false;
+let touchStartIpcaY = 0;
+let touchMoveIpcaY = 0;
+// Variável para armazenar cache simples do IPCA
+let ipcaCacheData = null;
     
     const vestoDB = {
         db: null,
@@ -6538,39 +6550,167 @@ window.mostrarDyCarteira = async function() {
 };
 
 // Adicione no app.js
-async function atualizarWidgetIpca() {
+async function openIpcaModal() {
+    if(!ipcaPageModal) return;
+
+    ipcaPageModal.classList.add('visible');
+    ipcaPageContent.style.transform = ''; 
+    ipcaPageContent.classList.remove('closing');
+    document.body.style.overflow = 'hidden';
+
+    // Se já tiver cache, renderiza direto. Senão busca.
+    if (ipcaCacheData) {
+        renderizarGraficoIpca(ipcaCacheData);
+    } else {
+        buscarDadosIpca();
+    }
+}
+
+function closeIpcaModal() {
+    if(!ipcaPageContent) return;
+    ipcaPageContent.style.transform = '';
+    ipcaPageContent.classList.add('closing');
+    ipcaPageModal.classList.remove('visible');
+    document.body.style.overflow = '';
+}
+
+async function buscarDadosIpca() {
     try {
-        // Ajuste aqui para usar a sua função fetchBFF ou fetch direto
         const res = await fetch('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'ipca', payload: {} })
         });
-        
-        if (!res.ok) throw new Error('Falha ao buscar IPCA');
         const data = await res.json();
-        const ipca = data.json;
-
-        if (ipca) {
-            const elValor = document.getElementById('ipca-valor-12m');
-            if(elValor) elValor.textContent = ipca.acumulado_12m || '-';
+        
+        if (data && data.json) {
+            ipcaCacheData = data.json; // Salva cache
             
-            const elMes = document.getElementById('ipca-mes-badge');
-            if(elMes) {
-                elMes.textContent = `Mês: ${ipca.valor_mes}`;
-                // Alerta vermelho se inflação mensal > 0.5%
-                const valMes = parseFloat(ipca.valor_mes.replace(',', '.').replace('%',''));
-                if (valMes > 0.5) {
-                    elMes.className = "text-[10px] font-bold bg-red-500/10 text-red-400 px-2 py-1 rounded-full";
-                } else {
-                    elMes.className = "text-[10px] font-bold bg-orange-500/10 text-orange-400 px-2 py-1 rounded-full";
+            // Atualiza Widget do Dashboard
+            const elValor12m = document.getElementById('ipca-valor-12m');
+            const elBadgeMes = document.getElementById('ipca-mes-badge');
+            
+            if(elValor12m) elValor12m.textContent = data.json.acumulado_12m || '--';
+            
+            // Pega o último mês disponível
+            if(data.json.historico && data.json.historico.length > 0) {
+                const ultimo = data.json.historico[data.json.historico.length - 1];
+                if(elBadgeMes) elBadgeMes.textContent = `Último: ${ultimo.valor}% (${ultimo.mes.split('/')[0]})`;
+            }
+
+            renderizarGraficoIpca(data.json);
+        }
+    } catch (e) {
+        console.error("Erro IPCA", e);
+        document.getElementById('ipca-lista-container').innerHTML = '<p class="text-center text-red-500 text-xs">Erro ao carregar dados.</p>';
+    }
+}
+
+function renderizarGraficoIpca(dados) {
+    const canvas = document.getElementById('ipca-chart');
+    const listaContainer = document.getElementById('ipca-lista-container');
+    
+    if (!canvas || !dados || !dados.historico) return;
+
+    // 1. RENDERIZAR LISTA DETALHADA (IGUAL À TABELA)
+    if(listaContainer) {
+        listaContainer.innerHTML = '';
+        
+        // Reverte novamente para mostrar o mês mais recente no topo da lista (Dez -> Jan)
+        [...dados.historico].reverse().forEach(item => {
+            const valor = item.valor;
+            
+            // Cores: Vermelho para inflação alta (>0.5), Laranja normal, Verde para deflação
+            let corTexto = 'text-white';
+            let barraCor = 'bg-orange-500';
+            
+            if (valor >= 0.5) {
+                corTexto = 'text-red-400';
+                barraCor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
+            } else if (valor < 0) {
+                corTexto = 'text-green-400';
+                barraCor = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
+            } else {
+                corTexto = 'text-orange-400';
+                barraCor = 'bg-orange-500';
+            }
+            
+            // Tratamento do nome do mês
+            let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
+            
+            const html = `
+            <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-xl mb-2 border border-[#2C2C2E]">
+                <div class="flex items-center gap-3">
+                    <div class="w-1.5 h-10 rounded-full ${barraCor}"></div>
+                    
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-white capitalize">${mesNome}</span>
+                        <span class="text-[10px] text-gray-500 font-medium">${ano}</span>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col items-end gap-0.5">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-gray-500 font-medium uppercase">Mensal</span>
+                        <span class="text-sm font-bold ${corTexto}">${valor.toFixed(2)}%</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-gray-600 font-medium uppercase">Acum. 12m</span>
+                        <span class="text-[11px] text-gray-400 font-bold">${item.acumulado_12m || '--'}%</span>
+                    </div>
+                </div>
+            </div>`;
+            listaContainer.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    // 2. RENDERIZAR GRÁFICO (Sem mudanças na lógica, apenas visual clean)
+    if (ipcaChartInstance) {
+        ipcaChartInstance.destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+    const labels = dados.historico.map(d => d.mes.split('/')[0].substring(0,3)); 
+    const values = dados.historico.map(d => d.valor);
+    
+    const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316'); // Verde ou Laranja
+
+    ipcaChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: backgroundColors,
+                borderRadius: 4,
+                barPercentage: 0.6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#151515',
+                    titleColor: '#fff',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: (ctx) => `Mensal: ${ctx.raw}%`
+                    }
+                }
+            },
+            scales: {
+                y: { display: false },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: '#666', font: { size: 10 } }
                 }
             }
         }
-    } catch (e) { console.error("Erro Widget IPCA", e); }
+    });
 }
-
-atualizarWidgetIpca();
 
 // --- LISTENERS DO MODAL DE PATRIMÔNIO ---
 
@@ -6757,6 +6897,57 @@ if (alocacaoPageModal) {
             touchMoveAlocacaoY = 0;
         });
     }
+	
+	// --- LISTENERS IPCA ---
+
+if (btnOpenIpca) {
+    btnOpenIpca.addEventListener('click', openIpcaModal);
+}
+
+if (ipcaVoltarBtn) {
+    ipcaVoltarBtn.addEventListener('click', closeIpcaModal);
+}
+
+// Swipe Down Logic IPCA
+if (ipcaPageContent) {
+    const scrollContainerIpca = ipcaPageContent.querySelector('.overflow-y-auto');
+
+    ipcaPageContent.addEventListener('touchstart', (e) => {
+        if (e.target.tagName === 'CANVAS') return;
+        if (scrollContainerIpca && scrollContainerIpca.scrollTop === 0) {
+            touchStartIpcaY = e.touches[0].clientY;
+            touchMoveIpcaY = touchStartIpcaY;
+            isDraggingIpca = true;
+            ipcaPageContent.style.transition = 'none'; 
+        }
+    }, { passive: true });
+
+    ipcaPageContent.addEventListener('touchmove', (e) => {
+        if (!isDraggingIpca) return;
+        touchMoveIpcaY = e.touches[0].clientY;
+        const diff = touchMoveIpcaY - touchStartIpcaY;
+        if (diff > 0) {
+            if (e.cancelable) e.preventDefault(); 
+            ipcaPageContent.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false });
+
+    ipcaPageContent.addEventListener('touchend', (e) => {
+        if (!isDraggingIpca) return;
+        isDraggingIpca = false;
+        const diff = touchMoveIpcaY - touchStartIpcaY;
+        ipcaPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        if (diff > 120) {
+            closeIpcaModal();
+        } else {
+            ipcaPageContent.style.transform = '';
+        }
+        touchStartIpcaY = 0; touchMoveIpcaY = 0;
+    });
+}
+
+// Iniciar a busca silenciosa do IPCA ao carregar o app (para preencher o widget)
+setTimeout(buscarDadosIpca, 2000);
 	
     await init();
 });

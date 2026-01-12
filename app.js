@@ -2197,18 +2197,27 @@ function renderizarNoticias(articles) {
     fiiNewsList.appendChild(fragment);
 }
 
-// --- VERSÃO PROFISSIONAL DO GRÁFICO DE ALOCAÇÃO (CORRIGIDA) ---
+// --- VERSÃO FINAL DO GRÁFICO DE ALOCAÇÃO (SEM BORDAS + CORREÇÃO DE ERRO) ---
 function renderizarGraficoAlocacao() {
     const canvas = document.getElementById('alocacao-chart');
     if (!canvas) return;
 
-    // 1. Destruir gráfico anterior para não sobrepor
+    // 1. REMOÇÃO VISUAL DAS BORDAS (Fix automático)
+    // Remove a borda do card pai definido no HTML
+    const cardContainer = canvas.closest('.border'); 
+    if (cardContainer) {
+        cardContainer.classList.remove('border', 'border-[#2C2C2E]');
+        cardContainer.style.border = 'none';
+        cardContainer.style.boxShadow = 'none'; // Remove sombra para ficar totalmente "flat" (opcional)
+    }
+
+    // 2. Destruir gráfico anterior para não sobrepor
     if (alocacaoChartInstance) {
         alocacaoChartInstance.destroy();
         alocacaoChartInstance = null;
     }
 
-    // 2. Cores Premium (Paleta Vesto)
+    // 3. Cores Premium (Paleta Vesto)
     const paletaCores = [
         '#8B5CF6', // Roxo
         '#10B981', // Verde
@@ -2220,8 +2229,7 @@ function renderizarGraficoAlocacao() {
         '#14B8A6'  // Teal
     ];
 
-    // 3. Processamento de Dados (Usa carteiraCalculada e precosAtuais)
-    // Cria mapa de preços para acesso rápido
+    // 4. Processamento de Dados (CORRIGIDO: usa carteiraCalculada)
     const mapPrecos = new Map();
     if (typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais)) {
         precosAtuais.forEach(p => mapPrecos.set(p.symbol, p.regularMarketPrice));
@@ -2230,14 +2238,13 @@ function renderizarGraficoAlocacao() {
     let totalGeral = 0;
     const dadosAtivos = [];
 
-    // Itera sobre a carteiraCalculada (variável global correta)
-    if (typeof carteiraCalculada !== 'undefined') {
+    // Verificação de segurança para evitar o erro "investimentos is not defined"
+    if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
         carteiraCalculada.forEach(ativo => {
-            // Usa preço atual se tiver, senão usa preço médio
             const preco = mapPrecos.get(ativo.symbol) || ativo.precoMedio || 0;
             const valorTotal = preco * ativo.quantity;
 
-            if (valorTotal > 0.01) { // Filtra posições zeradas
+            if (valorTotal > 0.01) { 
                 totalGeral += valorTotal;
                 dadosAtivos.push({
                     label: ativo.symbol,
@@ -2254,7 +2261,7 @@ function renderizarGraficoAlocacao() {
     const sortedLabels = dadosAtivos.map(d => d.label);
     const sortedValues = dadosAtivos.map(d => d.value);
 
-    // 4. Atualiza o Texto Central (Total)
+    // 5. Atualiza o Texto Central (Total)
     const elTotalCenter = document.getElementById('alocacao-total-center');
     if(elTotalCenter) {
         elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', { 
@@ -2262,15 +2269,12 @@ function renderizarGraficoAlocacao() {
         });
     }
 
-    // Se não tiver dados, sai
     if (dadosAtivos.length === 0) return;
 
-    // 5. Configuração do Gráfico (Chart.js)
+    // 6. Configuração do Gráfico (Chart.js)
     const ctx = canvas.getContext('2d');
-    
-    // Detecta tema para a cor da borda (para "cortar" as fatias)
     const isLight = document.body.classList.contains('light-mode');
-    const borderColor = isLight ? '#ffffff' : '#151515'; // #151515 é a cor do fundo do card
+    const borderColor = isLight ? '#ffffff' : '#151515'; 
 
     alocacaoChartInstance = new Chart(ctx, {
         type: 'doughnut',
@@ -2288,7 +2292,7 @@ function renderizarGraficoAlocacao() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '75%', // Rosca fina
+            cutout: '75%', 
             plugins: {
                 legend: { display: false }, 
                 tooltip: {
@@ -2315,7 +2319,7 @@ function renderizarGraficoAlocacao() {
         }
     });
 
-    // 6. Gerar a Legenda HTML Customizada
+    // 7. Gerar a Legenda HTML (SEM BORDAS)
     const legendContainer = document.getElementById('alocacao-legend-container');
     if (legendContainer) {
         legendContainer.innerHTML = ''; 
@@ -2325,8 +2329,9 @@ function renderizarGraficoAlocacao() {
             const porcentagem = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
             const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+            // REMOVIDO: border border-[#2C2C2E]
             const itemHTML = `
-                <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-xl border border-[#2C2C2E] mb-2 active:scale-[0.98] transition-transform">
+                <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-xl mb-2 active:scale-[0.98] transition-transform">
                     <div class="flex items-center gap-3">
                         <div class="w-2 h-8 rounded-full" style="background-color: ${cor};"></div>
                         <div class="flex flex-col">

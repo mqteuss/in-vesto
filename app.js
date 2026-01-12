@@ -2815,41 +2815,14 @@ function closeAlocacaoModal() {
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
-
-    // 1. CÁLCULO DO TOTAL AO VIVO (Para sincronizar Card e Gráfico)
-    let totalAtualLive = 0;
-    let custoTotalLive = 0;
-
-    // Usa a variável global carteiraCalculada se disponível
-    if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
-        carteiraCalculada.forEach(ativo => {
-            const preco = ativo.regularMarketPrice || ativo.precoMedio || 0;
-            totalAtualLive += preco * ativo.quantity;
-            custoTotalLive += (ativo.precoMedio || 0) * ativo.quantity;
-        });
-    }
-
-    // 2. ATUALIZA O TEXTO DO CARD (Para bater com o final do gráfico)
-    const elPatValor = document.getElementById('modal-patrimonio-valor');
-    const elCustoValor = document.getElementById('modal-custo-valor');
     
-    if (elPatValor) {
-        elPatValor.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        // Ajusta a cor (Verde se Lucro, Branco se Prejuízo/Neutro)
-        if (totalAtualLive >= custoTotalLive) {
-            elPatValor.className = "text-lg font-bold text-[#4ade80] mt-1";
-        } else {
-            elPatValor.className = "text-lg font-bold text-white mt-1";
-        }
-    }
-    if (elCustoValor) {
-        elCustoValor.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    // Smart Check (Evita redesenhar se nada mudou, mas considerando o valor live)
-    // Adicionamos totalAtualLive na assinatura para atualizar se o preço mudar
+    // Smart Check
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
+    const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
+    const lastPatId = lastItem ? lastItem.date : 'none';
+    const lastPatVal = lastItem ? lastItem.value : 0;
+    
+    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
     if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
         return; 
@@ -2864,27 +2837,12 @@ function renderizarGraficoPatrimonio() {
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // 3. PREPARAÇÃO DOS DADOS (COM INJEÇÃO DO "HOJE")
+    // 1. LÓGICA DE DATAS LIMITE
     const hoje = new Date();
-    hoje.setHours(23, 59, 59, 999); // Final do dia
+    hoje.setHours(23, 59, 59, 999);
     
-    // Cria uma cópia do histórico para não alterar o original
-    let dadosComLive = [...patrimonio];
-    
-    // Formata hoje como YYYY-MM-DD para verificar duplicidade
-    const dataHojeStr = new Date().toISOString().split('T')[0];
-    
-    // Remove se já existir um registro de hoje (para substituir pelo Live atualizado)
-    dadosComLive = dadosComLive.filter(p => p.date !== dataHojeStr);
-    
-    // INJETA O PONTO "AGORA"
-    dadosComLive.push({
-        date: dataHojeStr,
-        value: totalAtualLive
-    });
-
-    // 4. FILTRAGEM POR PERÍODO
     let dataCorte;
+    
     if (currentPatrimonioRange === '1M') {
         dataCorte = new Date(hoje);
         dataCorte.setDate(hoje.getDate() - 30);
@@ -2895,12 +2853,14 @@ function renderizarGraficoPatrimonio() {
         dataCorte = new Date(hoje);
         dataCorte.setFullYear(hoje.getFullYear() - 1);
     } else {
-        dataCorte = new Date('2000-01-01'); // ALL
+        // REMOVIDO BLOCO 5Y - Cai direto no ALL se não for os anteriores
+        dataCorte = new Date('2000-01-01'); // 'ALL'
     }
     
     dataCorte.setHours(0, 0, 0, 0);
 
-    let dadosOrdenados = dadosComLive
+    // 2. Filtra dados brutos
+    let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
              const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -2908,12 +2868,11 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // AGRUPAMENTO MENSAL (Apenas para 6M e 1Y - Otimização visual)
+    // --- AGRUPAMENTO MENSAL (Apenas para 6M e 1Y - REMOVIDO 5Y) ---
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
             const chaveMes = p.date.substring(0, 7); 
-            // Sempre sobrescreve, mantendo o último dia do mês (ou o dia atual no mês corrente)
             grupos[chaveMes] = p; 
         });
         dadosOrdenados = Object.values(grupos);
@@ -2928,37 +2887,41 @@ function renderizarGraficoPatrimonio() {
         return;
     }
 
-    // 5. GERA LABELS E DATASETS
+    // 3. Prepara Arrays (Labels e Dados)
     const labels = [];
     const dataValor = [];
     
-    // Lógica de Custo (Investido)
+    // Cálculo Otimizado do Investido
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;
     const dataCusto = [];
 
     dadosOrdenados.forEach(p => {
+        // Parse da data
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
         
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const ano = d.getFullYear().toString().slice(-2);
+        const ano = d.getFullYear().toString().slice(-2); // Pega '23', '24', '25'
 
-        // Labels
+        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA (REMOVIDO 5Y) ---
         if (currentPatrimonioRange === '1M') {
+             // 1M: "15 FEV"
              labels.push([dia, mes]); 
         } else if (['6M', '1Y'].includes(currentPatrimonioRange)) {
+             // Períodos Longos (Mensal): "FEV 25"
              labels.push([mes, ano]); 
         } else {
+             // TUDO: "15 FEV 25"
              labels.push([dia, mes, ano]); 
         }
 
-        // Valor
+        // Valor Patrimônio
         dataValor.push(p.value);
 
-        // Custo
+        // Avança o custo acumulado
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
@@ -2971,15 +2934,10 @@ function renderizarGraficoPatrimonio() {
                 break;
             }
         }
-        // Para o ponto "Hoje", assumimos o custo atual total se for o último ponto
-        if (p.date === dataHojeStr) {
-             dataCusto.push(custoTotalLive);
-        } else {
-             dataCusto.push(custoAcumulado);
-        }
+        dataCusto.push(custoAcumulado);
     });
 
-    // 6. RENDERIZAÇÃO
+    // 4. Configuração do Gráfico
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
@@ -3047,6 +3005,7 @@ function renderizarGraficoPatrimonio() {
                         padding: 10,
                         displayColors: true,
                         callbacks: {
+                            // Junta as linhas [Dia, Mês, Ano] em uma linha só no Tooltip: "15 FEV 25"
                             title: function(context) {
                                 const label = context[0].label;
                                 return Array.isArray(label) ? label.join(' ') : label;

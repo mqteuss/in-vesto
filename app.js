@@ -2627,7 +2627,7 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
                     symbol: p.symbol,
                     valorTotal: 0,
                     qtd: qtd,
-                    dataPag: p.paymentDate
+                    dataPag: p.paymentDate // Formato YYYY-MM-DD
                 };
             }
             agrupado[p.symbol].valorTotal += total;
@@ -2643,13 +2643,29 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
         return;
     }
 
+    // Data de hoje zerada (00:00:00) para comparação justa
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
     lista.forEach(item => {
         const percent = ((item.valorTotal / totalMes) * 100).toFixed(1);
-        const diaPagamento = item.dataPag.split('-')[2];
-        const tickerInitials = item.symbol.substring(0, 2);
+        const [ano, mes, dia] = item.dataPag.split('-').map(Number); // Separa YYYY-MM-DD
+        
+        // Cria objeto data do pagamento
+        const dataPagamentoObj = new Date(ano, mes - 1, dia);
 
+        // Lógica: Se a data do pagamento for menor ou igual a hoje, foi recebido.
+        const foiRecebido = dataPagamentoObj <= hoje;
+
+        const tickerInitials = item.symbol.substring(0, 2);
+        
+        // Definição de Cores e Texto baseados no status
+        const corValor = foiRecebido ? 'text-[#4ade80]' : 'text-amber-400'; // Verde ou Amarelo
+        const textoStatus = foiRecebido ? 'Recebido' : 'A Receber';
+
+        // REMOVIDO: border e border-[#2C2C2E]
         const cardHTML = `
-            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl border border-[#2C2C2E] mb-2 active:scale-[0.98] transition-transform">
+            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2 active:scale-[0.98] transition-transform">
                 
                 <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
                      <span class="text-xs font-bold text-white tracking-wider">${tickerInitials}</span>
@@ -2658,12 +2674,15 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-center mb-0.5">
                         <span class="text-sm font-bold text-white uppercase">${item.symbol}</span>
-                        <span class="text-sm font-bold text-[#4ade80] tracking-tight">${formatBRL(item.valorTotal)}</span>
+                        <span class="text-sm font-bold ${corValor} tracking-tight">${formatBRL(item.valorTotal)}</span>
                     </div>
                     
                     <div class="flex justify-between items-center">
-                        <span class="text-[10px] text-gray-500 font-medium">Dia ${diaPagamento} • ${item.qtd} cotas</span>
-                        <span class="text-[10px] text-gray-500 font-medium">${percent}% do total</span>
+                        <span class="text-[10px] text-gray-500 font-medium">Dia ${dia} • ${item.qtd} cotas</span>
+                        <span class="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                           ${!foiRecebido ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>' : ''} 
+                           ${textoStatus}
+                        </span>
                     </div>
                 </div>
             </div>

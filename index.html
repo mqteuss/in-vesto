@@ -263,23 +263,26 @@
     </div>
 </div>
 
-<div class="card-bg p-4 rounded-[1.5rem] flex flex-col justify-between h-40 cursor-pointer relative overflow-hidden group active:scale-[0.98] transition-all hover:border-blue-900/30" data-toggle-drawer="alocacao-chart-drawer">
-        <div class="flex justify-between items-start">
-            <div class="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
-            </div>
+<div id="btn-open-alocacao" class="col-span-2 card-bg relative overflow-hidden rounded-[1.5rem] p-5 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#111]">
+    <div class="flex flex-col z-10">
+        <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
         </div>
-        <div>
-            <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Carteira</span>
-            <span class="text-lg font-bold text-white block leading-tight mt-1">Alocação</span>
-        </div>
-        
-        <div class="absolute right-[-10px] bottom-[-10px] opacity-[0.05] pointer-events-none group-hover:opacity-10 transition-opacity">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-            </svg>
-        </div>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Carteira</span>
+        <span class="text-xl font-bold text-white mt-0.5">Alocação</span>
     </div>
+    
+    <div class="absolute right-4 bottom-[-10px] opacity-15 pointer-events-none">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-32 w-32 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+        </svg>
+    </div>
+    
+    <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center border border-[#2C2C2E]">
+        <svg class="w-4 h-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+    </div>
+</div>
 
 <div id="btn-open-proventos" class="col-span-2 card-bg relative overflow-hidden rounded-[1.5rem] p-5 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#111]">
     <div class="flex flex-col z-10">
@@ -302,18 +305,6 @@
 </div>
 
 <div class="col-span-2">
-    <div id="alocacao-chart-drawer" class="card-drawer">
-         <div class="drawer-content bg-[#121212] rounded-3xl p-4 mb-2 shadow-inner">
-            <div class="relative h-40 w-full flex items-center justify-center">
-                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
-                    <span class="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-widest">Total</span>
-                    <span id="center-chart-value" class="text-xl sm:text-2xl font-bold text-white tracking-tight">R$ 0,00</span>
-                </div>
-                <canvas id="alocacao-chart" class="relative z-10"></canvas>
-            </div>
-            <div id="alocacao-legend" class="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-gray-800/50"></div>
-        </div>
-    </div>
 
 </div>
 
@@ -1025,6 +1016,45 @@
             </p>
 
         </div>
+    </div>
+</div>
+
+<div id="alocacao-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="alocacao-title" role="dialog" aria-modal="true">
+    <div id="tab-alocacao-content" class="page-content w-full h-[85vh] rounded-t-[2rem] shadow-2xl bg-black border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform">
+        
+        <div class="sticky top-0 bg-black z-30 rounded-t-[2rem]">
+            <div class="w-full flex justify-center pt-3 pb-1">
+                <div class="w-12 h-1.5 bg-[#2C2C2E] rounded-full"></div>
+            </div>
+
+            <div class="flex justify-between items-center px-5 pb-4 pt-2">
+                <div class="flex items-center gap-4 flex-1 min-w-0">
+                    <div class="w-12 h-12 rounded-2xl bg-[#1C1C1E] flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-white leading-none">Alocação</h1>
+                        <p class="text-xs font-normal text-[#888888] mt-1">Diversificação da Carteira</p>
+                    </div>
+                </div>
+                
+                <button id="alocacao-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="overflow-y-auto h-[calc(85vh-90px)] p-4 pt-0 custom-scroll">
+            
+            <div class="relative w-full h-72 flex items-center justify-center bg-[#121212] rounded-3xl p-4 border border-[#2C2C2E] shadow-inner mb-6">
+                <canvas id="alocacao-chart"></canvas>
+            </div>
+
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 px-2">Detalhamento</h3>
+            <div id="alocacao-legend-container" class="space-y-2">
+                </div>
+            
+            <div class="h-10"></div> </div>
     </div>
 </div>
         

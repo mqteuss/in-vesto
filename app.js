@@ -2736,10 +2736,20 @@ function openPatrimonioModal() {
 }
 
 function closePatrimonioModal() {
-    patrimonioPageContent.classList.add('closing');
-    patrimonioPageModal.classList.remove('visible');
-    document.body.style.overflow = '';
-}
+        if(!patrimonioPageContent) return;
+        
+        // 1. Remove qualquer transformação manual feita pelo dedo (reset)
+        patrimonioPageContent.style.transform = '';
+        
+        // 2. Adiciona a classe que faz a animação de descer (definida no CSS)
+        patrimonioPageContent.classList.add('closing');
+        
+        // 3. Remove a visibilidade do fundo escuro
+        patrimonioPageModal.classList.remove('visible');
+        
+        // 4. Libera o scroll da página principal
+        document.body.style.overflow = '';
+    }
 
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
@@ -6524,7 +6534,7 @@ async function atualizarWidgetIpca() {
 
 atualizarWidgetIpca();
 
-// --- LISTENERS DO MODAL DE PATRIMÔNIO (Coloque antes de "await init();") ---
+// --- LISTENERS DO MODAL DE PATRIMÔNIO ---
 
     if (btnOpenPatrimonio) {
         btnOpenPatrimonio.addEventListener('click', openPatrimonioModal);
@@ -6541,15 +6551,19 @@ atualizarWidgetIpca();
         });
     }
 
-    // --- LÓGICA DE SWIPE DOWN (ARRASTAR PARA FECHAR) ---
+    // --- LÓGICA DE SWIPE DOWN (ARRASTAR PARA FECHAR) - IDENTICA AO DETALHES ---
     if (patrimonioPageContent) {
-        const scrollContainer = patrimonioPageContent.querySelector('.overflow-y-auto'); 
+        // Seleciona o container interno que tem scroll (ajuste a classe se necessário)
+        const scrollContainer = patrimonioPageContent.querySelector('.overflow-y-auto');
 
         patrimonioPageContent.addEventListener('touchstart', (e) => {
-            // Só permite arrastar se o scroll interno estiver no topo
+            // Só inicia o arrasto se o scroll estiver no topo
             if (scrollContainer && scrollContainer.scrollTop === 0) {
                 touchStartPatrimonioY = e.touches[0].clientY;
+                touchMovePatrimonioY = touchStartPatrimonioY; // Inicializa igual
                 isDraggingPatrimonio = true;
+                
+                // CRUCIAL: Remove a transição durante o arrasto para acompanhar o dedo instantaneamente
                 patrimonioPageContent.style.transition = 'none'; 
             }
         }, { passive: true });
@@ -6559,9 +6573,10 @@ atualizarWidgetIpca();
             touchMovePatrimonioY = e.touches[0].clientY;
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
             
-            // Só move se for para baixo (positivo)
+            // Só move visualmente se for para baixo (positivo)
             if (diff > 0) {
-                e.preventDefault(); 
+                // Impede o "pull-to-refresh" nativo do navegador
+                if (e.cancelable) e.preventDefault(); 
                 patrimonioPageContent.style.transform = `translateY(${diff}px)`;
             }
         }, { passive: false });
@@ -6569,12 +6584,14 @@ atualizarWidgetIpca();
         patrimonioPageContent.addEventListener('touchend', (e) => {
             if (!isDraggingPatrimonio) return;
             isDraggingPatrimonio = false;
+            
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
             
-            patrimonioPageContent.style.transition = 'transform 0.4s ease-in-out';
+            // Restaura a transição suave (física de mola/slide)
+            patrimonioPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
             
-            // Se arrastou mais de 100px, fecha. Senão, volta ao topo.
-            if (diff > 100) {
+            // Se arrastou mais de 120px, fecha. Senão, volta ao topo.
+            if (diff > 120) {
                 closePatrimonioModal();
             } else {
                 patrimonioPageContent.style.transform = '';
@@ -6584,8 +6601,6 @@ atualizarWidgetIpca();
             touchMovePatrimonioY = 0;
         });
     }
-
-    // ================= FIM DOS LISTENERS NOVOS =================
 	
     await init();
 });

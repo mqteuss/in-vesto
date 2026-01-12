@@ -6487,35 +6487,48 @@ atualizarWidgetIpca();
     let perfTouchMoveY = 0;
     let isDraggingPerf = false;
 
-    window.abrirModalPerformance = function() {
-        if(!perfModal || !perfContent) return;
-        
-        // Atualiza os textos de resumo no modal (pegando do dashboard)
-        const totalInvestido = document.getElementById('total-carteira-custo')?.textContent || '---';
-        const totalPatrimonio = document.getElementById('total-carteira-valor')?.textContent || '---';
-        
-        const elInv = document.getElementById('modal-total-investido');
-        const elPat = document.getElementById('modal-patrimonio-atual');
-        
-        if(elInv) elInv.textContent = totalInvestido;
-        if(elPat) elPat.textContent = totalPatrimonio;
+window.abrirModalPerformance = function() {
+    const perfModal = document.getElementById('performance-page-modal');
+    const perfContent = document.getElementById('tab-performance');
+    
+    if(!perfModal || !perfContent) return;
+    
+    // Atualiza os textos de resumo
+    const totalInvestido = document.getElementById('total-carteira-custo')?.textContent || '---';
+    const totalPatrimonio = document.getElementById('total-carteira-valor')?.textContent || '---';
+    
+    const elInv = document.getElementById('modal-total-investido');
+    const elPat = document.getElementById('modal-patrimonio-atual');
+    
+    if(elInv) elInv.textContent = totalInvestido;
+    if(elPat) elPat.textContent = totalPatrimonio;
 
-        // Abre Modal
-        perfModal.classList.add('visible');
-        perfContent.classList.remove('closing');
-        perfContent.style.transform = ''; 
-        document.body.style.overflow = 'hidden'; // Trava scroll do fundo
+    // Abre Modal
+    perfModal.classList.add('visible');
+    perfContent.classList.remove('closing');
+    perfContent.style.transform = ''; 
+    document.body.style.overflow = 'hidden'; 
+    
+    // --- CORREÇÃO DO GRÁFICO ---
+    // Aguarda 350ms (tempo da animação CSS) para garantir que a div tem tamanho real
+    setTimeout(() => {
+        const ctxCanvas = document.getElementById('patrimonio-chart');
         
-        // Força renderização do gráfico (o canvas mudou de lugar/tamanho)
-        // Pequeno delay para garantir que a transição CSS iniciou e o container tem tamanho
-        setTimeout(() => {
-            if(patrimonioChartInstance) {
-                patrimonioChartInstance.resize();
-            } else {
+        if (ctxCanvas) {
+            // 1. Se já existir uma instância antiga do gráfico, destrua-a para evitar conflitos
+            if (window.patrimonioChartInstance) {
+                window.patrimonioChartInstance.destroy();
+                window.patrimonioChartInstance = null;
+            }
+
+            // 2. Chama a sua função original que cria o gráfico
+            // Certifique-se que sua função 'renderizarGraficoPatrimonio' existe
+            if (typeof renderizarGraficoPatrimonio === 'function') {
                 renderizarGraficoPatrimonio();
             }
-        }, 100);
-    };
+        }
+    }, 350); 
+};
 
     window.fecharModalPerformance = function() {
         if(!perfModal || !perfContent) return;

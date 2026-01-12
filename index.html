@@ -919,16 +919,24 @@
             <canvas id="patrimonio-chart"></canvas>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-            <div class="card-bg p-4 rounded-[1.25rem]">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Patrimônio Atual</span>
-                <p id="modal-patrimonio-valor" class="text-lg font-bold text-white mt-1">...</p>
-            </div>
-            <div class="card-bg p-4 rounded-[1.25rem]">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Custo Total</span>
-                <p id="modal-custo-valor" class="text-lg font-bold text-gray-300 mt-1">...</p>
-            </div>
-        </div>
+<div class="grid grid-cols-3 gap-2">
+    
+    <div class="bg-[#151515] p-3 rounded-2xl border border-[#2C2C2E] flex flex-col justify-between">
+        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Ao Vivo</span>
+        <p id="modal-patrimonio-live" class="text-sm font-bold text-[#4ade80] mt-1 truncate">--</p>
+    </div>
+
+    <div class="bg-[#151515] p-3 rounded-2xl border border-[#2C2C2E] flex flex-col justify-between">
+        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Gráfico</span>
+        <p id="modal-patrimonio-chart-val" class="text-sm font-bold text-[#c084fc] mt-1 truncate">--</p>
+    </div>
+
+    <div class="bg-[#151515] p-3 rounded-2xl border border-[#2C2C2E] flex flex-col justify-between">
+        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Investido</span>
+        <p id="modal-custo-valor" class="text-sm font-bold text-gray-300 mt-1 truncate">--</p>
+    </div>
+
+</div>
     </div>
 </div>
 </div>

@@ -2815,34 +2815,52 @@ function closeAlocacaoModal() {
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
-    
-    // Smart Check
-    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
-    const lastPatId = lastItem ? lastItem.date : 'none';
-    const lastPatVal = lastItem ? lastItem.value : 0;
-    
-    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
-    if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
-        return; 
+    // --- 1. CÁLCULO DO AO VIVO (Real-Time) ---
+    let totalAtualLive = 0;
+    let custoTotalLive = 0;
+
+    if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
+        carteiraCalculada.forEach(ativo => {
+            const preco = ativo.regularMarketPrice || ativo.precoMedio || 0;
+            totalAtualLive += preco * ativo.quantity;
+            custoTotalLive += (ativo.precoMedio || 0) * ativo.quantity;
+        });
     }
 
+    // --- 2. ATUALIZAÇÃO DOS 3 CARDS ---
+    
+    // Card 1: AO VIVO
+    const elLive = document.getElementById('modal-patrimonio-live');
+    if (elLive) {
+        elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        // Verde se lucro sobre investido, Branco se prejuízo
+        elLive.className = totalAtualLive >= custoTotalLive 
+            ? "text-sm font-bold text-[#4ade80] mt-1 truncate" 
+            : "text-sm font-bold text-white mt-1 truncate";
+    }
+
+    // Card 3: INVESTIDO (Atualizamos antes para já ter o valor)
+    const elCusto = document.getElementById('modal-custo-valor');
+    if (elCusto) {
+        elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    // --- 3. PREPARAÇÃO DO GRÁFICO (Histórico Puro) ---
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
-
+    
     // Cores
     const colorLinePatrimonio = '#c084fc'; 
     const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // 1. LÓGICA DE DATAS LIMITE
+    // Definição de Data de Corte
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
-    
     let dataCorte;
-    
+
     if (currentPatrimonioRange === '1M') {
         dataCorte = new Date(hoje);
         dataCorte.setDate(hoje.getDate() - 30);
@@ -2853,13 +2871,11 @@ function renderizarGraficoPatrimonio() {
         dataCorte = new Date(hoje);
         dataCorte.setFullYear(hoje.getFullYear() - 1);
     } else {
-        // REMOVIDO BLOCO 5Y - Cai direto no ALL se não for os anteriores
-        dataCorte = new Date('2000-01-01'); // 'ALL'
+        dataCorte = new Date('2000-01-01'); // ALL
     }
-    
     dataCorte.setHours(0, 0, 0, 0);
 
-    // 2. Filtra dados brutos
+    // Filtra e Ordena o Histórico (Sem injetar o ponto de hoje artificialmente)
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
@@ -2868,7 +2884,7 @@ function renderizarGraficoPatrimonio() {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- AGRUPAMENTO MENSAL (Apenas para 6M e 1Y - REMOVIDO 5Y) ---
+    // Agrupamento Mensal (6M, 1Y)
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -2879,6 +2895,17 @@ function renderizarGraficoPatrimonio() {
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
+    // Card 2: GRÁFICO (Último Ponto do Histórico)
+    const elChartVal = document.getElementById('modal-patrimonio-chart-val');
+    if (elChartVal) {
+        if (dadosOrdenados.length > 0) {
+            const ultimoValorHistorico = dadosOrdenados[dadosOrdenados.length - 1].value;
+            elChartVal.textContent = ultimoValorHistorico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        } else {
+            elChartVal.textContent = "R$ 0,00";
+        }
+    }
+
     if (dadosOrdenados.length === 0) {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.destroy();
@@ -2887,41 +2914,34 @@ function renderizarGraficoPatrimonio() {
         return;
     }
 
-    // 3. Prepara Arrays (Labels e Dados)
+    // Gera Labels e Dados
     const labels = [];
     const dataValor = [];
     
-    // Cálculo Otimizado do Investido
+    // Lógica de Custo
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;
     const dataCusto = [];
 
     dadosOrdenados.forEach(p => {
-        // Parse da data
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
         
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const ano = d.getFullYear().toString().slice(-2); // Pega '23', '24', '25'
+        const ano = d.getFullYear().toString().slice(-2);
 
-        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA (REMOVIDO 5Y) ---
         if (currentPatrimonioRange === '1M') {
-             // 1M: "15 FEV"
              labels.push([dia, mes]); 
         } else if (['6M', '1Y'].includes(currentPatrimonioRange)) {
-             // Períodos Longos (Mensal): "FEV 25"
              labels.push([mes, ano]); 
         } else {
-             // TUDO: "15 FEV 25"
              labels.push([dia, mes, ano]); 
         }
 
-        // Valor Patrimônio
         dataValor.push(p.value);
 
-        // Avança o custo acumulado
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
@@ -2937,7 +2957,7 @@ function renderizarGraficoPatrimonio() {
         dataCusto.push(custoAcumulado);
     });
 
-    // 4. Configuração do Gráfico
+    // Renderização Chart.js
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
@@ -3005,7 +3025,6 @@ function renderizarGraficoPatrimonio() {
                         padding: 10,
                         displayColors: true,
                         callbacks: {
-                            // Junta as linhas [Dia, Mês, Ano] em uma linha só no Tooltip: "15 FEV 25"
                             title: function(context) {
                                 const label = context[0].label;
                                 return Array.isArray(label) ? label.join(' ') : label;

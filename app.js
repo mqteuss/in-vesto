@@ -2817,26 +2817,21 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     if (!canvas) return;
 
     // --- 1. DETECÇÃO DE PREÇOS (AUTORRECUPERAÇÃO) ---
-    // Verifica se temos preços ao vivo. Se estiver vazio, agendamos uma nova tentativa.
     const temPrecos = typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais) && precosAtuais.length > 0;
     
-    // Controle de tentativas (para não ficar rodando para sempre)
     if (!window.patrimonioRetryCount) window.patrimonioRetryCount = 0;
 
     if (!temPrecos && window.patrimonioRetryCount < 5) {
-        // Se não tem preços e tentamos menos de 5 vezes, tenta de novo em 800ms
-        console.log(`[Patrimonio] Aguardando preços... Tentativa ${window.patrimonioRetryCount + 1}`);
         window.patrimonioRetryTimer = setTimeout(() => {
             window.patrimonioRetryCount++;
             renderizarGraficoPatrimonio(true);
         }, 800);
     } else if (temPrecos) {
-        // Se os preços chegaram, zeramos o contador
         window.patrimonioRetryCount = 0;
         if (window.patrimonioRetryTimer) clearTimeout(window.patrimonioRetryTimer);
     }
 
-    // --- 2. MAPA DE PREÇOS ROBUSTO ---
+    // --- 2. MAPA DE PREÇOS ---
     const mapPrecos = new Map();
     if (temPrecos) {
         precosAtuais.forEach(p => {
@@ -2858,37 +2853,21 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
             const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
 
-            // Tenta pegar o preço na ordem: Ao Vivo Global -> Do Ativo (Cache) -> Preço Médio (Fallback)
             let precoLive = mapPrecos.get(ticker);
-            
-            if (!precoLive) {
-                precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
-            }
-
-            // Se o preço for zero ou inválido, usa o médio (evita quebra, mas gera valores iguais)
-            if (!precoLive || isNaN(precoLive) || precoLive === 0) {
-                precoLive = precoMedio;
-            }
+            if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
+            if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
 
             totalAtualLive += precoLive * qtd;
             custoTotalLive += precoMedio * qtd;
         });
     }
 
-    // --- 4. ATUALIZAÇÃO DOS CARDS (SEMPRE) ---
+    // --- 4. ATUALIZAÇÃO DOS CARDS (SEM COR VERDE) ---
     const elLive = document.getElementById('modal-patrimonio-live');
     if (elLive) {
         elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        
-        // Define cor baseada no Lucro/Prejuízo REAL
-        // Usamos uma tolerância de 0.01 para evitar erros de ponto flutuante
-        if (totalAtualLive > (custoTotalLive + 0.01)) {
-            elLive.className = "text-sm font-bold text-[#4ade80] mt-1 truncate"; // Verde (Lucro)
-        } else if (totalAtualLive < (custoTotalLive - 0.01)) {
-            elLive.className = "text-sm font-bold text-red-400 mt-1 truncate"; // Vermelho (Prejuízo)
-        } else {
-            elLive.className = "text-sm font-bold text-white mt-1 truncate"; // Neutro
-        }
+        // MUDANÇA AQUI: Sempre branco, sem lógica de cores
+        elLive.className = "text-sm font-bold text-white mt-1 truncate";
     }
 
     const elCusto = document.getElementById('modal-custo-valor');
@@ -2896,13 +2875,11 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // --- 5. ASSINATURA (Evita redesenho do gráfico se nada mudou) ---
-    // A assinatura inclui 'totalAtualLive' para forçar o redesenho quando os preços chegam
+    // --- 5. ASSINATURA ---
     const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
     const txCount = (typeof transacoes !== 'undefined') ? transacoes.length : 0;
     const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
 
-    // Se é uma tentativa de retry (isRetry), ignoramos a assinatura para forçar a atualização
     if (!isRetry && typeof lastPatrimonioCalcSignature !== 'undefined' && currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
         return;
     }
@@ -2911,7 +2888,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     
-    // Cores
     const colorLinePatrimonio = '#c084fc'; 
     const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
@@ -2943,7 +2919,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Agrupamento
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -2954,7 +2929,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
-    // Card 2: Valor do Gráfico (Último ponto histórico)
     const elChartVal = document.getElementById('modal-patrimonio-chart-val');
     if (elChartVal) {
         if (dadosOrdenados.length > 0) {
@@ -2977,7 +2951,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     const labels = [];
     const dataValor = [];
     
-    // Custo Histórico
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;

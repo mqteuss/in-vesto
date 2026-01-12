@@ -259,7 +259,7 @@
     </div>
     
     <div class="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center border border-[#2C2C2E]">
-            <svg class="card-arrow-icon w-4 h-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+        <svg class="card-arrow-icon w-4 h-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
     </div>
 </div>
 
@@ -945,7 +945,7 @@
 </div>
         </div>
 		
-		<div id="performance-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="performance-page-title" role="dialog" aria-modal="true">
+<div id="performance-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="performance-page-title" role="dialog" aria-modal="true">
     <div id="tab-performance" class="page-content w-full h-[85vh] rounded-t-[2rem] shadow-2xl bg-[#09090b] border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform">
         
         <div class="sticky top-0 bg-[#09090b] z-30 rounded-t-[2rem]">
@@ -963,7 +963,6 @@
                         <p class="text-xs font-normal text-gray-500 mt-0.5">Patrimônio vs Investido</p>
                     </div>
                 </div>
-                
                 <button onclick="window.fecharModalPerformance()" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -982,16 +981,16 @@
 
         <div id="performance-conteudo-scroll" class="overflow-y-auto h-[calc(85vh-140px)] p-4">
             
-            <div class="w-full h-80 bg-[#151515] rounded-2xl p-2 mb-4 border border-[#2C2C2E] relative">
+            <div id="chart-container" class="w-full h-80 bg-[#151515] rounded-2xl p-2 mb-4 border border-[#2C2C2E] relative">
                  <canvas id="patrimonio-chart"></canvas>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                 <div class="details-group-card flex flex-col items-center justify-center py-4">
+                 <div class="details-group-card flex flex-col items-center justify-center py-4 bg-[#151515] rounded-xl border border-[#2C2C2E]">
                      <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Total Investido</span>
                      <span class="text-base font-bold text-white" id="modal-total-investido">---</span>
                  </div>
-                 <div class="details-group-card flex flex-col items-center justify-center py-4">
+                 <div class="details-group-card flex flex-col items-center justify-center py-4 bg-[#151515] rounded-xl border border-[#2C2C2E]">
                      <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Patrimônio Atual</span>
                      <span class="text-base font-bold text-purple-400" id="modal-patrimonio-atual">---</span>
                  </div>

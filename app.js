@@ -2688,44 +2688,35 @@ function renderizarGraficoHistorico() {
         }
     }
     
-// Substitua a função renderizarGraficoPatrimonio inteira no app.js
-
 function renderizarGraficoPatrimonio(forceRender = false) {
-    const canvas = document.getElementById('patrimonio-chart');
+    const container = document.getElementById('chart-container');
+    // Tentamos pegar o canvas, mas se ele não existir (foi destruído), não tem problema ainda
+    let canvas = document.getElementById('patrimonio-chart');
     
-    // Se não achou o canvas no HTML, aborta e limpa variável global se existir
-    if (!canvas) {
-        if (window.patrimonioChartInstance) {
-            window.patrimonioChartInstance.destroy();
-            window.patrimonioChartInstance = null;
+    // Smart Check (Ignora se for forceRender)
+    if (!forceRender && window.patrimonioChartInstance && canvas) {
+        const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+        const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
+        const lastPatId = lastItem ? lastItem.date : 'none';
+        const lastPatVal = lastItem ? lastItem.value : 0;
+        const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
+
+        if (currentSignature === lastPatrimonioCalcSignature) {
+            // Verifica se o gráfico ainda está "vivo" no DOM
+            if (window.patrimonioChartInstance.canvas === canvas) return;
         }
-        return;
+    }
+
+    // Se não tiver container, aborta
+    if (!container) return;
+
+    // Se o canvas não existe (foi limpo no modal), a gente deixa o código criar ou pega o existente
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'patrimonio-chart';
+        container.appendChild(canvas);
     }
     
-    // --- LÓGICA DE LIMPEZA FORÇADA ---
-    // Se for renderização forçada OU se o canvas mudou (ex: fechou e abriu modal), destruímos o gráfico antigo
-    if (forceRender && window.patrimonioChartInstance) {
-        window.patrimonioChartInstance.destroy();
-        window.patrimonioChartInstance = null;
-    } else if (window.patrimonioChartInstance && window.patrimonioChartInstance.canvas !== canvas) {
-        // O gráfico existe na memória, mas aponta para um elemento HTML que não existe mais
-        window.patrimonioChartInstance.destroy();
-        window.patrimonioChartInstance = null;
-    }
-
-    // Smart Check (Só roda se NÃO for forçado e o gráfico já existir)
-    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
-    const lastPatId = lastItem ? lastItem.date : 'none';
-    const lastPatVal = lastItem ? lastItem.value : 0;
-    
-    const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
-
-    // Se NÃO for forçado, e a assinatura for igual, e o gráfico existe: NÃO FAZ NADA.
-    if (!forceRender && currentSignature === lastPatrimonioCalcSignature && window.patrimonioChartInstance) {
-        return; 
-    }
-
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
 
@@ -2735,10 +2726,11 @@ function renderizarGraficoPatrimonio(forceRender = false) {
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // 1. LÓGICA DE DATAS (Mantida igual a sua)
+    // --- FILTRAGEM DE DADOS (Igual ao seu original) ---
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     let dataCorte;
+    
     if (currentPatrimonioRange === '1M') {
         dataCorte = new Date(hoje); dataCorte.setDate(hoje.getDate() - 30);
     } else if (currentPatrimonioRange === '6M') {
@@ -2752,21 +2744,19 @@ function renderizarGraficoPatrimonio(forceRender = false) {
     }
     dataCorte.setHours(0, 0, 0, 0);
 
-    // 2. Filtra dados
-    let dadosOrdenados = [...patrimonio]
-        .filter(p => {
-             const parts = p.date.split('-'); 
-             const dataPonto = new Date(parts[0], parts[1] - 1, parts[2]);
-             return dataPonto >= dataCorte;
-        })
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    let dadosOrdenados = [...patrimonio].filter(p => {
+        const parts = p.date.split('-'); 
+        return new Date(parts[0], parts[1] - 1, parts[2]) >= dataCorte;
+    }).sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    // Agrupamento Mensal
     if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => { grupos[p.date.substring(0, 7)] = p; });
         dadosOrdenados = Object.values(grupos).sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
+    // Se não tiver dados, limpa gráfico e sai
     if (dadosOrdenados.length === 0) {
         if (window.patrimonioChartInstance) {
             window.patrimonioChartInstance.destroy();
@@ -2775,7 +2765,7 @@ function renderizarGraficoPatrimonio(forceRender = false) {
         return;
     }
 
-    // 3. Prepara Arrays
+    // Prepara Arrays
     const labels = [];
     const dataValor = [];
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -2790,9 +2780,9 @@ function renderizarGraficoPatrimonio(forceRender = false) {
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const ano = d.getFullYear().toString().slice(-2);
 
-        if (currentPatrimonioRange === '1M') labels.push([dia, mes]); 
-        else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]); 
-        else labels.push([dia, mes, ano]); 
+        if (currentPatrimonioRange === '1M') labels.push([dia, mes]);
+        else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]);
+        else labels.push([dia, mes, ano]);
 
         dataValor.push(p.value);
 
@@ -2809,57 +2799,32 @@ function renderizarGraficoPatrimonio(forceRender = false) {
         dataCusto.push(custoAcumulado);
     });
 
-    // 4. Criação do Gráfico
+    // --- CRIAÇÃO DO GRÁFICO ---
+    // Sempre destruímos se for forceRender para evitar bugs visuais
+    if (forceRender && window.patrimonioChartInstance) {
+        window.patrimonioChartInstance.destroy();
+        window.patrimonioChartInstance = null;
+    }
+
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
-
-    // Se for renderização forçada, queremos ver a animação acontecer
+    
     const animationConfig = (window.patrimonioChartInstance && !forceRender) ? false : { duration: 1000, easing: 'easeOutQuart' };
 
-    // Se chegou até aqui e o gráfico ainda existe (e é o mesmo canvas), atualizamos.
-    // Se foi destruído lá em cima (forceRender), entra no ELSE para criar novo.
     if (window.patrimonioChartInstance) {
         window.patrimonioChartInstance.data.labels = labels;
         window.patrimonioChartInstance.data.datasets[0].data = dataValor;
         window.patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        window.patrimonioChartInstance.options.animation = animationConfig;
-        window.patrimonioChartInstance.update(); 
+        window.patrimonioChartInstance.update();
     } else {
         window.patrimonioChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [
-                    {
-                        label: 'Patrimônio',
-                        data: dataValor,
-                        fill: true,
-                        backgroundColor: gradientFill,
-                        borderColor: colorLinePatrimonio,
-                        borderWidth: 1.8,
-                        tension: 0.4,
-                        pointRadius: 0, 
-                        pointHitRadius: 30,
-                        pointHoverRadius: 4,
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: colorLinePatrimonio,
-                        pointHoverBorderWidth: 3,
-                        order: 1
-                    },
-                    {
-                        label: 'Investido',
-                        data: dataCusto,
-                        fill: false,
-                        borderColor: colorLineInvestido,
-                        borderWidth: 1.3,
-                        borderDash: [4, 4],
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHitRadius: 10,
-                        pointHoverRadius: 0,
-                        order: 2
-                    }
+                    { label: 'Patrimônio', data: dataValor, fill: true, backgroundColor: gradientFill, borderColor: colorLinePatrimonio, borderWidth: 1.8, tension: 0.4, pointRadius: 0, pointHitRadius: 30, pointHoverRadius: 4, pointHoverBackgroundColor: '#fff', pointHoverBorderColor: colorLinePatrimonio, pointHoverBorderWidth: 3, order: 1 },
+                    { label: 'Investido', data: dataCusto, fill: false, borderColor: colorLineInvestido, borderWidth: 1.3, borderDash: [4, 4], tension: 0.4, pointRadius: 0, pointHitRadius: 10, pointHoverRadius: 0, order: 2 }
                 ]
             },
             options: {
@@ -2871,38 +2836,23 @@ function renderizarGraficoPatrimonio(forceRender = false) {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        enabled: true,
-                        backgroundColor: '#151515',
-                        titleColor: '#9ca3af',
-                        bodyColor: '#fff',
-                        bodyFont: { weight: 'bold', size: 13 },
-                        borderColor: '#2C2C2E',
-                        borderWidth: 1,
-                        padding: 10,
-                        displayColors: true,
+                        enabled: true, backgroundColor: '#151515', titleColor: '#9ca3af', bodyColor: '#fff', bodyFont: { weight: 'bold', size: 13 }, borderColor: '#2C2C2E', borderWidth: 1, padding: 10, displayColors: true,
                         callbacks: {
-                            title: function(context) {
-                                const label = context[0].label;
-                                return Array.isArray(label) ? label.join(' ') : label;
-                            },
-                            label: (context) => context.dataset.label + ': ' + formatBRL(context.parsed.y)
+                            title: (c) => Array.isArray(c[0].label) ? c[0].label.join(' ') : c[0].label,
+                            label: (c) => c.dataset.label + ': ' + formatBRL(c.parsed.y)
                         }
                     }
                 },
                 scales: {
-                    y: { 
-                        display: true, position: 'right', grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
-                        ticks: { color: colorText, font: { size: 10, family: 'monospace' }, maxTicksLimit: 6,
-                            callback: function(value) { if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k'; return value; }
-                        }
-                    },
+                    y: { display: true, position: 'right', grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false }, ticks: { color: colorText, font: { size: 10, family: 'monospace' }, maxTicksLimit: 6, callback: (v) => v >= 1000 ? 'R$ ' + (v/1000).toFixed(1) + 'k' : v } },
                     x: { grid: { display: false }, ticks: { display: true, maxRotation: 0, autoSkip: true, maxTicksLimit: 6, color: colorText, font: { size: 10, weight: 'bold' } } }
                 }
             }
         });
     }
 
-    lastPatrimonioCalcSignature = currentSignature;
+    // Salva assinatura
+    lastPatrimonioCalcSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 }
 
 function renderizarTimelinePagamentos() {
@@ -6465,10 +6415,11 @@ atualizarWidgetIpca();
 window.abrirModalPerformance = function() {
     const perfModal = document.getElementById('performance-page-modal');
     const perfContent = document.getElementById('tab-performance');
+    const containerGrafico = document.getElementById('chart-container');
     
     if(!perfModal || !perfContent) return;
     
-    // Atualiza Textos
+    // Atualiza Resumos
     const totalInvestido = document.getElementById('total-carteira-custo')?.textContent || '---';
     const totalPatrimonio = document.getElementById('total-carteira-valor')?.textContent || '---';
     
@@ -6483,40 +6434,68 @@ window.abrirModalPerformance = function() {
     perfContent.classList.remove('closing');
     perfContent.style.transform = ''; 
     document.body.style.overflow = 'hidden'; 
+
+    // --- CORREÇÃO DE GRÁFICO (RECRIAÇÃO DO DOM) ---
+    // 1. Destrói instância do Chart.js se existir
+    if (window.patrimonioChartInstance) {
+        window.patrimonioChartInstance.destroy();
+        window.patrimonioChartInstance = null;
+    }
+
+    // 2. Limpa o container e cria um Canvas NOVO do zero
+    // Isso evita problemas de dimensão 0 e "ghost canvas"
+    if (containerGrafico) {
+        containerGrafico.innerHTML = ''; // Apaga tudo dentro
+        const novoCanvas = document.createElement('canvas');
+        novoCanvas.id = 'patrimonio-chart';
+        containerGrafico.appendChild(novoCanvas);
+    }
     
-    // FORÇA O GRÁFICO A APARECER
-    // Espera 300ms (tempo da animação visual)
+    // 3. Aguarda animação CSS e desenha
     setTimeout(() => {
         if (typeof renderizarGraficoPatrimonio === 'function') {
-            // Passa TRUE para forçar a criação de um novo gráfico do zero
-            renderizarGraficoPatrimonio(true); 
+            renderizarGraficoPatrimonio(true); // true = forceRender
         }
     }, 300); 
 };
 
-    window.fecharModalPerformance = function() {
-        if(!perfModal || !perfContent) return;
-        
-        perfContent.classList.add('closing'); // Classe CSS que joga para baixo
-        perfContent.style.transform = ''; 
-        perfModal.classList.remove('visible');
-        document.body.style.overflow = '';
-    };
+window.fecharModalPerformance = function() {
+    const perfModal = document.getElementById('performance-page-modal');
+    const perfContent = document.getElementById('tab-performance');
+    
+    if(!perfModal || !perfContent) return;
 
-    // Fechar ao clicar fora (no backdrop escuro)
-    if(perfModal) {
-        perfModal.addEventListener('click', (e) => {
-            if (e.target === perfModal) window.fecharModalPerformance();
-        });
-    }
+    perfContent.classList.add('closing');
+    perfModal.classList.remove('visible');
+    document.body.style.overflow = '';
+    
+    // Opcional: Destruir o gráfico ao fechar para economizar memória
+    setTimeout(() => {
+        if (window.patrimonioChartInstance) {
+            window.patrimonioChartInstance.destroy();
+            window.patrimonioChartInstance = null;
+        }
+    }, 300);
+};
 
-// --- LÓGICA DE GESTOS DO MODAL PERFORMANCE (CORRIGIDA) ---
-const perfContentScroll = document.getElementById('performance-conteudo-scroll');
+// Fechar ao clicar no fundo
+const perfModalEl = document.getElementById('performance-page-modal');
+if(perfModalEl) {
+    perfModalEl.addEventListener('click', (e) => {
+        if (e.target === perfModalEl) window.fecharModalPerformance();
+    });
+}
 
-if(perfContent && perfContentScroll) {
-    perfContent.addEventListener('touchstart', (e) => {
-        // Só arrasta se o scroll interno estiver no topo (scrollTop <= 0)
-        if (perfContentScroll.scrollTop <= 0) {
+// --- GESTOS SWIPE DOWN (PERFORMANCE) ---
+const perfContentEl = document.getElementById('tab-performance');
+const perfScrollEl = document.getElementById('performance-conteudo-scroll');
+let perfTouchStartY = 0;
+let isDraggingPerf = false;
+
+if(perfContentEl && perfScrollEl) {
+    perfContentEl.addEventListener('touchstart', (e) => {
+        // Só arrasta se o scroll interno estiver no topo
+        if (perfScrollEl.scrollTop <= 0) {
             perfTouchStartY = e.touches[0].clientY;
             isDraggingPerf = true;
         } else {
@@ -6524,44 +6503,40 @@ if(perfContent && perfContentScroll) {
         }
     }, { passive: true });
 
-    perfContent.addEventListener('touchmove', (e) => {
+    perfContentEl.addEventListener('touchmove', (e) => {
         if (!isDraggingPerf) return;
         
         const currentY = e.touches[0].clientY;
         const diff = currentY - perfTouchStartY;
         
-        // Se estiver puxando para baixo (diff > 0)
         if (diff > 0) {
-            // CORREÇÃO DO ERRO: Verifica se o evento pode ser cancelado
+            // CORREÇÃO CRUCIAL: Verifica e.cancelable antes de prevenir
             if (e.cancelable) {
                 e.preventDefault(); 
             }
-            
-            perfContent.style.transition = 'none'; 
-            perfContent.style.transform = `translateY(${diff}px)`;
+            perfContentEl.style.transition = 'none'; 
+            perfContentEl.style.transform = `translateY(${diff}px)`;
         }
-    }, { passive: false }); // IMPORTANTE: passive false permite preventDefault
+    }, { passive: false }); // passive: false permite o preventDefault
 
-    perfContent.addEventListener('touchend', (e) => {
+    perfContentEl.addEventListener('touchend', (e) => {
         if (!isDraggingPerf) return;
         isDraggingPerf = false;
         
-        // Verifica o quanto arrastou
-        const style = window.getComputedStyle(perfContent);
+        // Verifica deslocamento atual
+        const style = window.getComputedStyle(perfContentEl);
         const matrix = new WebKitCSSMatrix(style.transform);
         const currentTranslateY = matrix.m42; 
 
-        perfContent.style.transition = 'transform 0.4s ease-in-out';
+        perfContentEl.style.transition = 'transform 0.4s ease-in-out';
         
-        // Se arrastou mais de 100px, fecha. Senão, volta.
-        if (currentTranslateY > 100) {
+        if (currentTranslateY > 120) {
             window.fecharModalPerformance();
         } else {
-            perfContent.style.transform = ''; 
+            perfContentEl.style.transform = ''; 
         }
         
         perfTouchStartY = 0;
-        perfTouchMoveY = 0;
     });
 }
 	

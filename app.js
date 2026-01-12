@@ -2688,12 +2688,32 @@ function renderizarGraficoHistorico() {
         }
     }
     
-// Substitua a função inteira no seu app.js
+// Substitua a função renderizarGraficoPatrimonio inteira no app.js
+
 function renderizarGraficoPatrimonio(forceRender = false) {
     const canvas = document.getElementById('patrimonio-chart');
-    if (!canvas) return;
     
-    // Smart Check
+    // Se não achou o canvas no HTML, aborta e limpa variável global se existir
+    if (!canvas) {
+        if (window.patrimonioChartInstance) {
+            window.patrimonioChartInstance.destroy();
+            window.patrimonioChartInstance = null;
+        }
+        return;
+    }
+    
+    // --- LÓGICA DE LIMPEZA FORÇADA ---
+    // Se for renderização forçada OU se o canvas mudou (ex: fechou e abriu modal), destruímos o gráfico antigo
+    if (forceRender && window.patrimonioChartInstance) {
+        window.patrimonioChartInstance.destroy();
+        window.patrimonioChartInstance = null;
+    } else if (window.patrimonioChartInstance && window.patrimonioChartInstance.canvas !== canvas) {
+        // O gráfico existe na memória, mas aponta para um elemento HTML que não existe mais
+        window.patrimonioChartInstance.destroy();
+        window.patrimonioChartInstance = null;
+    }
+
+    // Smart Check (Só roda se NÃO for forçado e o gráfico já existir)
     const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
     const lastItem = patrimonio.length > 0 ? patrimonio[patrimonio.length - 1] : null;
     const lastPatId = lastItem ? lastItem.date : 'none';
@@ -2701,12 +2721,9 @@ function renderizarGraficoPatrimonio(forceRender = false) {
     
     const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
-    // ALTERAÇÃO 1: Adicionado !forceRender na condição
-    if (!forceRender && currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
-        // Verificação extra: Se o canvas do gráfico atual não for o mesmo do DOM (acontece ao mudar de página/modal)
-        if (patrimonioChartInstance.canvas === canvas) {
-             return; 
-        }
+    // Se NÃO for forçado, e a assinatura for igual, e o gráfico existe: NÃO FAZ NADA.
+    if (!forceRender && currentSignature === lastPatrimonioCalcSignature && window.patrimonioChartInstance) {
+        return; 
     }
 
     const ctx = canvas.getContext('2d');
@@ -2718,31 +2735,24 @@ function renderizarGraficoPatrimonio(forceRender = false) {
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // 1. LÓGICA DE DATAS LIMITE
+    // 1. LÓGICA DE DATAS (Mantida igual a sua)
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
-    
     let dataCorte;
-    
     if (currentPatrimonioRange === '1M') {
-        dataCorte = new Date(hoje);
-        dataCorte.setDate(hoje.getDate() - 30);
+        dataCorte = new Date(hoje); dataCorte.setDate(hoje.getDate() - 30);
     } else if (currentPatrimonioRange === '6M') {
-        dataCorte = new Date(hoje);
-        dataCorte.setMonth(hoje.getMonth() - 6);
+        dataCorte = new Date(hoje); dataCorte.setMonth(hoje.getMonth() - 6);
     } else if (currentPatrimonioRange === '1Y') {
-        dataCorte = new Date(hoje);
-        dataCorte.setFullYear(hoje.getFullYear() - 1);
+        dataCorte = new Date(hoje); dataCorte.setFullYear(hoje.getFullYear() - 1);
     } else if (currentPatrimonioRange === '5Y') {
-        dataCorte = new Date(hoje);
-        dataCorte.setFullYear(hoje.getFullYear() - 5);
+        dataCorte = new Date(hoje); dataCorte.setFullYear(hoje.getFullYear() - 5);
     } else {
-        dataCorte = new Date('2000-01-01'); // 'ALL'
+        dataCorte = new Date('2000-01-01');
     }
-    
     dataCorte.setHours(0, 0, 0, 0);
 
-    // 2. Filtra dados brutos
+    // 2. Filtra dados
     let dadosOrdenados = [...patrimonio]
         .filter(p => {
              const parts = p.date.split('-'); 
@@ -2751,66 +2761,41 @@ function renderizarGraficoPatrimonio(forceRender = false) {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- AGRUPAMENTO MENSAL (Apenas para 6M, 1Y, 5Y) ---
     if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
-        dadosOrdenados.forEach(p => {
-            const chaveMes = p.date.substring(0, 7); 
-            grupos[chaveMes] = p; 
-        });
-        dadosOrdenados = Object.values(grupos);
-        dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
-    }
-
-    // ALTERAÇÃO 2: Reset forçado se o canvas mudou
-    if (patrimonioChartInstance && patrimonioChartInstance.canvas !== canvas) {
-        patrimonioChartInstance.destroy();
-        patrimonioChartInstance = null;
+        dadosOrdenados.forEach(p => { grupos[p.date.substring(0, 7)] = p; });
+        dadosOrdenados = Object.values(grupos).sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
     if (dadosOrdenados.length === 0) {
-        if (patrimonioChartInstance) {
-            patrimonioChartInstance.destroy();
-            patrimonioChartInstance = null;
+        if (window.patrimonioChartInstance) {
+            window.patrimonioChartInstance.destroy();
+            window.patrimonioChartInstance = null;
         }
         return;
     }
 
-    // 3. Prepara Arrays (Labels e Dados)
+    // 3. Prepara Arrays
     const labels = [];
     const dataValor = [];
-    
-    // Cálculo Otimizado do Investido
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;
     const dataCusto = [];
 
     dadosOrdenados.forEach(p => {
-        // Parse da data
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
-        
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const ano = d.getFullYear().toString().slice(-2); // Pega '23', '24', '25'
+        const ano = d.getFullYear().toString().slice(-2);
 
-        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA ---
-        if (currentPatrimonioRange === '1M') {
-             // 1M: "15 FEV" (Ano implícito pelo curto prazo)
-             labels.push([dia, mes]); 
-        } else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) {
-             // Períodos Longos (Mensal): "FEV 25"
-             labels.push([mes, ano]); 
-        } else {
-             // TUDO: "15 FEV 25" (Precisa do ano para diferenciar)
-             labels.push([dia, mes, ano]); 
-        }
+        if (currentPatrimonioRange === '1M') labels.push([dia, mes]); 
+        else if (['6M', '1Y', '5Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]); 
+        else labels.push([dia, mes, ano]); 
 
-        // Valor Patrimônio
         dataValor.push(p.value);
 
-        // Avança o custo acumulado
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
@@ -2819,29 +2804,29 @@ function renderizarGraficoPatrimonio(forceRender = false) {
                 if (tx.type === 'buy') custoAcumulado += (tx.quantity * tx.price);
                 if (tx.type === 'sell') custoAcumulado -= (tx.quantity * tx.price);
                 txIndex++;
-            } else {
-                break;
-            }
+            } else { break; }
         }
         dataCusto.push(custoAcumulado);
     });
 
-    // 4. Configuração do Gráfico
+    // 4. Criação do Gráfico
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
 
-    // Se for renderização forçada (modal abrindo), queremos animação
-    const animationConfig = (patrimonioChartInstance && !forceRender) ? false : { duration: 1000, easing: 'easeOutQuart' };
+    // Se for renderização forçada, queremos ver a animação acontecer
+    const animationConfig = (window.patrimonioChartInstance && !forceRender) ? false : { duration: 1000, easing: 'easeOutQuart' };
 
-    if (patrimonioChartInstance) {
-        patrimonioChartInstance.data.labels = labels;
-        patrimonioChartInstance.data.datasets[0].data = dataValor;
-        patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        patrimonioChartInstance.options.animation = animationConfig; // Atualiza config de animação
-        patrimonioChartInstance.update(); 
+    // Se chegou até aqui e o gráfico ainda existe (e é o mesmo canvas), atualizamos.
+    // Se foi destruído lá em cima (forceRender), entra no ELSE para criar novo.
+    if (window.patrimonioChartInstance) {
+        window.patrimonioChartInstance.data.labels = labels;
+        window.patrimonioChartInstance.data.datasets[0].data = dataValor;
+        window.patrimonioChartInstance.data.datasets[1].data = dataCusto;
+        window.patrimonioChartInstance.options.animation = animationConfig;
+        window.patrimonioChartInstance.update(); 
     } else {
-        patrimonioChartInstance = new Chart(ctx, {
+        window.patrimonioChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: labels,
@@ -2906,30 +2891,12 @@ function renderizarGraficoPatrimonio(forceRender = false) {
                 },
                 scales: {
                     y: { 
-                        display: true,
-                        position: 'right',
-                        grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
-                        ticks: {
-                            color: colorText,
-                            font: { size: 10, family: 'monospace' },
-                            maxTicksLimit: 6,
-                            callback: function(value) {
-                                if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
-                                return value;
-                            }
+                        display: true, position: 'right', grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
+                        ticks: { color: colorText, font: { size: 10, family: 'monospace' }, maxTicksLimit: 6,
+                            callback: function(value) { if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k'; return value; }
                         }
                     },
-                    x: {
-                        grid: { display: false },
-                        ticks: { 
-                            display: true,
-                            maxRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 6, 
-                            color: colorText,
-                            font: { size: 10, weight: 'bold' }
-                        } 
-                    }
+                    x: { grid: { display: false }, ticks: { display: true, maxRotation: 0, autoSkip: true, maxTicksLimit: 6, color: colorText, font: { size: 10, weight: 'bold' } } }
                 }
             }
         });
@@ -6517,13 +6484,14 @@ window.abrirModalPerformance = function() {
     perfContent.style.transform = ''; 
     document.body.style.overflow = 'hidden'; 
     
-    // Renderiza Gráfico com delay para garantir tamanho correto
+    // FORÇA O GRÁFICO A APARECER
+    // Espera 300ms (tempo da animação visual)
     setTimeout(() => {
-        // O parâmetro 'true' aqui é crucial: força o redesenho ignorando o cache
         if (typeof renderizarGraficoPatrimonio === 'function') {
+            // Passa TRUE para forçar a criação de um novo gráfico do zero
             renderizarGraficoPatrimonio(true); 
         }
-    }, 350); 
+    }, 300); 
 };
 
     window.fecharModalPerformance = function() {
@@ -6542,47 +6510,60 @@ window.abrirModalPerformance = function() {
         });
     }
 
-    // Gesto Swipe Down para fechar
-    if(perfContent) {
-        perfContent.addEventListener('touchstart', (e) => {
-            // Só ativa o drag se o scroll interno estiver no topo
-            if (perfScroll.scrollTop <= 0) {
-                perfTouchStartY = e.touches[0].clientY;
-                isDraggingPerf = true;
-                perfContent.style.transition = 'none'; // Remove transição para arrastar suave
-            }
-        }, { passive: true });
+// --- LÓGICA DE GESTOS DO MODAL PERFORMANCE (CORRIGIDA) ---
+const perfContentScroll = document.getElementById('performance-conteudo-scroll');
 
-        perfContent.addEventListener('touchmove', (e) => {
-            if (!isDraggingPerf) return;
-            perfTouchMoveY = e.touches[0].clientY;
-            const diff = perfTouchMoveY - perfTouchStartY;
-            
-            // Só move se for para baixo (positivo)
-            if (diff > 0) {
-                e.preventDefault(); // Evita scroll da página
-                perfContent.style.transform = `translateY(${diff}px)`;
-            }
-        }, { passive: false });
-
-        perfContent.addEventListener('touchend', (e) => {
-            if (!isDraggingPerf) return;
+if(perfContent && perfContentScroll) {
+    perfContent.addEventListener('touchstart', (e) => {
+        // Só arrasta se o scroll interno estiver no topo (scrollTop <= 0)
+        if (perfContentScroll.scrollTop <= 0) {
+            perfTouchStartY = e.touches[0].clientY;
+            isDraggingPerf = true;
+        } else {
             isDraggingPerf = false;
-            const diff = perfTouchMoveY - perfTouchStartY;
-            
-            // Restaura transição CSS
-            perfContent.style.transition = 'transform 0.4s ease-in-out';
-            
-            // Se arrastou mais de 120px, fecha. Senão, volta.
-            if (diff > 120) {
-                window.fecharModalPerformance();
-            } else {
-                perfContent.style.transform = ''; // Volta ao topo (0px)
+        }
+    }, { passive: true });
+
+    perfContent.addEventListener('touchmove', (e) => {
+        if (!isDraggingPerf) return;
+        
+        const currentY = e.touches[0].clientY;
+        const diff = currentY - perfTouchStartY;
+        
+        // Se estiver puxando para baixo (diff > 0)
+        if (diff > 0) {
+            // CORREÇÃO DO ERRO: Verifica se o evento pode ser cancelado
+            if (e.cancelable) {
+                e.preventDefault(); 
             }
-            perfTouchStartY = 0;
-            perfTouchMoveY = 0;
-        });
-    }
+            
+            perfContent.style.transition = 'none'; 
+            perfContent.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false }); // IMPORTANTE: passive false permite preventDefault
+
+    perfContent.addEventListener('touchend', (e) => {
+        if (!isDraggingPerf) return;
+        isDraggingPerf = false;
+        
+        // Verifica o quanto arrastou
+        const style = window.getComputedStyle(perfContent);
+        const matrix = new WebKitCSSMatrix(style.transform);
+        const currentTranslateY = matrix.m42; 
+
+        perfContent.style.transition = 'transform 0.4s ease-in-out';
+        
+        // Se arrastou mais de 100px, fecha. Senão, volta.
+        if (currentTranslateY > 100) {
+            window.fecharModalPerformance();
+        } else {
+            perfContent.style.transform = ''; 
+        }
+        
+        perfTouchStartY = 0;
+        perfTouchMoveY = 0;
+    });
+}
 	
     await init();
 });

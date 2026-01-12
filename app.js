@@ -6754,22 +6754,71 @@ function renderizarGraficoIpca(dados) {
     
     if (!dados || !dados.historico) return;
 
-    // --- PARTE 1: RENDERIZAR A LISTA (SEM BORDAS) ---
+    // --- NOVO: PREPARAÇÃO DOS DADOS DE PATRIMÔNIO ---
+    // Cria um mapa 'YYYY-MM' -> Valor da Carteira (Último registro do mês)
+    const mapPatrimonio = {};
+    // Verifica se a variável global 'patrimonio' existe (usada no gráfico de evolução)
+    if (typeof patrimonio !== 'undefined' && Array.isArray(patrimonio)) {
+        patrimonio.forEach(p => {
+            if (p.date && p.value) {
+                // p.date é YYYY-MM-DD, pegamos YYYY-MM
+                const key = p.date.substring(0, 7); 
+                // Sobrescreve para garantir que pegamos o último valor do mês
+                mapPatrimonio[key] = p.value;
+            }
+        });
+    }
+    
+    // Helper para converter "Jan/2025" ou "01/2025" para "2025-01"
+    const getYearMonthKey = (mesStr) => {
+        if (!mesStr) return null;
+        const parts = mesStr.includes('/') ? mesStr.split('/') : [mesStr];
+        if (parts.length < 2) return null; // Precisa do ano
+        
+        let m = parts[0].toLowerCase().trim();
+        let y = parts[1].trim();
+        
+        // Mapa de meses (aceita PT-BR e números)
+        const monthMap = {
+            'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06',
+            'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
+            'janeiro': '01', 'fevereiro': '02', 'março': '03', 'abril': '04', 'maio': '05', 'junho': '06',
+            'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
+        };
+        
+        // Retorna formato YYYY-MM
+        if (!isNaN(m)) return `${y}-${m.padStart(2, '0')}`;
+        if (monthMap[m]) return `${y}-${monthMap[m]}`;
+        return null;
+    };
+
+    // --- PARTE 1: RENDERIZAR A LISTA ---
     if(listaContainer) {
         listaContainer.innerHTML = '';
         
-        // Clona e inverte para mostrar do mais recente (topo) para o mais antigo
         [...dados.historico].reverse().forEach(item => {
             const valor = item.valor;
+            const ymKey = getYearMonthKey(item.mes);
             
-            // Definição de Cores
+            // --- CÁLCULO DA EROSÃO ---
+            let impactoReais = 0;
+            let temDadosCarteira = false;
+            
+            if (ymKey && mapPatrimonio[ymKey]) {
+                const saldoMes = mapPatrimonio[ymKey];
+                // Erosão = Saldo * (Inflação / 100)
+                impactoReais = saldoMes * (valor / 100);
+                temDadosCarteira = true;
+            }
+
+            // Cores do Badge de %
             let corTexto = 'text-white';
-            let barraCor = 'bg-orange-500'; // Cor padrão
+            let barraCor = 'bg-orange-500';
             
-            if (valor >= 0.5) {
+            if (valor >= 0.5) { // Inflação Alta
                 corTexto = 'text-red-400';
                 barraCor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
-            } else if (valor < 0) {
+            } else if (valor < 0) { // Deflação
                 corTexto = 'text-green-400';
                 barraCor = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
             } else {
@@ -6777,10 +6826,34 @@ function renderizarGraficoIpca(dados) {
                 barraCor = 'bg-orange-500';
             }
             
+            // Formatação Visual da Erosão
+            let erosaoHTML = '';
+            if (temDadosCarteira) {
+                // Se impacto positivo (inflação), é ruim para o bolso -> Vermelho (-)
+                // Se impacto negativo (deflação), é bom -> Verde (+)
+                const isPerda = impactoReais > 0; 
+                const sinal = isPerda ? '-' : '+';
+                const corErosao = isPerda ? 'text-red-400' : 'text-green-400';
+                const valorErosaoFmt = Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                
+                erosaoHTML = `
+                    <div class="flex items-center gap-2 justify-end mt-0.5">
+                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Erosão</span>
+                        <span class="text-[11px] font-bold ${corErosao}">${sinal}${valorErosaoFmt}</span>
+                    </div>
+                `;
+            } else {
+                erosaoHTML = `
+                    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-40">
+                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Erosão</span>
+                        <span class="text-[11px] text-gray-500 font-bold">--</span>
+                    </div>
+                `;
+            }
+
             // Tratamento do nome do mês
             let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
-            
-            // CORREÇÃO AQUI: Removido 'border' e 'border-[#2C2C2E]', alterado para 'rounded-2xl'
+
             const html = `
             <div class="flex items-center justify-between p-3 bg-[#1A1A1C] rounded-2xl mb-2">
                 <div class="flex items-center gap-3">
@@ -6792,15 +6865,13 @@ function renderizarGraficoIpca(dados) {
                     </div>
                 </div>
                 
-                <div class="flex flex-col items-end gap-0.5">
+                <div class="flex flex-col items-end">
                     <div class="flex items-center gap-2">
-                        <span class="text-[10px] text-gray-500 font-medium uppercase">Mensal</span>
+                        <span class="text-[10px] text-gray-500 font-medium uppercase">IPCA</span>
                         <span class="text-sm font-bold ${corTexto}">${valor.toFixed(2)}%</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-[10px] text-gray-600 font-medium uppercase">Acum. 12m</span>
-                        <span class="text-[11px] text-gray-400 font-bold">${item.acumulado_12m || '--'}%</span>
-                    </div>
+                    
+                    ${erosaoHTML}
                 </div>
             </div>`;
             
@@ -6808,17 +6879,13 @@ function renderizarGraficoIpca(dados) {
         });
     }
 
-    // --- PARTE 2: RENDERIZAR O GRÁFICO ---
+    // --- PARTE 2: GRÁFICO (Mantém igual) ---
     if (!canvas) return;
-
-    if (ipcaChartInstance) {
-        ipcaChartInstance.destroy();
-    }
+    if (ipcaChartInstance) ipcaChartInstance.destroy();
 
     const ctx = canvas.getContext('2d');
     const labels = dados.historico.map(d => d.mes.split('/')[0].substring(0,3)); 
     const values = dados.historico.map(d => d.valor);
-    
     const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316');
 
     ipcaChartInstance = new Chart(ctx, {

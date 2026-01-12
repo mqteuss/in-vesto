@@ -561,6 +561,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastNewsSignature = ''; 
     let lastProventosCalcSignature = ''; 
     let cachedSaldoCaixa = 0;
+	const btnOpenPatrimonio = document.getElementById('btn-open-patrimonio');
+const patrimonioPageModal = document.getElementById('patrimonio-page-modal');
+const patrimonioPageContent = document.getElementById('tab-patrimonio-content');
+const patrimonioVoltarBtn = document.getElementById('patrimonio-voltar-btn');
+const modalPatrimonioValor = document.getElementById('modal-patrimonio-valor');
+const modalCustoValor = document.getElementById('modal-custo-valor');
+
+// Variáveis de controle de arrastar (Swipe Down)
+let isDraggingPatrimonio = false;
+let touchStartPatrimonioY = 0;
+let touchMovePatrimonioY = 0;
     // -------------------------------------------
     
     const vestoDB = {
@@ -2688,9 +2699,38 @@ function renderizarGraficoHistorico() {
         }
     }
     
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+function openPatrimonioModal() {
+    patrimonioPageModal.classList.add('visible');
+    patrimonioPageContent.style.transform = ''; // Reseta transformações de drag anteriores
+    patrimonioPageContent.classList.remove('closing');
+    document.body.style.overflow = 'hidden'; // Bloqueia scroll do fundo
+    
+    // Atualiza valores extras do modal se existirem
+    if(modalPatrimonioValor && totalCarteiraValor) {
+        modalPatrimonioValor.textContent = totalCarteiraValor.textContent;
+        // Copia o efeito blur se estiver em modo privacidade
+        modalPatrimonioValor.className = totalCarteiraValor.className.replace('text-2xl', 'text-lg'); 
+    }
+    if(modalCustoValor && totalCarteiraCusto) {
+        modalCustoValor.textContent = totalCarteiraCusto.textContent;
+    }
 
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
+    // Força re-renderização/resize do gráfico agora que o container mudou de tamanho/visibilidade
+    setTimeout(() => {
+        if(patrimonioChartInstance) {
+            patrimonioChartInstance.resize();
+            patrimonioChartInstance.update();
+        } else {
+            renderizarGraficoPatrimonio();
+        }
+    }, 150);
+}
+
+function closePatrimonioModal() {
+    patrimonioPageContent.classList.add('closing');
+    patrimonioPageModal.classList.remove('visible');
+    document.body.style.overflow = '';
+}
 
 function renderizarGraficoPatrimonio() {
     const canvas = document.getElementById('patrimonio-chart');
@@ -6474,6 +6514,69 @@ async function atualizarWidgetIpca() {
 }
 
 atualizarWidgetIpca();
+
+// --- LISTENERS DO MODAL DE PATRIMÔNIO (Coloque antes de "await init();") ---
+
+    if (btnOpenPatrimonio) {
+        btnOpenPatrimonio.addEventListener('click', openPatrimonioModal);
+    }
+
+    if (patrimonioVoltarBtn) {
+        patrimonioVoltarBtn.addEventListener('click', closePatrimonioModal);
+    }
+
+    // Fechar ao clicar no fundo escuro
+    if (patrimonioPageModal) {
+        patrimonioPageModal.addEventListener('click', (e) => {
+            if (e.target === patrimonioPageModal) closePatrimonioModal();
+        });
+    }
+
+    // --- LÓGICA DE SWIPE DOWN (ARRASTAR PARA FECHAR) ---
+    if (patrimonioPageContent) {
+        const scrollContainer = patrimonioPageContent.querySelector('.overflow-y-auto'); 
+
+        patrimonioPageContent.addEventListener('touchstart', (e) => {
+            // Só permite arrastar se o scroll interno estiver no topo
+            if (scrollContainer && scrollContainer.scrollTop === 0) {
+                touchStartPatrimonioY = e.touches[0].clientY;
+                isDraggingPatrimonio = true;
+                patrimonioPageContent.style.transition = 'none'; 
+            }
+        }, { passive: true });
+
+        patrimonioPageContent.addEventListener('touchmove', (e) => {
+            if (!isDraggingPatrimonio) return;
+            touchMovePatrimonioY = e.touches[0].clientY;
+            const diff = touchMovePatrimonioY - touchStartPatrimonioY;
+            
+            // Só move se for para baixo (positivo)
+            if (diff > 0) {
+                e.preventDefault(); 
+                patrimonioPageContent.style.transform = `translateY(${diff}px)`;
+            }
+        }, { passive: false });
+
+        patrimonioPageContent.addEventListener('touchend', (e) => {
+            if (!isDraggingPatrimonio) return;
+            isDraggingPatrimonio = false;
+            const diff = touchMovePatrimonioY - touchStartPatrimonioY;
+            
+            patrimonioPageContent.style.transition = 'transform 0.4s ease-in-out';
+            
+            // Se arrastou mais de 100px, fecha. Senão, volta ao topo.
+            if (diff > 100) {
+                closePatrimonioModal();
+            } else {
+                patrimonioPageContent.style.transform = '';
+            }
+            
+            touchStartPatrimonioY = 0;
+            touchMovePatrimonioY = 0;
+        });
+    }
+
+    // ================= FIM DOS LISTENERS NOVOS =================
 	
     await init();
 });

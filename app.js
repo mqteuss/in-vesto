@@ -2688,11 +2688,8 @@ function renderizarGraficoHistorico() {
         }
     }
     
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
-
-// --- EM app.js: Substitua a função renderizarGraficoPatrimonio ---
-
-function renderizarGraficoPatrimonio() {
+// Substitua a função inteira no seu app.js
+function renderizarGraficoPatrimonio(forceRender = false) {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
     
@@ -2704,8 +2701,12 @@ function renderizarGraficoPatrimonio() {
     
     const currentSignature = `${currentPatrimonioRange}-${transacoes.length}-${lastTxId}-${patrimonio.length}-${lastPatId}-${lastPatVal}`;
 
-    if (currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
-        return; 
+    // ALTERAÇÃO 1: Adicionado !forceRender na condição
+    if (!forceRender && currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
+        // Verificação extra: Se o canvas do gráfico atual não for o mesmo do DOM (acontece ao mudar de página/modal)
+        if (patrimonioChartInstance.canvas === canvas) {
+             return; 
+        }
     }
 
     const ctx = canvas.getContext('2d');
@@ -2761,6 +2762,12 @@ function renderizarGraficoPatrimonio() {
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
+    // ALTERAÇÃO 2: Reset forçado se o canvas mudou
+    if (patrimonioChartInstance && patrimonioChartInstance.canvas !== canvas) {
+        patrimonioChartInstance.destroy();
+        patrimonioChartInstance = null;
+    }
+
     if (dadosOrdenados.length === 0) {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.destroy();
@@ -2788,7 +2795,7 @@ function renderizarGraficoPatrimonio() {
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const ano = d.getFullYear().toString().slice(-2); // Pega '23', '24', '25'
 
-        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA (CORRIGIDA) ---
+        // --- LÓGICA DE FORMATAÇÃO DA LEGENDA ---
         if (currentPatrimonioRange === '1M') {
              // 1M: "15 FEV" (Ano implícito pelo curto prazo)
              labels.push([dia, mes]); 
@@ -2824,13 +2831,15 @@ function renderizarGraficoPatrimonio() {
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
 
-    const animationConfig = patrimonioChartInstance ? false : { duration: 1000, easing: 'easeOutQuart' };
+    // Se for renderização forçada (modal abrindo), queremos animação
+    const animationConfig = (patrimonioChartInstance && !forceRender) ? false : { duration: 1000, easing: 'easeOutQuart' };
 
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
         patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        patrimonioChartInstance.update('none'); 
+        patrimonioChartInstance.options.animation = animationConfig; // Atualiza config de animação
+        patrimonioChartInstance.update(); 
     } else {
         patrimonioChartInstance = new Chart(ctx, {
             type: 'line',
@@ -2887,7 +2896,6 @@ function renderizarGraficoPatrimonio() {
                         padding: 10,
                         displayColors: true,
                         callbacks: {
-                            // Junta as linhas [Dia, Mês, Ano] em uma linha só no Tooltip: "15 FEV 25"
                             title: function(context) {
                                 const label = context[0].label;
                                 return Array.isArray(label) ? label.join(' ') : label;
@@ -6493,7 +6501,7 @@ window.abrirModalPerformance = function() {
     
     if(!perfModal || !perfContent) return;
     
-    // Atualiza os textos de resumo
+    // Atualiza Textos
     const totalInvestido = document.getElementById('total-carteira-custo')?.textContent || '---';
     const totalPatrimonio = document.getElementById('total-carteira-valor')?.textContent || '---';
     
@@ -6509,23 +6517,11 @@ window.abrirModalPerformance = function() {
     perfContent.style.transform = ''; 
     document.body.style.overflow = 'hidden'; 
     
-    // --- CORREÇÃO DO GRÁFICO ---
-    // Aguarda 350ms (tempo da animação CSS) para garantir que a div tem tamanho real
+    // Renderiza Gráfico com delay para garantir tamanho correto
     setTimeout(() => {
-        const ctxCanvas = document.getElementById('patrimonio-chart');
-        
-        if (ctxCanvas) {
-            // 1. Se já existir uma instância antiga do gráfico, destrua-a para evitar conflitos
-            if (window.patrimonioChartInstance) {
-                window.patrimonioChartInstance.destroy();
-                window.patrimonioChartInstance = null;
-            }
-
-            // 2. Chama a sua função original que cria o gráfico
-            // Certifique-se que sua função 'renderizarGraficoPatrimonio' existe
-            if (typeof renderizarGraficoPatrimonio === 'function') {
-                renderizarGraficoPatrimonio();
-            }
+        // O parâmetro 'true' aqui é crucial: força o redesenho ignorando o cache
+        if (typeof renderizarGraficoPatrimonio === 'function') {
+            renderizarGraficoPatrimonio(true); 
         }
     }, 350); 
 };

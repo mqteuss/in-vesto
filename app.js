@@ -2454,19 +2454,16 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 }
 
 
-function renderizarHistoricoProventos(dados, periodo = '1Y') {
-    // 1. ID CORRETO DO CANVAS (Aba Proventos)
-    const canvas = document.getElementById('historico-proventos-chart');
+// --- FUNÇÃO DO GRÁFICO DE PERFORMANCE (DASHBOARD) ---
+function renderizarGraficoHistorico(dados, periodo = '1Y') {
+    const canvas = document.getElementById('historico-chart');
     if (!canvas) return;
 
-    // Verificação de segurança dos dados de entrada
-    if (!dados || !dados.labels || !dados.values) return;
-
-    // --- 2. PREPARAÇÃO DOS DADOS DO IPCA ---
+    // --- 1. PREPARAÇÃO DOS DADOS DO IPCA ---
     const mapIpca = {};
     let dadosIpcaRef = (typeof ipcaCacheData !== 'undefined') ? ipcaCacheData : null;
     
-    // Tenta recuperar do localStorage se a variável global estiver vazia
+    // Tenta fallback do localStorage
     if (!dadosIpcaRef) {
         try {
             dadosIpcaRef = JSON.parse(localStorage.getItem('vesto_ipca_data') || 'null');
@@ -2476,7 +2473,7 @@ function renderizarHistoricoProventos(dados, periodo = '1Y') {
     if (dadosIpcaRef && dadosIpcaRef.historico) {
         dadosIpcaRef.historico.forEach(item => {
             mapIpca[item.mes] = item.valor;
-            // Fallback para formatos diferentes (Jan vs 01)
+            // Fallback para formatos (Jan/2025 -> 01/2025)
             const parts = item.mes.split('/');
             if (parts.length === 2) {
                 const mapMeses = {'Jan':'01', 'Fev':'02', 'Mar':'03', 'Abr':'04', 'Mai':'05', 'Jun':'06', 'Jul':'07', 'Ago':'08', 'Set':'09', 'Out':'10', 'Nov':'11', 'Dez':'12'};
@@ -2487,10 +2484,13 @@ function renderizarHistoricoProventos(dados, periodo = '1Y') {
         });
     }
 
-    // --- 3. FILTRAGEM DE PERÍODO ---
+    // --- 2. FILTRAGEM DE PERÍODO ---
     let mesesParaMostrar = 12;
     if (periodo === '6M') mesesParaMostrar = 6;
     if (periodo === 'ALL') mesesParaMostrar = 999;
+
+    // Proteção se dados vierem nulos
+    if (!dados || !dados.labels || !dados.values) return;
 
     const totalItems = dados.labels.length;
     const startIndex = Math.max(0, totalItems - mesesParaMostrar);
@@ -2498,12 +2498,12 @@ function renderizarHistoricoProventos(dados, periodo = '1Y') {
     const labelsCorte = dados.labels.slice(startIndex);
     const valuesCorte = dados.values.slice(startIndex);
 
-    // --- 4. CÁLCULO DA EROSÃO ---
+    // --- 3. CÁLCULO DA EROSÃO ---
     const dataErosao = valuesCorte.map((valorDividendo, index) => {
         const mesLabel = labelsCorte[index]; 
         let ipcaMes = 0;
         
-        // Tenta encontrar o IPCA do mês
+        // Busca o IPCA do mês correspondente
         if (mapIpca[mesLabel] !== undefined) {
             ipcaMes = mapIpca[mesLabel];
         } else {
@@ -2520,21 +2520,22 @@ function renderizarHistoricoProventos(dados, periodo = '1Y') {
         return valorDividendo * (ipcaMes / 100);
     });
 
-    // --- 5. RENDERIZAÇÃO DO GRÁFICO ---
-    // Usa uma variável global específica para este gráfico para evitar conflitos
-    if (window.proventosChartInstance) {
-        window.proventosChartInstance.destroy();
+    // --- 4. RENDERIZAÇÃO DO GRÁFICO (DASHBOARD) ---
+    // Usa 'historicoChartInstance' (variável global do dashboard)
+    if (typeof historicoChartInstance !== 'undefined' && historicoChartInstance) {
+        historicoChartInstance.destroy();
     }
 
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     
+    // Cores
     const colorBar = '#c084fc'; 
-    const colorErosao = '#ef4444'; 
+    const colorErosao = '#ef4444'; // Vermelho para a erosão
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
     const colorText = isLight ? '#666' : '#888';
 
-    window.proventosChartInstance = new Chart(ctx, {
+    historicoChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labelsCorte,
@@ -2552,7 +2553,7 @@ function renderizarHistoricoProventos(dados, periodo = '1Y') {
                 {
                     label: 'Erosão (IPCA)',
                     data: dataErosao,
-                    type: 'line',
+                    type: 'line', // Linha sobreposta
                     borderColor: colorErosao,
                     backgroundColor: colorErosao,
                     borderWidth: 2,
@@ -2590,8 +2591,6 @@ function renderizarHistoricoProventos(dados, periodo = '1Y') {
                             return label;
                         },
                         afterBody: function(tooltipItems) {
-                            // Cálculo do Ganho Real no Tooltip
-                            // Precisamos garantir que estamos acessando o index correto
                             if (tooltipItems.length > 0) {
                                 const index = tooltipItems[0].dataIndex;
                                 const bruto = valuesCorte[index];

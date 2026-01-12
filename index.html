@@ -243,52 +243,47 @@
 
 <div id="dashboard-widgets" class="grid grid-cols-2 gap-3 mb-8">
     
-    <div id="btn-open-patrimonio" class="col-span-2 card-bg relative overflow-hidden rounded-[1.8rem] p-5 h-36 flex flex-row items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#1A1A1C] group">
-        <div class="flex flex-col justify-between h-full z-10">
-            <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-2 group-hover:bg-white/20 transition-colors">
+    <div id="btn-open-patrimonio" class="col-span-2 card-bg rounded-[1.8rem] p-5 h-36 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#252528]">
+        <div class="flex flex-col justify-between h-full">
+            <div class="w-10 h-10 rounded-full bg-[#2C2C2E] flex items-center justify-center mb-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
             </div>
             <div>
                 <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Rentabilidade</span>
                 <div class="flex items-center gap-2">
                     <span class="text-xl font-bold text-white">Ver Performance</span>
-                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </div>
             </div>
         </div>
         
-        <div class="absolute right-0 bottom-0 w-1/2 h-full opacity-20 pointer-events-none">
-             <svg viewBox="0 0 100 50" class="h-full w-full text-white fill-current" preserveAspectRatio="none">
-                <path d="M0 50 L0 30 C 20 20, 40 40, 60 20 S 100 0, 100 0 L 100 50 Z" />
-            </svg>
+        <div class="text-gray-600">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </div>
     </div>
 
-    <div id="btn-open-alocacao" class="card-bg relative overflow-hidden rounded-[1.8rem] p-4 h-40 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#1A1A1C]">
-        <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+    <div id="btn-open-alocacao" class="card-bg rounded-[1.8rem] p-4 h-40 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#252528]">
+        <div class="w-10 h-10 rounded-full bg-[#2C2C2E] flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
         </div>
         <div>
             <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Distribuição</span>
-            <span class="text-lg font-bold text-white">Minha Carteira</span>
+            <span class="text-lg font-bold text-white">Carteira</span>
         </div>
-        <div class="absolute -right-4 -top-4 w-20 h-20 bg-blue-500/20 blur-2xl rounded-full pointer-events-none"></div>
     </div>
 
-    <div id="btn-open-proventos" class="card-bg relative overflow-hidden rounded-[1.8rem] p-4 h-40 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#1A1A1C]">
-        <div class="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+    <div id="btn-open-proventos" class="card-bg rounded-[1.8rem] p-4 h-40 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#252528]">
+        <div class="w-10 h-10 rounded-full bg-[#2C2C2E] flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </div>
         <div>
             <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Recebimentos</span>
-            <span class="text-lg font-bold text-white">Meus Proventos</span>
+            <span class="text-lg font-bold text-white">Proventos</span>
         </div>
-        <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-green-500/10 blur-2xl rounded-full pointer-events-none"></div>
     </div>
 
-    <div id="btn-open-ipca" class="col-span-2 card-bg relative overflow-hidden rounded-[1.5rem] p-4 h-16 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#1A1A1C]">
-        <div class="flex items-center gap-3 z-10">
-            <div class="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+    <div id="btn-open-ipca" class="col-span-2 card-bg rounded-[1.5rem] p-4 h-16 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#252528]">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-[#2C2C2E] flex items-center justify-center">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
             </div>
             <div class="flex flex-col">
@@ -297,7 +292,7 @@
             </div>
         </div>
         
-        <div class="flex items-baseline gap-1 z-10">
+        <div class="flex items-baseline gap-1">
             <span id="ipca-valor-12m" class="text-xl font-bold text-white">...</span>
             <span class="text-xs text-gray-500">%</span>
         </div>

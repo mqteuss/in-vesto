@@ -302,52 +302,74 @@ async function scrapeAsset(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 3: IPCA -> INVESTIDOR10 (NOVO)
+// PARTE 3: IPCA -> INVESTIDOR10 (NOVA LÓGICA COMPLETA)
 // ---------------------------------------------------------
 
-// --- FUNÇÃO CORRIGIDA PARA LER A TABELA ---
 async function scrapeIpca() {
     try {
         const url = 'https://investidor10.com.br/indices/ipca/';
         const { data } = await client.get(url);
         const $ = cheerio.load(data);
 
-        let dados = {
-            indice: 'IPCA',
-            valor_mes: '0,00%',
-            acumulado_12m: '0,00%',
-            acumulado_ano: '0,00%'
-        };
+        const historico = [];
+        let acumulado12m = '0,00';
+        let acumuladoAno = '0,00';
 
-        // Procura por todas as tabelas na página
-        $('table').each((i, table) => {
-            // Verifica se é a tabela correta olhando os cabeçalhos
-            const headers = $(table).find('thead tr th, tr th').text().toLowerCase();
-            
-            if (headers.includes('variação em %') && headers.includes('acumulado 12 meses')) {
-                // Achamos a tabela! Vamos pegar a primeira linha de dados (mais recente)
-                const primeiraLinha = $(table).find('tbody tr').first();
-                const colunas = primeiraLinha.find('td');
-
-                if (colunas.length >= 4) {
-                    // Coluna 1: Variação no Mês (0,33)
-                    dados.valor_mes = $(colunas[1]).text().trim() + '%';
-                    
-                    // Coluna 2: Acumulado no Ano (4,26)
-                    dados.acumulado_ano = $(colunas[2]).text().trim() + '%';
-                    
-                    // Coluna 3: Acumulado 12 Meses (4,26)
-                    dados.acumulado_12m = $(colunas[3]).text().trim() + '%';
-                }
-                return false; // Para o loop assim que achar
+        // 1. Localiza a tabela correta procurando pelo cabeçalho "Acumulado 12 meses"
+        // O HTML pode usar classes variadas, então buscamos pelo texto do header para garantir
+        let $table = null;
+        $('table').each((i, el) => {
+            const headers = $(el).text().toLowerCase();
+            if (headers.includes('acumulado 12 meses') || headers.includes('variação em %')) {
+                $table = $(el);
+                return false; // break loop
             }
         });
 
-        return dados;
+        if ($table) {
+            // 2. Itera sobre as linhas do corpo da tabela
+            // Estrutura das colunas: 0=Data, 1=Var%, 2=VarAno, 3=Acum12m
+            $table.find('tbody tr').each((i, el) => {
+                const cols = $(el).find('td');
+                if (cols.length >= 2) {
+                    const dataRef = $(cols[0]).text().trim(); // Ex: Jan/2025
+                    const valorStr = $(cols[1]).text().trim(); // Ex: 0,56
+                    const acAnoStr = $(cols[2]).text().trim(); // Ex: 0,56
+                    const ac12mStr = $(cols[3]).text().trim(); // Ex: 4,50
+
+                    // A primeira linha contém os dados mais recentes (Acumulados atuais)
+                    if (i === 0) {
+                         acumulado12m = ac12mStr.replace('.', ','); // Garante formato BR
+                         acumuladoAno = acAnoStr.replace('.', ',');
+                    }
+
+                    // Pega os últimos 13 meses (margem de segurança)
+                    if (dataRef && valorStr && i < 13) {
+                         historico.push({
+                             mes: dataRef,
+                             // Converte para float para o gráfico (0,56 -> 0.56)
+                             valor: parseFloat(valorStr.replace('.', '').replace(',', '.')),
+                             // Mantém string formatada para exibição
+                             acumulado_12m: ac12mStr.replace('.', ','),
+                             acumulado_ano: acAnoStr.replace('.', ',')
+                         });
+                    }
+                }
+            });
+        }
+
+        // Inverte array para ficar cronológico no gráfico (Jan -> Dez)
+        const historicoCronologico = historico.reverse();
+
+        return {
+            historico: historicoCronologico,
+            acumulado_12m: acumulado12m,
+            acumulado_ano: acumuladoAno
+        };
 
     } catch (error) {
-        console.error("Erro IPCA:", error.message);
-        return { acumulado_12m: '-', valor_mes: '-' };
+        console.error('Erro no Scraper IPCA:', error);
+        return { historico: [], acumulado_12m: '0,00', acumulado_ano: '0,00' };
     }
 }
 
@@ -372,7 +394,7 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // --- NOVO MODO: IPCA ---
+        // --- MODO IPCA (ATUALIZADO) ---
         if (mode === 'ipca') {
             const dados = await scrapeIpca();
             return res.status(200).json({ json: dados });
@@ -427,5 +449,4 @@ module.exports = async function handler(req, res) {
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
-
 };

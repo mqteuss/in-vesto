@@ -2865,7 +2865,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         if (window.patrimonioRetryTimer) clearTimeout(window.patrimonioRetryTimer);
     }
 
-    // --- 2. MAPA DE PREÇOS ---
+    // --- 2. MAPA DE PREÇOS ROBUSTO ---
     const mapPrecos = new Map();
     if (temPrecos) {
         precosAtuais.forEach(p => {
@@ -2877,7 +2877,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // --- 3. CÁLCULO DO "AO VIVO" E "INVESTIDO TOTAL" ---
+    // --- 3. CÁLCULO DOS TOTAIS (CARD AO VIVO E INVESTIDO) ---
     let totalAtualLive = 0;
     let custoTotalLive = 0;
 
@@ -2887,6 +2887,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
             const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
 
+            // Busca preço: Ao Vivo -> Cache -> Preço Médio
             let precoLive = mapPrecos.get(ticker);
             if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
             if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
@@ -2896,7 +2897,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // --- 4. ATUALIZA CARDS 1 e 3 (AO VIVO e INVESTIDO) ---
+    // --- 4. ATUALIZA CARDS SUPERIORES ---
     const elLive = document.getElementById('modal-patrimonio-live');
     if (elLive) {
         elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -2908,26 +2909,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // --- 5. ASSINATURA (CACHE VISUAL) ---
-    const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
-    const txCount = (typeof transacoes !== 'undefined') ? transacoes.length : 0;
-    const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
-
-    if (!isRetry && typeof lastPatrimonioCalcSignature !== 'undefined' && currentSignature === lastPatrimonioCalcSignature && patrimonioChartInstance) {
-        return;
-    }
-
-    // --- 6. PREPARAÇÃO DOS DADOS DO GRÁFICO (HISTÓRICO) ---
-    const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-    
-    // Cores
-    const colorLinePatrimonio = '#c084fc'; 
-    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
-    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
-    const colorText = isLight ? '#6b7280' : '#737373'; 
-
-    // Filtro de Datas
+    // --- 5. PREPARAÇÃO DO GRÁFICO (DADOS HISTÓRICOS) ---
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     let dataCorte;
@@ -2954,7 +2936,68 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Agrupamento para períodos longos (pega último dia do mês)
+    // --- 6. CÁLCULO DAS ESTATÍSTICAS (VARIAÇÃO, DRAWDOWN, VOLATILIDADE) ---
+    // 6.1 Variação do Período
+    let variacaoPercent = 0;
+    if (dadosOrdenados.length > 0) {
+        const valorInicial = dadosOrdenados[0].value;
+        const valorFinal = dadosOrdenados[dadosOrdenados.length - 1].value;
+        if (valorInicial > 0) {
+            variacaoPercent = ((valorFinal - valorInicial) / valorInicial) * 100;
+        }
+    }
+
+    // 6.2 Drawdown Máximo
+    let maxDrawdown = 0;
+    let pico = -Infinity;
+    dadosOrdenados.forEach(p => {
+        if (p.value > pico) pico = p.value;
+        const queda = (p.value - pico) / pico; 
+        if (queda < maxDrawdown) maxDrawdown = queda;
+    });
+    const drawdownDisplay = (maxDrawdown * 100).toFixed(2);
+
+    // 6.3 Volatilidade (Simplificada Anualizada)
+    let volatilidade = 0;
+    if (dadosOrdenados.length > 1) {
+        const retornos = [];
+        for (let i = 1; i < dadosOrdenados.length; i++) {
+            const ret = (dadosOrdenados[i].value - dadosOrdenados[i-1].value) / dadosOrdenados[i-1].value;
+            retornos.push(ret);
+        }
+        const mediaRetornos = retornos.reduce((a, b) => a + b, 0) / retornos.length;
+        const variancia = retornos.reduce((a, b) => a + Math.pow(b - mediaRetornos, 2), 0) / retornos.length;
+        volatilidade = (Math.sqrt(variancia) * Math.sqrt(252)) * 100;
+    }
+
+    // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS ---
+    const elVariacao = document.getElementById('stat-variacao');
+    const elDrawdown = document.getElementById('stat-drawdown');
+    const elVolatilidade = document.getElementById('stat-volatilidade');
+
+    if (elVariacao) {
+        const sinal = variacaoPercent >= 0 ? '+' : '';
+        elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
+        elVariacao.className = variacaoPercent >= 0 
+            ? "text-lg font-bold text-[#4ade80] z-10" 
+            : "text-lg font-bold text-red-400 z-10";
+    }
+    if (elDrawdown) {
+        elDrawdown.textContent = `${drawdownDisplay}%`;
+        elDrawdown.className = parseFloat(drawdownDisplay) < 0 
+            ? "text-lg font-bold text-red-400 z-10" 
+            : "text-lg font-bold text-gray-400 z-10";
+    }
+    if (elVolatilidade) {
+        let corVol = "text-white";
+        if (volatilidade < 10) corVol = "text-[#4ade80]";
+        else if (volatilidade < 20) corVol = "text-[#F59E0B]";
+        else corVol = "text-[#EF4444]";
+        elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
+        elVolatilidade.className = `text-lg font-bold ${corVol} z-10`;
+    }
+
+    // --- 8. AGRUPAMENTO MENSAL (PARA 6M E 1Y) ---
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -2965,29 +3008,28 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
+    // Se não houver dados, limpa e retorna
     if (dadosOrdenados.length === 0) {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.destroy();
             patrimonioChartInstance = null;
         }
-        // Atualiza card gráfico para zero se não houver dados
         const elChartVal = document.getElementById('modal-patrimonio-chart-val');
         if (elChartVal) elChartVal.textContent = "R$ 0,00";
-        lastPatrimonioCalcSignature = currentSignature;
         return;
     }
 
+    // --- 9. GERAÇÃO DE DADOS DO CHART (COM ARREDONDAMENTO) ---
     const labels = [];
     const dataValor = [];
     const dataCusto = [];
     
-    // Preparação para calcular custo acumulado
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;
 
     dadosOrdenados.forEach(p => {
-        // --- 6.1 GERAÇÃO DE LABELS ---
+        // Labels
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
         const dia = String(d.getDate()).padStart(2, '0');
@@ -2998,12 +3040,10 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         else if (['6M', '1Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]); 
         else labels.push([dia, mes, ano]); 
 
-        // --- 6.2 DADOS DO PATRIMÔNIO (ARREDONDADO) ---
-        // Forçamos 2 casas decimais aqui para evitar diferença entre Card e Tooltip
-        const valorArredondado = parseFloat(p.value.toFixed(2));
-        dataValor.push(valorArredondado);
+        // Valor Patrimônio (Arredondado)
+        dataValor.push(parseFloat(p.value.toFixed(2)));
 
-        // --- 6.3 CÁLCULO DO CUSTO HISTÓRICO (ARREDONDADO) ---
+        // Custo Histórico (Arredondado)
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
@@ -3012,7 +3052,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 let operacao = (tx.quantity * tx.price);
                 if (tx.type === 'buy') custoAcumulado += operacao;
                 if (tx.type === 'sell') custoAcumulado -= operacao;
-                // Arredonda o acumulado a cada passo
+                // FIX: Arredonda a cada passo
                 custoAcumulado = parseFloat(custoAcumulado.toFixed(2));
                 txIndex++;
             } else {
@@ -3022,25 +3062,28 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         dataCusto.push(custoAcumulado);
     });
 
-    // --- 7. ATUALIZA O CARD "GRÁFICO" (COM O DADO FINAL JÁ ARREDONDADO) ---
-    // Pegamos o último valor do array que acabamos de construir para o Chart.js
-    // Isso garante consistência de 100% entre o Card e a linha.
+    // --- 10. ATUALIZA CARD "GRÁFICO" (COM O VALOR FINAL PROCESSADO) ---
     const elChartVal = document.getElementById('modal-patrimonio-chart-val');
     if (elChartVal) {
         if (dataValor.length > 0) {
-            const ultimoValorDoGrafico = dataValor[dataValor.length - 1];
-            elChartVal.textContent = ultimoValorDoGrafico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const ultimoValorGrafico = dataValor[dataValor.length - 1];
+            elChartVal.textContent = ultimoValorGrafico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         } else {
             elChartVal.textContent = "R$ 0,00";
         }
     }
 
-    // --- 8. RENDERIZAÇÃO DO CHART ---
+    // --- 11. RENDERIZAÇÃO ---
+    const ctx = canvas.getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
+    const colorLinePatrimonio = '#c084fc'; 
+    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
+    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
+    const colorText = isLight ? '#6b7280' : '#737373'; 
+
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
-
-    const animationConfig = patrimonioChartInstance ? false : { duration: 1000, easing: 'easeOutQuart' };
 
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
@@ -3087,7 +3130,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: animationConfig,
                 layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
@@ -3107,7 +3149,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                                 const label = context[0].label;
                                 return Array.isArray(label) ? label.join(' ') : label;
                             },
-                            // Formatador idêntico ao do card
                             label: function(context) {
                                 return context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                             }
@@ -3145,6 +3186,10 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
+    // Assinatura para evitar loops desnecessários
+    const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
+    const txCount = (typeof transacoes !== 'undefined') ? transacoes.length : 0;
+    const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
     lastPatrimonioCalcSignature = currentSignature;
 }
 function renderizarTimelinePagamentos() {

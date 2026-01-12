@@ -6644,36 +6644,94 @@ function closeIpcaModal() {
     document.body.style.overflow = '';
 }
 
-async function buscarDadosIpca() {
+// --- FUNÇÃO DE BUSCA OTIMIZADA DO IPCA (COM CACHE DE 24H) ---
+async function buscarDadosIpca(force = false) {
+    const CACHE_KEY = 'vesto_ipca_data';
+    const CACHE_DURATION = 1000 * 60 * 60 * 24; // 24 Horas
+
+    // 1. Tenta pegar do Cache primeiro (se não for forçado)
+    if (!force) {
+        const cached = await getCache(CACHE_KEY);
+        if (cached) {
+            // Se achou no cache, usa imediatamente e não chama a API
+            atualizarInterfaceIpca(cached);
+            ipcaCacheData = cached; 
+            return;
+        }
+    }
+
+    // 2. Se não tem cache ou expirou, busca na API (Scraper)
     try {
+        // Mostra estado de carregamento no widget se estiver vazio
+        const elValor12m = document.getElementById('ipca-valor-12m');
+        if(elValor12m && elValor12m.textContent === '...') {
+             // Opcional: Feedback visual sutil
+        }
+
         const res = await fetch('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'ipca', payload: {} })
         });
+        
         const data = await res.json();
         
         if (data && data.json) {
-            ipcaCacheData = data.json; // Salva cache
+            // Salva no Cache por 24 horas
+            await setCache(CACHE_KEY, data.json, CACHE_DURATION);
             
-            // Atualiza Widget do Dashboard
-            const elValor12m = document.getElementById('ipca-valor-12m');
-            const elBadgeMes = document.getElementById('ipca-mes-badge');
-            
-            if(elValor12m) elValor12m.textContent = data.json.acumulado_12m || '--';
-            
-            // Pega o último mês disponível
-            if(data.json.historico && data.json.historico.length > 0) {
-                const ultimo = data.json.historico[data.json.historico.length - 1];
-                if(elBadgeMes) elBadgeMes.textContent = `Último: ${ultimo.valor}% (${ultimo.mes.split('/')[0]})`;
-            }
-
-            renderizarGraficoIpca(data.json);
+            // Atualiza Interface e Variável Global
+            ipcaCacheData = data.json;
+            atualizarInterfaceIpca(data.json);
         }
     } catch (e) {
         console.error("Erro IPCA", e);
-        document.getElementById('ipca-lista-container').innerHTML = '<p class="text-center text-red-500 text-xs">Erro ao carregar dados.</p>';
+        // Em caso de erro, tenta mostrar cache antigo se existir (fallback)
+        const oldCache = await getCache(CACHE_KEY);
+        if (oldCache) {
+            atualizarInterfaceIpca(oldCache);
+        } else {
+            const elBadge = document.getElementById('ipca-mes-badge');
+            if(elBadge) elBadge.textContent = 'Erro ao carregar';
+        }
     }
+}
+
+// --- FUNÇÃO AUXILIAR PARA ATUALIZAR O WIDGET E O MODAL ---
+function atualizarInterfaceIpca(dados) {
+    if (!dados) return;
+
+    // 1. Atualiza Widget do Dashboard
+    const elValor12m = document.getElementById('ipca-valor-12m');
+    const elBadgeMes = document.getElementById('ipca-mes-badge');
+    
+    if(elValor12m) {
+        // Animação simples de transição
+        elValor12m.style.opacity = '0';
+        setTimeout(() => {
+            elValor12m.textContent = dados.acumulado_12m || '--';
+            elValor12m.style.opacity = '1';
+        }, 150);
+    }
+    
+    // Pega o último mês disponível para o Badge
+    if(dados.historico && dados.historico.length > 0) {
+        const ultimo = dados.historico[dados.historico.length - 1]; // O array vem cronológico (Jan->Dez)
+        // Se vier invertido do scraper, ajustamos:
+        // No seu scraper atual: reverse() foi usado, então o último item é o mês mais recente.
+        
+        if(elBadgeMes) {
+            // Ex: "Último: 0,56% (Jan)"
+            let mesCurto = ultimo.mes.split('/')[0]; 
+            // Se vier nome completo "Janeiro", corta para "Jan"
+            if(mesCurto.length > 3) mesCurto = mesCurto.substring(0,3);
+            
+            elBadgeMes.textContent = `Último: ${ultimo.valor}% (${mesCurto})`;
+        }
+    }
+
+    // 2. Se o modal estiver aberto (ou para deixar pronto), renderiza o gráfico
+    renderizarGraficoIpca(dados);
 }
 
 function renderizarGraficoIpca(dados) {

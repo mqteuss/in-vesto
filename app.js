@@ -583,7 +583,17 @@ const proventosVoltarBtn = document.getElementById('proventos-voltar-btn');
 let isDraggingProventos = false;
 let touchStartProventosY = 0;
 let touchMoveProventosY = 0;
-    // -------------------------------------------
+
+	// --- REFERÊNCIAS DO MODAL DE ALOCAÇÃO ---
+const btnOpenAlocacao = document.getElementById('btn-open-alocacao');
+const alocacaoPageModal = document.getElementById('alocacao-page-modal');
+const alocacaoPageContent = document.getElementById('tab-alocacao-content');
+const alocacaoVoltarBtn = document.getElementById('alocacao-voltar-btn');
+
+// Controle de Swipe (Alocação)
+let isDraggingAlocacao = false;
+let touchStartAlocacaoY = 0;
+let touchMoveAlocacaoY = 0;
     
     const vestoDB = {
         db: null,
@@ -2790,6 +2800,36 @@ function closeProventosModal() {
     proventosPageContent.style.transform = '';
     proventosPageContent.classList.add('closing');
     proventosPageModal.classList.remove('visible');
+    document.body.style.overflow = '';
+}
+
+function openAlocacaoModal() {
+    if(!alocacaoPageModal) return;
+
+    alocacaoPageModal.classList.add('visible');
+    alocacaoPageContent.style.transform = ''; 
+    alocacaoPageContent.classList.remove('closing');
+    document.body.style.overflow = 'hidden';
+
+    // Redimensiona o gráfico de Rosca
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            if (alocacaoChartInstance) {
+                alocacaoChartInstance.resize();
+                alocacaoChartInstance.update('none');
+            } else {
+                renderizarGraficoAlocacao(); 
+            }
+        }, 50);
+    });
+}
+
+function closeAlocacaoModal() {
+    if(!alocacaoPageContent) return;
+    
+    alocacaoPageContent.style.transform = '';
+    alocacaoPageContent.classList.add('closing');
+    alocacaoPageModal.classList.remove('visible');
     document.body.style.overflow = '';
 }
 
@@ -6700,6 +6740,65 @@ if (proventosPageContent) {
         
         touchStartProventosY = 0;
         touchMoveProventosY = 0;
+    });
+}
+
+// --- LISTENERS DO MODAL DE ALOCAÇÃO ---
+
+if (btnOpenAlocacao) {
+    btnOpenAlocacao.addEventListener('click', openAlocacaoModal);
+}
+
+if (alocacaoVoltarBtn) {
+    alocacaoVoltarBtn.addEventListener('click', closeAlocacaoModal);
+}
+
+if (alocacaoPageModal) {
+    alocacaoPageModal.addEventListener('click', (e) => {
+        if (e.target === alocacaoPageModal) closeAlocacaoModal();
+    });
+}
+
+// Swipe Down Logic (Alocação)
+if (alocacaoPageContent) {
+    const scrollContainerAloc = alocacaoPageContent.querySelector('.overflow-y-auto');
+
+    alocacaoPageContent.addEventListener('touchstart', (e) => {
+        if (scrollContainerAloc && scrollContainerAloc.scrollTop === 0) {
+            touchStartAlocacaoY = e.touches[0].clientY;
+            touchMoveAlocacaoY = touchStartAlocacaoY;
+            isDraggingAlocacao = true;
+            alocacaoPageContent.style.transition = 'none'; 
+        }
+    }, { passive: true });
+
+    alocacaoPageContent.addEventListener('touchmove', (e) => {
+        if (!isDraggingAlocacao) return;
+        touchMoveAlocacaoY = e.touches[0].clientY;
+        const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
+        
+        if (diff > 0) {
+            if (e.cancelable) e.preventDefault(); 
+            alocacaoPageContent.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false });
+
+    alocacaoPageContent.addEventListener('touchend', (e) => {
+        if (!isDraggingAlocacao) return;
+        isDraggingAlocacao = false;
+        
+        const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
+        
+        alocacaoPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        
+        if (diff > 120) {
+            closeAlocacaoModal();
+        } else {
+            alocacaoPageContent.style.transform = '';
+        }
+        
+        touchStartAlocacaoY = 0;
+        touchMoveAlocacaoY = 0;
     });
 }
 	

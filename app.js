@@ -5214,26 +5214,40 @@ function renderizarTransacoesDetalhes(symbol) {
     });
 }
     
-// Ordem exata das telas (deve bater com a ordem das divs no HTML)
+// Ordem exata das telas
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
 
-function mudarAba(tabId) {
+    function mudarAba(tabId) {
         const index = tabOrder.indexOf(tabId);
         if (index === -1) return;
 
-        // --- MOVIMENTO DO SLIDER ---
+        // --- MOVIMENTO DO SLIDER (GPU via transform) ---
         const slider = document.getElementById('tabs-slider');
         if (slider) {
             slider.style.transform = `translateX(-${index * 100}%)`;
         }
 
-        // --- ATUALIZAÇÃO DE ESTADO DAS ABAS ---
+        // --- ATUALIZAÇÃO DE ESTADO DAS ABAS (COM ANIMAÇÃO DE GPU) ---
         tabContents.forEach(content => {
             if (content.id === tabId) {
                 content.classList.add('active');
+                
+                // --- INÍCIO DA MÁGICA GPU ---
+                // 1. Remove a classe para resetar a animação (caso já estivesse lá)
+                content.classList.remove('tab-content-anim');
+                
+                // 2. Força um "Reflow" (Obrigatório para reiniciar animações CSS)
+                void content.offsetWidth; 
+                
+                // 3. Adiciona a classe que tem 'will-change' e a animação suave
+                content.classList.add('tab-content-anim');
+                // --- FIM DA MÁGICA ---
+
                 content.scrollTop = content.scrollTop; 
             } else {
                 content.classList.remove('active');
+                // Limpa a classe dos inativos para garantir que a animação rode na próxima vez
+                content.classList.remove('tab-content-anim'); 
             }
         });
 
@@ -5245,17 +5259,10 @@ function mudarAba(tabId) {
         // --- LÓGICA DO BOTÃO ADICIONAR (COM ANIMAÇÃO) ---
         if (showAddModalBtn) {
             if (tabId === 'tab-carteira') {
-                // Pequeno delay para esperar o slider começar a mover
                 setTimeout(() => {
                     showAddModalBtn.classList.remove('hidden');
-                    
-                    // 1. Remove a classe de animação (reset)
                     showAddModalBtn.classList.remove('fab-animate');
-                    
-                    // 2. Força um 'Reflow' (reinicia o ciclo de renderização do CSS)
                     void showAddModalBtn.offsetWidth;
-                    
-                    // 3. Adiciona a classe novamente para tocar a animação
                     showAddModalBtn.classList.add('fab-animate');
                 }, 150); 
             } else {

@@ -74,7 +74,7 @@ export default async function handler(request, response) {
         const { q } = request.query;
 
         // 6 - Atualizei a query padrão para incluir Ações, Ibovespa e B3
-        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos" OR "Ações" OR Ibovespa OR "Mercado Financeiro" OR B3';
+        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR "IFIX" OR "Dividendos" OR "Ações" OR "Ibovespa" OR "Mercado Financeiro" OR B3';
         
         const fullQuery = `${queryTerm} when:5d`; 
         

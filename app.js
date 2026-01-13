@@ -2877,7 +2877,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // --- 3. CÁLCULO DOS TOTAIS (CARD AO VIVO E INVESTIDO) ---
+    // --- 3. CÁLCULO DOS TOTAIS ---
     let totalAtualLive = 0;
     let custoTotalLive = 0;
 
@@ -2887,7 +2887,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
             const precoMedio = parseFloat(ativo.precoMedio || ativo.averagePrice || 0);
 
-            // Busca preço: Ao Vivo -> Cache -> Preço Médio
             let precoLive = mapPrecos.get(ticker);
             if (!precoLive) precoLive = parseFloat(ativo.regularMarketPrice || ativo.price || 0);
             if (!precoLive || isNaN(precoLive) || precoLive === 0) precoLive = precoMedio;
@@ -2914,7 +2913,11 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     hoje.setHours(23, 59, 59, 999);
     let dataCorte;
 
-    if (currentPatrimonioRange === '1M') {
+    // --- LÓGICA DE DATAS (ADICIONADO 7D) ---
+    if (currentPatrimonioRange === '7D') {
+        dataCorte = new Date(hoje);
+        dataCorte.setDate(hoje.getDate() - 7);
+    } else if (currentPatrimonioRange === '1M') {
         dataCorte = new Date(hoje);
         dataCorte.setDate(hoje.getDate() - 30);
     } else if (currentPatrimonioRange === '6M') {
@@ -2936,8 +2939,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- 6. CÁLCULO DAS ESTATÍSTICAS (VARIAÇÃO, DRAWDOWN, VOLATILIDADE) ---
-    // 6.1 Variação do Período
+    // --- 6. CÁLCULO DAS ESTATÍSTICAS ---
     let variacaoPercent = 0;
     if (dadosOrdenados.length > 0) {
         const valorInicial = dadosOrdenados[0].value;
@@ -2947,7 +2949,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         }
     }
 
-    // 6.2 Drawdown Máximo
     let maxDrawdown = 0;
     let pico = -Infinity;
     dadosOrdenados.forEach(p => {
@@ -2957,7 +2958,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     });
     const drawdownDisplay = (maxDrawdown * 100).toFixed(2);
 
-    // 6.3 Volatilidade (Simplificada Anualizada)
     let volatilidade = 0;
     if (dadosOrdenados.length > 1) {
         const retornos = [];
@@ -2971,7 +2971,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     }
 
     // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS ---
-// --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (VERSÃO COMPACTA) ---
     const elVariacao = document.getElementById('stat-variacao');
     const elDrawdown = document.getElementById('stat-drawdown');
     const elVolatilidade = document.getElementById('stat-volatilidade');
@@ -2979,32 +2978,27 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     if (elVariacao) {
         const sinal = variacaoPercent >= 0 ? '+' : '';
         elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
-        // MUDANÇA: text-sm (antes text-lg)
         elVariacao.className = variacaoPercent >= 0 
             ? "text-sm font-bold text-[#4ade80]" 
             : "text-sm font-bold text-red-400";
     }
-
     if (elDrawdown) {
         elDrawdown.textContent = `${drawdownDisplay}%`;
-        // MUDANÇA: text-sm
         elDrawdown.className = parseFloat(drawdownDisplay) < 0 
             ? "text-sm font-bold text-red-400" 
             : "text-sm font-bold text-gray-400";
     }
-
     if (elVolatilidade) {
         let corVol = "text-white";
         if (volatilidade < 10) corVol = "text-[#4ade80]";
         else if (volatilidade < 20) corVol = "text-[#F59E0B]";
         else corVol = "text-[#EF4444]";
-        
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
-        // MUDANÇA: text-sm
         elVolatilidade.className = `text-sm font-bold ${corVol}`;
     }
 
-    // --- 8. AGRUPAMENTO MENSAL (PARA 6M E 1Y) ---
+    // --- 8. AGRUPAMENTO MENSAL (APENAS 6M E 1Y) ---
+    // 7D e 1M mostram todos os dias disponíveis
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -3015,7 +3009,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         dadosOrdenados.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
-    // Se não houver dados, limpa e retorna
     if (dadosOrdenados.length === 0) {
         if (patrimonioChartInstance) {
             patrimonioChartInstance.destroy();
@@ -3026,7 +3019,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         return;
     }
 
-    // --- 9. GERAÇÃO DE DADOS DO CHART (COM ARREDONDAMENTO) ---
+    // --- 9. GERAÇÃO DE DADOS DO CHART ---
     const labels = [];
     const dataValor = [];
     const dataCusto = [];
@@ -3036,21 +3029,19 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     let txIndex = 0;
 
     dadosOrdenados.forEach(p => {
-        // Labels
         const parts = p.date.split('-');
         const d = new Date(parts[0], parts[1]-1, parts[2]);
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const ano = d.getFullYear().toString().slice(-2);
 
-        if (currentPatrimonioRange === '1M') labels.push([dia, mes]); 
+        // FORMATAÇÃO DE LABELS: 7D e 1M mostram dia/mês
+        if (['7D', '1M'].includes(currentPatrimonioRange)) labels.push([dia, mes]); 
         else if (['6M', '1Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]); 
         else labels.push([dia, mes, ano]); 
 
-        // Valor Patrimônio (Arredondado)
         dataValor.push(parseFloat(p.value.toFixed(2)));
 
-        // Custo Histórico (Arredondado)
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
@@ -3059,7 +3050,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 let operacao = (tx.quantity * tx.price);
                 if (tx.type === 'buy') custoAcumulado += operacao;
                 if (tx.type === 'sell') custoAcumulado -= operacao;
-                // FIX: Arredonda a cada passo
                 custoAcumulado = parseFloat(custoAcumulado.toFixed(2));
                 txIndex++;
             } else {
@@ -3069,7 +3059,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         dataCusto.push(custoAcumulado);
     });
 
-    // --- 10. ATUALIZA CARD "GRÁFICO" (COM O VALOR FINAL PROCESSADO) ---
+    // --- 10. ATUALIZA CARD "GRÁFICO" ---
     const elChartVal = document.getElementById('modal-patrimonio-chart-val');
     if (elChartVal) {
         if (dataValor.length > 0) {
@@ -3193,12 +3183,12 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // Assinatura para evitar loops desnecessários
     const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
     const txCount = (typeof transacoes !== 'undefined') ? transacoes.length : 0;
     const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
     lastPatrimonioCalcSignature = currentSignature;
 }
+
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');

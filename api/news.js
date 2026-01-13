@@ -80,7 +80,7 @@ export default async function handler(request, response) {
         const queryTerm = q || defaultQuery;
         
         // Reduzi para 3 dias (when:3d) para pegar coisas mais quentes e menos "resumão da semana"
-        const fullQuery = `${queryTerm} when:3d`; 
+        const fullQuery = `${queryTerm} when:7d`; 
         
         const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 

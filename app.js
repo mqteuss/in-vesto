@@ -288,10 +288,8 @@ function criarCardElemento(ativo, dados) {
 
     const card = document.createElement('div');
     
-    // --- MUDANÇA 1: ANIMAÇÃO SUAVE ---
-    // Adicionado 'transition-all duration-200 active:scale-[0.98]'
-    // Removido classes antigas de animação se existissem
-    card.className = 'wallet-card group cursor-pointer select-none transition-all duration-200 active:scale-[0.98]';
+    // MUDANÇA 1: active:scale-[0.99] (Era 0.98) - Feedback tátil muito mais suave
+    card.className = 'wallet-card group cursor-pointer select-none transition-all duration-200 active:scale-[0.99]';
     card.setAttribute('data-symbol', ativo.symbol);
     
     card.onclick = function(e) {
@@ -332,10 +330,12 @@ function criarCardElemento(ativo, dados) {
             </div>
 
             <div class="flex justify-center mt-2 mb-1">
-                <div class="bg-[#1A1A1C] border border-[#2C2C2E] rounded-full px-3 py-0.5 flex items-center justify-center group-hover:bg-[#252525] group-hover:border-gray-700 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-600 group-hover:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="bg-[#1A1A1C] border border-[#2C2C2E] rounded-full px-3 py-0.5 flex items-center justify-center group-hover:bg-[#252525] group-hover:border-gray-600 transition-colors duration-300">
+                    
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-600 group-hover:text-gray-300 transition-transform duration-300 group-hover:translate-y-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
+                    
                 </div>
             </div>
         </div>

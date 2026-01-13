@@ -288,13 +288,22 @@ function criarCardElemento(ativo, dados) {
 
     const card = document.createElement('div');
     
-    // MUDANÇA 1: active:scale-[0.99] (Era 0.98) - Feedback tátil muito mais suave
-    card.className = 'wallet-card group cursor-pointer select-none transition-all duration-200 active:scale-[0.99]';
+    // --- MUDANÇA 1: active:scale-[0.995] ---
+    // A animação agora é extremamente sutil, apenas um "toque" tátil.
+    card.className = 'wallet-card group cursor-pointer select-none transition-all duration-200 active:scale-[0.995]';
     card.setAttribute('data-symbol', ativo.symbol);
     
     card.onclick = function(e) {
         if (e.target.closest('button')) return;
+        
         toggleDrawer(ativo.symbol);
+
+        // --- MUDANÇA 2: ROTAÇÃO DA SETA ---
+        // Encontra a seta dentro DESTE card e alterna a classe de rotação
+        const arrow = this.querySelector('.drawer-arrow');
+        if (arrow) {
+            arrow.classList.toggle('rotate-180');
+        }
     };
 
     card.innerHTML = `
@@ -332,7 +341,7 @@ function criarCardElemento(ativo, dados) {
             <div class="flex justify-center mt-2 mb-1">
                 <div class="bg-[#1A1A1C] border border-[#2C2C2E] rounded-full px-3 py-0.5 flex items-center justify-center group-hover:bg-[#252525] group-hover:border-gray-600 transition-colors duration-300">
                     
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-600 group-hover:text-gray-300 transition-transform duration-300 group-hover:translate-y-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3 w-3 text-gray-600 group-hover:text-gray-300 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                     

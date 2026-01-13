@@ -288,10 +288,9 @@ function criarCardElemento(ativo, dados) {
 
     const card = document.createElement('div');
     
-    // --- AJUSTE FINO (Escala 0.99) ---
-    // scale-[0.99] = Reduz apenas 1%. É firme como um widget nativo.
-    // transition-transform = Otimiza a performance da animação.
-    card.className = 'wallet-card group cursor-pointer select-none transition-transform duration-200 active:scale-[0.99]';
+    // --- ALTERAÇÃO: Removido 'transition-transform' e 'active:scale' ---
+    // O card agora é estático no clique, apenas a seta vai girar.
+    card.className = 'wallet-card group cursor-pointer select-none';
     card.setAttribute('data-symbol', ativo.symbol);
     
     card.onclick = function(e) {

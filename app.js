@@ -239,7 +239,7 @@ function criarCardElemento(ativo, dados) {
            </span>` 
         : '';
 
-    // --- HTML Proventos (Aba Detalhes) ---
+    // HTML Proventos
     let proventosHtml = '';
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
     proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
@@ -287,7 +287,11 @@ function criarCardElemento(ativo, dados) {
     }
 
     const card = document.createElement('div');
-    card.className = 'wallet-card group cursor-pointer select-none';
+    
+    // --- MUDANÇA 1: ANIMAÇÃO SUAVE ---
+    // Adicionado 'transition-all duration-200 active:scale-[0.98]'
+    // Removido classes antigas de animação se existissem
+    card.className = 'wallet-card group cursor-pointer select-none transition-all duration-200 active:scale-[0.98]';
     card.setAttribute('data-symbol', ativo.symbol);
     
     card.onclick = function(e) {
@@ -295,12 +299,8 @@ function criarCardElemento(ativo, dados) {
         toggleDrawer(ativo.symbol);
     };
 
-    // --- CORREÇÃO DE LAYOUT AQUI ---
-    // 1. Removido 'pb-4' e 'relative' do container principal.
-    // 2. Mudado 'items-start' para 'items-center' no flex.
-    // 3. Removido 'mb-1'.
     card.innerHTML = `
-        <div class="p-3"> 
+        <div class="p-3 pb-1"> 
             <div class="flex justify-between items-center">
                 
                 <div class="flex items-center gap-3">
@@ -328,6 +328,14 @@ function criarCardElemento(ativo, dados) {
                     <p data-field="variacao-valor" class="text-xs font-medium ${corVariacao} mt-0.5">
                         ${dadoPreco ? variacaoFormatada : '0.00%'}
                     </p>
+                </div>
+            </div>
+
+            <div class="flex justify-center mt-2 mb-1">
+                <div class="bg-[#1A1A1C] border border-[#2C2C2E] rounded-full px-3 py-0.5 flex items-center justify-center group-hover:bg-[#252525] group-hover:border-gray-700 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-600 group-hover:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
                 </div>
             </div>
         </div>

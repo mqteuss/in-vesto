@@ -288,21 +288,31 @@ function criarCardElemento(ativo, dados) {
 
     const card = document.createElement('div');
     
-    // --- MUDANÇA 1: active:scale-[0.995] ---
-    // A animação agora é extremamente sutil, apenas um "toque" tátil.
+    // Animação super sutil (scale 0.995)
     card.className = 'wallet-card group cursor-pointer select-none transition-all duration-200 active:scale-[0.995]';
     card.setAttribute('data-symbol', ativo.symbol);
     
+    // --- LÓGICA CORRIGIDA DO CLICK ---
     card.onclick = function(e) {
         if (e.target.closest('button')) return;
         
+        // 1. Identifica a seta deste card
+        const currentArrow = this.querySelector('.drawer-arrow');
+
+        // 2. Reseta TODAS as outras setas da página para baixo
+        const allArrows = document.querySelectorAll('.drawer-arrow');
+        allArrows.forEach(arrow => {
+            if (arrow !== currentArrow) {
+                arrow.classList.remove('rotate-180');
+            }
+        });
+
+        // 3. Executa a lógica de abrir/fechar o drawer
         toggleDrawer(ativo.symbol);
 
-        // --- MUDANÇA 2: ROTAÇÃO DA SETA ---
-        // Encontra a seta dentro DESTE card e alterna a classe de rotação
-        const arrow = this.querySelector('.drawer-arrow');
-        if (arrow) {
-            arrow.classList.toggle('rotate-180');
+        // 4. Gira apenas a seta atual
+        if (currentArrow) {
+            currentArrow.classList.toggle('rotate-180');
         }
     };
 
@@ -340,11 +350,9 @@ function criarCardElemento(ativo, dados) {
 
             <div class="flex justify-center mt-2 mb-1">
                 <div class="bg-[#1A1A1C] border border-[#2C2C2E] rounded-full px-3 py-0.5 flex items-center justify-center group-hover:bg-[#252525] group-hover:border-gray-600 transition-colors duration-300">
-                    
                     <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3 w-3 text-gray-600 group-hover:text-gray-300 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
-                    
                 </div>
             </div>
         </div>

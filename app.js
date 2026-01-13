@@ -2971,30 +2971,65 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     }
 
     // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS ---
+// --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (VERSÃO UX PREMIUM) ---
     const elVariacao = document.getElementById('stat-variacao');
     const elDrawdown = document.getElementById('stat-drawdown');
     const elVolatilidade = document.getElementById('stat-volatilidade');
+    
+    // Elementos das barras de progresso
+    const barVariacao = document.getElementById('bar-variacao');
+    const barDrawdown = document.getElementById('bar-drawdown');
+    const barVolatilidade = document.getElementById('bar-volatilidade');
 
     if (elVariacao) {
         const sinal = variacaoPercent >= 0 ? '+' : '';
         elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
-        elVariacao.className = variacaoPercent >= 0 
-            ? "text-sm font-bold text-[#4ade80]" 
-            : "text-sm font-bold text-red-400";
+        
+        // Define cor do texto e da barra
+        const corVar = variacaoPercent >= 0 ? '#4ade80' : '#ef4444'; // Verde ou Vermelho
+        elVariacao.style.color = corVar;
+        
+        if (barVariacao) {
+            barVariacao.style.backgroundColor = corVar;
+            // Animação visual (limitada a 100%)
+            // Se for negativo, mostra proporcional ao "susto" (ex: -10% enche um pouco a barra vermelha)
+            const largura = Math.min(Math.abs(variacaoPercent) * 2, 100); // Multiplicador para dar efeito
+            barVariacao.style.width = `${largura}%`;
+        }
     }
+
     if (elDrawdown) {
         elDrawdown.textContent = `${drawdownDisplay}%`;
-        elDrawdown.className = parseFloat(drawdownDisplay) < 0 
-            ? "text-sm font-bold text-red-400" 
-            : "text-sm font-bold text-gray-400";
+        
+        // Drawdown: Quanto mais próximo de 0, melhor (cinza/verde). Quanto maior, pior (vermelho).
+        const ddVal = Math.abs(parseFloat(drawdownDisplay));
+        const corDD = ddVal < 5 ? '#9ca3af' : '#ef4444'; // Cinza se < 5%, Vermelho se > 5%
+        elDrawdown.style.color = corDD;
+
+        if (barDrawdown) {
+            barDrawdown.style.backgroundColor = corDD;
+            // Barra enche conforme o tamanho da queda (até 30% enche tudo)
+            const largura = Math.min(ddVal * 3.3, 100); 
+            barDrawdown.style.width = `${largura}%`;
+        }
     }
+
     if (elVolatilidade) {
-        let corVol = "text-white";
-        if (volatilidade < 10) corVol = "text-[#4ade80]";
-        else if (volatilidade < 20) corVol = "text-[#F59E0B]";
-        else corVol = "text-[#EF4444]";
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
-        elVolatilidade.className = `text-sm font-bold ${corVol}`;
+        
+        let corVol = "#ffffff";
+        if (volatilidade < 10) corVol = "#4ade80"; // Baixa
+        else if (volatilidade < 20) corVol = "#fbbf24"; // Média
+        else corVol = "#ef4444"; // Alta
+        
+        elVolatilidade.style.color = corVol;
+
+        if (barVolatilidade) {
+            barVolatilidade.style.backgroundColor = corVol;
+            // Barra enche conforme volatilidade (até 40% enche tudo)
+            const largura = Math.min(volatilidade * 2.5, 100);
+            barVolatilidade.style.width = `${largura}%`;
+        }
     }
 
     // --- 8. AGRUPAMENTO MENSAL (APENAS 6M E 1Y) ---

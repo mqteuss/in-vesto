@@ -288,11 +288,12 @@ function criarCardElemento(ativo, dados) {
 
     const card = document.createElement('div');
     
-    // Animação super sutil (scale 0.995)
-    card.className = 'wallet-card group cursor-pointer select-none transition-all duration-200 active:scale-[0.995]';
+    // --- AJUSTE FINO (Escala 0.99) ---
+    // scale-[0.99] = Reduz apenas 1%. É firme como um widget nativo.
+    // transition-transform = Otimiza a performance da animação.
+    card.className = 'wallet-card group cursor-pointer select-none transition-transform duration-200 active:scale-[0.99]';
     card.setAttribute('data-symbol', ativo.symbol);
     
-    // --- LÓGICA CORRIGIDA DO CLICK ---
     card.onclick = function(e) {
         if (e.target.closest('button')) return;
         
@@ -307,10 +308,10 @@ function criarCardElemento(ativo, dados) {
             }
         });
 
-        // 3. Executa a lógica de abrir/fechar o drawer
+        // 3. Abre/Fecha gaveta
         toggleDrawer(ativo.symbol);
 
-        // 4. Gira apenas a seta atual
+        // 4. Gira a seta atual
         if (currentArrow) {
             currentArrow.classList.toggle('rotate-180');
         }

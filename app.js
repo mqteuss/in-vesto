@@ -223,10 +223,9 @@ function criarCardElemento(ativo, dados) {
 
     const sigla = ativo.symbol.substring(0, 2);
     
-    // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
+    // Fundo do Ícone
     const ehFii = isFII(ativo.symbol);
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
-    // ------------------------------------------
 
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ativo.symbol}.png`;
     const iconHtml = !ehFii 
@@ -234,8 +233,6 @@ function criarCardElemento(ativo, dados) {
            <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-white tracking-wider absolute inset-0 z-0">${sigla}</span>`
         : `<span class="text-xs font-bold text-white tracking-wider">${sigla}</span>`;
 
-    const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
-    
     // Badge de PL
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
     const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
@@ -245,9 +242,8 @@ function criarCardElemento(ativo, dados) {
            </span>` 
         : '';
 
-    // --- LÓGICA DE LISTA DE PROVENTOS ---
+    // HTML Proventos
     let proventosHtml = '';
-    
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) 
         ? listaProventos 
         : (dadoProvento ? [dadoProvento] : []);
@@ -312,7 +308,7 @@ function criarCardElemento(ativo, dados) {
         toggleDrawer(ativo.symbol);
     };
 
-    // --- APLICAÇÃO DA VARIÁVEL bgIcone ABAIXO ---
+    // --- HTML DO CARD (SEM DIV .allocation-track) ---
     card.innerHTML = `
         <div class="p-3 relative pb-4">
             <div class="flex justify-between items-start mb-1">
@@ -342,10 +338,6 @@ function criarCardElemento(ativo, dados) {
                         ${dadoPreco ? variacaoFormatada : '0.00%'}
                     </p>
                 </div>
-            </div>
-            
-            <div class="allocation-track">
-                <div class="allocation-bar" style="width: ${percentWallet || 0}%; background-color: ${barColor};"></div>
             </div>
         </div>
         
@@ -378,10 +370,10 @@ function criarCardElemento(ativo, dados) {
                 <div class="flex gap-2 mt-4 pt-2">
                      <button class="flex-1 py-2 text-xs font-bold text-gray-300 bg-[#1C1C1E] border border-[#2C2C2E] rounded-lg hover:bg-[#252525]" onclick="window.abrirDetalhesAtivo('${ativo.symbol}')">
                         Ver Detalhes
-                    </button>
-                    <button class="py-2 px-3 text-red-400 bg-red-900/10 border border-red-900/20 rounded-lg hover:bg-red-900/20" onclick="window.confirmarExclusao('${ativo.symbol}')">
+                     </button>
+                     <button class="py-2 px-3 text-red-400 bg-red-900/10 border border-red-900/20 rounded-lg hover:bg-red-900/20" onclick="window.confirmarExclusao('${ativo.symbol}')">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
+                     </button>
                 </div>
             </div>
         </div>
@@ -395,7 +387,7 @@ function atualizarCardElemento(card, ativo, dados) {
         dadoPreco, precoFormatado, variacaoFormatada, corVariacao,
         totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
         corPL, dadoProvento, percentWallet,
-        listaProventos = [] // Garante que existe, mesmo que vazio
+        listaProventos = [] 
     } = dados;
 
     // 1. Atualiza Textos Básicos (Cabeçalho)
@@ -411,69 +403,61 @@ function atualizarCardElemento(card, ativo, dados) {
     varEl.textContent = dadoPreco ? variacaoFormatada : '0.00%';
 
     // 4. Atualiza Badge de % L/P (Pill ao lado do ticker)
-    const plTagContainer = card.querySelector('.profit-pill') || card.querySelector('.ticker-pill'); // Fallback de classe
-    if (dadoPreco && plTagContainer) {
+    // Tenta encontrar o badge existente
+    const headerDiv = card.querySelector('.flex.items-center.gap-2 > span.px-1\\.5');
+    
+    if (dadoPreco && headerDiv) {
         const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
         const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
         
-        // Remove classes antigas de cor e adiciona a nova
-        plTagContainer.className = plTagContainer.className.replace(/bg-\w+-\d+\/\d+ text-\w+-\d+/, '').trim();
-        plTagContainer.classList.add(...bgBadge.split(' '));
-        
-        plTagContainer.innerHTML = `${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%`;
+        // Substitui classes de cor antigas
+        headerDiv.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${bgBadge} border border-white/5 flex items-center gap-1`;
+        headerDiv.innerHTML = `${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%`;
     }
 
-    // 5. Atualiza Barra de Alocação (Visual)
-    const barEl = card.querySelector('.allocation-bar');
-    if(barEl) {
-        const barColor = lucroPrejuizo >= 0 ? '#22c55e' : '#ef4444';
-        barEl.style.width = `${percentWallet || 0}%`;
-        barEl.style.backgroundColor = barColor;
-    }
+    // REMOVIDO: Código que atualizava a .allocation-bar
 
     // --- ATUALIZAÇÃO DO DRAWER (Aba Expandida) ---
 
-    // 6. Atualiza Custo e Lucro/Prejuízo Monetário
-    card.querySelector('[data-field="custo-valor"]').textContent = formatBRL(custoTotal);
+    // 5. Atualiza Custo e Lucro/Prejuízo Monetário
+    const custoValorEl = card.querySelector('[data-field="custo-valor"]');
+    if (custoValorEl) custoValorEl.textContent = formatBRL(custoTotal);
     
     const plEl = card.querySelector('[data-field="pl-valor"]');
-    plEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
-    plEl.className = `text-sm font-bold ${corPL}`; // Atualiza cor (verde/vermelho)
+    if (plEl) {
+        plEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
+        plEl.className = `text-sm font-bold ${corPL}`;
+    }
 
-    // 7. Atualiza Peso na Carteira (Dinâmico conforme cotação)
+    // 6. Atualiza Peso na Carteira (Dinâmico conforme cotação)
     const pesoEl = card.querySelector('[data-field="peso-valor"]');
     if (pesoEl) {
         pesoEl.textContent = formatPercent(percentWallet);
     }
 
-    // 8. Atualiza Lista de Proventos Futuros (Lógica de Múltiplos Pagamentos)
+    // 7. Atualiza Lista de Proventos Futuros
     const containerProventos = card.querySelector('[data-field="provento-container"]');
     
-    // Prioriza a lista completa, senão usa o dadoProvento único como fallback em array
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) 
         ? listaProventos 
         : (dadoProvento ? [dadoProvento] : []);
 
     if (containerProventos) {
         if (proventosParaExibir.length > 0) {
-            // Ordena por data (mais recente/próxima primeiro ou cronológica)
             proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
-            // Calcula Total Geral a Receber
             const totalReceberGeral = proventosParaExibir.reduce((acc, p) => {
-                // Se o objeto já tiver o total calculado, usa-o. Senão calcula value * qtd
                 const valorParcela = p.totalValue || (p.value * ativo.quantity);
                 return acc + valorParcela;
             }, 0);
 
-            // Gera HTML das linhas
             const linhasHtml = proventosParaExibir.map(p => {
                 const parts = p.paymentDate.split('-');
                 const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
                 const hoje = new Date(); hoje.setHours(0,0,0,0);
                 const isPago = dataPag <= hoje;
                 
-                const dataFormatada = formatDate(p.paymentDate).substring(0, 5); // Ex: 15/04
+                const dataFormatada = formatDate(p.paymentDate).substring(0, 5); 
                 const valorParcela = p.totalValue || (p.value * ativo.quantity);
 
                 return `
@@ -490,7 +474,6 @@ function atualizarCardElemento(card, ativo, dados) {
                 `;
             }).join('');
 
-            // Injeta o HTML completo do bloco de proventos
             containerProventos.innerHTML = `
             <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
                 <div class="flex justify-between items-center mb-2">
@@ -505,7 +488,6 @@ function atualizarCardElemento(card, ativo, dados) {
                 </div>
             </div>`;
         } else {
-            // Estado vazio: Limpa ou mostra mensagem
             containerProventos.innerHTML = `
              <div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
                  <span class="text-[10px] text-gray-600 uppercase font-bold">Sem proventos anunciados</span>

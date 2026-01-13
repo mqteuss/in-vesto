@@ -1,7 +1,6 @@
 import Parser from 'rss-parser';
 
 // --- SILENCIADOR DE AVISO (FIX) ---
-// Isso intercepta o aviso "DeprecationWarning: url.parse()" e impede que ele apareça nos logs
 const originalEmit = process.emit;
 process.emit = function (name, data, ...args) {
     if (
@@ -42,7 +41,6 @@ export default async function handler(request, response) {
         },
     });
 
-    // Adicionei novas fontes relevantes para Ações e Mercado Geral
     const knownSources = {
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
@@ -55,7 +53,7 @@ export default async function handler(request, response) {
         'investing.com': { name: 'Investing.com', domain: 'br.investing.com' },
         'mais retorno': { name: 'Mais Retorno', domain: 'maisretorno.com' },
         'valor investe': { name: 'Valor Investe', domain: 'valorinveste.globo.com' },
-        'valor econômico': { name: 'Valor Econômico', domain: 'valor.globo.com' }, // Adicionado
+        'valor econômico': { name: 'Valor Econômico', domain: 'valor.globo.com' },
         'exame': { name: 'Exame', domain: 'exame.com' },
         'brazil journal': { name: 'Brazil Journal', domain: 'braziljournal.com' },
         'seu dinheiro': { name: 'Seu Dinheiro', domain: 'seudinheiro.com' },
@@ -63,26 +61,36 @@ export default async function handler(request, response) {
         'bmc news': { name: 'BMC News', domain: 'bmcnews.com.br' },
         'the cap': { name: 'The Cap', domain: 'thecap.com.br' },
         'inteligência financeira': { name: 'Inteligência Financeira', domain: 'inteligenciafinanceira.com.br' },
-        'bloomberg línea': { name: 'Bloomberg Línea', domain: 'bloomberglinea.com.br' }, // Adicionado
-        'cnn brasil': { name: 'CNN Brasil', domain: 'cnnbrasil.com.br' }, // Adicionado
-        'tradersclub': { name: 'TC', domain: 'tc.com.br' }, // Adicionado
-        'advfn': { name: 'ADVFN', domain: 'br.advfn.com' }, // Adicionado
-        'e-investidor': { name: 'E-Investidor', domain: 'einvestidor.estadao.com.br' } // Adicionado
+        'bloomberg línea': { name: 'Bloomberg Línea', domain: 'bloomberglinea.com.br' },
+        'cnn brasil': { name: 'CNN Brasil', domain: 'cnnbrasil.com.br' },
+        'tradersclub': { name: 'TC', domain: 'tc.com.br' },
+        'advfn': { name: 'ADVFN', domain: 'br.advfn.com' },
+        'e-investidor': { name: 'E-Investidor', domain: 'einvestidor.estadao.com.br' }
     };
 
     try {
         const { q } = request.query;
 
-        // 6 - Atualizei a query padrão para incluir Ações, Ibovespa e B3
-        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR "IFIX" OR "Dividendos" OR "Ações" OR "Ibovespa" OR "Mercado Financeiro" OR B3';
+        // --- 1. QUERY MAIS INTELIGENTE ---
+        // Removi: Ibovespa, Mercado Financeiro, B3 (Geradores de ruído)
+        // Adicionei: JCP, Fato Relevante (Foco em valor)
+        // Mantive: FII, Dividendos, Ações (Necessários)
+        const defaultQuery = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos" OR "JCP" OR "Fato Relevante" OR "Ações"';
         
-        const fullQuery = `${queryTerm} when:7d`; 
+        const queryTerm = q || defaultQuery;
+        
+        // Reduzi para 3 dias (when:3d) para pegar coisas mais quentes e menos "resumão da semana"
+        const fullQuery = `${queryTerm} when:3d`; 
         
         const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 
         const feed = await parser.parseURL(feedUrl);
 
         const seenTitles = new Set();
+        
+        // --- 2. PADRÕES DE RUÍDO (FILTRO) ---
+        // Regex para identificar títulos genéricos de fechamento/abertura que não citam empresas
+        const noiseRegex = /(ibovespa|dólar|bolsa|mercado) (fecha|abre|sobe|cai|recua|avança|opera|encerra)/i;
 
         const articles = feed.items.map((item) => {
             let rawSourceName = '';
@@ -120,12 +128,16 @@ export default async function handler(request, response) {
             if (seenTitles.has(cleanTitle)) return null;
             seenTitles.add(cleanTitle);
 
-            // 6.1 - Lógica para captar tickers (Ex: PETR4, VALE3, KNIP11) no título
-            // Procura por 4 letras maiúsculas seguidas de 3, 4, 5, 6 ou 11
+            // Captura de Tickers
             const tickerRegex = /\b[A-Z]{4}(?:3|4|5|6|11)\b/g;
             const foundTickers = cleanTitle.match(tickerRegex) || [];
-            // Remove duplicatas (ex: se aparecer PETR4 duas vezes)
             const uniqueTickers = [...new Set(foundTickers)];
+
+            // --- 3. FILTRAGEM DE RUÍDO ---
+            // Se o título parece "Ibovespa fecha em queda" E não tem nenhum ticker específico, ignoramos.
+            if (uniqueTickers.length === 0 && noiseRegex.test(cleanTitle)) {
+                return null;
+            }
 
             return {
                 title: cleanTitle,
@@ -135,7 +147,7 @@ export default async function handler(request, response) {
                 sourceHostname: known.domain,
                 favicon: `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`,
                 summary: item.contentSnippet || '',
-                tickers: uniqueTickers // Array com os tickers encontrados (ex: ['PETR4', 'VALE3'])
+                tickers: uniqueTickers
             };
         })
         .filter(item => item !== null)

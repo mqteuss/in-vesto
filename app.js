@@ -222,8 +222,6 @@ function criarCardElemento(ativo, dados) {
     } = dados;
 
     const sigla = ativo.symbol.substring(0, 2);
-    
-    // Fundo do Ícone
     const ehFii = isFII(ativo.symbol);
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
 
@@ -233,7 +231,6 @@ function criarCardElemento(ativo, dados) {
            <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-white tracking-wider absolute inset-0 z-0">${sigla}</span>`
         : `<span class="text-xs font-bold text-white tracking-wider">${sigla}</span>`;
 
-    // Badge de PL
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
     const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
     const plTagHtml = dadoPreco 
@@ -242,25 +239,18 @@ function criarCardElemento(ativo, dados) {
            </span>` 
         : '';
 
-    // HTML Proventos
+    // --- HTML Proventos (Aba Detalhes) ---
     let proventosHtml = '';
-    let proventosParaExibir = (listaProventos && listaProventos.length > 0) 
-        ? listaProventos 
-        : (dadoProvento ? [dadoProvento] : []);
-
+    let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
     proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
     if (proventosParaExibir.length > 0) {
-        const totalReceberGeral = proventosParaExibir.reduce((acc, p) => {
-            return acc + (p.value * ativo.quantity);
-        }, 0);
-
+        const totalReceberGeral = proventosParaExibir.reduce((acc, p) => acc + (p.value * ativo.quantity), 0);
         const linhasHtml = proventosParaExibir.map(p => {
             const parts = p.paymentDate.split('-');
             const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
             const hoje = new Date(); hoje.setHours(0,0,0,0);
             const isPago = dataPag <= hoje;
-            
             const dataFormatada = formatDate(p.paymentDate).substring(0, 5); 
             const valorTotalParcela = p.value * ativo.quantity;
 
@@ -274,8 +264,7 @@ function criarCardElemento(ativo, dados) {
                     <span class="font-bold ${isPago ? 'text-green-500/70 line-through' : 'text-gray-200'}">
                         ${formatBRL(valorTotalParcela)}
                     </span>
-                </div>
-            `;
+                </div>`;
         }).join('');
 
         proventosHtml = `
@@ -286,7 +275,6 @@ function criarCardElemento(ativo, dados) {
                     Total: ${formatBRL(totalReceberGeral)}
                 </span>
             </div>
-            
             <div class="bg-[#151515] rounded-lg border border-[#2C2C2E] px-3 max-h-[120px] overflow-y-auto custom-scroll">
                 ${linhasHtml}
             </div>
@@ -295,8 +283,7 @@ function criarCardElemento(ativo, dados) {
         proventosHtml = `
              <div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
                  <span class="text-[10px] text-gray-600 uppercase font-bold">Sem proventos anunciados</span>
-             </div>
-        `;
+             </div>`;
     }
 
     const card = document.createElement('div');
@@ -308,10 +295,14 @@ function criarCardElemento(ativo, dados) {
         toggleDrawer(ativo.symbol);
     };
 
-    // --- HTML DO CARD (SEM DIV .allocation-track) ---
+    // --- CORREÇÃO DE LAYOUT AQUI ---
+    // 1. Removido 'pb-4' e 'relative' do container principal.
+    // 2. Mudado 'items-start' para 'items-center' no flex.
+    // 3. Removido 'mb-1'.
     card.innerHTML = `
-        <div class="p-3 relative pb-4">
-            <div class="flex justify-between items-start mb-1">
+        <div class="p-3"> 
+            <div class="flex justify-between items-center">
+                
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${iconHtml}
@@ -322,7 +313,7 @@ function criarCardElemento(ativo, dados) {
                             <span class="font-bold text-white text-sm tracking-tight">${ativo.symbol}</span>
                             ${plTagHtml}
                         </div>
-                        <div class="text-[11px] text-gray-500 mt-1 flex items-center">
+                        <div class="text-[11px] text-gray-500 mt-0.5 flex items-center">
                             <span data-field="cota-qtd">${ativo.quantity} cotas</span>
                             <span class="mx-1">•</span>
                             <span data-field="preco-unitario" class="font-medium text-gray-400">${precoFormatado}</span>
@@ -343,7 +334,6 @@ function criarCardElemento(ativo, dados) {
         
         <div id="drawer-${ativo.symbol}" class="card-drawer">
              <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f] border-t border-[#2C2C2E]">
-                
                 <div class="grid grid-cols-2 gap-4 mt-3">
                     <div>
                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Custo Total</span>
@@ -390,36 +380,28 @@ function atualizarCardElemento(card, ativo, dados) {
         listaProventos = [] 
     } = dados;
 
-    // 1. Atualiza Textos Básicos (Cabeçalho)
+    // Atualiza Cabeçalho
     card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
     card.querySelector('[data-field="preco-unitario"]').textContent = precoFormatado;
     
-    // 2. Atualiza Destaque Financeiro (Total da Posição)
+    // Atualiza Valores Principais
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
     
-    // 3. Atualiza Variação (Texto e Cor)
+    // Atualiza Variação
     const varEl = card.querySelector('[data-field="variacao-valor"]');
     varEl.className = `text-xs font-medium ${corVariacao} mt-0.5`;
     varEl.textContent = dadoPreco ? variacaoFormatada : '0.00%';
 
-    // 4. Atualiza Badge de % L/P (Pill ao lado do ticker)
-    // Tenta encontrar o badge existente
+    // Atualiza Badge L/P
     const headerDiv = card.querySelector('.flex.items-center.gap-2 > span.px-1\\.5');
-    
     if (dadoPreco && headerDiv) {
         const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
         const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
-        
-        // Substitui classes de cor antigas
         headerDiv.className = `px-1.5 py-0.5 rounded text-[10px] font-bold ${bgBadge} border border-white/5 flex items-center gap-1`;
         headerDiv.innerHTML = `${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%`;
     }
 
-    // REMOVIDO: Código que atualizava a .allocation-bar
-
-    // --- ATUALIZAÇÃO DO DRAWER (Aba Expandida) ---
-
-    // 5. Atualiza Custo e Lucro/Prejuízo Monetário
+    // --- Atualização do Drawer ---
     const custoValorEl = card.querySelector('[data-field="custo-valor"]');
     if (custoValorEl) custoValorEl.textContent = formatBRL(custoTotal);
     
@@ -429,18 +411,14 @@ function atualizarCardElemento(card, ativo, dados) {
         plEl.className = `text-sm font-bold ${corPL}`;
     }
 
-    // 6. Atualiza Peso na Carteira (Dinâmico conforme cotação)
     const pesoEl = card.querySelector('[data-field="peso-valor"]');
     if (pesoEl) {
         pesoEl.textContent = formatPercent(percentWallet);
     }
 
-    // 7. Atualiza Lista de Proventos Futuros
+    // Atualização dos Proventos
     const containerProventos = card.querySelector('[data-field="provento-container"]');
-    
-    let proventosParaExibir = (listaProventos && listaProventos.length > 0) 
-        ? listaProventos 
-        : (dadoProvento ? [dadoProvento] : []);
+    let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
 
     if (containerProventos) {
         if (proventosParaExibir.length > 0) {
@@ -456,7 +434,6 @@ function atualizarCardElemento(card, ativo, dados) {
                 const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
                 const hoje = new Date(); hoje.setHours(0,0,0,0);
                 const isPago = dataPag <= hoje;
-                
                 const dataFormatada = formatDate(p.paymentDate).substring(0, 5); 
                 const valorParcela = p.totalValue || (p.value * ativo.quantity);
 
@@ -470,8 +447,7 @@ function atualizarCardElemento(card, ativo, dados) {
                         <span class="font-bold ${isPago ? 'text-green-500/70 line-through' : 'text-gray-200'}">
                             ${formatBRL(valorParcela)}
                         </span>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
 
             containerProventos.innerHTML = `
@@ -482,7 +458,6 @@ function atualizarCardElemento(card, ativo, dados) {
                         Total: ${formatBRL(totalReceberGeral)}
                     </span>
                 </div>
-                
                 <div class="bg-[#151515] rounded-lg border border-[#2C2C2E] px-3 max-h-[120px] overflow-y-auto custom-scroll">
                     ${linhasHtml}
                 </div>

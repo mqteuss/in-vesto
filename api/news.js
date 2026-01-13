@@ -42,6 +42,7 @@ export default async function handler(request, response) {
         },
     });
 
+    // Adicionei novas fontes relevantes para Ações e Mercado Geral
     const knownSources = {
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
@@ -54,19 +55,26 @@ export default async function handler(request, response) {
         'investing.com': { name: 'Investing.com', domain: 'br.investing.com' },
         'mais retorno': { name: 'Mais Retorno', domain: 'maisretorno.com' },
         'valor investe': { name: 'Valor Investe', domain: 'valorinveste.globo.com' },
+        'valor econômico': { name: 'Valor Econômico', domain: 'valor.globo.com' }, // Adicionado
         'exame': { name: 'Exame', domain: 'exame.com' },
         'brazil journal': { name: 'Brazil Journal', domain: 'braziljournal.com' },
         'seu dinheiro': { name: 'Seu Dinheiro', domain: 'seudinheiro.com' },
         'neofeed': { name: 'NeoFeed', domain: 'neofeed.com.br' },
         'bmc news': { name: 'BMC News', domain: 'bmcnews.com.br' },
         'the cap': { name: 'The Cap', domain: 'thecap.com.br' },
-        'inteligência financeira': { name: 'Inteligência Financeira', domain: 'inteligenciafinanceira.com.br' }
+        'inteligência financeira': { name: 'Inteligência Financeira', domain: 'inteligenciafinanceira.com.br' },
+        'bloomberg línea': { name: 'Bloomberg Línea', domain: 'bloomberglinea.com.br' }, // Adicionado
+        'cnn brasil': { name: 'CNN Brasil', domain: 'cnnbrasil.com.br' }, // Adicionado
+        'tradersclub': { name: 'TC', domain: 'tc.com.br' }, // Adicionado
+        'advfn': { name: 'ADVFN', domain: 'br.advfn.com' }, // Adicionado
+        'e-investidor': { name: 'E-Investidor', domain: 'einvestidor.estadao.com.br' } // Adicionado
     };
 
     try {
         const { q } = request.query;
 
-        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
+        // 6 - Atualizei a query padrão para incluir Ações, Ibovespa e B3
+        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos" OR "Ações" OR Ibovespa OR "Mercado Financeiro" OR B3';
         
         const fullQuery = `${queryTerm} when:5d`; 
         
@@ -112,6 +120,13 @@ export default async function handler(request, response) {
             if (seenTitles.has(cleanTitle)) return null;
             seenTitles.add(cleanTitle);
 
+            // 6.1 - Lógica para captar tickers (Ex: PETR4, VALE3, KNIP11) no título
+            // Procura por 4 letras maiúsculas seguidas de 3, 4, 5, 6 ou 11
+            const tickerRegex = /\b[A-Z]{4}(?:3|4|5|6|11)\b/g;
+            const foundTickers = cleanTitle.match(tickerRegex) || [];
+            // Remove duplicatas (ex: se aparecer PETR4 duas vezes)
+            const uniqueTickers = [...new Set(foundTickers)];
+
             return {
                 title: cleanTitle,
                 link: item.link,
@@ -120,6 +135,7 @@ export default async function handler(request, response) {
                 sourceHostname: known.domain,
                 favicon: `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`,
                 summary: item.contentSnippet || '',
+                tickers: uniqueTickers // Array com os tickers encontrados (ex: ['PETR4', 'VALE3'])
             };
         })
         .filter(item => item !== null)
@@ -129,7 +145,6 @@ export default async function handler(request, response) {
 
     } catch (error) {
         console.error('CRITICAL ERROR API NEWS:', error);
-        // Retorna array vazio em caso de erro para não quebrar o front
         return response.status(200).json([]); 
     }
 }

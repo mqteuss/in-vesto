@@ -669,6 +669,8 @@ let ipcaCacheData = null;
     const signupError = document.getElementById('signup-error');
     const signupSuccess = document.getElementById('signup-success');     
     const recoverForm = document.getElementById('recover-form');
+	const authSubtitle = document.getElementById('auth-subtitle');
+	const forms = [loginForm, signupForm, recoverForm];
     const recoverEmailInput = document.getElementById('recover-email');
     const recoverSubmitBtn = document.getElementById('recover-submit-btn');
     const recoverError = document.getElementById('recover-error');
@@ -7349,6 +7351,59 @@ if (ipcaPageContent) {
 
 // Iniciar a busca silenciosa do IPCA ao carregar o app (para preencher o widget)
 setTimeout(buscarDadosIpca, 2000);
+
+function switchAuthView(formToShow, titleText) {
+    // Esconde todos
+    forms.forEach(f => {
+        f.classList.add('hidden');
+        f.classList.remove('animate-fade-in-up'); // Reseta animação
+    });
+
+    // Limpa erros
+    [loginError, signupError, recoverError].forEach(el => el.classList.add('hidden'));
+
+    // Mostra o alvo com animação
+    formToShow.classList.remove('hidden');
+    formToShow.classList.add('animate-fade-in-up');
+    
+    // Atualiza texto de apoio
+    if(subTitle) {
+        subTitle.style.opacity = '0';
+        setTimeout(() => {
+            subTitle.textContent = titleText;
+            subTitle.style.opacity = '1';
+        }, 150);
+    }
+}
+
+// Listeners atualizados
+if (showSignupBtn) {
+    showSignupBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchAuthView(signupForm, "Comece sua jornada financeira hoje.");
+    });
+}
+
+if (showLoginBtn) {
+    showLoginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchAuthView(loginForm, "Gerencie seu patrimônio com inteligência.");
+    });
+}
+
+if (showRecoverBtn) {
+    showRecoverBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchAuthView(recoverForm, "Vamos recuperar seu acesso.");
+    });
+}
+
+if (backToLoginBtn) {
+    backToLoginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchAuthView(loginForm, "Gerencie seu patrimônio com inteligência.");
+    });
+}
 	
     await init();
 });

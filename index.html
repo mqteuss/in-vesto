@@ -53,117 +53,75 @@
         } catch (e) { console.error('Erro ao verificar configs iniciais', e); }
     </script>
 
-<div id="auth-container" class="max-w-md mx-auto min-h-screen p-6 flex flex-col justify-center relative overflow-hidden">
-    
-    <div class="auth-blur-effect top-blob"></div>
-    <div class="auth-blur-effect bottom-blob"></div>
-
-    <div class="relative z-10 flex flex-col items-center">
-        <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-40 h-auto mb-8 drop-shadow-2xl">
+    <div id="auth-container" class="max-w-lg mx-auto min-h-screen p-4 flex flex-col justify-center">
+        <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-48 h-auto mx-auto mb-10">
         
-        <form id="login-form" class="auth-card p-8 rounded-[2rem] w-full space-y-5">
-            <div class="text-center mb-6">
-                <h2 class="text-2xl font-bold text-white tracking-tight">Bem-vindo</h2>
-                <p class="text-xs text-gray-400 font-medium uppercase tracking-wider mt-1">Acesse sua carteira</p>
-            </div>
-
-            <div id="login-error" class="hidden text-red-300 text-xs font-medium text-center p-3 bg-red-500/10 border border-red-500/20 rounded-xl backdrop-blur-md"></div>
+        <form id="login-form" class="card-bg p-6 rounded-3xl space-y-4">
+            <h2 class="text-xl font-semibold text-white text-center mb-4">Login</h2>
+            <div id="login-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-2xl"></div>
             
-            <div class="space-y-4">
-                <div class="input-group">
-                    <input type="email" id="login-email" placeholder=" " autocomplete="username" required class="fintech-input peer">
-                    <label for="login-email" class="fintech-label">E-mail</label>
-                </div>
-                
-                <div class="relative input-group">
-                    <input type="password" id="login-password" placeholder=" " autocomplete="current-password" required class="fintech-input peer pr-10">
-                    <label for="login-password" class="fintech-label">Senha</label>
-                    <button type="button" class="password-toggle absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors" data-target="login-password">
-                        <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                    </button>
-                </div>
+            <input type="email" id="login-email" placeholder="Email" autocomplete="username" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors text-white">
+            
+            <div class="relative">
+                <input type="password" id="login-password" placeholder="Senha" autocomplete="current-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white">
+                <button type="button" class="password-toggle" data-target="login-password">
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                </button>
             </div>
-
-            <div class="flex justify-end pt-1">
-                <button type="button" id="show-recover-btn" class="text-[11px] font-semibold text-gray-400 hover:text-white transition-colors">Esqueci a senha</button>
+            <div class="flex justify-end">
+                <button type="button" id="show-recover-btn" class="text-xs text-purple-400 hover:text-purple-300 transition-colors focus:outline-none">Esqueci minha senha</button>
             </div>
-
-            <button id="login-submit-btn" type="submit" class="fintech-btn w-full">
-                Entrar
-            </button>
-
-            <p class="text-xs text-center text-gray-500 mt-6">
-                Novo por aqui? <button type="button" id="show-signup-btn" class="text-white font-bold hover:underline decoration-purple-500 decoration-2 underline-offset-4 ml-1">Criar conta</button>
-            </p>
+            <button id="login-submit-btn" type="submit" class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-full shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Entrar</button>
+            <p class="text-sm text-center text-gray-400 pt-2">Não tem uma conta? <button type="button" id="show-signup-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">Cadastre-se</button></p>
         </form>
 
-        <form id="signup-form" class="auth-card p-8 rounded-[2rem] w-full space-y-5 hidden">
-            <div class="text-center mb-6">
-                <h2 class="text-2xl font-bold text-white tracking-tight">Criar Conta</h2>
-                <p class="text-xs text-gray-400 font-medium uppercase tracking-wider mt-1">Comece sua jornada</p>
-            </div>
+        <form id="signup-form" class="card-bg p-6 rounded-3xl space-y-4 hidden">
+            <h2 class="text-xl font-semibold text-white text-center mb-4">Criar Conta</h2>
+            <div id="signup-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-2xl"></div>
+            <div id="signup-success" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/50 rounded-2xl"><p class="font-semibold">Sucesso!</p><p class="mt-1">Enviamos um link de confirmação para o seu e-mail.</p></div>
             
-            <div id="signup-error" class="hidden text-red-300 text-xs font-medium text-center p-3 bg-red-500/10 border border-red-500/20 rounded-xl backdrop-blur-md"></div>
-            <div id="signup-success" class="hidden text-green-300 text-xs font-medium text-center p-3 bg-green-500/10 border border-green-500/20 rounded-xl backdrop-blur-md">Link enviado para seu e-mail!</div>
-
-            <div class="space-y-4">
-                <div class="input-group">
-                    <input type="email" id="signup-email" placeholder=" " autocomplete="username" required class="fintech-input peer">
-                    <label for="signup-email" class="fintech-label">Seu melhor e-mail</label>
-                </div>
-                
-                <div class="relative input-group">
-                    <input type="password" id="signup-password" placeholder=" " autocomplete="new-password" required class="fintech-input peer pr-10">
-                    <label for="signup-password" class="fintech-label">Senha</label>
-                </div>
-                
-                <div class="relative input-group">
-                    <input type="password" id="signup-confirm-password" placeholder=" " autocomplete="new-password" required class="fintech-input peer pr-10">
-                    <label for="signup-confirm-password" class="fintech-label">Confirmar Senha</label>
-                </div>
+            <input type="email" id="signup-email" placeholder="Email" autocomplete="username" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors text-white">
+            
+            <div class="relative">
+                <input type="password" id="signup-password" placeholder="Senha (mín. 6 caracteres)" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white">
+                <button type="button" class="password-toggle" data-target="signup-password">
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                </button>
             </div>
-
-            <button id="signup-submit-btn" type="submit" class="fintech-btn w-full mt-4">
-                Cadastrar
-            </button>
-
-            <p class="text-xs text-center text-gray-500 mt-6">
-                Já é cliente? <button type="button" id="show-login-btn" class="text-white font-bold hover:underline decoration-purple-500 decoration-2 underline-offset-4 ml-1">Fazer login</button>
-            </p>
+            <div class="relative">
+                <input type="password" id="signup-confirm-password" placeholder="Confirme sua senha" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white">
+                <button type="button" class="password-toggle" data-target="signup-confirm-password">
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                </button>
+            </div>
+            <button id="signup-submit-btn" type="submit" class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-full shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Criar conta</button>
+            <p class="text-sm text-center text-gray-400 pt-2">Já tem uma conta? <button type="button" id="show-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">Entrar</button></p>
         </form>
 
-        <form id="recover-form" class="auth-card p-8 rounded-[2rem] w-full space-y-5 hidden">
-             <div class="text-center mb-6">
-                <h2 class="text-xl font-bold text-white tracking-tight">Recuperar</h2>
-                <p class="text-xs text-gray-400 mt-2">Enviaremos as instruções para seu e-mail.</p>
-            </div>
+        <form id="recover-form" class="card-bg p-6 rounded-3xl space-y-4 hidden">
+            <h2 class="text-xl font-semibold text-white text-center mb-2">Recuperar Senha</h2>
+            <p class="text-sm text-gray-400 text-center mb-4">Digite seu e-mail para receber o link de redefinição.</p>
+            <div id="recover-message" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/50 rounded-2xl">E-mail enviado! Verifique sua caixa de entrada e spam.</div>
+            <div id="recover-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-2xl"></div>
             
-            <div id="recover-message" class="hidden text-green-300 text-xs font-medium text-center p-3 bg-green-500/10 border border-green-500/20 rounded-xl"></div>
-            <div id="recover-error" class="hidden text-red-300 text-xs font-medium text-center p-3 bg-red-500/10 border border-red-500/20 rounded-xl"></div>
+            <input type="email" id="recover-email" placeholder="Seu e-mail cadastrado" autocomplete="email" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors text-white">
             
-            <div class="input-group">
-                <input type="email" id="recover-email" placeholder=" " autocomplete="email" required class="fintech-input peer">
-                <label for="recover-email" class="fintech-label">E-mail cadastrado</label>
-            </div>
-            
-            <button id="recover-submit-btn" type="submit" class="fintech-btn w-full">Enviar Link</button>
-            <p class="text-xs text-center text-gray-500 mt-4">
-                <button type="button" id="back-to-login-btn" class="text-gray-300 hover:text-white font-medium transition-colors">Voltar para o login</button>
-            </p>
+            <button id="recover-submit-btn" type="submit" class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-full shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Enviar Link</button>
+            <p class="text-sm text-center text-gray-400 pt-2">Lembrou a senha? <button type="button" id="back-to-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">Voltar para Login</button></p>
         </form>
         
-        <div id="auth-loading" class="text-center text-white mt-8 hidden backdrop-blur-sm bg-black/30 px-6 py-2 rounded-full border border-white/10">
-             <div class="flex justify-center items-center gap-3">
-                 <span class="loader w-4 h-4 border-2"></span>
-                 <span class="text-xs font-medium tracking-wide">Autenticando...</span>
-             </div>
+        <div id="auth-loading" class="text-center text-gray-500 mt-12 hidden">
+             <div class="flex justify-center items-center py-4"><span class="loader"></span></div>
+             <p>A conectar...</p>
         </div>
 
-        <footer class="mt-12 text-center opacity-40 hover:opacity-100 transition-opacity">
-            <p class="text-[10px] text-gray-400 tracking-widest uppercase">&copy; 2025 Vesto Finance</p>
+        <footer class="mt-12 text-center">
+            <p class="text-xs text-gray-600">&copy; 2025 Vesto. Todos os direitos reservados.</p>
         </footer>
     </div>
-</div>
 
     <div id="app-wrapper" class="hidden">
 

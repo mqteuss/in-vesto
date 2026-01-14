@@ -55,19 +55,18 @@
 
 <div id="auth-container" class="max-w-lg mx-auto min-h-screen p-6 flex flex-col justify-center relative overflow-hidden">
     
-    <div class="mb-12 animate-fade-in-up">
-        <div class="flex justify-center mb-8">
-            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto" class="h-12 w-auto object-contain brightness-200 grayscale">
-        </div>
-
-        <h1 class="text-3xl font-bold text-white font-jakarta tracking-tight text-center">
-            Bem-vindo ao <br><span class="text-gray-400">futuro dos seus FIIs.</span>
+    <div class="mb-10 animate-fade-in-up text-center">
+        <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto" class="h-16 w-auto object-contain mx-auto mb-6">
+        
+        <h1 class="text-3xl font-bold text-white font-jakarta tracking-tight">
+            Bem-vindo.
         </h1>
+        <p class="text-gray-500 text-sm mt-2">Gerencie seus investimentos com clareza.</p>
     </div>
     
     <div class="w-full relative">
         
-        <form id="login-form" class="space-y-5 animate-fade-in">
+        <form id="login-form" class="space-y-4 animate-fade-in">
             <div id="login-error" class="hidden text-red-400 text-sm text-center p-3 border border-red-900/50 rounded-xl bg-red-900/10"></div>
             
             <div class="relative group">
@@ -79,78 +78,78 @@
                 <input type="password" id="login-password" autocomplete="current-password" required class="fintech-input peer pr-12" placeholder=" ">
                 <label for="login-password" class="fintech-label">Senha</label>
                 
-                <button type="button" class="password-toggle absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors" data-target="login-password">
-                    <svg class="eye-icon-open w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                    <svg class="eye-icon-closed w-6 h-6 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors z-10 p-1" data-target="login-password">
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
                 </button>
             </div>
 
-            <button id="login-submit-btn" type="submit" class="fintech-btn-primary">
+            <button id="login-submit-btn" type="submit" class="fintech-btn-primary mt-4">
                 Entrar
             </button>
 
             <div class="flex justify-between items-center pt-2 px-1">
                 <button type="button" id="show-signup-btn" class="text-sm text-gray-400 hover:text-white transition-colors">Criar conta</button>
-                <button type="button" id="show-recover-btn" class="text-sm text-gray-400 hover:text-white transition-colors">Esqueci a senha</button>
+                <button type="button" id="show-recover-btn" class="text-sm text-gray-400 hover:text-white transition-colors">Recuperar senha</button>
             </div>
         </form>
 
-        <form id="signup-form" class="hidden space-y-5 animate-fade-in">
-            <h2 class="text-xl font-bold text-white mb-6">Criar nova conta</h2>
+        <form id="signup-form" class="hidden space-y-4 animate-fade-in">
+            <h2 class="text-xl font-bold text-white mb-6 text-center">Criar conta</h2>
             
             <div id="signup-error" class="hidden text-red-400 text-sm text-center p-3 border border-red-900/50 rounded-xl bg-red-900/10"></div>
             <div id="signup-success" class="hidden text-green-400 text-sm text-center p-3 border border-green-900/50 rounded-xl bg-green-900/10">Verifique seu e-mail.</div>
             
             <div class="relative group">
                 <input type="email" id="signup-email" autocomplete="username" required class="fintech-input peer" placeholder=" ">
-                <label for="signup-email" class="fintech-label">Seu melhor e-mail</label>
+                <label for="signup-email" class="fintech-label">E-mail</label>
             </div>
             
             <div class="relative group">
                 <input type="password" id="signup-password" autocomplete="new-password" required class="fintech-input peer pr-12" placeholder=" ">
                 <label for="signup-password" class="fintech-label">Senha</label>
-                <button type="button" class="password-toggle absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" data-target="signup-password">
-                     <svg class="eye-icon-open w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                     <svg class="eye-icon-closed w-6 h-6 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white z-10 p-1" data-target="signup-password">
+                     <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                     <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
                 </button>
             </div>
 
             <div class="relative group">
                 <input type="password" id="signup-confirm-password" autocomplete="new-password" required class="fintech-input peer pr-12" placeholder=" ">
-                <label for="signup-confirm-password" class="fintech-label">Confirmar senha</label>
-                 <button type="button" class="password-toggle absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" data-target="signup-confirm-password">
-                     <svg class="eye-icon-open w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                     <svg class="eye-icon-closed w-6 h-6 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                <label for="signup-confirm-password" class="fintech-label">Confirmar</label>
+                 <button type="button" class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white z-10 p-1" data-target="signup-confirm-password">
+                     <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                     <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
                 </button>
             </div>
 
-            <button id="signup-submit-btn" type="submit" class="fintech-btn-primary">
-                Criar conta gratuita
+            <button id="signup-submit-btn" type="submit" class="fintech-btn-primary mt-4">
+                Criar conta
             </button>
             
             <button type="button" id="show-login-btn" class="w-full text-center text-sm text-gray-500 hover:text-white transition-colors pt-2">
-                Já tenho cadastro
+                Voltar para login
             </button>
         </form>
 
-        <form id="recover-form" class="hidden space-y-5 animate-fade-in">
-            <h2 class="text-xl font-bold text-white mb-2">Recuperar acesso</h2>
-            <p class="text-gray-500 text-sm mb-4">Enviaremos um link mágico para você.</p>
+        <form id="recover-form" class="hidden space-y-4 animate-fade-in">
+            <h2 class="text-xl font-bold text-white mb-2 text-center">Recuperar</h2>
+            <p class="text-gray-500 text-sm mb-4 text-center">Digite seu e-mail cadastrado.</p>
             
-            <div id="recover-message" class="hidden text-green-400 text-sm p-3 border border-green-900/50 rounded-xl bg-green-900/10">E-mail enviado!</div>
-            <div id="recover-error" class="hidden text-red-400 text-sm p-3 border border-red-900/50 rounded-xl bg-red-900/10"></div>
+            <div id="recover-message" class="hidden text-green-400 text-sm p-3 border border-green-900/50 rounded-xl bg-green-900/10 text-center">E-mail enviado!</div>
+            <div id="recover-error" class="hidden text-red-400 text-sm p-3 border border-red-900/50 rounded-xl bg-red-900/10 text-center"></div>
             
             <div class="relative group">
                 <input type="email" id="recover-email" autocomplete="email" required class="fintech-input peer" placeholder=" ">
-                <label for="recover-email" class="fintech-label">E-mail cadastrado</label>
+                <label for="recover-email" class="fintech-label">E-mail</label>
             </div>
             
-            <button id="recover-submit-btn" type="submit" class="fintech-btn-primary">
+            <button id="recover-submit-btn" type="submit" class="fintech-btn-primary mt-4">
                 Enviar link
             </button>
             
             <button type="button" id="back-to-login-btn" class="w-full text-center text-sm text-gray-500 hover:text-white transition-colors pt-2">
-                Voltar
+                Cancelar
             </button>
         </form>
     </div>
@@ -160,10 +159,6 @@
             <div class="w-6 h-6 border-2 border-gray-600 border-t-white rounded-full animate-spin"></div>
          </div>
     </div>
-
-    <footer class="mt-auto pt-8 text-center opacity-40">
-        <p class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Secure Vesto Environment</p>
-    </footer>
 </div>
 
     <div id="app-wrapper" class="hidden">

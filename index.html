@@ -53,133 +53,75 @@
         } catch (e) { console.error('Erro ao verificar configs iniciais', e); }
     </script>
 
- <section id="auth-container" class="h-screen w-full flex flex-col items-center justify-center p-6 relative overflow-hidden bg-black">
-    
-    <div class="auth-glow"></div>
-
-    <div class="w-full max-w-sm relative z-10">
+    <div id="auth-container" class="max-w-lg mx-auto min-h-screen p-4 flex flex-col justify-center">
+        <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-48 h-auto mx-auto mb-10">
         
-        <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-gradient-to-tr from-purple-600 to-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-purple-900/20">
-                <span class="text-3xl font-bold text-white tracking-tighter">V</span>
-            </div>
-            <h1 class="text-2xl font-bold text-white tracking-tight">Vesto</h1>
-            <p class="text-sm text-gray-500 mt-1">Gerencie seu patrimônio com inteligência.</p>
-        </div>
-
-        <div id="login-form" class="auth-form-enter bg-[#151515] border border-[#2C2C2E] rounded-3xl p-6 shadow-2xl">
-            <h2 class="text-lg font-semibold text-white mb-6 text-center">Acesse sua conta</h2>
+        <form id="login-form" class="card-bg p-6 rounded-3xl space-y-4">
+            <h2 class="text-xl font-semibold text-white text-center mb-4">Login</h2>
+            <div id="login-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-2xl"></div>
             
-            <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-4">
-                
-                <div class="input-group-premium">
-                    <input type="email" id="login-email" required placeholder="Seu e-mail" 
-                           class="w-full bg-[#1C1C1E] text-white rounded-xl py-3.5 pr-4 placeholder-gray-600 focus:outline-none text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                    </svg>
-                </div>
-
-                <div class="input-group-premium">
-                    <input type="password" id="login-password" required placeholder="Sua senha" 
-                           class="w-full bg-[#1C1C1E] text-white rounded-xl py-3.5 pr-4 placeholder-gray-600 focus:outline-none text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                </div>
-
-                <div class="flex justify-end">
-                    <button type="button" onclick="toggleAuthMode('recover')" class="text-xs text-purple-400 hover:text-purple-300 font-medium transition-colors">
-                        Esqueceu a senha?
-                    </button>
-                </div>
-
-                <button type="submit" id="btn-entrar" class="w-full bg-white text-black font-bold py-3.5 rounded-xl hover:bg-gray-100 transition-all active:scale-[0.98] mt-2 shadow-lg shadow-white/5">
-                    Entrar
-                </button>
-            </form>
-
-            <div class="mt-6 text-center pt-4 border-t border-[#2C2C2E]">
-                <p class="text-xs text-gray-500">Ainda não tem conta?</p>
-                <button onclick="toggleAuthMode('signup')" class="text-sm font-bold text-purple-500 hover:text-purple-400 mt-1 transition-colors">
-                    Criar conta gratuita
-                </button>
-            </div>
-        </div>
-
-        <div id="signup-form" class="hidden bg-[#151515] border border-[#2C2C2E] rounded-3xl p-6 shadow-2xl">
-            <h2 class="text-lg font-semibold text-white mb-6 text-center">Crie sua conta</h2>
+            <input type="email" id="login-email" placeholder="Email" autocomplete="username" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors text-white">
             
-            <form onsubmit="event.preventDefault(); handleSignup();" class="space-y-4">
-                
-                <div class="input-group-premium">
-                    <input type="email" id="signup-email" required placeholder="Melhor e-mail" 
-                           class="w-full bg-[#1C1C1E] text-white rounded-xl py-3.5 pr-4 placeholder-gray-600 focus:outline-none text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                </div>
-
-                <div class="input-group-premium">
-                    <input type="password" id="signup-password" required placeholder="Crie uma senha forte" 
-                           class="w-full bg-[#1C1C1E] text-white rounded-xl py-3.5 pr-4 placeholder-gray-600 focus:outline-none text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                </div>
-
-                <div class="input-group-premium">
-                    <input type="password" id="signup-confirm-password" required placeholder="Confirme a senha" 
-                           class="w-full bg-[#1C1C1E] text-white rounded-xl py-3.5 pr-4 placeholder-gray-600 focus:outline-none text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-
-                <button type="submit" id="btn-cadastrar" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 rounded-xl transition-all active:scale-[0.98] mt-2 shadow-lg shadow-purple-900/20">
-                    Cadastrar
-                </button>
-            </form>
-
-            <div class="mt-6 text-center pt-4 border-t border-[#2C2C2E]">
-                <p class="text-xs text-gray-500">Já tem conta?</p>
-                <button onclick="toggleAuthMode('login')" class="text-sm font-bold text-white hover:text-gray-300 mt-1 transition-colors">
-                    Fazer Login
+            <div class="relative">
+                <input type="password" id="login-password" placeholder="Senha" autocomplete="current-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white">
+                <button type="button" class="password-toggle" data-target="login-password">
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
                 </button>
             </div>
-        </div>
+            <div class="flex justify-end">
+                <button type="button" id="show-recover-btn" class="text-xs text-purple-400 hover:text-purple-300 transition-colors focus:outline-none">Esqueci minha senha</button>
+            </div>
+            <button id="login-submit-btn" type="submit" class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-full shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Entrar</button>
+            <p class="text-sm text-center text-gray-400 pt-2">Não tem uma conta? <button type="button" id="show-signup-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">Cadastre-se</button></p>
+        </form>
 
-        <div id="recover-form" class="hidden bg-[#151515] border border-[#2C2C2E] rounded-3xl p-6 shadow-2xl">
-            <h2 class="text-lg font-semibold text-white mb-2 text-center">Recuperar Senha</h2>
-            <p class="text-xs text-gray-500 text-center mb-6">Enviaremos um link para o seu e-mail.</p>
+        <form id="signup-form" class="card-bg p-6 rounded-3xl space-y-4 hidden">
+            <h2 class="text-xl font-semibold text-white text-center mb-4">Criar Conta</h2>
+            <div id="signup-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-2xl"></div>
+            <div id="signup-success" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/50 rounded-2xl"><p class="font-semibold">Sucesso!</p><p class="mt-1">Enviamos um link de confirmação para o seu e-mail.</p></div>
             
-            <form onsubmit="event.preventDefault(); handleRecover();" class="space-y-4">
-                <div class="input-group-premium">
-                    <input type="email" id="recover-email" required placeholder="Seu e-mail cadastrado" 
-                           class="w-full bg-[#1C1C1E] text-white rounded-xl py-3.5 pr-4 placeholder-gray-600 focus:outline-none text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                </div>
-
-                <button type="submit" id="btn-recuperar" class="w-full bg-white text-black font-bold py-3.5 rounded-xl hover:bg-gray-100 transition-all active:scale-[0.98] mt-2">
-                    Enviar Link
-                </button>
-            </form>
-
-            <div class="mt-6 text-center">
-                <button onclick="toggleAuthMode('login')" class="text-xs font-bold text-gray-500 hover:text-white transition-colors">
-                    Voltar para Login
+            <input type="email" id="signup-email" placeholder="Email" autocomplete="username" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors text-white">
+            
+            <div class="relative">
+                <input type="password" id="signup-password" placeholder="Senha (mín. 6 caracteres)" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white">
+                <button type="button" class="password-toggle" data-target="signup-password">
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
                 </button>
             </div>
+            <div class="relative">
+                <input type="password" id="signup-confirm-password" placeholder="Confirme sua senha" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors pr-10 text-white">
+                <button type="button" class="password-toggle" data-target="signup-confirm-password">
+                    <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                </button>
+            </div>
+            <button id="signup-submit-btn" type="submit" class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-full shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Criar conta</button>
+            <p class="text-sm text-center text-gray-400 pt-2">Já tem uma conta? <button type="button" id="show-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">Entrar</button></p>
+        </form>
+
+        <form id="recover-form" class="card-bg p-6 rounded-3xl space-y-4 hidden">
+            <h2 class="text-xl font-semibold text-white text-center mb-2">Recuperar Senha</h2>
+            <p class="text-sm text-gray-400 text-center mb-4">Digite seu e-mail para receber o link de redefinição.</p>
+            <div id="recover-message" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/50 rounded-2xl">E-mail enviado! Verifique sua caixa de entrada e spam.</div>
+            <div id="recover-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/50 rounded-2xl"></div>
+            
+            <input type="email" id="recover-email" placeholder="Seu e-mail cadastrado" autocomplete="email" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 transition-colors text-white">
+            
+            <button id="recover-submit-btn" type="submit" class="py-3 px-5 w-full accent-bg text-white font-semibold rounded-full shadow-md flex items-center justify-center transition-transform active:scale-95 hover:scale-105">Enviar Link</button>
+            <p class="text-sm text-center text-gray-400 pt-2">Lembrou a senha? <button type="button" id="back-to-login-btn" class="font-semibold text-purple-400 hover:underline focus:outline-none">Voltar para Login</button></p>
+        </form>
+        
+        <div id="auth-loading" class="text-center text-gray-500 mt-12 hidden">
+             <div class="flex justify-center items-center py-4"><span class="loader"></span></div>
+             <p>A conectar...</p>
         </div>
 
+        <footer class="mt-12 text-center">
+            <p class="text-xs text-gray-600">&copy; 2025 Vesto. Todos os direitos reservados.</p>
+        </footer>
     </div>
-    
-    <div class="absolute bottom-6 text-center z-0 opacity-50">
-        <p class="text-[10px] text-gray-600">Protegido por criptografia de ponta a ponta.</p>
-    </div>
-</section>
 
     <div id="app-wrapper" class="hidden">
 

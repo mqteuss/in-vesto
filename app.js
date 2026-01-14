@@ -7349,6 +7349,61 @@ if (ipcaPageContent) {
 
 // Iniciar a busca silenciosa do IPCA ao carregar o app (para preencher o widget)
 setTimeout(buscarDadosIpca, 2000);
+
+// --- NOVA LÓGICA DE LOGIN/REGISTRO (Adicione ao final do app.js) ---
+
+    // 1. Função para alternar entre Login, Cadastro e Recuperação
+    // Usamos 'window.' para garantir que o HTML consiga chamar essa função
+    window.toggleAuthMode = function(mode) {
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const recoverForm = document.getElementById('recover-form');
+
+        // Helper interno para aplicar a animação de entrada
+        const showForm = (form) => {
+            if(!form) return;
+            form.classList.remove('hidden');
+            
+            // Truque para reiniciar a animação CSS:
+            form.classList.remove('auth-form-enter');
+            void form.offsetWidth; // Força o navegador a recalcular (Reflow)
+            form.classList.add('auth-form-enter');
+        };
+
+        // Esconde tudo primeiro
+        if(loginForm) loginForm.classList.add('hidden');
+        if(signupForm) signupForm.classList.add('hidden');
+        if(recoverForm) recoverForm.classList.add('hidden');
+
+        // Mostra o escolhido
+        if (mode === 'signup') {
+            showForm(signupForm);
+        } else if (mode === 'recover') {
+            showForm(recoverForm);
+        } else {
+            showForm(loginForm); // Padrão é login
+        }
+    };
+
+    // 2. Função Visual para Botões de Carregamento (Loading)
+    window.setLoadingButton = function(btnId, isLoading, textNormal = 'Entrar') {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+
+        if (isLoading) {
+            btn.disabled = true;
+            // Spinner SVG girando
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 mx-auto text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>`;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+        } else {
+            btn.disabled = false;
+            btn.textContent = textNormal;
+            btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+    };
 	
     await init();
 });

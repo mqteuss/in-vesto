@@ -53,35 +53,32 @@
         } catch (e) { console.error('Erro ao verificar configs iniciais', e); }
     </script>
 
-<div id="auth-container" class="h-[100dvh] w-full flex flex-col justify-between bg-black overflow-hidden relative p-6">
+<div id="auth-container" class="w-full flex flex-col bg-black relative">
         
-        <div class="flex-1 flex flex-col items-center justify-center transition-all duration-500">
-            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-36 h-auto drop-shadow-2xl animate-fade-in-up">
+        <div class="flex-1 min-h-0 flex flex-col items-center justify-center p-4">
+            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-40 max-h-[25vh] object-contain drop-shadow-2xl animate-fade-in-up">
         </div>
 
-        <div class="w-full relative z-10 pb-4">
+        <div class="w-full px-6 pb-8 shrink-0 z-10">
             
             <form id="login-form" class="animate-fade-in flex flex-col gap-4">
                 
-                <div class="mb-2 px-1">
-                    <h2 class="text-xl font-bold text-white">Acessar</h2>
+                <div class="px-1">
+                    <h2 class="text-2xl font-bold text-white tracking-tight">Acessar</h2>
                 </div>
 
-                <div id="login-error" class="hidden text-red-400 text-[12px] font-bold text-center p-3 border border-red-900/50 rounded-xl bg-red-900/10"></div>
+                <div id="login-error" class="hidden text-red-400 text-xs font-bold text-center p-3 border border-red-900/50 rounded-xl bg-red-900/10"></div>
                 
                 <div class="space-y-4">
                     <div class="relative group">
-                        <input type="email" id="login-email" placeholder=" " autocomplete="username" required 
-                            class="inter-input peer w-full">
+                        <input type="email" id="login-email" placeholder=" " autocomplete="username" required class="inter-input peer w-full">
                         <label class="inter-label">E-mail</label>
                     </div>
                     
                     <div class="relative group">
-                        <input type="password" id="login-password" placeholder=" " autocomplete="current-password" required 
-                            class="inter-input peer w-full pr-10">
+                        <input type="password" id="login-password" placeholder=" " autocomplete="current-password" required class="inter-input peer w-full pr-12">
                         <label class="inter-label">Senha</label>
-                        
-                        <button type="button" class="password-toggle absolute right-4 top-0 bottom-0 text-gray-400 hover:text-white transition-colors" data-target="login-password">
+                        <button type="button" class="password-toggle absolute right-4 top-0 bottom-0 text-gray-500 hover:text-white transition-colors h-full flex items-center justify-center w-10" data-target="login-password">
                             <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
                             <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
                         </button>
@@ -97,21 +94,21 @@
                         Esqueci minha senha
                     </button>
                     
-                     <button type="button" id="show-signup-btn" class="text-sm text-gray-500 font-medium py-2 hover:text-white transition-colors">
+                    <button type="button" id="show-signup-btn" class="text-sm text-gray-500 font-medium py-2 hover:text-white transition-colors">
                         Não tenho conta
                     </button>
                 </div>
             </form>
 
-            <form id="signup-form" class="animate-fade-in flex flex-col gap-4 hidden">
-                <div class="mb-2 px-1">
-                    <h2 class="text-xl font-bold text-white">Criar Conta</h2>
+            <form id="signup-form" class="hidden animate-fade-in flex flex-col gap-4">
+                <div class="px-1">
+                    <h2 class="text-2xl font-bold text-white tracking-tight">Criar Conta</h2>
                 </div>
                 
-                <div id="signup-error" class="hidden text-red-400 text-[12px] text-center p-3 border border-red-900/50 rounded-xl bg-red-900/10"></div>
-                <div id="signup-success" class="hidden text-green-400 text-[12px] text-center p-3 border border-green-900/50 rounded-xl bg-green-900/10">Verifique seu e-mail.</div>
+                <div id="signup-error" class="hidden text-red-400 text-xs text-center p-3 border border-red-900/50 rounded-xl bg-red-900/10"></div>
+                <div id="signup-success" class="hidden text-green-400 text-xs text-center p-3 border border-green-900/50 rounded-xl bg-green-900/10">Verifique seu e-mail.</div>
                 
-                <div class="space-y-4">
+                <div class="space-y-3">
                     <div class="relative group">
                         <input type="email" id="signup-email" placeholder=" " autocomplete="username" required class="inter-input peer w-full">
                         <label class="inter-label">E-mail</label>
@@ -131,17 +128,17 @@
                         Cadastrar
                     </button>
                     <button type="button" id="show-login-btn" class="inter-btn-secondary">
-                        Voltar para Login
+                        Voltar
                     </button>
                 </div>
             </form>
 
-            <form id="recover-form" class="animate-fade-in flex flex-col gap-4 hidden">
-                 <div class="mb-2 px-1">
-                    <h2 class="text-xl font-bold text-white">Recuperar</h2>
+            <form id="recover-form" class="hidden animate-fade-in flex flex-col gap-4">
+                 <div class="px-1">
+                    <h2 class="text-2xl font-bold text-white tracking-tight">Recuperar</h2>
                 </div>
-                <div id="recover-message" class="hidden text-green-400 text-[12px] text-center p-3 border border-green-900/50 rounded-xl bg-green-900/10">E-mail enviado!</div>
-                <div id="recover-error" class="hidden text-red-400 text-[12px] text-center p-3 border border-red-900/50 rounded-xl bg-red-900/10"></div>
+                <div id="recover-message" class="hidden text-green-400 text-xs text-center p-3 border border-green-900/50 rounded-xl bg-green-900/10">E-mail enviado!</div>
+                <div id="recover-error" class="hidden text-red-400 text-xs text-center p-3 border border-red-900/50 rounded-xl bg-red-900/10"></div>
                 
                 <div class="relative group">
                      <input type="email" id="recover-email" placeholder=" " autocomplete="email" required class="inter-input peer w-full">
@@ -153,14 +150,10 @@
                         Enviar Link
                     </button>
                     <button type="button" id="back-to-login-btn" class="inter-btn-secondary">
-                        Cancelar
+                        Voltar
                     </button>
                 </div>
             </form>
-
-            <div id="auth-loading" class="hidden py-8 text-center">
-                 <div class="loader mx-auto"></div>
-            </div>
             
             <footer class="mt-4 text-center">
                  <p class="text-[10px] text-gray-800 font-bold select-none">VESTO &copy; 2026</p>

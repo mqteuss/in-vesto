@@ -1292,6 +1292,95 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js" type="module"></script>
     <script src="app.js" type="module"></script>
+	
+	<script>
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- 1. CORREÇÃO DE NAVEGAÇÃO (Troca de Telas) ---
+    // Mapeamento dos botões para garantir que funcionem com o novo HTML
+    const navMap = [
+        { btn: 'show-recover-btn', hide: 'login-form', show: 'recover-form' },
+        { btn: 'back-to-login-btn', hide: 'recover-form', show: 'login-form' },
+        { btn: 'show-signup-btn', hide: 'login-form', show: 'signup-form' },
+        { btn: 'show-login-btn', hide: 'signup-form', show: 'login-form' }
+    ];
+
+    navMap.forEach(route => {
+        const btn = document.getElementById(route.btn);
+        if (btn) {
+            // Removemos clones de eventos antigos para evitar conflitos
+            const newBtn = btn.cloneNode(true); 
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Esconde a tela atual
+                const toHide = document.getElementById(route.hide);
+                if (toHide) toHide.classList.add('hidden');
+                
+                // Mostra a nova tela
+                const toShow = document.getElementById(route.show);
+                if (toShow) toShow.classList.remove('hidden');
+
+                // Limpa mensagens de erro/sucesso antigas se existirem
+                document.querySelectorAll('.text-red-400, .text-green-400').forEach(el => el.classList.add('hidden'));
+            });
+        }
+    });
+
+    // --- 2. CORREÇÃO DE AUTOFILL E FLOATING LABELS ---
+    const floatInputs = document.querySelectorAll('.float-input');
+
+    const checkInputState = (input) => {
+        // Se tem valor OU se o navegador detectou autofill
+        const hasValue = input.value && input.value.length > 0;
+        const isAutofilled = input.matches && input.matches(':-webkit-autofill');
+        
+        if (hasValue || isAutofilled) {
+            input.setAttribute('data-filled', 'true');
+        } else {
+            input.removeAttribute('data-filled');
+        }
+    };
+
+    floatInputs.forEach(input => {
+        // Verifica várias vezes no carregamento para pegar senhas salvas
+        setTimeout(() => checkInputState(input), 50);
+        setTimeout(() => checkInputState(input), 200);
+        setTimeout(() => checkInputState(input), 500);
+
+        // Verifica ao interagir
+        input.addEventListener('input', () => checkInputState(input));
+        input.addEventListener('blur', () => checkInputState(input));
+        
+        // Detecção agressiva de animação do Chrome
+        input.addEventListener('animationstart', (e) => {
+            if (e.animationName === 'onAutoFillStart') checkInputState(input);
+        });
+    });
+
+    // --- 3. BOTÃO DE OLHINHO (Mostrar Senha) ---
+    document.querySelectorAll('.password-toggle').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = btn.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            const openIcon = btn.querySelector('.eye-icon-open');
+            const closedIcon = btn.querySelector('.eye-icon-closed');
+
+            if (input && input.type === 'password') {
+                input.type = 'text';
+                if(openIcon) openIcon.classList.add('hidden');
+                if(closedIcon) closedIcon.classList.remove('hidden');
+            } else if (input) {
+                input.type = 'password';
+                if(openIcon) openIcon.classList.remove('hidden');
+                if(closedIcon) closedIcon.classList.add('hidden');
+            }
+        });
+    });
+});
+</script>
 
 </body>
 

@@ -54,7 +54,7 @@ export default async function handler(request, response) {
     try {
         const { q } = request.query;
 
-        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR "Ações" IFIX OR "Dividendos FII" Mercado de Ações';
+        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR "Ações" IFIX OR "Dividendos FII"';
 
 
         const fullQuery = `${queryTerm} when:14d`; 

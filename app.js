@@ -7349,6 +7349,68 @@ if (ipcaPageContent) {
 
 // Iniciar a busca silenciosa do IPCA ao carregar o app (para preencher o widget)
 setTimeout(buscarDadosIpca, 2000);
+
+/* ============================================================
+   SCRIPT DE POLIMENTO: DETECÇÃO DE AUTOFILL E INPUTS
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+    
+    const floatInputs = document.querySelectorAll('.float-input');
+
+    // Função que força o label a subir se houver valor ou autofill
+    const checkInputState = (input) => {
+        const hasValue = input.value && input.value.length > 0;
+        const isAutofilled = input.matches && input.matches(':-webkit-autofill');
+        
+        if (hasValue || isAutofilled) {
+            input.setAttribute('data-filled', 'true');
+        } else {
+            input.removeAttribute('data-filled');
+        }
+    };
+
+    floatInputs.forEach(input => {
+        // 1. Checagem inicial (com delay para pegar senhas salvas)
+        setTimeout(() => checkInputState(input), 50);
+        setTimeout(() => checkInputState(input), 200);
+        setTimeout(() => checkInputState(input), 500);
+
+        // 2. Ao digitar
+        input.addEventListener('input', () => checkInputState(input));
+        input.addEventListener('change', () => checkInputState(input));
+
+        // 3. Ao perder o foco (blur)
+        input.addEventListener('blur', () => checkInputState(input));
+
+        // 4. Detecção agressiva de animação do Chrome (Autofill)
+        input.addEventListener('animationstart', (e) => {
+            if (e.animationName === 'onAutoFillStart') {
+                checkInputState(input);
+            }
+        });
+    });
+
+    // 5. Toggle de Senha (Olhinho)
+    document.querySelectorAll('.password-toggle').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault(); // Impede roubar foco
+            const targetId = btn.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            const openIcon = btn.querySelector('.eye-icon-open');
+            const closedIcon = btn.querySelector('.eye-icon-closed');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                openIcon.classList.add('hidden');
+                closedIcon.classList.remove('hidden');
+            } else {
+                input.type = 'password';
+                openIcon.classList.remove('hidden');
+                closedIcon.classList.add('hidden');
+            }
+        });
+    });
+});
 	
     await init();
 });

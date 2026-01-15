@@ -1,7 +1,7 @@
 import Parser from 'rss-parser';
 
 export default async function handler(request, response) {
-
+    // Headers padrão
     response.setHeader('Access-Control-Allow-Credentials', true);
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -9,14 +9,11 @@ export default async function handler(request, response) {
         'Access-Control-Allow-Headers',
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
-
-
     response.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=60');
 
     if (request.method === 'OPTIONS') {
         return response.status(200).end();
     }
-
 
     const parser = new Parser({
         headers: {
@@ -24,18 +21,17 @@ export default async function handler(request, response) {
         },
         timeout: 10000,
         customFields: {
-
-            item: [['source', 'sourceObj']], 
+            item: [['source', 'sourceObj']],
         },
     });
 
-
+    // Fontes confiáveis
     const knownSources = {
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
         'funds explorer': { name: 'Funds Explorer', domain: 'fundsexplorer.com.br' },
         'status invest': { name: 'Status Invest', domain: 'statusinvest.com.br' },
         'fiis.com.br': { name: 'FIIs.com.br', domain: 'fiis.com.br' },
-        'suno': { name: 'Suno Notícias', domain: 'suno.com.br' }, 
+        'suno': { name: 'Suno Notícias', domain: 'suno.com.br' },
         'investidor10': { name: 'Investidor10', domain: 'investidor10.com.br' },
         'money times': { name: 'Money Times', domain: 'moneytimes.com.br' },
         'infomoney': { name: 'InfoMoney', domain: 'infomoney.com.br' },
@@ -51,34 +47,17 @@ export default async function handler(request, response) {
         'inteligência financeira': { name: 'Inteligência Financeira', domain: 'inteligenciafinanceira.com.br' }
     };
 
-    try {
-        const { q } = request.query;
-
-        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR "Ações" IFIX OR "Dividendos FII"';
-
-
-        const fullQuery = `${queryTerm} when:14d`; 
-
-        const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-
-        const feed = await parser.parseURL(feedUrl);
-
-
-        const seenTitles = new Set();
-
-        const articles = feed.items.map((item) => {
+    // Função auxiliar para limpar e validar itens
+    // Isso evita repetir código para FIIs e Ações
+    const processItems = (items, seenTitles) => {
+        return items.map((item) => {
             let rawSourceName = '';
             let cleanTitle = item.title || 'Sem título';
 
-
             if (item.sourceObj && (item.sourceObj._ || item.sourceObj.content)) {
-
                 rawSourceName = item.sourceObj._ || item.sourceObj.content || item.sourceObj;
-            } 
-
-            else {
-
-                const sourcePattern = /(?: - | \| )([^-|]+)$/; 
+            } else {
+                const sourcePattern = /(?: - | \| )([^-|]+)$/;
                 const match = item.title.match(sourcePattern);
                 if (match) {
                     rawSourceName = match[1];
@@ -86,7 +65,6 @@ export default async function handler(request, response) {
             }
 
             if (rawSourceName) {
-
                 cleanTitle = cleanTitle.replace(new RegExp(`(?: - | \\| )\\s*${escapeRegExp(rawSourceName)}$`), '').trim();
             }
 
@@ -102,33 +80,59 @@ export default async function handler(request, response) {
                 if (foundKey) known = knownSources[foundKey];
             }
 
-            if (!known) return null; 
+            if (!known) return null;
 
+            // Verificação de duplicidade
             if (seenTitles.has(cleanTitle)) return null;
             seenTitles.add(cleanTitle);
 
             return {
                 title: cleanTitle,
                 link: item.link,
-                publicationDate: item.pubDate, 
+                publicationDate: item.pubDate,
                 sourceName: known.name,
                 sourceHostname: known.domain,
                 favicon: `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`,
                 summary: item.contentSnippet || '',
             };
-        })
-        .filter(item => item !== null)
-        .sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate)); 
+        }).filter(item => item !== null);
+    };
 
-        return response.status(200).json(articles);
+    try {
+        // 1. Definição das Queries separadas para garantir volume de ambos os lados
+        // Nota: Adicionei termos negativos na query de ações para evitar contaminação cruzada
+        const queryFII = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII" when:14d';
+        const queryStocks = '"Ações" OR "Ibovespa" OR "Dividendos Ações" OR "Mercado de Ações" -FII -"Fundos Imobiliários" when:14d';
+
+        const feedUrlFII = `https://news.google.com/rss/search?q=${encodeURIComponent(queryFII)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+        const feedUrlStocks = `https://news.google.com/rss/search?q=${encodeURIComponent(queryStocks)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+
+        // 2. Busca paralela (Promise.all) para não dobrar o tempo de carregamento
+        const [feedFII, feedStocks] = await Promise.all([
+            parser.parseURL(feedUrlFII),
+            parser.parseURL(feedUrlStocks)
+        ]);
+
+        const seenTitles = new Set();
+        
+        // 3. Processamento separado
+        const articlesFII = processItems(feedFII.items || [], seenTitles);
+        const articlesStocks = processItems(feedStocks.items || [], seenTitles);
+
+        // 4. União e Ordenação Final
+        // Juntamos tudo e ordenamos pela data mais recente.
+        // Como buscamos separadamente, garantimos que temos conteúdo dos dois tipos no array final.
+        const allArticles = [...articlesFII, ...articlesStocks]
+            .sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
+
+        return response.status(200).json(allArticles);
 
     } catch (error) {
         console.error('CRITICAL ERROR API NEWS:', error);
-
-        return response.status(200).json([]); 
+        return response.status(200).json([]);
     }
 }
 
 function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

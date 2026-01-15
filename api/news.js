@@ -1,20 +1,5 @@
 import Parser from 'rss-parser';
 
-// --- SILENCIADOR DE AVISO (FIX) ---
-const originalEmit = process.emit;
-process.emit = function (name, data, ...args) {
-    if (
-        name === 'warning' &&
-        typeof data === 'object' &&
-        data.name === 'DeprecationWarning' &&
-        data.message && data.message.includes('url.parse')
-    ) {
-        return false;
-    }
-    return originalEmit.apply(process, [name, data, ...args]);
-};
-// ----------------------------------
-
 export default async function handler(request, response) {
 
     response.setHeader('Access-Control-Allow-Credentials', true);
@@ -25,11 +10,13 @@ export default async function handler(request, response) {
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
 
+
     response.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=60');
 
     if (request.method === 'OPTIONS') {
         return response.status(200).end();
     }
+
 
     const parser = new Parser({
         headers: {
@@ -37,9 +24,11 @@ export default async function handler(request, response) {
         },
         timeout: 10000,
         customFields: {
+
             item: [['source', 'sourceObj']], 
         },
     });
+
 
     const knownSources = {
         'clube fii': { name: 'Clube FII', domain: 'clubefii.com.br' },
@@ -53,53 +42,42 @@ export default async function handler(request, response) {
         'investing.com': { name: 'Investing.com', domain: 'br.investing.com' },
         'mais retorno': { name: 'Mais Retorno', domain: 'maisretorno.com' },
         'valor investe': { name: 'Valor Investe', domain: 'valorinveste.globo.com' },
-        'valor econômico': { name: 'Valor Econômico', domain: 'valor.globo.com' },
         'exame': { name: 'Exame', domain: 'exame.com' },
         'brazil journal': { name: 'Brazil Journal', domain: 'braziljournal.com' },
         'seu dinheiro': { name: 'Seu Dinheiro', domain: 'seudinheiro.com' },
         'neofeed': { name: 'NeoFeed', domain: 'neofeed.com.br' },
         'bmc news': { name: 'BMC News', domain: 'bmcnews.com.br' },
         'the cap': { name: 'The Cap', domain: 'thecap.com.br' },
-        'inteligência financeira': { name: 'Inteligência Financeira', domain: 'inteligenciafinanceira.com.br' },
-        'bloomberg línea': { name: 'Bloomberg Línea', domain: 'bloomberglinea.com.br' },
-        'cnn brasil': { name: 'CNN Brasil', domain: 'cnnbrasil.com.br' },
-        'tradersclub': { name: 'TC', domain: 'tc.com.br' },
-        'advfn': { name: 'ADVFN', domain: 'br.advfn.com' },
-        'e-investidor': { name: 'E-Investidor', domain: 'einvestidor.estadao.com.br' }
+        'inteligência financeira': { name: 'Inteligência Financeira', domain: 'inteligenciafinanceira.com.br' }
     };
 
     try {
         const { q } = request.query;
 
-        // --- 1. QUERY MAIS INTELIGENTE ---
-        // Removi: Ibovespa, Mercado Financeiro, B3 (Geradores de ruído)
-        // Adicionei: JCP, Fato Relevante (Foco em valor)
-        // Mantive: FII, Dividendos, Ações (Necessários)
-        const defaultQuery = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos" OR "JCP" OR "Fato Relevante" OR "Ações"';
-        
-        const queryTerm = q || defaultQuery;
-        
-        // Reduzi para 3 dias (when:3d) para pegar coisas mais quentes e menos "resumão da semana"
-        const fullQuery = `${queryTerm} when:7d`; 
-        
+        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"';
+
+
+        const fullQuery = `${queryTerm} when:5d`; 
+
         const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 
         const feed = await parser.parseURL(feedUrl);
 
+
         const seenTitles = new Set();
-        
-        // --- 2. PADRÕES DE RUÍDO (FILTRO) ---
-        // Regex para identificar títulos genéricos de fechamento/abertura que não citam empresas
-        const noiseRegex = /(ibovespa|dólar|bolsa|mercado) (fecha|abre|sobe|cai|recua|avança|opera|encerra)/i;
 
         const articles = feed.items.map((item) => {
             let rawSourceName = '';
             let cleanTitle = item.title || 'Sem título';
 
+
             if (item.sourceObj && (item.sourceObj._ || item.sourceObj.content)) {
+
                 rawSourceName = item.sourceObj._ || item.sourceObj.content || item.sourceObj;
             } 
+
             else {
+
                 const sourcePattern = /(?: - | \| )([^-|]+)$/; 
                 const match = item.title.match(sourcePattern);
                 if (match) {
@@ -108,6 +86,7 @@ export default async function handler(request, response) {
             }
 
             if (rawSourceName) {
+
                 cleanTitle = cleanTitle.replace(new RegExp(`(?: - | \\| )\\s*${escapeRegExp(rawSourceName)}$`), '').trim();
             }
 
@@ -128,17 +107,6 @@ export default async function handler(request, response) {
             if (seenTitles.has(cleanTitle)) return null;
             seenTitles.add(cleanTitle);
 
-            // Captura de Tickers
-            const tickerRegex = /\b[A-Z]{4}(?:3|4|5|6|11)\b/g;
-            const foundTickers = cleanTitle.match(tickerRegex) || [];
-            const uniqueTickers = [...new Set(foundTickers)];
-
-            // --- 3. FILTRAGEM DE RUÍDO ---
-            // Se o título parece "Ibovespa fecha em queda" E não tem nenhum ticker específico, ignoramos.
-            if (uniqueTickers.length === 0 && noiseRegex.test(cleanTitle)) {
-                return null;
-            }
-
             return {
                 title: cleanTitle,
                 link: item.link,
@@ -147,7 +115,6 @@ export default async function handler(request, response) {
                 sourceHostname: known.domain,
                 favicon: `https://www.google.com/s2/favicons?domain=${known.domain}&sz=64`,
                 summary: item.contentSnippet || '',
-                tickers: uniqueTickers
             };
         })
         .filter(item => item !== null)
@@ -157,6 +124,7 @@ export default async function handler(request, response) {
 
     } catch (error) {
         console.error('CRITICAL ERROR API NEWS:', error);
+
         return response.status(200).json([]); 
     }
 }

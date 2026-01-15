@@ -54,10 +54,10 @@ export default async function handler(request, response) {
     try {
         const { q } = request.query;
 
-        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR "Ações" IFIX OR "Dividendos FII"';
+        const queryTerm = q || 'FII OR "Fundos Imobiliários" OR "Ações" IFIX OR "Dividendos FII" IBOVESPA OR "Mercado de Ações"';
 
 
-        const fullQuery = `${queryTerm} when:5d`; 
+        const fullQuery = `${queryTerm} when:14d`; 
 
         const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fullQuery)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 

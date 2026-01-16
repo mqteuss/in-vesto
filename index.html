@@ -55,102 +55,123 @@
 
 <div id="auth-container" class="w-full max-w-sm mx-auto min-h-screen p-6 flex flex-col justify-center transition-all duration-300">
         
-        <div class="mb-12 flex flex-col items-center">
-            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-32 h-auto mb-4 drop-shadow-2xl">
+        <div class="mb-10 flex flex-col items-center">
+            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-28 h-auto mb-4 drop-shadow-2xl">
         </div>
         
-        <form id="login-form" class="w-full space-y-5 animate-scale-in">
+        <form id="login-form" class="w-full space-y-6 animate-scale-in">
             <div class="space-y-1">
-                <h2 class="text-2xl font-bold text-white mb-1">Acesse sua conta</h2>
-                <p class="text-gray-500 text-sm">Bem-vindo de volta ao Vesto.</p>
+                <h2 class="text-2xl font-bold text-white tracking-tight">Acesse sua conta</h2>
+                <p class="text-gray-500 text-sm">Gerencie seus proventos com inteligência.</p>
             </div>
 
-            <div id="login-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/20 border border-red-900/50 rounded-2xl"></div>
+            <div id="login-error" class="hidden text-red-400 text-xs text-center p-3 bg-red-900/10 border border-red-900/20 rounded-xl"></div>
             
-            <div class="space-y-4 pt-4">
-                <input type="email" id="login-email" placeholder="E-mail" autocomplete="username" required 
-                    class="inter-input w-full p-4 text-lg bg-[#111111] border-none rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all text-white placeholder-gray-600">
+            <div class="space-y-5 pt-2">
                 
-                <div class="relative">
-                    <input type="password" id="login-password" placeholder="Senha" autocomplete="current-password" required 
-                        class="inter-input w-full p-4 text-lg bg-[#111111] border-none rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all pr-12 text-white placeholder-gray-600">
-                    <button type="button" class="password-toggle absolute right-4 top-0 bottom-0 flex items-center text-gray-500 hover:text-white transition-colors" data-target="login-password">
-                        <svg class="eye-icon-open w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                        <svg class="eye-icon-closed w-6 h-6 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                <div class="relative group">
+                    <input type="email" id="login-email" placeholder=" " autocomplete="username" required 
+                        class="peer floating-input w-full bg-[#111111] text-white border-none rounded-xl focus:outline-none focus:ring-0">
+                    <label for="login-email" class="floating-label text-gray-500">E-mail</label>
+                    <div class="absolute bottom-0 left-0 w-full h-[1px] bg-[#333] group-focus-within:bg-purple-600 transition-colors duration-300"></div>
+                </div>
+                
+                <div class="relative group">
+                    <input type="password" id="login-password" placeholder=" " autocomplete="current-password" required 
+                        class="peer floating-input w-full bg-[#111111] text-white border-none rounded-xl focus:outline-none focus:ring-0 pr-10">
+                    <label for="login-password" class="floating-label text-gray-500">Senha</label>
+                    
+                    <button type="button" class="password-toggle absolute right-3 top-0 bottom-0 flex items-center text-gray-500 hover:text-white transition-colors" data-target="login-password">
+                        <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                        <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
                     </button>
+                    <div class="absolute bottom-0 left-0 w-full h-[1px] bg-[#333] group-focus-within:bg-purple-600 transition-colors duration-300"></div>
                 </div>
             </div>
 
-            <div class="flex justify-between items-center pt-2">
-                <button type="button" id="show-signup-btn" class="text-sm font-semibold text-gray-400 hover:text-white transition-colors focus:outline-none">Criar conta</button>
-                <button type="button" id="show-recover-btn" class="text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors focus:outline-none">Esqueci a senha</button>
+            <div class="flex justify-between items-center pt-1">
+                <button type="button" id="show-signup-btn" class="text-xs font-semibold text-gray-400 hover:text-white transition-colors focus:outline-none tracking-wide uppercase">Criar conta</button>
+                <button type="button" id="show-recover-btn" class="text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors focus:outline-none tracking-wide uppercase">Esqueci a senha</button>
             </div>
 
-            <button id="login-submit-btn" type="submit" class="inter-btn mt-6 w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg rounded-2xl shadow-lg shadow-purple-900/30 transition-all active:scale-[0.98]">
-                Entrar
+            <button id="login-submit-btn" type="submit" class="inter-btn mt-8 w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/20 transition-all active:scale-[0.97]">
+                ENTRAR
             </button>
         </form>
 
-        <form id="signup-form" class="w-full space-y-5 hidden animate-scale-in">
+        <form id="signup-form" class="w-full space-y-6 hidden animate-scale-in">
             <div class="space-y-1">
-                <h2 class="text-2xl font-bold text-white mb-1">Crie sua conta</h2>
-                <p class="text-gray-500 text-sm">Comece a controlar seus investimentos.</p>
+                <h2 class="text-2xl font-bold text-white tracking-tight">Crie sua conta</h2>
+                <p class="text-gray-500 text-sm">Junte-se a nós.</p>
             </div>
 
-            <div id="signup-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/20 border border-red-900/50 rounded-2xl"></div>
-            <div id="signup-success" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/20 border border-green-900/50 rounded-2xl"><p class="font-semibold">Sucesso!</p><p class="mt-1">Verifique seu e-mail.</p></div>
+            <div id="signup-error" class="hidden text-red-400 text-xs text-center p-3 bg-red-900/10 border border-red-900/20 rounded-xl"></div>
+            <div id="signup-success" class="hidden text-green-300 text-xs text-center p-3 bg-green-900/10 border border-green-900/20 rounded-xl"><p class="font-bold">Sucesso!</p><p class="mt-1">Verifique seu e-mail.</p></div>
             
-            <div class="space-y-4 pt-4">
-                <input type="email" id="signup-email" placeholder="Seu melhor e-mail" autocomplete="username" required 
-                     class="inter-input w-full p-4 text-lg bg-[#111111] border-none rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all text-white placeholder-gray-600">
-                
-                <div class="relative">
-                    <input type="password" id="signup-password" placeholder="Crie uma senha" autocomplete="new-password" required 
-                         class="inter-input w-full p-4 text-lg bg-[#111111] border-none rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all pr-12 text-white placeholder-gray-600">
+            <div class="space-y-5 pt-2">
+                <div class="relative group">
+                    <input type="email" id="signup-email" placeholder=" " autocomplete="username" required 
+                         class="peer floating-input w-full bg-[#111111] text-white border-none rounded-xl focus:outline-none focus:ring-0">
+                    <label for="signup-email" class="floating-label text-gray-500">E-mail</label>
+                    <div class="absolute bottom-0 left-0 w-full h-[1px] bg-[#333] group-focus-within:bg-purple-600 transition-colors duration-300"></div>
                 </div>
-                <div class="relative">
-                    <input type="password" id="signup-confirm-password" placeholder="Confirme a senha" autocomplete="new-password" required 
-                         class="inter-input w-full p-4 text-lg bg-[#111111] border-none rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all pr-12 text-white placeholder-gray-600">
+                
+                <div class="relative group">
+                    <input type="password" id="signup-password" placeholder=" " autocomplete="new-password" required 
+                         class="peer floating-input w-full bg-[#111111] text-white border-none rounded-xl focus:outline-none focus:ring-0 pr-10">
+                    <label for="signup-password" class="floating-label text-gray-500">Crie uma senha</label>
+                    <div class="absolute bottom-0 left-0 w-full h-[1px] bg-[#333] group-focus-within:bg-purple-600 transition-colors duration-300"></div>
+                </div>
+
+                <div class="relative group">
+                    <input type="password" id="signup-confirm-password" placeholder=" " autocomplete="new-password" required 
+                         class="peer floating-input w-full bg-[#111111] text-white border-none rounded-xl focus:outline-none focus:ring-0 pr-10">
+                    <label for="signup-confirm-password" class="floating-label text-gray-500">Confirme a senha</label>
+                    <div class="absolute bottom-0 left-0 w-full h-[1px] bg-[#333] group-focus-within:bg-purple-600 transition-colors duration-300"></div>
                 </div>
             </div>
 
-            <button id="signup-submit-btn" type="submit" class="inter-btn mt-6 w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg rounded-2xl shadow-lg shadow-purple-900/30 transition-all active:scale-[0.98]">
-                Cadastrar
+            <button id="signup-submit-btn" type="submit" class="inter-btn mt-8 w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/20 transition-all active:scale-[0.97]">
+                CADASTRAR
             </button>
             
-            <div class="text-center pt-4">
-                <button type="button" id="show-login-btn" class="text-sm text-gray-400 hover:text-white transition-colors">Já tenho conta. <span class="font-bold text-purple-400">Entrar</span></button>
+            <div class="text-center pt-2">
+                <button type="button" id="show-login-btn" class="text-xs text-gray-400 hover:text-white transition-colors">Já tem conta? <span class="font-bold text-purple-400">Entrar</span></button>
             </div>
         </form>
 
-        <form id="recover-form" class="w-full space-y-5 hidden animate-scale-in">
+        <form id="recover-form" class="w-full space-y-6 hidden animate-scale-in">
              <div class="space-y-1">
-                <h2 class="text-2xl font-bold text-white mb-1">Recuperar senha</h2>
-                <p class="text-gray-500 text-sm">Enviaremos um link para você.</p>
+                <h2 class="text-2xl font-bold text-white tracking-tight">Recuperar</h2>
+                <p class="text-gray-500 text-sm">Digite seu e-mail para continuar.</p>
             </div>
 
-            <div id="recover-message" class="hidden text-green-300 text-sm text-center p-3 bg-green-900/20 border border-green-900/50 rounded-2xl">E-mail enviado!</div>
-            <div id="recover-error" class="hidden text-red-400 text-sm text-center p-3 bg-red-900/20 border border-red-900/50 rounded-2xl"></div>
+            <div id="recover-message" class="hidden text-green-300 text-xs text-center p-3 bg-green-900/10 border border-green-900/20 rounded-xl">Link enviado!</div>
+            <div id="recover-error" class="hidden text-red-400 text-xs text-center p-3 bg-red-900/10 border border-red-900/20 rounded-xl"></div>
             
-            <div class="pt-4">
-                <input type="email" id="recover-email" placeholder="E-mail cadastrado" autocomplete="email" required 
-                     class="inter-input w-full p-4 text-lg bg-[#111111] border-none rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all text-white placeholder-gray-600">
+            <div class="pt-2">
+                 <div class="relative group">
+                    <input type="email" id="recover-email" placeholder=" " autocomplete="email" required 
+                         class="peer floating-input w-full bg-[#111111] text-white border-none rounded-xl focus:outline-none focus:ring-0">
+                    <label for="recover-email" class="floating-label text-gray-500">E-mail cadastrado</label>
+                    <div class="absolute bottom-0 left-0 w-full h-[1px] bg-[#333] group-focus-within:bg-purple-600 transition-colors duration-300"></div>
+                </div>
             </div>
             
-            <button id="recover-submit-btn" type="submit" class="inter-btn mt-6 w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg rounded-2xl shadow-lg shadow-purple-900/30 transition-all active:scale-[0.98]">
-                Enviar Link
+            <button id="recover-submit-btn" type="submit" class="inter-btn mt-8 w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/20 transition-all active:scale-[0.97]">
+                ENVIAR LINK
             </button>
-            <div class="text-center pt-4">
-                <button type="button" id="back-to-login-btn" class="text-sm font-bold text-gray-400 hover:text-white transition-colors">Voltar para Login</button>
+            <div class="text-center pt-2">
+                <button type="button" id="back-to-login-btn" class="text-xs font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-wide">Voltar</button>
             </div>
         </form>
         
         <div id="auth-loading" class="text-center text-gray-500 mt-12 hidden">
              <div class="flex justify-center items-center py-4"><span class="loader"></span></div>
-             <p>Acessando...</p>
+             <p class="text-xs animate-pulse">Autenticando...</p>
         </div>
 
-        <footer class="mt-auto pt-8 text-center pb-4 opacity-50">
+        <footer class="mt-auto pt-8 text-center pb-4 opacity-30">
             <p class="text-[10px] text-gray-600 uppercase tracking-widest">&copy; Vesto App</p>
         </footer>
     </div>

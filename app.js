@@ -3949,30 +3949,6 @@ function isNotificationDismissed(id) {
     return dismissed.includes(id);
 }
 
-function dismissNotification(id, element) {
-    // 1. Salva no navegador para não voltar mais
-    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
-    if (!dismissed.includes(id)) {
-        dismissed.push(id);
-        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify(dismissed));
-    }
-    
-    // 2. Animação visual de saída
-    element.style.transition = 'opacity 0.3s, transform 0.3s';
-    element.style.opacity = '0';
-    element.style.transform = 'translateX(20px)';
-    
-    setTimeout(() => {
-        element.remove();
-        // Se a lista ficou vazia, esconde o badge
-        const list = document.getElementById('notifications-list');
-        if (!list || list.children.length === 0) {
-            document.getElementById('notification-badge').classList.add('hidden');
-            document.getElementById('notifications-empty').classList.remove('hidden');
-        }
-    }, 300);
-}
-
 // --- FUNÇÃO DE NOTIFICAÇÕES (REMODELADA: CLEAN & PREMIUM) ---
 function verificarNotificacoesFinanceiras() {
     const list = document.getElementById('notifications-list');

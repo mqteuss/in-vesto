@@ -55,8 +55,8 @@
 
 <div id="auth-container" class="w-full max-w-sm mx-auto h-screen overflow-hidden relative p-6 flex flex-col justify-center transition-all duration-300">
         
-        <div class="mb-10 flex flex-col items-center">
-            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-28 h-auto mb-4 drop-shadow-2xl">
+        <div class="mb-12 flex flex-col items-center">
+            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-32 h-auto mb-4 drop-shadow-2xl">
         </div>
         
         <form id="login-form" class="w-full space-y-6 animate-scale-in">
@@ -71,13 +71,13 @@
                 
                 <div class="relative group">
                     <input type="email" id="login-email" placeholder=" " autocomplete="username" required 
-                        class="peer floating-input w-full bg-[#262626] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 transition-colors duration-300">
+                        class="peer floating-input w-full bg-[#333333] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 transition-colors duration-300">
                     <label for="login-email" class="floating-label text-gray-400">E-mail</label>
                 </div>
                 
                 <div class="relative group">
                     <input type="password" id="login-password" placeholder=" " autocomplete="current-password" required 
-                        class="peer floating-input w-full bg-[#262626] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 pr-10 transition-colors duration-300">
+                        class="peer floating-input w-full bg-[#333333] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 pr-10 transition-colors duration-300">
                     <label for="login-password" class="floating-label text-gray-400">Senha</label>
                     
                     <button type="button" class="password-toggle absolute right-3 top-0 bottom-0 flex items-center text-gray-500 hover:text-white transition-colors" data-target="login-password">
@@ -109,19 +109,19 @@
             <div class="space-y-4 pt-2">
                 <div class="relative group">
                     <input type="email" id="signup-email" placeholder=" " autocomplete="username" required 
-                         class="peer floating-input w-full bg-[#262626] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 transition-colors duration-300">
+                         class="peer floating-input w-full bg-[#333333] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 transition-colors duration-300">
                     <label for="signup-email" class="floating-label text-gray-400">E-mail</label>
                 </div>
                 
                 <div class="relative group">
                     <input type="password" id="signup-password" placeholder=" " autocomplete="new-password" required 
-                         class="peer floating-input w-full bg-[#262626] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 pr-10 transition-colors duration-300">
+                         class="peer floating-input w-full bg-[#333333] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 pr-10 transition-colors duration-300">
                     <label for="signup-password" class="floating-label text-gray-400">Crie uma senha</label>
                 </div>
 
                 <div class="relative group">
                     <input type="password" id="signup-confirm-password" placeholder=" " autocomplete="new-password" required 
-                         class="peer floating-input w-full bg-[#262626] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 pr-10 transition-colors duration-300">
+                         class="peer floating-input w-full bg-[#333333] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 pr-10 transition-colors duration-300">
                     <label for="signup-confirm-password" class="floating-label text-gray-400">Confirme a senha</label>
                 </div>
             </div>
@@ -147,7 +147,7 @@
             <div class="pt-2">
                  <div class="relative group">
                     <input type="email" id="recover-email" placeholder=" " autocomplete="email" required 
-                         class="peer floating-input w-full bg-[#262626] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 transition-colors duration-300">
+                         class="peer floating-input w-full bg-[#333333] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 transition-colors duration-300">
                     <label for="recover-email" class="floating-label text-gray-400">E-mail cadastrado</label>
                 </div>
             </div>
@@ -164,11 +164,8 @@
              <div class="flex justify-center items-center py-4"><span class="loader"></span></div>
              <p class="text-xs animate-pulse">Autenticando...</p>
         </div>
-
-        <footer class="absolute bottom-6 left-0 w-full text-center pointer-events-none opacity-30">
-            <p class="text-[10px] text-gray-600 uppercase tracking-widest">&copy; Vesto App</p>
-        </footer>
-    </div>
+        
+        </div>
 
     <div id="app-wrapper" class="hidden">
 

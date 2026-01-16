@@ -55,16 +55,16 @@
 
 <div id="auth-container" class="fixed inset-0 z-50 w-full h-[100dvh] bg-black flex flex-col items-center justify-center p-6 overflow-hidden transition-all duration-300">
         
-        <div class="w-full max-w-sm flex flex-col justify-center h-full relative">
+        <div class="absolute top-16 left-0 w-full flex justify-center z-20 pointer-events-none">
+            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-40 h-auto drop-shadow-2xl transition-all duration-300">
+        </div>
 
-            <div class="flex flex-col items-center mb-8 shrink-0">
-                <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-32 h-auto drop-shadow-2xl">
-            </div>
+        <div class="w-full max-w-sm flex flex-col justify-center h-full relative z-10 pt-24">
             
             <form id="login-form" class="w-full space-y-5 animate-scale-in shrink-0">
                 <div class="space-y-1">
                     <h2 class="text-xl font-bold text-white tracking-tight">Acesse sua conta</h2>
-                    <p class="text-gray-400 text-sm">Gerencie seus proventos com inteligência.</p>
+                    <p class="text-gray-400 text-sm">Gestão inteligente de proventos.</p>
                 </div>
 
                 <div id="login-error" class="hidden text-red-400 text-xs text-center p-3 bg-red-900/10 border border-red-900/20 rounded-xl"></div>
@@ -140,7 +140,7 @@
                     <p class="text-gray-400 text-sm">Digite seu e-mail para continuar.</p>
                 </div>
 
-                <div id="recover-message" class="hidden text-green-300 text-xs text-center p-3 bg-green-900/10 border border-green-900/20 rounded-xl">Link enviado!</div>
+                <div id="recover-message" class="hidden text-green-300 text-xs text-center p-3 bg-green-900/10 border border-green-900/20 rounded-xl">Verifique sua caixa de entrada!</div>
                 <div id="recover-error" class="hidden text-red-400 text-xs text-center p-3 bg-red-900/10 border border-red-900/20 rounded-xl"></div>
                 
                 <div class="pt-1">

@@ -7502,11 +7502,6 @@ function initTimelineSwipeBridge() {
 
 // --- ADICIONE A CHAMADA NO INÍCIO DO DOMContentLoaded ---
 document.addEventListener('DOMContentLoaded', async () => {
-    // ... seus outros códigos ...
-    
-    // Inicia as pontes de swipe
-    if (typeof initCarouselSwipeBridge === 'function') initCarouselSwipeBridge();
-    initTimelineSwipeBridge(); // <--- ADICIONE ISTO
 	
     await init();
 });

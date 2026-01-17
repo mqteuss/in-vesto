@@ -2567,9 +2567,9 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             maintainAspectRatio: false,
             animation: { duration: 600 },
             layout: { padding: { top: 10, bottom: 0 } },
-            interaction: { mode: 'index', intersect: false },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false }, // Melhor para toque
             
-            // --- AQUI: INTERAÇÃO DE CLIQUE NA BARRA ---
+            // --- INTERAÇÃO DE CLIQUE NA BARRA ---
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
                 
@@ -2582,21 +2582,39 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             },
 
             plugins: {
-                // --- ISSO REMOVE A LEGENDA INTERNA/ABAIXO DO GRÁFICO ---
                 legend: { display: false }, 
                 
+                // --- AQUI ESTÁ A CUSTOMIZAÇÃO DO TOOLTIP ---
                 tooltip: { 
                     enabled: true,
-                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
-                    titleColor: '#fff',
-                    bodyColor: '#ccc',
-                    borderColor: '#333',
+                    backgroundColor: 'rgba(20, 20, 20, 0.95)', // Fundo escuro
+                    titleColor: '#ffffff', // Título (Mês) em branco
+                    bodyColor: '#cccccc',  // Texto em cinza claro
+                    borderColor: '#333333', // Borda sutil
                     borderWidth: 1,
-                    displayColors: false,
+                    padding: 10,
+                    displayColors: true, // Mostra o quadradinho da cor
+                    boxWidth: 8,
+                    boxHeight: 8,
+                    usePointStyle: true,
+                    
                     callbacks: {
+                        // Customiza o Título (ex: DEZ/25)
+                        title: function(context) {
+                            return context[0].label;
+                        },
+                        // Customiza o Texto (ex: Recebido: R$ 1.000,00)
                         label: function(context) {
-                            if(context.parsed.y === 0) return null;
-                            return formatBRL(context.parsed.y);
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                // Se o valor for 0, não retorna nada (esconde do tooltip)
+                                if(context.parsed.y === 0) return null;
+                                label += formatBRL(context.parsed.y);
+                            }
+                            return label;
                         }
                     }
                 } 

@@ -2343,7 +2343,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
         }
     });
 
-    // --- 8. ATUALIZA A LEGENDA ABAIXO (LAYOUT NOVO) ---
+    // --- 8. ATUALIZA A LEGENDA ABAIXO (LAYOUT AJUSTADO) ---
     const legendContainer = document.getElementById('alocacao-legend-container');
     if (legendContainer) {
         legendContainer.innerHTML = ''; 
@@ -2356,12 +2356,12 @@ function renderizarGraficoAlocacao(isRetry = false) {
             // Container flex para separar Esquerda e Direita
             div.className = 'flex items-center justify-between p-3 bg-[#151515] rounded-2xl mb-2';
             
+            // --- AQUI ESTÁ A MUDANÇA: Adicionado 'gap-1' na div flex-col ---
             div.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-1.5 h-8 rounded-full" style="background-color: ${item.color}"></div>
                     
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold text-white tracking-tight leading-tight">${item.label}</span>
+                    <div class="flex flex-col gap-1"> <span class="text-sm font-bold text-white tracking-tight leading-none">${item.label}</span>
                         <span class="text-xs text-gray-500 font-medium">${percent}%</span>
                     </div>
                 </div>

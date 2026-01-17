@@ -2474,65 +2474,68 @@ function renderizarGraficoHistorico(dadosExternos = null) {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // --- PROCESSAMENTO DE DADOS (Mantido igual) ---
+    // --- PROCESSAMENTO DE DADOS ---
     let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
 
     if (dadosExternos && dadosExternos.labels) {
         labelsFiltrados = dadosExternos.labels;
         dataRecebidoFiltrados = dadosExternos.data; 
         dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0); 
-    } else {
-        const grupos = {};
-        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-
-        proventosConhecidos.forEach(p => {
-            if (!p.paymentDate || p.value <= 0) return;
-            const key = p.paymentDate.substring(0, 7);
-            const dataRef = p.dataCom || p.paymentDate;
-            const qtd = getQuantidadeNaData(p.symbol, dataRef);
-            
-            if (qtd > 0) {
-                if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
-                const [ano, mes, dia] = p.paymentDate.split('-');
-                const dataPagamento = new Date(ano, mes - 1, dia);
-                const valorTotal = p.value * qtd;
-
-                if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
-                else grupos[key].aReceber += valorTotal;
-            }
-        });
-
-        let mesesOrdenados = Object.keys(grupos).sort();
-        const labelsRaw = []; const dataR = []; const dataA = []; const keysRaw = [];
-
-        mesesOrdenados.forEach(mesIso => {
-            const [anoFull, mesNum] = mesIso.split('-');
-            const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
-            const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-            const anoCurto = anoFull.slice(-2);
-            labelsRaw.push(`${nomeMes}/${anoCurto}`);
-            dataR.push(grupos[mesIso].recebido);
-            dataA.push(grupos[mesIso].aReceber);
-            keysRaw.push(mesIso);
-        });
-
-        labelsFiltrados = labelsRaw.slice(-12);
-        dataRecebidoFiltrados = dataR.slice(-12);
-        dataAReceberFiltrados = dataA.slice(-12);
-        keysFiltrados = keysRaw.slice(-12);
     }
+    
+    // Dados Locais (Padrão)
+    const grupos = {};
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
-    if (historicoChartInstance) historicoChartInstance.destroy();
+    proventosConhecidos.forEach(p => {
+        if (!p.paymentDate || p.value <= 0) return;
+        const key = p.paymentDate.substring(0, 7); // YYYY-MM
+        const dataRef = p.dataCom || p.paymentDate;
+        const qtd = getQuantidadeNaData(p.symbol, dataRef);
+        
+        if (qtd > 0) {
+            if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
+            const [ano, mes, dia] = p.paymentDate.split('-');
+            const dataPagamento = new Date(ano, mes - 1, dia);
+            const valorTotal = p.value * qtd;
+
+            if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
+            else grupos[key].aReceber += valorTotal;
+        }
+    });
+
+    let mesesOrdenados = Object.keys(grupos).sort();
+    const labelsRaw = [];
+    const dataR = [];
+    const dataA = [];
+    const keysRaw = [];
+
+    mesesOrdenados.forEach(mesIso => {
+        const [anoFull, mesNum] = mesIso.split('-');
+        const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
+        const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const anoCurto = anoFull.slice(-2);
+        
+        labelsRaw.push(`${nomeMes}/${anoCurto}`);
+        dataR.push(grupos[mesIso].recebido);
+        dataA.push(grupos[mesIso].aReceber);
+        keysRaw.push(mesIso);
+    });
+
+    labelsFiltrados = labelsRaw.slice(-12);
+    dataRecebidoFiltrados = dataR.slice(-12);
+    dataAReceberFiltrados = dataA.slice(-12);
+    keysFiltrados = keysRaw.slice(-12);
+
+    if (historicoChartInstance) {
+        historicoChartInstance.destroy();
+    }
 
     const ctx = canvas.getContext('2d');
     
-    // --- PALETA MONOCROMÁTICA (NOIR) ---
-    // Recebido: Branco Puro (Destaque máximo no fundo preto)
-    const colorRecebido = '#ffffff'; 
-    // A Receber: Cinza Chumbo (Discreto, indica "não consolidado")
-    const colorAReceber = '#3f3f46'; 
-    // Hover: Cinza Claro
-    const colorHover    = '#d4d4d8';
+    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
+    const colorRecebido = '#8B5CF6'; 
+    const colorAReceber = '#333333'; 
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -2543,9 +2546,8 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     label: 'A Receber', 
                     data: dataAReceberFiltrados,
                     backgroundColor: colorAReceber,
-                    borderRadius: 2,
-                    borderSkipped: false,
-                    barPercentage: 0.5, // Barras levemente mais finas
+                    borderRadius: 4,
+                    barPercentage: 0.6,
                     stack: 'Stack 0',
                     rawKeys: keysFiltrados 
                 },
@@ -2553,10 +2555,8 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     label: 'Recebido',
                     data: dataRecebidoFiltrados,
                     backgroundColor: colorRecebido,
-                    hoverBackgroundColor: colorHover,
-                    borderRadius: 2,
-                    borderSkipped: false,
-                    barPercentage: 0.5,
+                    borderRadius: 4,
+                    barPercentage: 0.6,
                     stack: 'Stack 0',
                     rawKeys: keysFiltrados
                 }
@@ -2565,37 +2565,38 @@ function renderizarGraficoHistorico(dadosExternos = null) {
         options: {
             responsive: true, 
             maintainAspectRatio: false,
-            animation: { duration: 0 }, // Remove animação para sensação "snappy"
+            animation: { duration: 600 },
             layout: { padding: { top: 10, bottom: 0 } },
             interaction: { mode: 'index', intersect: false },
             
+            // --- AQUI: INTERAÇÃO DE CLIQUE NA BARRA ---
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
+                
                 const index = elements[0].index;
-                renderizarListaProventosMes(keysFiltrados[index], labelsFiltrados[index]);
+                const labelAmigavel = labelsFiltrados[index]; 
+                const rawKey = keysFiltrados[index]; 
+                
+                // Chama a função que preenche a lista lá embaixo
+                renderizarListaProventosMes(rawKey, labelAmigavel);
             },
 
             plugins: {
+                // --- ISSO REMOVE A LEGENDA INTERNA/ABAIXO DO GRÁFICO ---
                 legend: { display: false }, 
+                
                 tooltip: { 
                     enabled: true,
-                    backgroundColor: '#171717',
+                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
                     titleColor: '#fff',
-                    bodyColor: '#a3a3a3',
-                    borderColor: '#262626',
+                    bodyColor: '#ccc',
+                    borderColor: '#333',
                     borderWidth: 1,
-                    displayColors: true,
-                    boxPadding: 6,
+                    displayColors: false,
                     callbacks: {
                         label: function(context) {
                             if(context.parsed.y === 0) return null;
-                            return `${context.dataset.label}: ${formatBRL(context.parsed.y)}`;
-                        },
-                        labelColor: function(context) {
-                            return {
-                                borderColor: 'transparent',
-                                backgroundColor: context.dataset.backgroundColor,
-                            };
+                            return formatBRL(context.parsed.y);
                         }
                     }
                 } 
@@ -2606,14 +2607,15 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     stacked: true, 
                     grid: { display: false }, 
                     ticks: {
-                        color: '#525252', // Texto do eixo bem discreto
-                        font: { size: 9, weight: '600', family: "'Inter', sans-serif" }
+                        color: '#666',
+                        font: { size: 10, weight: '600' }
                     }
                 }
             }
         }
     });
     
+    // Seleciona automaticamente o último mês ao carregar
     if (keysFiltrados.length > 0) {
         const lastIdx = keysFiltrados.length - 1;
         renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
@@ -2641,7 +2643,7 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
                     symbol: p.symbol,
                     valorTotal: 0,
                     qtd: qtd,
-                    dataPag: p.paymentDate
+                    dataPag: p.paymentDate // Formato YYYY-MM-DD
                 };
             }
             agrupado[p.symbol].valorTotal += total;
@@ -2653,52 +2655,48 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     container.innerHTML = ''; 
 
     if (lista.length === 0) {
-        container.innerHTML = `<p class="text-center text-gray-700 text-xs py-8 uppercase tracking-widest">Sem proventos</p>`;
+        container.innerHTML = `<p class="text-center text-gray-600 text-xs py-8">Nenhum pagamento registrado.</p>`;
         return;
     }
 
+    // Data de hoje zerada (00:00:00) para comparação justa
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
     lista.forEach(item => {
-        const [ano, mes, dia] = item.dataPag.split('-').map(Number);
+        const percent = ((item.valorTotal / totalMes) * 100).toFixed(1);
+        const [ano, mes, dia] = item.dataPag.split('-').map(Number); // Separa YYYY-MM-DD
+        
+        // Cria objeto data do pagamento
         const dataPagamentoObj = new Date(ano, mes - 1, dia);
+
+        // Lógica: Se a data do pagamento for menor ou igual a hoje, foi recebido.
         const foiRecebido = dataPagamentoObj <= hoje;
 
         const tickerInitials = item.symbol.substring(0, 2);
         
-        // --- ESTILO MONOCROMÁTICO (NOIR) ---
-        // Se pago: Texto Branco Brilhante.
-        // Se agendado: Texto Cinza.
-        
-        const corValor = foiRecebido ? 'text-white' : 'text-gray-500';
-        const corTicker = foiRecebido ? 'text-gray-300' : 'text-gray-600';
-        const textoStatus = foiRecebido ? 'PAGO' : 'AGENDADO';
-        const styleStatus = foiRecebido 
-            ? 'text-white bg-white/10 border-white/5'  // Tag branca transparente
-            : 'text-gray-600 border-gray-800';         // Tag cinza apagada
-        
-        // Ícone Minimalista (Quadrado com borda suave)
-        const bgIcone = foiRecebido 
-            ? 'bg-[#202020] text-white border border-[#333]' 
-            : 'bg-[#101010] text-gray-700 border border-[#202020]';
+        // Definição de Cores e Texto baseados no status
+        const corValor = foiRecebido ? 'text-[#4ade80]' : 'text-amber-400'; // Verde ou Amarelo
+        const textoStatus = foiRecebido ? 'Recebido' : 'A Receber';
 
+        // REMOVIDO: border e border-[#2C2C2E]
         const cardHTML = `
-            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-xl mb-2 border border-[#202020]">
+            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2 active:scale-[0.98] transition-transform">
                 
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${bgIcone}">
-                     <span class="text-[10px] font-bold tracking-wider">${tickerInitials}</span>
+                <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
+                     <span class="text-xs font-bold text-white tracking-wider">${tickerInitials}</span>
                 </div>
 
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-center mb-0.5">
-                        <span class="text-xs font-bold ${corTicker} uppercase tracking-wider">${item.symbol}</span>
+                        <span class="text-sm font-bold text-white uppercase">${item.symbol}</span>
                         <span class="text-sm font-bold ${corValor} tracking-tight">${formatBRL(item.valorTotal)}</span>
                     </div>
                     
-                    <div class="flex justify-between items-center mt-1">
-                        <span class="text-[9px] text-gray-600 font-medium tracking-wide">DIA ${dia} • ${item.qtd} COTAS</span>
-                        <span class="text-[9px] font-bold px-1.5 py-px rounded border ${styleStatus}">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500 font-medium">Dia ${dia} • ${item.qtd} cotas</span>
+                        <span class="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                           ${!foiRecebido ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>' : ''} 
                            ${textoStatus}
                         </span>
                     </div>
@@ -2708,10 +2706,9 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
         container.insertAdjacentHTML('beforeend', cardHTML);
     });
 
-    // Totalizador também monocromático
     const totalHTML = `
-        <div class="mt-4 pt-4 border-t border-[#222] flex justify-between items-center px-2 pb-8">
-            <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Total no Mês</span>
+        <div class="mt-4 pt-4 border-t border-[#2C2C2E] flex justify-between items-center px-2 pb-8">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total ${labelAmigavel}</span>
             <span class="text-lg font-bold text-white tracking-tight">${formatBRL(totalMes)}</span>
         </div>
     `;

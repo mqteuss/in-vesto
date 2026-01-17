@@ -285,63 +285,65 @@
         </div>
 </div>
 
-<div id="dashboard-widgets" class="grid grid-cols-2 gap-3 mb-8">
-    
-    <div id="btn-open-patrimonio" class="col-span-2 card-bg rounded-[1.8rem] p-5 h-36 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#252528]">
-        <div class="flex flex-col justify-between h-full">
-            <div class="w-10 h-10 rounded-full bg-[#2C2C2E] flex items-center justify-center mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-            </div>
-            <div>
-                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Rentabilidade</span>
-                <div class="flex items-center gap-2">
-                    <span class="text-xl font-bold text-white">Ver Performance</span>
+<div class="relative w-full mb-6 mt-4">
+    <div id="dashboard-carousel" class="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-0 w-full pb-4">
+        
+        <div class="snap-center shrink-0 w-full px-4">
+            <div id="btn-open-patrimonio" class="bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E] p-5 h-full cursor-pointer active:scale-[0.98] transition-all shadow-sm relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg class="w-16 h-16 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                </div>
+                <div class="flex justify-between items-start mb-2 relative z-10">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest border border-gray-700/50 px-2 py-0.5 rounded-md">Patrimônio</span>
+                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </div>
+                <div class="flex flex-col relative z-10 mt-2">
+                    <span id="total-carteira-valor" class="text-3xl font-bold text-white tracking-tighter leading-none">R$ 0,00</span>
+                    <div class="flex items-center gap-2 mt-2">
+                        <div id="total-carteira-pl" class="text-xs font-bold px-1.5 py-0.5 rounded text-gray-500 bg-gray-800/50">---</div>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <div class="text-gray-600">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-        </div>
-    </div>
 
-    <div id="btn-open-alocacao" class="card-bg rounded-[1.8rem] p-4 h-40 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#252528]">
-        <div class="w-10 h-10 rounded-full bg-[#2C2C2E] flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
-        </div>
-        <div>
-            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Distribuição</span>
-            <span class="text-lg font-bold text-white">Carteira</span>
-        </div>
-    </div>
-
-    <div id="btn-open-proventos" class="card-bg rounded-[1.8rem] p-4 h-40 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#252528]">
-        <div class="w-10 h-10 rounded-full bg-[#2C2C2E] flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-        </div>
-        <div>
-            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Recebimentos</span>
-            <span class="text-lg font-bold text-white">Proventos</span>
-        </div>
-    </div>
-
-    <div id="btn-open-ipca" class="col-span-2 card-bg rounded-[1.5rem] p-4 h-16 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#252528]">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-[#2C2C2E] flex items-center justify-center">
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-            </div>
-            <div class="flex flex-col">
-                <span class="text-[10px] font-bold text-gray-400 uppercase">Inflação (12m)</span>
-                <span id="ipca-mes-badge" class="text-[10px] text-gray-500">Atualizando...</span>
+        <div class="snap-center shrink-0 w-full px-4">
+            <div id="btn-open-proventos" class="bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E] p-5 h-full cursor-pointer active:scale-[0.98] transition-all shadow-sm relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg class="w-16 h-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <div class="flex justify-between items-start mb-2 relative z-10">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest border border-gray-700/50 px-2 py-0.5 rounded-md">Proventos</span>
+                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </div>
+                <div class="flex flex-col relative z-10 mt-2">
+                    <span id="total-proventos" class="text-3xl font-bold text-white tracking-tighter leading-none">R$ 0,00</span>
+                    <span class="text-xs font-medium text-gray-500 mt-2">Previsão para o mês atual</span>
+                </div>
             </div>
         </div>
-        
-        <div class="flex items-baseline gap-1">
-            <span id="ipca-valor-12m" class="text-xl font-bold text-white">...</span>
-            <span class="text-xs text-gray-500">%</span>
+
+        <div class="snap-center shrink-0 w-full px-4">
+            <div id="btn-open-alocacao" class="bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E] p-5 h-full cursor-pointer active:scale-[0.98] transition-all shadow-sm relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg class="w-16 h-16 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+                </div>
+                <div class="flex justify-between items-start mb-2 relative z-10">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest border border-gray-700/50 px-2 py-0.5 rounded-md">Alocação</span>
+                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </div>
+                <div class="flex flex-col relative z-10 mt-2">
+                    <span id="alocacao-total-center" class="text-3xl font-bold text-white tracking-tighter leading-none">R$ 0,00</span>
+                    <span class="text-xs font-medium text-gray-500 mt-2">Patrimônio Total</span>
+                </div>
+            </div>
         </div>
     </div>
 
+    <div class="flex justify-center gap-2 mt-0 absolute bottom-0 left-0 right-0 translate-y-1">
+        <div class="carousel-dot w-4 h-1.5 rounded-full bg-purple-600 transition-all duration-300" data-index="0"></div>
+        <div class="carousel-dot w-1.5 h-1.5 rounded-full bg-gray-700 transition-all duration-300" data-index="1"></div>
+        <div class="carousel-dot w-1.5 h-1.5 rounded-full bg-gray-700 transition-all duration-300" data-index="2"></div>
+    </div>
 </div>
 
                         <div class="mb-6">

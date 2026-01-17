@@ -7381,6 +7381,27 @@ if (ipcaPageContent) {
 
 // Iniciar a busca silenciosa do IPCA ao carregar o app (para preencher o widget)
 setTimeout(buscarDadosIpca, 2000);
+
+const carousel = document.getElementById('dashboard-carousel');
+const dots = document.querySelectorAll('.carousel-dot');
+
+if (carousel) {
+    carousel.addEventListener('scroll', () => {
+        const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+        
+        dots.forEach((dot, i) => {
+            if (i === index) {
+                dot.classList.add('active', 'bg-purple-600');
+                dot.classList.remove('bg-gray-700', 'w-1.5');
+                dot.style.width = '16px'; // Efeito pílula
+            } else {
+                dot.classList.remove('active', 'bg-purple-600');
+                dot.classList.add('bg-gray-700');
+                dot.style.width = '6px';
+            }
+        });
+    });
+}
 	
     await init();
 });

@@ -983,50 +983,56 @@
 
 </div>
 
-<div class="mt-5 mb-8">
-    <div class="flex items-center gap-2 mb-3 ml-2">
+<div class="mt-4 mb-6">
+    <div class="flex items-center gap-2 mb-2 ml-2">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
         </svg>
-        <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Performance do Período</h3>
+        <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Performance</h3>
     </div>
     
-    <div class="bg-[#151515] rounded-[1.8rem] border border-[#2C2C2E] overflow-hidden relative">
-        <div class="p-5 pb-4 border-b border-[#2C2C2E] relative">
-            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider block mb-1">Resultado Líquido</span>
-            <div class="flex items-baseline gap-2">
-                <span id="stat-variacao" class="text-3xl font-bold text-white tracking-tighter">--</span>
-                <span id="stat-variacao-badge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide">Neutro</span>
+    <div class="bg-[#151515] rounded-3xl overflow-hidden shadow-sm relative">
+        
+        <div class="p-4 pb-3 relative z-10">
+            <div class="flex justify-between items-start">
+                <div>
+                    <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider block mb-0.5">Resultado Líquido</span>
+                    <div class="flex items-center gap-2">
+                        <span id="stat-variacao" class="text-2xl font-bold text-white tracking-tighter">--</span>
+                        <span id="stat-variacao-badge" class="hidden text-[9px] font-bold px-1.5 py-px rounded-md uppercase tracking-wide">--</span>
+                    </div>
+                </div>
             </div>
-            <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+            <div class="absolute top-0 right-0 p-3 opacity-5 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
             </div>
         </div>
 
-        <div class="grid grid-cols-2">
-            <div class="p-4 border-r border-[#2C2C2E]">
-                <div class="flex items-center gap-1.5 mb-1">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Volatilidade</span>
+        <div class="grid grid-cols-2 bg-[#1A1A1C]/60 pt-1">
+            
+            <div class="p-3 pl-4">
+                <div class="flex items-center gap-1.5 mb-0.5">
+                    <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Volatilidade</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span id="stat-volatilidade" class="text-lg font-bold text-white">--</span>
-                    <span id="stat-vol-tag" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#222] text-gray-500 border border-[#333]">--</span>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span id="stat-volatilidade" class="text-sm font-bold text-white">--</span>
+                    <span id="stat-vol-tag" class="text-[9px] font-bold text-gray-500">--</span>
                 </div>
-                <div class="w-full h-1 bg-[#222] rounded-full mt-2 overflow-hidden flex">
+                <div class="w-full h-0.5 bg-[#222] rounded-full overflow-hidden flex max-w-[80px]">
                     <div id="meter-vol-low" class="h-full flex-1 bg-gray-700/30"></div>
-                    <div id="meter-vol-med" class="h-full flex-1 bg-gray-700/30 mx-0.5"></div>
+                    <div id="meter-vol-med" class="h-full flex-1 bg-gray-700/30 mx-px"></div>
                     <div id="meter-vol-high" class="h-full flex-1 bg-gray-700/30"></div>
                 </div>
             </div>
 
-            <div class="p-4">
-                <div class="flex items-center gap-1.5 mb-1">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Queda Máx.</span>
+            <div class="p-3 pr-4">
+                <div class="flex items-center gap-1.5 mb-0.5">
+                    <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Queda Máx.</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span id="stat-drawdown" class="text-lg font-bold text-red-400">--</span>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span id="stat-drawdown" class="text-sm font-bold text-red-400">--</span>
                 </div>
-                <div class="w-full h-1 bg-[#222] rounded-full mt-2 overflow-hidden">
+                <div class="w-full h-0.5 bg-[#222] rounded-full overflow-hidden max-w-[80px]">
                     <div id="bar-drawdown" class="h-full bg-red-500/50 w-0 transition-all duration-1000"></div>
                 </div>
             </div>

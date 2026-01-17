@@ -2470,216 +2470,177 @@ function renderizarGraficoHistorico(dadosExternos = null) {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    // --- PROCESSAMENTO DE DADOS ---
+    let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
 
-    // --- 1. SE HOUVER DADOS EXTERNOS (API/IA), RENDERIZA SIMPLES (AGREGADO) ---
-    // A API geralmente devolve o total por mês, sem o detalhe por ativo
     if (dadosExternos && dadosExternos.labels) {
-        if (historicoChartInstance) historicoChartInstance.destroy();
-        
-        historicoChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: dadosExternos.labels,
-                datasets: [{
-                    label: 'Recebido',
-                    data: dadosExternos.data,
-                    backgroundColor: '#8B5CF6', // Roxo padrão
-                    borderRadius: 4,
-                    barPercentage: 0.6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false }, ticks: { color: '#666' } },
-                    y: { display: false }
-                }
-            }
-        });
-        return;
+        labelsFiltrados = dadosExternos.labels;
+        dataRecebidoFiltrados = dadosExternos.data; 
+        dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0); 
     }
+    
+    // Dados Locais (Padrão)
+    const grupos = {};
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
-    // --- 2. PROCESSAMENTO DOS DADOS LOCAIS (DETALHADO POR ATIVO) ---
-    const mapRecebido = {}; // { 'YYYY-MM': { 'MXRF11': 10.50, 'VISC11': 20.00 } }
-    const mapAReceber = {}; // { 'YYYY-MM': 500.00 } (Agregado)
-    const totalPorAtivo = {}; // Para definir as cores por relevância (igual alocação)
-    const todosAtivosSet = new Set();
-    const hoje = new Date(); 
-    hoje.setHours(0, 0, 0, 0);
-
-    // Itera sobre todos os proventos para agrupar
     proventosConhecidos.forEach(p => {
         if (!p.paymentDate || p.value <= 0) return;
-        
-        const key = p.paymentDate.substring(0, 7); // Chave YYYY-MM
+        const key = p.paymentDate.substring(0, 7); // YYYY-MM
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
         
         if (qtd > 0) {
+            if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
             const [ano, mes, dia] = p.paymentDate.split('-');
             const dataPagamento = new Date(ano, mes - 1, dia);
             const valorTotal = p.value * qtd;
 
-            if (dataPagamento <= hoje) {
-                // É RECEBIDO: Quebra por ativo
-                if (!mapRecebido[key]) mapRecebido[key] = {};
-                if (!mapRecebido[key][p.symbol]) mapRecebido[key][p.symbol] = 0;
-                
-                mapRecebido[key][p.symbol] += valorTotal;
-                
-                // Contabiliza totais globais para o ranking de cores
-                todosAtivosSet.add(p.symbol);
-                totalPorAtivo[p.symbol] = (totalPorAtivo[p.symbol] || 0) + valorTotal;
-            } else {
-                // É FUTURO: Agrega tudo num valor só
-                if (!mapAReceber[key]) mapAReceber[key] = 0;
-                mapAReceber[key] += valorTotal;
-            }
+            if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
+            else grupos[key].aReceber += valorTotal;
         }
     });
 
-    // Ordena os meses cronologicamente
-    let mesesOrdenados = [...new Set([...Object.keys(mapRecebido), ...Object.keys(mapAReceber)])].sort();
-    
-    // Filtra os últimos 12 meses (ou quantos tiver)
-    const keysFiltrados = mesesOrdenados.slice(-12);
-    
-    // Gera Labels Amigáveis (ex: DEZ/24)
-    const labelsFiltrados = keysFiltrados.map(mesIso => {
+    let mesesOrdenados = Object.keys(grupos).sort();
+    const labelsRaw = [];
+    const dataR = [];
+    const dataA = [];
+    const keysRaw = [];
+
+    mesesOrdenados.forEach(mesIso => {
         const [anoFull, mesNum] = mesIso.split('-');
         const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
         const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const anoCurto = anoFull.slice(-2);
-        return `${nomeMes}/${anoCurto}`;
-    });
-
-    // --- 3. CONFIGURAÇÃO DE CORES (PALETA IGUAL ALOCAÇÃO) ---
-    const paletaCores = [
-        '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B', 
-        '#EC4899', '#6366F1', '#EF4444', '#14B8A6'
-    ];
-
-    // Ordena ativos por quem pagou mais (Decrescente) para dar as cores principais aos maiores pagadores
-    const ativosOrdenados = Array.from(todosAtivosSet).sort((a, b) => totalPorAtivo[b] - totalPorAtivo[a]);
-
-    // --- 4. MONTAGEM DOS DATASETS (EMPILHADOS) ---
-    const datasets = [];
-
-    // Dataset 1: A Receber (Cinza, sempre no topo ou base dependendo da ordem, aqui deixaremos por último no push para ficar no topo visualmente se stack for normal, mas Chart.js empilha na ordem. Vamos adicionar primeiro os ativos)
-
-    // Datasets dos Ativos (Coloridos)
-    ativosOrdenados.forEach((ativo, index) => {
-        const cor = paletaCores[index % paletaCores.length];
         
-        // Mapeia os dados para os meses filtrados
-        const dataAtivo = keysFiltrados.map(key => {
-            if (mapRecebido[key] && mapRecebido[key][ativo]) {
-                return mapRecebido[key][ativo];
-            }
-            return 0;
-        });
-
-        datasets.push({
-            label: ativo,
-            data: dataAtivo,
-            backgroundColor: cor,
-            borderRadius: 2, // Leve arredondamento nos blocos internos
-            stack: 'Stack 0', // Força empilhamento único
-            barPercentage: 0.6
-        });
+        labelsRaw.push(`${nomeMes}/${anoCurto}`);
+        dataR.push(grupos[mesIso].recebido);
+        dataA.push(grupos[mesIso].aReceber);
+        keysRaw.push(mesIso);
     });
 
-    // Dataset Futuro (Cinza - A Receber)
-    const dataFuturo = keysFiltrados.map(key => mapAReceber[key] || 0);
-    // Adiciona apenas se houver algum valor futuro para não sujar a legenda/tooltip
-    if (dataFuturo.some(v => v > 0)) {
-        datasets.push({
-            label: 'A Receber',
-            data: dataFuturo,
-            backgroundColor: '#333333', // Cinza escuro
-            borderRadius: 4, // Arredondado no topo
-            stack: 'Stack 0'
-        });
-    }
+    labelsFiltrados = labelsRaw.slice(-12);
+    dataRecebidoFiltrados = dataR.slice(-12);
+    dataAReceberFiltrados = dataA.slice(-12);
+    keysFiltrados = keysRaw.slice(-12);
 
-    // --- 5. CRIAÇÃO DO GRÁFICO ---
     if (historicoChartInstance) {
         historicoChartInstance.destroy();
     }
+
+    const ctx = canvas.getContext('2d');
+    
+    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
+    const colorRecebido = '#8B5CF6'; 
+    const colorAReceber = '#333333'; 
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labelsFiltrados,
-            datasets: datasets
+            datasets: [
+                {
+                    label: 'A Receber', 
+                    data: dataAReceberFiltrados,
+                    backgroundColor: colorAReceber,
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    stack: 'Stack 0',
+                    rawKeys: keysFiltrados 
+                },
+                {
+                    label: 'Recebido',
+                    data: dataRecebidoFiltrados,
+                    backgroundColor: colorRecebido,
+                    borderRadius: 4,
+                    barPercentage: 0.6,
+                    stack: 'Stack 0',
+                    rawKeys: keysFiltrados
+                }
+            ]
         },
         options: {
             responsive: true, 
             maintainAspectRatio: false,
             animation: { duration: 600 },
             layout: { padding: { top: 10, bottom: 0 } },
-            // Interação ajustada para "Nearest" mas focando no item empilhado
             interaction: { mode: 'nearest', axis: 'x', intersect: false },
             
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
+                
                 const index = elements[0].index;
                 const labelAmigavel = labelsFiltrados[index]; 
                 const rawKey = keysFiltrados[index]; 
+                
                 renderizarListaProventosMes(rawKey, labelAmigavel);
             },
 
             plugins: {
                 legend: { display: false }, 
+                
+                // --- CUSTOMIZAÇÃO DO TOOLTIP (FONTE INTER + TAMANHO REDUZIDO) ---
                 tooltip: { 
                     enabled: true,
-                    backgroundColor: 'rgba(20, 20, 20, 0.98)',
+                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
                     titleColor: '#ffffff',
                     bodyColor: '#cccccc',
                     borderColor: '#333333',
                     borderWidth: 1,
-                    padding: 8,
+                    padding: 8,              // Reduzi o padding de 10 para 8
                     displayColors: true,
-                    boxWidth: 6,
+                    boxWidth: 6,             // Reduzi a caixa de cor de 8 para 6
                     boxHeight: 6,
                     usePointStyle: true,
-                    titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
-                    bodyFont: { family: "'Inter', sans-serif", size: 11, weight: '500' },
+                    
+                    // Configurações de Fonte
+                    titleFont: {
+                        family: "'Inter', sans-serif",
+                        size: 11,            // Título menor
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        family: "'Inter', sans-serif",
+                        size: 11,            // Corpo menor
+                        weight: '500'
+                    },
+
                     callbacks: {
                         title: function(context) {
                             return context[0].label;
                         },
                         label: function(context) {
-                            // Ex: "MXRF11: R$ 15,00"
                             let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            if (context.parsed.y !== null && context.parsed.y !== 0) {
-                                label += formatBRL(context.parsed.y);
-                                return label;
+                            if (label) {
+                                label += ': ';
                             }
-                            return null; // Esconde se for 0
+                            if (context.parsed.y !== null) {
+                                if(context.parsed.y === 0) return null;
+                                label += formatBRL(context.parsed.y);
+                            }
+                            return label;
                         }
                     }
                 } 
             },
             scales: {
-                y: { display: false, stacked: true }, // stacked: true é essencial
+                y: { display: false, stacked: true },
                 x: { 
                     stacked: true, 
                     grid: { display: false }, 
                     ticks: {
                         color: '#666',
-                        font: { family: "'Inter', sans-serif", size: 10, weight: '600' }
+                        // Fonte do Eixo X também ajustada para Inter
+                        font: { 
+                            family: "'Inter', sans-serif",
+                            size: 10, 
+                            weight: '600' 
+                        }
                     }
                 }
             }
         }
     });
     
-    // Seleciona o último mês automaticamente ao carregar
     if (keysFiltrados.length > 0) {
         const lastIdx = keysFiltrados.length - 1;
         renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);

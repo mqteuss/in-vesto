@@ -2979,64 +2979,42 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     }
 
 // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (DESIGN CLEAN & PREMIUM) ---
+// --- 7. ATUALIZA A BARRA DE ESTATÍSTICAS (DESIGN UNIFICADO) ---
     const elVariacao = document.getElementById('stat-variacao');
-    const elVariacaoBadge = document.getElementById('stat-variacao-badge');
-    
     const elVolatilidade = document.getElementById('stat-volatilidade');
-    const elVolBadge = document.getElementById('stat-vol-badge');
-    
+    const elVolDot = document.getElementById('stat-vol-dot');
     const elDrawdown = document.getElementById('stat-drawdown');
 
-    // 1. Rentabilidade (Lógica Clean)
+    // 1. Rentabilidade: Apenas colore o número
     if (elVariacao) {
         const sinal = variacaoPercent > 0 ? '+' : '';
         elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
         
-        // Define cor do número principal
-        const corTexto = variacaoPercent >= 0 ? 'text-white' : 'text-white'; // Mantive branco para ficar clean, a cor vem no badge
-        elVariacao.className = `text-sm font-bold ${corTexto} tracking-tight`;
-
-        if (elVariacaoBadge) {
-            // Estilo "Pílula" Apple-like: Fundo com 10% de opacidade + Borda sutil
-            const bgClass = variacaoPercent >= 0 
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-            
-            const texto = variacaoPercent >= 0 ? 'LUCRO' : 'PREJUÍZO';
-            
-            elVariacaoBadge.innerHTML = `
-                <span class="px-2 py-0.5 rounded-md border ${bgClass} text-[9px] font-bold block">
-                    ${texto}
-                </span>
-            `;
+        // Verde se positivo, Vermelho se negativo, Branco se zero
+        if (variacaoPercent > 0) {
+            elVariacao.className = "text-sm font-bold text-emerald-400 tracking-tight";
+        } else if (variacaoPercent < 0) {
+            elVariacao.className = "text-sm font-bold text-rose-500 tracking-tight";
+        } else {
+            elVariacao.className = "text-sm font-bold text-white tracking-tight";
         }
     }
 
-    // 2. Volatilidade (Sem medidor, apenas classificação textual)
+    // 2. Volatilidade: Número branco + Bolinha colorida
     if (elVolatilidade) {
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
         
-        let labelVol = 'BAIXA';
-        let colorClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20'; // Padrão: Azul (Calmo)
-        
-        if (volatilidade >= 10 && volatilidade < 20) {
-            labelVol = 'MÉDIA';
-            colorClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-        } else if (volatilidade >= 20) {
-            labelVol = 'ALTA';
-            colorClass = 'bg-orange-500/10 text-orange-400 border-orange-500/20';
-        }
+        // Define a cor da bolinha baseada no risco
+        let dotColor = 'bg-emerald-500'; // Baixa
+        if (volatilidade >= 10 && volatilidade < 20) dotColor = 'bg-amber-400'; // Média
+        if (volatilidade >= 20) dotColor = 'bg-rose-500'; // Alta
 
-        if (elVolBadge) {
-            elVolBadge.innerHTML = `
-                <span class="px-2 py-0.5 rounded-md border ${colorClass} text-[9px] font-bold block">
-                    ${labelVol}
-                </span>
-            `;
+        if (elVolDot) {
+            elVolDot.className = `w-1.5 h-1.5 rounded-full ${dotColor}`;
         }
     }
 
-    // 3. Drawdown (Sempre negativo e vermelho sutil)
+    // 3. Drawdown: Sempre Vermelho (Rose)
     if (elDrawdown) {
         const ddVal = Math.abs(parseFloat(drawdownDisplay));
         elDrawdown.textContent = `-${ddVal.toFixed(2)}%`;

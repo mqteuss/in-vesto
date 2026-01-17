@@ -983,27 +983,26 @@
 
 </div>
 
-<div class="grid grid-cols-3 gap-2 px-4 mb-6">
+<div class="mx-4 mb-6 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E] flex items-center py-4">
     
-    <div class="bg-[#1C1C1E] p-3 rounded-2xl flex flex-col justify-center items-center active:scale-95 transition-transform duration-200">
-        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Rentabilidade</span>
+    <div class="flex-1 flex flex-col items-center justify-center border-r border-[#2C2C2E]">
+        <span class="text-[9px] text-gray-500 uppercase tracking-widest font-semibold mb-1">Rentab.</span>
         <span id="stat-variacao" class="text-sm font-bold text-white tracking-tight">--</span>
-        <div id="stat-variacao-badge" class="mt-1.5"></div> 
     </div>
 
-    <div class="bg-[#1C1C1E] p-3 rounded-2xl flex flex-col justify-center items-center active:scale-95 transition-transform duration-200">
-        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Volatilidade</span>
-        <span id="stat-volatilidade" class="text-sm font-bold text-white tracking-tight">--</span>
-        <div id="stat-vol-badge" class="mt-1.5"></div>
-    </div>
-
-    <div class="bg-[#1C1C1E] p-3 rounded-2xl flex flex-col justify-center items-center active:scale-95 transition-transform duration-200">
-        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Queda Máx.</span>
-        <span id="stat-drawdown" class="text-sm font-bold text-white tracking-tight">--</span>
-        <div class="mt-1.5 px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20">
-            <span class="text-[9px] font-bold text-red-400">RISCO</span>
+    <div class="flex-1 flex flex-col items-center justify-center border-r border-[#2C2C2E]">
+        <span class="text-[9px] text-gray-500 uppercase tracking-widest font-semibold mb-1">Volatilidade</span>
+        <div class="flex items-center gap-1.5">
+            <div id="stat-vol-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
+            <span id="stat-volatilidade" class="text-sm font-bold text-white tracking-tight">--</span>
         </div>
     </div>
+
+    <div class="flex-1 flex flex-col items-center justify-center">
+        <span class="text-[9px] text-gray-500 uppercase tracking-widest font-semibold mb-1">Queda Máx.</span>
+        <span id="stat-drawdown" class="text-sm font-bold text-rose-500 tracking-tight">--</span>
+    </div>
+
 </div>
     </div>
 </div>

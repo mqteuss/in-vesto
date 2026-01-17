@@ -2978,46 +2978,77 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         volatilidade = (Math.sqrt(variancia) * Math.sqrt(252)) * 100;
     }
 
-// --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (DESIGN CLEAN & PREMIUM) ---
-// --- 7. ATUALIZA A BARRA DE ESTATÍSTICAS (DESIGN UNIFICADO) ---
-    const elVariacao = document.getElementById('stat-variacao');
-    const elVolatilidade = document.getElementById('stat-volatilidade');
-    const elVolDot = document.getElementById('stat-vol-dot');
-    const elDrawdown = document.getElementById('stat-drawdown');
+// --- 7. ATUALIZA O CARD UNIFICADO (6 INFORMAÇÕES) ---
+    const elSaldo = document.getElementById('card-saldo-atual');
+    const elInvestido = document.getElementById('card-investido');
+    const elResultado = document.getElementById('card-resultado-reais');
+    
+    const elRentabilidade = document.getElementById('card-rentabilidade');
+    const elVolatilidade = document.getElementById('card-volatilidade');
+    const elDrawdown = document.getElementById('card-drawdown');
 
-    // 1. Rentabilidade: Apenas colore o número
-    if (elVariacao) {
-        const sinal = variacaoPercent > 0 ? '+' : '';
-        elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
-        
-        // Verde se positivo, Vermelho se negativo, Branco se zero
-        if (variacaoPercent > 0) {
-            elVariacao.className = "text-sm font-bold text-emerald-400 tracking-tight";
-        } else if (variacaoPercent < 0) {
-            elVariacao.className = "text-sm font-bold text-rose-500 tracking-tight";
-        } else {
-            elVariacao.className = "text-sm font-bold text-white tracking-tight";
-        }
+    // -- CÁLCULOS AUXILIARES --
+    // 1. Saldo Atual (Já temos: valorFinal)
+    const saldoAtual = valorFinal;
+
+    // 2. Investido (Calcula baseado na carteira atual ou usa valorInicial do período como fallback)
+    let totalCusto = 0;
+    if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
+        totalCusto = carteiraCalculada.reduce((acc, item) => {
+            const qtd = parseFloat(item.quantity || item.quantidade || 0);
+            const pm = parseFloat(item.averagePrice || item.precoMedio || 0);
+            return acc + (qtd * pm);
+        }, 0);
+    }
+    // Fallback: se não tiver carteira calculada, usa o valorInicial do gráfico
+    if (totalCusto === 0) totalCusto = valorInicial;
+
+    // 3. Resultado R$
+    const resultadoReais = saldoAtual - totalCusto;
+
+    // -- PREENCHIMENTO DO DOM --
+
+    // 1. Saldo
+    if (elSaldo) elSaldo.textContent = formatBRL(saldoAtual);
+
+    // 2. Investido
+    if (elInvestido) elInvestido.textContent = formatBRL(totalCusto);
+
+    // 3. Resultado R$ (Colorido)
+    if (elResultado) {
+        const sinal = resultadoReais >= 0 ? '+' : '';
+        elResultado.textContent = `${sinal}${formatBRL(resultadoReais)}`;
+        elResultado.className = resultadoReais >= 0 
+            ? "text-xs font-bold text-emerald-400 tracking-tight" 
+            : "text-xs font-bold text-rose-500 tracking-tight";
     }
 
-    // 2. Volatilidade: Número branco + Bolinha colorida
+    // 4. Rentabilidade % (Colorido)
+    if (elRentabilidade) {
+        // Recalculando rentabilidade real baseada no custo total (mais preciso que a variação do período gráfico)
+        let rentReal = 0;
+        if (totalCusto > 0) rentReal = ((saldoAtual - totalCusto) / totalCusto) * 100;
+        
+        const sinal = rentReal >= 0 ? '+' : '';
+        elRentabilidade.textContent = `${sinal}${rentReal.toFixed(2)}%`;
+        elRentabilidade.className = rentReal >= 0 
+            ? "text-xs font-bold text-emerald-400 tracking-tight" 
+            : "text-xs font-bold text-rose-500 tracking-tight";
+    }
+
+    // 5. Volatilidade (Branco com indicador de cor sutil se quiser, ou apenas branco clean)
     if (elVolatilidade) {
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
-        
-        // Define a cor da bolinha baseada no risco
-        let dotColor = 'bg-emerald-500'; // Baixa
-        if (volatilidade >= 10 && volatilidade < 20) dotColor = 'bg-amber-400'; // Média
-        if (volatilidade >= 20) dotColor = 'bg-rose-500'; // Alta
-
-        if (elVolDot) {
-            elVolDot.className = `w-1.5 h-1.5 rounded-full ${dotColor}`;
-        }
+        // Vamos manter branco para ser clean, já que Resultado e Rentabilidade já dão cor
+        elVolatilidade.className = "text-xs font-bold text-white tracking-tight";
     }
 
-    // 3. Drawdown: Sempre Vermelho (Rose)
+    // 6. Drawdown (Sempre Alerta)
     if (elDrawdown) {
         const ddVal = Math.abs(parseFloat(drawdownDisplay));
         elDrawdown.textContent = `-${ddVal.toFixed(2)}%`;
+        // Mantém vermelho/rose pois é risco
+        elDrawdown.className = "text-xs font-bold text-rose-500 tracking-tight";
     }
 
     // --- 8. AGRUPAMENTO MENSAL (APENAS 6M E 1Y) ---

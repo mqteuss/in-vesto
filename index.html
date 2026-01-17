@@ -964,45 +964,39 @@
             <canvas id="patrimonio-chart"></canvas>
         </div>
 
-<div class="grid grid-cols-3 gap-2">
-    
-    <div class="bg-[#151515] p-3 rounded-2xl flex flex-col justify-between shadow-sm">
-        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Ao Vivo</span>
-        <p id="modal-patrimonio-live" class="text-sm font-bold text-white mt-1 truncate">--</p>
-    </div>
+<div class="mx-4 mb-6 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E] p-5 shadow-sm">
+    <div class="grid grid-cols-3 gap-y-6 gap-x-2 text-center">
+        
+        <div class="flex flex-col items-center">
+            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Saldo Atual</span>
+            <span id="card-saldo-atual" class="text-xs font-bold text-white tracking-tight">--</span>
+        </div>
 
-    <div class="bg-[#151515] p-3 rounded-2xl flex flex-col justify-between shadow-sm">
-        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Gráfico</span>
-        <p id="modal-patrimonio-chart-val" class="text-sm font-bold text-[#c084fc] mt-1 truncate">--</p>
-    </div>
+        <div class="flex flex-col items-center border-l border-[#2C2C2E]">
+            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Investido</span>
+            <span id="card-investido" class="text-xs font-bold text-gray-300 tracking-tight">--</span>
+        </div>
 
-    <div class="bg-[#151515] p-3 rounded-2xl flex flex-col justify-between shadow-sm">
-        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Investido</span>
-        <p id="modal-custo-valor" class="text-sm font-bold text-gray-300 mt-1 truncate">--</p>
-    </div>
+        <div class="flex flex-col items-center border-l border-[#2C2C2E]">
+            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Resultado</span>
+            <span id="card-resultado-reais" class="text-xs font-bold text-white tracking-tight">--</span>
+        </div>
 
-</div>
+        <div class="flex flex-col items-center">
+            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Rentab.</span>
+            <span id="card-rentabilidade" class="text-xs font-bold text-white tracking-tight">--</span>
+        </div>
 
-<div class="mx-4 mb-6 bg-[#1C1C1E] rounded-2xl border border-[#2C2C2E] flex items-center py-4">
-    
-    <div class="flex-1 flex flex-col items-center justify-center border-r border-[#2C2C2E]">
-        <span class="text-[9px] text-gray-500 uppercase tracking-widest font-semibold mb-1">Rentab.</span>
-        <span id="stat-variacao" class="text-sm font-bold text-white tracking-tight">--</span>
-    </div>
+        <div class="flex flex-col items-center border-l border-[#2C2C2E]">
+            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Volatilidade</span>
+            <span id="card-volatilidade" class="text-xs font-bold text-white tracking-tight">--</span>
+        </div>
 
-    <div class="flex-1 flex flex-col items-center justify-center border-r border-[#2C2C2E]">
-        <span class="text-[9px] text-gray-500 uppercase tracking-widest font-semibold mb-1">Volatilidade</span>
-        <div class="flex items-center gap-1.5">
-            <div id="stat-vol-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
-            <span id="stat-volatilidade" class="text-sm font-bold text-white tracking-tight">--</span>
+        <div class="flex flex-col items-center border-l border-[#2C2C2E]">
+            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Queda Máx.</span>
+            <span id="card-drawdown" class="text-xs font-bold text-rose-500 tracking-tight">--</span>
         </div>
     </div>
-
-    <div class="flex-1 flex flex-col items-center justify-center">
-        <span class="text-[9px] text-gray-500 uppercase tracking-widest font-semibold mb-1">Queda Máx.</span>
-        <span id="stat-drawdown" class="text-sm font-bold text-rose-500 tracking-tight">--</span>
-    </div>
-
 </div>
     </div>
 </div>

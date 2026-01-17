@@ -7491,7 +7491,7 @@ function ativarSwipeGlobalDashboard() {
         // --- FILTRO DE SEGURANÇA ---
         
         // 1. O movimento horizontal deve ser maior que 60px (evita toques acidentais)
-        if (diffX < 60) return;
+        if (diffX < 35) return;
 
         // 2. O movimento deve ser "mais horizontal do que vertical" 
         // (Isso impede que mude de aba enquanto você rola a tela para baixo)

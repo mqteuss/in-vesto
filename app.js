@@ -2567,9 +2567,8 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             maintainAspectRatio: false,
             animation: { duration: 600 },
             layout: { padding: { top: 10, bottom: 0 } },
-            interaction: { mode: 'nearest', axis: 'x', intersect: false }, // Melhor para toque
+            interaction: { mode: 'nearest', axis: 'x', intersect: false },
             
-            // --- INTERAÇÃO DE CLIQUE NA BARRA ---
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
                 
@@ -2577,40 +2576,48 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                 const labelAmigavel = labelsFiltrados[index]; 
                 const rawKey = keysFiltrados[index]; 
                 
-                // Chama a função que preenche a lista lá embaixo
                 renderizarListaProventosMes(rawKey, labelAmigavel);
             },
 
             plugins: {
                 legend: { display: false }, 
                 
-                // --- AQUI ESTÁ A CUSTOMIZAÇÃO DO TOOLTIP ---
+                // --- CUSTOMIZAÇÃO DO TOOLTIP (FONTE INTER + TAMANHO REDUZIDO) ---
                 tooltip: { 
                     enabled: true,
-                    backgroundColor: 'rgba(20, 20, 20, 0.95)', // Fundo escuro
-                    titleColor: '#ffffff', // Título (Mês) em branco
-                    bodyColor: '#cccccc',  // Texto em cinza claro
-                    borderColor: '#333333', // Borda sutil
+                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#cccccc',
+                    borderColor: '#333333',
                     borderWidth: 1,
-                    padding: 10,
-                    displayColors: true, // Mostra o quadradinho da cor
-                    boxWidth: 8,
-                    boxHeight: 8,
+                    padding: 8,              // Reduzi o padding de 10 para 8
+                    displayColors: true,
+                    boxWidth: 6,             // Reduzi a caixa de cor de 8 para 6
+                    boxHeight: 6,
                     usePointStyle: true,
                     
+                    // Configurações de Fonte
+                    titleFont: {
+                        family: "'Inter', sans-serif",
+                        size: 11,            // Título menor
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        family: "'Inter', sans-serif",
+                        size: 11,            // Corpo menor
+                        weight: '500'
+                    },
+
                     callbacks: {
-                        // Customiza o Título (ex: DEZ/25)
                         title: function(context) {
                             return context[0].label;
                         },
-                        // Customiza o Texto (ex: Recebido: R$ 1.000,00)
                         label: function(context) {
                             let label = context.dataset.label || '';
                             if (label) {
                                 label += ': ';
                             }
                             if (context.parsed.y !== null) {
-                                // Se o valor for 0, não retorna nada (esconde do tooltip)
                                 if(context.parsed.y === 0) return null;
                                 label += formatBRL(context.parsed.y);
                             }
@@ -2626,14 +2633,18 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     grid: { display: false }, 
                     ticks: {
                         color: '#666',
-                        font: { size: 10, weight: '600' }
+                        // Fonte do Eixo X também ajustada para Inter
+                        font: { 
+                            family: "'Inter', sans-serif",
+                            size: 10, 
+                            weight: '600' 
+                        }
                     }
                 }
             }
         }
     });
     
-    // Seleciona automaticamente o último mês ao carregar
     if (keysFiltrados.length > 0) {
         const lastIdx = keysFiltrados.length - 1;
         renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);

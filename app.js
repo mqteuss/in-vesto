@@ -2979,6 +2979,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     }
 
 // --- 7. ATUALIZA O CARD UNIFICADO (6 INFORMAÇÕES) ---
+    // Seletores do novo layout 6-em-1
     const elSaldo = document.getElementById('card-saldo-atual');
     const elInvestido = document.getElementById('card-investido');
     const elResultado = document.getElementById('card-resultado-reais');
@@ -2987,67 +2988,58 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     const elVolatilidade = document.getElementById('card-volatilidade');
     const elDrawdown = document.getElementById('card-drawdown');
 
-    // -- CÁLCULOS AUXILIARES --
-    // 1. Saldo Atual (Já temos: valorFinal)
-    const saldoAtual = valorFinal;
-
-    // 2. Investido (Calcula baseado na carteira atual ou usa valorInicial do período como fallback)
-    let totalCusto = 0;
-    if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
-        totalCusto = carteiraCalculada.reduce((acc, item) => {
-            const qtd = parseFloat(item.quantity || item.quantidade || 0);
-            const pm = parseFloat(item.averagePrice || item.precoMedio || 0);
-            return acc + (qtd * pm);
-        }, 0);
+    // -- CÁLCULOS AUXILIARES (Usando variáveis do escopo da função) --
+    
+    // 1. Saldo e Investido (Já calculados na Seção 3 desta função)
+    const saldoValor = totalAtualLive; 
+    const investidoValor = custoTotalLive;
+    
+    // 2. Resultado em Reais
+    const resultadoValor = saldoValor - investidoValor;
+    
+    // 3. Rentabilidade Real (Baseada no Custo Total vs Saldo Atual)
+    let rentabilidadeReal = 0;
+    if (investidoValor > 0) {
+        rentabilidadeReal = ((saldoValor - investidoValor) / investidoValor) * 100;
     }
-    // Fallback: se não tiver carteira calculada, usa o valorInicial do gráfico
-    if (totalCusto === 0) totalCusto = valorInicial;
-
-    // 3. Resultado R$
-    const resultadoReais = saldoAtual - totalCusto;
 
     // -- PREENCHIMENTO DO DOM --
 
-    // 1. Saldo
-    if (elSaldo) elSaldo.textContent = formatBRL(saldoAtual);
+    // 1. Saldo Atual
+    if (elSaldo) elSaldo.textContent = formatBRL(saldoValor);
 
-    // 2. Investido
-    if (elInvestido) elInvestido.textContent = formatBRL(totalCusto);
+    // 2. Total Investido
+    if (elInvestido) elInvestido.textContent = formatBRL(investidoValor);
 
-    // 3. Resultado R$ (Colorido)
+    // 3. Resultado R$ (Com cor condicional)
     if (elResultado) {
-        const sinal = resultadoReais >= 0 ? '+' : '';
-        elResultado.textContent = `${sinal}${formatBRL(resultadoReais)}`;
-        elResultado.className = resultadoReais >= 0 
+        const sinal = resultadoValor >= 0 ? '+' : '';
+        elResultado.textContent = `${sinal}${formatBRL(resultadoValor)}`;
+        elResultado.className = resultadoValor >= 0 
             ? "text-xs font-bold text-emerald-400 tracking-tight" 
             : "text-xs font-bold text-rose-500 tracking-tight";
     }
 
-    // 4. Rentabilidade % (Colorido)
+    // 4. Rentabilidade % (Com cor condicional)
     if (elRentabilidade) {
-        // Recalculando rentabilidade real baseada no custo total (mais preciso que a variação do período gráfico)
-        let rentReal = 0;
-        if (totalCusto > 0) rentReal = ((saldoAtual - totalCusto) / totalCusto) * 100;
-        
-        const sinal = rentReal >= 0 ? '+' : '';
-        elRentabilidade.textContent = `${sinal}${rentReal.toFixed(2)}%`;
-        elRentabilidade.className = rentReal >= 0 
+        const sinal = rentabilidadeReal >= 0 ? '+' : '';
+        elRentabilidade.textContent = `${sinal}${rentabilidadeReal.toFixed(2)}%`;
+        elRentabilidade.className = rentabilidadeReal >= 0 
             ? "text-xs font-bold text-emerald-400 tracking-tight" 
             : "text-xs font-bold text-rose-500 tracking-tight";
     }
 
-    // 5. Volatilidade (Branco com indicador de cor sutil se quiser, ou apenas branco clean)
+    // 5. Volatilidade (Usa variável 'volatilidade' calculada na Seção 6)
     if (elVolatilidade) {
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
-        // Vamos manter branco para ser clean, já que Resultado e Rentabilidade já dão cor
         elVolatilidade.className = "text-xs font-bold text-white tracking-tight";
     }
 
-    // 6. Drawdown (Sempre Alerta)
+    // 6. Drawdown (Usa variável 'drawdownDisplay' calculada na Seção 6)
     if (elDrawdown) {
         const ddVal = Math.abs(parseFloat(drawdownDisplay));
         elDrawdown.textContent = `-${ddVal.toFixed(2)}%`;
-        // Mantém vermelho/rose pois é risco
+        // Mantém vermelho/rose pois é indicador de risco
         elDrawdown.className = "text-xs font-bold text-rose-500 tracking-tight";
     }
 

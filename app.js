@@ -7463,45 +7463,59 @@ initCarouselSwipeBridge();
 // CORREÇÃO DE SWIPE - UNIFICADA
 // =========================================================================
 
+// =========================================================================
+// CORREÇÃO DE SWIPE AVANÇADA (Versão Definitiva)
+// =========================================================================
+
 function adicionarSwipeInteligente(elementId, targetTabId) {
     const el = document.getElementById(elementId);
     if (!el) return;
 
     let startX = 0;
+    let startY = 0;
     let isAtRightEdge = false;
 
     // 1. Detecta o toque inicial
     el.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
         
-        // Lógica Inteligente:
-        // Se o elemento não tem rolagem horizontal (ex: lista vertical de pagamentos), 
-        // consideramos que ele já está "no limite" e pronto para trocar de aba.
-        if (el.scrollWidth <= el.clientWidth) {
+        // CÁLCULO CORRIGIDO:
+        // 1. Calcula quanto de scroll "extra" existe
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        
+        // 2. Se o scroll extra for pequeno (< 30px), considera que a lista cabe inteira (ou tem erro de arredondamento)
+        // Isso resolve o problema de "ter 1 card e não ir"
+        if (maxScroll < 30) {
             isAtRightEdge = true;
         } else {
-            // Se tem rolagem (ex: carrossel), verifica se chegou no fim
-            const maxScroll = el.scrollWidth - el.clientWidth;
-            isAtRightEdge = el.scrollLeft >= (maxScroll - 5);
+            // 3. Se tiver scroll real, verifica se chegou no final (com tolerância de 10px)
+            isAtRightEdge = el.scrollLeft >= (maxScroll - 10);
         }
     }, { passive: true });
 
     // 2. Detecta o movimento final
     el.addEventListener('touchend', (e) => {
-        // Se não estamos na ponta direita (ou se não é um elemento fixo), ignora
+        // Se não estamos na borda direita, deixa o scroll nativo acontecer
         if (!isAtRightEdge) return;
 
         const endX = e.changedTouches[0].clientX;
-        const diff = startX - endX;
+        const endY = e.changedTouches[0].clientY;
+        
+        const diffX = startX - endX; // Movimento horizontal (positivo = arrastar p/ esquerda)
+        const diffY = Math.abs(startY - endY); // Movimento vertical (absoluto)
 
-        // Se o arrasto for maior que 50px para a esquerda
-        if (diff > 50) {
-            // Para a propagação para evitar que o navegador ou outros elementos tentem rolar
+        // LÓGICA DE ATIVAÇÃO:
+        // 1. O arrasto deve ser maior que 50px (intencional)
+        // 2. O arrasto horizontal deve ser maior que o vertical (para não atrapalhar o scroll da página)
+        if (diffX > 50 && diffX > diffY) {
+            
+            // Para a propagação IMEDIATAMENTE para evitar conflitos
             e.stopPropagation();
             
-            console.log(`Swipe detectado em ${elementId} -> Indo para ${targetTabId}`);
+            console.log(`Swipe Inteligente: ${elementId} -> ${targetTabId}`);
             
-            // Clica no botão da aba destino
+            // Clica no botão da aba de destino
             const btnTarget = document.querySelector(`button[data-tab="${targetTabId}"]`);
             if (btnTarget) btnTarget.click();
         }
@@ -7510,10 +7524,10 @@ function adicionarSwipeInteligente(elementId, targetTabId) {
 
 // Inicializa assim que o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
-    // Atalhos Rápidos (Horizontal)
+    // 1. Atalhos Rápidos (Carrossel Horizontal)
     adicionarSwipeInteligente('carousel-wrapper', 'tab-carteira');
     
-    // Próximos Pagamentos (Vertical - Agora com lógica corrigida para aceitar swipe)
+    // 2. Próximos Pagamentos (Lista Vertical/Híbrida)
     adicionarSwipeInteligente('timeline-lista', 'tab-carteira');
 });
 	

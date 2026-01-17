@@ -2218,7 +2218,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
         if (window.alocacaoRetryTimer) clearTimeout(window.alocacaoRetryTimer);
     }
 
-    // --- 3. MAPA DE PREÇOS ROBUSTO (Para bater com o Patrimônio) ---
+    // --- 3. MAPA DE PREÇOS ROBUSTO ---
     const mapPrecos = new Map();
     if (temPrecos) {
         precosAtuais.forEach(p => {
@@ -2279,8 +2279,6 @@ function renderizarGraficoAlocacao(isRetry = false) {
     // --- 6. ATUALIZA TEXTO CENTRAL (TOTAL) ---
     const elTotalCenter = document.getElementById('alocacao-total-center');
     if(elTotalCenter) {
-        // CORREÇÃO AQUI: Removido 'maximumFractionDigits: 0'
-        // Agora ele usa o padrão BRL (2 casas decimais)
         elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', { 
             style: 'currency', currency: 'BRL'
         });
@@ -2330,6 +2328,8 @@ function renderizarGraficoAlocacao(isRetry = false) {
                     borderWidth: 1,
                     padding: 12,
                     cornerRadius: 12,
+                    bodyFont: { family: "'Inter', sans-serif" },
+                    titleFont: { family: "'Inter', sans-serif" },
                     callbacks: {
                         label: function(context) {
                             const val = context.raw;
@@ -2343,35 +2343,31 @@ function renderizarGraficoAlocacao(isRetry = false) {
         }
     });
 
-    // --- 8. ATUALIZA A LEGENDA ABAIXO ---
+    // --- 8. ATUALIZA A LEGENDA ABAIXO (LAYOUT NOVO) ---
     const legendContainer = document.getElementById('alocacao-legend-container');
     if (legendContainer) {
         legendContainer.innerHTML = ''; 
 
         dadosAtivos.forEach(item => {
             const percent = totalGeral > 0 ? ((item.value / totalGeral) * 100).toFixed(1) : 0;
-            const tickerInitials = item.label.substring(0, 2);
+            const valorFormatado = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
             const div = document.createElement('div');
-            div.className = 'flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2';
+            // Container flex para separar Esquerda e Direita
+            div.className = 'flex items-center justify-between p-3 bg-[#151515] rounded-2xl mb-2';
             
             div.innerHTML = `
-                <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
-                    <span class="text-xs font-bold text-white tracking-wider">${tickerInitials}</span>
+                <div class="flex items-center gap-3">
+                    <div class="w-1.5 h-8 rounded-full" style="background-color: ${item.color}"></div>
+                    
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-white tracking-tight leading-tight">${item.label}</span>
+                        <span class="text-xs text-gray-500 font-medium">${percent}%</span>
+                    </div>
                 </div>
 
-                <div class="flex-1 min-w-0">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-sm font-bold text-white truncate">${item.label}</span>
-                        <span class="text-sm font-bold text-white">R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    
-                    <div class="flex items-center gap-2">
-                        <div class="flex-1 h-2 bg-[#2C2C2E] rounded-full overflow-hidden">
-                            <div class="h-full rounded-full" style="width: ${percent}%; background-color: ${item.color}"></div>
-                        </div>
-                        <span class="text-xs text-gray-400 w-10 text-right">${percent}%</span>
-                    </div>
+                <div class="text-right">
+                    <span class="text-sm font-bold text-white tracking-tight">${valorFormatado}</span>
                 </div>
             `;
             legendContainer.appendChild(div);

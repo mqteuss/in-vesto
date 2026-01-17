@@ -2953,64 +2953,94 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     }
 
     // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS ---
-// --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (VERSÃO UX PREMIUM) ---
-    const elVariacao = document.getElementById('stat-variacao');
-    const elDrawdown = document.getElementById('stat-drawdown');
-    const elVolatilidade = document.getElementById('stat-volatilidade');
-    
-    // Elementos das barras de progresso
-    const barVariacao = document.getElementById('bar-variacao');
-    const barDrawdown = document.getElementById('bar-drawdown');
-    const barVolatilidade = document.getElementById('bar-volatilidade');
+// EM app.js -> Procure a função 'renderizarGraficoPatrimonio'
+// Substitua o BLOCO 7 inteiro por este:
 
+    // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (NOVA UX SIMPLIFICADA) ---
+    const elVariacao = document.getElementById('stat-variacao');
+    const elVariacaoBadge = document.getElementById('stat-variacao-badge');
+    
+    const elDrawdown = document.getElementById('stat-drawdown');
+    const barDrawdown = document.getElementById('bar-drawdown');
+    
+    const elVolatilidade = document.getElementById('stat-volatilidade');
+    const elVolTag = document.getElementById('stat-vol-tag');
+    const meterLow = document.getElementById('meter-vol-low');
+    const meterMed = document.getElementById('meter-vol-med');
+    const meterHigh = document.getElementById('meter-vol-high');
+
+    // 1. Rentabilidade (Hero)
     if (elVariacao) {
         const sinal = variacaoPercent >= 0 ? '+' : '';
         elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
         
-        // Define cor do texto e da barra
+        // Cores do Texto
         const corVar = variacaoPercent >= 0 ? '#4ade80' : '#ef4444'; // Verde ou Vermelho
         elVariacao.style.color = corVar;
-        
-        if (barVariacao) {
-            barVariacao.style.backgroundColor = corVar;
-            // Animação visual (limitada a 100%)
-            // Se for negativo, mostra proporcional ao "susto" (ex: -10% enche um pouco a barra vermelha)
-            const largura = Math.min(Math.abs(variacaoPercent) * 2, 100); // Multiplicador para dar efeito
-            barVariacao.style.width = `${largura}%`;
+
+        // Badge de Status (Lucro / Prejuízo)
+        if (elVariacaoBadge) {
+            elVariacaoBadge.classList.remove('hidden', 'bg-green-500/10', 'text-green-500', 'bg-red-500/10', 'text-red-500');
+            if (variacaoPercent >= 0) {
+                elVariacaoBadge.textContent = 'LUCRO';
+                elVariacaoBadge.classList.add('bg-green-500/10', 'text-green-500', 'block');
+            } else {
+                elVariacaoBadge.textContent = 'PREJUÍZO';
+                elVariacaoBadge.classList.add('bg-red-500/10', 'text-red-500', 'block');
+            }
         }
     }
 
+    // 2. Drawdown (Barra de profundidade)
     if (elDrawdown) {
         elDrawdown.textContent = `${drawdownDisplay}%`;
-        
-        // Drawdown: Quanto mais próximo de 0, melhor (cinza/verde). Quanto maior, pior (vermelho).
+        // Barra enche conforme o tamanho da queda (até 30% enche a barra toda visualmente)
         const ddVal = Math.abs(parseFloat(drawdownDisplay));
-        const corDD = ddVal < 5 ? '#9ca3af' : '#ef4444'; // Cinza se < 5%, Vermelho se > 5%
-        elDrawdown.style.color = corDD;
-
         if (barDrawdown) {
-            barDrawdown.style.backgroundColor = corDD;
-            // Barra enche conforme o tamanho da queda (até 30% enche tudo)
             const largura = Math.min(ddVal * 3.3, 100); 
             barDrawdown.style.width = `${largura}%`;
         }
     }
 
+    // 3. Volatilidade (Medidor de 3 estágios)
     if (elVolatilidade) {
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
         
-        let corVol = "#ffffff";
-        if (volatilidade < 10) corVol = "#4ade80"; // Baixa
-        else if (volatilidade < 20) corVol = "#fbbf24"; // Média
-        else corVol = "#ef4444"; // Alta
+        // Reset dos medidores
+        if(meterLow) meterLow.className = 'h-full flex-1 bg-gray-700/30';
+        if(meterMed) meterMed.className = 'h-full flex-1 bg-gray-700/30 mx-0.5';
+        if(meterHigh) meterHigh.className = 'h-full flex-1 bg-gray-700/30';
         
-        elVolatilidade.style.color = corVol;
+        let labelVol = 'Baixa';
+        let colorClass = 'text-green-500';
+        
+        if (volatilidade < 10) {
+            // BAIXA
+            labelVol = 'Baixa';
+            colorClass = 'text-green-500';
+            if(meterLow) meterLow.className = 'h-full flex-1 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
+        } else if (volatilidade < 20) {
+            // MÉDIA
+            labelVol = 'Média';
+            colorClass = 'text-yellow-500';
+            if(meterLow) meterLow.className = 'h-full flex-1 bg-green-500';
+            if(meterMed) meterMed.className = 'h-full flex-1 bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)] mx-0.5';
+        } else {
+            // ALTA
+            labelVol = 'Alta';
+            colorClass = 'text-red-500';
+            if(meterLow) meterLow.className = 'h-full flex-1 bg-green-500';
+            if(meterMed) meterMed.className = 'h-full flex-1 bg-yellow-500 mx-0.5';
+            if(meterHigh) meterHigh.className = 'h-full flex-1 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
+        }
 
-        if (barVolatilidade) {
-            barVolatilidade.style.backgroundColor = corVol;
-            // Barra enche conforme volatilidade (até 40% enche tudo)
-            const largura = Math.min(volatilidade * 2.5, 100);
-            barVolatilidade.style.width = `${largura}%`;
+        if (elVolTag) {
+            elVolTag.textContent = labelVol;
+            // Remove classes antigas de cor e adiciona a nova
+            elVolTag.classList.remove('text-green-500', 'text-yellow-500', 'text-red-500', 'text-gray-500');
+            elVolTag.classList.add(colorClass);
+            // Ajusta borda para combinar sutilmente
+            elVolTag.style.borderColor = volatilidade < 10 ? 'rgba(34,197,94,0.3)' : (volatilidade < 20 ? 'rgba(234,179,8,0.3)' : 'rgba(239,68,68,0.3)');
         }
     }
 

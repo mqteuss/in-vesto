@@ -1329,18 +1329,17 @@ async function salvarSnapshotPatrimonio(totalValor) {
         watchlist = await supabaseDB.getWatchlist();
     }
 
-// 2. SUBSTITUA A FUNÇÃO renderizarWatchlist ATUAL POR ESTA:
 function renderizarWatchlist() {
     const carouselEl = document.getElementById('dashboard-favorites-list');
     if (!carouselEl) return;
     
     carouselEl.innerHTML = '';
 
-    // --- 1. ESTADO VAZIO (BOTÃO "ADD" SEM BORDA) ---
+    // 1. ESTADO VAZIO (BOTÃO "ADD")
     if (watchlist.length === 0) {
         carouselEl.innerHTML = `
             <div onclick="mudarAba('tab-carteira'); setTimeout(() => document.getElementById('carteira-search-input').focus(), 400);" 
-                 class="w-16 h-16 rounded-full bg-[#1C1C1E] flex flex-col items-center justify-center flex-shrink-0 cursor-pointer opacity-70 hover:opacity-100 transition-opacity active:scale-95">
+                 class="w-16 h-16 rounded-full bg-[#151515] border border-dashed border-gray-700 flex flex-col items-center justify-center flex-shrink-0 cursor-pointer opacity-70 hover:opacity-100 transition-opacity active:scale-95">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                 <span class="text-[8px] text-gray-500 font-bold uppercase tracking-wider">Add</span>
             </div>`;
@@ -1348,6 +1347,10 @@ function renderizarWatchlist() {
     }
 
     const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
+
+    // --- NOVA ORDEM: ALFABÉTICA (A-Z) ---
+    // Isso garante que os ícones fiquem sempre na mesma posição
+    watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
     watchlist.forEach(item => {
         const symbol = item.symbol;
@@ -1363,8 +1366,7 @@ function renderizarWatchlist() {
 
         const card = document.createElement('div');
         
-        // --- 2. CARD LIMPO (SEM BORDAS) ---
-        // Removido: border border-[#2C2C2E]
+        // Estilo Circular sem bordas
         card.className = 'w-16 h-16 rounded-full bg-[#151515] flex flex-col items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all shadow-sm relative group overflow-hidden';
         
         card.onclick = () => window.abrirDetalhesAtivo(symbol);
@@ -1376,7 +1378,7 @@ function renderizarWatchlist() {
         carouselEl.appendChild(card);
     });
     
-    // --- 3. BOTÃO "ADD" NO FINAL (SEM BORDA) ---
+    // Botão "Add" no final
     const btnAdd = document.createElement('div');
     btnAdd.className = "w-16 h-16 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all text-gray-500 hover:text-white hover:bg-gray-800";
     btnAdd.onclick = () => {
@@ -7456,6 +7458,55 @@ function initCarouselSwipeBridge() {
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
+
+function initTimelineSwipeBridge() {
+    const timeline = document.getElementById('timeline-lista');
+    if (!timeline) return;
+
+    let startX = 0;
+    let startY = 0;
+    let isAtEnd = false;
+
+    timeline.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        
+        // Verifica se chegou no fim do scroll horizontal
+        // (Math.ceil é usado para arredondar e evitar erros de pixel fracionado)
+        const maxScroll = Math.ceil(timeline.scrollWidth - timeline.clientWidth);
+        isAtEnd = Math.ceil(timeline.scrollLeft) >= (maxScroll - 5);
+    }, { passive: true });
+
+    timeline.addEventListener('touchend', (e) => {
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        
+        const diffX = startX - endX;
+        const diffY = startY - endY;
+
+        // Se o movimento for vertical, não faz nada (deixa a página rolar)
+        if (Math.abs(diffY) > Math.abs(diffX)) return;
+
+        // Se arrastou para a esquerda (tentando ir para a próxima aba)
+        // E já estava no final da lista (ou a lista é pequena e não tem scroll)
+        if (diffX > 50 && isAtEnd) {
+            e.stopPropagation(); // Impede interferência
+            console.log("Fim da timeline -> Indo para Carteira");
+            
+            // Força a ida para a aba Carteira
+            const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
+            if (btnCarteira) btnCarteira.click();
+        }
+    });
+}
+
+// --- ADICIONE A CHAMADA NO INÍCIO DO DOMContentLoaded ---
+document.addEventListener('DOMContentLoaded', async () => {
+    // ... seus outros códigos ...
+    
+    // Inicia as pontes de swipe
+    if (typeof initCarouselSwipeBridge === 'function') initCarouselSwipeBridge();
+    initTimelineSwipeBridge(); // <--- ADICIONE ISTO
 	
     await init();
 });

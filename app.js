@@ -7460,56 +7460,61 @@ document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 initCarouselSwipeBridge();
 
 // =========================================================================
-// CORREÇÃO DE SWIPE - LÓGICA IDENTICA AO WIDGET
+// CORREÇÃO DE SWIPE - UNIFICADA
 // =========================================================================
 
-function aplicarSwipeIgualWidget(elementId, targetTabId) {
+function adicionarSwipeInteligente(elementId, targetTabId) {
     const el = document.getElementById(elementId);
     if (!el) return;
 
     let startX = 0;
-    let isAtEnd = false;
+    let isAtRightEdge = false;
 
-    // 1. Ao tocar, verifica se já estamos no limite direito do elemento
+    // 1. Detecta o toque inicial
     el.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
         
-        // Para listas horizontais: verifica se scrollLeft chegou no final
-        // Para listas verticais (Timeline): scrollWidth == clientWidth, então isAtEnd será SEMPRE true
-        const maxScroll = el.scrollWidth - el.clientWidth;
-        isAtEnd = el.scrollLeft >= (maxScroll - 5); // Tolerância de 5px igual ao widget
+        // Lógica Inteligente:
+        // Se o elemento não tem rolagem horizontal (ex: lista vertical de pagamentos), 
+        // consideramos que ele já está "no limite" e pronto para trocar de aba.
+        if (el.scrollWidth <= el.clientWidth) {
+            isAtRightEdge = true;
+        } else {
+            // Se tem rolagem (ex: carrossel), verifica se chegou no fim
+            const maxScroll = el.scrollWidth - el.clientWidth;
+            isAtRightEdge = el.scrollLeft >= (maxScroll - 5);
+        }
     }, { passive: true });
 
-    // 2. Ao soltar, calcula o movimento
+    // 2. Detecta o movimento final
     el.addEventListener('touchend', (e) => {
-        // Se não estava no final (e tinha rolagem), não faz nada
-        if (!isAtEnd) return;
+        // Se não estamos na ponta direita (ou se não é um elemento fixo), ignora
+        if (!isAtRightEdge) return;
 
         const endX = e.changedTouches[0].clientX;
         const diff = startX - endX;
 
-        // Se arrastou mais de 50px para a esquerda
+        // Se o arrasto for maior que 50px para a esquerda
         if (diff > 50) {
-            // O Segredo: Para a propagação para evitar conflitos com outros listeners
-            e.stopPropagation(); 
+            // Para a propagação para evitar que o navegador ou outros elementos tentem rolar
+            e.stopPropagation();
             
-            console.log(`Swipe em ${elementId} -> Indo para ${targetTabId}`);
+            console.log(`Swipe detectado em ${elementId} -> Indo para ${targetTabId}`);
             
+            // Clica no botão da aba destino
             const btnTarget = document.querySelector(`button[data-tab="${targetTabId}"]`);
             if (btnTarget) btnTarget.click();
         }
     });
 }
 
-// Inicializa a correção
+// Inicializa assim que o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Atalhos Rápidos (Horizontal)
-    aplicarSwipeIgualWidget('carousel-wrapper', 'tab-carteira');
+    // Atalhos Rápidos (Horizontal)
+    adicionarSwipeInteligente('carousel-wrapper', 'tab-carteira');
     
-    // 2. Próximos Pagamentos (Lista Vertical)
-    // Como ele não tem scroll horizontal, a lógica vai considerar que ele "já está no fim"
-    // e qualquer deslize lateral vai ativar a troca de aba.
-    aplicarSwipeIgualWidget('timeline-lista', 'tab-carteira');
+    // Próximos Pagamentos (Vertical - Agora com lógica corrigida para aceitar swipe)
+    adicionarSwipeInteligente('timeline-lista', 'tab-carteira');
 });
 	
     await init();

@@ -2474,69 +2474,65 @@ function renderizarGraficoHistorico(dadosExternos = null) {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // --- PROCESSAMENTO DE DADOS ---
+    // --- PROCESSAMENTO DE DADOS (Mantido igual) ---
     let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
 
     if (dadosExternos && dadosExternos.labels) {
         labelsFiltrados = dadosExternos.labels;
         dataRecebidoFiltrados = dadosExternos.data; 
         dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0); 
+    } else {
+        const grupos = {};
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+
+        proventosConhecidos.forEach(p => {
+            if (!p.paymentDate || p.value <= 0) return;
+            const key = p.paymentDate.substring(0, 7);
+            const dataRef = p.dataCom || p.paymentDate;
+            const qtd = getQuantidadeNaData(p.symbol, dataRef);
+            
+            if (qtd > 0) {
+                if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
+                const [ano, mes, dia] = p.paymentDate.split('-');
+                const dataPagamento = new Date(ano, mes - 1, dia);
+                const valorTotal = p.value * qtd;
+
+                if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
+                else grupos[key].aReceber += valorTotal;
+            }
+        });
+
+        let mesesOrdenados = Object.keys(grupos).sort();
+        const labelsRaw = []; const dataR = []; const dataA = []; const keysRaw = [];
+
+        mesesOrdenados.forEach(mesIso => {
+            const [anoFull, mesNum] = mesIso.split('-');
+            const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
+            const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+            const anoCurto = anoFull.slice(-2);
+            labelsRaw.push(`${nomeMes}/${anoCurto}`);
+            dataR.push(grupos[mesIso].recebido);
+            dataA.push(grupos[mesIso].aReceber);
+            keysRaw.push(mesIso);
+        });
+
+        labelsFiltrados = labelsRaw.slice(-12);
+        dataRecebidoFiltrados = dataR.slice(-12);
+        dataAReceberFiltrados = dataA.slice(-12);
+        keysFiltrados = keysRaw.slice(-12);
     }
-    
-    // Dados Locais (Padrão)
-    const grupos = {};
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
-    proventosConhecidos.forEach(p => {
-        if (!p.paymentDate || p.value <= 0) return;
-        const key = p.paymentDate.substring(0, 7); // YYYY-MM
-        const dataRef = p.dataCom || p.paymentDate;
-        const qtd = getQuantidadeNaData(p.symbol, dataRef);
-        
-        if (qtd > 0) {
-            if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
-            const [ano, mes, dia] = p.paymentDate.split('-');
-            const dataPagamento = new Date(ano, mes - 1, dia);
-            const valorTotal = p.value * qtd;
-
-            if (dataPagamento <= hoje) grupos[key].recebido += valorTotal;
-            else grupos[key].aReceber += valorTotal;
-        }
-    });
-
-    let mesesOrdenados = Object.keys(grupos).sort();
-    const labelsRaw = [];
-    const dataR = [];
-    const dataA = [];
-    const keysRaw = [];
-
-    mesesOrdenados.forEach(mesIso => {
-        const [anoFull, mesNum] = mesIso.split('-');
-        const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
-        const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const anoCurto = anoFull.slice(-2);
-        
-        labelsRaw.push(`${nomeMes}/${anoCurto}`);
-        dataR.push(grupos[mesIso].recebido);
-        dataA.push(grupos[mesIso].aReceber);
-        keysRaw.push(mesIso);
-    });
-
-    labelsFiltrados = labelsRaw.slice(-12);
-    dataRecebidoFiltrados = dataR.slice(-12);
-    dataAReceberFiltrados = dataA.slice(-12);
-    keysFiltrados = keysRaw.slice(-12);
-
-    if (historicoChartInstance) {
-        historicoChartInstance.destroy();
-    }
+    if (historicoChartInstance) historicoChartInstance.destroy();
 
     const ctx = canvas.getContext('2d');
     
-    // --- NOVO ESQUEMA DE CORES SÓBRIO ---
-    const colorRecebido = '#7c3aed'; // Roxo da marca (identidade)
-    const colorAReceber = '#27272a'; // Cinza escuro (futuro/incerto)
-    const colorHover    = '#8b5cf6'; // Roxo um pouco mais claro para hover
+    // --- PALETA MONOCROMÁTICA (NOIR) ---
+    // Recebido: Branco Puro (Destaque máximo no fundo preto)
+    const colorRecebido = '#ffffff'; 
+    // A Receber: Cinza Chumbo (Discreto, indica "não consolidado")
+    const colorAReceber = '#3f3f46'; 
+    // Hover: Cinza Claro
+    const colorHover    = '#d4d4d8';
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -2547,9 +2543,9 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     label: 'A Receber', 
                     data: dataAReceberFiltrados,
                     backgroundColor: colorAReceber,
-                    borderRadius: 3,
-                    borderSkipped: false, // Visual mais moderno
-                    barPercentage: 0.6,
+                    borderRadius: 2,
+                    borderSkipped: false,
+                    barPercentage: 0.5, // Barras levemente mais finas
                     stack: 'Stack 0',
                     rawKeys: keysFiltrados 
                 },
@@ -2558,9 +2554,9 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     data: dataRecebidoFiltrados,
                     backgroundColor: colorRecebido,
                     hoverBackgroundColor: colorHover,
-                    borderRadius: 3,
+                    borderRadius: 2,
                     borderSkipped: false,
-                    barPercentage: 0.6,
+                    barPercentage: 0.5,
                     stack: 'Stack 0',
                     rawKeys: keysFiltrados
                 }
@@ -2569,37 +2565,37 @@ function renderizarGraficoHistorico(dadosExternos = null) {
         options: {
             responsive: true, 
             maintainAspectRatio: false,
-            animation: { duration: 600 },
+            animation: { duration: 0 }, // Remove animação para sensação "snappy"
             layout: { padding: { top: 10, bottom: 0 } },
             interaction: { mode: 'index', intersect: false },
             
-            // Interação de Clique
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
-                
                 const index = elements[0].index;
-                const labelAmigavel = labelsFiltrados[index]; 
-                const rawKey = keysFiltrados[index]; 
-                
-                renderizarListaProventosMes(rawKey, labelAmigavel);
+                renderizarListaProventosMes(keysFiltrados[index], labelsFiltrados[index]);
             },
 
             plugins: {
                 legend: { display: false }, 
                 tooltip: { 
                     enabled: true,
-                    backgroundColor: '#09090b', // Fundo quase preto
+                    backgroundColor: '#171717',
                     titleColor: '#fff',
-                    bodyColor: '#a1a1aa',
-                    borderColor: '#27272a', // Borda sutil
+                    bodyColor: '#a3a3a3',
+                    borderColor: '#262626',
                     borderWidth: 1,
                     displayColors: true,
-                    boxPadding: 4,
+                    boxPadding: 6,
                     callbacks: {
                         label: function(context) {
                             if(context.parsed.y === 0) return null;
-                            const label = context.dataset.label || '';
-                            return `${label}: ${formatBRL(context.parsed.y)}`;
+                            return `${context.dataset.label}: ${formatBRL(context.parsed.y)}`;
+                        },
+                        labelColor: function(context) {
+                            return {
+                                borderColor: 'transparent',
+                                backgroundColor: context.dataset.backgroundColor,
+                            };
                         }
                     }
                 } 
@@ -2610,15 +2606,14 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     stacked: true, 
                     grid: { display: false }, 
                     ticks: {
-                        color: '#525252', // Texto do eixo X mais discreto
-                        font: { size: 10, weight: '600' }
+                        color: '#525252', // Texto do eixo bem discreto
+                        font: { size: 9, weight: '600', family: "'Inter', sans-serif" }
                     }
                 }
             }
         }
     });
     
-    // Seleciona automaticamente o último mês ao carregar
     if (keysFiltrados.length > 0) {
         const lastIdx = keysFiltrados.length - 1;
         renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
@@ -2658,7 +2653,7 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     container.innerHTML = ''; 
 
     if (lista.length === 0) {
-        container.innerHTML = `<p class="text-center text-gray-600 text-xs py-8">Nenhum pagamento registrado.</p>`;
+        container.innerHTML = `<p class="text-center text-gray-700 text-xs py-8 uppercase tracking-widest">Sem proventos</p>`;
         return;
     }
 
@@ -2672,36 +2667,38 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
 
         const tickerInitials = item.symbol.substring(0, 2);
         
-        // --- CORES DE CONTRASTE ALTO (FIM DO ARCO-ÍRIS) ---
-        // Recebido: Valor Branco, Texto Roxo, Fundo do ícone escuro com borda roxa
-        // Futuro: Valor Cinza, Texto Cinza, Fundo do ícone totalmente neutro
+        // --- ESTILO MONOCROMÁTICO (NOIR) ---
+        // Se pago: Texto Branco Brilhante.
+        // Se agendado: Texto Cinza.
         
         const corValor = foiRecebido ? 'text-white' : 'text-gray-500';
-        const textoStatus = foiRecebido ? 'Pago' : 'Agendado';
-        const corStatus = foiRecebido ? 'text-purple-400' : 'text-gray-600';
+        const corTicker = foiRecebido ? 'text-gray-300' : 'text-gray-600';
+        const textoStatus = foiRecebido ? 'PAGO' : 'AGENDADO';
+        const styleStatus = foiRecebido 
+            ? 'text-white bg-white/10 border-white/5'  // Tag branca transparente
+            : 'text-gray-600 border-gray-800';         // Tag cinza apagada
         
-        // Ícone
+        // Ícone Minimalista (Quadrado com borda suave)
         const bgIcone = foiRecebido 
-            ? 'bg-purple-900/10 text-purple-400 border border-purple-500/20' 
-            : 'bg-[#1c1c1e] text-gray-600 border border-[#27272a]';
+            ? 'bg-[#202020] text-white border border-[#333]' 
+            : 'bg-[#101010] text-gray-700 border border-[#202020]';
 
-        // Card clean sem borda externa forte
         const cardHTML = `
-            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2">
+            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-xl mb-2 border border-[#202020]">
                 
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${bgIcone}">
-                     <span class="text-xs font-bold tracking-wider">${tickerInitials}</span>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${bgIcone}">
+                     <span class="text-[10px] font-bold tracking-wider">${tickerInitials}</span>
                 </div>
 
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-center mb-0.5">
-                        <span class="text-sm font-bold text-gray-200 uppercase tracking-tight">${item.symbol}</span>
+                        <span class="text-xs font-bold ${corTicker} uppercase tracking-wider">${item.symbol}</span>
                         <span class="text-sm font-bold ${corValor} tracking-tight">${formatBRL(item.valorTotal)}</span>
                     </div>
                     
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] text-gray-600 font-medium">Dia ${dia} • ${item.qtd} cotas</span>
-                        <span class="text-[10px] font-bold uppercase tracking-wider ${corStatus}">
+                    <div class="flex justify-between items-center mt-1">
+                        <span class="text-[9px] text-gray-600 font-medium tracking-wide">DIA ${dia} • ${item.qtd} COTAS</span>
+                        <span class="text-[9px] font-bold px-1.5 py-px rounded border ${styleStatus}">
                            ${textoStatus}
                         </span>
                     </div>
@@ -2711,9 +2708,10 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
         container.insertAdjacentHTML('beforeend', cardHTML);
     });
 
+    // Totalizador também monocromático
     const totalHTML = `
-        <div class="mt-4 pt-4 border-t border-[#2C2C2E] flex justify-between items-center px-2 pb-8">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total ${labelAmigavel}</span>
+        <div class="mt-4 pt-4 border-t border-[#222] flex justify-between items-center px-2 pb-8">
+            <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Total no Mês</span>
             <span class="text-lg font-bold text-white tracking-tight">${formatBRL(totalMes)}</span>
         </div>
     `;

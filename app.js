@@ -7403,7 +7403,6 @@ if (carousel) {
     });
 }
 
-// --- CORREÇÃO DE OVERSCROLL DO CARROSSEL ---
 function initCarouselSwipeBridge() {
     const carousel = document.getElementById('dashboard-carousel');
     if (!carousel) return;
@@ -7413,31 +7412,36 @@ function initCarouselSwipeBridge() {
 
     carousel.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
-        // Verifica se já está no final (com uma margem de erro de 2px)
+        // Verifica se está visualmente no final (com pequena tolerância)
         const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-        isAtEnd = carousel.scrollLeft >= (maxScroll - 2);
+        isAtEnd = carousel.scrollLeft >= (maxScroll - 5);
     }, { passive: true });
 
     carousel.addEventListener('touchend', (e) => {
-        if (!isAtEnd) return; // Se não estava no final quando começou, não faz nada
+        // Se não estava no final, deixa o scroll normal acontecer e sai
+        if (!isAtEnd) return;
 
         const endX = e.changedTouches[0].clientX;
         const diff = startX - endX;
 
-        // Se arrastou o dedo para a esquerda (swipe left) mais de 60px
-        if (diff > 60) {
+        // Se arrastou para a esquerda (tentando avançar)
+        if (diff > 50) {
+            // *** O SEGREDO ESTÁ AQUI ***
+            // Impede que o 'tab-dashboard' perceba esse gesto, evitando o pulo duplo
+            e.stopPropagation(); 
+            
             console.log("Fim do carrossel -> Indo para Carteira");
             
-            // Simula o clique no botão da aba Carteira
+            // Força a ida APENAS para a aba Carteira
             const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
             if (btnCarteira) btnCarteira.click();
         }
     });
 }
 
-// Chame essa função ao iniciar o app
+// Inicializa
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
-// Caso seu app use módulos e não tenha DOMContentLoaded global, chame initCarouselSwipeBridge() no final do init.
+// Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
 	
     await init();

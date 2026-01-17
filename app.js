@@ -7463,70 +7463,66 @@ initCarouselSwipeBridge();
 // CORREÇÃO DE SWIPE AVANÇADA (Versão Final e Expandida)
 // =========================================================================
 
-function adicionarSwipeInteligente(elementId, targetTabId) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
+// =========================================================================
+// CORREÇÃO DE SWIPE GLOBAL (DASHBOARD INTEIRO)
+// =========================================================================
+
+function ativarSwipeGlobalDashboard() {
+    const dashboard = document.getElementById('tab-dashboard');
+    if (!dashboard) return;
 
     let startX = 0;
     let startY = 0;
-    let isAtRightEdge = false;
 
-    // 1. Detecta o toque inicial
-    el.addEventListener('touchstart', (e) => {
+    // 1. Início do toque em QUALQUER lugar do Dashboard
+    dashboard.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
-        
-        // CÁLCULO INTELIGENTE:
-        // Verifica o quanto de "scroll extra" existe.
-        const maxScroll = el.scrollWidth - el.clientWidth;
-        
-        // Se o scroll extra for pequeno (< 30px), assume que é uma lista vertical ou que cabe na tela.
-        // Isso resolve o problema de tocar na "área vazia" ou quando tem poucos itens
-        if (maxScroll < 30) {
-            isAtRightEdge = true;
-        } else {
-            // Se tiver scroll horizontal real, verifica se chegou no final (tolerância de 10px)
-            isAtRightEdge = el.scrollLeft >= (maxScroll - 10);
-        }
     }, { passive: true });
 
-    // 2. Detecta o movimento final
-    el.addEventListener('touchend', (e) => {
-        // Se não estamos na condição de troca, ignora
-        if (!isAtRightEdge) return;
-
+    // 2. Fim do toque
+    dashboard.addEventListener('touchend', (e) => {
         const endX = e.changedTouches[0].clientX;
         const endY = e.changedTouches[0].clientY;
         
-        const diffX = startX - endX; // Positivo = arrastar para esquerda
-        const diffY = Math.abs(startY - endY); // Movimento vertical
+        const diffX = startX - endX; // Positivo = Arrastar p/ Esquerda (Ir p/ Direita)
+        const diffY = Math.abs(startY - endY); // Movimento Vertical
 
-        // LÓGICA DE ATIVAÇÃO:
-        // 1. O arrasto deve ser maior que 50px
-        // 2. Deve ser um movimento horizontal predominante (X > Y) para não atrapalhar a rolagem da página
-        if (diffX > 50 && diffX > diffY) {
+        // --- FILTRO DE SEGURANÇA ---
+        
+        // 1. O movimento horizontal deve ser maior que 60px (evita toques acidentais)
+        if (diffX < 60) return;
+
+        // 2. O movimento deve ser "mais horizontal do que vertical" 
+        // (Isso impede que mude de aba enquanto você rola a tela para baixo)
+        if (diffY > diffX) return;
+
+        // 3. VERIFICAÇÃO DE ELEMENTOS COM SCROLL HORIZONTAL INTERNO (Ex: Widgets do topo)
+        // Se o usuário tocou dentro de um carrossel que ainda tem espaço para rolar, não mudamos de aba.
+        const target = e.target;
+        const scrollableParent = target.closest('.overflow-x-auto, .snap-x');
+        
+        if (scrollableParent) {
+            // Se o elemento tem scroll horizontal E não chegou no fim...
+            const maxScroll = scrollableParent.scrollWidth - scrollableParent.clientWidth;
+            const isAtEnd = scrollableParent.scrollLeft >= (maxScroll - 10);
             
-            // Impede a propagação para evitar conflitos
-            e.stopPropagation();
-            
-            console.log(`Swipe Inteligente: ${elementId} -> ${targetTabId}`);
-            
-            // Clica no botão da aba de destino
-            const btnTarget = document.querySelector(`button[data-tab="${targetTabId}"]`);
-            if (btnTarget) btnTarget.click();
+            // Se não está no fim, deixa o carrossel rolar e CANCELA a troca de aba
+            if (!isAtEnd) return;
         }
+
+        // --- AÇÃO: MUDAR DE ABA ---
+        console.log('Swipe Global no Dashboard -> Indo para Carteira');
+        
+        const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
+        if (btnCarteira) btnCarteira.click();
+
     });
 }
 
-// Inicializa assim que o DOM estiver pronto
+// Inicializa
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Atalhos Rápidos (Carrossel Horizontal)
-    adicionarSwipeInteligente('carousel-wrapper', 'tab-carteira');
-    
-    // 2. Próximos Pagamentos (CORREÇÃO AQUI: Mudado para o container pai)
-    // Antes estava 'timeline-lista', agora pega o bloco inteiro (título + lista + fundo)
-    adicionarSwipeInteligente('timeline-pagamentos-container', 'tab-carteira');
-    
+    ativarSwipeGlobalDashboard();
 });
 	
     await init();

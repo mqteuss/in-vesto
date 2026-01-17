@@ -2675,11 +2675,12 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
 
         const tickerInitials = item.symbol.substring(0, 2);
         
-        // Definição de Cores e Texto baseados no status
-        const corValor = foiRecebido ? 'text-[#4ade80]' : 'text-amber-400'; // Verde ou Amarelo
+        // --- ALTERAÇÃO SOLICITADA ---
+        // 1. Definimos a cor apenas para o STATUS, não para o valor.
+        const corStatus = foiRecebido ? 'text-green-500' : 'text-amber-400'; 
         const textoStatus = foiRecebido ? 'Recebido' : 'A Receber';
 
-        // REMOVIDO: border e border-[#2C2C2E]
+        // 2. O Valor monetário agora é fixo 'text-white'
         const cardHTML = `
             <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2 active:scale-[0.98] transition-transform">
                 
@@ -2690,12 +2691,12 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-center mb-0.5">
                         <span class="text-sm font-bold text-white uppercase">${item.symbol}</span>
-                        <span class="text-sm font-bold ${corValor} tracking-tight">${formatBRL(item.valorTotal)}</span>
+                        <span class="text-sm font-bold text-white tracking-tight">${formatBRL(item.valorTotal)}</span>
                     </div>
                     
                     <div class="flex justify-between items-center">
                         <span class="text-[10px] text-gray-500 font-medium">Dia ${dia} • ${item.qtd} cotas</span>
-                        <span class="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                        <span class="text-[10px] ${corStatus} font-medium flex items-center gap-1">
                            ${!foiRecebido ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>' : ''} 
                            ${textoStatus}
                         </span>

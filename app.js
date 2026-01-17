@@ -7458,50 +7458,6 @@ function initCarouselSwipeBridge() {
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
-
-function initTimelineSwipeBridge() {
-    const timeline = document.getElementById('timeline-lista');
-    if (!timeline) return;
-
-    let startX = 0;
-    let startY = 0;
-    let isAtEnd = false;
-
-    timeline.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        
-        // Verifica se chegou no fim do scroll horizontal
-        // (Math.ceil é usado para arredondar e evitar erros de pixel fracionado)
-        const maxScroll = Math.ceil(timeline.scrollWidth - timeline.clientWidth);
-        isAtEnd = Math.ceil(timeline.scrollLeft) >= (maxScroll - 5);
-    }, { passive: true });
-
-    timeline.addEventListener('touchend', (e) => {
-        const endX = e.changedTouches[0].clientX;
-        const endY = e.changedTouches[0].clientY;
-        
-        const diffX = startX - endX;
-        const diffY = startY - endY;
-
-        // Se o movimento for vertical, não faz nada (deixa a página rolar)
-        if (Math.abs(diffY) > Math.abs(diffX)) return;
-
-        // Se arrastou para a esquerda (tentando ir para a próxima aba)
-        // E já estava no final da lista (ou a lista é pequena e não tem scroll)
-        if (diffX > 50 && isAtEnd) {
-            e.stopPropagation(); // Impede interferência
-            console.log("Fim da timeline -> Indo para Carteira");
-            
-            // Força a ida para a aba Carteira
-            const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
-            if (btnCarteira) btnCarteira.click();
-        }
-    });
-}
-
-// --- ADICIONE A CHAMADA NO INÍCIO DO DOMContentLoaded ---
-document.addEventListener('DOMContentLoaded', async () => {
 	
     await init();
 });

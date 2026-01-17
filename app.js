@@ -2121,7 +2121,7 @@ function renderizarNoticias(articles) {
             let tickersHtml = '';
             if (foundTickers.length > 0) {
                 foundTickers.forEach(ticker => {
-                    tickersHtml += `<span class="news-ticker-tag text-[10px] py-0.5 px-2 bg-neutral-800 text-neutral-400 rounded-md border border-neutral-700 mr-2 mb-1 inline-block" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                    tickersHtml += `<span class="news-ticker-tag text-[10px] py-0.5 px-2 bg-neutral-800 text-neutral-400 rounded-md border border-neutral-700 mr-2 mb-1 inline-block active:bg-neutral-800 active:text-neutral-400 active:border-neutral-700 transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
                 });
             }
 

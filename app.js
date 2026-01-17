@@ -7525,7 +7525,6 @@ function adicionarSwipeInteligente(elementId, targetTabId) {
 // Inicializa assim que o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Atalhos Rápidos (Carrossel Horizontal)
-    adicionarSwipeInteligente('carousel-wrapper', 'tab-carteira');
     
     // 2. Próximos Pagamentos (Lista Vertical/Híbrida)
     adicionarSwipeInteligente('timeline-lista', 'tab-carteira');

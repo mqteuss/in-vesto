@@ -2474,14 +2474,21 @@ function renderizarGraficoHistorico(dadosExternos = null) {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // --- PROCESSAMENTO DE DADOS (Mantido) ---
+    // --- PROCESSAMENTO DE DADOS ---
     let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
 
     if (dadosExternos && dadosExternos.labels) {
+        // Cenario 1: Dados Externos (BFF/API)
         labelsFiltrados = dadosExternos.labels;
         dataRecebidoFiltrados = dadosExternos.data; 
-        dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0); 
+        dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0);
+        
+        // CORREÇÃO DO ERRO: Garantir que keysFiltrados exista
+        // Se a API não mandar 'keys', criamos um array vazio ou tentamos usar as labels como fallback
+        keysFiltrados = dadosExternos.keys || []; 
+        
     } else {
+        // Cenario 2: Dados Locais (Cálculo no Front)
         const grupos = {};
         const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
@@ -2526,7 +2533,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
 
     const ctx = canvas.getContext('2d');
     
-    // --- CORES DO GRÁFICO (VERDE E AMARELO - MANTIDO) ---
+    // --- CORES DO GRÁFICO (Verde/Amarelo) ---
     const colorRecebido = '#4ade80'; // Verde
     const colorAReceber = '#facc15'; // Amarelo
     
@@ -2567,7 +2574,11 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
                 const index = elements[0].index;
-                renderizarListaProventosMes(keysFiltrados[index], labelsFiltrados[index]);
+                
+                // Verificação de segurança ao clicar
+                if (keysFiltrados && keysFiltrados[index]) {
+                    renderizarListaProventosMes(keysFiltrados[index], labelsFiltrados[index]);
+                }
             },
 
             plugins: {
@@ -2603,7 +2614,9 @@ function renderizarGraficoHistorico(dadosExternos = null) {
         }
     });
     
-    if (keysFiltrados.length > 0) {
+    // CORREÇÃO DO ERRO PRINCIPAL:
+    // Só tenta acessar .length se keysFiltrados estiver definido
+    if (keysFiltrados && keysFiltrados.length > 0) {
         const lastIdx = keysFiltrados.length - 1;
         renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
     }

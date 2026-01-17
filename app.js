@@ -2533,9 +2533,10 @@ function renderizarGraficoHistorico(dadosExternos = null) {
 
     const ctx = canvas.getContext('2d');
     
-    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
-    const colorRecebido = '#8B5CF6'; 
-    const colorAReceber = '#333333'; 
+    // --- NOVO ESQUEMA DE CORES SÓBRIO ---
+    const colorRecebido = '#7c3aed'; // Roxo da marca (identidade)
+    const colorAReceber = '#27272a'; // Cinza escuro (futuro/incerto)
+    const colorHover    = '#8b5cf6'; // Roxo um pouco mais claro para hover
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -2546,7 +2547,8 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     label: 'A Receber', 
                     data: dataAReceberFiltrados,
                     backgroundColor: colorAReceber,
-                    borderRadius: 4,
+                    borderRadius: 3,
+                    borderSkipped: false, // Visual mais moderno
                     barPercentage: 0.6,
                     stack: 'Stack 0',
                     rawKeys: keysFiltrados 
@@ -2555,7 +2557,9 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     label: 'Recebido',
                     data: dataRecebidoFiltrados,
                     backgroundColor: colorRecebido,
-                    borderRadius: 4,
+                    hoverBackgroundColor: colorHover,
+                    borderRadius: 3,
+                    borderSkipped: false,
                     barPercentage: 0.6,
                     stack: 'Stack 0',
                     rawKeys: keysFiltrados
@@ -2569,7 +2573,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             layout: { padding: { top: 10, bottom: 0 } },
             interaction: { mode: 'index', intersect: false },
             
-            // --- AQUI: INTERAÇÃO DE CLIQUE NA BARRA ---
+            // Interação de Clique
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
                 
@@ -2577,26 +2581,25 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                 const labelAmigavel = labelsFiltrados[index]; 
                 const rawKey = keysFiltrados[index]; 
                 
-                // Chama a função que preenche a lista lá embaixo
                 renderizarListaProventosMes(rawKey, labelAmigavel);
             },
 
             plugins: {
-                // --- ISSO REMOVE A LEGENDA INTERNA/ABAIXO DO GRÁFICO ---
                 legend: { display: false }, 
-                
                 tooltip: { 
                     enabled: true,
-                    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                    backgroundColor: '#09090b', // Fundo quase preto
                     titleColor: '#fff',
-                    bodyColor: '#ccc',
-                    borderColor: '#333',
+                    bodyColor: '#a1a1aa',
+                    borderColor: '#27272a', // Borda sutil
                     borderWidth: 1,
-                    displayColors: false,
+                    displayColors: true,
+                    boxPadding: 4,
                     callbacks: {
                         label: function(context) {
                             if(context.parsed.y === 0) return null;
-                            return formatBRL(context.parsed.y);
+                            const label = context.dataset.label || '';
+                            return `${label}: ${formatBRL(context.parsed.y)}`;
                         }
                     }
                 } 
@@ -2607,7 +2610,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     stacked: true, 
                     grid: { display: false }, 
                     ticks: {
-                        color: '#666',
+                        color: '#525252', // Texto do eixo X mais discreto
                         font: { size: 10, weight: '600' }
                     }
                 }
@@ -2643,7 +2646,7 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
                     symbol: p.symbol,
                     valorTotal: 0,
                     qtd: qtd,
-                    dataPag: p.paymentDate // Formato YYYY-MM-DD
+                    dataPag: p.paymentDate
                 };
             }
             agrupado[p.symbol].valorTotal += total;
@@ -2659,44 +2662,46 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
         return;
     }
 
-    // Data de hoje zerada (00:00:00) para comparação justa
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
     lista.forEach(item => {
-        const percent = ((item.valorTotal / totalMes) * 100).toFixed(1);
-        const [ano, mes, dia] = item.dataPag.split('-').map(Number); // Separa YYYY-MM-DD
-        
-        // Cria objeto data do pagamento
+        const [ano, mes, dia] = item.dataPag.split('-').map(Number);
         const dataPagamentoObj = new Date(ano, mes - 1, dia);
-
-        // Lógica: Se a data do pagamento for menor ou igual a hoje, foi recebido.
         const foiRecebido = dataPagamentoObj <= hoje;
 
         const tickerInitials = item.symbol.substring(0, 2);
         
-        // Definição de Cores e Texto baseados no status
-        const corValor = foiRecebido ? 'text-[#4ade80]' : 'text-amber-400'; // Verde ou Amarelo
-        const textoStatus = foiRecebido ? 'Recebido' : 'A Receber';
+        // --- CORES DE CONTRASTE ALTO (FIM DO ARCO-ÍRIS) ---
+        // Recebido: Valor Branco, Texto Roxo, Fundo do ícone escuro com borda roxa
+        // Futuro: Valor Cinza, Texto Cinza, Fundo do ícone totalmente neutro
+        
+        const corValor = foiRecebido ? 'text-white' : 'text-gray-500';
+        const textoStatus = foiRecebido ? 'Pago' : 'Agendado';
+        const corStatus = foiRecebido ? 'text-purple-400' : 'text-gray-600';
+        
+        // Ícone
+        const bgIcone = foiRecebido 
+            ? 'bg-purple-900/10 text-purple-400 border border-purple-500/20' 
+            : 'bg-[#1c1c1e] text-gray-600 border border-[#27272a]';
 
-        // REMOVIDO: border e border-[#2C2C2E]
+        // Card clean sem borda externa forte
         const cardHTML = `
-            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2 active:scale-[0.98] transition-transform">
+            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2">
                 
-                <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
-                     <span class="text-xs font-bold text-white tracking-wider">${tickerInitials}</span>
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${bgIcone}">
+                     <span class="text-xs font-bold tracking-wider">${tickerInitials}</span>
                 </div>
 
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-center mb-0.5">
-                        <span class="text-sm font-bold text-white uppercase">${item.symbol}</span>
+                        <span class="text-sm font-bold text-gray-200 uppercase tracking-tight">${item.symbol}</span>
                         <span class="text-sm font-bold ${corValor} tracking-tight">${formatBRL(item.valorTotal)}</span>
                     </div>
                     
                     <div class="flex justify-between items-center">
-                        <span class="text-[10px] text-gray-500 font-medium">Dia ${dia} • ${item.qtd} cotas</span>
-                        <span class="text-[10px] text-gray-500 font-medium flex items-center gap-1">
-                           ${!foiRecebido ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>' : ''} 
+                        <span class="text-[10px] text-gray-600 font-medium">Dia ${dia} • ${item.qtd} cotas</span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider ${corStatus}">
                            ${textoStatus}
                         </span>
                     </div>

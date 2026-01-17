@@ -7458,6 +7458,55 @@ function initCarouselSwipeBridge() {
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
+
+function initTimelineSwipeBridge() {
+    const timeline = document.getElementById('timeline-lista');
+    if (!timeline) return;
+
+    let startX = 0;
+    let startY = 0;
+    let isAtEnd = false;
+
+    // Detecta o início do toque
+    timeline.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        
+        // Verifica se chegou no fim do scroll horizontal (margem de erro de 5px)
+        const maxScroll = Math.ceil(timeline.scrollWidth - timeline.clientWidth);
+        isAtEnd = Math.ceil(timeline.scrollLeft) >= (maxScroll - 5);
+    }, { passive: true });
+
+    // Detecta o fim do toque e decide se troca de aba
+    timeline.addEventListener('touchend', (e) => {
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        
+        const diffX = startX - endX;
+        const diffY = startY - endY;
+
+        // Se o movimento for vertical, não faz nada (deixa a página rolar)
+        if (Math.abs(diffY) > Math.abs(diffX)) return;
+
+        // Se arrastou para a esquerda (tentando ir para a próxima aba)
+        // E já estava no final da lista
+        if (diffX > 50 && isAtEnd) {
+            e.stopPropagation(); // Impede interferência
+            console.log("Fim da timeline -> Indo para Carteira");
+            
+            // Força a ida para a aba Carteira
+            const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
+            if (btnCarteira) btnCarteira.click();
+        }
+    });
+}
+
+// --- INICIALIZAÇÃO DO APP ---
+document.addEventListener('DOMContentLoaded', async () => {
+    
+    // 1. Inicia as correções de Swipe (Carrossel e Timeline)
+    if (typeof initCarouselSwipeBridge === 'function') initCarouselSwipeBridge();
+    if (typeof initTimelineSwipeBridge === 'function') initTimelineSwipeBridge();
 	
     await init();
 });

@@ -7402,6 +7402,43 @@ if (carousel) {
         });
     });
 }
+
+// --- CORREÇÃO DE OVERSCROLL DO CARROSSEL ---
+function initCarouselSwipeBridge() {
+    const carousel = document.getElementById('dashboard-carousel');
+    if (!carousel) return;
+
+    let startX = 0;
+    let isAtEnd = false;
+
+    carousel.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        // Verifica se já está no final (com uma margem de erro de 2px)
+        const maxScroll = carousel.scrollWidth - carousel.clientWidth;
+        isAtEnd = carousel.scrollLeft >= (maxScroll - 2);
+    }, { passive: true });
+
+    carousel.addEventListener('touchend', (e) => {
+        if (!isAtEnd) return; // Se não estava no final quando começou, não faz nada
+
+        const endX = e.changedTouches[0].clientX;
+        const diff = startX - endX;
+
+        // Se arrastou o dedo para a esquerda (swipe left) mais de 60px
+        if (diff > 60) {
+            console.log("Fim do carrossel -> Indo para Carteira");
+            
+            // Simula o clique no botão da aba Carteira
+            const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
+            if (btnCarteira) btnCarteira.click();
+        }
+    });
+}
+
+// Chame essa função ao iniciar o app
+document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
+// Caso seu app use módulos e não tenha DOMContentLoaded global, chame initCarouselSwipeBridge() no final do init.
+initCarouselSwipeBridge();
 	
     await init();
 });

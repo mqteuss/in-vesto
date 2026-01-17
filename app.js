@@ -7458,6 +7458,68 @@ function initCarouselSwipeBridge() {
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
+
+function ativarSwipeInteligente(elementId, targetTabId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    let startX = 0;
+    let startY = 0;
+    let isAtEdge = false;
+
+    el.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        
+        // Verifica se é um elemento com scroll horizontal
+        const isHorizontalScroll = el.scrollWidth > el.clientWidth;
+        
+        if (isHorizontalScroll) {
+            // Se for horizontal, verifica se está no final (direita)
+            const maxScroll = el.scrollWidth - el.clientWidth;
+            isAtEdge = el.scrollLeft >= (maxScroll - 10); // Tolerância de 10px
+        } else {
+            // Se for vertical (ex: Pagamentos), sempre permite o swipe lateral
+            isAtEdge = true; 
+        }
+    }, { passive: true });
+
+    el.addEventListener('touchend', (e) => {
+        if (!isAtEdge) return;
+
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        
+        const diffX = startX - endX;
+        const diffY = Math.abs(startY - endY);
+
+        // Lógica:
+        // 1. O movimento lateral (X) deve ser maior que 50px
+        // 2. O movimento lateral deve ser maior que o vertical (para não confundir com scroll da página)
+        if (diffX > 50 && diffX > diffY) {
+            console.log(`Swipe detectado em ${elementId} -> Indo para ${targetTabId}`);
+            
+            // Impede a propagação para evitar conflitos
+            e.stopPropagation(); 
+            
+            // Clica no botão da aba de destino
+            const btnTarget = document.querySelector(`button[data-tab="${targetTabId}"]`);
+            if (btnTarget) btnTarget.click();
+        }
+    });
+}
+
+// APLICAR A CORREÇÃO AO CARREGAR
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Atalhos Rápidos (Scroll Horizontal)
+    ativarSwipeInteligente('carousel-wrapper', 'tab-carteira');
+    
+    // 2. Próximos Pagamentos (Lista Vertical - Correção do seu problema específico)
+    ativarSwipeInteligente('timeline-lista', 'tab-carteira');
+    
+    // 3. Garante que o carrossel principal use a mesma lógica (opcional, já que você disse que ele tem)
+    // ativarSwipeInteligente('dashboard-carousel', 'tab-carteira');
+});
 	
     await init();
 });

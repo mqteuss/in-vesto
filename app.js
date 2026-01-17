@@ -1331,17 +1331,18 @@ async function salvarSnapshotPatrimonio(totalValor) {
 
 // 2. SUBSTITUA A FUNÇÃO renderizarWatchlist ATUAL POR ESTA:
 function renderizarWatchlist() {
-    // 1. Apenas Carrossel Horizontal
     const carouselEl = document.getElementById('dashboard-favorites-list');
     if (!carouselEl) return;
     
     carouselEl.innerHTML = '';
 
+    // --- 1. ESTADO VAZIO (BOTÃO "ADD" CIRCULAR) ---
     if (watchlist.length === 0) {
         carouselEl.innerHTML = `
-            <div onclick="mudarAba('tab-carteira'); setTimeout(() => document.getElementById('carteira-search-input').focus(), 400);" class="fav-card border-dashed border-gray-700 cursor-pointer opacity-70">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                <span class="text-[9px] text-gray-500 font-bold uppercase">Add</span>
+            <div onclick="mudarAba('tab-carteira'); setTimeout(() => document.getElementById('carteira-search-input').focus(), 400);" 
+                 class="w-16 h-16 rounded-full bg-[#151515] border border-dashed border-gray-700 flex flex-col items-center justify-center flex-shrink-0 cursor-pointer opacity-70 hover:opacity-100 transition-opacity active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                <span class="text-[8px] text-gray-500 font-bold uppercase tracking-wider">Add</span>
             </div>`;
         return;
     }
@@ -1352,26 +1353,39 @@ function renderizarWatchlist() {
         const symbol = item.symbol;
         const dadoPreco = precosMap.get(symbol);
         
-        // CORREÇÃO: Começa com vazio ('') em vez de '---'
-        // Se não tiver preço carregado, ficará um espaço em branco limpo.
         let preco = ''; 
-        if (dadoPreco) {
+        let corTexto = 'text-gray-400';
+
+        if (dadoPreco && dadoPreco.regularMarketPrice) {
             preco = formatBRL(dadoPreco.regularMarketPrice);
+            corTexto = 'text-gray-300';
         }
 
         const card = document.createElement('div');
-        // Usa a classe CSS fav-card
-        card.className = 'fav-card cursor-pointer group select-none relative';
+        
+        // --- 2. ESTILO CIRCULAR (w-16 h-16 rounded-full) ---
+        card.className = 'w-16 h-16 rounded-full bg-[#151515] border border-[#2C2C2E] flex flex-col items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all shadow-sm relative group overflow-hidden';
+        
         card.onclick = () => window.abrirDetalhesAtivo(symbol);
 
-        // HTML LIMPO: Ticker Branco e Preço (ou vazio)
+        // --- 3. CONTEÚDO (Ticker + Preço Mini) ---
+        // Ajustei os tamanhos da fonte para caber no círculo sem quebrar
         card.innerHTML = `
-    <span class="text-[10px] font-bold text-white mb-0.5 tracking-wider uppercase">${symbol}</span>
-    
-    <span class="text-sm font-bold text-gray-300 tracking-tight">${preco}</span>
-`;
+            <span class="text-[10px] font-bold text-white tracking-widest leading-none mb-0.5">${symbol}</span>
+            <span class="text-[9px] font-medium ${corTexto} tracking-tighter scale-90">${preco}</span>
+        `;
         carouselEl.appendChild(card);
     });
+    
+    // Opcional: Adicionar um botão "Add" circular no final da lista também
+    const btnAdd = document.createElement('div');
+    btnAdd.className = "w-16 h-16 rounded-full bg-[#1C1C1E] border border-transparent flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all text-gray-500 hover:text-white hover:bg-gray-800";
+    btnAdd.onclick = () => {
+        mudarAba('tab-carteira'); 
+        setTimeout(() => document.getElementById('carteira-search-input').focus(), 400);
+    };
+    btnAdd.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>`;
+    carouselEl.appendChild(btnAdd);
 }
     
     function atualizarIconeFavorito(symbol) {

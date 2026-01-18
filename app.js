@@ -3277,132 +3277,114 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     lastPatrimonioCalcSignature = currentSignature;
 }
 
-// --- VARIÁVEIS DO MODAL DE PAGAMENTOS ---
-const modalPagamentos = document.getElementById('pagamentos-page-modal');
-const contentPagamentos = document.getElementById('tab-pagamentos-content');
-
-// 1. Função principal: Atualiza apenas o CARD DA DASHBOARD
 function renderizarTimelinePagamentos() {
-    const cardResumo = document.getElementById('card-resumo-pagamentos');
-    const valorEl = document.getElementById('resumo-pag-valor');
-    const qtdEl = document.getElementById('resumo-pag-qtd');
+    const container = document.getElementById('timeline-pagamentos-container');
+    const lista = document.getElementById('timeline-lista');
 
+    // 1. Validações iniciais
     if (!proventosAtuais || proventosAtuais.length === 0) {
-        if(cardResumo) cardResumo.classList.add('hidden');
+        if (container) container.classList.add('hidden');
         return;
     }
 
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra pagamentos futuros e válidos
+    // 2. Filtra e ordena (Apenas Futuros)
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         
-        // Verifica se tenho o ativo na carteira
+        // Verifica se tem o ativo na carteira E se a data é futura/hoje
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
         return ativoNaCarteira && ativoNaCarteira.quantity > 0 && dataPag >= hoje;
     });
 
+    // Salva globalmente para o modal usar
+    window.pagamentosFuturosFiltrados = pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+
     if (pagamentosReais.length === 0) {
-        if(cardResumo) cardResumo.classList.add('hidden');
+        if (container) container.classList.add('hidden');
         return;
     }
 
-    // Calcula totais para o Card
-    let totalValor = 0;
-    pagamentosReais.forEach(p => {
-        const carteiraItem = carteiraCalculada.find(c => c.symbol === p.symbol);
-        if (carteiraItem) {
-            totalValor += p.value * carteiraItem.quantity;
-        }
+    // 3. Lógica de Exibição (O "Pulo do Gato")
+    // Mostraremos no máximo 3 cards detalhados. 
+    // Se tiver 4 ou mais, o 4º vira um botão "Ver Mais"
+    const LIMIT_CARDS = 3;
+    const temMuitos = pagamentosReais.length > LIMIT_CARDS;
+    
+    // Se tiver muitos, cortamos a lista. Se não, mostramos tudo.
+    const listaParaExibir = temMuitos ? pagamentosReais.slice(0, LIMIT_CARDS) : pagamentosReais;
+
+    lista.innerHTML = ''; // Limpa lista
+
+    // 4. Renderiza os Cards de Pagamento
+    listaParaExibir.forEach(prov => {
+        const parts = prov.paymentDate.split('-');
+        const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        
+        const dia = parts[2];
+        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        
+        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+        const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+        const totalReceber = prov.value * qtd;
+        
+        // Verifica se é hoje para destacar
+        const diffTime = Math.abs(dataObj - hoje);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        const isHoje = diffDays === 0;
+        
+        const classeHoje = isHoje ? 'border border-yellow-500/50' : 'border border-[#27272a]';
+        const bgHeader = isHoje ? 'bg-yellow-500 text-black' : 'bg-[#27272a] text-gray-400';
+
+        const card = document.createElement('div');
+        // Mantém estilo quadrado fixo
+        card.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#151515] rounded-2xl flex flex-col overflow-hidden ${classeHoje}`;
+        
+        card.innerHTML = `
+            <div class="w-full py-1.5 text-[10px] font-bold text-center uppercase ${bgHeader}">
+                ${isHoje ? 'HOJE' : mes}
+            </div>
+            <div class="flex-1 flex flex-col items-center justify-center -mt-1">
+                <span class="text-2xl font-bold text-white tracking-tighter">${dia}</span>
+                <span class="text-[10px] text-gray-500 font-bold mt-1">${prov.symbol}</span>
+            </div>
+            <div class="w-full py-2 bg-[#1C1C1E] border-t border-[#27272a] text-center">
+                <span class="text-xs font-bold text-green-400">+${formatBRL(totalReceber)}</span>
+            </div>
+        `;
+        
+        // Clique no card abre os detalhes do ativo
+        card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+        lista.appendChild(card);
     });
 
-    // Atualiza o visual do Card
-    if(cardResumo) cardResumo.classList.remove('hidden');
-    if(valorEl) valorEl.innerText = formatBRL(totalValor);
-    if(qtdEl) qtdEl.innerText = `${pagamentosReais.length} previsto(s)`;
-    
-    // Salva a lista filtrada globalmente para usar no modal
-    window.pagamentosFuturosFiltrados = pagamentosReais;
-}
-
-// 2. Abre o Modal e Renderiza a Lista Detalhada
-window.abrirModalPagamentos = function() {
-    const listaContainer = document.getElementById('modal-lista-pagamentos');
-    const pagamentos = window.pagamentosFuturosFiltrados || []; // Pega a lista calculada anteriormente
-    
-    listaContainer.innerHTML = ''; // Limpa lista anterior
-
-    // Ordena por data
-    pagamentos.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-
-    if (pagamentos.length === 0) {
-        listaContainer.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhum pagamento encontrado.</p>';
-    } else {
-        pagamentos.forEach(prov => {
-            const parts = prov.paymentDate.split('-');
-            const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-            
-            // Formata data
-            const dia = parts[2];
-            const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-            const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' });
-
-            // Calcula valores
-            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-            const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-            const totalReceber = prov.value * qtd;
-
-            // Cria o item da lista (Visual LISTA, não CARD quadrado)
-            const itemHTML = `
-                <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a]">
-                    <div class="flex items-center gap-4">
-                        <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333]">
-                            <span class="text-xs font-bold text-gray-400 uppercase">${mes}</span>
-                            <span class="text-lg font-bold text-white leading-none">${dia}</span>
-                        </div>
-                        <div>
-                            <span class="block text-sm font-bold text-white">${prov.symbol}</span>
-                            <span class="text-xs text-gray-500 capitalize">${diaSemana}</span>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
-                        <span class="text-[10px] text-gray-600">(${formatBRL(prov.value)}/cota)</span>
-                    </div>
-                </div>
-            `;
-            listaContainer.innerHTML += itemHTML;
-        });
+    // 5. Renderiza o Card "Ver Mais" (Se necessário)
+    if (temMuitos) {
+        const restantes = pagamentosReais.length - LIMIT_CARDS;
+        
+        const moreCard = document.createElement('div');
+        moreCard.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#1C1C1E] rounded-2xl flex flex-col items-center justify-center border border-[#27272a] cursor-pointer hover:bg-[#27272a] transition-colors active:scale-95`;
+        
+        moreCard.innerHTML = `
+            <div class="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center mb-2 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+            </div>
+            <span class="text-lg font-bold text-white">+${restantes}</span>
+            <span class="text-[10px] text-gray-500 uppercase font-bold mt-1">Ver todos</span>
+        `;
+        
+        // Clique neste card abre o MODAL
+        moreCard.onclick = () => window.abrirModalPagamentos();
+        lista.appendChild(moreCard);
     }
 
-    // Exibe o modal
-    if (modalPagamentos && contentPagamentos) {
-        modalPagamentos.classList.add('visible');
-        contentPagamentos.classList.remove('translate-y-full');
-    }
-};
-
-// 3. Fecha o Modal
-window.fecharModalPagamentos = function() {
-    if (modalPagamentos && contentPagamentos) {
-        contentPagamentos.classList.add('translate-y-full');
-        setTimeout(() => {
-            modalPagamentos.classList.remove('visible');
-        }, 300);
-    }
-};
-
-// 4. Fechar ao clicar fora (backdrop)
-if (modalPagamentos) {
-    modalPagamentos.addEventListener('click', (e) => {
-        if (e.target === modalPagamentos) {
-            window.fecharModalPagamentos();
-        }
-    });
+    if (container) container.classList.remove('hidden');
 }
 
 function renderizarDashboardSkeletons(show) {

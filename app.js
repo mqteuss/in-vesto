@@ -7541,69 +7541,75 @@ window.closePagamentosModal = function() {
 };
 
 
-// --- LISTENERS DO MODAL DE PAGAMENTOS (NOVO) ---
-    const pagamentosVoltarBtn = document.getElementById('pagamentos-voltar-btn');
-    // Obs: pagamentosPageModal e pagamentosPageContent já podem ter sido declarados se você copiou o código antigo, 
-    // mas por segurança redeclaramos ou usamos as referências existentes.
-    const modalPagamentosEl = document.getElementById('pagamentos-page-modal');
-    const contentPagamentosEl = document.getElementById('tab-pagamentos-content');
+// --- LÓGICA DE SWIPE DOWN PARA PAGAMENTOS (NOVO) ---
+    
+    // Referências aos elementos (Re-selecionando para garantir)
+    const modalPagamentosRef = document.getElementById('pagamentos-page-modal');
+    const contentPagamentosRef = document.getElementById('tab-pagamentos-content');
+    const btnVoltarPagamentos = document.getElementById('pagamentos-voltar-btn');
 
     let isDraggingPagamentos = false;
     let touchStartPagamentosY = 0;
     let touchMovePagamentosY = 0;
 
-    // Botão Voltar (X)
-    if (pagamentosVoltarBtn) {
-        pagamentosVoltarBtn.addEventListener('click', closePagamentosModal);
+    // 1. Fechar ao clicar no botão "X"
+    if (btnVoltarPagamentos) {
+        btnVoltarPagamentos.addEventListener('click', closePagamentosModal);
     }
 
-    // Fechar ao clicar no fundo escuro
-    if (modalPagamentosEl) {
-        modalPagamentosEl.addEventListener('click', (e) => {
-            if (e.target === modalPagamentosEl) closePagamentosModal();
+    // 2. Fechar ao clicar no fundo escuro
+    if (modalPagamentosRef) {
+        modalPagamentosRef.addEventListener('click', (e) => {
+            if (e.target === modalPagamentosRef) closePagamentosModal();
         });
     }
 
-    // Lógica de Swipe Down (Arrastar para fechar)
-    if (contentPagamentosEl) {
-        const scrollContainerPag = contentPagamentosEl.querySelector('.overflow-y-auto');
+    // 3. Lógica do Gesto (Arrastar para baixo)
+    if (contentPagamentosRef) {
+        // Encontra o container que tem scroll (para não fechar enquanto rola a lista)
+        const scrollContainerPag = contentPagamentosRef.querySelector('.overflow-y-auto');
 
-        contentPagamentosEl.addEventListener('touchstart', (e) => {
+        contentPagamentosRef.addEventListener('touchstart', (e) => {
+            // Se o scroll estiver no topo (0), permite iniciar o arrasto
             if (scrollContainerPag && scrollContainerPag.scrollTop === 0) {
                 touchStartPagamentosY = e.touches[0].clientY;
                 touchMovePagamentosY = touchStartPagamentosY;
                 isDraggingPagamentos = true;
-                contentPagamentosEl.style.transition = 'none'; 
+                
+                // Remove transição para o movimento seguir o dedo instantaneamente
+                contentPagamentosRef.style.transition = 'none'; 
             }
         }, { passive: true });
 
-        contentPagamentosEl.addEventListener('touchmove', (e) => {
+        contentPagamentosRef.addEventListener('touchmove', (e) => {
             if (!isDraggingPagamentos) return;
+            
             touchMovePagamentosY = e.touches[0].clientY;
             const diff = touchMovePagamentosY - touchStartPagamentosY;
             
-            // Só move se for para baixo (diff positivo)
+            // Só move se estiver puxando para BAIXO (diff positivo)
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault(); 
-                contentPagamentosEl.style.transform = `translateY(${diff}px)`;
+                contentPagamentosRef.style.transform = `translateY(${diff}px)`;
             }
         }, { passive: false });
 
-        contentPagamentosEl.addEventListener('touchend', (e) => {
+        contentPagamentosRef.addEventListener('touchend', (e) => {
             if (!isDraggingPagamentos) return;
             isDraggingPagamentos = false;
             
             const diff = touchMovePagamentosY - touchStartPagamentosY;
             
-            // Restaura a transição suave
-            contentPagamentosEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            // Restaura a animação suave
+            contentPagamentosRef.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
             
-            // Se arrastou mais de 120px, fecha. Senão, volta ao topo.
-            if (diff > 120) {
+            // Se arrastou mais de 100px, fecha o modal. Senão, volta ao topo.
+            if (diff > 100) {
                 closePagamentosModal();
             } else {
-                contentPagamentosEl.style.transform = '';
+                contentPagamentosRef.style.transform = '';
             }
+            
             touchStartPagamentosY = 0;
             touchMovePagamentosY = 0;
         });

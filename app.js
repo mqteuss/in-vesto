@@ -3277,89 +3277,132 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     lastPatrimonioCalcSignature = currentSignature;
 }
 
+// --- VARIÁVEIS DO MODAL DE PAGAMENTOS ---
+const modalPagamentos = document.getElementById('pagamentos-page-modal');
+const contentPagamentos = document.getElementById('tab-pagamentos-content');
+
+// 1. Função principal: Atualiza apenas o CARD DA DASHBOARD
 function renderizarTimelinePagamentos() {
-    const container = document.getElementById('timeline-pagamentos-container');
-    const lista = document.getElementById('timeline-lista');
-    
-    // Define layout de carrossel
-    lista.className = 'payment-carousel'; 
+    const cardResumo = document.getElementById('card-resumo-pagamentos');
+    const valorEl = document.getElementById('resumo-pag-valor');
+    const qtdEl = document.getElementById('resumo-pag-qtd');
 
     if (!proventosAtuais || proventosAtuais.length === 0) {
-        container.classList.add('hidden');
+        if(cardResumo) cardResumo.classList.add('hidden');
         return;
     }
 
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
+    // Filtra pagamentos futuros e válidos
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-        if (dataPag < hoje) return false;
-
+        
+        // Verifica se tenho o ativo na carteira
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
-        return ativoNaCarteira && ativoNaCarteira.quantity > 0;
+        return ativoNaCarteira && ativoNaCarteira.quantity > 0 && dataPag >= hoje;
     });
 
     if (pagamentosReais.length === 0) {
-        container.classList.add('hidden');
+        if(cardResumo) cardResumo.classList.add('hidden');
         return;
     }
 
-    // Ordena por data
-    pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-    
-    lista.innerHTML = '';
-    
-    pagamentosReais.forEach(prov => {
-        const parts = prov.paymentDate.split('-');
-        const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-        
-        const dia = parts[2];
-        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
-
-        const diffTime = Math.abs(dataObj - hoje);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        
-        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-        const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-        const totalReceber = prov.value * qtd;
-
-        // Verifica se é hoje para aplicar estilo especial
-        const isHoje = diffDays === 0;
-        const classeHoje = isHoje ? 'is-today' : '';
-        const textoHeader = isHoje ? 'HOJE' : mes; // Se for hoje, escreve HOJE no topo em vez do mês
-
-        const item = document.createElement('div');
-        // Usa a nova classe agenda-card
-        item.className = `agenda-card ${classeHoje}`;
-        
-        // Estrutura HTML "Folha de Calendário"
-        item.innerHTML = `
-            <div class="agenda-header">
-                ${textoHeader}
-            </div>
-            
-            <div class="agenda-body">
-                <span class="agenda-day">${dia}</span>
-                <span class="agenda-weekday">${diaSemana}</span>
-            </div>
-            
-            <div class="agenda-footer">
-                <span class="agenda-ticker">${prov.symbol}</span>
-                <span class="agenda-value">+${formatBRL(totalReceber)}</span>
-            </div>
-        `;
-        
-        // Efeito de clique para abrir detalhes
-        item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
-        
-        lista.appendChild(item);
+    // Calcula totais para o Card
+    let totalValor = 0;
+    pagamentosReais.forEach(p => {
+        const carteiraItem = carteiraCalculada.find(c => c.symbol === p.symbol);
+        if (carteiraItem) {
+            totalValor += p.value * carteiraItem.quantity;
+        }
     });
 
-    container.classList.remove('hidden');
+    // Atualiza o visual do Card
+    if(cardResumo) cardResumo.classList.remove('hidden');
+    if(valorEl) valorEl.innerText = formatBRL(totalValor);
+    if(qtdEl) qtdEl.innerText = `${pagamentosReais.length} previsto(s)`;
+    
+    // Salva a lista filtrada globalmente para usar no modal
+    window.pagamentosFuturosFiltrados = pagamentosReais;
+}
+
+// 2. Abre o Modal e Renderiza a Lista Detalhada
+window.abrirModalPagamentos = function() {
+    const listaContainer = document.getElementById('modal-lista-pagamentos');
+    const pagamentos = window.pagamentosFuturosFiltrados || []; // Pega a lista calculada anteriormente
+    
+    listaContainer.innerHTML = ''; // Limpa lista anterior
+
+    // Ordena por data
+    pagamentos.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+
+    if (pagamentos.length === 0) {
+        listaContainer.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhum pagamento encontrado.</p>';
+    } else {
+        pagamentos.forEach(prov => {
+            const parts = prov.paymentDate.split('-');
+            const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            
+            // Formata data
+            const dia = parts[2];
+            const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+            const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' });
+
+            // Calcula valores
+            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+            const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+            const totalReceber = prov.value * qtd;
+
+            // Cria o item da lista (Visual LISTA, não CARD quadrado)
+            const itemHTML = `
+                <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a]">
+                    <div class="flex items-center gap-4">
+                        <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333]">
+                            <span class="text-xs font-bold text-gray-400 uppercase">${mes}</span>
+                            <span class="text-lg font-bold text-white leading-none">${dia}</span>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-bold text-white">${prov.symbol}</span>
+                            <span class="text-xs text-gray-500 capitalize">${diaSemana}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
+                        <span class="text-[10px] text-gray-600">(${formatBRL(prov.value)}/cota)</span>
+                    </div>
+                </div>
+            `;
+            listaContainer.innerHTML += itemHTML;
+        });
+    }
+
+    // Exibe o modal
+    if (modalPagamentos && contentPagamentos) {
+        modalPagamentos.classList.add('visible');
+        contentPagamentos.classList.remove('translate-y-full');
+    }
+};
+
+// 3. Fecha o Modal
+window.fecharModalPagamentos = function() {
+    if (modalPagamentos && contentPagamentos) {
+        contentPagamentos.classList.add('translate-y-full');
+        setTimeout(() => {
+            modalPagamentos.classList.remove('visible');
+        }, 300);
+    }
+};
+
+// 4. Fechar ao clicar fora (backdrop)
+if (modalPagamentos) {
+    modalPagamentos.addEventListener('click', (e) => {
+        if (e.target === modalPagamentos) {
+            window.fecharModalPagamentos();
+        }
+    });
 }
 
 function renderizarDashboardSkeletons(show) {

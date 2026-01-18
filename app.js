@@ -3367,17 +3367,16 @@ function renderizarTimelinePagamentos() {
     });
 
     // 4. Renderiza Botão "Ver Mais" Clean
-    if (showMoreButton) {
-        const remaining = totalItems - 3;
+     if (showMoreButton) {
+        const remaining = totalItems - 2;
         const moreBtn = document.createElement('div');
-        moreBtn.className = 'pay-card more-btn';
-        // Substitua 'openPagamentosModal' pela sua função real de abrir o modal, se houver.
-        moreBtn.onclick = () => { alert('Abrir modal com mais ' + remaining + ' pagamentos'); }; 
+        moreBtn.className = 'agenda-card more-card';
+        moreBtn.onclick = () => openPagamentosModal(pagamentosReais); // Chama o Modal
         
         moreBtn.innerHTML = `
-            <div class="more-content">
-                <span class="more-plus">+${remaining}</span>
-                <span class="more-text">pagamentos</span>
+            <div class="agenda-body">
+                <span class="more-count">+${remaining}</span>
+                <span class="more-label">Ver mais</span>
             </div>
         `;
         lista.appendChild(moreBtn);

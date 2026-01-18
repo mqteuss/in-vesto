@@ -7459,66 +7459,42 @@ document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
 
-// --- CORREÇÃO DE SWIPE: Timeline de Pagamentos ---
-// Adicione esta função e a chame ao iniciar o app
-function ativarSwipeTimelinePagamentos() {
-    const container = document.getElementById('timeline-lista');
-    if (!container) return;
+// --- CORREÇÃO DE HITBOX E ROLAGEM (TIMELINE) ---
+// Monitora a lista de pagamentos. Se tiver 2 ou menos itens, 
+// remove a rolagem para permitir que o usuário deslize para a aba Carteira livremente.
 
-    let startX = 0;
-    let isAtEnd = false;
-
-    // 1. Detecta o início do toque
-    container.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        
-        // Calcula se já estamos no final do scroll ou se nem tem scroll (1 card)
-        // scrollWidth = tamanho total do conteúdo
-        // clientWidth = tamanho visível na tela
-        const maxScroll = container.scrollWidth - container.clientWidth;
-        
-        // Se maxScroll <= 0, significa que o conteúdo cabe todo na tela (ex: 1 card), então está "no final"
-        // Se scrollLeft estiver próximo do máximo, também está no final
-        isAtEnd = maxScroll <= 0 || container.scrollLeft >= (maxScroll - 5);
-    }, { passive: true });
-
-    // 2. Detecta o fim do toque
-    container.addEventListener('touchend', (e) => {
-        // Se não estava no final (ou seja, tinha coisa pra rolar pra direita), não faz nada
-        if (!isAtEnd) return;
-
-        const endX = e.changedTouches[0].clientX;
-        const diff = startX - endX;
-
-        // Se arrastou para a ESQUERDA (tentando avançar para a próxima aba)
-        // Diff > 50 é a sensibilidade do gesto
-        if (diff > 50) {
-            // Impede outros comportamentos padrão
-            e.stopPropagation();
-            
-            // Força a navegação para a aba Carteira
-            const btnCarteira = document.querySelector('.tab-button[onclick*="tab-carteira"]') || 
-                                document.getElementById('btn-tab-carteira') || 
-                                document.querySelector('button[data-tab="tab-carteira"]');
-                                
-            // Como no seu HTML os botões de aba não têm ID fixo no snippet, 
-            // usamos a função global mudarAba se ela existir, ou simulamos o clique no botão correspondente.
-            // Baseado no seu app.js, a troca de abas parece ser via clique nos botões do rodapé.
-            
-            // Tenta encontrar o botão da carteira pelo índice ou texto/ícone
-            const tabs = document.querySelectorAll('.tab-button');
-            if (tabs && tabs[1]) { // Assume que Carteira é a segunda aba (índice 1)
-                tabs[1].click();
-            } else if (window.mudarAba) {
-                window.mudarAba('tab-carteira');
-            }
-        }
-    });
-}
-
-// Chame a função assim que o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
-    ativarSwipeTimelinePagamentos();
+    const listaTimeline = document.getElementById('timeline-lista');
+    
+    if (listaTimeline) {
+        const observer = new MutationObserver(() => {
+            const qtdCards = listaTimeline.children.length;
+            
+            if (qtdCards <= 2) {
+                // POUCOS ITENS: Desativa comportamento de carrossel
+                // 'visible' faz o navegador entender que não há nada para rolar aqui,
+                // passando o gesto de deslizar para a troca de abas principal.
+                listaTimeline.style.overflowX = 'visible';
+                listaTimeline.style.display = 'flex';
+                listaTimeline.style.justifyContent = 'flex-start';
+                // Remove a classe que força comportamento de scroll, se existir
+                listaTimeline.classList.remove('payment-carousel');
+                // Adiciona gap e padding para manter visual bonito
+                listaTimeline.style.gap = '12px';
+                listaTimeline.style.paddingLeft = '16px'; 
+            } else {
+                // MUITOS ITENS: Restaura comportamento de carrossel
+                listaTimeline.style.overflowX = 'auto';
+                listaTimeline.classList.add('payment-carousel');
+                // Reseta estilos inline que podem conflitar
+                listaTimeline.style.display = '';
+                listaTimeline.style.justifyContent = '';
+            }
+        });
+
+        // Inicia o monitoramento de mudanças na lista (inserção de cards)
+        observer.observe(listaTimeline, { childList: true });
+    }
 });
 	
     await init();

@@ -3281,7 +3281,7 @@ function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // Mantém a classe da lista estática
+    // Define a classe para usar o CSS de Grid
     lista.className = 'payment-static-list'; 
     
     if (!proventosAtuais || proventosAtuais.length === 0) {
@@ -3292,7 +3292,7 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra e Ordena pagamentos reais (MESMA LÓGICA ANTERIOR)
+    // Filtra e Ordena
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -3310,7 +3310,7 @@ function renderizarTimelinePagamentos() {
     lista.innerHTML = '';
     const totalItems = pagamentosReais.length;
     
-    // Lógica de Exibição (Máx 3 ou Botão +X) (MESMA LÓGICA ANTERIOR)
+    // Lógica: Se <= 3 mostra tudo, se > 3 mostra 2 cards + botão
     let itemsToRender = [];
     let showMoreButton = false;
 
@@ -3321,13 +3321,13 @@ function renderizarTimelinePagamentos() {
         showMoreButton = true;
     }
 
-    // --- RENDERIZAÇÃO DOS NOVOS CARDS HORIZONTAIS ---
+    // Renderiza Cards Normais
     itemsToRender.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
         const dia = parts[2];
-        // Mês curto (ex: JAN, FEV)
-        const mesCurto = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
         
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
@@ -3338,47 +3338,40 @@ function renderizarTimelinePagamentos() {
         const totalReceber = prov.value * qtd;
 
         const classeHoje = isHoje ? 'is-today' : '';
-        // Se for hoje, usa "HOJE" no lugar do mês, senão usa o mês.
-        const textoMesDisplay = isHoje ? 'HOJE' : mesCurto;
+        const textoHeader = isHoje ? 'HOJE' : mes;
 
         const item = document.createElement('div');
-        // Nova classe base do card horizontal
-        item.className = `payment-new-card ${classeHoje}`;
+        item.className = `agenda-card ${classeHoje}`; // Usa a classe do CSS novo
         item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
         
-        // NOVO HTML ESTRUTURADO (Box Data | Ticker | Valor)
+        // Estrutura vertical limpa
         item.innerHTML = `
-            <div class="pay-date-box">
-                <span class="pay-month">${textoMesDisplay}</span>
-                <span class="pay-day">${dia}</span>
+            <div class="agenda-header">${textoHeader}</div>
+            <div class="agenda-body">
+                <span class="agenda-day">${dia}</span>
+                <span class="agenda-weekday">${diaSemana}</span>
             </div>
-
-            <div class="pay-info">
-                <div>
-                    <span class="pay-ticker">${prov.symbol}</span>
-                    <span class="pay-label-ticker">${prov.type || 'Rendimento'}</span>
-                </div>
-            </div>
-
-            <div class="pay-value-box">
-                <span class="pay-amount text-amarillo-vesto">+${formatBRL(totalReceber)}</span>
-                <span class="pay-status">a receber</span>
+            <div class="agenda-footer">
+                <span class="agenda-ticker">${prov.symbol}</span>
+                <span class="agenda-value">+${formatBRL(totalReceber)}</span>
             </div>
         `;
         lista.appendChild(item);
     });
 
-    // Renderiza o Botão "+X" no novo estilo horizontal, se necessário
+    // Card "+X" (se necessário)
     if (showMoreButton) {
         const remaining = totalItems - 2;
         const moreBtn = document.createElement('div');
-        // Nova classe para o botão "ver mais" horizontal
-        moreBtn.className = 'payment-new-card more-card-horizontal';
+        moreBtn.className = 'agenda-card more-card';
+        moreBtn.onclick = () => openPagamentosModal(pagamentosReais); // Abre o modal criado anteriormente
+        
         moreBtn.innerHTML = `
-            <span class="more-count text-amarillo-vesto">+${remaining}</span>
-            <span class="more-label">Ver próximos pagamentos</span>
+            <div class="agenda-body">
+                <span class="more-count">+${remaining}</span>
+                <span class="more-label">Ver Mais</span>
+            </div>
         `;
-        moreBtn.onclick = () => openPagamentosModal(pagamentosReais);
         lista.appendChild(moreBtn);
     }
 

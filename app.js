@@ -7577,7 +7577,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Distância mínima de 50px (não pode ser um toque acidental)
             // 3. Duração máxima de 800ms (tem que ser um gesto, não um arrasto lento)
             
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50 && duration < 800) {
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 35 && duration < 600) {
                 
                 // Se o movimento for da Direita para a Esquerda (Indo para Carteira)
                 if (diffX > 0) {

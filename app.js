@@ -3280,8 +3280,10 @@ function renderizarGraficoPatrimonio(isRetry = false) {
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
+    
+    // Define layout de carrossel
+    lista.className = 'payment-carousel'; 
 
-    // Verifica se existem proventos
     if (!proventosAtuais || proventosAtuais.length === 0) {
         container.classList.add('hidden');
         return;
@@ -3290,13 +3292,12 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra e prepara os dados
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         if (dataPag < hoje) return false;
-        
+
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
         return ativoNaCarteira && ativoNaCarteira.quantity > 0;
     });
@@ -3306,27 +3307,19 @@ function renderizarTimelinePagamentos() {
         return;
     }
 
-    // --- AQUI ESTÁ A CORREÇÃO DO HITBOX ---
-    if (pagamentosReais.length <= 2) {
-        // Se tiver 1 ou 2 itens, remove a classe de carrossel (.payment-carousel)
-        // Usa classes padrão para exibir sem travar o scroll horizontal
-        lista.className = 'flex gap-3 px-4 overflow-visible justify-start'; 
-    } else {
-        // Se tiver muitos itens, ativa o carrossel normalmente
-        lista.className = 'payment-carousel';
-    }
-    // --------------------------------------
-
+    // Ordena por data
     pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+    
     lista.innerHTML = '';
-
+    
     pagamentosReais.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        
         const dia = parts[2];
         const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
-        
+
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         
@@ -3334,28 +3327,35 @@ function renderizarTimelinePagamentos() {
         const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
         const totalReceber = prov.value * qtd;
 
+        // Verifica se é hoje para aplicar estilo especial
         const isHoje = diffDays === 0;
         const classeHoje = isHoje ? 'is-today' : '';
-        const textoHeader = isHoje ? 'HOJE' : mes;
+        const textoHeader = isHoje ? 'HOJE' : mes; // Se for hoje, escreve HOJE no topo em vez do mês
 
         const item = document.createElement('div');
+        // Usa a nova classe agenda-card
         item.className = `agenda-card ${classeHoje}`;
         
+        // Estrutura HTML "Folha de Calendário"
         item.innerHTML = `
             <div class="agenda-header">
                 ${textoHeader}
             </div>
+            
             <div class="agenda-body">
                 <span class="agenda-day">${dia}</span>
                 <span class="agenda-weekday">${diaSemana}</span>
             </div>
+            
             <div class="agenda-footer">
                 <span class="agenda-ticker">${prov.symbol}</span>
                 <span class="agenda-value">+${formatBRL(totalReceber)}</span>
             </div>
         `;
         
+        // Efeito de clique para abrir detalhes
         item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+        
         lista.appendChild(item);
     });
 
@@ -7458,60 +7458,6 @@ function initCarouselSwipeBridge() {
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
-
-// ======================================================
-// CORREÇÃO INTELIGENTE DO CARROSSEL DE PAGAMENTOS
-// ======================================================
-function corrigirHitboxTimeline() {
-    const lista = document.getElementById('timeline-lista');
-    
-    // Se a lista não existir ou estiver vazia/oculta, não faz nada
-    if (!lista) return;
-
-    // 1. Conta quantos cards existem
-    const qtdCards = lista.children.length;
-
-    // 2. Lógica de decisão
-    if (qtdCards <= 2) {
-        // MODO TRAVADO (Permite mudar de aba)
-        // Se tem 1 ou 2 cards, removemos a classe que cria o scroll
-        lista.classList.remove('payment-carousel');
-        
-        // Aplicamos estilo para manter o visual bonito, mas estático
-        lista.style.display = 'flex';
-        lista.style.gap = '12px';
-        lista.style.paddingLeft = '16px'; // Mantém o recuo
-        lista.style.overflowX = 'hidden'; // O SEGREDO: Esconde o scroll horizontal
-    } else {
-        // MODO CARROSSEL (Permite rolar os pagamentos)
-        // Se tem muitos cards, voltamos ao normal
-        lista.classList.add('payment-carousel');
-        lista.style.display = '';
-        lista.style.gap = '';
-        lista.style.paddingLeft = '';
-        lista.style.overflowX = ''; // Devolve o controle ao CSS (.payment-carousel)
-    }
-}
-
-// ======================================================
-// OBSERVADOR: Roda a correção sempre que os dados mudam
-// ======================================================
-document.addEventListener('DOMContentLoaded', () => {
-    const observerTarget = document.getElementById('timeline-lista');
-    
-    if (observerTarget) {
-        // Cria um "fiscal" que vigia se novos pagamentos foram adicionados
-        const observer = new MutationObserver(() => {
-            corrigirHitboxTimeline();
-        });
-
-        // Inicia a vigilância
-        observer.observe(observerTarget, { childList: true, subtree: true });
-        
-        // Roda uma vez logo no início para garantir
-        setTimeout(corrigirHitboxTimeline, 500);
-    }
-});
 	
     await init();
 });

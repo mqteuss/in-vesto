@@ -7459,70 +7459,66 @@ document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
 
-// =========================================================================
-// CORREÇÃO DE SWIPE AVANÇADA (Versão Final e Expandida)
-// =========================================================================
-
-// =========================================================================
-// CORREÇÃO DE SWIPE GLOBAL (DASHBOARD INTEIRO)
-// =========================================================================
-
-function ativarSwipeGlobalDashboard() {
-    const dashboard = document.getElementById('tab-dashboard');
-    if (!dashboard) return;
+// --- CORREÇÃO DE SWIPE: Timeline de Pagamentos ---
+// Adicione esta função e a chame ao iniciar o app
+function ativarSwipeTimelinePagamentos() {
+    const container = document.getElementById('timeline-lista');
+    if (!container) return;
 
     let startX = 0;
-    let startY = 0;
+    let isAtEnd = false;
 
-    // 1. Início do toque em QUALQUER lugar do Dashboard
-    dashboard.addEventListener('touchstart', (e) => {
+    // 1. Detecta o início do toque
+    container.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
+        
+        // Calcula se já estamos no final do scroll ou se nem tem scroll (1 card)
+        // scrollWidth = tamanho total do conteúdo
+        // clientWidth = tamanho visível na tela
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        
+        // Se maxScroll <= 0, significa que o conteúdo cabe todo na tela (ex: 1 card), então está "no final"
+        // Se scrollLeft estiver próximo do máximo, também está no final
+        isAtEnd = maxScroll <= 0 || container.scrollLeft >= (maxScroll - 5);
     }, { passive: true });
 
-    // 2. Fim do toque
-    dashboard.addEventListener('touchend', (e) => {
+    // 2. Detecta o fim do toque
+    container.addEventListener('touchend', (e) => {
+        // Se não estava no final (ou seja, tinha coisa pra rolar pra direita), não faz nada
+        if (!isAtEnd) return;
+
         const endX = e.changedTouches[0].clientX;
-        const endY = e.changedTouches[0].clientY;
-        
-        const diffX = startX - endX; // Positivo = Arrastar p/ Esquerda (Ir p/ Direita)
-        const diffY = Math.abs(startY - endY); // Movimento Vertical
+        const diff = startX - endX;
 
-        // --- FILTRO DE SEGURANÇA ---
-        
-        // 1. O movimento horizontal deve ser maior que 60px (evita toques acidentais)
-        if (diffX < 35) return;
-
-        // 2. O movimento deve ser "mais horizontal do que vertical" 
-        // (Isso impede que mude de aba enquanto você rola a tela para baixo)
-        if (diffY > diffX) return;
-
-        // 3. VERIFICAÇÃO DE ELEMENTOS COM SCROLL HORIZONTAL INTERNO (Ex: Widgets do topo)
-        // Se o usuário tocou dentro de um carrossel que ainda tem espaço para rolar, não mudamos de aba.
-        const target = e.target;
-        const scrollableParent = target.closest('.overflow-x-auto, .snap-x');
-        
-        if (scrollableParent) {
-            // Se o elemento tem scroll horizontal E não chegou no fim...
-            const maxScroll = scrollableParent.scrollWidth - scrollableParent.clientWidth;
-            const isAtEnd = scrollableParent.scrollLeft >= (maxScroll - 10);
+        // Se arrastou para a ESQUERDA (tentando avançar para a próxima aba)
+        // Diff > 50 é a sensibilidade do gesto
+        if (diff > 50) {
+            // Impede outros comportamentos padrão
+            e.stopPropagation();
             
-            // Se não está no fim, deixa o carrossel rolar e CANCELA a troca de aba
-            if (!isAtEnd) return;
+            // Força a navegação para a aba Carteira
+            const btnCarteira = document.querySelector('.tab-button[onclick*="tab-carteira"]') || 
+                                document.getElementById('btn-tab-carteira') || 
+                                document.querySelector('button[data-tab="tab-carteira"]');
+                                
+            // Como no seu HTML os botões de aba não têm ID fixo no snippet, 
+            // usamos a função global mudarAba se ela existir, ou simulamos o clique no botão correspondente.
+            // Baseado no seu app.js, a troca de abas parece ser via clique nos botões do rodapé.
+            
+            // Tenta encontrar o botão da carteira pelo índice ou texto/ícone
+            const tabs = document.querySelectorAll('.tab-button');
+            if (tabs && tabs[1]) { // Assume que Carteira é a segunda aba (índice 1)
+                tabs[1].click();
+            } else if (window.mudarAba) {
+                window.mudarAba('tab-carteira');
+            }
         }
-
-        // --- AÇÃO: MUDAR DE ABA ---
-        console.log('Swipe Global no Dashboard -> Indo para Carteira');
-        
-        const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
-        if (btnCarteira) btnCarteira.click();
-
     });
 }
 
-// Inicializa
+// Chame a função assim que o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
-    ativarSwipeGlobalDashboard();
+    ativarSwipeTimelinePagamentos();
 });
 	
     await init();

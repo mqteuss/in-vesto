@@ -3283,8 +3283,8 @@ function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // Classe para o container flex horizontal
-    lista.className = 'payment-clean-list'; 
+    // 1. Aplica a classe de Grid (3 colunas)
+    lista.className = 'payment-static-list'; 
     
     if (!proventosAtuais || proventosAtuais.length === 0) {
         container.classList.add('hidden');
@@ -3294,16 +3294,15 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // 1. Filtra (futuros e hoje) e Ordena por data
+    // Filtra e Ordena
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         if (dataPag < hoje) return false;
         
-        // Verifica se tem o ativo na carteira
-        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
-        return ativoNaCarteira && ativoNaCarteira.quantity > 0;
+        const ativo = carteiraCalculada.find(c => c.symbol === p.symbol);
+        return ativo && ativo.quantity > 0;
     }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
     if (pagamentosReais.length === 0) {
@@ -3312,71 +3311,67 @@ function renderizarTimelinePagamentos() {
     }
 
     lista.innerHTML = '';
-
-    // 2. Regra de exibição (máximo 3 itens, ou 2 + botão ver mais)
     const totalItems = pagamentosReais.length;
+    
+    // Regra: Mostra 3 cards OU 2 cards + botão
     let itemsToRender = [];
     let showMoreButton = false;
 
-    // Se tiver 4 ou mais, mostra 3 e o botão. Se tiver 3 ou menos, mostra tudo.
-    // (Ajustei a lógica para ficar mais clean na tela)
-    if (totalItems > 3) {
-        itemsToRender = pagamentosReais.slice(0, 3);
-        showMoreButton = true;
-    } else {
+    if (totalItems <= 3) {
         itemsToRender = pagamentosReais;
+    } else {
+        itemsToRender = pagamentosReais.slice(0, 2);
+        showMoreButton = true;
     }
 
-    // 3. Renderiza os Cards "Clean"
+    // --- GERA O HTML VERTICAL ---
     itemsToRender.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-        
         const dia = parts[2];
-        // Mês abreviado em PT-BR (ex: JAN, FEV)
-        const mesStr = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-
-        // Verifica se é HOJE
-        const isHoje = dataObj.getTime() === hoje.getTime();
-
-        // Cálculos de valor
-        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-        const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-        const totalReceber = prov.value * qtd;
-
-        // Formatação de moeda (segura caso formatBRL não exista)
-        const valorFormatado = totalReceber.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-
-        const item = document.createElement('div');
-        // Adiciona classe 'is-today' se for hoje
-        item.className = `pay-card ${isHoje ? 'is-today' : ''}`;
-        item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.','').toUpperCase();
+        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.','').toUpperCase();
         
-        // --- NOVA ESTRUTURA CLEAN ---
-        item.innerHTML = `
-            <div class="pay-date-box">
-                <span class="pay-day">${dia}</span>
-                <span class="pay-month">${isHoje ? 'HOJE' : mesStr}</span>
+        const isHoje = dataObj.toDateString() === hoje.toDateString();
+        const ativo = carteiraCalculada.find(c => c.symbol === prov.symbol);
+        const totalReceber = prov.value * (ativo ? ativo.quantity : 0);
+
+        const classeHoje = isHoje ? 'is-today' : '';
+        const textoHeader = isHoje ? 'HOJE' : mes;
+
+        const card = document.createElement('div');
+        // Usa a classe agenda-card (Vertical)
+        card.className = `agenda-card ${classeHoje}`; 
+        card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+
+        // HTML ESTRUTURADO VERTICALMENTE
+        card.innerHTML = `
+            <div class="agenda-header">${textoHeader}</div>
+            
+            <div class="agenda-body">
+                <span class="agenda-day">${dia}</span>
+                <span class="agenda-weekday">${diaSemana}</span>
             </div>
-            <div class="pay-info-box">
-                <span class="pay-value">${valorFormatado}</span>
-                <span class="pay-ticker">${prov.symbol}</span>
+            
+            <div class="agenda-footer">
+                <span class="agenda-ticker">${prov.symbol}</span>
+                <span class="agenda-value">+${formatBRL(totalReceber)}</span>
             </div>
         `;
-        lista.appendChild(item);
+        lista.appendChild(card);
     });
 
-    // 4. Renderiza Botão "Ver Mais" Clean
-     if (showMoreButton) {
+    // --- CARD DE "+X" (TAMBÉM VERTICAL) ---
+    if (showMoreButton) {
         const remaining = totalItems - 2;
         const moreBtn = document.createElement('div');
         moreBtn.className = 'agenda-card more-card';
-        moreBtn.onclick = () => openPagamentosModal(pagamentosReais); // Chama o Modal
+        moreBtn.onclick = () => openPagamentosModal(pagamentosReais);
         
         moreBtn.innerHTML = `
             <div class="agenda-body">
                 <span class="more-count">+${remaining}</span>
-                <span class="more-label">Ver mais</span>
+                <span class="more-label">VER MAIS</span>
             </div>
         `;
         lista.appendChild(moreBtn);

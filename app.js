@@ -3277,15 +3277,13 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     lastPatrimonioCalcSignature = currentSignature;
 }
 
-// No seu arquivo app.js, substitua a função inteira:
-
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // Aplica a classe da Grid
-    lista.className = 'payment-static-list'; 
-    
+    // Define layout de carrossel
+    lista.className = 'payment-carousel'; 
+
     if (!proventosAtuais || proventosAtuais.length === 0) {
         container.classList.add('hidden');
         return;
@@ -3294,60 +3292,59 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra datas futuras e ordena
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         if (dataPag < hoje) return false;
-        
-        const ativo = carteiraCalculada.find(c => c.symbol === p.symbol);
-        return ativo && ativo.quantity > 0;
-    }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+
+        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
+        return ativoNaCarteira && ativoNaCarteira.quantity > 0;
+    });
 
     if (pagamentosReais.length === 0) {
         container.classList.add('hidden');
         return;
     }
 
-    lista.innerHTML = '';
-    const totalItems = pagamentosReais.length;
+    // Ordena por data
+    pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
     
-    // Regra: Mostra 3 ou (2 + Botão)
-    let itemsToRender = [];
-    let showMoreButton = false;
-
-    if (totalItems <= 3) {
-        itemsToRender = pagamentosReais;
-    } else {
-        itemsToRender = pagamentosReais.slice(0, 2);
-        showMoreButton = true;
-    }
-
-    // Renderiza os Cards
-    itemsToRender.forEach(prov => {
+    lista.innerHTML = '';
+    
+    pagamentosReais.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-        const dia = parts[2];
-        // Mês curto (JAN, FEV...)
-        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.','').toUpperCase();
         
-        const isHoje = dataObj.toDateString() === hoje.toDateString();
-        const ativo = carteiraCalculada.find(c => c.symbol === prov.symbol);
-        const totalReceber = prov.value * (ativo ? ativo.quantity : 0);
+        const dia = parts[2];
+        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
 
+        const diffTime = Math.abs(dataObj - hoje);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+        const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+        const totalReceber = prov.value * qtd;
+
+        // Verifica se é hoje para aplicar estilo especial
+        const isHoje = diffDays === 0;
         const classeHoje = isHoje ? 'is-today' : '';
-        const textoHeader = isHoje ? 'HOJE' : mes;
+        const textoHeader = isHoje ? 'HOJE' : mes; // Se for hoje, escreve HOJE no topo em vez do mês
 
-        const card = document.createElement('div');
-        card.className = `agenda-card ${classeHoje}`;
-        card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
-
-        card.innerHTML = `
-            <div class="agenda-header">${textoHeader}</div>
+        const item = document.createElement('div');
+        // Usa a nova classe agenda-card
+        item.className = `agenda-card ${classeHoje}`;
+        
+        // Estrutura HTML "Folha de Calendário"
+        item.innerHTML = `
+            <div class="agenda-header">
+                ${textoHeader}
+            </div>
             
             <div class="agenda-body">
                 <span class="agenda-day">${dia}</span>
+                <span class="agenda-weekday">${diaSemana}</span>
             </div>
             
             <div class="agenda-footer">
@@ -3355,24 +3352,12 @@ function renderizarTimelinePagamentos() {
                 <span class="agenda-value">+${formatBRL(totalReceber)}</span>
             </div>
         `;
-        lista.appendChild(card);
-    });
-
-    // Renderiza Botão "+X"
-    if (showMoreButton) {
-        const remaining = totalItems - 2;
-        const moreBtn = document.createElement('div');
-        moreBtn.className = 'agenda-card more-card';
-        moreBtn.onclick = () => openPagamentosModal(pagamentosReais);
         
-        moreBtn.innerHTML = `
-            <div class="agenda-body">
-                <span class="more-count">+${remaining}</span>
-            </div>
-            <span class="more-label">Ver todos</span>
-        `;
-        lista.appendChild(moreBtn);
-    }
+        // Efeito de clique para abrir detalhes
+        item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+        
+        lista.appendChild(item);
+    });
 
     container.classList.remove('hidden');
 }
@@ -7473,102 +7458,6 @@ function initCarouselSwipeBridge() {
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
-
-// --- LÓGICA DO NOVO MODAL DE PAGAMENTOS ---
-function openPagamentosModal(todosPagamentos) {
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    const listaEl = document.getElementById('pagamentos-modal-lista');
-
-    if (!modal || !content) return;
-
-    // Popula a lista do modal (estilo Lista, não Cards quadrados)
-    if (listaEl && todosPagamentos) {
-        listaEl.innerHTML = '';
-        const hoje = new Date(); hoje.setHours(0,0,0,0);
-
-        todosPagamentos.forEach(prov => {
-            const parts = prov.paymentDate.split('-');
-            const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-            const dia = parts[2];
-            const mesExtenso = dataObj.toLocaleString('pt-BR', { month: 'long' });
-            
-            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-            const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-            const totalReceber = prov.value * qtd;
-
-            // HTML da linha da lista (estilo similar ao histórico)
-            const row = `
-                <div class="flex items-center justify-between p-3 bg-[#151515] rounded-xl border border-[#27272a]">
-                    <div class="flex items-center gap-3">
-                        <div class="flex flex-col items-center justify-center w-10 h-10 bg-[#222] rounded-lg border border-[#333]">
-                            <span class="text-xs font-bold text-white">${dia}</span>
-                        </div>
-                        <div>
-                            <span class="block text-sm font-bold text-white">${prov.symbol}</span>
-                            <span class="text-[10px] text-gray-500 capitalize">${mesExtenso} • ${qtd} cotas</span>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
-                        <span class="text-[10px] text-gray-500">${prov.type || 'REND'}</span>
-                    </div>
-                </div>
-            `;
-            listaEl.insertAdjacentHTML('beforeend', row);
-        });
-    }
-
-    modal.classList.add('visible');
-    content.classList.remove('closing');
-    content.style.transform = ''; // Reseta posição
-    document.body.style.overflow = 'hidden';
-}
-
-window.closePagamentosModal = function() {
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    if (!modal || !content) return;
-
-    content.classList.add('closing');
-    modal.classList.remove('visible');
-    document.body.style.overflow = '';
-};
-
-// --- LÓGICA DE SWIPE NO DASHBOARD (Mudar Aba) ---
-document.addEventListener('DOMContentLoaded', () => {
-    const dashboardTab = document.getElementById('tab-dashboard');
-    let touchStartX = 0;
-    let touchStartY = 0;
-
-    if (dashboardTab) {
-        dashboardTab.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, { passive: true });
-
-        dashboardTab.addEventListener('touchend', (e) => {
-            const touchEndX = e.changedTouches[0].screenX;
-            const touchEndY = e.changedTouches[0].screenY;
-            
-            const diffX = touchStartX - touchEndX;
-            const diffY = touchStartY - touchEndY;
-
-            if (Math.abs(diffX) > Math.abs(diffY) && diffX > 60) {
-                console.log("Swipe Left detectado no Dashboard -> Indo para Carteira");
-                
-                // Chama a função global de mudar aba
-                if (typeof mudarAba === 'function') {
-                    mudarAba('tab-carteira');
-                } else {
-                    // Fallback: Clica no botão
-                    const btnCarteira = document.querySelector('button[onclick*="tab-carteira"]');
-                    if (btnCarteira) btnCarteira.click();
-                }
-            }
-        });
-    }
-});
 	
     await init();
 });

@@ -3278,16 +3278,14 @@ function renderizarGraficoPatrimonio(isRetry = false) {
 }
 
 // ======================================================
-// LÓGICA DE PAGAMENTOS E MODAL (CORREÇÃO DE ERRO)
+// LÓGICA DE PAGAMENTOS: ESTÁTICO + MODAL (SEM SCROLL)
 // ======================================================
 
-// 1. Função que desenha os cards na Dashboard
-// (Esta não precisa ser window. pq é chamada internamente pelo seu app)
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
 
-    // Validação básica
+    // 1. Validação se tem dados
     if (!proventosAtuais || proventosAtuais.length === 0) {
         if (container) container.classList.add('hidden');
         return;
@@ -3296,7 +3294,7 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra pagamentos futuros e ordena
+    // 2. Filtra apenas pagamentos futuros/hoje e ordena
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -3305,7 +3303,7 @@ function renderizarTimelinePagamentos() {
         return ativoNaCarteira && ativoNaCarteira.quantity > 0 && dataPag >= hoje;
     }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
-    // Salva globalmente para o modal usar
+    // Salva para o modal usar depois
     window.pagamentosFuturosFiltrados = pagamentosReais;
 
     if (pagamentosReais.length === 0) {
@@ -3313,15 +3311,27 @@ function renderizarTimelinePagamentos() {
         return;
     }
 
-    // --- LÓGICA DO "VER MAIS" ---
-    const LIMIT_CARDS = 3;
-    const temMuitos = pagamentosReais.length > LIMIT_CARDS;
-    const listaParaExibir = temMuitos ? pagamentosReais.slice(0, LIMIT_CARDS) : pagamentosReais;
+    // 3. CONFIGURAÇÃO ESTÁTICA (ZERO SCROLL)
+    // Removemos qualquer classe de scroll e forçamos o comportamento estático
+    lista.className = 'flex gap-3 px-4 justify-start items-start w-full overflow-hidden';
+    // O 'overflow-hidden' garante que o dedo NÃO tente rolar essa área,
+    // permitindo que o SWIPE DE ABAS funcione na área preta.
 
     lista.innerHTML = ''; 
 
-    // Cria os cards normais
-    listaParaExibir.forEach(prov => {
+    // 4. Lógica: Mostrar no máximo 3 cards na tela
+    // Se tiver mais que 3, mostramos 2 pagamentos + 1 card de "Ver Mais"
+    const MAX_VISIBLE = 3;
+    const total = pagamentosReais.length;
+    const temMais = total > MAX_VISIBLE;
+    
+    // Se tem mais que o limite, mostramos (MAX - 1) cards reais, para sobrar espaço pro botão
+    // Se não, mostramos tudo.
+    const qtdParaMostrar = temMais ? (MAX_VISIBLE - 1) : total;
+    const itensVisiveis = pagamentosReais.slice(0, qtdParaMostrar);
+
+    // Renderiza os Cards Reais
+    itensVisiveis.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
         const dia = parts[2];
@@ -3335,14 +3345,15 @@ function renderizarTimelinePagamentos() {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         const isHoje = diffDays === 0;
         
-        const classeHoje = isHoje ? 'border border-yellow-500/50' : 'border border-[#27272a]';
-        const bgHeader = isHoje ? 'bg-yellow-500 text-black' : 'bg-[#27272a] text-gray-400';
+        const styleBorder = isHoje ? 'border border-yellow-500/50' : 'border border-[#27272a]';
+        const styleHeader = isHoje ? 'bg-yellow-500 text-black' : 'bg-[#27272a] text-gray-400';
 
         const card = document.createElement('div');
-        card.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#151515] rounded-2xl flex flex-col overflow-hidden ${classeHoje}`;
+        // Tamanho fixo para garantir alinhamento
+        card.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#151515] rounded-2xl flex flex-col overflow-hidden ${styleBorder} relative z-10`;
         
         card.innerHTML = `
-            <div class="w-full py-1.5 text-[10px] font-bold text-center uppercase ${bgHeader}">
+            <div class="w-full py-1.5 text-[10px] font-bold text-center uppercase ${styleHeader}">
                 ${isHoje ? 'HOJE' : mes}
             </div>
             <div class="flex-1 flex flex-col items-center justify-center -mt-1">
@@ -3354,18 +3365,19 @@ function renderizarTimelinePagamentos() {
             </div>
         `;
         
-        // Abre detalhes do ativo ao clicar no card individual
+        // Abre detalhes do ativo
         if(window.abrirDetalhesAtivo) {
              card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
         }
         lista.appendChild(card);
     });
 
-    // Cria o card "Ver Mais" se necessário
-    if (temMuitos) {
-        const restantes = pagamentosReais.length - LIMIT_CARDS;
+    // 5. Renderiza o Card "Ver Mais" (+X) se necessário
+    if (temMais) {
+        const restantes = total - qtdParaMostrar;
         const moreCard = document.createElement('div');
-        moreCard.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#1C1C1E] rounded-2xl flex flex-col items-center justify-center border border-[#27272a] cursor-pointer hover:bg-[#27272a] transition-colors active:scale-95`;
+        moreCard.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#1C1C1E] rounded-2xl flex flex-col items-center justify-center border border-[#27272a] cursor-pointer hover:bg-[#27272a] transition-colors active:scale-95 relative z-10`;
+        
         moreCard.innerHTML = `
             <div class="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center mb-2 text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
@@ -3373,7 +3385,7 @@ function renderizarTimelinePagamentos() {
             <span class="text-lg font-bold text-white">+${restantes}</span>
             <span class="text-[10px] text-gray-500 uppercase font-bold mt-1">Ver todos</span>
         `;
-        // Usa a função global para abrir modal
+        
         moreCard.onclick = () => window.abrirModalPagamentos();
         lista.appendChild(moreCard);
     }
@@ -3381,22 +3393,20 @@ function renderizarTimelinePagamentos() {
     if (container) container.classList.remove('hidden');
 }
 
-// 2. FUNÇÕES DO MODAL (TORNADAS GLOBAIS COM WINDOW.)
-// Isso corrige o "ReferenceError: abrirModalPagamentos is not defined"
+// ======================================================
+// FUNÇÕES GLOBAIS DO MODAL (CORREÇÃO DE ESCOPO)
+// ======================================================
 
 window.abrirModalPagamentos = function() {
     const modal = document.getElementById('pagamentos-page-modal');
     const content = document.getElementById('tab-pagamentos-content');
     const listaContainer = document.getElementById('modal-lista-pagamentos');
-    
-    // Pega a lista salva anteriormente ou vazio
     const pagamentos = window.pagamentosFuturosFiltrados || [];
     
     if(listaContainer) {
         listaContainer.innerHTML = '';
-
         if (pagamentos.length === 0) {
-            listaContainer.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhum pagamento futuro.</p>';
+            listaContainer.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhum pagamento encontrado.</p>';
         } else {
             pagamentos.forEach(prov => {
                 const parts = prov.paymentDate.split('-');
@@ -3422,7 +3432,6 @@ window.abrirModalPagamentos = function() {
                         </div>
                         <div class="text-right">
                             <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
-                            <span class="text-[10px] text-gray-600">(${formatBRL(prov.value)}/cota)</span>
                         </div>
                     </div>`;
                 listaContainer.innerHTML += itemHTML;
@@ -3439,23 +3448,20 @@ window.abrirModalPagamentos = function() {
 window.fecharModalPagamentos = function() {
     const modal = document.getElementById('pagamentos-page-modal');
     const content = document.getElementById('tab-pagamentos-content');
-    
     if (modal && content) {
         content.classList.add('translate-y-full');
-        setTimeout(() => {
-            modal.classList.remove('visible');
-        }, 300);
+        setTimeout(() => { modal.classList.remove('visible'); }, 300);
     }
 };
 
-// Fecha ao clicar no fundo escuro
-const modalPag = document.getElementById('pagamentos-page-modal');
-if (modalPag) {
-    modalPag.addEventListener('click', (e) => {
-        if (e.target === modalPag) {
-            window.fecharModalPagamentos();
-        }
-    });
+// Listener único para fechar ao clicar fora
+const modalBackdrop = document.getElementById('pagamentos-page-modal');
+if (modalBackdrop) {
+    // Removemos listeners antigos clonando o elemento (truque rápido) ou apenas adicionamos um novo se não houver conflito.
+    // Como estamos substituindo o código, basta adicionar o evento.
+    modalBackdrop.onclick = (e) => {
+        if (e.target === modalBackdrop) window.fecharModalPagamentos();
+    };
 }
 
 function renderizarDashboardSkeletons(show) {
@@ -7554,90 +7560,6 @@ function initCarouselSwipeBridge() {
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
-
-
-// 1. Função de Abrir o Modal
-window.abrirModalPagamentos = function() {
-    console.log("Abrindo modal..."); // Para testar se funcionou
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    const listaContainer = document.getElementById('modal-lista-pagamentos');
-    
-    // Pega a lista salva anteriormente ou vazio
-    const pagamentos = window.pagamentosFuturosFiltrados || [];
-    
-    if(listaContainer) {
-        listaContainer.innerHTML = '';
-
-        if (pagamentos.length === 0) {
-            listaContainer.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhum pagamento futuro encontrado.</p>';
-        } else {
-            pagamentos.forEach(prov => {
-                // Lógica de formatação da data e valores
-                const parts = prov.paymentDate.split('-');
-                const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-                
-                const dia = parts[2];
-                const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-                const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' });
-                
-                const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-                const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-                const totalReceber = prov.value * qtd;
-
-                // Desenha o item da lista
-                const itemHTML = `
-                    <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a]">
-                        <div class="flex items-center gap-4">
-                            <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333]">
-                                <span class="text-xs font-bold text-gray-400 uppercase">${mes}</span>
-                                <span class="text-lg font-bold text-white leading-none">${dia}</span>
-                            </div>
-                            <div>
-                                <span class="block text-sm font-bold text-white">${prov.symbol}</span>
-                                <span class="text-xs text-gray-500 capitalize">${diaSemana}</span>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
-                            <span class="text-[10px] text-gray-600">(${formatBRL(prov.value)}/cota)</span>
-                        </div>
-                    </div>`;
-                listaContainer.innerHTML += itemHTML;
-            });
-        }
-    }
-
-    if (modal && content) {
-        modal.classList.add('visible');
-        content.classList.remove('translate-y-full');
-    }
-};
-
-// 2. Função de Fechar o Modal
-window.fecharModalPagamentos = function() {
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    
-    if (modal && content) {
-        content.classList.add('translate-y-full');
-        setTimeout(() => {
-            modal.classList.remove('visible');
-        }, 300);
-    }
-};
-
-// 3. Listener para fechar ao clicar fora (backdrop)
-// (Nome da variável alterado para evitar o erro 'Identifier has already been declared')
-const modalAgendaBackdrop = document.getElementById('pagamentos-page-modal');
-
-if (modalAgendaBackdrop) {
-    modalAgendaBackdrop.addEventListener('click', (e) => {
-        if (e.target === modalAgendaBackdrop) {
-            window.fecharModalPagamentos();
-        }
-    });
-}
 	
     await init();
 });

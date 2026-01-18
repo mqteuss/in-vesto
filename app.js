@@ -3284,7 +3284,7 @@ function renderizarTimelinePagamentos() {
     const lista = document.getElementById('timeline-lista');
     
     // MUDANÇA: Usa a classe Grid em vez de Carrossel
-    lista.className = 'payment-static-list'; 
+    lista.classList.add('payment-static-list');
 
     if (!proventosAtuais || proventosAtuais.length === 0) {
         container.classList.add('hidden');
@@ -7572,7 +7572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Deve percorrer uma distância mínima (40px é um bom balanço)
         // 3. Deve ser da Direita para Esquerda (diffX > 0)
         
-        if (Math.abs(diffX) > Math.abs(diffY) && diffX > 40) {
+        if (diffX > 40 && Math.abs(diffX) > (Math.abs(diffY) * 0.5))
             console.log("Swipe Detectado: Indo para Carteira");
             
             // Tenta acionar a mudança de aba

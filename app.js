@@ -6524,21 +6524,26 @@ function saveSearchHistory(term) {
         });
     }
 
+// ======================================================
+// SWIPE GLOBAL DE NAVEGAÇÃO ENTRE ABAS (CORRIGIDO)
+// ======================================================
+
 let swipeStartX = 0;
 let swipeStartY = 0;
 
 document.addEventListener('touchstart', (e) => {
-    // 1. Bloqueia se houver modal aberto
+    // 1. Bloqueia se houver qualquer modal aberto
     if (document.querySelector('.custom-modal.visible') || 
         document.querySelector('.page-modal.visible') || 
         document.querySelector('#ai-modal.visible')) {
         return;
     }
     
-    // 2. CORREÇÃO AQUI: Bloqueia swipe se tocar em áreas de scroll ou GRÁFICOS
+    // 2. TRAVA DE SEGURANÇA: Bloqueia o início do swipe em áreas de scroll horizontal ou gráficos
+    // Usamos apenas classes genéricas que já existem no seu HTML
     if (e.target.closest('.overflow-x-auto') || 
         e.target.closest('#dashboard-favorites-list') || 
-        e.target.closest('canvas')) { // <--- ADICIONADO: Bloqueia se tocar em qualquer gráfico
+        e.target.closest('canvas')) { 
         return; 
     }
 
@@ -6546,40 +6551,57 @@ document.addEventListener('touchstart', (e) => {
     swipeStartY = e.changedTouches[0].screenY;
 }, { passive: true });
 
-    document.addEventListener('touchend', (e) => {
-        if (document.querySelector('.custom-modal.visible') || 
-            document.querySelector('.page-modal.visible') || 
-            document.querySelector('#ai-modal.visible')) {
-            return;
-        }
+document.addEventListener('touchend', (e) => {
+    // Se swipeStartX for 0, o toque já foi ignorado no início
+    if (swipeStartX === 0 && swipeStartY === 0) return;
 
-        const swipeEndX = e.changedTouches[0].screenX;
-        const swipeEndY = e.changedTouches[0].screenY;
-        const diffX = swipeEndX - swipeStartX;
-        const diffY = swipeEndY - swipeStartY;
+    // Verificação dupla de modais
+    if (document.querySelector('.custom-modal.visible') || 
+        document.querySelector('.page-modal.visible') || 
+        document.querySelector('#ai-modal.visible')) {
+        swipeStartX = 0; swipeStartY = 0;
+        return;
+    }
 
-        // Verifica se o movimento foi horizontal e longo o suficiente (> 50px)
-        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-            const currentTab = document.querySelector('.tab-content.active');
-            if (!currentTab) return;
+    if (e.target.closest('.payment-carousel') || 
+        e.target.closest('.overflow-x-auto')) {
+        swipeStartX = 0; swipeStartY = 0; 
+        return; 
+    }
 
-            // AQUI: Usamos tabOrder (minúsculo) conforme sua preferência
-            const currentIndex = tabOrder.indexOf(currentTab.id);
-            if (currentIndex === -1) return;
+    const swipeEndX = e.changedTouches[0].screenX;
+    const swipeEndY = e.changedTouches[0].screenY;
+    
+    const diffX = swipeEndX - swipeStartX;
+    const diffY = swipeEndY - swipeStartY;
 
-            if (diffX < 0) {
-                // Deslizou para ESQUERDA (<<) -> Próxima Aba
-                if (currentIndex < tabOrder.length - 1) {
-                    mudarAba(tabOrder[currentIndex + 1]);
-                }
-            } else {
-                // Deslizou para DIREITA (>>) -> Aba Anterior
-                if (currentIndex > 0) {
-                    mudarAba(tabOrder[currentIndex - 1]);
-                }
+    // Reseta as variáveis
+    swipeStartX = 0;
+    swipeStartY = 0;
+
+    // Lógica do Gesto:
+    // 1. Mais horizontal que vertical
+    // 2. Movimento mínimo de 50px
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+        const currentTab = document.querySelector('.tab-content.active');
+        if (!currentTab) return;
+
+        const currentIndex = tabOrder.indexOf(currentTab.id);
+        if (currentIndex === -1) return;
+
+        if (diffX < 0) {
+            // Deslizou para ESQUERDA (<<) -> Próxima Aba
+            if (currentIndex < tabOrder.length - 1) {
+                mudarAba(tabOrder[currentIndex + 1]);
+            }
+        } else {
+            // Deslizou para DIREITA (>>) -> Aba Anterior
+            if (currentIndex > 0) {
+                mudarAba(tabOrder[currentIndex - 1]);
             }
         }
-    }, { passive: true });
+    }
+}, { passive: true });
 	
 // --- LÓGICA DE EVENTOS DAS NOTIFICAÇÕES (SUBSTITUIR ESTE BLOCO) ---
 

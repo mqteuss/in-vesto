@@ -7628,11 +7628,12 @@ window.fecharModalPagamentos = function() {
 };
 
 // 3. Listener para fechar ao clicar fora (backdrop)
-// Este código roda sozinho ao carregar a página
-const modalPag = document.getElementById('pagamentos-page-modal');
-if (modalPag) {
-    modalPag.addEventListener('click', (e) => {
-        if (e.target === modalPag) {
+// (Nome da variável alterado para evitar o erro 'Identifier has already been declared')
+const modalAgendaBackdrop = document.getElementById('pagamentos-page-modal');
+
+if (modalAgendaBackdrop) {
+    modalAgendaBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalAgendaBackdrop) {
             window.fecharModalPagamentos();
         }
     });

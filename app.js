@@ -7543,34 +7543,55 @@ window.closePagamentosModal = function() {
 };
 
 // --- LÓGICA DE SWIPE NO DASHBOARD (Mudar Aba) ---
+// ======================================================
+// 3. SWIPE NO DASHBOARD (Mudar para Carteira) - OTIMIZADO
+// ======================================================
 document.addEventListener('DOMContentLoaded', () => {
-    const dashboardTab = document.getElementById('tab-dashboard');
+    const dashTab = document.getElementById('tab-dashboard');
+    
+    // Variáveis de controle
     let touchStartX = 0;
     let touchStartY = 0;
+    let touchStartTime = 0;
 
-    if (dashboardTab) {
-        dashboardTab.addEventListener('touchstart', (e) => {
+    if (dashTab) {
+        // Ao tocar na tela
+        dashTab.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
             touchStartY = e.changedTouches[0].screenY;
+            touchStartTime = new Date().getTime(); // Marca o tempo inicial
         }, { passive: true });
 
-        dashboardTab.addEventListener('touchend', (e) => {
+        // Ao soltar o dedo
+        dashTab.addEventListener('touchend', (e) => {
             const touchEndX = e.changedTouches[0].screenX;
             const touchEndY = e.changedTouches[0].screenY;
+            const touchEndTime = new Date().getTime();
             
-            const diffX = touchStartX - touchEndX;
+            const diffX = touchStartX - touchEndX; // Positivo = Swipe para Esquerda (Direita -> Esquerda)
             const diffY = touchStartY - touchEndY;
+            const duration = touchEndTime - touchStartTime;
 
-            if (Math.abs(diffX) > Math.abs(diffY) && diffX > 60) {
-                console.log("Swipe Left detectado no Dashboard -> Indo para Carteira");
+            // REGRAS PARA O SWIPE FUNCIONAR:
+            // 1. Movimento Horizontal deve ser maior que o Vertical (Math.abs(diffX) > Math.abs(diffY))
+            // 2. Distância mínima de 50px (não pode ser um toque acidental)
+            // 3. Duração máxima de 800ms (tem que ser um gesto, não um arrasto lento)
+            
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50 && duration < 800) {
                 
-                // Chama a função global de mudar aba
-                if (typeof mudarAba === 'function') {
-                    mudarAba('tab-carteira');
-                } else {
-                    // Fallback: Clica no botão
-                    const btnCarteira = document.querySelector('button[onclick*="tab-carteira"]');
-                    if (btnCarteira) btnCarteira.click();
+                // Se o movimento for da Direita para a Esquerda (Indo para Carteira)
+                if (diffX > 0) {
+                    console.log("Swipe: Dashboard -> Carteira");
+                    
+                    // Tenta clicar no botão da carteira
+                    const btnCarteira = document.getElementById('btn-nav-carteira') || 
+                                        document.querySelector('button[onclick*="tab-carteira"]');
+                    
+                    if (btnCarteira) {
+                        btnCarteira.click();
+                    } else if (typeof mudarAba === 'function') {
+                        mudarAba('tab-carteira');
+                    }
                 }
             }
         });

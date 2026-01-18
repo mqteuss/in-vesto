@@ -7594,20 +7594,45 @@ window.closePagamentosModal = function() {
             }
         }, { passive: false });
 
-        contentPagamentosRef.addEventListener('touchend', (e) => {
+contentPagamentosRef.addEventListener('touchend', (e) => {
             if (!isDraggingPagamentos) return;
             isDraggingPagamentos = false;
             
             const diff = touchMovePagamentosY - touchStartPagamentosY;
+            const contentEl = contentPagamentosRef; 
+            const modalEl = modalPagamentosRef;
+
+            // Restaura a transição suave para a animação de soltar
+            contentEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
             
-            // Restaura a animação suave
-            contentPagamentosRef.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            
-            // Se arrastou mais de 100px, fecha o modal. Senão, volta ao topo.
+            // Se arrastou mais de 100px, inicia o processo de fechar
             if (diff > 100) {
-                closePagamentosModal();
+                // 1. Força o painel a deslizar até o final da tela
+                contentEl.style.transform = 'translateY(100%)';
+                
+                // 2. Aguarda o fim da animação para esconder o fundo escuro
+                const onTransitionEnd = () => {
+                    // Remove a classe que deixa o modal visível
+                    modalEl.classList.remove('visible');
+                    
+                    // Limpa os estilos inline para a próxima vez que abrir
+                    contentEl.style.transform = '';
+                    contentEl.style.transition = '';
+                    
+                    // Remove este ouvinte para não acumular
+                    contentEl.removeEventListener('transitionend', onTransitionEnd);
+                };
+                // Adiciona o ouvinte que roda apenas uma vez ({ once: true })
+                contentEl.addEventListener('transitionend', onTransitionEnd, { once: true });
+
             } else {
-                contentPagamentosRef.style.transform = '';
+                // Se não arrastou o suficiente, volta suavemente ao topo
+                contentEl.style.transform = 'translateY(0px)';
+                // Limpa a transição após o tempo da animação (400ms)
+                setTimeout(() => {
+                     contentEl.style.transition = '';
+                     contentEl.style.transform = ''; 
+                }, 400);
             }
             
             touchStartPagamentosY = 0;

@@ -6538,8 +6538,6 @@ document.addEventListener('touchstart', (e) => {
     // 2. CORREÇÃO AQUI: Bloqueia swipe se tocar em áreas de scroll ou GRÁFICOS
     if (e.target.closest('.overflow-x-auto') || 
         e.target.closest('#dashboard-favorites-list') || 
-        e.target.closest('#timeline-pagamentos-container') || 
-        e.target.closest('.payment-carousel') || 
         e.target.closest('canvas')) { // <--- ADICIONADO: Bloqueia se tocar em qualquer gráfico
         return; 
     }

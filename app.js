@@ -3284,7 +3284,7 @@ function renderizarTimelinePagamentos() {
     const lista = document.getElementById('timeline-lista');
     
     // MUDANÇA: Usa a classe Grid em vez de Carrossel
-    lista.classList.add('payment-static-list');
+    lista.className = 'payment-static-list'; 
 
     if (!proventosAtuais || proventosAtuais.length === 0) {
         container.classList.add('hidden');

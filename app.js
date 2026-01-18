@@ -3466,130 +3466,6 @@ function renderizarTimelinePagamentos() {
 
 // --- FUNÇÕES DO MODAL (ESTILO GAVETA/SHEET) ---
 
-window.abrirModalPagamentos = function() {
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    const listaContainer = document.getElementById('modal-lista-pagamentos');
-    const pagamentos = window.pagamentosFuturosFiltrados || [];
-    
-    // Renderiza Lista
-    if(listaContainer) {
-        listaContainer.innerHTML = '';
-        
-        if (pagamentos.length === 0) {
-            listaContainer.innerHTML = '<div class="flex flex-col items-center justify-center h-40 opacity-50"><p class="text-xs text-gray-400">Nenhum pagamento futuro.</p></div>';
-        } else {
-            pagamentos.forEach(prov => {
-                const parts = prov.paymentDate.split('-');
-                const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-                const dia = parts[2];
-                const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-                const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' }).split('-')[0];
-                
-                const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-                const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-                const totalReceber = prov.value * qtd;
-
-                // Card Estilizado na Lista
-                const itemHTML = `
-                    <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a] active:scale-[0.98] transition-transform">
-                        <div class="flex items-center gap-4">
-                            <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333] shadow-sm">
-                                <span class="text-[9px] font-bold text-gray-500 uppercase leading-none mb-0.5">${mes}</span>
-                                <span class="text-lg font-bold text-white leading-none">${dia}</span>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2 mb-0.5">
-                                    <span class="text-sm font-bold text-white tracking-tight">${prov.symbol}</span>
-                                    <span class="text-[10px] px-1.5 py-0.5 bg-[#222] rounded text-gray-400 border border-[#333] capitalize">${diaSemana}</span>
-                                </div>
-                                <span class="text-xs text-gray-500">${qtd} cotas • ${formatBRL(prov.value)}</span>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="block text-base font-bold text-green-400 tracking-tight">+${formatBRL(totalReceber)}</span>
-                        </div>
-                    </div>`;
-                listaContainer.insertAdjacentHTML('beforeend', itemHTML);
-            });
-        }
-    }
-
-    // Animação de Entrada
-    if (modal && content) {
-        modal.classList.remove('hidden');
-        // Pequeno delay para permitir que o navegador renderize o display:block antes da opacidade
-        requestAnimationFrame(() => {
-            modal.classList.remove('opacity-0');
-            content.classList.remove('translate-y-full');
-        });
-        document.body.style.overflow = 'hidden'; // Trava fundo
-    }
-};
-
-window.fecharModalPagamentos = function() {
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    
-    if (modal && content) {
-        content.classList.add('translate-y-full'); // Desce a gaveta
-        modal.classList.add('opacity-0'); // Fade out no fundo
-        
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            document.body.style.overflow = ''; // Destrava fundo
-        }, 300); // Espera a animação CSS terminar
-    }
-};
-
-// --- SWIPE DOWN PARA FECHAR (Igual Detalhes/Patrimônio) ---
-const modalPagamentosContent = document.getElementById('tab-pagamentos-content');
-if (modalPagamentosContent) {
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-    // Drag Area específica no header para facilitar
-    const dragArea = document.getElementById('pagamentos-drag-area'); 
-    const scrollArea = modalPagamentosContent.querySelector('.overflow-y-auto');
-
-    modalPagamentosContent.addEventListener('touchstart', (e) => {
-        // Se o scroll não estiver no topo, não permite arrastar para fechar (para poder dar scroll na lista)
-        if (scrollArea && scrollArea.scrollTop > 0) return;
-
-        startY = e.touches[0].clientY;
-        currentY = startY;
-        isDragging = true;
-        modalPagamentosContent.style.transition = 'none';
-    }, { passive: true });
-
-    modalPagamentosContent.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        currentY = e.touches[0].clientY;
-        const diff = currentY - startY;
-
-        // Só move se for para baixo (positivo)
-        if (diff > 0) {
-            if (e.cancelable) e.preventDefault();
-            modalPagamentosContent.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false });
-
-    modalPagamentosContent.addEventListener('touchend', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        const diff = currentY - startY;
-
-        modalPagamentosContent.style.transition = 'transform 0.3s ease-out';
-        
-        if (diff > 120) { // Se arrastou mais de 120px
-            window.fecharModalPagamentos();
-        } else {
-            modalPagamentosContent.style.transform = ''; // Volta pro lugar
-        }
-        startY = 0; currentY = 0;
-    });
-}
-
 // Adicione isto ao seu app.js para habilitar o swipe na área de Pagamentos
 function ativarSwipePagamentos() {
     const timeline = document.getElementById('timeline-lista');
@@ -7726,6 +7602,130 @@ function initCarouselSwipeBridge() {
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
+
+window.abrirModalPagamentos = function() {
+    const modal = document.getElementById('pagamentos-page-modal');
+    const content = document.getElementById('tab-pagamentos-content');
+    const listaContainer = document.getElementById('modal-lista-pagamentos');
+    const pagamentos = window.pagamentosFuturosFiltrados || [];
+    
+    // Renderiza Lista
+    if(listaContainer) {
+        listaContainer.innerHTML = '';
+        
+        if (pagamentos.length === 0) {
+            listaContainer.innerHTML = '<div class="flex flex-col items-center justify-center h-40 opacity-50"><p class="text-xs text-gray-400">Nenhum pagamento futuro.</p></div>';
+        } else {
+            pagamentos.forEach(prov => {
+                const parts = prov.paymentDate.split('-');
+                const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                const dia = parts[2];
+                const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+                const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' }).split('-')[0];
+                
+                const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+                const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+                const totalReceber = prov.value * qtd;
+
+                // Card Estilizado na Lista
+                const itemHTML = `
+                    <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a] active:scale-[0.98] transition-transform">
+                        <div class="flex items-center gap-4">
+                            <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333] shadow-sm">
+                                <span class="text-[9px] font-bold text-gray-500 uppercase leading-none mb-0.5">${mes}</span>
+                                <span class="text-lg font-bold text-white leading-none">${dia}</span>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2 mb-0.5">
+                                    <span class="text-sm font-bold text-white tracking-tight">${prov.symbol}</span>
+                                    <span class="text-[10px] px-1.5 py-0.5 bg-[#222] rounded text-gray-400 border border-[#333] capitalize">${diaSemana}</span>
+                                </div>
+                                <span class="text-xs text-gray-500">${qtd} cotas • ${formatBRL(prov.value)}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-base font-bold text-green-400 tracking-tight">+${formatBRL(totalReceber)}</span>
+                        </div>
+                    </div>`;
+                listaContainer.insertAdjacentHTML('beforeend', itemHTML);
+            });
+        }
+    }
+
+    // Animação de Entrada
+    if (modal && content) {
+        modal.classList.remove('hidden');
+        // Pequeno delay para permitir que o navegador renderize o display:block antes da opacidade
+        requestAnimationFrame(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('translate-y-full');
+        });
+        document.body.style.overflow = 'hidden'; // Trava fundo
+    }
+};
+
+window.fecharModalPagamentos = function() {
+    const modal = document.getElementById('pagamentos-page-modal');
+    const content = document.getElementById('tab-pagamentos-content');
+    
+    if (modal && content) {
+        content.classList.add('translate-y-full'); // Desce a gaveta
+        modal.classList.add('opacity-0'); // Fade out no fundo
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.style.overflow = ''; // Destrava fundo
+        }, 300); // Espera a animação CSS terminar
+    }
+};
+
+// --- SWIPE DOWN PARA FECHAR (Igual Detalhes/Patrimônio) ---
+const modalPagamentosContent = document.getElementById('tab-pagamentos-content');
+if (modalPagamentosContent) {
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+    // Drag Area específica no header para facilitar
+    const dragArea = document.getElementById('pagamentos-drag-area'); 
+    const scrollArea = modalPagamentosContent.querySelector('.overflow-y-auto');
+
+    modalPagamentosContent.addEventListener('touchstart', (e) => {
+        // Se o scroll não estiver no topo, não permite arrastar para fechar (para poder dar scroll na lista)
+        if (scrollArea && scrollArea.scrollTop > 0) return;
+
+        startY = e.touches[0].clientY;
+        currentY = startY;
+        isDragging = true;
+        modalPagamentosContent.style.transition = 'none';
+    }, { passive: true });
+
+    modalPagamentosContent.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentY = e.touches[0].clientY;
+        const diff = currentY - startY;
+
+        // Só move se for para baixo (positivo)
+        if (diff > 0) {
+            if (e.cancelable) e.preventDefault();
+            modalPagamentosContent.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false });
+
+    modalPagamentosContent.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        const diff = currentY - startY;
+
+        modalPagamentosContent.style.transition = 'transform 0.3s ease-out';
+        
+        if (diff > 120) { // Se arrastou mais de 120px
+            window.fecharModalPagamentos();
+        } else {
+            modalPagamentosContent.style.transform = ''; // Volta pro lugar
+        }
+        startY = 0; currentY = 0;
+    });
+}
 	
     await init();
 });

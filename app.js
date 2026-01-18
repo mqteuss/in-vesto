@@ -3464,6 +3464,36 @@ if (modalBackdrop) {
     };
 }
 
+// Adicione isto ao seu app.js para habilitar o swipe na área de Pagamentos
+function ativarSwipePagamentos() {
+    const timeline = document.getElementById('timeline-lista');
+    if (!timeline) return;
+
+    let startX = 0;
+
+    // Detecta onde o dedo tocou
+    timeline.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+    }, { passive: true });
+
+    // Detecta onde o dedo soltou e calcula a direção
+    timeline.addEventListener('touchend', (e) => {
+        const endX = e.changedTouches[0].clientX;
+        const diff = startX - endX;
+
+        // Se arrastou o dedo da direita para a esquerda (> 50px)
+        // Significa que o usuário quer ir para a próxima aba (Carteira)
+        if (diff > 50) {
+            console.log("Swipe em Pagamentos -> Indo para Carteira");
+            const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
+            if (btnCarteira) btnCarteira.click();
+        }
+    });
+}
+
+// Chame esta função após renderizar a timeline ou no final do carregamento
+ativarSwipePagamentos();
+
 function renderizarDashboardSkeletons(show) {
     const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
     const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];

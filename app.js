@@ -7563,9 +7563,8 @@ window.closePagamentosModal = function() {
 };
 
 
-// --- LÓGICA DE SWIPE DOWN PARA PAGAMENTOS (NOVO) ---
+// --- LÓGICA DE SWIPE DOWN PARA PAGAMENTOS (CORRIGIDO) ---
     
-    // Referências aos elementos (Re-selecionando para garantir)
     const modalPagamentosRef = document.getElementById('pagamentos-page-modal');
     const contentPagamentosRef = document.getElementById('tab-pagamentos-content');
     const btnVoltarPagamentos = document.getElementById('pagamentos-voltar-btn');
@@ -7588,17 +7587,13 @@ window.closePagamentosModal = function() {
 
     // 3. Lógica do Gesto (Arrastar para baixo)
     if (contentPagamentosRef) {
-        // Encontra o container que tem scroll (para não fechar enquanto rola a lista)
         const scrollContainerPag = contentPagamentosRef.querySelector('.overflow-y-auto');
 
         contentPagamentosRef.addEventListener('touchstart', (e) => {
-            // Se o scroll estiver no topo (0), permite iniciar o arrasto
             if (scrollContainerPag && scrollContainerPag.scrollTop === 0) {
                 touchStartPagamentosY = e.touches[0].clientY;
                 touchMovePagamentosY = touchStartPagamentosY;
                 isDraggingPagamentos = true;
-                
-                // Remove transição para o movimento seguir o dedo instantaneamente
                 contentPagamentosRef.style.transition = 'none'; 
             }
         }, { passive: true });
@@ -7609,52 +7604,60 @@ window.closePagamentosModal = function() {
             touchMovePagamentosY = e.touches[0].clientY;
             const diff = touchMovePagamentosY - touchStartPagamentosY;
             
-            // Só move se estiver puxando para BAIXO (diff positivo)
+            // Só move se for para baixo
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault(); 
                 contentPagamentosRef.style.transform = `translateY(${diff}px)`;
             }
         }, { passive: false });
 
-contentPagamentosRef.addEventListener('touchend', (e) => {
+        contentPagamentosRef.addEventListener('touchend', (e) => {
             if (!isDraggingPagamentos) return;
             isDraggingPagamentos = false;
             
             const diff = touchMovePagamentosY - touchStartPagamentosY;
-            const contentEl = contentPagamentosRef; 
+            const contentEl = contentPagamentosRef;
             const modalEl = modalPagamentosRef;
 
-            // Restaura a transição suave para a animação de soltar
-            contentEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            
-            // Se arrastou mais de 100px, inicia o processo de fechar
+            // Restaura a transição suave
+            contentEl.style.transition = 'transform 0.3s ease-out';
+
             if (diff > 100) {
-                // 1. Força o painel a deslizar até o final da tela
+                // --- AÇÃO DE FECHAR ---
+                
+                // 1. Desliza o painel para baixo (Visual)
                 contentEl.style.transform = 'translateY(100%)';
                 
-                // 2. Aguarda o fim da animação para esconder o fundo escuro
-                const onTransitionEnd = () => {
-                    // Remove a classe que deixa o modal visível
-                    modalEl.classList.remove('visible');
-                    
-                    // Limpa os estilos inline para a próxima vez que abrir
+                // 2. Desvanece o fundo escuro SIMULTANEAMENTE (Igual ao Detalhes)
+                modalEl.style.transition = 'opacity 0.3s ease-out';
+                modalEl.style.opacity = '0';
+
+                // 3. Aguarda a animação terminar para limpar tudo e destravar a tela
+                setTimeout(() => {
+                    // Chama a função OFICIAL para destravar o scroll do body e limpar estados
+                    if (typeof closePagamentosModal === 'function') {
+                        closePagamentosModal();
+                    } else {
+                        // Fallback de segurança
+                        modalEl.classList.remove('visible');
+                        document.body.style.overflow = '';
+                    }
+
+                    // Limpa os estilos inline injetados pelo JS para não quebrar a próxima abertura
                     contentEl.style.transform = '';
                     contentEl.style.transition = '';
+                    modalEl.style.transition = '';
+                    modalEl.style.opacity = '';
                     
-                    // Remove este ouvinte para não acumular
-                    contentEl.removeEventListener('transitionend', onTransitionEnd);
-                };
-                // Adiciona o ouvinte que roda apenas uma vez ({ once: true })
-                contentEl.addEventListener('transitionend', onTransitionEnd, { once: true });
+                }, 300); // Tempo da animação CSS
 
             } else {
-                // Se não arrastou o suficiente, volta suavemente ao topo
-                contentEl.style.transform = 'translateY(0px)';
-                // Limpa a transição após o tempo da animação (400ms)
+                // --- CANCELA E VOLTA (BOUNCE BACK) ---
+                contentEl.style.transform = 'translateY(0)';
                 setTimeout(() => {
-                     contentEl.style.transition = '';
-                     contentEl.style.transform = ''; 
-                }, 400);
+                    contentEl.style.transition = '';
+                    contentEl.style.transform = '';
+                }, 300);
             }
             
             touchStartPagamentosY = 0;

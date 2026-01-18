@@ -3281,7 +3281,7 @@ function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // MUDANÇA 1: Usar classe estática (grid) em vez de carrossel
+    // Mantém a classe da lista estática
     lista.className = 'payment-static-list'; 
     
     if (!proventosAtuais || proventosAtuais.length === 0) {
@@ -3292,7 +3292,7 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra e Ordena pagamentos reais
+    // Filtra e Ordena pagamentos reais (MESMA LÓGICA ANTERIOR)
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -3310,25 +3310,24 @@ function renderizarTimelinePagamentos() {
     lista.innerHTML = '';
     const totalItems = pagamentosReais.length;
     
-    // MUDANÇA 2: Lógica de Exibição (Máx 3 ou Botão +X)
+    // Lógica de Exibição (Máx 3 ou Botão +X) (MESMA LÓGICA ANTERIOR)
     let itemsToRender = [];
     let showMoreButton = false;
 
     if (totalItems <= 3) {
         itemsToRender = pagamentosReais;
     } else {
-        // Se tiver 4 ou mais, mostra os 2 primeiros e o botão "+X"
         itemsToRender = pagamentosReais.slice(0, 2);
         showMoreButton = true;
     }
 
-    // Renderiza os Cards Normais
+    // --- RENDERIZAÇÃO DOS NOVOS CARDS HORIZONTAIS ---
     itemsToRender.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
         const dia = parts[2];
-        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+        // Mês curto (ex: JAN, FEV)
+        const mesCurto = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
@@ -3339,37 +3338,46 @@ function renderizarTimelinePagamentos() {
         const totalReceber = prov.value * qtd;
 
         const classeHoje = isHoje ? 'is-today' : '';
-        const textoHeader = isHoje ? 'HOJE' : mes;
+        // Se for hoje, usa "HOJE" no lugar do mês, senão usa o mês.
+        const textoMesDisplay = isHoje ? 'HOJE' : mesCurto;
 
         const item = document.createElement('div');
-        item.className = `agenda-card ${classeHoje}`;
+        // Nova classe base do card horizontal
+        item.className = `payment-new-card ${classeHoje}`;
+        item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+        
+        // NOVO HTML ESTRUTURADO (Box Data | Ticker | Valor)
         item.innerHTML = `
-            <div class="agenda-header">${textoHeader}</div>
-            <div class="agenda-body">
-                <span class="agenda-day">${dia}</span>
-                <span class="agenda-weekday">${diaSemana}</span>
+            <div class="pay-date-box">
+                <span class="pay-month">${textoMesDisplay}</span>
+                <span class="pay-day">${dia}</span>
             </div>
-            <div class="agenda-footer">
-                <span class="agenda-ticker">${prov.symbol}</span>
-                <span class="agenda-value">+${formatBRL(totalReceber)}</span>
+
+            <div class="pay-info">
+                <div>
+                    <span class="pay-ticker">${prov.symbol}</span>
+                    <span class="pay-label-ticker">${prov.type || 'Rendimento'}</span>
+                </div>
+            </div>
+
+            <div class="pay-value-box">
+                <span class="pay-amount text-amarillo-vesto">+${formatBRL(totalReceber)}</span>
+                <span class="pay-status">a receber</span>
             </div>
         `;
-        item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
         lista.appendChild(item);
     });
 
-    // MUDANÇA 3: Renderiza o Botão "+X" se necessário
+    // Renderiza o Botão "+X" no novo estilo horizontal, se necessário
     if (showMoreButton) {
         const remaining = totalItems - 2;
         const moreBtn = document.createElement('div');
-        moreBtn.className = 'agenda-card more-card';
+        // Nova classe para o botão "ver mais" horizontal
+        moreBtn.className = 'payment-new-card more-card-horizontal';
         moreBtn.innerHTML = `
-            <div class="agenda-body">
-                <span class="more-count">+${remaining}</span>
-                <span class="more-label">Ver Todos</span>
-            </div>
+            <span class="more-count text-amarillo-vesto">+${remaining}</span>
+            <span class="more-label">Ver próximos pagamentos</span>
         `;
-        // Ao clicar, abre o modal com a lista completa
         moreBtn.onclick = () => openPagamentosModal(pagamentosReais);
         lista.appendChild(moreBtn);
     }

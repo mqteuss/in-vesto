@@ -3277,11 +3277,17 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     lastPatrimonioCalcSignature = currentSignature;
 }
 
+// ======================================================
+// LÓGICA DE PAGAMENTOS E MODAL (CORREÇÃO DE ERRO)
+// ======================================================
+
+// 1. Função que desenha os cards na Dashboard
+// (Esta não precisa ser window. pq é chamada internamente pelo seu app)
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
 
-    // 1. Validações iniciais
+    // Validação básica
     if (!proventosAtuais || proventosAtuais.length === 0) {
         if (container) container.classList.add('hidden');
         return;
@@ -3290,41 +3296,34 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // 2. Filtra e ordena (Apenas Futuros)
+    // Filtra pagamentos futuros e ordena
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-        
-        // Verifica se tem o ativo na carteira E se a data é futura/hoje
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
         return ativoNaCarteira && ativoNaCarteira.quantity > 0 && dataPag >= hoje;
-    });
+    }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
     // Salva globalmente para o modal usar
-    window.pagamentosFuturosFiltrados = pagamentosReais.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+    window.pagamentosFuturosFiltrados = pagamentosReais;
 
     if (pagamentosReais.length === 0) {
         if (container) container.classList.add('hidden');
         return;
     }
 
-    // 3. Lógica de Exibição (O "Pulo do Gato")
-    // Mostraremos no máximo 3 cards detalhados. 
-    // Se tiver 4 ou mais, o 4º vira um botão "Ver Mais"
+    // --- LÓGICA DO "VER MAIS" ---
     const LIMIT_CARDS = 3;
     const temMuitos = pagamentosReais.length > LIMIT_CARDS;
-    
-    // Se tiver muitos, cortamos a lista. Se não, mostramos tudo.
     const listaParaExibir = temMuitos ? pagamentosReais.slice(0, LIMIT_CARDS) : pagamentosReais;
 
-    lista.innerHTML = ''; // Limpa lista
+    lista.innerHTML = ''; 
 
-    // 4. Renderiza os Cards de Pagamento
+    // Cria os cards normais
     listaParaExibir.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-        
         const dia = parts[2];
         const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         
@@ -3332,7 +3331,6 @@ function renderizarTimelinePagamentos() {
         const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
         const totalReceber = prov.value * qtd;
         
-        // Verifica se é hoje para destacar
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         const isHoje = diffDays === 0;
@@ -3341,7 +3339,6 @@ function renderizarTimelinePagamentos() {
         const bgHeader = isHoje ? 'bg-yellow-500 text-black' : 'bg-[#27272a] text-gray-400';
 
         const card = document.createElement('div');
-        // Mantém estilo quadrado fixo
         card.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#151515] rounded-2xl flex flex-col overflow-hidden ${classeHoje}`;
         
         card.innerHTML = `
@@ -3357,34 +3354,108 @@ function renderizarTimelinePagamentos() {
             </div>
         `;
         
-        // Clique no card abre os detalhes do ativo
-        card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+        // Abre detalhes do ativo ao clicar no card individual
+        if(window.abrirDetalhesAtivo) {
+             card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+        }
         lista.appendChild(card);
     });
 
-    // 5. Renderiza o Card "Ver Mais" (Se necessário)
+    // Cria o card "Ver Mais" se necessário
     if (temMuitos) {
         const restantes = pagamentosReais.length - LIMIT_CARDS;
-        
         const moreCard = document.createElement('div');
         moreCard.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#1C1C1E] rounded-2xl flex flex-col items-center justify-center border border-[#27272a] cursor-pointer hover:bg-[#27272a] transition-colors active:scale-95`;
-        
         moreCard.innerHTML = `
             <div class="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center mb-2 text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
             </div>
             <span class="text-lg font-bold text-white">+${restantes}</span>
             <span class="text-[10px] text-gray-500 uppercase font-bold mt-1">Ver todos</span>
         `;
-        
-        // Clique neste card abre o MODAL
+        // Usa a função global para abrir modal
         moreCard.onclick = () => window.abrirModalPagamentos();
         lista.appendChild(moreCard);
     }
 
     if (container) container.classList.remove('hidden');
+}
+
+// 2. FUNÇÕES DO MODAL (TORNADAS GLOBAIS COM WINDOW.)
+// Isso corrige o "ReferenceError: abrirModalPagamentos is not defined"
+
+window.abrirModalPagamentos = function() {
+    const modal = document.getElementById('pagamentos-page-modal');
+    const content = document.getElementById('tab-pagamentos-content');
+    const listaContainer = document.getElementById('modal-lista-pagamentos');
+    
+    // Pega a lista salva anteriormente ou vazio
+    const pagamentos = window.pagamentosFuturosFiltrados || [];
+    
+    if(listaContainer) {
+        listaContainer.innerHTML = '';
+
+        if (pagamentos.length === 0) {
+            listaContainer.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhum pagamento futuro.</p>';
+        } else {
+            pagamentos.forEach(prov => {
+                const parts = prov.paymentDate.split('-');
+                const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                const dia = parts[2];
+                const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+                const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' });
+                const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+                const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+                const totalReceber = prov.value * qtd;
+
+                const itemHTML = `
+                    <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a]">
+                        <div class="flex items-center gap-4">
+                            <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333]">
+                                <span class="text-xs font-bold text-gray-400 uppercase">${mes}</span>
+                                <span class="text-lg font-bold text-white leading-none">${dia}</span>
+                            </div>
+                            <div>
+                                <span class="block text-sm font-bold text-white">${prov.symbol}</span>
+                                <span class="text-xs text-gray-500 capitalize">${diaSemana}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
+                            <span class="text-[10px] text-gray-600">(${formatBRL(prov.value)}/cota)</span>
+                        </div>
+                    </div>`;
+                listaContainer.innerHTML += itemHTML;
+            });
+        }
+    }
+
+    if (modal && content) {
+        modal.classList.add('visible');
+        content.classList.remove('translate-y-full');
+    }
+};
+
+window.fecharModalPagamentos = function() {
+    const modal = document.getElementById('pagamentos-page-modal');
+    const content = document.getElementById('tab-pagamentos-content');
+    
+    if (modal && content) {
+        content.classList.add('translate-y-full');
+        setTimeout(() => {
+            modal.classList.remove('visible');
+        }, 300);
+    }
+};
+
+// Fecha ao clicar no fundo escuro
+const modalPag = document.getElementById('pagamentos-page-modal');
+if (modalPag) {
+    modalPag.addEventListener('click', (e) => {
+        if (e.target === modalPag) {
+            window.fecharModalPagamentos();
+        }
+    });
 }
 
 function renderizarDashboardSkeletons(show) {
@@ -7483,6 +7554,89 @@ function initCarouselSwipeBridge() {
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
+
+
+// 1. Função de Abrir o Modal
+window.abrirModalPagamentos = function() {
+    console.log("Abrindo modal..."); // Para testar se funcionou
+    const modal = document.getElementById('pagamentos-page-modal');
+    const content = document.getElementById('tab-pagamentos-content');
+    const listaContainer = document.getElementById('modal-lista-pagamentos');
+    
+    // Pega a lista salva anteriormente ou vazio
+    const pagamentos = window.pagamentosFuturosFiltrados || [];
+    
+    if(listaContainer) {
+        listaContainer.innerHTML = '';
+
+        if (pagamentos.length === 0) {
+            listaContainer.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhum pagamento futuro encontrado.</p>';
+        } else {
+            pagamentos.forEach(prov => {
+                // Lógica de formatação da data e valores
+                const parts = prov.paymentDate.split('-');
+                const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                
+                const dia = parts[2];
+                const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+                const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' });
+                
+                const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+                const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+                const totalReceber = prov.value * qtd;
+
+                // Desenha o item da lista
+                const itemHTML = `
+                    <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a]">
+                        <div class="flex items-center gap-4">
+                            <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333]">
+                                <span class="text-xs font-bold text-gray-400 uppercase">${mes}</span>
+                                <span class="text-lg font-bold text-white leading-none">${dia}</span>
+                            </div>
+                            <div>
+                                <span class="block text-sm font-bold text-white">${prov.symbol}</span>
+                                <span class="text-xs text-gray-500 capitalize">${diaSemana}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
+                            <span class="text-[10px] text-gray-600">(${formatBRL(prov.value)}/cota)</span>
+                        </div>
+                    </div>`;
+                listaContainer.innerHTML += itemHTML;
+            });
+        }
+    }
+
+    if (modal && content) {
+        modal.classList.add('visible');
+        content.classList.remove('translate-y-full');
+    }
+};
+
+// 2. Função de Fechar o Modal
+window.fecharModalPagamentos = function() {
+    const modal = document.getElementById('pagamentos-page-modal');
+    const content = document.getElementById('tab-pagamentos-content');
+    
+    if (modal && content) {
+        content.classList.add('translate-y-full');
+        setTimeout(() => {
+            modal.classList.remove('visible');
+        }, 300);
+    }
+};
+
+// 3. Listener para fechar ao clicar fora (backdrop)
+// Este código roda sozinho ao carregar a página
+const modalPag = document.getElementById('pagamentos-page-modal');
+if (modalPag) {
+    modalPag.addEventListener('click', (e) => {
+        if (e.target === modalPag) {
+            window.fecharModalPagamentos();
+        }
+    });
+}
 	
     await init();
 });

@@ -3283,7 +3283,7 @@ function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // 1. Aplica a classe de Grid (3 colunas)
+    // Aplica a classe da Grid
     lista.className = 'payment-static-list'; 
     
     if (!proventosAtuais || proventosAtuais.length === 0) {
@@ -3294,7 +3294,7 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra e Ordena
+    // Filtra datas futuras e ordena
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -3313,7 +3313,7 @@ function renderizarTimelinePagamentos() {
     lista.innerHTML = '';
     const totalItems = pagamentosReais.length;
     
-    // Regra: Mostra 3 cards OU 2 cards + botão
+    // Regra: Mostra 3 ou (2 + Botão)
     let itemsToRender = [];
     let showMoreButton = false;
 
@@ -3324,13 +3324,13 @@ function renderizarTimelinePagamentos() {
         showMoreButton = true;
     }
 
-    // --- GERA O HTML VERTICAL ---
+    // Renderiza os Cards
     itemsToRender.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
         const dia = parts[2];
+        // Mês curto (JAN, FEV...)
         const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.','').toUpperCase();
-        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.','').toUpperCase();
         
         const isHoje = dataObj.toDateString() === hoje.toDateString();
         const ativo = carteiraCalculada.find(c => c.symbol === prov.symbol);
@@ -3340,17 +3340,14 @@ function renderizarTimelinePagamentos() {
         const textoHeader = isHoje ? 'HOJE' : mes;
 
         const card = document.createElement('div');
-        // Usa a classe agenda-card (Vertical)
-        card.className = `agenda-card ${classeHoje}`; 
+        card.className = `agenda-card ${classeHoje}`;
         card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
 
-        // HTML ESTRUTURADO VERTICALMENTE
         card.innerHTML = `
             <div class="agenda-header">${textoHeader}</div>
             
             <div class="agenda-body">
                 <span class="agenda-day">${dia}</span>
-                <span class="agenda-weekday">${diaSemana}</span>
             </div>
             
             <div class="agenda-footer">
@@ -3361,7 +3358,7 @@ function renderizarTimelinePagamentos() {
         lista.appendChild(card);
     });
 
-    // --- CARD DE "+X" (TAMBÉM VERTICAL) ---
+    // Renderiza Botão "+X"
     if (showMoreButton) {
         const remaining = totalItems - 2;
         const moreBtn = document.createElement('div');
@@ -3371,8 +3368,8 @@ function renderizarTimelinePagamentos() {
         moreBtn.innerHTML = `
             <div class="agenda-body">
                 <span class="more-count">+${remaining}</span>
-                <span class="more-label">VER MAIS</span>
             </div>
+            <span class="more-label">Ver todos</span>
         `;
         lista.appendChild(moreBtn);
     }

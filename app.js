@@ -3470,28 +3470,38 @@ function ativarSwipePagamentos() {
     if (!timeline) return;
 
     let startX = 0;
+    let startY = 0; // Adicionado para verificar vertical x horizontal
 
-    // Detecta onde o dedo tocou
     timeline.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
     }, { passive: true });
 
-    // Detecta onde o dedo soltou e calcula a direção
     timeline.addEventListener('touchend', (e) => {
         const endX = e.changedTouches[0].clientX;
-        const diff = startX - endX;
+        const endY = e.changedTouches[0].clientY;
+        const diffX = startX - endX;
+        const diffY = startY - endY;
 
-        // Se arrastou o dedo da direita para a esquerda (> 50px)
-        // Significa que o usuário quer ir para a próxima aba (Carteira)
-        if (diff > 50) {
-            console.log("Swipe em Pagamentos -> Indo para Carteira");
-            const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
-            if (btnCarteira) btnCarteira.click();
+        // 1. Verifica se o movimento foi mais Horizontal do que Vertical
+        // (Para não atrapalhar a rolagem da página para baixo)
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            
+            // 2. Aumentei a força necessária para 90px (era 50)
+            if (diffX > 90) { 
+                // *** O SEGREDO DO PULO DUPLO ESTÁ AQUI ***
+                // Impede que o 'document' perceba esse gesto
+                e.stopPropagation(); 
+                
+                console.log("Swipe em Pagamentos -> Indo para Carteira");
+                const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
+                if (btnCarteira) btnCarteira.click();
+            }
         }
     });
 }
 
-// Chame esta função após renderizar a timeline ou no final do carregamento
+// Chame a função
 ativarSwipePagamentos();
 
 function renderizarDashboardSkeletons(show) {

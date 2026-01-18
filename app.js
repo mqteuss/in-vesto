@@ -7459,41 +7459,57 @@ document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
 
-// --- CORREÇÃO DE HITBOX E ROLAGEM (TIMELINE) ---
-// Monitora a lista de pagamentos. Se tiver 2 ou menos itens, 
-// remove a rolagem para permitir que o usuário deslize para a aba Carteira livremente.
-
-document.addEventListener('DOMContentLoaded', () => {
-    const listaTimeline = document.getElementById('timeline-lista');
+// ======================================================
+// CORREÇÃO INTELIGENTE DO CARROSSEL DE PAGAMENTOS
+// ======================================================
+function corrigirHitboxTimeline() {
+    const lista = document.getElementById('timeline-lista');
     
-    if (listaTimeline) {
+    // Se a lista não existir ou estiver vazia/oculta, não faz nada
+    if (!lista) return;
+
+    // 1. Conta quantos cards existem
+    const qtdCards = lista.children.length;
+
+    // 2. Lógica de decisão
+    if (qtdCards <= 2) {
+        // MODO TRAVADO (Permite mudar de aba)
+        // Se tem 1 ou 2 cards, removemos a classe que cria o scroll
+        lista.classList.remove('payment-carousel');
+        
+        // Aplicamos estilo para manter o visual bonito, mas estático
+        lista.style.display = 'flex';
+        lista.style.gap = '12px';
+        lista.style.paddingLeft = '16px'; // Mantém o recuo
+        lista.style.overflowX = 'hidden'; // O SEGREDO: Esconde o scroll horizontal
+    } else {
+        // MODO CARROSSEL (Permite rolar os pagamentos)
+        // Se tem muitos cards, voltamos ao normal
+        lista.classList.add('payment-carousel');
+        lista.style.display = '';
+        lista.style.gap = '';
+        lista.style.paddingLeft = '';
+        lista.style.overflowX = ''; // Devolve o controle ao CSS (.payment-carousel)
+    }
+}
+
+// ======================================================
+// OBSERVADOR: Roda a correção sempre que os dados mudam
+// ======================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const observerTarget = document.getElementById('timeline-lista');
+    
+    if (observerTarget) {
+        // Cria um "fiscal" que vigia se novos pagamentos foram adicionados
         const observer = new MutationObserver(() => {
-            const qtdCards = listaTimeline.children.length;
-            
-            if (qtdCards <= 2) {
-                // POUCOS ITENS: Desativa comportamento de carrossel
-                // 'visible' faz o navegador entender que não há nada para rolar aqui,
-                // passando o gesto de deslizar para a troca de abas principal.
-                listaTimeline.style.overflowX = 'visible';
-                listaTimeline.style.display = 'flex';
-                listaTimeline.style.justifyContent = 'flex-start';
-                // Remove a classe que força comportamento de scroll, se existir
-                listaTimeline.classList.remove('payment-carousel');
-                // Adiciona gap e padding para manter visual bonito
-                listaTimeline.style.gap = '12px';
-                listaTimeline.style.paddingLeft = '16px'; 
-            } else {
-                // MUITOS ITENS: Restaura comportamento de carrossel
-                listaTimeline.style.overflowX = 'auto';
-                listaTimeline.classList.add('payment-carousel');
-                // Reseta estilos inline que podem conflitar
-                listaTimeline.style.display = '';
-                listaTimeline.style.justifyContent = '';
-            }
+            corrigirHitboxTimeline();
         });
 
-        // Inicia o monitoramento de mudanças na lista (inserção de cards)
-        observer.observe(listaTimeline, { childList: true });
+        // Inicia a vigilância
+        observer.observe(observerTarget, { childList: true, subtree: true });
+        
+        // Roda uma vez logo no início para garantir
+        setTimeout(corrigirHitboxTimeline, 500);
     }
 });
 	

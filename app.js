@@ -3277,234 +3277,105 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     lastPatrimonioCalcSignature = currentSignature;
 }
 
-// ======================================================
-// LÓGICA DE PAGAMENTOS: 2 CARDS + BOTÃO "VER MAIS"
-// ======================================================
-
-// ======================================================
-// SISTEMA DE PAGAMENTOS (VERSÃO CORRIGIDA)
-// ======================================================
-
-// 1. Função Global para Abrir o Modal
-window.abrirModalPagamentos = function() {
-    console.log("Tentando abrir modal de pagamentos..."); // LOG DE DEBUG
-
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    const listaContainer = document.getElementById('modal-lista-pagamentos');
-
-    // Verificação de Erro: Se não achar o HTML, avisa na hora
-    if (!modal || !content) {
-        alert("ERRO: O HTML do modal (id='pagamentos-page-modal') não foi encontrado no index.html. Verifique se você colou o código corretamente.");
-        return;
-    }
-
-    // Preencher a lista
-    const pagamentos = window.pagamentosFuturosFiltrados || [];
-    
-    if(listaContainer) {
-        listaContainer.innerHTML = '';
-        if (pagamentos.length === 0) {
-            listaContainer.innerHTML = '<div class="text-center py-10 text-gray-500">Nenhum pagamento futuro.</div>';
-        } else {
-            pagamentos.forEach(prov => {
-                // Formatação de data e valores
-                const parts = prov.paymentDate.split('-');
-                const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-                const dia = parts[2];
-                const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
-                
-                // Busca quantidade na carteira
-                const ativo = carteiraCalculada.find(c => c.symbol === prov.symbol);
-                const qtd = ativo ? ativo.quantity : 0;
-                const total = prov.value * qtd;
-
-                // Cria o item da lista
-                listaContainer.insertAdjacentHTML('beforeend', `
-                    <div class="flex items-center justify-between p-3 bg-[#151515] rounded-xl border border-[#27272a]">
-                        <div class="flex items-center gap-3">
-                            <div class="flex flex-col items-center justify-center w-10 h-10 bg-[#1C1C1E] rounded-lg border border-[#333]">
-                                <span class="text-[9px] text-gray-400 font-bold">${mes}</span>
-                                <span class="text-sm text-white font-bold">${dia}</span>
-                            </div>
-                            <div>
-                                <div class="text-white font-bold text-sm">${prov.symbol}</div>
-                                <div class="text-xs text-gray-500">${qtd} cotas • ${formatBRL(prov.value)}</div>
-                            </div>
-                        </div>
-                        <div class="text-green-400 font-bold text-sm">+${formatBRL(total)}</div>
-                    </div>
-                `);
-            });
-        }
-    }
-
-    // Abrir visualmente
-    modal.classList.remove('hidden');
-    // Pequeno delay para a animação funcionar
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        content.classList.remove('translate-y-full');
-    }, 10);
-    document.body.style.overflow = 'hidden'; // Trava rolagem do fundo
-};
-
-// 2. Função Global para Fechar
-window.fecharModalPagamentos = function() {
-    const modal = document.getElementById('pagamentos-page-modal');
-    const content = document.getElementById('tab-pagamentos-content');
-    
-    if (modal && content) {
-        content.classList.add('translate-y-full'); // Desce
-        modal.classList.add('opacity-0'); // Fica transparente
-        
-        setTimeout(() => {
-            modal.classList.add('hidden'); // Some do layout
-            document.body.style.overflow = ''; // Destrava rolagem
-        }, 300);
-    }
-};
-
-// 3. Renderização dos Cards na Tela Principal
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
-
-    // Validação inicial
+    
+    // MUDANÇA 1: Usar classe estática (grid) em vez de carrossel
+    lista.className = 'payment-static-list'; 
+    
     if (!proventosAtuais || proventosAtuais.length === 0) {
-        if (container) container.classList.add('hidden');
+        container.classList.add('hidden');
         return;
     }
 
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra pagamentos futuros ou de hoje
+    // Filtra e Ordena pagamentos reais
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
-        const d = new Date(parts[0], parts[1]-1, parts[2]);
-        const ativo = carteiraCalculada.find(c => c.symbol === p.symbol);
-        return ativo && ativo.quantity > 0 && d >= hoje;
-    }).sort((a,b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-
-    // Salva para o modal usar
-    window.pagamentosFuturosFiltrados = pagamentosReais;
+        const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (dataPag < hoje) return false;
+        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
+        return ativoNaCarteira && ativoNaCarteira.quantity > 0;
+    }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
     if (pagamentosReais.length === 0) {
-        if (container) container.classList.add('hidden');
+        container.classList.add('hidden');
         return;
     }
 
-    // Prepara a lista
     lista.innerHTML = '';
+    const totalItems = pagamentosReais.length;
     
-    // Regra: Mostra no máximo 2 cards se tiver muitos, senão mostra até 3
-    const MAX_SHOW = 3;
-    let itens = pagamentosReais;
-    let temBotao = false;
-    let countMais = 0;
+    // MUDANÇA 2: Lógica de Exibição (Máx 3 ou Botão +X)
+    let itemsToRender = [];
+    let showMoreButton = false;
 
-    if (pagamentosReais.length > MAX_SHOW) {
-        itens = pagamentosReais.slice(0, 2); // Pega só os 2 primeiros
-        temBotao = true;
-        countMais = pagamentosReais.length - 2;
+    if (totalItems <= 3) {
+        itemsToRender = pagamentosReais;
+    } else {
+        // Se tiver 4 ou mais, mostra os 2 primeiros e o botão "+X"
+        itemsToRender = pagamentosReais.slice(0, 2);
+        showMoreButton = true;
     }
 
-    // Cria os cards normais
-    itens.forEach(prov => {
+    // Renderiza os Cards Normais
+    itemsToRender.forEach(prov => {
         const parts = prov.paymentDate.split('-');
-        const dataObj = new Date(parts[0], parts[1]-1, parts[2]);
+        const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
         const dia = parts[2];
-        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.','').toUpperCase();
+        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
         
-        const ativo = carteiraCalculada.find(c => c.symbol === prov.symbol);
-        const total = prov.value * (ativo ? ativo.quantity : 0);
-        
-        const isHoje = dataObj.getTime() === hoje.getTime();
-        const border = isHoje ? 'border-yellow-500 shadow-md shadow-yellow-500/10' : 'border-[#27272a]';
-        const bgHeader = isHoje ? 'bg-yellow-500 text-black' : 'bg-[#27272a] text-gray-400';
-        const textDate = isHoje ? 'text-yellow-400' : 'text-white';
+        const diffTime = Math.abs(dataObj - hoje);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        const isHoje = diffDays === 0;
 
-        const el = document.createElement('div');
-        el.className = `flex-shrink-0 w-[30%] max-w-[110px] h-[125px] bg-[#151515] rounded-2xl flex flex-col overflow-hidden border ${border} relative z-10`;
-        el.innerHTML = `
-            <div class="py-1 text-[9px] font-bold text-center uppercase ${bgHeader}">${isHoje ? 'HOJE' : mes}</div>
-            <div class="flex-1 flex flex-col items-center justify-center -mt-1">
-                <span class="text-2xl font-bold ${textDate}">${dia}</span>
-                <span class="text-[9px] bg-[#222] px-1 rounded text-gray-400 border border-[#333] mt-1">${prov.symbol}</span>
+        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+        const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+        const totalReceber = prov.value * qtd;
+
+        const classeHoje = isHoje ? 'is-today' : '';
+        const textoHeader = isHoje ? 'HOJE' : mes;
+
+        const item = document.createElement('div');
+        item.className = `agenda-card ${classeHoje}`;
+        item.innerHTML = `
+            <div class="agenda-header">${textoHeader}</div>
+            <div class="agenda-body">
+                <span class="agenda-day">${dia}</span>
+                <span class="agenda-weekday">${diaSemana}</span>
             </div>
-            <div class="py-1.5 bg-[#1C1C1E] border-t border-[#27272a] text-center">
-                <span class="text-[10px] font-bold text-green-400">+${formatBRL(total)}</span>
+            <div class="agenda-footer">
+                <span class="agenda-ticker">${prov.symbol}</span>
+                <span class="agenda-value">+${formatBRL(totalReceber)}</span>
             </div>
         `;
-        el.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
-        lista.appendChild(el);
+        item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+        lista.appendChild(item);
     });
 
-    // Cria o botão "+X" se necessário
-    if (temBotao) {
-        const btn = document.createElement('div');
-        btn.className = "flex-shrink-0 w-[30%] max-w-[110px] h-[125px] bg-[#1C1C1E] rounded-2xl flex flex-col items-center justify-center border border-[#27272a] cursor-pointer hover:bg-[#252525] active:scale-95 transition-all z-10";
-        btn.innerHTML = `
-            <div class="w-10 h-10 rounded-full bg-[#333] flex items-center justify-center mb-2 shadow-lg">
-                <span class="text-white font-bold text-sm">+${countMais}</span>
+    // MUDANÇA 3: Renderiza o Botão "+X" se necessário
+    if (showMoreButton) {
+        const remaining = totalItems - 2;
+        const moreBtn = document.createElement('div');
+        moreBtn.className = 'agenda-card more-card';
+        moreBtn.innerHTML = `
+            <div class="agenda-body">
+                <span class="more-count">+${remaining}</span>
+                <span class="more-label">Ver Todos</span>
             </div>
-            <span class="text-[9px] font-bold text-gray-400 uppercase">Ver Todos</span>
         `;
-        
-        // Atribui o clique diretamente
-        btn.onclick = function() {
-            window.abrirModalPagamentos();
-        };
-
-        lista.appendChild(btn);
+        // Ao clicar, abre o modal com a lista completa
+        moreBtn.onclick = () => openPagamentosModal(pagamentosReais);
+        lista.appendChild(moreBtn);
     }
 
-    if (container) container.classList.remove('hidden');
+    container.classList.remove('hidden');
 }
-
-// --- FUNÇÕES DO MODAL (ESTILO GAVETA/SHEET) ---
-
-// Adicione isto ao seu app.js para habilitar o swipe na área de Pagamentos
-function ativarSwipePagamentos() {
-    const timeline = document.getElementById('timeline-lista');
-    if (!timeline) return;
-
-    let startX = 0;
-    let startY = 0; // Adicionado para verificar vertical x horizontal
-
-    timeline.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-    }, { passive: true });
-
-    timeline.addEventListener('touchend', (e) => {
-        const endX = e.changedTouches[0].clientX;
-        const endY = e.changedTouches[0].clientY;
-        const diffX = startX - endX;
-        const diffY = startY - endY;
-
-        // 1. Verifica se o movimento foi mais Horizontal do que Vertical
-        // (Para não atrapalhar a rolagem da página para baixo)
-        if (Math.abs(diffX) > Math.abs(diffY)) {
-            
-            // 2. Aumentei a força necessária para 90px (era 50)
-            if (diffX > 90) { 
-                // *** O SEGREDO DO PULO DUPLO ESTÁ AQUI ***
-                // Impede que o 'document' perceba esse gesto
-                e.stopPropagation(); 
-                
-                console.log("Swipe em Pagamentos -> Indo para Carteira");
-                const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
-                if (btnCarteira) btnCarteira.click();
-            }
-        }
-    });
-}
-
-// Chame a função
-ativarSwipePagamentos();
 
 function renderizarDashboardSkeletons(show) {
     const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
@@ -7603,129 +7474,105 @@ document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
 
-window.abrirModalPagamentos = function() {
+// --- LÓGICA DO NOVO MODAL DE PAGAMENTOS ---
+function openPagamentosModal(todosPagamentos) {
     const modal = document.getElementById('pagamentos-page-modal');
     const content = document.getElementById('tab-pagamentos-content');
-    const listaContainer = document.getElementById('modal-lista-pagamentos');
-    const pagamentos = window.pagamentosFuturosFiltrados || [];
-    
-    // Renderiza Lista
-    if(listaContainer) {
-        listaContainer.innerHTML = '';
-        
-        if (pagamentos.length === 0) {
-            listaContainer.innerHTML = '<div class="flex flex-col items-center justify-center h-40 opacity-50"><p class="text-xs text-gray-400">Nenhum pagamento futuro.</p></div>';
-        } else {
-            pagamentos.forEach(prov => {
-                const parts = prov.paymentDate.split('-');
-                const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-                const dia = parts[2];
-                const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-                const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' }).split('-')[0];
-                
-                const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-                const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-                const totalReceber = prov.value * qtd;
+    const listaEl = document.getElementById('pagamentos-modal-lista');
 
-                // Card Estilizado na Lista
-                const itemHTML = `
-                    <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a] active:scale-[0.98] transition-transform">
-                        <div class="flex items-center gap-4">
-                            <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333] shadow-sm">
-                                <span class="text-[9px] font-bold text-gray-500 uppercase leading-none mb-0.5">${mes}</span>
-                                <span class="text-lg font-bold text-white leading-none">${dia}</span>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2 mb-0.5">
-                                    <span class="text-sm font-bold text-white tracking-tight">${prov.symbol}</span>
-                                    <span class="text-[10px] px-1.5 py-0.5 bg-[#222] rounded text-gray-400 border border-[#333] capitalize">${diaSemana}</span>
-                                </div>
-                                <span class="text-xs text-gray-500">${qtd} cotas • ${formatBRL(prov.value)}</span>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="block text-base font-bold text-green-400 tracking-tight">+${formatBRL(totalReceber)}</span>
-                        </div>
-                    </div>`;
-                listaContainer.insertAdjacentHTML('beforeend', itemHTML);
-            });
-        }
-    }
+    if (!modal || !content) return;
 
-    // Animação de Entrada
-    if (modal && content) {
-        modal.classList.remove('hidden');
-        // Pequeno delay para permitir que o navegador renderize o display:block antes da opacidade
-        requestAnimationFrame(() => {
-            modal.classList.remove('opacity-0');
-            content.classList.remove('translate-y-full');
+    // Popula a lista do modal (estilo Lista, não Cards quadrados)
+    if (listaEl && todosPagamentos) {
+        listaEl.innerHTML = '';
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+        todosPagamentos.forEach(prov => {
+            const parts = prov.paymentDate.split('-');
+            const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            const dia = parts[2];
+            const mesExtenso = dataObj.toLocaleString('pt-BR', { month: 'long' });
+            
+            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
+            const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
+            const totalReceber = prov.value * qtd;
+
+            // HTML da linha da lista (estilo similar ao histórico)
+            const row = `
+                <div class="flex items-center justify-between p-3 bg-[#151515] rounded-xl border border-[#27272a]">
+                    <div class="flex items-center gap-3">
+                        <div class="flex flex-col items-center justify-center w-10 h-10 bg-[#222] rounded-lg border border-[#333]">
+                            <span class="text-xs font-bold text-white">${dia}</span>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-bold text-white">${prov.symbol}</span>
+                            <span class="text-[10px] text-gray-500 capitalize">${mesExtenso} • ${qtd} cotas</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
+                        <span class="text-[10px] text-gray-500">${prov.type || 'REND'}</span>
+                    </div>
+                </div>
+            `;
+            listaEl.insertAdjacentHTML('beforeend', row);
         });
-        document.body.style.overflow = 'hidden'; // Trava fundo
     }
-};
 
-window.fecharModalPagamentos = function() {
+    modal.classList.add('visible');
+    content.classList.remove('closing');
+    content.style.transform = ''; // Reseta posição
+    document.body.style.overflow = 'hidden';
+}
+
+window.closePagamentosModal = function() {
     const modal = document.getElementById('pagamentos-page-modal');
     const content = document.getElementById('tab-pagamentos-content');
-    
-    if (modal && content) {
-        content.classList.add('translate-y-full'); // Desce a gaveta
-        modal.classList.add('opacity-0'); // Fade out no fundo
-        
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            document.body.style.overflow = ''; // Destrava fundo
-        }, 300); // Espera a animação CSS terminar
-    }
+    if (!modal || !content) return;
+
+    content.classList.add('closing');
+    modal.classList.remove('visible');
+    document.body.style.overflow = '';
 };
 
-// --- SWIPE DOWN PARA FECHAR (Igual Detalhes/Patrimônio) ---
-const modalPagamentosContent = document.getElementById('tab-pagamentos-content');
-if (modalPagamentosContent) {
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-    // Drag Area específica no header para facilitar
-    const dragArea = document.getElementById('pagamentos-drag-area'); 
-    const scrollArea = modalPagamentosContent.querySelector('.overflow-y-auto');
+// --- LÓGICA DE SWIPE NO DASHBOARD (Mudar Aba) ---
+document.addEventListener('DOMContentLoaded', () => {
+    const dashboardTab = document.getElementById('tab-dashboard');
+    let touchStartX = 0;
+    let touchStartY = 0;
 
-    modalPagamentosContent.addEventListener('touchstart', (e) => {
-        // Se o scroll não estiver no topo, não permite arrastar para fechar (para poder dar scroll na lista)
-        if (scrollArea && scrollArea.scrollTop > 0) return;
+    if (dashboardTab) {
+        dashboardTab.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
 
-        startY = e.touches[0].clientY;
-        currentY = startY;
-        isDragging = true;
-        modalPagamentosContent.style.transition = 'none';
-    }, { passive: true });
+        dashboardTab.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            
+            const diffX = touchStartX - touchEndX;
+            const diffY = touchStartY - touchEndY;
 
-    modalPagamentosContent.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        currentY = e.touches[0].clientY;
-        const diff = currentY - startY;
-
-        // Só move se for para baixo (positivo)
-        if (diff > 0) {
-            if (e.cancelable) e.preventDefault();
-            modalPagamentosContent.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false });
-
-    modalPagamentosContent.addEventListener('touchend', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        const diff = currentY - startY;
-
-        modalPagamentosContent.style.transition = 'transform 0.3s ease-out';
-        
-        if (diff > 120) { // Se arrastou mais de 120px
-            window.fecharModalPagamentos();
-        } else {
-            modalPagamentosContent.style.transform = ''; // Volta pro lugar
-        }
-        startY = 0; currentY = 0;
-    });
-}
+            // Lógica:
+            // 1. O movimento deve ser horizontal (diffX > diffY)
+            // 2. Deve ser da direita para esquerda (diffX > 0)
+            // 3. Deve ter uma distância mínima (ex: 60px)
+            if (Math.abs(diffX) > Math.abs(diffY) && diffX > 60) {
+                console.log("Swipe Left detectado no Dashboard -> Indo para Carteira");
+                
+                // Chama a função global de mudar aba
+                if (typeof mudarAba === 'function') {
+                    mudarAba('tab-carteira');
+                } else {
+                    // Fallback: Clica no botão
+                    const btnCarteira = document.querySelector('button[onclick*="tab-carteira"]');
+                    if (btnCarteira) btnCarteira.click();
+                }
+            }
+        });
+    }
+});
 	
     await init();
 });

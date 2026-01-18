@@ -349,14 +349,11 @@
     </div>
 </div>
 
-<div id="timeline-pagamentos-container" class="mb-6 hidden">
-    <div class="flex justify-between items-center px-4 mb-3">
-        <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Próximos Pagamentos</h3>
-    </div>
-    
-    <div id="timeline-lista" class="flex gap-3 px-4 overflow-hidden" style="min-height: 125px;">
+        <div id="timeline-pagamentos-container" class="mb-6 hidden">
+            <h3 class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-2 mb-3">Próximos Pagamentos</h3>
+            <div id="timeline-lista" class="space-y-3">
+                </div>
         </div>
-</div>
 
         <div class="mb-6">
             <h3 class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-4 mb-3">Atalhos Rápidos</h3>
@@ -1191,30 +1188,28 @@
 </div>
 </div>
 
-<div id="pagamentos-page-modal" class="page-modal fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
+<div id="pagamentos-page-modal" class="page-modal fixed inset-0 z-[80] flex items-end justify-center pointer-events-none">
     
-    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="window.fecharModalPagamentos()"></div>
-
-    <div id="tab-pagamentos-content" class="page-content fixed bottom-0 left-0 right-0 bg-[#09090b] rounded-t-[2rem] border-t border-[#27272a] transform translate-y-full transition-transform duration-300 flex flex-col h-[85vh] max-w-lg mx-auto shadow-2xl">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300" onclick="closePagamentosModal()"></div>
+    
+    <div id="tab-pagamentos-content" class="page-content w-full h-[85vh] bg-[#000] rounded-t-[2rem] border-t border-[#27272a] flex flex-col transform translate-y-full transition-transform duration-300 ease-out will-change-transform z-[90]">
         
-        <div class="w-full flex justify-center pt-4 pb-2" onclick="window.fecharModalPagamentos()">
-            <div class="w-12 h-1.5 bg-gray-700 rounded-full"></div>
+        <div class="flex flex-col items-center pt-3 pb-2 flex-shrink-0 cursor-pointer" onclick="closePagamentosModal()">
+            <div class="w-12 h-1.5 bg-gray-700 rounded-full mb-4"></div>
+            <div class="w-full px-6 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white tracking-tight">Próximos Pagamentos</h2>
+                <button class="p-2 bg-[#151515] rounded-full text-gray-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
         </div>
 
-        <div class="px-6 pb-4 border-b border-[#27272a] flex justify-between items-center bg-[#09090b]">
-            <div>
-                <h2 class="text-lg font-bold text-white tracking-tight">Próximos Pagamentos</h2>
-                <p class="text-xs text-gray-500 font-medium">Cronograma completo</p>
-            </div>
-            <button onclick="window.fecharModalPagamentos()" class="p-2 bg-[#151515] border border-[#27272a] rounded-full text-gray-400 hover:text-white transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+        <div class="flex-1 overflow-y-auto custom-scroll p-4 pb-20">
+            <div id="pagamentos-modal-lista" class="space-y-3">
+                </div>
         </div>
-
-        <div id="modal-lista-pagamentos" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll pb-10">
-            </div>
     </div>
 </div>
         

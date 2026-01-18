@@ -7540,51 +7540,74 @@ window.closePagamentosModal = function() {
     document.body.style.overflow = '';
 };
 
-// ======================================================
-// SWIPE GLOBAL DO DASHBOARD (Mudar para Carteira)
-// ======================================================
-document.addEventListener('DOMContentLoaded', () => {
-    const dashboardTab = document.getElementById('tab-dashboard');
-    
-    let touchStartX = 0;
-    let touchStartY = 0;
-    
-    if (!dashboardTab) return;
 
-    // Detecta o início do toque em QUALQUER lugar do dashboard
-    dashboardTab.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-        touchStartY = e.changedTouches[0].screenY;
-    }, { passive: true }); // 'passive: true' melhora a performance e não trava a tela
+// --- LISTENERS DO MODAL DE PAGAMENTOS (NOVO) ---
+    const pagamentosVoltarBtn = document.getElementById('pagamentos-voltar-btn');
+    // Obs: pagamentosPageModal e pagamentosPageContent já podem ter sido declarados se você copiou o código antigo, 
+    // mas por segurança redeclaramos ou usamos as referências existentes.
+    const modalPagamentosEl = document.getElementById('pagamentos-page-modal');
+    const contentPagamentosEl = document.getElementById('tab-pagamentos-content');
 
-    // Detecta o fim do toque
-    dashboardTab.addEventListener('touchend', (e) => {
-        const touchEndX = e.changedTouches[0].screenX;
-        const touchEndY = e.changedTouches[0].screenY;
-        
-        const diffX = touchStartX - touchEndX; // Positivo = Arrastou para Esquerda
-        const diffY = touchStartY - touchEndY;
+    let isDraggingPagamentos = false;
+    let touchStartPagamentosY = 0;
+    let touchMovePagamentosY = 0;
 
-        // LÓGICA DE DETECÇÃO:
-        // 1. Movimento deve ser predominantemente Horizontal (X > Y)
-        // 2. Deve percorrer uma distância mínima (40px é um bom balanço)
-        // 3. Deve ser da Direita para Esquerda (diffX > 0)
-        
-        if (diffX > 40 && Math.abs(diffX) > (Math.abs(diffY) * 0.5)) { 
-            console.log("Swipe Detectado: Indo para Carteira");
-            
-            // Tenta acionar a mudança de aba
-            if (typeof mudarAba === 'function') {
-                mudarAba('tab-carteira');
-            } 
-            else {
-                const btnCarteira = document.getElementById('btn-nav-carteira') || 
-                                    document.querySelector('[onclick*="tab-carteira"]');
-                if (btnCarteira) btnCarteira.click();
+    // Botão Voltar (X)
+    if (pagamentosVoltarBtn) {
+        pagamentosVoltarBtn.addEventListener('click', closePagamentosModal);
+    }
+
+    // Fechar ao clicar no fundo escuro
+    if (modalPagamentosEl) {
+        modalPagamentosEl.addEventListener('click', (e) => {
+            if (e.target === modalPagamentosEl) closePagamentosModal();
+        });
+    }
+
+    // Lógica de Swipe Down (Arrastar para fechar)
+    if (contentPagamentosEl) {
+        const scrollContainerPag = contentPagamentosEl.querySelector('.overflow-y-auto');
+
+        contentPagamentosEl.addEventListener('touchstart', (e) => {
+            if (scrollContainerPag && scrollContainerPag.scrollTop === 0) {
+                touchStartPagamentosY = e.touches[0].clientY;
+                touchMovePagamentosY = touchStartPagamentosY;
+                isDraggingPagamentos = true;
+                contentPagamentosEl.style.transition = 'none'; 
             }
-        } // <--- Esta chave fecha o IF (antes ela estava sobrando)
-    });
-});
+        }, { passive: true });
+
+        contentPagamentosEl.addEventListener('touchmove', (e) => {
+            if (!isDraggingPagamentos) return;
+            touchMovePagamentosY = e.touches[0].clientY;
+            const diff = touchMovePagamentosY - touchStartPagamentosY;
+            
+            // Só move se for para baixo (diff positivo)
+            if (diff > 0) {
+                if (e.cancelable) e.preventDefault(); 
+                contentPagamentosEl.style.transform = `translateY(${diff}px)`;
+            }
+        }, { passive: false });
+
+        contentPagamentosEl.addEventListener('touchend', (e) => {
+            if (!isDraggingPagamentos) return;
+            isDraggingPagamentos = false;
+            
+            const diff = touchMovePagamentosY - touchStartPagamentosY;
+            
+            // Restaura a transição suave
+            contentPagamentosEl.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            
+            // Se arrastou mais de 120px, fecha. Senão, volta ao topo.
+            if (diff > 120) {
+                closePagamentosModal();
+            } else {
+                contentPagamentosEl.style.transform = '';
+            }
+            touchStartPagamentosY = 0;
+            touchMovePagamentosY = 0;
+        });
+    }
 	
     await init();
 });

@@ -7542,60 +7542,53 @@ window.closePagamentosModal = function() {
     document.body.style.overflow = '';
 };
 
-// --- LÓGICA DE SWIPE NO DASHBOARD (Mudar Aba) ---
 // ======================================================
-// 3. SWIPE NO DASHBOARD (Mudar para Carteira) - OTIMIZADO
+// SWIPE GLOBAL DO DASHBOARD (Mudar para Carteira)
 // ======================================================
 document.addEventListener('DOMContentLoaded', () => {
-    const dashTab = document.getElementById('tab-dashboard');
+    const dashboardTab = document.getElementById('tab-dashboard');
     
-    // Variáveis de controle
     let touchStartX = 0;
     let touchStartY = 0;
-    let touchStartTime = 0;
+    
+    if (!dashboardTab) return;
 
-    if (dashTab) {
-        // Ao tocar na tela
-        dashTab.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-            touchStartTime = new Date().getTime(); // Marca o tempo inicial
-        }, { passive: true });
+    // Detecta o início do toque em QUALQUER lugar do dashboard
+    dashboardTab.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true }); // 'passive: true' melhora a performance e não trava a tela
 
-        // Ao soltar o dedo
-        dashTab.addEventListener('touchend', (e) => {
-            const touchEndX = e.changedTouches[0].screenX;
-            const touchEndY = e.changedTouches[0].screenY;
-            const touchEndTime = new Date().getTime();
+    // Detecta o fim do toque
+    dashboardTab.addEventListener('touchend', (e) => {
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
+        
+        const diffX = touchStartX - touchEndX; // Positivo = Arrastou para Esquerda
+        const diffY = touchStartY - touchEndY;
+
+        // LÓGICA DE DETECÇÃO:
+        // 1. Movimento deve ser predominantemente Horizontal (X > Y)
+        // 2. Deve percorrer uma distância mínima (40px é um bom balanço)
+        // 3. Deve ser da Direita para Esquerda (diffX > 0)
+        
+        if (Math.abs(diffX) > Math.abs(diffY) && diffX > 40) {
+            console.log("Swipe Detectado: Indo para Carteira");
             
-            const diffX = touchStartX - touchEndX; // Positivo = Swipe para Esquerda (Direita -> Esquerda)
-            const diffY = touchStartY - touchEndY;
-            const duration = touchEndTime - touchStartTime;
-
-            // REGRAS PARA O SWIPE FUNCIONAR:
-            // 1. Movimento Horizontal deve ser maior que o Vertical (Math.abs(diffX) > Math.abs(diffY))
-            // 2. Distância mínima de 50px (não pode ser um toque acidental)
-            // 3. Duração máxima de 800ms (tem que ser um gesto, não um arrasto lento)
-            
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 35 && duration < 600) {
-                
-                // Se o movimento for da Direita para a Esquerda (Indo para Carteira)
-                if (diffX > 0) {
-                    console.log("Swipe: Dashboard -> Carteira");
-                    
-                    // Tenta clicar no botão da carteira
-                    const btnCarteira = document.getElementById('btn-nav-carteira') || 
-                                        document.querySelector('button[onclick*="tab-carteira"]');
-                    
-                    if (btnCarteira) {
-                        btnCarteira.click();
-                    } else if (typeof mudarAba === 'function') {
-                        mudarAba('tab-carteira');
-                    }
-                }
+            // Tenta acionar a mudança de aba
+            // Opção 1: Via função global (se existir)
+            if (typeof mudarAba === 'function') {
+                mudarAba('tab-carteira');
+            } 
+            // Opção 2: Clicando no botão da navbar (Fallback seguro)
+            else {
+                // Tenta seletores comuns para o botão da carteira
+                const btnCarteira = document.getElementById('btn-nav-carteira') || 
+                                    document.querySelector('[onclick*="tab-carteira"]');
+                if (btnCarteira) btnCarteira.click();
             }
-        });
-    }
+        }
+    });
 });
 	
     await init();

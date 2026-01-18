@@ -3283,9 +3283,10 @@ function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // MUDANÇA: Usa a classe Grid em vez de Carrossel
+    // Define layout de Lista Estática (Grid)
     lista.className = 'payment-static-list'; 
 
+    // Verificações de segurança
     if (!proventosAtuais || proventosAtuais.length === 0) {
         container.classList.add('hidden');
         return;
@@ -3294,12 +3295,17 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra e Ordena
+    // 1. Filtra (Apenas futuros ou hoje + Ativos na carteira)
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
+        
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+        
+        // Se for passado (ontem pra trás), ignora
         if (dataPag < hoje) return false;
+
+        // Verifica se tenho o ativo
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
         return ativoNaCarteira && ativoNaCarteira.quantity > 0;
     }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
@@ -3312,9 +3318,7 @@ function renderizarTimelinePagamentos() {
     lista.innerHTML = '';
     const totalItems = pagamentosReais.length;
     
-    // LÓGICA DE EXIBIÇÃO:
-    // Se <= 3: Mostra todos
-    // Se > 3: Mostra 2 + Botão
+    // Regra de Exibição: Se > 3, mostra 2 e o botão "+X"
     let itemsToRender = [];
     let showMoreButton = false;
 
@@ -3325,29 +3329,42 @@ function renderizarTimelinePagamentos() {
         showMoreButton = true;
     }
 
-    // GERA OS CARDS (Layout Vertical Original)
+    // Renderiza os Cards
     itemsToRender.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        
         const dia = parts[2];
+        // Mês abreviado (JAN, FEV...)
         const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        // Dia da semana (SEG, TER...)
         const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
         
+        // Verifica se é HOJE
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        const isHoje = diffDays === 0;
+        const isHoje = diffDays === 0 || (dataObj.getTime() === hoje.getTime());
 
+        // Cálculos de valor
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
         const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
         const totalReceber = prov.value * qtd;
 
+        // Define classes e textos baseados no dia
         const classeHoje = isHoje ? 'is-today' : '';
         const textoHeader = isHoje ? 'HOJE' : mes;
 
         const item = document.createElement('div');
         item.className = `agenda-card ${classeHoje}`; 
-        item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
         
+        // Ao clicar, abre detalhes do ativo (ajuste conforme sua função global)
+        item.onclick = () => {
+             if(window.abrirDetalhesAtivo) window.abrirDetalhesAtivo(prov.symbol);
+        };
+        
+        // Formata dinheiro
+        const valorFormatado = totalReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
         item.innerHTML = `
             <div class="agenda-header">${textoHeader}</div>
             
@@ -3358,25 +3375,28 @@ function renderizarTimelinePagamentos() {
             
             <div class="agenda-footer">
                 <span class="agenda-ticker">${prov.symbol}</span>
-                <span class="agenda-value">+${formatBRL(totalReceber)}</span>
+                <span class="agenda-value">+${valorFormatado}</span>
             </div>
         `;
         lista.appendChild(item);
     });
 
-    // CRIA O BOTÃO "+X" NO TERCEIRO SLOT
+    // Renderiza Botão "Ver Todos" se necessário
     if (showMoreButton) {
         const remaining = totalItems - 2;
         const moreBtn = document.createElement('div');
         moreBtn.className = 'agenda-card more-card';
-        // ATENÇÃO: Certifique-se de que a função openPagamentosModal existe
-        moreBtn.onclick = () => openPagamentosModal(pagamentosReais); 
+        
+        // Garante que abre o modal de listagem completa
+        moreBtn.onclick = () => {
+            if(window.openPagamentosModal) window.openPagamentosModal(pagamentosReais);
+        }; 
         
         moreBtn.innerHTML = `
             <div class="agenda-body">
                 <span class="more-count">+${remaining}</span>
+                <span class="more-label">VER TODOS</span>
             </div>
-            <span class="more-label">VER TODOS</span>
         `;
         lista.appendChild(moreBtn);
     }

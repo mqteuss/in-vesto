@@ -1197,16 +1197,16 @@
 
     <div id="tab-pagamentos-content" class="page-content fixed bottom-0 left-0 right-0 bg-[#09090b] rounded-t-[2rem] border-t border-[#27272a] transform translate-y-full transition-transform duration-300 flex flex-col h-[85vh] max-w-lg mx-auto shadow-2xl">
         
-        <div id="pagamentos-drag-area" class="w-full flex justify-center pt-4 pb-2 cursor-grab active:cursor-grabbing touch-none" onclick="window.fecharModalPagamentos()">
+        <div class="w-full flex justify-center pt-4 pb-2" onclick="window.fecharModalPagamentos()">
             <div class="w-12 h-1.5 bg-gray-700 rounded-full"></div>
         </div>
 
         <div class="px-6 pb-4 border-b border-[#27272a] flex justify-between items-center bg-[#09090b]">
             <div>
                 <h2 class="text-lg font-bold text-white tracking-tight">Próximos Pagamentos</h2>
-                <p class="text-xs text-gray-500 font-medium">Cronograma de proventos futuros</p>
+                <p class="text-xs text-gray-500 font-medium">Cronograma completo</p>
             </div>
-            <button onclick="window.fecharModalPagamentos()" class="p-2 bg-[#151515] border border-[#27272a] rounded-full text-gray-400 hover:text-white transition-colors active:scale-95">
+            <button onclick="window.fecharModalPagamentos()" class="p-2 bg-[#151515] border border-[#27272a] rounded-full text-gray-400 hover:text-white transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>

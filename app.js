@@ -7572,22 +7572,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Deve percorrer uma distância mínima (40px é um bom balanço)
         // 3. Deve ser da Direita para Esquerda (diffX > 0)
         
-        if (diffX > 40 && Math.abs(diffX) > (Math.abs(diffY) * 0.5))
+        if (diffX > 40 && Math.abs(diffX) > (Math.abs(diffY) * 0.5)) { 
             console.log("Swipe Detectado: Indo para Carteira");
             
             // Tenta acionar a mudança de aba
-            // Opção 1: Via função global (se existir)
             if (typeof mudarAba === 'function') {
                 mudarAba('tab-carteira');
             } 
-            // Opção 2: Clicando no botão da navbar (Fallback seguro)
             else {
-                // Tenta seletores comuns para o botão da carteira
                 const btnCarteira = document.getElementById('btn-nav-carteira') || 
                                     document.querySelector('[onclick*="tab-carteira"]');
                 if (btnCarteira) btnCarteira.click();
             }
-        }
+        } // <--- Esta chave fecha o IF (antes ela estava sobrando)
     });
 });
 	

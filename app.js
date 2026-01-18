@@ -3278,14 +3278,14 @@ function renderizarGraficoPatrimonio(isRetry = false) {
 }
 
 // ======================================================
-// LÓGICA DE PAGAMENTOS: ESTÁTICO + MODAL (SEM SCROLL)
+// LÓGICA DE PAGAMENTOS: 2 CARDS + BOTÃO "VER MAIS"
 // ======================================================
 
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
 
-    // 1. Validação se tem dados
+    // 1. Validação
     if (!proventosAtuais || proventosAtuais.length === 0) {
         if (container) container.classList.add('hidden');
         return;
@@ -3294,7 +3294,7 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // 2. Filtra apenas pagamentos futuros/hoje e ordena
+    // 2. Filtra e Ordena
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
@@ -3303,7 +3303,7 @@ function renderizarTimelinePagamentos() {
         return ativoNaCarteira && ativoNaCarteira.quantity > 0 && dataPag >= hoje;
     }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
-    // Salva para o modal usar depois
+    // Salva globalmente
     window.pagamentosFuturosFiltrados = pagamentosReais;
 
     if (pagamentosReais.length === 0) {
@@ -3311,27 +3311,31 @@ function renderizarTimelinePagamentos() {
         return;
     }
 
-    // 3. CONFIGURAÇÃO ESTÁTICA (ZERO SCROLL)
-    // Removemos qualquer classe de scroll e forçamos o comportamento estático
-    lista.className = 'flex gap-3 px-4 justify-start items-start w-full overflow-hidden';
-    // O 'overflow-hidden' garante que o dedo NÃO tente rolar essa área,
-    // permitindo que o SWIPE DE ABAS funcione na área preta.
-
+    // 3. Configuração Visual da Lista Horizontal
+    lista.className = 'flex gap-3 px-4 justify-start items-start w-full overflow-hidden'; 
     lista.innerHTML = ''; 
 
-    // 4. Lógica: Mostrar no máximo 3 cards na tela
-    // Se tiver mais que 3, mostramos 2 pagamentos + 1 card de "Ver Mais"
-    const MAX_VISIBLE = 3;
+    // --- LÓGICA INTELIGENTE DE SLOTS ---
+    const MAX_SLOTS = 3; // Quantos "quadrados" cabem na tela
     const total = pagamentosReais.length;
-    const temMais = total > MAX_VISIBLE;
     
-    // Se tem mais que o limite, mostramos (MAX - 1) cards reais, para sobrar espaço pro botão
-    // Se não, mostramos tudo.
-    const qtdParaMostrar = temMais ? (MAX_VISIBLE - 1) : total;
-    const itensVisiveis = pagamentosReais.slice(0, qtdParaMostrar);
+    let itensParaMostrar = [];
+    let mostrarBotaoMais = false;
+    let countMais = 0;
 
-    // Renderiza os Cards Reais
-    itensVisiveis.forEach(prov => {
+    if (total <= MAX_SLOTS) {
+        // Se tem 1, 2 ou 3 pagamentos, mostra todos eles.
+        itensParaMostrar = pagamentosReais;
+    } else {
+        // Se tem 4 ou mais:
+        // Mostra 2 pagamentos reais e o 3º slot vira o botão "+X"
+        itensParaMostrar = pagamentosReais.slice(0, 2); 
+        mostrarBotaoMais = true;
+        countMais = total - 2;
+    }
+
+    // 4. Renderiza os Cards de Pagamento
+    itensParaMostrar.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
         const dia = parts[2];
@@ -3344,46 +3348,43 @@ function renderizarTimelinePagamentos() {
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         const isHoje = diffDays === 0;
-        
-        const styleBorder = isHoje ? 'border border-yellow-500/50' : 'border border-[#27272a]';
-        const styleHeader = isHoje ? 'bg-yellow-500 text-black' : 'bg-[#27272a] text-gray-400';
+
+        const borderClass = isHoje ? 'border-yellow-500/50 shadow-[0_0_12px_rgba(234,179,8,0.2)]' : 'border-[#27272a]';
+        const headerBg = isHoje ? 'bg-yellow-500' : 'bg-[#27272a]';
+        const headerText = isHoje ? 'text-black' : 'text-gray-400';
+        const dateColor = isHoje ? 'text-yellow-400' : 'text-white';
 
         const card = document.createElement('div');
-        // Tamanho fixo para garantir alinhamento
-        card.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#151515] rounded-2xl flex flex-col overflow-hidden ${styleBorder} relative z-10`;
+        // Tamanho fixo calibrado para telas móveis
+        card.className = `flex-shrink-0 w-[30%] max-w-[110px] h-[125px] bg-[#151515] rounded-2xl flex flex-col overflow-hidden border ${borderClass} relative z-10 active:scale-95 transition-transform`;
         
         card.innerHTML = `
-            <div class="w-full py-1.5 text-[10px] font-bold text-center uppercase ${styleHeader}">
+            <div class="w-full py-1.5 text-[9px] font-extrabold text-center uppercase ${headerBg} ${headerText} tracking-wider">
                 ${isHoje ? 'HOJE' : mes}
             </div>
-            <div class="flex-1 flex flex-col items-center justify-center -mt-1">
-                <span class="text-2xl font-bold text-white tracking-tighter">${dia}</span>
-                <span class="text-[10px] text-gray-500 font-bold mt-1">${prov.symbol}</span>
+            <div class="flex-1 flex flex-col items-center justify-center -mt-1 gap-0.5">
+                <span class="text-2xl font-bold ${dateColor} tracking-tighter leading-none">${dia}</span>
+                <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider bg-[#1C1C1E] px-1.5 py-0.5 rounded border border-[#27272a] mt-1">${prov.symbol}</span>
             </div>
-            <div class="w-full py-2 bg-[#1C1C1E] border-t border-[#27272a] text-center">
-                <span class="text-xs font-bold text-green-400">+${formatBRL(totalReceber)}</span>
+            <div class="w-full py-2 bg-[#1C1C1E] border-t border-[#27272a] text-center flex items-center justify-center">
+                <span class="text-[11px] font-bold text-green-400 tracking-tight">+${formatBRL(totalReceber)}</span>
             </div>
         `;
         
-        // Abre detalhes do ativo
-        if(window.abrirDetalhesAtivo) {
-             card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
-        }
+        card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
         lista.appendChild(card);
     });
 
-    // 5. Renderiza o Card "Ver Mais" (+X) se necessário
-    if (temMais) {
-        const restantes = total - qtdParaMostrar;
+    // 5. Renderiza o Botão "+X" (Se necessário)
+    if (mostrarBotaoMais) {
         const moreCard = document.createElement('div');
-        moreCard.className = `flex-shrink-0 w-[105px] h-[125px] bg-[#1C1C1E] rounded-2xl flex flex-col items-center justify-center border border-[#27272a] cursor-pointer hover:bg-[#27272a] transition-colors active:scale-95 relative z-10`;
+        moreCard.className = `flex-shrink-0 w-[30%] max-w-[110px] h-[125px] bg-[#1C1C1E] rounded-2xl flex flex-col items-center justify-center border border-[#27272a] cursor-pointer hover:bg-[#27272a] transition-colors active:scale-95 relative z-10 group`;
         
         moreCard.innerHTML = `
-            <div class="w-10 h-10 rounded-full bg-[#27272a] flex items-center justify-center mb-2 text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            <div class="w-10 h-10 rounded-full bg-[#252525] border border-[#333] flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-lg">
+                <span class="text-sm font-bold text-white">+${countMais}</span>
             </div>
-            <span class="text-lg font-bold text-white">+${restantes}</span>
-            <span class="text-[10px] text-gray-500 uppercase font-bold mt-1">Ver todos</span>
+            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Ver Todos</span>
         `;
         
         moreCard.onclick = () => window.abrirModalPagamentos();
@@ -3393,9 +3394,7 @@ function renderizarTimelinePagamentos() {
     if (container) container.classList.remove('hidden');
 }
 
-// ======================================================
-// FUNÇÕES GLOBAIS DO MODAL (CORREÇÃO DE ESCOPO)
-// ======================================================
+// --- FUNÇÕES DO MODAL (ESTILO GAVETA/SHEET) ---
 
 window.abrirModalPagamentos = function() {
     const modal = document.getElementById('pagamentos-page-modal');
@@ -3403,65 +3402,122 @@ window.abrirModalPagamentos = function() {
     const listaContainer = document.getElementById('modal-lista-pagamentos');
     const pagamentos = window.pagamentosFuturosFiltrados || [];
     
+    // Renderiza Lista
     if(listaContainer) {
         listaContainer.innerHTML = '';
+        
         if (pagamentos.length === 0) {
-            listaContainer.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhum pagamento encontrado.</p>';
+            listaContainer.innerHTML = '<div class="flex flex-col items-center justify-center h-40 opacity-50"><p class="text-xs text-gray-400">Nenhum pagamento futuro.</p></div>';
         } else {
             pagamentos.forEach(prov => {
                 const parts = prov.paymentDate.split('-');
                 const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
                 const dia = parts[2];
                 const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-                const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' });
+                const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'long' }).split('-')[0];
+                
                 const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
                 const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
                 const totalReceber = prov.value * qtd;
 
+                // Card Estilizado na Lista
                 const itemHTML = `
-                    <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a]">
+                    <div class="flex items-center justify-between p-4 bg-[#151515] rounded-2xl border border-[#27272a] active:scale-[0.98] transition-transform">
                         <div class="flex items-center gap-4">
-                            <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333]">
-                                <span class="text-xs font-bold text-gray-400 uppercase">${mes}</span>
+                            <div class="flex flex-col items-center justify-center w-12 h-12 bg-[#1C1C1E] rounded-xl border border-[#333] shadow-sm">
+                                <span class="text-[9px] font-bold text-gray-500 uppercase leading-none mb-0.5">${mes}</span>
                                 <span class="text-lg font-bold text-white leading-none">${dia}</span>
                             </div>
                             <div>
-                                <span class="block text-sm font-bold text-white">${prov.symbol}</span>
-                                <span class="text-xs text-gray-500 capitalize">${diaSemana}</span>
+                                <div class="flex items-center gap-2 mb-0.5">
+                                    <span class="text-sm font-bold text-white tracking-tight">${prov.symbol}</span>
+                                    <span class="text-[10px] px-1.5 py-0.5 bg-[#222] rounded text-gray-400 border border-[#333] capitalize">${diaSemana}</span>
+                                </div>
+                                <span class="text-xs text-gray-500">${qtd} cotas • ${formatBRL(prov.value)}</span>
                             </div>
                         </div>
                         <div class="text-right">
-                            <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
+                            <span class="block text-base font-bold text-green-400 tracking-tight">+${formatBRL(totalReceber)}</span>
                         </div>
                     </div>`;
-                listaContainer.innerHTML += itemHTML;
+                listaContainer.insertAdjacentHTML('beforeend', itemHTML);
             });
         }
     }
 
+    // Animação de Entrada
     if (modal && content) {
-        modal.classList.add('visible');
-        content.classList.remove('translate-y-full');
+        modal.classList.remove('hidden');
+        // Pequeno delay para permitir que o navegador renderize o display:block antes da opacidade
+        requestAnimationFrame(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('translate-y-full');
+        });
+        document.body.style.overflow = 'hidden'; // Trava fundo
     }
 };
 
 window.fecharModalPagamentos = function() {
     const modal = document.getElementById('pagamentos-page-modal');
     const content = document.getElementById('tab-pagamentos-content');
+    
     if (modal && content) {
-        content.classList.add('translate-y-full');
-        setTimeout(() => { modal.classList.remove('visible'); }, 300);
+        content.classList.add('translate-y-full'); // Desce a gaveta
+        modal.classList.add('opacity-0'); // Fade out no fundo
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.style.overflow = ''; // Destrava fundo
+        }, 300); // Espera a animação CSS terminar
     }
 };
 
-// Listener único para fechar ao clicar fora
-const modalBackdrop = document.getElementById('pagamentos-page-modal');
-if (modalBackdrop) {
-    // Removemos listeners antigos clonando o elemento (truque rápido) ou apenas adicionamos um novo se não houver conflito.
-    // Como estamos substituindo o código, basta adicionar o evento.
-    modalBackdrop.onclick = (e) => {
-        if (e.target === modalBackdrop) window.fecharModalPagamentos();
-    };
+// --- SWIPE DOWN PARA FECHAR (Igual Detalhes/Patrimônio) ---
+const modalPagamentosContent = document.getElementById('tab-pagamentos-content');
+if (modalPagamentosContent) {
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+    // Drag Area específica no header para facilitar
+    const dragArea = document.getElementById('pagamentos-drag-area'); 
+    const scrollArea = modalPagamentosContent.querySelector('.overflow-y-auto');
+
+    modalPagamentosContent.addEventListener('touchstart', (e) => {
+        // Se o scroll não estiver no topo, não permite arrastar para fechar (para poder dar scroll na lista)
+        if (scrollArea && scrollArea.scrollTop > 0) return;
+
+        startY = e.touches[0].clientY;
+        currentY = startY;
+        isDragging = true;
+        modalPagamentosContent.style.transition = 'none';
+    }, { passive: true });
+
+    modalPagamentosContent.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentY = e.touches[0].clientY;
+        const diff = currentY - startY;
+
+        // Só move se for para baixo (positivo)
+        if (diff > 0) {
+            if (e.cancelable) e.preventDefault();
+            modalPagamentosContent.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false });
+
+    modalPagamentosContent.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        const diff = currentY - startY;
+
+        modalPagamentosContent.style.transition = 'transform 0.3s ease-out';
+        
+        if (diff > 120) { // Se arrastou mais de 120px
+            window.fecharModalPagamentos();
+        } else {
+            modalPagamentosContent.style.transform = ''; // Volta pro lugar
+        }
+        startY = 0; currentY = 0;
+    });
 }
 
 // Adicione isto ao seu app.js para habilitar o swipe na área de Pagamentos

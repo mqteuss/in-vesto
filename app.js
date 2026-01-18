@@ -3281,7 +3281,7 @@ function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // Define a classe para usar o CSS de Grid
+    // Aplica a classe que define o Flexbox
     lista.className = 'payment-static-list'; 
     
     if (!proventosAtuais || proventosAtuais.length === 0) {
@@ -3292,14 +3292,15 @@ function renderizarTimelinePagamentos() {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // Filtra e Ordena
+    // Filtra (apenas futuros) e Ordena
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
         if (dataPag < hoje) return false;
-        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
-        return ativoNaCarteira && ativoNaCarteira.quantity > 0;
+        
+        const ativo = carteiraCalculada.find(c => c.symbol === p.symbol);
+        return ativo && ativo.quantity > 0;
     }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
     if (pagamentosReais.length === 0) {
@@ -3310,7 +3311,7 @@ function renderizarTimelinePagamentos() {
     lista.innerHTML = '';
     const totalItems = pagamentosReais.length;
     
-    // Lógica: Se <= 3 mostra tudo, se > 3 mostra 2 cards + botão
+    // REGRA: Se <= 3 exibe tudo. Se > 3, exibe 2 cards + botão "+X"
     let itemsToRender = [];
     let showMoreButton = false;
 
@@ -3321,31 +3322,30 @@ function renderizarTimelinePagamentos() {
         showMoreButton = true;
     }
 
-    // Renderiza Cards Normais
+    // --- CRIAÇÃO DOS CARDS NORMAIS ---
     itemsToRender.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-        const dia = parts[2];
-        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
         
-        const diffTime = Math.abs(dataObj - hoje);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        const isHoje = diffDays === 0;
+        const dia = parts[2];
+        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.','').toUpperCase();
+        const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.','').toUpperCase();
+        
+        const isHoje = dataObj.toDateString() === hoje.toDateString();
+        
+        const ativo = carteiraCalculada.find(c => c.symbol === prov.symbol);
+        const totalReceber = prov.value * (ativo ? ativo.quantity : 0);
 
-        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-        const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-        const totalReceber = prov.value * qtd;
-
+        // Classes condicionais
         const classeHoje = isHoje ? 'is-today' : '';
         const textoHeader = isHoje ? 'HOJE' : mes;
 
-        const item = document.createElement('div');
-        item.className = `agenda-card ${classeHoje}`; // Usa a classe do CSS novo
-        item.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
-        
-        // Estrutura vertical limpa
-        item.innerHTML = `
+        const card = document.createElement('div');
+        card.className = `agenda-card ${classeHoje}`; // Usa seu CSS
+        card.onclick = () => window.abrirDetalhesAtivo(prov.symbol);
+
+        // Estrutura HTML exata para o seu CSS
+        card.innerHTML = `
             <div class="agenda-header">${textoHeader}</div>
             <div class="agenda-body">
                 <span class="agenda-day">${dia}</span>
@@ -3356,20 +3356,20 @@ function renderizarTimelinePagamentos() {
                 <span class="agenda-value">+${formatBRL(totalReceber)}</span>
             </div>
         `;
-        lista.appendChild(item);
+        lista.appendChild(card);
     });
 
-    // Card "+X" (se necessário)
+    // --- CRIAÇÃO DO BOTÃO "+X" (More Card) ---
     if (showMoreButton) {
         const remaining = totalItems - 2;
         const moreBtn = document.createElement('div');
         moreBtn.className = 'agenda-card more-card';
-        moreBtn.onclick = () => openPagamentosModal(pagamentosReais); // Abre o modal criado anteriormente
+        moreBtn.onclick = () => openPagamentosModal(pagamentosReais); // Chama o Modal
         
         moreBtn.innerHTML = `
             <div class="agenda-body">
                 <span class="more-count">+${remaining}</span>
-                <span class="more-label">Ver Mais</span>
+                <span class="more-label">Ver mais</span>
             </div>
         `;
         lista.appendChild(moreBtn);
@@ -7555,10 +7555,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const diffX = touchStartX - touchEndX;
             const diffY = touchStartY - touchEndY;
 
-            // Lógica:
-            // 1. O movimento deve ser horizontal (diffX > diffY)
-            // 2. Deve ser da direita para esquerda (diffX > 0)
-            // 3. Deve ter uma distância mínima (ex: 60px)
             if (Math.abs(diffX) > Math.abs(diffY) && diffX > 60) {
                 console.log("Swipe Left detectado no Dashboard -> Indo para Carteira");
                 

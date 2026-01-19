@@ -7501,54 +7501,112 @@ document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
 
-// --- LÓGICA DO NOVO MODAL DE PAGAMENTOS ---
 function openPagamentosModal(todosPagamentos) {
     const modal = document.getElementById('pagamentos-page-modal');
     const content = document.getElementById('tab-pagamentos-content');
     const listaEl = document.getElementById('pagamentos-modal-lista');
+    const totalEl = document.getElementById('agenda-total-modal'); // Novo elemento de total
 
     if (!modal || !content) return;
 
-    // Popula a lista do modal (estilo Lista, não Cards quadrados)
     if (listaEl && todosPagamentos) {
         listaEl.innerHTML = '';
-        const hoje = new Date(); hoje.setHours(0,0,0,0);
-
-        todosPagamentos.forEach(prov => {
-            const parts = prov.paymentDate.split('-');
+        
+        // 1. Calcular Total Geral dos itens listados
+        let totalGeral = 0;
+        
+        // Adiciona dados calculados (Total e Data JS) para facilitar
+        const dadosCalculados = todosPagamentos.map(p => {
+            const parts = p.paymentDate.split('-');
             const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-            const dia = parts[2];
-            const mesExtenso = dataObj.toLocaleString('pt-BR', { month: 'long' });
             
-            const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
-            const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
-            const totalReceber = prov.value * qtd;
+            // Busca qtd na carteira global
+            const ativo = carteiraCalculada.find(c => c.symbol === p.symbol);
+            const qtd = ativo ? ativo.quantity : 0;
+            const valorTotal = p.value * qtd;
+            
+            totalGeral += valorTotal;
+            
+            return {
+                ...p,
+                dataObj: dataObj,
+                valorTotalCalculado: valorTotal,
+                qtdCarteira: qtd
+            };
+        });
 
-            // HTML da linha da lista (estilo similar ao histórico)
-            const row = `
-                <div class="flex items-center justify-between p-3 bg-[#151515] rounded-xl border border-[#27272a]">
-                    <div class="flex items-center gap-3">
-                        <div class="flex flex-col items-center justify-center w-10 h-10 bg-[#222] rounded-lg border border-[#333]">
-                            <span class="text-xs font-bold text-white">${dia}</span>
-                        </div>
-                        <div>
-                            <span class="block text-sm font-bold text-white">${prov.symbol}</span>
-                            <span class="text-[10px] text-gray-500 capitalize">${mesExtenso} • ${qtd} cotas</span>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="block text-sm font-bold text-green-400">+${formatBRL(totalReceber)}</span>
-                        <span class="text-[10px] text-gray-500">${prov.type || 'REND'}</span>
-                    </div>
-                </div>
+        // Atualiza o display do Total
+        if (totalEl) {
+            totalEl.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // 2. Agrupar por Mês (Ex: "Fevereiro 2026")
+        const grupos = {};
+        dadosCalculados.forEach(item => {
+            const mesAno = item.dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            const chave = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
+            if (!grupos[chave]) grupos[chave] = [];
+            grupos[chave].push(item);
+        });
+
+        // 3. Renderizar Grupos
+        Object.keys(grupos).forEach(mes => {
+            const itensMes = grupos[mes];
+
+            // Título do Mês
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = `
+                <h3 class="text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-3 pl-2 border-l-2 border-[#27272a]">
+                    ${mes}
+                </h3>
+                <div class="space-y-2 lista-do-mes"></div>
             `;
-            listaEl.insertAdjacentHTML('beforeend', row);
+            const containerMes = wrapper.querySelector('.lista-do-mes');
+
+            // Renderizar Cards
+            itensMes.forEach(prov => {
+                const dia = prov.dataObj.getDate().toString().padStart(2, '0');
+                const sem = prov.dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+                const isJCP = prov.type && prov.type.toUpperCase().includes('JCP');
+                
+                const card = document.createElement('div');
+                card.className = "flex items-center gap-3 bg-[#121212] p-3 rounded-xl border border-[#27272a] hover:border-[#3f3f46] transition-colors relative overflow-hidden group";
+                
+                card.innerHTML = `
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#27272a] group-hover:bg-[#4ade80] transition-colors"></div>
+
+                    <div class="flex flex-col items-center justify-center w-10 h-10 bg-[#18181b] rounded-lg border border-[#27272a] shrink-0 ml-1">
+                        <span class="text-sm font-bold text-white leading-none">${dia}</span>
+                        <span class="text-[8px] font-bold text-[#525252] uppercase mt-px">${sem}</span>
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-white tracking-wide">${prov.symbol}</span>
+                            ${isJCP ? '<span class="text-[8px] font-bold text-[#71717a] border border-[#27272a] px-1 rounded">JCP</span>' : ''}
+                        </div>
+                        <p class="text-[10px] text-[#71717a] truncate">
+                            ${prov.qtdCarteira} cotas • Pagamento confirmado
+                        </p>
+                    </div>
+
+                    <div class="text-right">
+                        <span class="text-sm font-bold text-[#4ade80]">
+                            ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                    </div>
+                `;
+                containerMes.appendChild(card);
+            });
+
+            listaEl.appendChild(wrapper);
         });
     }
 
+    // Exibir Modal (Lógica original mantida)
     modal.classList.add('visible');
     content.classList.remove('closing');
-    content.style.transform = ''; // Reseta posição
+    content.style.transform = ''; 
     document.body.style.overflow = 'hidden';
 }
 

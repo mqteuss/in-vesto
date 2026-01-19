@@ -7611,68 +7611,102 @@ window.closePagamentosModal = function() {
 };
 
 // 3. Lógica de Swipe Down (Arrastar para fechar)
+// 3. Inicialização dos Eventos (Swipe e Botões)
 document.addEventListener('DOMContentLoaded', () => {
-    const contentPagamentosRef = document.getElementById('tab-pagamentos-content');
     
+    const modalPagamentosRef = document.getElementById('pagamentos-page-modal');
+    const contentPagamentosRef = document.getElementById('tab-pagamentos-content');
+    const btnVoltarPagamentos = document.getElementById('pagamentos-voltar-btn');
+
+    // Listener Botão Voltar (Click)
+    if (btnVoltarPagamentos) {
+        btnVoltarPagamentos.addEventListener('click', closePagamentosModal);
+    }
+
+    // Listener Clique no Fundo (Backdrop)
+    if (modalPagamentosRef) {
+        modalPagamentosRef.addEventListener('click', (e) => {
+            if (e.target === modalPagamentosRef) closePagamentosModal();
+        });
+    }
+
+    // --- LÓGICA DE ARRASTAR (SWIPE DOWN) REFINADA ---
     if (contentPagamentosRef) {
-        let isDragging = false;
-        let startY = 0;
-        let currentY = 0;
-        const scrollContainer = contentPagamentosRef.querySelector('.overflow-y-auto');
+        let isDraggingPagamentos = false;
+        let touchStartPagamentosY = 0;
+        let touchMovePagamentosY = 0;
+        
+        // Busca a lista rolável (pode ser null se o HTML mudou, trataremos isso)
+        const scrollContainerPag = contentPagamentosRef.querySelector('.overflow-y-auto');
 
         contentPagamentosRef.addEventListener('touchstart', (e) => {
-            if (scrollContainer && scrollContainer.scrollTop === 0) {
-                startY = e.touches[0].clientY;
-                currentY = startY;
-                isDragging = true;
-                contentPagamentosRef.style.transition = 'none'; 
+            // 1. Verifica se clicou no Cabeçalho (onde tem a classe 'sticky')
+            const isHeader = e.target.closest('.sticky');
+            
+            // 2. Verifica se a lista está no topo (ou se não existe lista)
+            const isListAtTop = !scrollContainerPag || scrollContainerPag.scrollTop === 0;
+
+            // REGRA: Permite arrastar se for no Cabeçalho OU se a lista estiver no topo
+            if (isHeader || isListAtTop) {
+                touchStartPagamentosY = e.touches[0].clientY;
+                touchMovePagamentosY = touchStartPagamentosY;
+                isDraggingPagamentos = true;
+                contentPagamentosRef.style.transition = 'none'; // Remove animação para seguir o dedo
             }
         }, { passive: true });
 
         contentPagamentosRef.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            currentY = e.touches[0].clientY;
-            const diff = currentY - startY;
+            if (!isDraggingPagamentos) return;
             
+            touchMovePagamentosY = e.touches[0].clientY;
+            const diff = touchMovePagamentosY - touchStartPagamentosY;
+            
+            // Só move visualmente se for para baixo (positivo)
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
+                if (e.cancelable) e.preventDefault(); // Impede o navegador de atualizar a página
                 contentPagamentosRef.style.transform = `translateY(${diff}px)`;
             }
         }, { passive: false });
 
-        contentPagamentosRef.addEventListener('touchend', () => {
-            if (!isDragging) return;
-            isDragging = false;
-            const diff = currentY - startY;
+        contentPagamentosRef.addEventListener('touchend', (e) => {
+            if (!isDraggingPagamentos) return;
+            isDraggingPagamentos = false;
             
+            const diff = touchMovePagamentosY - touchStartPagamentosY;
+            
+            // Restaura a transição suave do CSS
             contentPagamentosRef.style.transition = 'transform 0.3s ease-out';
 
-            if (diff > 100) {
-                // FECHAR
-                contentPagamentosRef.style.transform = 'translateY(100%)';
-                const modal = document.getElementById('pagamentos-page-modal');
-                if(modal) {
-                    modal.style.transition = 'opacity 0.3s ease-out';
-                    modal.style.opacity = '0';
+            if (diff > 120) { // Se arrastou mais de 120px
+                // --- FECHAR ---
+                contentPagamentosRef.style.transform = 'translateY(100%)'; // Desce tudo
+                
+                if(modalPagamentosRef) {
+                    modalPagamentosRef.style.transition = 'opacity 0.3s ease-out';
+                    modalPagamentosRef.style.opacity = '0'; // Apaga o fundo
                 }
+
                 setTimeout(() => {
                     closePagamentosModal();
-                    // Reset visual para próxima abertura
+                    // Limpa sujeira de estilos inline para a próxima vez
                     contentPagamentosRef.style.transform = '';
                     contentPagamentosRef.style.transition = '';
-                    if(modal) {
-                        modal.style.transition = '';
-                        modal.style.opacity = '';
+                    if(modalPagamentosRef) {
+                        modalPagamentosRef.style.transition = '';
+                        modalPagamentosRef.style.opacity = '';
                     }
                 }, 300);
             } else {
-                // VOLTAR (Bounce)
+                // --- CANCELAR (BOUNCE BACK) ---
                 contentPagamentosRef.style.transform = 'translateY(0)';
                 setTimeout(() => {
                     contentPagamentosRef.style.transition = '';
                     contentPagamentosRef.style.transform = '';
                 }, 300);
             }
+            
+            touchStartPagamentosY = 0;
+            touchMovePagamentosY = 0;
         });
     }
 });

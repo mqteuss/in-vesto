@@ -7501,11 +7501,6 @@ document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
 
-// =========================================================
-//  LÓGICA DO MODAL DE AGENDA - VERSÃO CORRIGIDA (GLOBAL)
-// =========================================================
-
-// 1. Função de Abrir
 function openPagamentosModal(todosPagamentos) {
     const modal = document.getElementById('pagamentos-page-modal');
     const content = document.getElementById('tab-pagamentos-content');
@@ -7517,25 +7512,23 @@ function openPagamentosModal(todosPagamentos) {
     if (listaEl && todosPagamentos) {
         listaEl.innerHTML = '';
         
+        // 1. Cálculos
         let totalGeral = 0;
         const dadosCalculados = todosPagamentos.map(p => {
             const parts = p.paymentDate.split('-');
             const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-            const ativo = (typeof carteiraCalculada !== 'undefined') 
-                ? carteiraCalculada.find(c => c.symbol === p.symbol) 
-                : { quantity: 0 };
+            const ativo = carteiraCalculada.find(c => c.symbol === p.symbol);
             const qtd = ativo ? ativo.quantity : 0;
             const valorTotal = p.value * qtd;
-            if (valorTotal > 0) totalGeral += valorTotal;
+            totalGeral += valorTotal;
             return { ...p, dataObj, valorTotalCalculado: valorTotal, qtdCarteira: qtd };
-        }).filter(item => item.valorTotalCalculado > 0);
+        });
 
-        if (totalEl) totalEl.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-        if (dadosCalculados.length === 0) {
-            listaEl.innerHTML = '<div class="text-center py-10 text-gray-500 text-xs">Sem pagamentos previstos.</div>';
+        if (totalEl) {
+            totalEl.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
+        // 2. Agrupamento
         const grupos = {};
         dadosCalculados.forEach(item => {
             const mesAno = item.dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -7544,156 +7537,182 @@ function openPagamentosModal(todosPagamentos) {
             grupos[chave].push(item);
         });
 
+        // 3. Renderização (Estilo Lista/Ledger)
         Object.keys(grupos).forEach((mes) => {
             const itensMes = grupos[mes];
+
+            // Cabeçalho do Mês (Sticky visualmente limpo)
             const wrapper = document.createElement('div');
             wrapper.innerHTML = `
-                <div class="flex items-center gap-3 mb-2 pl-2 mt-4">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#3f3f46]"></span>
-                    <h3 class="text-xs font-bold text-[#71717a] uppercase tracking-widest">${mes}</h3>
+                <div class="sticky top-0 bg-[#09090b]/95 backdrop-blur px-6 py-2 border-y border-[#27272a] flex justify-between items-center z-10">
+                    <span class="text-xs font-bold text-[#e4e4e7] uppercase tracking-widest">${mes}</span>
+                    <span class="text-[10px] text-[#525252] font-mono">${itensMes.length} pagamentos</span>
                 </div>
-                <div class="space-y-1 lista-do-mes"></div>
-            `;
-            const containerMes = wrapper.querySelector('.lista-do-mes');
+                <div class="divide-y divide-[#1f1f22] px-6"></div> `;
+            const containerMes = wrapper.querySelector('.divide-y');
 
             itensMes.forEach(prov => {
                 const dia = prov.dataObj.getDate().toString().padStart(2, '0');
                 const sem = prov.dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
                 const isJCP = prov.type && prov.type.toUpperCase().includes('JCP');
-                const corBarra = isJCP ? 'bg-amber-500' : 'bg-[#4ade80]'; 
-                const corTextoValor = isJCP ? 'text-[#fbbf24]' : 'text-[#4ade80]';
-                const tipoTexto = isJCP ? 'JCP' : 'Dividendos';
+                
+                // Tipo discreto (Texto puro, sem badges coloridos chamativos)
+                const tipoLabel = isJCP ? 'JCP' : 'DIV';
 
-                const card = document.createElement('div');
-                card.className = "relative flex items-center bg-[#141414] rounded-xl overflow-hidden mb-1";
-                card.innerHTML = `
-                    <div class="absolute left-0 top-0 bottom-0 w-1 ${corBarra}"></div>
-                    <div class="flex items-center w-full p-3 pl-4">
-                        <div class="flex flex-col items-center justify-center pr-4 border-r border-[#27272a]">
-                            <span class="text-lg font-bold text-white leading-none tracking-tight">${dia}</span>
-                            <span class="text-[9px] font-bold text-[#525252] uppercase mt-0.5">${sem}</span>
+                const item = document.createElement('div');
+                // Layout Flex: Data Esq | Info Meio | Valor Dir
+                item.className = "flex items-center py-4 group"; 
+                
+                item.innerHTML = `
+                    <div class="flex flex-col items-center w-10 shrink-0 mr-4">
+                        <span class="text-lg font-medium text-white leading-none">${dia}</span>
+                        <span class="text-[9px] text-[#525252] uppercase mt-1 font-bold">${sem}</span>
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-sm font-bold text-[#e4e4e7]">${prov.symbol}</span>
+                            <span class="text-[9px] text-[#525252] font-bold border border-[#27272a] px-1 rounded">${tipoLabel}</span>
                         </div>
-                        <div class="flex-1 min-w-0 pl-4">
-                            <div class="flex items-center gap-2 mb-0.5"><span class="text-sm font-bold text-white tracking-wide">${prov.symbol}</span></div>
-                            <p class="text-[10px] text-[#a1a1aa] font-medium truncate">${prov.qtdCarteira} cotas • ${tipoTexto}</p>
-                        </div>
-                        <div class="text-right pr-1">
-                            <span class="block text-sm font-bold ${corTextoValor} tabular-nums tracking-tight">${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                        </div>
+                        <p class="text-[11px] text-[#71717a] mt-0.5 truncate">
+                            ${prov.qtdCarteira} cotas
+                        </p>
+                    </div>
+
+                    <div class="text-right pl-2">
+                        <span class="block text-sm font-bold text-[#4ade80] tabular-nums tracking-tight">
+                            ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                        <span class="text-[9px] text-[#525252] flex justify-end items-center gap-1 mt-0.5">
+                            <span class="w-1 h-1 rounded-full bg-[#4ade80]"></span> Previsto
+                        </span>
                     </div>
                 `;
-                containerMes.appendChild(card);
+                containerMes.appendChild(item);
             });
+
             listaEl.appendChild(wrapper);
         });
     }
 
-    modal.classList.remove('hidden');
-    requestAnimationFrame(() => {
-        modal.classList.add('visible');
-        content.style.transform = ''; 
-    });
+    modal.classList.add('visible');
+    content.classList.remove('closing');
+    content.style.transform = ''; 
     document.body.style.overflow = 'hidden';
 }
 
-// 2. Função de Fechar (GLOBAL)
-// O window. garante que o onclick no HTML encontre essa função
 window.closePagamentosModal = function() {
     const modal = document.getElementById('pagamentos-page-modal');
-    if (!modal) return;
+    const content = document.getElementById('tab-pagamentos-content');
+    if (!modal || !content) return;
 
-    modal.classList.remove('visible'); // Inicia a saída (CSS transition)
-    
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
-    }, 300);
+    content.classList.add('closing');
+    modal.classList.remove('visible');
+    document.body.style.overflow = '';
 };
 
-// 3. Lógica de Swipe Down (Arrastar para fechar)
-// --- LÓGICA DE SWIPE DOWN (PAGAMENTOS) - IDÊNTICA AO DETALHES ---
-document.addEventListener('DOMContentLoaded', () => {
+
+// --- LÓGICA DE SWIPE DOWN PARA PAGAMENTOS (CORRIGIDO) ---
     
-    // Variáveis de controle específicas para este modal
+    const modalPagamentosRef = document.getElementById('pagamentos-page-modal');
+    const contentPagamentosRef = document.getElementById('tab-pagamentos-content');
+    const btnVoltarPagamentos = document.getElementById('pagamentos-voltar-btn');
+
     let isDraggingPagamentos = false;
     let touchStartPagamentosY = 0;
     let touchMovePagamentosY = 0;
 
-    const modalPagamentosRef = document.getElementById('pagamentos-page-modal');
-    const contentPagamentosRef = document.getElementById('tab-pagamentos-content');
-    const scrollPagamentosRef = document.getElementById('pagamentos-conteudo-scroll'); // O ID que adicionamos no HTML
+    // 1. Fechar ao clicar no botão "X"
+    if (btnVoltarPagamentos) {
+        btnVoltarPagamentos.addEventListener('click', closePagamentosModal);
+    }
 
-    // Se por acaso os elementos não existirem, para a execução para não dar erro
-    if (!contentPagamentosRef) return;
+    // 2. Fechar ao clicar no fundo escuro
+    if (modalPagamentosRef) {
+        modalPagamentosRef.addEventListener('click', (e) => {
+            if (e.target === modalPagamentosRef) closePagamentosModal();
+        });
+    }
 
-    // 1. TOUCH START
-    contentPagamentosRef.addEventListener('touchstart', (e) => {
-        // Se a lista de scroll estiver no topo (scrollTop === 0), iniciamos o arrasto.
-        // Se a lista nem existir (ainda não carregou), assumimos que está no topo.
-        if (!scrollPagamentosRef || scrollPagamentosRef.scrollTop === 0) {
-            touchStartPagamentosY = e.touches[0].clientY;
-            touchMovePagamentosY = touchStartPagamentosY;
-            isDraggingPagamentos = true;
-            
-            // Remove a transição suave para o movimento acompanhar o dedo instantaneamente
-            contentPagamentosRef.style.transition = 'none';
-        }
-    }, { passive: true });
+    // 3. Lógica do Gesto (Arrastar para baixo)
+    if (contentPagamentosRef) {
+        const scrollContainerPag = contentPagamentosRef.querySelector('.overflow-y-auto');
 
-    // 2. TOUCH MOVE
-    contentPagamentosRef.addEventListener('touchmove', (e) => {
-        if (!isDraggingPagamentos) return;
-        
-        touchMovePagamentosY = e.touches[0].clientY;
-        const diff = touchMovePagamentosY - touchStartPagamentosY;
-        
-        // Só move se estiver arrastando para BAIXO (positivo)
-        if (diff > 0) {
-            if (e.cancelable) e.preventDefault(); // Evita scroll da página ou refresh nativo
-            contentPagamentosRef.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: false });
-
-    // 3. TOUCH END
-    contentPagamentosRef.addEventListener('touchend', (e) => {
-        if (!isDraggingPagamentos) return;
-        isDraggingPagamentos = false;
-        
-        const diff = touchMovePagamentosY - touchStartPagamentosY;
-        
-        // Restaura a animação suave para o elemento deslizar (fechar ou voltar)
-        contentPagamentosRef.style.transition = 'transform 0.4s ease-in-out';
-        
-        if (diff > 100) {
-            // FECHAR: Se arrastou mais de 100px
-            contentPagamentosRef.style.transform = 'translateY(100%)';
-            
-            // Fade out do fundo escuro
-            if(modalPagamentosRef) {
-                modalPagamentosRef.style.transition = 'opacity 0.3s ease-out';
-                modalPagamentosRef.style.opacity = '0';
+        contentPagamentosRef.addEventListener('touchstart', (e) => {
+            if (scrollContainerPag && scrollContainerPag.scrollTop === 0) {
+                touchStartPagamentosY = e.touches[0].clientY;
+                touchMovePagamentosY = touchStartPagamentosY;
+                isDraggingPagamentos = true;
+                contentPagamentosRef.style.transition = 'none'; 
             }
+        }, { passive: true });
 
-            setTimeout(() => {
-                closePagamentosModal();
+        contentPagamentosRef.addEventListener('touchmove', (e) => {
+            if (!isDraggingPagamentos) return;
+            
+            touchMovePagamentosY = e.touches[0].clientY;
+            const diff = touchMovePagamentosY - touchStartPagamentosY;
+            
+            // Só move se for para baixo
+            if (diff > 0) {
+                if (e.cancelable) e.preventDefault(); 
+                contentPagamentosRef.style.transform = `translateY(${diff}px)`;
+            }
+        }, { passive: false });
+
+        contentPagamentosRef.addEventListener('touchend', (e) => {
+            if (!isDraggingPagamentos) return;
+            isDraggingPagamentos = false;
+            
+            const diff = touchMovePagamentosY - touchStartPagamentosY;
+            const contentEl = contentPagamentosRef;
+            const modalEl = modalPagamentosRef;
+
+            // Restaura a transição suave
+            contentEl.style.transition = 'transform 0.3s ease-out';
+
+            if (diff > 100) {
+                // --- AÇÃO DE FECHAR ---
                 
-                // Limpeza pós-animação
-                contentPagamentosRef.style.transform = '';
-                contentPagamentosRef.style.transition = '';
-                if(modalPagamentosRef) {
-                    modalPagamentosRef.style.transition = '';
-                    modalPagamentosRef.style.opacity = '';
-                }
-            }, 400); // 400ms para garantir o fim da animação
-        } else {
-            // VOLTAR: Se arrastou pouco, volta pro lugar (Bounce back)
-            contentPagamentosRef.style.transform = '';
-        }
-        
-        touchStartPagamentosY = 0;
-        touchMovePagamentosY = 0;
-    });
-});
+                // 1. Desliza o painel para baixo (Visual)
+                contentEl.style.transform = 'translateY(100%)';
+                
+                // 2. Desvanece o fundo escuro SIMULTANEAMENTE (Igual ao Detalhes)
+                modalEl.style.transition = 'opacity 0.3s ease-out';
+                modalEl.style.opacity = '0';
+
+                // 3. Aguarda a animação terminar para limpar tudo e destravar a tela
+                setTimeout(() => {
+                    // Chama a função OFICIAL para destravar o scroll do body e limpar estados
+                    if (typeof closePagamentosModal === 'function') {
+                        closePagamentosModal();
+                    } else {
+                        // Fallback de segurança
+                        modalEl.classList.remove('visible');
+                        document.body.style.overflow = '';
+                    }
+
+                    // Limpa os estilos inline injetados pelo JS para não quebrar a próxima abertura
+                    contentEl.style.transform = '';
+                    contentEl.style.transition = '';
+                    modalEl.style.transition = '';
+                    modalEl.style.opacity = '';
+                    
+                }, 300); // Tempo da animação CSS
+
+            } else {
+                // --- CANCELA E VOLTA (BOUNCE BACK) ---
+                contentEl.style.transform = 'translateY(0)';
+                setTimeout(() => {
+                    contentEl.style.transition = '';
+                    contentEl.style.transform = '';
+                }, 300);
+            }
+            
+            touchStartPagamentosY = 0;
+            touchMovePagamentosY = 0;
+        });
+    }
 	
     await init();
 });

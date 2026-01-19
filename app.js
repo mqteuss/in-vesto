@@ -7542,7 +7542,7 @@ function openPagamentosModal(todosPagamentos) {
         Object.keys(grupos).forEach((mes) => {
             const itensMes = grupos[mes];
 
-            // Container do Mês
+            // Título do Mês
             const wrapper = document.createElement('div');
             wrapper.innerHTML = `
                 <div class="flex items-center gap-3 mb-3 pl-2 mt-4">
@@ -7558,19 +7558,18 @@ function openPagamentosModal(todosPagamentos) {
                 const sem = prov.dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
                 const isJCP = prov.type && prov.type.toUpperCase().includes('JCP');
                 
-                const corBarra = isJCP ? 'bg-amber-500' : 'bg-[#4ade80]'; 
-                const tipoTexto = isJCP ? 'Juros s/ Capital' : 'Dividendos';
-                const corTextoValor = isJCP ? 'text-[#fbbf24]' : 'text-[#4ade80]';
+                // Cores de texto
+                const corTextoValor = isJCP ? 'text-[#fbbf24]' : 'text-[#4ade80]'; // Amarelo (JCP) ou Verde (DIV)
+                const tipoTexto = isJCP ? 'JCP' : 'Dividendos';
+                const barraLateral = isJCP ? 'bg-amber-500' : 'bg-[#4ade80]';
 
                 const card = document.createElement('div');
                 
-                // --- AQUI ESTÁ A MUDANÇA ---
-                // Removido 'border border-[#27272a]'
-                // Adicionado 'bg-[#141414]' (fundo sólido sutil para destacar do preto)
+                // Design Clean: Fundo escuro suave, sem borda externa, cantos arredondados
                 card.className = "relative flex items-center bg-[#141414] rounded-xl overflow-hidden mb-1";
                 
                 card.innerHTML = `
-                    <div class="absolute left-0 top-0 bottom-0 w-1 ${corBarra}"></div>
+                    <div class="absolute left-0 top-0 bottom-0 w-1 ${barraLateral}"></div>
 
                     <div class="flex items-center w-full p-3 pl-4">
                         <div class="flex flex-col items-center justify-center pr-4 border-r border-[#27272a]">
@@ -7587,7 +7586,7 @@ function openPagamentosModal(todosPagamentos) {
                             </p>
                         </div>
 
-                        <div class="text-right">
+                        <div class="text-right pr-1">
                             <span class="block text-sm font-bold ${corTextoValor} tabular-nums tracking-tight">
                                 ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </span>

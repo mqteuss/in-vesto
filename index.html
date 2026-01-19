@@ -37,37 +37,21 @@
     </div>
 
     <script>
-    // Otimização de Renderização Crítica (Executa imediatamente)
-    (function() {
         try {
-            // 1. Verificação de Biometria
             const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
             const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
 
             if (bioEnabled && !justLoggedOut) {
-                // Força visibilidade imediata via style para garantir zero delay
-                const lockScreen = document.getElementById('biometric-lock-screen');
-                if (lockScreen) {
-                    lockScreen.classList.remove('hidden');
-                    lockScreen.style.display = 'flex'; // Garante que apareça antes do CSS carregar
-                }
-                
-                // Esconde a tela de login preventivamente para não "piscar" no fundo
-                const authContainer = document.getElementById('auth-container');
-                if (authContainer) {
-                    authContainer.style.display = 'none';
-                }
+                document.getElementById('biometric-lock-screen').classList.remove('hidden');
             }
             
-            // 2. Aplicação Instantânea do Tema
             const isLight = localStorage.getItem('vesto_theme') === 'light';
             if (isLight) {
                 document.body.classList.add('light-mode');
                 document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f9fafb');
             }
-        } catch (e) { console.error('Fast render error', e); }
-    })();
-</script>
+        } catch (e) { console.error('Erro ao verificar configs iniciais', e); }
+    </script>
 
 <div id="auth-container" class="fixed inset-0 z-50 w-full h-[100dvh] bg-black flex flex-col items-center justify-center p-6 overflow-hidden transition-all duration-300">
         
@@ -1322,8 +1306,8 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="modulepreload" href="supabase.js">
-    <link rel="modulepreload" href="app.js">
+    <script src="supabase.js" type="module"></script>
+    <script src="app.js" type="module"></script>
 
 </body>
 

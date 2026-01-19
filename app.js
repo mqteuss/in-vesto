@@ -3266,8 +3266,9 @@ function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
     
-    // Configura container para Grid (CSS novo)
+    // Configura container para Grid e adiciona o espaçamento solicitado (O descanso do cabeçalho)
     lista.className = 'payment-static-list'; 
+    container.style.marginTop = '24px'; // <--- ALTERAÇÃO 1: Margem superior para desgrudar do cabeçalho
 
     // Verificações iniciais
     if (!proventosAtuais || proventosAtuais.length === 0) {
@@ -3344,6 +3345,7 @@ function renderizarTimelinePagamentos() {
         
         const valorFormatado = totalReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+        // ALTERAÇÃO 2: Adicionado style color #fbbf24 (Amarelo) para indicar "a receber"
         item.innerHTML = `
             <div class="agenda-header">${textoHeader}</div>
             
@@ -3354,7 +3356,7 @@ function renderizarTimelinePagamentos() {
             
             <div class="agenda-footer">
                 <span class="agenda-ticker">${prov.symbol}</span>
-                <span class="agenda-value">+${valorFormatado}</span>
+                <span class="agenda-value" style="color: #fbbf24;">+${valorFormatado}</span>
             </div>
         `;
         lista.appendChild(item);
@@ -3366,9 +3368,7 @@ function renderizarTimelinePagamentos() {
         const moreBtn = document.createElement('div');
         moreBtn.className = 'agenda-card more-card';
         
-        // CORREÇÃO DA LÓGICA: Passa o array completo 'pagamentosReais' para o modal
         moreBtn.onclick = () => {
-            // Chama a função global diretamente
             openPagamentosModal(pagamentosReais);
         };
         

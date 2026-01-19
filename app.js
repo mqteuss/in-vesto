@@ -2993,95 +2993,78 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         volatilidade = (Math.sqrt(variancia) * Math.sqrt(252)) * 100;
     }
 
-    // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS ---
-// EM app.js -> Procure a função 'renderizarGraficoPatrimonio'
-// Substitua o BLOCO 7 inteiro por este:
-
-    // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (NOVA UX SIMPLIFICADA) ---
+// --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (ESTILO BLOOMBERG / MINIMALISTA) ---
     const elVariacao = document.getElementById('stat-variacao');
     const elVariacaoBadge = document.getElementById('stat-variacao-badge');
     
     const elDrawdown = document.getElementById('stat-drawdown');
-    const barDrawdown = document.getElementById('bar-drawdown');
     
     const elVolatilidade = document.getElementById('stat-volatilidade');
     const elVolTag = document.getElementById('stat-vol-tag');
-    const meterLow = document.getElementById('meter-vol-low');
-    const meterMed = document.getElementById('meter-vol-med');
-    const meterHigh = document.getElementById('meter-vol-high');
 
-    // 1. Rentabilidade (Hero)
+    // 1. Rentabilidade (Hero) - Verde ou Vermelho Fosco
     if (elVariacao) {
         const sinal = variacaoPercent >= 0 ? '+' : '';
         elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
         
-        // Cores do Texto
-        const corVar = variacaoPercent >= 0 ? '#4ade80' : '#ef4444'; // Verde ou Vermelho
+        // Cores financeiras sóbrias (sem neon)
+        // Verde: #4ade80 (Green 400) | Vermelho: #ef4444 (Red 500)
+        const corVar = variacaoPercent >= 0 ? '#4ade80' : '#ef4444'; 
         elVariacao.style.color = corVar;
 
-        // Badge de Status (Lucro / Prejuízo)
+        // Badge de Status (Pílula Sólida)
         if (elVariacaoBadge) {
-            elVariacaoBadge.classList.remove('hidden', 'bg-green-500/10', 'text-green-500', 'bg-red-500/10', 'text-red-500');
+            // Reset classes
+            elVariacaoBadge.className = 'px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wide border';
+            
             if (variacaoPercent >= 0) {
                 elVariacaoBadge.textContent = 'LUCRO';
-                elVariacaoBadge.classList.add('bg-green-500/10', 'text-green-500', 'block');
+                // Fundo verde muito escuro, borda verde escura, texto verde claro
+                elVariacaoBadge.classList.add('bg-[#052e16]', 'border-[#14532d]', 'text-[#4ade80]');
             } else {
                 elVariacaoBadge.textContent = 'PREJUÍZO';
-                elVariacaoBadge.classList.add('bg-red-500/10', 'text-red-500', 'block');
+                // Fundo vermelho muito escuro, borda vermelha escura, texto vermelho claro
+                elVariacaoBadge.classList.add('bg-[#450a0a]', 'border-[#7f1d1d]', 'text-[#f87171]');
             }
         }
     }
 
-    // 2. Drawdown (Barra de profundidade)
+    // 2. Drawdown (Numérico Puro)
     if (elDrawdown) {
-        elDrawdown.textContent = `${drawdownDisplay}%`;
-        // Barra enche conforme o tamanho da queda (até 30% enche a barra toda visualmente)
-        const ddVal = Math.abs(parseFloat(drawdownDisplay));
-        if (barDrawdown) {
-            const largura = Math.min(ddVal * 3.3, 100); 
-            barDrawdown.style.width = `${largura}%`;
+        // Se drawdown for insignificante (< 0.1%), mostra 0.00%
+        const displayVal = Math.abs(maxDrawdown) < 0.001 ? 0 : (maxDrawdown * 100).toFixed(2);
+        elDrawdown.textContent = `${displayVal}%`;
+        
+        // Se houver queda relevante (>1%), pinta de vermelho fosco. Senão, cinza neutro.
+        if (parseFloat(displayVal) < -0.01 || parseFloat(displayVal) > 1.00) {
+             elDrawdown.style.color = '#ef4444'; 
+        } else {
+             elDrawdown.style.color = '#a1a1aa'; // Zinc 400 (Cinza neutro)
         }
     }
 
-    // 3. Volatilidade (Medidor de 3 estágios)
+    // 3. Volatilidade (Tag Descritiva)
     if (elVolatilidade) {
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
         
-        // Reset dos medidores
-        if(meterLow) meterLow.className = 'h-full flex-1 bg-gray-700/30';
-        if(meterMed) meterMed.className = 'h-full flex-1 bg-gray-700/30 mx-0.5';
-        if(meterHigh) meterHigh.className = 'h-full flex-1 bg-gray-700/30';
-        
         let labelVol = 'Baixa';
-        let colorClass = 'text-green-500';
+        let colorClass = 'text-[#a1a1aa]'; // Cinza padrão
         
         if (volatilidade < 10) {
-            // BAIXA
-            labelVol = 'Baixa';
-            colorClass = 'text-green-500';
-            if(meterLow) meterLow.className = 'h-full flex-1 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
-        } else if (volatilidade < 20) {
-            // MÉDIA
-            labelVol = 'Média';
-            colorClass = 'text-yellow-500';
-            if(meterLow) meterLow.className = 'h-full flex-1 bg-green-500';
-            if(meterMed) meterMed.className = 'h-full flex-1 bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)] mx-0.5';
+            labelVol = 'Conservadora';
+            colorClass = 'text-[#4ade80]'; // Verde
+        } else if (volatilidade < 25) {
+            labelVol = 'Moderada';
+            colorClass = 'text-[#facc15]'; // Amarelo Ouro (não laranja neon)
         } else {
-            // ALTA
-            labelVol = 'Alta';
-            colorClass = 'text-red-500';
-            if(meterLow) meterLow.className = 'h-full flex-1 bg-green-500';
-            if(meterMed) meterMed.className = 'h-full flex-1 bg-yellow-500 mx-0.5';
-            if(meterHigh) meterHigh.className = 'h-full flex-1 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
+            labelVol = 'Agressiva';
+            colorClass = 'text-[#ef4444]'; // Vermelho
         }
 
         if (elVolTag) {
             elVolTag.textContent = labelVol;
-            // Remove classes antigas de cor e adiciona a nova
-            elVolTag.classList.remove('text-green-500', 'text-yellow-500', 'text-red-500', 'text-gray-500');
-            elVolTag.classList.add(colorClass);
-            // Ajusta borda para combinar sutilmente
-            elVolTag.style.borderColor = volatilidade < 10 ? 'rgba(34,197,94,0.3)' : (volatilidade < 20 ? 'rgba(234,179,8,0.3)' : 'rgba(239,68,68,0.3)');
+            // Remove classes antigas e aplica a nova cor
+            elVolTag.className = `text-[9px] font-bold uppercase tracking-wider ${colorClass}`;
         }
     }
 

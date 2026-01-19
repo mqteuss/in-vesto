@@ -3262,65 +3262,131 @@ function renderizarGraficoPatrimonio(isRetry = false) {
 
 // No seu arquivo app.js, substitua a função inteira:
 
-function openPagamentosModal(lista) {
-    const modalEl = document.getElementById('pagamentos-modal');
-    const containerDoModal = document.getElementById('pagamentos-modal-lista');
+function renderizarTimelinePagamentos() {
+    const container = document.getElementById('timeline-pagamentos-container');
+    const lista = document.getElementById('timeline-lista');
     
-    // Limpa lista anterior
-    containerDoModal.innerHTML = '';
+    // Configura container para Grid
+    lista.className = 'payment-static-list'; 
     
+    // --- CORREÇÃO 1: ESPAÇAMENTO ---
+    // Usamos paddingTop para evitar colapso de margem. 32px garante o "descanso".
+    container.style.marginTop = '0px'; 
+    container.style.paddingTop = '32px'; 
+
+    // Verificações iniciais
+    if (!proventosAtuais || proventosAtuais.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    lista.forEach(prov => {
-        // 1. Preparação da Data
+    // 1. Filtra (Futuros ou Hoje + Ativo na Carteira) e Ordena
+    const pagamentosReais = proventosAtuais.filter(p => {
+        if (!p.paymentDate) return false;
+        
+        const parts = p.paymentDate.split('-');
+        const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+        
+        // Ignora passados
+        if (dataPag < hoje) return false;
+
+        // Verifica carteira
+        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
+        return ativoNaCarteira && ativoNaCarteira.quantity > 0;
+    }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+
+    if (pagamentosReais.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    lista.innerHTML = '';
+    const totalItems = pagamentosReais.length;
+    
+    // Regra: Se tem até 3, mostra 3. Se tem mais, mostra 2 + botão.
+    let itemsToRender = [];
+    let showMoreButton = false;
+
+    if (totalItems <= 3) {
+        itemsToRender = pagamentosReais;
+    } else {
+        itemsToRender = pagamentosReais.slice(0, 2);
+        showMoreButton = true;
+    }
+
+    // Renderiza os Cards Normais
+    itemsToRender.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
         
-        // 2. Verifica se é HOJE
-        const isHoje = dataObj.getTime() === hoje.getTime();
-
-        // 3. Formatações
         const dia = parts[2];
+        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
         
-        // Texto do Header: "HOJE" ou o Mês
-        const textoHeader = isHoje ? 'HOJE' : dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-        
-        // Define a classe CSS baseada na data (Verde se for hoje)
-        const classeHoje = isHoje ? 'is-today' : ''; 
+        // Verifica se é hoje
+        const diffTime = Math.abs(dataObj - hoje);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        const isHoje = diffDays === 0 || (dataObj.getTime() === hoje.getTime());
 
-        // Formatação de valor
-        // (Nota: assumindo que você quer calcular o total aqui também, ou usar o valor unitário)
+        // Cálculos
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
         const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
         const totalReceber = prov.value * qtd;
-        const valorFormatado = totalReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // 4. Criação do Elemento HTML
+        const classeHoje = isHoje ? 'is-today' : '';
+        const textoHeader = isHoje ? 'HOJE' : mes;
+
         const item = document.createElement('div');
-        
-        // AQUI ESTÁ O SEGREDO: Adiciona a classe 'is-today' se for hoje
         item.className = `agenda-card ${classeHoje}`; 
         
+        // Clique no card abre detalhes do ativo
+        item.onclick = () => {
+             if(typeof abrirDetalhesAtivo === 'function') abrirDetalhesAtivo(prov.symbol);
+        };
+        
+        const valorFormatado = totalReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // --- CORREÇÃO 2: REMOVIDO O STYLE INLINE ---
+        // Removemos style="color:..." para que o CSS (style.css) controle as cores (Verde se for hoje, Amarelo padrão)
         item.innerHTML = `
             <div class="agenda-header">${textoHeader}</div>
+            
             <div class="agenda-body">
                 <span class="agenda-day">${dia}</span>
                 <span class="agenda-weekday">${diaSemana}</span>
             </div>
+            
             <div class="agenda-footer">
                 <span class="agenda-ticker">${prov.symbol}</span>
                 <span class="agenda-value">+${valorFormatado}</span>
             </div>
         `;
-        
-        containerDoModal.appendChild(item);
+        lista.appendChild(item);
     });
 
-    // Exibe o modal
-    modalEl.classList.add('visible');
-    document.body.style.overflow = 'hidden'; // Trava rolagem do fundo
+    // Renderiza o Botão "Ver Todos" (+X)
+    if (showMoreButton) {
+        const remaining = totalItems - 2;
+        const moreBtn = document.createElement('div');
+        moreBtn.className = 'agenda-card more-card';
+        
+        moreBtn.onclick = () => {
+            openPagamentosModal(pagamentosReais);
+        };
+        
+        moreBtn.innerHTML = `
+            <div class="agenda-body">
+                <span class="more-count">+${remaining}</span>
+                <span class="more-label">VER TODOS</span>
+            </div>
+        `;
+        lista.appendChild(moreBtn);
+    }
+
+    container.classList.remove('hidden');
 }
 
 function renderizarDashboardSkeletons(show) {

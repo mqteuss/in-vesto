@@ -7512,7 +7512,7 @@ function openPagamentosModal(todosPagamentos) {
     if (listaEl && todosPagamentos) {
         listaEl.innerHTML = '';
         
-        // 1. Cálculos e Preparação
+        // 1. Cálculos
         let totalGeral = 0;
         const dadosCalculados = todosPagamentos.map(p => {
             const parts = p.paymentDate.split('-');
@@ -7524,12 +7524,12 @@ function openPagamentosModal(todosPagamentos) {
             return { ...p, dataObj, valorTotalCalculado: valorTotal, qtdCarteira: qtd };
         });
 
-        // Atualiza Total no Header
+        // Atualiza Total
         if (totalEl) {
             totalEl.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
-        // 2. Agrupamento por Mês
+        // 2. Agrupamento
         const grupos = {};
         dadosCalculados.forEach(item => {
             const mesAno = item.dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -7538,18 +7538,18 @@ function openPagamentosModal(todosPagamentos) {
             grupos[chave].push(item);
         });
 
-        // 3. Renderização (Estilo Card Técnico)
+        // 3. Renderização
         Object.keys(grupos).forEach((mes) => {
             const itensMes = grupos[mes];
 
             // Container do Mês
             const wrapper = document.createElement('div');
             wrapper.innerHTML = `
-                <div class="flex items-center gap-3 mb-3 pl-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#27272a]"></span>
+                <div class="flex items-center gap-3 mb-3 pl-2 mt-4">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#3f3f46]"></span>
                     <h3 class="text-xs font-bold text-[#71717a] uppercase tracking-widest">${mes}</h3>
                 </div>
-                <div class="space-y-2.5 lista-do-mes"></div>
+                <div class="space-y-2 lista-do-mes"></div>
             `;
             const containerMes = wrapper.querySelector('.lista-do-mes');
 
@@ -7558,22 +7558,23 @@ function openPagamentosModal(todosPagamentos) {
                 const sem = prov.dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
                 const isJCP = prov.type && prov.type.toUpperCase().includes('JCP');
                 
-                // Definição visual do status (Barra Lateral)
-                // Se for JCP, barra amarela. Se Div, barra verde.
                 const corBarra = isJCP ? 'bg-amber-500' : 'bg-[#4ade80]'; 
                 const tipoTexto = isJCP ? 'Juros s/ Capital' : 'Dividendos';
-                const corTextoValor = isJCP ? 'text-[#fbbf24]' : 'text-[#4ade80]'; // Amber ou Green
+                const corTextoValor = isJCP ? 'text-[#fbbf24]' : 'text-[#4ade80]';
 
                 const card = document.createElement('div');
-                // Card escuro (#141414) com borda sutil (#27272a)
-                card.className = "relative flex items-center bg-[#141414] rounded-lg border border-[#27272a] overflow-hidden";
+                
+                // --- AQUI ESTÁ A MUDANÇA ---
+                // Removido 'border border-[#27272a]'
+                // Adicionado 'bg-[#141414]' (fundo sólido sutil para destacar do preto)
+                card.className = "relative flex items-center bg-[#141414] rounded-xl overflow-hidden mb-1";
                 
                 card.innerHTML = `
                     <div class="absolute left-0 top-0 bottom-0 w-1 ${corBarra}"></div>
 
                     <div class="flex items-center w-full p-3 pl-4">
                         <div class="flex flex-col items-center justify-center pr-4 border-r border-[#27272a]">
-                            <span class="text-xl font-bold text-white leading-none tracking-tight">${dia}</span>
+                            <span class="text-lg font-bold text-white leading-none tracking-tight">${dia}</span>
                             <span class="text-[9px] font-bold text-[#525252] uppercase mt-0.5">${sem}</span>
                         </div>
 

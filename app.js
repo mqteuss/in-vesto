@@ -3262,126 +3262,65 @@ function renderizarGraficoPatrimonio(isRetry = false) {
 
 // No seu arquivo app.js, substitua a função inteira:
 
-function renderizarTimelinePagamentos() {
-    const container = document.getElementById('timeline-pagamentos-container');
-    const lista = document.getElementById('timeline-lista');
+function openPagamentosModal(lista) {
+    const modalEl = document.getElementById('pagamentos-modal');
+    const containerDoModal = document.getElementById('pagamentos-modal-lista');
     
-    // Configura container para Grid e adiciona o espaçamento solicitado (O descanso do cabeçalho)
-    lista.className = 'payment-static-list'; 
-    container.style.marginTop = '24px'; // <--- ALTERAÇÃO 1: Margem superior para desgrudar do cabeçalho
-
-    // Verificações iniciais
-    if (!proventosAtuais || proventosAtuais.length === 0) {
-        container.classList.add('hidden');
-        return;
-    }
-
+    // Limpa lista anterior
+    containerDoModal.innerHTML = '';
+    
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    // 1. Filtra (Futuros ou Hoje + Ativo na Carteira) e Ordena
-    const pagamentosReais = proventosAtuais.filter(p => {
-        if (!p.paymentDate) return false;
-        
-        const parts = p.paymentDate.split('-');
-        const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-        
-        // Ignora passados
-        if (dataPag < hoje) return false;
-
-        // Verifica carteira
-        const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
-        return ativoNaCarteira && ativoNaCarteira.quantity > 0;
-    }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-
-    if (pagamentosReais.length === 0) {
-        container.classList.add('hidden');
-        return;
-    }
-
-    lista.innerHTML = '';
-    const totalItems = pagamentosReais.length;
-    
-    // Regra: Se tem até 3, mostra 3. Se tem mais, mostra 2 + botão.
-    let itemsToRender = [];
-    let showMoreButton = false;
-
-    if (totalItems <= 3) {
-        itemsToRender = pagamentosReais;
-    } else {
-        itemsToRender = pagamentosReais.slice(0, 2);
-        showMoreButton = true;
-    }
-
-    // Renderiza os Cards Normais
-    itemsToRender.forEach(prov => {
+    lista.forEach(prov => {
+        // 1. Preparação da Data
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
         
+        // 2. Verifica se é HOJE
+        const isHoje = dataObj.getTime() === hoje.getTime();
+
+        // 3. Formatações
         const dia = parts[2];
-        const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
         
-        // Verifica se é hoje
-        const diffTime = Math.abs(dataObj - hoje);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        const isHoje = diffDays === 0 || (dataObj.getTime() === hoje.getTime());
+        // Texto do Header: "HOJE" ou o Mês
+        const textoHeader = isHoje ? 'HOJE' : dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        
+        // Define a classe CSS baseada na data (Verde se for hoje)
+        const classeHoje = isHoje ? 'is-today' : ''; 
 
-        // Cálculos
+        // Formatação de valor
+        // (Nota: assumindo que você quer calcular o total aqui também, ou usar o valor unitário)
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
         const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
         const totalReceber = prov.value * qtd;
-
-        const classeHoje = isHoje ? 'is-today' : '';
-        const textoHeader = isHoje ? 'HOJE' : mes;
-
-        const item = document.createElement('div');
-        item.className = `agenda-card ${classeHoje}`; 
-        
-        // Clique no card abre detalhes do ativo
-        item.onclick = () => {
-             if(typeof abrirDetalhesAtivo === 'function') abrirDetalhesAtivo(prov.symbol);
-        };
-        
         const valorFormatado = totalReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // ALTERAÇÃO 2: Adicionado style color #fbbf24 (Amarelo) para indicar "a receber"
+        // 4. Criação do Elemento HTML
+        const item = document.createElement('div');
+        
+        // AQUI ESTÁ O SEGREDO: Adiciona a classe 'is-today' se for hoje
+        item.className = `agenda-card ${classeHoje}`; 
+        
         item.innerHTML = `
             <div class="agenda-header">${textoHeader}</div>
-            
             <div class="agenda-body">
                 <span class="agenda-day">${dia}</span>
                 <span class="agenda-weekday">${diaSemana}</span>
             </div>
-            
             <div class="agenda-footer">
                 <span class="agenda-ticker">${prov.symbol}</span>
-                <span class="agenda-value" style="color: #fbbf24;">+${valorFormatado}</span>
+                <span class="agenda-value">+${valorFormatado}</span>
             </div>
         `;
-        lista.appendChild(item);
+        
+        containerDoModal.appendChild(item);
     });
 
-    // Renderiza o Botão "Ver Todos" (+X)
-    if (showMoreButton) {
-        const remaining = totalItems - 2;
-        const moreBtn = document.createElement('div');
-        moreBtn.className = 'agenda-card more-card';
-        
-        moreBtn.onclick = () => {
-            openPagamentosModal(pagamentosReais);
-        };
-        
-        moreBtn.innerHTML = `
-            <div class="agenda-body">
-                <span class="more-count">+${remaining}</span>
-                <span class="more-label">VER TODOS</span>
-            </div>
-        `;
-        lista.appendChild(moreBtn);
-    }
-
-    container.classList.remove('hidden');
+    // Exibe o modal
+    modalEl.classList.add('visible');
+    document.body.style.overflow = 'hidden'; // Trava rolagem do fundo
 }
 
 function renderizarDashboardSkeletons(show) {
@@ -7524,6 +7463,7 @@ function openPagamentosModal(todosPagamentos) {
             return { ...p, dataObj, valorTotalCalculado: valorTotal, qtdCarteira: qtd };
         });
 
+        // Atualiza Total
         if (totalEl) {
             totalEl.textContent = totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
@@ -7537,58 +7477,62 @@ function openPagamentosModal(todosPagamentos) {
             grupos[chave].push(item);
         });
 
-        // 3. Renderização (Estilo Lista/Ledger)
+        // 3. Renderização
         Object.keys(grupos).forEach((mes) => {
             const itensMes = grupos[mes];
 
-            // Cabeçalho do Mês (Sticky visualmente limpo)
+            // Título do Mês
             const wrapper = document.createElement('div');
             wrapper.innerHTML = `
-                <div class="sticky top-0 bg-[#09090b]/95 backdrop-blur px-6 py-2 border-y border-[#27272a] flex justify-between items-center z-10">
-                    <span class="text-xs font-bold text-[#e4e4e7] uppercase tracking-widest">${mes}</span>
-                    <span class="text-[10px] text-[#525252] font-mono">${itensMes.length} pagamentos</span>
+                <div class="flex items-center gap-3 mb-3 pl-2 mt-4">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#3f3f46]"></span>
+                    <h3 class="text-xs font-bold text-[#71717a] uppercase tracking-widest">${mes}</h3>
                 </div>
-                <div class="divide-y divide-[#1f1f22] px-6"></div> `;
-            const containerMes = wrapper.querySelector('.divide-y');
+                <div class="space-y-2 lista-do-mes"></div>
+            `;
+            const containerMes = wrapper.querySelector('.lista-do-mes');
 
             itensMes.forEach(prov => {
                 const dia = prov.dataObj.getDate().toString().padStart(2, '0');
                 const sem = prov.dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
                 const isJCP = prov.type && prov.type.toUpperCase().includes('JCP');
                 
-                // Tipo discreto (Texto puro, sem badges coloridos chamativos)
-                const tipoLabel = isJCP ? 'JCP' : 'DIV';
+                // Cores de texto
+                const corTextoValor = isJCP ? 'text-[#fbbf24]' : 'text-[#4ade80]'; // Amarelo (JCP) ou Verde (DIV)
+                const tipoTexto = isJCP ? 'JCP' : 'Dividendos';
+                const barraLateral = isJCP ? 'bg-amber-500' : 'bg-[#4ade80]';
 
-                const item = document.createElement('div');
-                // Layout Flex: Data Esq | Info Meio | Valor Dir
-                item.className = "flex items-center py-4 group"; 
+                const card = document.createElement('div');
                 
-                item.innerHTML = `
-                    <div class="flex flex-col items-center w-10 shrink-0 mr-4">
-                        <span class="text-lg font-medium text-white leading-none">${dia}</span>
-                        <span class="text-[9px] text-[#525252] uppercase mt-1 font-bold">${sem}</span>
-                    </div>
+                // Design Clean: Fundo escuro suave, sem borda externa, cantos arredondados
+                card.className = "relative flex items-center bg-[#141414] rounded-xl overflow-hidden mb-1";
+                
+                card.innerHTML = `
+                    <div class="absolute left-0 top-0 bottom-0 w-1 ${barraLateral}"></div>
 
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-sm font-bold text-[#e4e4e7]">${prov.symbol}</span>
-                            <span class="text-[9px] text-[#525252] font-bold border border-[#27272a] px-1 rounded">${tipoLabel}</span>
+                    <div class="flex items-center w-full p-3 pl-4">
+                        <div class="flex flex-col items-center justify-center pr-4 border-r border-[#27272a]">
+                            <span class="text-lg font-bold text-white leading-none tracking-tight">${dia}</span>
+                            <span class="text-[9px] font-bold text-[#525252] uppercase mt-0.5">${sem}</span>
                         </div>
-                        <p class="text-[11px] text-[#71717a] mt-0.5 truncate">
-                            ${prov.qtdCarteira} cotas
-                        </p>
-                    </div>
 
-                    <div class="text-right pl-2">
-                        <span class="block text-sm font-bold text-[#4ade80] tabular-nums tracking-tight">
-                            ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                        <span class="text-[9px] text-[#525252] flex justify-end items-center gap-1 mt-0.5">
-                            <span class="w-1 h-1 rounded-full bg-[#4ade80]"></span> Previsto
-                        </span>
+                        <div class="flex-1 min-w-0 pl-4">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <span class="text-sm font-bold text-white tracking-wide">${prov.symbol}</span>
+                            </div>
+                            <p class="text-[10px] text-[#a1a1aa] font-medium truncate">
+                                ${prov.qtdCarteira} cotas • ${tipoTexto}
+                            </p>
+                        </div>
+
+                        <div class="text-right pr-1">
+                            <span class="block text-sm font-bold ${corTextoValor} tabular-nums tracking-tight">
+                                ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                        </div>
                     </div>
                 `;
-                containerMes.appendChild(item);
+                containerMes.appendChild(card);
             });
 
             listaEl.appendChild(wrapper);

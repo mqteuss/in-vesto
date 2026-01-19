@@ -7610,105 +7610,88 @@ window.closePagamentosModal = function() {
     }, 300);
 };
 
-// 3. Lógica de Swipe Down (Arrastar para fechar)
-// 3. Inicialização dos Eventos (Swipe e Botões)
+// --- LÓGICA DE SWIPE DOWN (PAGAMENTOS) - IDÊNTICA AO DETALHES ---
 document.addEventListener('DOMContentLoaded', () => {
     
+    // Variáveis de controle específicas para este modal
+    let isDraggingPagamentos = false;
+    let touchStartPagamentosY = 0;
+    let touchMovePagamentosY = 0;
+
     const modalPagamentosRef = document.getElementById('pagamentos-page-modal');
     const contentPagamentosRef = document.getElementById('tab-pagamentos-content');
-    const btnVoltarPagamentos = document.getElementById('pagamentos-voltar-btn');
+    const scrollPagamentosRef = document.getElementById('pagamentos-conteudo-scroll'); // O ID que adicionamos no HTML
 
-    // Listener Botão Voltar (Click)
-    if (btnVoltarPagamentos) {
-        btnVoltarPagamentos.addEventListener('click', closePagamentosModal);
-    }
+    // Se por acaso os elementos não existirem, para a execução para não dar erro
+    if (!contentPagamentosRef) return;
 
-    // Listener Clique no Fundo (Backdrop)
-    if (modalPagamentosRef) {
-        modalPagamentosRef.addEventListener('click', (e) => {
-            if (e.target === modalPagamentosRef) closePagamentosModal();
-        });
-    }
+    // 1. TOUCH START
+    contentPagamentosRef.addEventListener('touchstart', (e) => {
+        // Se a lista de scroll estiver no topo (scrollTop === 0), iniciamos o arrasto.
+        // Se a lista nem existir (ainda não carregou), assumimos que está no topo.
+        if (!scrollPagamentosRef || scrollPagamentosRef.scrollTop === 0) {
+            touchStartPagamentosY = e.touches[0].clientY;
+            touchMovePagamentosY = touchStartPagamentosY;
+            isDraggingPagamentos = true;
+            
+            // Remove a transição suave para o movimento acompanhar o dedo instantaneamente
+            contentPagamentosRef.style.transition = 'none';
+        }
+    }, { passive: true });
 
-    // --- LÓGICA DE ARRASTAR (SWIPE DOWN) REFINADA ---
-    if (contentPagamentosRef) {
-        let isDraggingPagamentos = false;
-        let touchStartPagamentosY = 0;
-        let touchMovePagamentosY = 0;
+    // 2. TOUCH MOVE
+    contentPagamentosRef.addEventListener('touchmove', (e) => {
+        if (!isDraggingPagamentos) return;
         
-        // Busca a lista rolável (pode ser null se o HTML mudou, trataremos isso)
-        const scrollContainerPag = contentPagamentosRef.querySelector('.overflow-y-auto');
+        touchMovePagamentosY = e.touches[0].clientY;
+        const diff = touchMovePagamentosY - touchStartPagamentosY;
+        
+        // Só move se estiver arrastando para BAIXO (positivo)
+        if (diff > 0) {
+            if (e.cancelable) e.preventDefault(); // Evita scroll da página ou refresh nativo
+            contentPagamentosRef.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false });
 
-        contentPagamentosRef.addEventListener('touchstart', (e) => {
-            // 1. Verifica se clicou no Cabeçalho (onde tem a classe 'sticky')
-            const isHeader = e.target.closest('.sticky');
+    // 3. TOUCH END
+    contentPagamentosRef.addEventListener('touchend', (e) => {
+        if (!isDraggingPagamentos) return;
+        isDraggingPagamentos = false;
+        
+        const diff = touchMovePagamentosY - touchStartPagamentosY;
+        
+        // Restaura a animação suave para o elemento deslizar (fechar ou voltar)
+        contentPagamentosRef.style.transition = 'transform 0.4s ease-in-out';
+        
+        if (diff > 100) {
+            // FECHAR: Se arrastou mais de 100px
+            contentPagamentosRef.style.transform = 'translateY(100%)';
             
-            // 2. Verifica se a lista está no topo (ou se não existe lista)
-            const isListAtTop = !scrollContainerPag || scrollContainerPag.scrollTop === 0;
-
-            // REGRA: Permite arrastar se for no Cabeçalho OU se a lista estiver no topo
-            if (isHeader || isListAtTop) {
-                touchStartPagamentosY = e.touches[0].clientY;
-                touchMovePagamentosY = touchStartPagamentosY;
-                isDraggingPagamentos = true;
-                contentPagamentosRef.style.transition = 'none'; // Remove animação para seguir o dedo
+            // Fade out do fundo escuro
+            if(modalPagamentosRef) {
+                modalPagamentosRef.style.transition = 'opacity 0.3s ease-out';
+                modalPagamentosRef.style.opacity = '0';
             }
-        }, { passive: true });
 
-        contentPagamentosRef.addEventListener('touchmove', (e) => {
-            if (!isDraggingPagamentos) return;
-            
-            touchMovePagamentosY = e.touches[0].clientY;
-            const diff = touchMovePagamentosY - touchStartPagamentosY;
-            
-            // Só move visualmente se for para baixo (positivo)
-            if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); // Impede o navegador de atualizar a página
-                contentPagamentosRef.style.transform = `translateY(${diff}px)`;
-            }
-        }, { passive: false });
-
-        contentPagamentosRef.addEventListener('touchend', (e) => {
-            if (!isDraggingPagamentos) return;
-            isDraggingPagamentos = false;
-            
-            const diff = touchMovePagamentosY - touchStartPagamentosY;
-            
-            // Restaura a transição suave do CSS
-            contentPagamentosRef.style.transition = 'transform 0.3s ease-out';
-
-            if (diff > 120) { // Se arrastou mais de 120px
-                // --- FECHAR ---
-                contentPagamentosRef.style.transform = 'translateY(100%)'; // Desce tudo
+            setTimeout(() => {
+                closePagamentosModal();
                 
+                // Limpeza pós-animação
+                contentPagamentosRef.style.transform = '';
+                contentPagamentosRef.style.transition = '';
                 if(modalPagamentosRef) {
-                    modalPagamentosRef.style.transition = 'opacity 0.3s ease-out';
-                    modalPagamentosRef.style.opacity = '0'; // Apaga o fundo
+                    modalPagamentosRef.style.transition = '';
+                    modalPagamentosRef.style.opacity = '';
                 }
-
-                setTimeout(() => {
-                    closePagamentosModal();
-                    // Limpa sujeira de estilos inline para a próxima vez
-                    contentPagamentosRef.style.transform = '';
-                    contentPagamentosRef.style.transition = '';
-                    if(modalPagamentosRef) {
-                        modalPagamentosRef.style.transition = '';
-                        modalPagamentosRef.style.opacity = '';
-                    }
-                }, 300);
-            } else {
-                // --- CANCELAR (BOUNCE BACK) ---
-                contentPagamentosRef.style.transform = 'translateY(0)';
-                setTimeout(() => {
-                    contentPagamentosRef.style.transition = '';
-                    contentPagamentosRef.style.transform = '';
-                }, 300);
-            }
-            
-            touchStartPagamentosY = 0;
-            touchMovePagamentosY = 0;
-        });
-    }
+            }, 400); // 400ms para garantir o fim da animação
+        } else {
+            // VOLTAR: Se arrastou pouco, volta pro lugar (Bounce back)
+            contentPagamentosRef.style.transform = '';
+        }
+        
+        touchStartPagamentosY = 0;
+        touchMovePagamentosY = 0;
+    });
 });
 	
     await init();

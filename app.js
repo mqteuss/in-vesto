@@ -2811,7 +2811,6 @@ function closePatrimonioModal() {
 	function openProventosModal() {
     if(!proventosPageModal) return;
 
-    renderizarAgendaPagamentos();
     proventosPageModal.classList.add('visible');
     proventosPageContent.style.transform = ''; 
     proventosPageContent.classList.remove('closing');
@@ -3383,114 +3382,6 @@ function renderizarTimelinePagamentos() {
     }
 
     container.classList.remove('hidden');
-}
-
-// Função Profissional: Agrupa por mês e soma o total
-function renderizarAgendaPagamentos() {
-    const container = document.getElementById('pagamentos-modal-lista');
-    const totalDisplay = document.getElementById('agenda-total-display');
-    const emptyState = document.getElementById('pagamentos-empty-state');
-    
-    if (!container) return;
-
-    container.innerHTML = '';
-    
-    // Pega dados globais (se existirem)
-    const proventos = window.user_proventos || [];
-    const hoje = new Date();
-    hoje.setHours(0,0,0,0);
-
-    // 1. Filtra apenas Futuros + Hoje
-    const agenda = proventos.filter(p => {
-        if (!p.data_pagamento) return false;
-        // Garante formato Date correto
-        const d = new Date(p.data_pagamento.includes('T') ? p.data_pagamento : p.data_pagamento + 'T12:00:00');
-        return d >= hoje;
-    });
-
-    // 2. Controla Estado Vazio
-    if (agenda.length === 0) {
-        if(emptyState) emptyState.classList.remove('hidden');
-        if(totalDisplay) totalDisplay.textContent = 'R$ 0,00';
-        return;
-    }
-    if(emptyState) emptyState.classList.add('hidden');
-
-    // 3. Ordena e Soma Total
-    agenda.sort((a, b) => new Date(a.data_pagamento) - new Date(b.data_pagamento));
-    
-    const total = agenda.reduce((acc, item) => acc + (parseFloat(item.valor_total) || 0), 0);
-    if(totalDisplay) {
-        totalDisplay.textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    // 4. Agrupa por Mês (Ex: "Fevereiro 2026")
-    const grupos = {};
-    agenda.forEach(item => {
-        const d = new Date(item.data_pagamento.includes('T') ? item.data_pagamento : item.data_pagamento + 'T12:00:00');
-        // Cria chave: "Fevereiro 2026"
-        const chaveMes = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        // Capitaliza a primeira letra (fevereiro -> Fevereiro)
-        const chaveFormatada = chaveMes.charAt(0).toUpperCase() + chaveMes.slice(1);
-        
-        if (!grupos[chaveFormatada]) grupos[chaveFormatada] = [];
-        grupos[chaveFormatada].push(item);
-    });
-
-    // 5. Renderiza na tela
-    Object.keys(grupos).forEach(mes => {
-        const itensMes = grupos[mes];
-
-        // Cria container do mês
-        const divMes = document.createElement('div');
-        divMes.innerHTML = `
-            <h3 class="text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-3 pl-2 border-l-2 border-[#27272a]">
-                ${mes}
-            </h3>
-            <div class="space-y-2 lista-itens"></div>
-        `;
-        
-        const listaContainer = divMes.querySelector('.lista-itens');
-
-        itensMes.forEach(p => {
-            const d = new Date(p.data_pagamento.includes('T') ? p.data_pagamento : p.data_pagamento + 'T12:00:00');
-            const dia = d.getDate().toString().padStart(2, '0');
-            const sem = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
-            
-            const valor = parseFloat(p.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-            const isJCP = p.tipo && p.tipo.toLowerCase().includes('jcp');
-
-            // Card do Item (Visual "Ledger" escuro)
-            const itemHTML = `
-                <div class="flex items-center gap-3 bg-[#121212] p-3 rounded-xl border border-[#27272a] hover:border-[#3f3f46] transition-colors group relative overflow-hidden">
-                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#27272a] group-hover:bg-[#4ade80] transition-colors"></div>
-
-                    <div class="flex flex-col items-center justify-center w-10 h-10 bg-[#18181b] rounded-lg border border-[#27272a] shrink-0 ml-1">
-                        <span class="text-sm font-bold text-white leading-none">${dia}</span>
-                        <span class="text-[8px] font-bold text-[#525252] uppercase mt-px">${sem}</span>
-                    </div>
-
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm font-bold text-white tracking-wide">${p.ticker}</span>
-                            ${isJCP ? '<span class="text-[8px] font-bold text-[#71717a] border border-[#27272a] px-1 rounded">JCP</span>' : ''}
-                        </div>
-                        <p class="text-[10px] text-[#71717a] truncate">Previsto na conta</p>
-                    </div>
-
-                    <div class="text-right">
-                        <span class="text-sm font-bold text-[#4ade80]">R$ ${valor}</span>
-                    </div>
-                </div>
-            `;
-            
-            const temp = document.createElement('div');
-            temp.innerHTML = itemHTML;
-            listaContainer.appendChild(temp.firstElementChild);
-        });
-
-        container.appendChild(divMes);
-    });
 }
 
 function renderizarDashboardSkeletons(show) {

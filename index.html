@@ -91,9 +91,9 @@
                     <button type="button" id="show-recover-btn" class="text-xs font-semibold text-gray-400 hover:text-white transition-colors focus:outline-none tracking-wide uppercase">Esqueci a senha</button>
                 </div>
 
-                <button id="login-submit-btn" type="submit" class="inter-btn mt-6 w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/20 transition-all active:scale-[0.97]">
-                    ENTRAR
-                </button>
+                <button id="login-submit-btn" type="submit" class="accent-bg w-full mt-6 h-12 shadow-lg">
+    ENTRAR
+</button>
             </form>
 
             <form id="signup-form" class="w-full space-y-5 hidden animate-scale-in shrink-0">
@@ -125,9 +125,9 @@
                     </div>
                 </div>
 
-                <button id="signup-submit-btn" type="submit" class="inter-btn mt-6 w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/20 transition-all active:scale-[0.97]">
-                    CADASTRAR
-                </button>
+                <button id="signup-submit-btn" type="submit" class="accent-bg w-full mt-6 h-12 shadow-lg">
+    CADASTRAR
+</button>
                 
                 <div class="text-center pt-2">
                     <button type="button" id="show-login-btn" class="text-xs text-gray-400 hover:text-white transition-colors">Já tem conta? <span class="font-bold text-white">Entrar</span></button>
@@ -151,9 +151,9 @@
                     </div>
                 </div>
                 
-                <button id="recover-submit-btn" type="submit" class="inter-btn mt-6 w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-900/20 transition-all active:scale-[0.97]">
-                    ENVIAR LINK
-                </button>
+                <button id="recover-submit-btn" type="submit" class="accent-bg w-full mt-6 h-12 shadow-lg">
+    ENVIAR LINK
+</button>
                 <div class="text-center pt-2">
                     <button type="button" id="back-to-login-btn" class="text-xs font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-wide">Voltar</button>
                 </div>
@@ -783,9 +783,9 @@
                 <h3 id="custom-modal-title" class="text-lg font-semibold text-white text-center mb-4">Confirmar Ação</h3>
                 <p id="custom-modal-message" class="text-sm text-gray-300 text-center mb-6">Tem certeza?</p>
                 <div class="flex justify-end gap-3">
-                    <button id="custom-modal-cancel" class="py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors">Cancelar</button>
-                    <button id="custom-modal-ok" class="py-2 px-4 accent-bg text-white rounded-full transition-transform active:scale-95 hover:scale-105 shadow-md">Confirmar</button>
-                </div>
+    <button id="custom-modal-cancel" class="btn-cancel flex-1">Cancelar</button>
+    <button id="custom-modal-ok" class="accent-bg flex-1">Confirmar</button>
+</div>
             </div>
         </div>
 
@@ -853,10 +853,10 @@
 
             </div>
 
-            <div class="flex gap-2 mt-5">
-                <button id="add-ativo-cancel-btn" type="button" class="flex-1 py-2.5 bg-[#1C1C1E] hover:bg-[#2C2C2E] text-gray-400 text-xs font-bold rounded-xl transition-colors">Cancelar</button>
-                <button id="add-button" type="submit" class="flex-1 py-2.5 accent-bg text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-900/20 transition-transform active:scale-95 hover:scale-105">Salvar</button>
-            </div>
+            <div class="flex gap-3 mt-6">
+    <button id="add-ativo-cancel-btn" type="button" class="btn-cancel flex-1">Cancelar</button>
+    <button id="add-button" type="submit" class="accent-bg flex-1 shadow-lg">Salvar</button>
+</div>
         </form>
     </div>
 </div>
@@ -1234,7 +1234,7 @@
             <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
         </button>
     </div>
-    <button type="submit" id="new-password-btn" class="w-full py-3 accent-bg text-white font-semibold rounded-full shadow-md">Salvar Nova Senha</button>
+    <button type="submit" id="new-password-btn" class="accent-bg w-full mt-4">Salvar Nova Senha</button>
 </form>
             </div>
         </div>
@@ -1277,7 +1277,7 @@
        </button>
     </div>
 
-    <button type="submit" id="change-password-submit-btn" class="w-full py-3 accent-bg text-white font-semibold rounded-full shadow-md mt-4">Atualizar Senha</button>
+    <button type="submit" id="change-password-submit-btn" class="accent-bg w-full mt-6">Atualizar Senha</button>
 </form>
             </div>
         </div>

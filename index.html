@@ -17,10 +17,6 @@
 
     <link href="./style-tailwind.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-	
-	<link rel="modulepreload" href="supabase.js">
-    <link rel="modulepreload" href="app.js">
-	
 </head>
 <body class="antialiased">
 
@@ -41,37 +37,21 @@
     </div>
 
     <script>
-    // Otimização de Renderização Crítica (Executa imediatamente)
-    (function() {
         try {
-            // 1. Verificação de Biometria
             const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
             const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
 
             if (bioEnabled && !justLoggedOut) {
-                // Força visibilidade imediata via style para garantir zero delay
-                const lockScreen = document.getElementById('biometric-lock-screen');
-                if (lockScreen) {
-                    lockScreen.classList.remove('hidden');
-                    lockScreen.style.display = 'flex'; // Garante que apareça antes do CSS carregar
-                }
-                
-                // Esconde a tela de login preventivamente para não "piscar" no fundo
-                const authContainer = document.getElementById('auth-container');
-                if (authContainer) {
-                    authContainer.style.display = 'none';
-                }
+                document.getElementById('biometric-lock-screen').classList.remove('hidden');
             }
             
-            // 2. Aplicação Instantânea do Tema
             const isLight = localStorage.getItem('vesto_theme') === 'light';
             if (isLight) {
                 document.body.classList.add('light-mode');
                 document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f9fafb');
             }
-        } catch (e) { console.error('Fast render error', e); }
-    })();
-</script>
+        } catch (e) { console.error('Erro ao verificar configs iniciais', e); }
+    </script>
 
 <div id="auth-container" class="fixed inset-0 z-50 w-full h-[100dvh] bg-black flex flex-col items-center justify-center p-6 overflow-hidden transition-all duration-300">
         
@@ -318,7 +298,7 @@
                     </div>
                     <div class="flex flex-col">
                         <span class="text-sm font-bold text-white tracking-wide">Proventos</span>
-                        <span class="text-xs text-gray-500 font-medium mt-0.5">Histórico de pagamentos</span>
+                        <span class="text-xs text-gray-500 font-medium mt-0.5">Histórico de Pagamentos</span>
                     </div>
                 </div>
                 <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
@@ -336,7 +316,7 @@
                     </div>
                     <div class="flex flex-col">
                         <span class="text-sm font-bold text-white tracking-wide">Alocação</span>
-                        <span class="text-xs text-gray-500 font-medium mt-0.5">Diversificação da carteira</span>
+                        <span class="text-xs text-gray-500 font-medium mt-0.5">Diversificação da Carteira</span>
                     </div>
                 </div>
                 <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
@@ -1326,8 +1306,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-	
-	<script src="supabase.js" type="module"></script>
+    <script src="supabase.js" type="module"></script>
     <script src="app.js" type="module"></script>
 
 </body>

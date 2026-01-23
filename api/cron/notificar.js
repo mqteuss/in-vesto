@@ -258,7 +258,7 @@ module.exports = async function handler(req, res) {
                     });
 
                     let title = '', body = '';
-                    const icon = 'https://in-vesto.vercel.app/logo-vesto.png'; 
+                    const icon = 'https://in-vesto.vercel.app/icons/icon-192x192.png'; 
                     const badge = 'https://in-vesto.vercel.app/sininhov2.png';
 
                     if (pagamentos.length > 0) {

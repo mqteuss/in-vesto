@@ -1,8 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
-// REMOVIDO: const fetch = require('node-fetch'); <-- Não é necessário no Node 18+
 
-// Ajuste o caminho do scraper conforme necessário
+// Ajuste o caminho do scraper conforme sua estrutura de pastas
 const scraperHandler = require('../scraper.js');
 
 webpush.setVapidDetails(
@@ -18,10 +17,151 @@ const supabase = createClient(
 
 const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// --- FUNÇÃO DE CÁLCULO DE PATRIMÔNIO ---
+// --- FUNÇÃO DE CÁLCULO DE PATRIMÔNIO (CORRIGIDA) ---
 async function atualizarPatrimonioJob() {
+    console.log("Iniciando snapshot de patrimônio...");
+    try {
+        // 1. Buscar dados necessários (Transações e Saldo em Caixa)
+        const { data: transacoes, error: errTx } = await supabase
+            .from('transacoes')
+            .select('user_id, symbol, type, quantity');
+        
+        const { data: appStates, error: errApp } = await supabase
+            .from('appstate')
+            .select('user_id, value_json')
+            .eq('key', 'saldoCaixa');
 
-// ... Resto do código permanece igual ...
+        if (errTx || errApp) throw new Error("Erro ao buscar dados do banco.");
+        if (!transacoes || transacoes.length === 0) return 0;
+
+        // 2. Mapear Carteiras por Usuário
+        const userHoldings = {};
+        const uniqueSymbols = new Set();
+
+        transacoes.forEach(tx => {
+            if (!userHoldings[tx.user_id]) userHoldings[tx.user_id] = {};
+            // Normaliza para maiúsculo e remove espaços
+            const symbolClean = tx.symbol.trim().toUpperCase();
+            
+            if (!userHoldings[tx.user_id][symbolClean]) userHoldings[tx.user_id][symbolClean] = 0;
+
+            if (tx.type === 'buy') {
+                userHoldings[tx.user_id][symbolClean] += tx.quantity;
+            } else if (tx.type === 'sell') {
+                userHoldings[tx.user_id][symbolClean] -= tx.quantity;
+            }
+            uniqueSymbols.add(symbolClean);
+        });
+
+        // 3. Buscar Preços (Em Lotes e com Tratamento de Sufixo .SA)
+        const symbolsArray = Array.from(uniqueSymbols);
+        const pricesMap = {};
+        
+        // Divide em lotes de 20 para não quebrar a URL da API
+        const CHUNK_SIZE = 20; 
+
+        if (symbolsArray.length > 0) {
+            const token = process.env.BRAPI_API_TOKEN;
+            
+            for (let i = 0; i < symbolsArray.length; i += CHUNK_SIZE) {
+                const chunk = symbolsArray.slice(i, i + CHUNK_SIZE);
+                
+                // Monta URL. Adicionamos a versão com .SA para garantir que a API encontre
+                const tickersParaApi = chunk.map(s => s.endsWith('.SA') ? s : `${s},${s}.SA`).join(',');
+                
+                try {
+                    const url = `https://brapi.dev/api/quote/${tickersParaApi}?token=${token}`;
+                    const response = await fetch(url);
+                    const json = await response.json();
+                    
+                    if (json.results) {
+                        json.results.forEach(item => {
+                            const preco = item.regularMarketPrice || 0;
+                            
+                            // Mapeamento Inteligente: Salva as DUAS chaves para garantir o match
+                            // 1. Salva como veio da API (ex: PETR4.SA)
+                            pricesMap[item.symbol.toUpperCase()] = preco;
+                            
+                            // 2. Salva a versão "limpa" (ex: PETR4)
+                            const symbolClean = item.symbol.replace('.SA', '').toUpperCase();
+                            pricesMap[symbolClean] = preco;
+                        });
+                    }
+                } catch (errApi) {
+                    console.error("Erro ao buscar cotações do lote:", errApi);
+                    // Continua para o próximo lote mesmo com erro neste
+                }
+            }
+        }
+
+        // 4. Mapear Saldo em Caixa e Calcular Totais
+        const userCash = {};
+        if (appStates) {
+            appStates.forEach(item => {
+                // Garante leitura correta do JSON { value: 100 }
+                const val = item.value_json && item.value_json.value ? Number(item.value_json.value) : 0;
+                userCash[item.user_id] = val;
+            });
+        }
+
+        const hoje = new Date();
+        hoje.setHours(hoje.getHours() - 3); // Ajuste fuso BR
+        const dataHoje = hoje.toISOString().split('T')[0];
+        
+        const snapshots = [];
+
+        Object.keys(userHoldings).forEach(userId => {
+            let totalAtivos = 0;
+            const portfolio = userHoldings[userId];
+
+            // Soma valor dos ativos
+            Object.keys(portfolio).forEach(symbol => {
+                const qtd = portfolio[symbol];
+                // Busca no mapa (que agora tem versão com e sem .SA)
+                const preco = pricesMap[symbol] || 0;
+                
+                if (qtd > 0 && preco > 0) {
+                    totalAtivos += (qtd * preco);
+                }
+            });
+
+            // Soma caixa
+            const caixa = userCash[userId] || 0;
+            const patrimonioTotal = totalAtivos + caixa;
+
+            // Só salva se tiver algum valor
+            if (patrimonioTotal > 0) {
+                snapshots.push({
+                    user_id: userId,
+                    date: dataHoje,
+                    value: parseFloat(patrimonioTotal.toFixed(2))
+                });
+            }
+        });
+
+        // 5. Salvar no Banco
+        if (snapshots.length > 0) {
+            console.log(`Salvando snapshot para ${snapshots.length} usuários.`);
+            for (let i = 0; i < snapshots.length; i += 100) {
+                const batch = snapshots.slice(i, i + 100);
+                const { error } = await supabase
+                    .from('patrimonio')
+                    .upsert(batch, { onConflict: 'user_id, date' });
+                
+                if (error) console.error("Erro ao salvar lote de patrimônio:", error);
+            }
+            return snapshots.length;
+        } else {
+            console.log("Nenhum patrimônio calculado (valores zerados ou erro de cotação).");
+        }
+
+        return 0;
+
+    } catch (e) {
+        console.error("Erro fatal no job de patrimônio:", e);
+        return 0;
+    }
+}
 
 async function atualizarProventosPeloScraper(fiiList) {
     const req = { method: 'POST', body: { mode: 'proventos_carteira', payload: { fiiList } } };
@@ -97,7 +237,7 @@ module.exports = async function handler(req, res) {
             }
         }
 
-        // 2. ATUALIZAÇÃO AUTOMÁTICA DE PATRIMÔNIO
+        // 2. ATUALIZAÇÃO AUTOMÁTICA DE PATRIMÔNIO (COM CORREÇÃO DE PREÇOS)
         const totalSnapshots = await atualizarPatrimonioJob();
 
         // 3. ENVIO DE NOTIFICAÇÕES

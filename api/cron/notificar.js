@@ -17,7 +17,7 @@ const supabase = createClient(
 
 const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// --- FUNÇÃO DE CÁLCULO DE PATRIMÔNIO (CORRIGIDA) ---
+// --- FUNÇÃO DE CÁLCULO DE PATRIMÔNIO (SEQUENCIAL & ROBUSTA) ---
 async function atualizarPatrimonioJob() {
     console.log("Iniciando snapshot de patrimônio...");
     try {
@@ -31,7 +31,10 @@ async function atualizarPatrimonioJob() {
             .select('user_id, value_json')
             .eq('key', 'saldoCaixa');
 
-        if (errTx || errApp) throw new Error("Erro ao buscar dados do banco.");
+        if (errTx || errApp) {
+            console.error("Erro ao buscar dados iniciais:", errTx || errApp);
+            return 0;
+        }
         if (!transacoes || transacoes.length === 0) return 0;
 
         // 2. Mapear Carteiras por Usuário
@@ -53,43 +56,45 @@ async function atualizarPatrimonioJob() {
             uniqueSymbols.add(symbolClean);
         });
 
-        // 3. Buscar Preços (Em Lotes e com Tratamento de Sufixo .SA)
+        // 3. Buscar Preços (SEQUENCIAL - SEM Promise.all)
         const symbolsArray = Array.from(uniqueSymbols);
         const pricesMap = {};
         
-        // Divide em lotes de 20 para não quebrar a URL da API
-        const CHUNK_SIZE = 20; 
+        // Lote pequeno para garantir que a URL não estoure e a API não bloqueie
+        const CHUNK_SIZE = 15; 
 
         if (symbolsArray.length > 0) {
             const token = process.env.BRAPI_API_TOKEN;
             
+            // Loop Sequencial: Espera um terminar para começar o outro
             for (let i = 0; i < symbolsArray.length; i += CHUNK_SIZE) {
                 const chunk = symbolsArray.slice(i, i + CHUNK_SIZE);
                 
-                // Monta URL. Adicionamos a versão com .SA para garantir que a API encontre
-                const tickersParaApi = chunk.map(s => s.endsWith('.SA') ? s : `${s},${s}.SA`).join(',');
+                // Monta a URL forçando o sufixo .SA para garantir compatibilidade
+                // A Brapi prefere "PETR4.SA" do que "PETR4"
+                const tickersParaApi = chunk.map(s => s.endsWith('.SA') ? s : `${s}.SA`).join(',');
                 
                 try {
                     const url = `https://brapi.dev/api/quote/${tickersParaApi}?token=${token}`;
+                    
+                    // Await aqui garante a execução sequencial
                     const response = await fetch(url);
                     const json = await response.json();
                     
                     if (json.results) {
                         json.results.forEach(item => {
                             const preco = item.regularMarketPrice || 0;
+                            const symbolUpper = item.symbol.toUpperCase();
                             
-                            // Mapeamento Inteligente: Salva as DUAS chaves para garantir o match
-                            // 1. Salva como veio da API (ex: PETR4.SA)
-                            pricesMap[item.symbol.toUpperCase()] = preco;
-                            
-                            // 2. Salva a versão "limpa" (ex: PETR4)
-                            const symbolClean = item.symbol.replace('.SA', '').toUpperCase();
-                            pricesMap[symbolClean] = preco;
+                            // Mapeamento Duplo: Garante que o sistema encontre o preço
+                            // tanto se procurar por "MXRF11" quanto "MXRF11.SA"
+                            pricesMap[symbolUpper] = preco; 
+                            pricesMap[symbolUpper.replace('.SA', '')] = preco;
                         });
                     }
                 } catch (errApi) {
-                    console.error("Erro ao buscar cotações do lote:", errApi);
-                    // Continua para o próximo lote mesmo com erro neste
+                    console.error(`Erro ao buscar lote ${i}:`, errApi.message);
+                    // Não para o loop, tenta o próximo lote
                 }
             }
         }
@@ -117,7 +122,7 @@ async function atualizarPatrimonioJob() {
             // Soma valor dos ativos
             Object.keys(portfolio).forEach(symbol => {
                 const qtd = portfolio[symbol];
-                // Busca no mapa (que agora tem versão com e sem .SA)
+                // Busca no mapa
                 const preco = pricesMap[symbol] || 0;
                 
                 if (qtd > 0 && preco > 0) {
@@ -129,7 +134,7 @@ async function atualizarPatrimonioJob() {
             const caixa = userCash[userId] || 0;
             const patrimonioTotal = totalAtivos + caixa;
 
-            // Só salva se tiver algum valor
+            // Salva se tiver patrimônio positivo
             if (patrimonioTotal > 0) {
                 snapshots.push({
                     user_id: userId,
@@ -139,9 +144,9 @@ async function atualizarPatrimonioJob() {
             }
         });
 
-        // 5. Salvar no Banco
+        // 5. Salvar no Banco (Upsert)
         if (snapshots.length > 0) {
-            console.log(`Salvando snapshot para ${snapshots.length} usuários.`);
+            // Salva em lotes de 100 para não sobrecarregar o Supabase
             for (let i = 0; i < snapshots.length; i += 100) {
                 const batch = snapshots.slice(i, i + 100);
                 const { error } = await supabase
@@ -150,9 +155,8 @@ async function atualizarPatrimonioJob() {
                 
                 if (error) console.error("Erro ao salvar lote de patrimônio:", error);
             }
+            console.log(`Snapshot salvo para ${snapshots.length} usuários.`);
             return snapshots.length;
-        } else {
-            console.log("Nenhum patrimônio calculado (valores zerados ou erro de cotação).");
         }
 
         return 0;
@@ -237,7 +241,7 @@ module.exports = async function handler(req, res) {
             }
         }
 
-        // 2. ATUALIZAÇÃO AUTOMÁTICA DE PATRIMÔNIO (COM CORREÇÃO DE PREÇOS)
+        // 2. ATUALIZAÇÃO AUTOMÁTICA DE PATRIMÔNIO (Agora usando a função corrigida)
         const totalSnapshots = await atualizarPatrimonioJob();
 
         // 3. ENVIO DE NOTIFICAÇÕES
@@ -262,14 +266,15 @@ module.exports = async function handler(req, res) {
             });
 
             const usersIds = Object.keys(userEvents);
-
-            await Promise.all(usersIds.map(async (userId) => {
+            
+            // Loop sequencial também nas notificações para evitar sobrecarga
+            for (const userId of usersIds) {
                 try {
                     const eventos = userEvents[userId];
                     const { data: subs } = await supabase
                         .from('push_subscriptions').select('*').eq('user_id', userId);
 
-                    if (!subs?.length) return;
+                    if (!subs?.length) continue;
 
                     const matchDate = (f, s) => f && f.startsWith(s);
 
@@ -309,7 +314,7 @@ module.exports = async function handler(req, res) {
                             ? `Comunicado: ${novosAnuncios[0].symbol} anunciou pagamento de ${fmtBRL(novosAnuncios[0].value)}/cota.`
                             : `Novos anúncios: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
                     } else {
-                        return; 
+                        continue; 
                     }
 
                     const payload = JSON.stringify({ 
@@ -333,7 +338,7 @@ module.exports = async function handler(req, res) {
                 } catch (errUser) {
                     console.error(`Erro user ${userId}:`, errUser.message);
                 }
-            }));
+            }
         }
 
         const duration = (Date.now() - start) / 1000;

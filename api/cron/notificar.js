@@ -17,15 +17,21 @@ const supabase = createClient(
 
 const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// --- FUNÇÃO DE CÁLCULO DE PATRIMÔNIO (SEQUENCIAL & ROBUSTA) ---
+// Função auxiliar para normalizar símbolos (remove espaços e sufixos para comparação)
+function normalizeSymbol(symbol) {
+    if (!symbol) return "";
+    return symbol.trim().toUpperCase().replace('.SA', '');
+}
+
+// --- FUNÇÃO DE CÁLCULO DE PATRIMÔNIO (CORRIGIDA E ROBUSTA) ---
 async function atualizarPatrimonioJob() {
-    console.log("Iniciando snapshot de patrimônio...");
+    console.log("=== INICIANDO JOB DE PATRIMÔNIO ===");
     try {
         // 1. Buscar dados necessários (Transações e Saldo em Caixa)
         const { data: transacoes, error: errTx } = await supabase
             .from('transacoes')
             .select('user_id, symbol, type, quantity');
-        
+
         const { data: appStates, error: errApp } = await supabase
             .from('appstate')
             .select('user_id, value_json')
@@ -35,84 +41,113 @@ async function atualizarPatrimonioJob() {
             console.error("Erro ao buscar dados iniciais:", errTx || errApp);
             return 0;
         }
-        if (!transacoes || transacoes.length === 0) return 0;
 
-        // 2. Mapear Carteiras por Usuário
+        if (!transacoes || transacoes.length === 0) {
+            console.log("Nenhuma transação encontrada no banco.");
+            return 0;
+        }
+
+        // 2. Mapear Carteiras por Usuário e listar ativos únicos
         const userHoldings = {};
-        const uniqueSymbols = new Set();
+        const uniqueSymbolsSet = new Set();
 
         transacoes.forEach(tx => {
             if (!userHoldings[tx.user_id]) userHoldings[tx.user_id] = {};
-            // Normaliza para maiúsculo e remove espaços
-            const symbolClean = tx.symbol.trim().toUpperCase();
             
-            if (!userHoldings[tx.user_id][symbolClean]) userHoldings[tx.user_id][symbolClean] = 0;
+            // Armazena o símbolo original e normalizado para garantir a busca
+            const rawSymbol = tx.symbol.trim().toUpperCase();
+            uniqueSymbolsSet.add(rawSymbol);
 
+            // Chave do portfolio usa o símbolo normalizado para evitar duplicidade (PETR4 vs PETR4.SA)
+            const cleanSymbol = normalizeSymbol(rawSymbol);
+
+            if (!userHoldings[tx.user_id][cleanSymbol]) userHoldings[tx.user_id][cleanSymbol] = 0;
+
+            const qtd = Number(tx.quantity);
             if (tx.type === 'buy') {
-                userHoldings[tx.user_id][symbolClean] += tx.quantity;
+                userHoldings[tx.user_id][cleanSymbol] += qtd;
             } else if (tx.type === 'sell') {
-                userHoldings[tx.user_id][symbolClean] -= tx.quantity;
+                userHoldings[tx.user_id][cleanSymbol] -= qtd;
             }
-            uniqueSymbols.add(symbolClean);
         });
 
-        // 3. Buscar Preços (SEQUENCIAL - SEM Promise.all)
-        const symbolsArray = Array.from(uniqueSymbols);
-        const pricesMap = {};
-        
-        // Lote pequeno para garantir que a URL não estoure e a API não bloqueie
-        const CHUNK_SIZE = 15; 
+        const symbolsToFetch = Array.from(uniqueSymbolsSet);
+        console.log(`Total de ativos únicos para buscar preço: ${symbolsToFetch.length}`);
 
-        if (symbolsArray.length > 0) {
-            const token = process.env.BRAPI_API_TOKEN;
-            
-            // Loop Sequencial: Espera um terminar para começar o outro
-            for (let i = 0; i < symbolsArray.length; i += CHUNK_SIZE) {
-                const chunk = symbolsArray.slice(i, i + CHUNK_SIZE);
-                
-                // Monta a URL forçando o sufixo .SA para garantir compatibilidade
-                // A Brapi prefere "PETR4.SA" do que "PETR4"
-                const tickersParaApi = chunk.map(s => s.endsWith('.SA') ? s : `${s}.SA`).join(',');
-                
-                try {
-                    const url = `https://brapi.dev/api/quote/${tickersParaApi}?token=${token}`;
-                    
-                    // Await aqui garante a execução sequencial
-                    const response = await fetch(url);
-                    const json = await response.json();
-                    
-                    if (json.results) {
-                        json.results.forEach(item => {
-                            const preco = item.regularMarketPrice || 0;
-                            const symbolUpper = item.symbol.toUpperCase();
-                            
-                            // Mapeamento Duplo: Garante que o sistema encontre o preço
-                            // tanto se procurar por "MXRF11" quanto "MXRF11.SA"
-                            pricesMap[symbolUpper] = preco; 
-                            pricesMap[symbolUpper.replace('.SA', '')] = preco;
-                        });
-                    }
-                } catch (errApi) {
-                    console.error(`Erro ao buscar lote ${i}:`, errApi.message);
-                    // Não para o loop, tenta o próximo lote
-                }
-            }
+        // 3. Buscar Preços (SEQUENCIAL & ROBUSTA)
+        const pricesMap = {};
+        const CHUNK_SIZE = 20; 
+        const token = process.env.BRAPI_API_TOKEN;
+
+        if (!token) {
+            console.error("ERRO: Token da Brapi não configurado.");
+            return 0;
         }
 
-        // 4. Mapear Saldo em Caixa e Calcular Totais
+        for (let i = 0; i < symbolsToFetch.length; i += CHUNK_SIZE) {
+            const chunk = symbolsToFetch.slice(i, i + CHUNK_SIZE);
+
+            // Monta a URL forçando o sufixo .SA se não tiver, pois a Brapi prefere assim
+            const tickersParaApi = chunk.map(s => s.endsWith('.SA') ? s : `${s}.SA`).join(',');
+
+            try {
+                const url = `https://brapi.dev/api/quote/${tickersParaApi}?token=${token}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    console.error(`Erro Brapi status ${response.status} no lote ${i}`);
+                    continue;
+                }
+
+                const json = await response.json();
+
+                if (json.results) {
+                    json.results.forEach(item => {
+                        const preco = item.regularMarketPrice || 0;
+                        const symbolApi = item.symbol.toUpperCase();
+
+                        // ESTRATÉGIA MULTI-KEY: Salva o preço em todas as variações possíveis
+                        // para garantir que o "match" ocorra na hora de calcular.
+                        pricesMap[symbolApi] = preco; // Ex: PETR4.SA
+                        pricesMap[normalizeSymbol(symbolApi)] = preco; // Ex: PETR4
+                    });
+                }
+            } catch (errApi) {
+                console.error(`Erro ao buscar lote ${i}:`, errApi.message);
+            }
+            
+            // Pequena pausa para evitar Rate Limit (429) da Brapi
+            await new Promise(r => setTimeout(r, 200));
+        }
+
+        // 4. Mapear Saldo em Caixa (Tratamento seguro de JSON)
         const userCash = {};
         if (appStates) {
             appStates.forEach(item => {
-                // Garante leitura correta do JSON { value: 100 }
-                const val = item.value_json && item.value_json.value ? Number(item.value_json.value) : 0;
+                let val = 0;
+                try {
+                    // Tenta fazer parse se for string, ou usa direto se for objeto
+                    const jsonVal = typeof item.value_json === 'string' 
+                        ? JSON.parse(item.value_json) 
+                        : item.value_json;
+
+                    if (jsonVal && (jsonVal.value !== undefined)) {
+                        val = Number(jsonVal.value);
+                    } else if (typeof jsonVal === 'number') {
+                        val = jsonVal;
+                    }
+                } catch (e) {
+                    console.warn(`Aviso: Erro ao ler caixa do user ${item.user_id}`, e.message);
+                }
                 userCash[item.user_id] = val;
             });
         }
 
+        // 5. Calcular Totais
         const hoje = new Date();
         hoje.setHours(hoje.getHours() - 3); // Ajuste fuso BR
         const dataHoje = hoje.toISOString().split('T')[0];
-        
+
         const snapshots = [];
 
         Object.keys(userHoldings).forEach(userId => {
@@ -122,10 +157,14 @@ async function atualizarPatrimonioJob() {
             // Soma valor dos ativos
             Object.keys(portfolio).forEach(symbol => {
                 const qtd = portfolio[symbol];
-                // Busca no mapa
-                const preco = pricesMap[symbol] || 0;
                 
-                if (qtd > 0 && preco > 0) {
+                // Ignora posições zeradas ou negativas (vendas a descoberto não suportadas na lógica simples)
+                if (qtd <= 0.0001) return;
+
+                // Busca preço usando a chave normalizada
+                const preco = pricesMap[symbol] || 0;
+
+                if (preco > 0) {
                     totalAtivos += (qtd * preco);
                 }
             });
@@ -133,6 +172,9 @@ async function atualizarPatrimonioJob() {
             // Soma caixa
             const caixa = userCash[userId] || 0;
             const patrimonioTotal = totalAtivos + caixa;
+
+            // Log de verificação (Debug)
+            // console.log(`User ${userId.slice(0,4)}... -> Ativos: ${totalAtivos.toFixed(2)} | Caixa: ${caixa} | Total: ${patrimonioTotal.toFixed(2)}`);
 
             // Salva se tiver patrimônio positivo
             if (patrimonioTotal > 0) {
@@ -144,22 +186,24 @@ async function atualizarPatrimonioJob() {
             }
         });
 
-        // 5. Salvar no Banco (Upsert)
+        // 6. Salvar no Banco (Batch Upsert)
         if (snapshots.length > 0) {
-            // Salva em lotes de 100 para não sobrecarregar o Supabase
+            console.log(`Salvando snapshot para ${snapshots.length} usuários.`);
+            
+            // Salva em lotes de 100
             for (let i = 0; i < snapshots.length; i += 100) {
                 const batch = snapshots.slice(i, i + 100);
                 const { error } = await supabase
                     .from('patrimonio')
                     .upsert(batch, { onConflict: 'user_id, date' });
-                
+
                 if (error) console.error("Erro ao salvar lote de patrimônio:", error);
             }
-            console.log(`Snapshot salvo para ${snapshots.length} usuários.`);
             return snapshots.length;
+        } else {
+            console.log("Nenhum patrimônio calculado (valores zerados).");
+            return 0;
         }
-
-        return 0;
 
     } catch (e) {
         console.error("Erro fatal no job de patrimônio:", e);
@@ -208,7 +252,7 @@ module.exports = async function handler(req, res) {
                         if (!dado.paymentDate || !dado.value) continue;
 
                         const usersInteressados = allTransacoes
-                            .filter(t => t.symbol === dado.symbol)
+                            .filter(t => normalizeSymbol(t.symbol) === normalizeSymbol(dado.symbol)) // Comparação normalizada
                             .map(u => u.user_id);
 
                         const usersUnicos = [...new Set(usersInteressados)];
@@ -241,7 +285,7 @@ module.exports = async function handler(req, res) {
             }
         }
 
-        // 2. ATUALIZAÇÃO AUTOMÁTICA DE PATRIMÔNIO (Agora usando a função corrigida)
+        // 2. ATUALIZAÇÃO AUTOMÁTICA DE PATRIMÔNIO
         const totalSnapshots = await atualizarPatrimonioJob();
 
         // 3. ENVIO DE NOTIFICAÇÕES
@@ -266,7 +310,7 @@ module.exports = async function handler(req, res) {
             });
 
             const usersIds = Object.keys(userEvents);
-            
+
             // Loop sequencial também nas notificações para evitar sobrecarga
             for (const userId of usersIds) {
                 try {

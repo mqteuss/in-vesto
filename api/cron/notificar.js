@@ -17,17 +17,23 @@ const supabase = createClient(
 
 const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// Função auxiliar para normalizar símbolos (remove espaços e sufixos para comparação)
+// Normaliza Símbolos
 function normalizeSymbol(symbol) {
     if (!symbol) return "";
     return symbol.trim().toUpperCase().replace('.SA', '');
 }
 
-// --- FUNÇÃO DE CÁLCULO DE PATRIMÔNIO (CORRIGIDA E ROBUSTA) ---
+// Pausa (Sleep)
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// --- CONFIGURAÇÃO DE VELOCIDADE ---
+// BAIXEI PARA 300ms. Se a Brapi bloquear, aumente levemente (ex: 500).
+const INTERVALO_MS = 300; 
+
 async function atualizarPatrimonioJob() {
-    console.log("=== INICIANDO JOB DE PATRIMÔNIO ===");
+    console.log("=== INICIANDO JOB DE PATRIMÔNIO (MODO RÁPIDO) ===");
     try {
-        // 1. Buscar dados necessários (Transações e Saldo em Caixa)
+        // 1. Buscar dados
         const { data: transacoes, error: errTx } = await supabase
             .from('transacoes')
             .select('user_id, symbol, type, quantity');
@@ -38,145 +44,114 @@ async function atualizarPatrimonioJob() {
             .eq('key', 'saldoCaixa');
 
         if (errTx || errApp) {
-            console.error("Erro ao buscar dados iniciais:", errTx || errApp);
+            console.error("Erro BD:", errTx || errApp);
             return 0;
         }
 
-        if (!transacoes || transacoes.length === 0) {
-            console.log("Nenhuma transação encontrada no banco.");
-            return 0;
-        }
+        if (!transacoes || transacoes.length === 0) return 0;
 
-        // 2. Mapear Carteiras por Usuário e listar ativos únicos
+        // 2. Mapear Carteiras
         const userHoldings = {};
         const uniqueSymbolsSet = new Set();
 
         transacoes.forEach(tx => {
             if (!userHoldings[tx.user_id]) userHoldings[tx.user_id] = {};
-            
-            // Armazena o símbolo original e normalizado para garantir a busca
             const rawSymbol = tx.symbol.trim().toUpperCase();
             uniqueSymbolsSet.add(rawSymbol);
-
-            // Chave do portfolio usa o símbolo normalizado para evitar duplicidade (PETR4 vs PETR4.SA)
             const cleanSymbol = normalizeSymbol(rawSymbol);
 
             if (!userHoldings[tx.user_id][cleanSymbol]) userHoldings[tx.user_id][cleanSymbol] = 0;
-
             const qtd = Number(tx.quantity);
-            if (tx.type === 'buy') {
-                userHoldings[tx.user_id][cleanSymbol] += qtd;
-            } else if (tx.type === 'sell') {
-                userHoldings[tx.user_id][cleanSymbol] -= qtd;
-            }
+            if (tx.type === 'buy') userHoldings[tx.user_id][cleanSymbol] += qtd;
+            else if (tx.type === 'sell') userHoldings[tx.user_id][cleanSymbol] -= qtd;
         });
 
         const symbolsToFetch = Array.from(uniqueSymbolsSet);
-        console.log(`Total de ativos únicos para buscar preço: ${symbolsToFetch.length}`);
+        console.log(`Buscando ${symbolsToFetch.length} ativos. Intervalo: ${INTERVALO_MS}ms.`);
 
-        // 3. Buscar Preços (SEQUENCIAL & ROBUSTA)
+        // 3. Buscar Preços (Sequencial Rápido)
         const pricesMap = {};
-        const CHUNK_SIZE = 20; 
         const token = process.env.BRAPI_API_TOKEN;
 
         if (!token) {
-            console.error("ERRO: Token da Brapi não configurado.");
+            console.error("ERRO: Token Brapi faltando.");
             return 0;
         }
 
-        for (let i = 0; i < symbolsToFetch.length; i += CHUNK_SIZE) {
-            const chunk = symbolsToFetch.slice(i, i + CHUNK_SIZE);
-
-            // Monta a URL forçando o sufixo .SA se não tiver, pois a Brapi prefere assim
-            const tickersParaApi = chunk.map(s => s.endsWith('.SA') ? s : `${s}.SA`).join(',');
+        for (const symbol of symbolsToFetch) {
+            const tickerParaApi = symbol.endsWith('.SA') ? symbol : `${symbol}.SA`;
 
             try {
-                const url = `https://brapi.dev/api/quote/${tickersParaApi}?token=${token}`;
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    console.error(`Erro Brapi status ${response.status} no lote ${i}`);
-                    continue;
+                // Controller para abortar requisição se travar
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000); // Max 3s por request
+
+                const response = await fetch(`https://brapi.dev/api/quote/${tickerParaApi}?token=${token}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (response.status === 429) {
+                    console.warn(`⚠️ Rate Limit em ${symbol}. Pulando para evitar travamento.`);
+                    // Em modo rápido, se der 429, pulamos para tentar salvar o que já temos
+                    continue; 
                 }
 
-                const json = await response.json();
-
-                if (json.results) {
-                    json.results.forEach(item => {
-                        const preco = item.regularMarketPrice || 0;
-                        const symbolApi = item.symbol.toUpperCase();
-
-                        // ESTRATÉGIA MULTI-KEY: Salva o preço em todas as variações possíveis
-                        // para garantir que o "match" ocorra na hora de calcular.
-                        pricesMap[symbolApi] = preco; // Ex: PETR4.SA
-                        pricesMap[normalizeSymbol(symbolApi)] = preco; // Ex: PETR4
-                    });
+                if (response.ok) {
+                    const json = await response.json();
+                    if (json.results && json.results.length > 0) {
+                        const p = json.results[0].regularMarketPrice || 0;
+                        pricesMap[symbol] = p;
+                        pricesMap[normalizeSymbol(symbol)] = p;
+                    }
                 }
-            } catch (errApi) {
-                console.error(`Erro ao buscar lote ${i}:`, errApi.message);
+            } catch (err) {
+                console.error(`Falha ao buscar ${symbol}: ${err.name}`);
             }
-            
-            // Pequena pausa para evitar Rate Limit (429) da Brapi
-            await new Promise(r => setTimeout(r, 200));
+
+            // Pausa curta
+            await sleep(INTERVALO_MS);
         }
 
-        // 4. Mapear Saldo em Caixa (Tratamento seguro de JSON)
+        // Se não pegou NENHUM preço, aborta
+        if (Object.keys(pricesMap).length === 0 && symbolsToFetch.length > 0) {
+            console.error("Nenhum preço obtido. Abortando.");
+            return 0;
+        }
+
+        // 4. Calcular e Salvar
         const userCash = {};
         if (appStates) {
             appStates.forEach(item => {
                 let val = 0;
                 try {
-                    // Tenta fazer parse se for string, ou usa direto se for objeto
-                    const jsonVal = typeof item.value_json === 'string' 
-                        ? JSON.parse(item.value_json) 
-                        : item.value_json;
-
-                    if (jsonVal && (jsonVal.value !== undefined)) {
-                        val = Number(jsonVal.value);
-                    } else if (typeof jsonVal === 'number') {
-                        val = jsonVal;
-                    }
-                } catch (e) {
-                    console.warn(`Aviso: Erro ao ler caixa do user ${item.user_id}`, e.message);
-                }
+                    const jsonVal = typeof item.value_json === 'string' ? JSON.parse(item.value_json) : item.value_json;
+                    if (jsonVal?.value !== undefined) val = Number(jsonVal.value);
+                    else if (typeof jsonVal === 'number') val = jsonVal;
+                } catch (e) {}
                 userCash[item.user_id] = val;
             });
         }
 
-        // 5. Calcular Totais
         const hoje = new Date();
-        hoje.setHours(hoje.getHours() - 3); // Ajuste fuso BR
+        hoje.setHours(hoje.getHours() - 3);
         const dataHoje = hoje.toISOString().split('T')[0];
-
         const snapshots = [];
 
         Object.keys(userHoldings).forEach(userId => {
             let totalAtivos = 0;
             const portfolio = userHoldings[userId];
 
-            // Soma valor dos ativos
-            Object.keys(portfolio).forEach(symbol => {
-                const qtd = portfolio[symbol];
-                
-                // Ignora posições zeradas ou negativas (vendas a descoberto não suportadas na lógica simples)
+            Object.keys(portfolio).forEach(sym => {
+                const qtd = portfolio[sym];
                 if (qtd <= 0.0001) return;
-
-                // Busca preço usando a chave normalizada
-                const preco = pricesMap[symbol] || 0;
-
-                if (preco > 0) {
-                    totalAtivos += (qtd * preco);
-                }
+                const preco = pricesMap[sym] || 0;
+                if (preco > 0) totalAtivos += (qtd * preco);
             });
 
-            // Soma caixa
             const caixa = userCash[userId] || 0;
             const patrimonioTotal = totalAtivos + caixa;
 
-            // Log de verificação (Debug)
-            // console.log(`User ${userId.slice(0,4)}... -> Ativos: ${totalAtivos.toFixed(2)} | Caixa: ${caixa} | Total: ${patrimonioTotal.toFixed(2)}`);
-
-            // Salva se tiver patrimônio positivo
             if (patrimonioTotal > 0) {
                 snapshots.push({
                     user_id: userId,
@@ -186,27 +161,16 @@ async function atualizarPatrimonioJob() {
             }
         });
 
-        // 6. Salvar no Banco (Batch Upsert)
         if (snapshots.length > 0) {
-            console.log(`Salvando snapshot para ${snapshots.length} usuários.`);
-            
-            // Salva em lotes de 100
-            for (let i = 0; i < snapshots.length; i += 100) {
-                const batch = snapshots.slice(i, i + 100);
-                const { error } = await supabase
-                    .from('patrimonio')
-                    .upsert(batch, { onConflict: 'user_id, date' });
-
-                if (error) console.error("Erro ao salvar lote de patrimônio:", error);
-            }
+            // Salva tudo de uma vez (lote maior pois é rápido)
+            const { error } = await supabase.from('patrimonio').upsert(snapshots, { onConflict: 'user_id, date' });
+            if (error) console.error("Erro ao salvar:", error);
             return snapshots.length;
-        } else {
-            console.log("Nenhum patrimônio calculado (valores zerados).");
-            return 0;
         }
 
+        return 0;
     } catch (e) {
-        console.error("Erro fatal no job de patrimônio:", e);
+        console.error("Erro Fatal Job:", e);
         return 0;
     }
 }
@@ -214,183 +178,80 @@ async function atualizarPatrimonioJob() {
 async function atualizarProventosPeloScraper(fiiList) {
     const req = { method: 'POST', body: { mode: 'proventos_carteira', payload: { fiiList } } };
     let resultado = [];
-
-    const res = {
-        setHeader: () => {},
-        status: () => ({ json: (data) => { resultado = data.json; } }),
-        json: (data) => { resultado = data.json; }
-    };
-
-    try {
-        await scraperHandler(req, res);
-        return resultado || [];
-    } catch (e) {
-        console.error("Erro interno no Scraper:", e.message);
-        return [];
-    }
+    const res = { setHeader: () => {}, status: () => ({ json: (d) => resultado = d.json }), json: (d) => resultado = d.json };
+    try { await scraperHandler(req, res); return resultado || []; } catch (e) { return []; }
 }
 
 module.exports = async function handler(req, res) {
     try {
-        console.log("Iniciando processamento Cron...");
+        console.log("Cron Iniciado...");
         const start = Date.now();
 
-        // 1. ATUALIZAÇÃO DA BASE DE DADOS (PROVENTOS)
+        // 1. Proventos
         const { data: ativos } = await supabase.from('transacoes').select('symbol');
-
         if (ativos?.length > 0) {
-            const uniqueSymbols = [...new Set(ativos.map(a => a.symbol))];
-
-            if (uniqueSymbols.length > 0) {
-                const novosDados = await atualizarProventosPeloScraper(uniqueSymbols);
-
-                if (novosDados?.length > 0) {
+            const symbols = [...new Set(ativos.map(a => a.symbol))];
+            if (symbols.length > 0) {
+                // Pequeno delay inicial para garantir conexões
+                await sleep(500); 
+                const novos = await atualizarProventosPeloScraper(symbols);
+                if (novos?.length > 0) {
                     const upserts = [];
-                    const { data: allTransacoes } = await supabase.from('transacoes').select('user_id, symbol');
-
-                    for (const dado of novosDados) {
-                        if (!dado.paymentDate || !dado.value) continue;
-
-                        const usersInteressados = allTransacoes
-                            .filter(t => normalizeSymbol(t.symbol) === normalizeSymbol(dado.symbol)) // Comparação normalizada
-                            .map(u => u.user_id);
-
-                        const usersUnicos = [...new Set(usersInteressados)];
-
-                        usersUnicos.forEach(uid => {
-                             const tipoProvento = (dado.type || 'REND').toUpperCase().trim();
-                             const valorFormatadoID = parseFloat(dado.value).toFixed(4);
-                             const idGerado = `${dado.symbol}_${dado.paymentDate}_${tipoProvento}_${valorFormatadoID}`;
-
-                             upserts.push({
-                                 id: idGerado,
-                                 user_id: uid,
-                                 symbol: dado.symbol,
-                                 value: dado.value,
-                                 paymentdate: dado.paymentDate,
-                                 datacom: dado.dataCom,
-                                 type: tipoProvento, 
-                                 processado: false
-                             });
+                    const { data: allTx } = await supabase.from('transacoes').select('user_id, symbol');
+                    for (const d of novos) {
+                        if (!d.paymentDate || !d.value) continue;
+                        const uids = [...new Set(allTx.filter(t => normalizeSymbol(t.symbol) === normalizeSymbol(d.symbol)).map(u => u.user_id))];
+                        uids.forEach(uid => {
+                            const tipo = (d.type || 'REND').toUpperCase().trim();
+                            const id = `${d.symbol}_${d.paymentDate}_${tipo}_${parseFloat(d.value).toFixed(4)}`;
+                            upserts.push({ id, user_id: uid, symbol: d.symbol, value: d.value, paymentdate: d.paymentDate, datacom: d.dataCom, type: tipo, processado: false });
                         });
                     }
-
-                    if (upserts.length > 0) {
-                        for (let i = 0; i < upserts.length; i += 200) {
-                            await supabase.from('proventosconhecidos')
-                                .upsert(upserts.slice(i, i + 200), { onConflict: 'user_id, id', ignoreDuplicates: true });
-                        }
-                    }
+                    if (upserts.length) await supabase.from('proventosconhecidos').upsert(upserts, { onConflict: 'user_id, id', ignoreDuplicates: true });
                 }
             }
         }
 
-        // 2. ATUALIZAÇÃO AUTOMÁTICA DE PATRIMÔNIO
-        const totalSnapshots = await atualizarPatrimonioJob();
+        // 2. Patrimônio
+        const snaps = await atualizarPatrimonioJob();
 
-        // 3. ENVIO DE NOTIFICAÇÕES
-        const agora = new Date();
-        agora.setHours(agora.getHours() - 3); 
-        const hojeString = agora.toISOString().split('T')[0];
-        const inicioDoDia = `${hojeString}T00:00:00`;
-        const hojeDateObj = new Date(hojeString + 'T00:00:00');
+        // 3. Notificações
+        const hoje = new Date();
+        hoje.setHours(hoje.getHours() - 3);
+        const hojeStr = hoje.toISOString().split('T')[0];
+        const { data: provs } = await supabase.from('proventosconhecidos').select('*').or(`paymentdate.eq.${hojeStr},datacom.eq.${hojeStr},created_at.gte.${hojeStr}T00:00:00`);
+        
+        let sent = 0;
+        if (provs?.length) {
+            const events = {};
+            provs.forEach(p => { if (!events[p.user_id]) events[p.user_id] = []; events[p.user_id].push(p); });
+            for (const uid of Object.keys(events)) {
+                const { data: subs } = await supabase.from('push_subscriptions').select('*').eq('user_id', uid);
+                if (!subs?.length) continue;
+                
+                const evs = events[uid];
+                const pays = evs.filter(e => e.paymentdate?.startsWith(hojeStr));
+                const coms = evs.filter(e => e.datacom?.startsWith(hojeStr));
+                const news = evs.filter(e => e.created_at?.startsWith(hojeStr) && !e.paymentdate?.startsWith(hojeStr) && !e.datacom?.startsWith(hojeStr));
 
-        const { data: proventos } = await supabase
-            .from('proventosconhecidos')
-            .select('*')
-            .or(`paymentdate.eq.${hojeString},datacom.eq.${hojeString},created_at.gte.${inicioDoDia}`);
+                let t = '', b = '';
+                if (pays.length) { t = '💰 Recebimento'; b = pays.map(p => p.symbol).join(', '); }
+                else if (coms.length) { t = '📅 Data Com'; b = coms.map(p => p.symbol).join(', '); }
+                else if (news.length) { t = '🔔 Anúncio'; b = news.slice(0,3).map(p => p.symbol).join(', '); }
+                else continue;
 
-        let totalSent = 0;
-
-        if (proventos && proventos.length > 0) {
-            const userEvents = {};
-            proventos.forEach(p => {
-                if (!userEvents[p.user_id]) userEvents[p.user_id] = [];
-                userEvents[p.user_id].push(p);
-            });
-
-            const usersIds = Object.keys(userEvents);
-
-            // Loop sequencial também nas notificações para evitar sobrecarga
-            for (const userId of usersIds) {
-                try {
-                    const eventos = userEvents[userId];
-                    const { data: subs } = await supabase
-                        .from('push_subscriptions').select('*').eq('user_id', userId);
-
-                    if (!subs?.length) continue;
-
-                    const matchDate = (f, s) => f && f.startsWith(s);
-
-                    const pagamentos = eventos.filter(e => matchDate(e.paymentdate, hojeString));
-                    const dataComs = eventos.filter(e => matchDate(e.datacom, hojeString));
-                    const novosAnuncios = eventos.filter(e => {
-                        const createdToday = (e.created_at || '').startsWith(hojeString);
-                        const duplicate = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
-                        let isFuturo = false;
-                        if (e.paymentdate) {
-                            const d = new Date(e.paymentdate.split('T')[0] + 'T00:00:00');
-                            isFuturo = d >= hojeDateObj;
-                        }
-                        return createdToday && !duplicate && isFuturo;
-                    });
-
-                    let title = '', body = '';
-                    const icon = 'https://in-vesto.vercel.app/icons/icon-192x192.png'; 
-                    const badge = 'https://in-vesto.vercel.app/sininhov2.png';
-
-                    if (pagamentos.length > 0) {
-                        const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
-                        title = 'Crédito de Proventos';
-                        body = pagamentos.length === 1 
-                            ? `O ativo ${pagamentos[0].symbol} realizou pagamento de ${fmtBRL(pagamentos[0].value)}/cota hoje.` 
-                            : `Pagamentos realizados hoje: ${lista}.`;
-
-                    } else if (dataComs.length > 0) {
-                        const lista = dataComs.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
-                        title = 'Data Com (Corte)';
-                        body = `Data limite registrada hoje para: ${lista}.`;
-
-                    } else if (novosAnuncios.length > 0) {
-                        const lista = novosAnuncios.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).slice(0,3).join(', ');
-                        title = 'Comunicado de Proventos';
-                        body = novosAnuncios.length === 1
-                            ? `Comunicado: ${novosAnuncios[0].symbol} anunciou pagamento de ${fmtBRL(novosAnuncios[0].value)}/cota.`
-                            : `Novos anúncios: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
-                    } else {
-                        continue; 
-                    }
-
-                    const payload = JSON.stringify({ 
-                        title, 
-                        body, 
-                        icon, 
-                        badge,
-                        url: '/?tab=tab-carteira'
-                    });
-
-                    const pushPromises = subs.map(sub => 
-                        webpush.sendNotification(sub.subscription, payload).catch(err => {
-                            if (err.statusCode === 410 || err.statusCode === 404) {
-                                supabase.from('push_subscriptions').delete().match({ id: sub.id }).then(()=>{});
-                            }
-                        })
-                    );
-                    await Promise.all(pushPromises);
-                    totalSent += pushPromises.length;
-
-                } catch (errUser) {
-                    console.error(`Erro user ${userId}:`, errUser.message);
-                }
+                const pay = JSON.stringify({ title: t, body: b, icon: '/icons/icon-192x192.png', url: '/?tab=tab-carteira' });
+                await Promise.all(subs.map(s => webpush.sendNotification(s.subscription, pay).catch(()=>{})));
+                sent += subs.length;
             }
         }
 
-        const duration = (Date.now() - start) / 1000;
-        console.log(`Cron concluído em ${duration}s. Notificações: ${totalSent}. Patrimônios: ${totalSnapshots}.`);
-        return res.status(200).json({ status: 'Success', sent: totalSent, snapshots: totalSnapshots, time: duration });
+        const dur = (Date.now() - start) / 1000;
+        console.log(`Fim. Tempo: ${dur}s. Snaps: ${snaps}.`);
+        return res.status(200).json({ status: 'Ok', snapshots: snaps, time: dur });
 
-    } catch (error) {
-        console.error('Erro Fatal:', error);
-        return res.status(500).json({ error: error.message });
+    } catch (e) {
+        console.error('Fatal:', e);
+        return res.status(500).json({ error: e.message });
     }
 };

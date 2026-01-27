@@ -7,7 +7,7 @@ const httpsAgent = new https.Agent({
     keepAlive: true,
     maxSockets: 128,
     maxFreeSockets: 20,
-    timeout: 8000
+    timeout: 10000
 });
 
 const client = axios.create({
@@ -451,3 +451,4 @@ module.exports = async function handler(req, res) {
     }
 
 };
+

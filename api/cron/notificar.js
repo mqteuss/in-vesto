@@ -27,7 +27,8 @@ function normalizeSymbol(symbol) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // --- CONFIGURAÇÃO DE VELOCIDADE ---
-// BAIXEI PARA 300ms. Se a Brapi bloquear, aumente levemente (ex: 500).
+// 300ms é rápido o suficiente para não dar timeout na Vercel, 
+// mas lento o suficiente para a Brapi não bloquear (Erro 429).
 const INTERVALO_MS = 300; 
 
 async function atualizarPatrimonioJob() {
@@ -69,7 +70,7 @@ async function atualizarPatrimonioJob() {
         const symbolsToFetch = Array.from(uniqueSymbolsSet);
         console.log(`Buscando ${symbolsToFetch.length} ativos. Intervalo: ${INTERVALO_MS}ms.`);
 
-        // 3. Buscar Preços (Sequencial Rápido)
+        // 3. Buscar Preços (Sequencial Rápido com Timeout Controller)
         const pricesMap = {};
         const token = process.env.BRAPI_API_TOKEN;
 
@@ -82,9 +83,9 @@ async function atualizarPatrimonioJob() {
             const tickerParaApi = symbol.endsWith('.SA') ? symbol : `${symbol}.SA`;
 
             try {
-                // Controller para abortar requisição se travar
+                // Controller para abortar requisição se travar por mais de 3s
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000); // Max 3s por request
+                const timeoutId = setTimeout(() => controller.abort(), 3000); 
 
                 const response = await fetch(`https://brapi.dev/api/quote/${tickerParaApi}?token=${token}`, {
                     signal: controller.signal
@@ -92,8 +93,7 @@ async function atualizarPatrimonioJob() {
                 clearTimeout(timeoutId);
 
                 if (response.status === 429) {
-                    console.warn(`⚠️ Rate Limit em ${symbol}. Pulando para evitar travamento.`);
-                    // Em modo rápido, se der 429, pulamos para tentar salvar o que já temos
+                    console.warn(`⚠️ Rate Limit em ${symbol}. Pulando para evitar travamento geral.`);
                     continue; 
                 }
 
@@ -109,13 +109,13 @@ async function atualizarPatrimonioJob() {
                 console.error(`Falha ao buscar ${symbol}: ${err.name}`);
             }
 
-            // Pausa curta
+            // Pausa curta para respeitar a API
             await sleep(INTERVALO_MS);
         }
 
-        // Se não pegou NENHUM preço, aborta
+        // Se não pegou NENHUM preço, aborta para não zerar saldo
         if (Object.keys(pricesMap).length === 0 && symbolsToFetch.length > 0) {
-            console.error("Nenhum preço obtido. Abortando.");
+            console.error("Nenhum preço obtido. Abortando atualização de patrimônio.");
             return 0;
         }
 
@@ -162,7 +162,6 @@ async function atualizarPatrimonioJob() {
         });
 
         if (snapshots.length > 0) {
-            // Salva tudo de uma vez (lote maior pois é rápido)
             const { error } = await supabase.from('patrimonio').upsert(snapshots, { onConflict: 'user_id, date' });
             if (error) console.error("Erro ao salvar:", error);
             return snapshots.length;
@@ -192,63 +191,153 @@ module.exports = async function handler(req, res) {
         if (ativos?.length > 0) {
             const symbols = [...new Set(ativos.map(a => a.symbol))];
             if (symbols.length > 0) {
-                // Pequeno delay inicial para garantir conexões
                 await sleep(500); 
-                const novos = await atualizarProventosPeloScraper(symbols);
-                if (novos?.length > 0) {
+                const novosDados = await atualizarProventosPeloScraper(symbols);
+
+                if (novosDados?.length > 0) {
                     const upserts = [];
-                    const { data: allTx } = await supabase.from('transacoes').select('user_id, symbol');
-                    for (const d of novos) {
-                        if (!d.paymentDate || !d.value) continue;
-                        const uids = [...new Set(allTx.filter(t => normalizeSymbol(t.symbol) === normalizeSymbol(d.symbol)).map(u => u.user_id))];
-                        uids.forEach(uid => {
-                            const tipo = (d.type || 'REND').toUpperCase().trim();
-                            const id = `${d.symbol}_${d.paymentDate}_${tipo}_${parseFloat(d.value).toFixed(4)}`;
-                            upserts.push({ id, user_id: uid, symbol: d.symbol, value: d.value, paymentdate: d.paymentDate, datacom: d.dataCom, type: tipo, processado: false });
+                    const { data: allTransacoes } = await supabase.from('transacoes').select('user_id, symbol');
+                    
+                    for (const dado of novosDados) {
+                        if (!dado.paymentDate || !dado.value) continue;
+
+                        const usersInteressados = allTransacoes
+                            .filter(t => normalizeSymbol(t.symbol) === normalizeSymbol(dado.symbol))
+                            .map(u => u.user_id);
+
+                        const usersUnicos = [...new Set(usersInteressados)];
+
+                        usersUnicos.forEach(uid => {
+                             const tipoProvento = (dado.type || 'REND').toUpperCase().trim();
+                             const idGerado = `${dado.symbol}_${dado.paymentDate}_${tipoProvento}_${parseFloat(dado.value).toFixed(4)}`;
+
+                             upserts.push({
+                                 id: idGerado,
+                                 user_id: uid,
+                                 symbol: dado.symbol,
+                                 value: dado.value,
+                                 paymentdate: dado.paymentDate,
+                                 datacom: dado.dataCom,
+                                 type: tipoProvento, 
+                                 processado: false
+                             });
                         });
                     }
-                    if (upserts.length) await supabase.from('proventosconhecidos').upsert(upserts, { onConflict: 'user_id, id', ignoreDuplicates: true });
+
+                    if (upserts.length > 0) {
+                        // Salva proventos
+                        await supabase.from('proventosconhecidos')
+                            .upsert(upserts, { onConflict: 'user_id, id', ignoreDuplicates: true });
+                    }
                 }
             }
         }
 
-        // 2. Patrimônio
-        const snaps = await atualizarPatrimonioJob();
+        // 2. Patrimônio (Versão Otimizada)
+        const totalSnapshots = await atualizarPatrimonioJob();
 
-        // 3. Notificações
-        const hoje = new Date();
-        hoje.setHours(hoje.getHours() - 3);
-        const hojeStr = hoje.toISOString().split('T')[0];
-        const { data: provs } = await supabase.from('proventosconhecidos').select('*').or(`paymentdate.eq.${hojeStr},datacom.eq.${hojeStr},created_at.gte.${hojeStr}T00:00:00`);
-        
-        let sent = 0;
-        if (provs?.length) {
-            const events = {};
-            provs.forEach(p => { if (!events[p.user_id]) events[p.user_id] = []; events[p.user_id].push(p); });
-            for (const uid of Object.keys(events)) {
-                const { data: subs } = await supabase.from('push_subscriptions').select('*').eq('user_id', uid);
-                if (!subs?.length) continue;
-                
-                const evs = events[uid];
-                const pays = evs.filter(e => e.paymentdate?.startsWith(hojeStr));
-                const coms = evs.filter(e => e.datacom?.startsWith(hojeStr));
-                const news = evs.filter(e => e.created_at?.startsWith(hojeStr) && !e.paymentdate?.startsWith(hojeStr) && !e.datacom?.startsWith(hojeStr));
+        // 3. Notificações (VERSÃO ORIGINAL RESTAURADA)
+        const agora = new Date();
+        agora.setHours(agora.getHours() - 3); 
+        const hojeString = agora.toISOString().split('T')[0];
+        const inicioDoDia = `${hojeString}T00:00:00`;
+        const hojeDateObj = new Date(hojeString + 'T00:00:00');
 
-                let t = '', b = '';
-                if (pays.length) { t = '💰 Recebimento'; b = pays.map(p => p.symbol).join(', '); }
-                else if (coms.length) { t = '📅 Data Com'; b = coms.map(p => p.symbol).join(', '); }
-                else if (news.length) { t = '🔔 Anúncio'; b = news.slice(0,3).map(p => p.symbol).join(', '); }
-                else continue;
+        const { data: proventos } = await supabase
+            .from('proventosconhecidos')
+            .select('*')
+            .or(`paymentdate.eq.${hojeString},datacom.eq.${hojeString},created_at.gte.${inicioDoDia}`);
 
-                const pay = JSON.stringify({ title: t, body: b, icon: '/icons/icon-192x192.png', url: '/?tab=tab-carteira' });
-                await Promise.all(subs.map(s => webpush.sendNotification(s.subscription, pay).catch(()=>{})));
-                sent += subs.length;
+        let totalSent = 0;
+
+        if (proventos && proventos.length > 0) {
+            const userEvents = {};
+            proventos.forEach(p => {
+                if (!userEvents[p.user_id]) userEvents[p.user_id] = [];
+                userEvents[p.user_id].push(p);
+            });
+
+            const usersIds = Object.keys(userEvents);
+
+            for (const userId of usersIds) {
+                try {
+                    const eventos = userEvents[userId];
+                    const { data: subs } = await supabase
+                        .from('push_subscriptions').select('*').eq('user_id', userId);
+
+                    if (!subs?.length) continue;
+
+                    const matchDate = (f, s) => f && f.startsWith(s);
+
+                    // Filtros
+                    const pagamentos = eventos.filter(e => matchDate(e.paymentdate, hojeString));
+                    const dataComs = eventos.filter(e => matchDate(e.datacom, hojeString));
+                    const novosAnuncios = eventos.filter(e => {
+                        const createdToday = (e.created_at || '').startsWith(hojeString);
+                        const duplicate = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
+                        let isFuturo = false;
+                        if (e.paymentdate) {
+                            const d = new Date(e.paymentdate.split('T')[0] + 'T00:00:00');
+                            isFuturo = d >= hojeDateObj;
+                        }
+                        return createdToday && !duplicate && isFuturo;
+                    });
+
+                    // --- RECONSTRUÇÃO DAS MENSAGENS ORIGINAIS ---
+                    let title = '', body = '';
+                    const icon = 'https://in-vesto.vercel.app/icons/icon-192x192.png'; 
+                    const badge = 'https://in-vesto.vercel.app/sininhov2.png';
+
+                    if (pagamentos.length > 0) {
+                        const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
+                        title = 'Crédito de Proventos';
+                        body = pagamentos.length === 1 
+                            ? `O ativo ${pagamentos[0].symbol} realizou pagamento de ${fmtBRL(pagamentos[0].value)}/cota hoje.` 
+                            : `Pagamentos realizados hoje: ${lista}.`;
+
+                    } else if (dataComs.length > 0) {
+                        const lista = dataComs.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
+                        title = 'Data Com (Corte)';
+                        body = `Data limite registrada hoje para: ${lista}.`;
+
+                    } else if (novosAnuncios.length > 0) {
+                        const lista = novosAnuncios.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).slice(0,3).join(', ');
+                        title = 'Comunicado de Proventos';
+                        body = novosAnuncios.length === 1
+                            ? `Comunicado: ${novosAnuncios[0].symbol} anunciou pagamento de ${fmtBRL(novosAnuncios[0].value)}/cota.`
+                            : `Novos anúncios: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
+                    } else {
+                        continue; 
+                    }
+
+                    const payload = JSON.stringify({ 
+                        title, 
+                        body, 
+                        icon, 
+                        badge,
+                        url: '/?tab=tab-carteira'
+                    });
+
+                    const pushPromises = subs.map(sub => 
+                        webpush.sendNotification(sub.subscription, payload).catch(err => {
+                            // Remove inscrição inválida
+                            if (err.statusCode === 410 || err.statusCode === 404) {
+                                supabase.from('push_subscriptions').delete().match({ id: sub.id }).then(()=>{});
+                            }
+                        })
+                    );
+                    await Promise.all(pushPromises);
+                    totalSent += pushPromises.length;
+
+                } catch (errUser) {
+                    console.error(`Erro user ${userId}:`, errUser.message);
+                }
             }
         }
 
-        const dur = (Date.now() - start) / 1000;
-        console.log(`Fim. Tempo: ${dur}s. Snaps: ${snaps}.`);
-        return res.status(200).json({ status: 'Ok', snapshots: snaps, time: dur });
+        const duration = (Date.now() - start) / 1000;
+        console.log(`Fim. Tempo: ${duration}s. Snapshots: ${totalSnapshots}. Msg: ${totalSent}`);
+        return res.status(200).json({ status: 'Ok', snapshots: totalSnapshots, time: duration });
 
     } catch (e) {
         console.error('Fatal:', e);

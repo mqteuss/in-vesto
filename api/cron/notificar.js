@@ -85,7 +85,7 @@ async function atualizarPatrimonioJob() {
             try {
                 // Controller para abortar requisição se travar por mais de 3s
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000); 
+                const timeoutId = setTimeout(() => controller.abort(), 8000); 
 
                 const response = await fetch(`https://brapi.dev/api/quote/${tickerParaApi}?token=${token}`, {
                     signal: controller.signal

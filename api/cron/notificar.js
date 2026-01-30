@@ -29,7 +29,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // --- CONFIGURAÇÃO DE VELOCIDADE ---
 // 300ms é rápido o suficiente para não dar timeout na Vercel, 
 // mas lento o suficiente para a Brapi não bloquear (Erro 429).
-const INTERVALO_MS = 200; 
+const INTERVALO_MS = 250; 
 
 async function atualizarPatrimonioJob() {
     console.log("=== INICIANDO JOB DE PATRIMÔNIO (MODO RÁPIDO) ===");

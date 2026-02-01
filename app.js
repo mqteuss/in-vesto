@@ -4752,7 +4752,7 @@ async function handleMostrarDetalhes(symbol) {
             else throw new Error(precoData?.error || 'Ativo não encontrado');
         } catch (e) { 
             precoData = null; 
-            showToast("Erro ao buscar preço."); 
+            if(typeof showToast === 'function') showToast("Erro ao buscar preço."); 
         }
     }
 
@@ -4777,7 +4777,6 @@ async function handleMostrarDetalhes(symbol) {
     }
 
     if (fundamentos.historico_precos && fundamentos.historico_precos.length > 0) {
-        // Renderiza container com botões de filtro
         detalhesAiProvento.innerHTML = `
             <div class="mb-6 mt-2">
                 <div class="flex justify-between items-center mb-3 px-1">
@@ -4796,7 +4795,6 @@ async function handleMostrarDetalhes(symbol) {
         const ctx = document.getElementById('detalhes-preco-chart').getContext('2d');
         const allData = fundamentos.historico_precos; // Dados totais (até 5 anos)
         
-        // Função para atualizar o gráfico
         const updateChart = (period) => {
             let filteredData = [];
             // Slice para pegar os últimos X meses
@@ -4809,7 +4807,7 @@ async function handleMostrarDetalhes(symbol) {
 
             // Gradiente
             const gradient = ctx.createLinearGradient(0, 0, 0, 180);
-            gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); // Purple-600 opacidade
+            gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); // Purple
             gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
 
             if (detalhesChartInstance) detalhesChartInstance.destroy();
@@ -4839,7 +4837,7 @@ async function handleMostrarDetalhes(symbol) {
                         tooltip: {
                             mode: 'index',
                             intersect: false,
-                            callbacks: { label: (c) => formatBRL(c.raw) }
+                            callbacks: { label: (c) => typeof formatBRL === 'function' ? formatBRL(c.raw) : `R$ ${c.raw}` }
                         }
                     },
                     scales: {
@@ -4857,7 +4855,6 @@ async function handleMostrarDetalhes(symbol) {
         // Inicializa com 1 Ano
         updateChart('1y');
 
-        // Event Listeners para botões
         const btn1y = document.getElementById('btn-chart-1y');
         const btn5y = document.getElementById('btn-chart-5y');
 
@@ -4903,27 +4900,27 @@ async function handleMostrarDetalhes(symbol) {
         let valuationHtml = '';
         let magicNumberHtml = '';
         
+        const fmtBRL = (v) => typeof formatBRL === 'function' ? formatBRL(v) : `R$ ${v.toFixed(2)}`;
+        const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+
         if (ehAcao) {
-            const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
             const lpa = parseVal(dados.lpa);
             const vpa = parseVal(dados.vp_cota);
             const dyVal = parseVal(dados.dy);
             const preco = precoData.regularMarketPrice;
 
-            // Graham
             if (lpa > 0 && vpa > 0) {
                 const vi = Math.sqrt(22.5 * lpa * vpa);
                 const margemSeguranca = ((vi - preco) / preco) * 100;
                 const corGraham = margemSeguranca > 0 ? 'text-green-400' : 'text-red-400';
-                valuationHtml += `<div class="details-group-card mt-3 relative overflow-hidden"><div class="flex justify-between items-center py-3 px-1"><div><span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Graham</span><span class="text-xs text-[#888] font-medium block">Preço Justo</span></div><div class="text-right"><span class="text-xl font-bold text-white tracking-tighter">${formatBRL(vi)}</span><span class="text-[10px] ${corGraham} block font-medium">Upside: ${margemSeguranca.toFixed(1)}%</span></div></div></div>`;
+                valuationHtml += `<div class="details-group-card mt-3 relative overflow-hidden"><div class="flex justify-between items-center py-3 px-1"><div><span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Graham</span><span class="text-xs text-[#888] font-medium block">Preço Justo</span></div><div class="text-right"><span class="text-xl font-bold text-white tracking-tighter">${fmtBRL(vi)}</span><span class="text-[10px] ${corGraham} block font-medium">Upside: ${margemSeguranca.toFixed(1)}%</span></div></div></div>`;
             }
-            // Bazin
             if (dyVal > 0) {
                 const dividendosAnuais = preco * (dyVal / 100);
                 const bazinPrice = dividendosAnuais / 0.06;
                 const upsideBazin = ((bazinPrice - preco) / preco) * 100;
                 const corBazin = upsideBazin > 0 ? 'text-green-400' : 'text-red-400';
-                valuationHtml += `<div class="details-group-card mt-2 mb-2 relative overflow-hidden"><div class="flex justify-between items-center py-3 px-1"><div><span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Bazin</span><span class="text-xs text-[#888] font-medium block">Preço Teto (6%)</span></div><div class="text-right"><span class="text-xl font-bold text-white tracking-tighter">${formatBRL(bazinPrice)}</span><span class="text-[10px] ${corBazin} block font-medium">Upside: ${upsideBazin.toFixed(1)}%</span></div></div></div>`;
+                valuationHtml += `<div class="details-group-card mt-2 mb-2 relative overflow-hidden"><div class="flex justify-between items-center py-3 px-1"><div><span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Bazin</span><span class="text-xs text-[#888] font-medium block">Preço Teto (6%)</span></div><div class="text-right"><span class="text-xl font-bold text-white tracking-tighter">${fmtBRL(bazinPrice)}</span><span class="text-[10px] ${corBazin} block font-medium">Upside: ${upsideBazin.toFixed(1)}%</span></div></div></div>`;
             }
         }
 
@@ -4935,24 +4932,22 @@ async function handleMostrarDetalhes(symbol) {
                 if (rendimento > 0 && precoAtual > 0) {
                     const magicNumber = Math.ceil(precoAtual / rendimento);
                     const custoMagic = magicNumber * precoAtual;
-                    magicNumberHtml = `<div class="details-group-card mt-3 mb-2 relative overflow-hidden group"><div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><svg class="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg></div><div class="flex justify-between items-center py-3"><div><span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Magic Number</span><span class="text-xs text-[#888] font-medium block">Cotas para reinvestir</span></div><div class="text-right z-10"><span class="text-2xl font-bold text-white tracking-tighter">${magicNumber}</span><span class="text-[10px] text-[#666] block font-medium">Investimento: ~${formatBRL(custoMagic)}</span></div></div></div>`;
+                    magicNumberHtml = `<div class="details-group-card mt-3 mb-2 relative overflow-hidden group"><div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><svg class="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg></div><div class="flex justify-between items-center py-3"><div><span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Magic Number</span><span class="text-xs text-[#888] font-medium block">Cotas para reinvestir</span></div><div class="text-right z-10"><span class="text-2xl font-bold text-white tracking-tighter">${magicNumber}</span><span class="text-[10px] text-[#666] block font-medium">Investimento: ~${fmtBRL(custoMagic)}</span></div></div></div>`;
                 }
             } catch(e) {}
         }
 
-        // Posição Usuário
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
-            userPosHtml = `<h4 class="details-category-title">Sua Posição</h4><div class="details-group-card flex justify-between items-center py-4 px-5"><div><span class="text-xs text-gray-500 font-medium block">Total Investido</span><div class="flex items-baseline gap-2 mt-0.5"><p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p></div></div><div class="text-right"><span class="text-xs text-gray-500 font-medium block">Quantidade</span><span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span></div></div>`;
+            userPosHtml = `<h4 class="details-category-title">Sua Posição</h4><div class="details-group-card flex justify-between items-center py-4 px-5"><div><span class="text-xs text-gray-500 font-medium block">Total Investido</span><div class="flex items-baseline gap-2 mt-0.5"><p class="text-xl font-bold text-white tracking-tight">${fmtBRL(totalPosicao)}</p></div></div><div class="text-right"><span class="text-xs text-gray-500 font-medium block">Quantidade</span><span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span></div></div>`;
         }
 
-        // Proventos
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
-            const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
-            const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
+            const dataPagFmt = nextProventoData.paymentDate ? (typeof formatDate === 'function' ? formatDate(nextProventoData.paymentDate) : nextProventoData.paymentDate) : '-';
+            const dataComFmt = nextProventoData.dataCom ? (typeof formatDate === 'function' ? formatDate(nextProventoData.dataCom) : nextProventoData.dataCom) : '-';
             const hoje = new Date(); hoje.setHours(0,0,0,0);
             let isFuturo = false;
             if(nextProventoData.paymentDate) {
@@ -4963,10 +4958,9 @@ async function handleMostrarDetalhes(symbol) {
             const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
             const valueClass = isFuturo ? "text-green-400" : "text-white";
 
-            proximoProventoHtml = `<h4 class="details-category-title">Proventos</h4><div class="w-full p-4 rounded-[1.5rem] ${bgClass} flex flex-col gap-3"><div class="flex justify-between items-center pb-2 border-b border-white/5"><span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${isFuturo ? "Próximo Pagamento" : "Último Anúncio"}</span><span class="text-xl font-bold ${valueClass}">${formatBRL(nextProventoData.value)}</span></div><div class="flex justify-between text-xs pt-1"><div class="text-left"><span class="block text-[#666] mb-0.5 font-medium">Data Com</span><span class="text-[#e5e5e5] font-bold">${dataComFmt}</span></div><div class="text-right"><span class="block text-[#666] mb-0.5 font-medium">Pagamento</span><span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span></div></div></div>`;
+            proximoProventoHtml = `<h4 class="details-category-title">Proventos</h4><div class="w-full p-4 rounded-[1.5rem] ${bgClass} flex flex-col gap-3"><div class="flex justify-between items-center pb-2 border-b border-white/5"><span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${isFuturo ? "Próximo Pagamento" : "Último Anúncio"}</span><span class="text-xl font-bold ${valueClass}">${fmtBRL(nextProventoData.value)}</span></div><div class="flex justify-between text-xs pt-1"><div class="text-left"><span class="block text-[#666] mb-0.5 font-medium">Data Com</span><span class="text-[#e5e5e5] font-bold">${dataComFmt}</span></div><div class="text-right"><span class="block text-[#666] mb-0.5 font-medium">Pagamento</span><span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span></div></div></div>`;
         }
 
-        // Grids
         let gridTopo = ehAcao ? 
             `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/L</span><span class="text-base font-bold text-white">${dados.pl}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>` :
             `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span><span class="text-base font-bold text-white">${dados.ultimo_rendimento}</span></div>`;
@@ -4988,9 +4982,9 @@ async function handleMostrarDetalhes(symbol) {
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col">
                 <div class="text-center pb-6 pt-4">
-                    <h2 class="text-[3.5rem] font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
+                    <h2 class="text-[3.5rem] font-bold text-white tracking-tighter leading-none">${fmtBRL(precoData.regularMarketPrice)}</h2>
                     <span class="text-base font-bold ${variacaoCor} mt-2 flex items-center justify-center gap-1 tracking-tight">
-                        ${variacaoIcone} ${formatPercent(varPercent)} Hoje
+                        ${variacaoIcone} ${typeof formatPercent === 'function' ? formatPercent(varPercent) : varPercent.toFixed(2) + '%'} Hoje
                     </span>
                     <span class="text-xs font-medium text-[#444] mt-1 block tracking-wide">
                         Variação 12m: <span class="${dados.variacao_12m?.includes('-') ? 'text-red-500' : 'text-green-500'}">${dados.variacao_12m}</span>
@@ -5006,8 +5000,8 @@ async function handleMostrarDetalhes(symbol) {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }
     
-    renderizarTransacoesDetalhes(symbol);
-    atualizarIconeFavorito(symbol);
+    if(typeof renderizarTransacoesDetalhes === 'function') renderizarTransacoesDetalhes(symbol);
+    if(typeof atualizarIconeFavorito === 'function') atualizarIconeFavorito(symbol);
 }
 
 function renderizarTransacoesDetalhes(symbol) {

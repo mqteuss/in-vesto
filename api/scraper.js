@@ -379,6 +379,48 @@ async function scrapeIpca() {
 // HANDLER (API)
 // ---------------------------------------------------------
 
+// --- NOVA FUNÇÃO: HISTÓRICO DE PREÇOS (YAHOO FINANCE) ---
+async function scrapeHistoricoPrecos(ticker) {
+    try {
+        // Busca dados de 1 ano com intervalo de 1 dia
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.SA?interval=1d&range=1y`;
+        const { data } = await client.get(url);
+        
+        const result = data.chart.result[0];
+        if (!result) return [];
+
+        const timestamps = result.timestamp;
+        const quotes = result.indicators.quote[0].close;
+
+        if (!timestamps || !quotes) return [];
+
+        const history = [];
+        for (let i = 0; i < timestamps.length; i++) {
+            // Yahoo pode retornar null em feriados
+            if (quotes[i] !== null) { 
+                const date = new Date(timestamps[i] * 1000);
+                // Formata DD/MM/YYYY para o frontend
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                
+                history.push({
+                    data: `${day}/${month}/${year}`,
+                    valor: parseFloat(quotes[i].toFixed(2))
+                });
+            }
+        }
+        return history;
+    } catch (e) {
+        console.error(`Erro ao buscar histórico de preços para ${ticker}:`, e.message);
+        return [];
+    }
+}
+
+// ---------------------------------------------------------
+// HANDLER (API) - ATUALIZADO
+// ---------------------------------------------------------
+
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -396,7 +438,14 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // --- MODO IPCA (ATUALIZADO) ---
+        // 1. Histórico de Preços (NOVO - REPARA O GRÁFICO DE COTAÇÕES)
+        // Verifique no seu app.js se o mode chamado é 'historico_cotacao' ou similar
+        if (mode === 'historico_cotacao' || mode === 'grafico_cotacoes') {
+            if (!payload.ticker) return res.json({ json: [] });
+            const dados = await scrapeHistoricoPrecos(payload.ticker);
+            return res.status(200).json({ json: dados });
+        }
+
         if (mode === 'ipca') {
             const dados = await scrapeIpca();
             return res.status(200).json({ json: dados });
@@ -408,31 +457,19 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: dados });
         }
 
-        // --- NOVO MODO: ANÁLISE CARTEIRA (COM FILTRO E ORDENAÇÃO) ---
         if (mode === 'analise_carteira') {
-            // Payload esperado: { tickers: ['MXRF11', 'XPLG11'], filtroSetor: 'Logística', ordenarPor: 'valor' }
             if (!payload.tickers || !Array.isArray(payload.tickers)) return res.json({ json: [] });
-            
-            // Faz o scrape de todos em paralelo
             const promises = payload.tickers.map(t => scrapeFundamentos(t));
             let results = await Promise.all(promises);
-            
-            // Adiciona o ticker ao objeto para referência, se necessário
             results = results.map((r, idx) => ({ ticker: payload.tickers[idx].toUpperCase(), ...r }));
 
-            // 1. Filtro de Alocação por Setores
             if (payload.filtroSetor) {
                 const setorBusca = payload.filtroSetor.toLowerCase();
-                results = results.filter(item => 
-                    item.segmento && item.segmento.toLowerCase().includes(setorBusca)
-                );
+                results = results.filter(item => item.segmento && item.segmento.toLowerCase().includes(setorBusca));
             }
-
-            // 2. Ordenação por Valor (Preço/Cotação)
             if (payload.ordenarPor === 'valor') {
                 results.sort((a, b) => (b.preco_num || 0) - (a.preco_num || 0));
             }
-
             return res.status(200).json({ json: results });
         }
 
@@ -460,11 +497,12 @@ module.exports = async function handler(req, res) {
         if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
             const history = await scrapeAsset(payload.ticker);
+            // CORREÇÃO AQUI: Adicionado .reverse() para ordem cronológica (Jan -> Dez)
             const formatted = history.slice(0, 18).map(h => {
                 if (!h.paymentDate) return null;
                 const [ano, mes] = h.paymentDate.split('-');
                 return { mes: `${mes}/${ano.substring(2)}`, valor: h.value };
-            }).filter(h => h !== null);
+            }).filter(h => h !== null).reverse(); 
             return res.status(200).json({ json: formatted });
         }
 
@@ -479,5 +517,4 @@ module.exports = async function handler(req, res) {
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
-
 };

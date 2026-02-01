@@ -4772,8 +4772,8 @@ async function handleMostrarDetalhes(symbol) {
     detalhesLoading.classList.remove('hidden');
     
     // Limpa containers visuais
-    detalhesPreco.innerHTML = '';
-    detalhesAiProvento.innerHTML = ''; 
+    if (detalhesPreco) detalhesPreco.innerHTML = '';
+    if (detalhesAiProvento) detalhesAiProvento.innerHTML = ''; 
     const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
     if(detalhesHistoricoContainer) {
         detalhesHistoricoContainer.innerHTML = '';
@@ -4783,7 +4783,6 @@ async function handleMostrarDetalhes(symbol) {
     // --- 1. ÍCONE E CABEÇALHO ---
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
-    // Verifica se é FII (lógica simples baseada no final 11, ajuste se tiver sua função isFII)
     const ehFii = typeof isFII === 'function' ? isFII(symbol) : symbol.endsWith('11');
     const ehAcao = !ehFii;
     
@@ -4808,7 +4807,7 @@ async function handleMostrarDetalhes(symbol) {
     
     currentDetalhesSymbol = symbol;
     
-    // --- 2. BUSCA DE DADOS (PARALELA PARA PERFORMANCE) ---
+    // --- 2. BUSCA DE DADOS ---
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     
@@ -4827,19 +4826,18 @@ async function handleMostrarDetalhes(symbol) {
              if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
         }
 
-        // Busca Scraper em Paralelo (Muito mais rápido)
-        // CORREÇÃO: Adicionado headers: { 'Content-Type': 'application/json' } nas chamadas manuais
+        // Busca Scraper em Paralelo
         const [fundRes, provRes, histPrecoRes, histProvRes] = await Promise.all([
             callScraperFundamentosAPI(symbol),        
             callScraperProximoProventoAPI(symbol),    
             fetchBFF(`/api/scraper`, {                
                 method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, // <--- CORREÇÃO AQUI
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mode: 'historico_cotacao', payload: { ticker: symbol } })
             }),
             fetchBFF(`/api/scraper`, {                
                 method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, // <--- CORREÇÃO AQUI
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mode: 'historico_12m', payload: { ticker: symbol } })
             })
         ]);
@@ -4851,7 +4849,7 @@ async function handleMostrarDetalhes(symbol) {
 
     } catch (e) { 
         console.error("Erro ao buscar dados:", e); 
-        if(typeof showToast === 'function') showToast("Erro ao carregar alguns dados.");
+        if(typeof showToast === 'function') showToast("Erro ao carregar dados.");
     }
     
     detalhesLoading.classList.add('hidden');
@@ -4862,7 +4860,8 @@ async function handleMostrarDetalhes(symbol) {
         detalhesChartInstance = null;
     }
 
-    if (historicoPrecos && historicoPrecos.length > 0) {
+    // CORREÇÃO: Verifica se o elemento pai existe e usa querySelector interno
+    if (historicoPrecos && historicoPrecos.length > 0 && detalhesAiProvento) {
         detalhesAiProvento.innerHTML = `
             <div class="mb-6 mt-2">
                 <div class="flex justify-between items-center mb-3 px-1">
@@ -4878,82 +4877,92 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
         
-        const ctx = document.getElementById('detalhes-preco-chart').getContext('2d');
-        const allData = historicoPrecos; 
+        // --- AQUI ESTAVA O ERRO --- 
+        // Em vez de document.getElementById, buscamos dentro do container que acabamos de preencher.
+        // Adicionamos também uma verificação de segurança.
+        const canvasEl = detalhesAiProvento.querySelector('canvas');
         
-        const updateChart = (period) => {
-            let filteredData = [];
-            const limit = period === '1y' ? 250 : 1250; 
-            filteredData = allData.slice(Math.max(allData.length - limit, 0));
+        if (canvasEl) {
+            const ctx = canvasEl.getContext('2d');
+            const allData = historicoPrecos; 
+            
+            const updateChart = (period) => {
+                let filteredData = [];
+                const limit = period === '1y' ? 250 : 1250; 
+                filteredData = allData.slice(Math.max(allData.length - limit, 0));
 
-            const labels = filteredData.map(h => h.data); 
-            const values = filteredData.map(h => h.valor);
+                const labels = filteredData.map(h => h.data); 
+                const values = filteredData.map(h => h.valor);
 
-            const gradient = ctx.createLinearGradient(0, 0, 0, 180);
-            gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); 
-            gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+                gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); 
+                gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
 
-            if (detalhesChartInstance) detalhesChartInstance.destroy();
+                if (detalhesChartInstance) detalhesChartInstance.destroy();
 
-            detalhesChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Preço',
-                        data: values,
-                        borderColor: '#7c3aed', 
-                        backgroundColor: gradient,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 400 },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: { label: (c) => typeof formatBRL === 'function' ? formatBRL(c.raw) : `R$ ${c.raw}` }
-                        }
+                detalhesChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Preço',
+                            data: values,
+                            borderColor: '#7c3aed', 
+                            backgroundColor: gradient,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: true,
+                            tension: 0.4
+                        }]
                     },
-                    scales: {
-                        x: { display: false },
-                        y: { display: false }
-                    },
-                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
-                }
-            });
-        };
-
-        updateChart('1y');
-
-        const btn1y = document.getElementById('btn-chart-1y');
-        const btn5y = document.getElementById('btn-chart-5y');
-
-        if(btn1y && btn5y){
-            btn1y.onclick = () => {
-                btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
-                btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
-                updateChart('1y');
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 400 },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: { label: (c) => typeof formatBRL === 'function' ? formatBRL(c.raw) : `R$ ${c.raw}` }
+                            }
+                        },
+                        scales: {
+                            x: { display: false },
+                            y: { display: false }
+                        },
+                        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                    }
+                });
             };
 
-            btn5y.onclick = () => {
-                btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
-                btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
-                updateChart('5y');
-            };
+            updateChart('1y');
+
+            // Configuração dos botões (buscando dentro do container para garantir)
+            const btn1y = detalhesAiProvento.querySelector('#btn-chart-1y');
+            const btn5y = detalhesAiProvento.querySelector('#btn-chart-5y');
+
+            if(btn1y && btn5y){
+                btn1y.onclick = () => {
+                    btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
+                    btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
+                    updateChart('1y');
+                };
+
+                btn5y.onclick = () => {
+                    btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
+                    btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
+                    updateChart('5y');
+                };
+            }
         }
+    } else {
+        if(detalhesAiProvento) detalhesAiProvento.innerHTML = '';
     }
 
-    // --- 4. RENDER RESTANTE (VALUATION, ETC) ---
-    if (precoData) {
+    // --- 4. RENDER RESTANTE ---
+    if (precoData && detalhesPreco) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const varPercent = precoData.regularMarketChangePercent || 0;
         let variacaoCor = varPercent > 0 ? 'text-green-500' : (varPercent < 0 ? 'text-red-500' : 'text-[#888888]');
@@ -4974,7 +4983,6 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-'
         };
 
-        // VALUATION LOGIC
         let valuationHtml = '';
         let magicNumberHtml = '';
         const fmtBRL = (v) => typeof formatBRL === 'function' ? formatBRL(v) : `R$ ${v.toFixed(2)}`;
@@ -5074,16 +5082,13 @@ async function handleMostrarDetalhes(symbol) {
                 ${listasHtml}
             </div>`;
     } else {
-        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
+        if(detalhesPreco) detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }
     
     // --- 5. RENDERIZAÇÃO DO GRÁFICO DE BARRAS (PROVENTOS) ---
-    // NOVO: Verifica se temos histórico de proventos e chama o renderizador global
     if (historicoProventos && historicoProventos.length > 0) {
         if(typeof renderHistoricoIADetalhes === 'function') {
-            // Atualiza a variável global usada pela outra função
             currentDetalhesHistoricoJSON = historicoProventos; 
-            // Renderiza 12 meses
             renderHistoricoIADetalhes(12);
         }
     }

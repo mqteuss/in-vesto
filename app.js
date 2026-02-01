@@ -4771,7 +4771,7 @@ async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
     
-    // Limpa containers
+    // Limpa containers visuais
     detalhesPreco.innerHTML = '';
     detalhesAiProvento.innerHTML = ''; 
     const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
@@ -4783,7 +4783,8 @@ async function handleMostrarDetalhes(symbol) {
     // --- 1. ÍCONE E CABEÇALHO ---
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
-    const ehFii = isFII(symbol); // Certifique-se que essa função existe ou use symbol.endsWith('11')
+    // Verifica se é FII (lógica simples baseada no final 11, ajuste se tiver sua função isFII)
+    const ehFii = typeof isFII === 'function' ? isFII(symbol) : symbol.endsWith('11');
     const ehAcao = !ehFii;
     
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
@@ -4811,7 +4812,6 @@ async function handleMostrarDetalhes(symbol) {
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     
-    // Variáveis para armazenar resultados
     let precoData = null;
     let fundamentos = {};
     let nextProventoData = null;
@@ -4822,22 +4822,24 @@ async function handleMostrarDetalhes(symbol) {
         // Tenta cache de preço
         precoData = await getCache(cacheKeyPreco);
         if (!precoData) {
-            // Se não tem cache, adiciona na Promise.all abaixo, ou faz aqui se preferir a lógica separada
              const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
              precoData = data.results?.[0];
              if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
         }
 
         // Busca Scraper em Paralelo (Muito mais rápido)
+        // CORREÇÃO: Adicionado headers: { 'Content-Type': 'application/json' } nas chamadas manuais
         const [fundRes, provRes, histPrecoRes, histProvRes] = await Promise.all([
-            callScraperFundamentosAPI(symbol),        // Traz DY, P/L, PVP...
-            callScraperProximoProventoAPI(symbol),    // Traz data com/pagamento
-            fetchBFF(`/api/scraper`, {                // Traz array para o gráfico de linha
+            callScraperFundamentosAPI(symbol),        
+            callScraperProximoProventoAPI(symbol),    
+            fetchBFF(`/api/scraper`, {                
                 method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, // <--- CORREÇÃO AQUI
                 body: JSON.stringify({ mode: 'historico_cotacao', payload: { ticker: symbol } })
             }),
-            fetchBFF(`/api/scraper`, {                // Traz array para o gráfico de barras
+            fetchBFF(`/api/scraper`, {                
                 method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, // <--- CORREÇÃO AQUI
                 body: JSON.stringify({ mode: 'historico_12m', payload: { ticker: symbol } })
             })
         ]);
@@ -4849,7 +4851,7 @@ async function handleMostrarDetalhes(symbol) {
 
     } catch (e) { 
         console.error("Erro ao buscar dados:", e); 
-        if(typeof showToast === 'function') showToast("Alguns dados não puderam ser carregados.");
+        if(typeof showToast === 'function') showToast("Erro ao carregar alguns dados.");
     }
     
     detalhesLoading.classList.add('hidden');
@@ -4860,7 +4862,6 @@ async function handleMostrarDetalhes(symbol) {
         detalhesChartInstance = null;
     }
 
-    // AQUI ESTAVA O ERRO: Usamos a variável historicoPrecos que buscamos explicitamente agora
     if (historicoPrecos && historicoPrecos.length > 0) {
         detalhesAiProvento.innerHTML = `
             <div class="mb-6 mt-2">
@@ -4878,16 +4879,14 @@ async function handleMostrarDetalhes(symbol) {
         `;
         
         const ctx = document.getElementById('detalhes-preco-chart').getContext('2d');
-        // Usa o histórico buscado
         const allData = historicoPrecos; 
         
         const updateChart = (period) => {
             let filteredData = [];
-            const limit = period === '1y' ? 250 : 1250; // Aprox dias úteis (1 ano / 5 anos)
-            // Se o array for menor que o limite, pega tudo
+            const limit = period === '1y' ? 250 : 1250; 
             filteredData = allData.slice(Math.max(allData.length - limit, 0));
 
-            const labels = filteredData.map(h => h.data); // O scraper retorna .data (dd/mm/yyyy)
+            const labels = filteredData.map(h => h.data); 
             const values = filteredData.map(h => h.valor);
 
             const gradient = ctx.createLinearGradient(0, 0, 0, 180);
@@ -4933,7 +4932,6 @@ async function handleMostrarDetalhes(symbol) {
             });
         };
 
-        // Inicializa com 1 Ano (ou o que tiver disponível)
         updateChart('1y');
 
         const btn1y = document.getElementById('btn-chart-1y');
@@ -4952,12 +4950,9 @@ async function handleMostrarDetalhes(symbol) {
                 updateChart('5y');
             };
         }
-
-    } else {
-        detalhesAiProvento.innerHTML = '';
     }
 
-    // --- 4. RENDER RESTANTE ---
+    // --- 4. RENDER RESTANTE (VALUATION, ETC) ---
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const varPercent = precoData.regularMarketChangePercent || 0;
@@ -4979,10 +4974,9 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-'
         };
 
-        // --- VALUATION & MAGIC NUMBER ---
+        // VALUATION LOGIC
         let valuationHtml = '';
         let magicNumberHtml = '';
-        
         const fmtBRL = (v) => typeof formatBRL === 'function' ? formatBRL(v) : `R$ ${v.toFixed(2)}`;
         const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
 

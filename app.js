@@ -4704,18 +4704,86 @@ function handleAbrirModalEdicao(id) {
             btn.classList.toggle('active', btn.dataset.meses === '3'); 
         });
     }
+	
+	// --- NOVO: Renderiza o Gráfico de Linha (Cotações) ---
+function renderizarGraficoPrecosDetalhes(dados) {
+    const container = document.getElementById('detalhes-historico-container');
+    if (!container) return;
+
+    container.classList.remove('hidden');
+    container.innerHTML = '<canvas id="detalhes-precos-chart" style="width:100%; height:100%;"></canvas>';
+
+    const ctx = document.getElementById('detalhes-precos-chart').getContext('2d');
+    
+    // Cria gradiente para a linha (Roxo suave)
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.5)'); // Roxo forte no topo
+    gradient.addColorStop(1, 'rgba(139, 92, 246, 0)');   // Transparente embaixo
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dados.map(d => d.data.substring(0, 5)), // Pega só DD/MM
+            datasets: [{
+                label: 'Preço',
+                data: dados.map(d => d.valor),
+                borderColor: '#8b5cf6', // Roxo
+                backgroundColor: gradient,
+                borderWidth: 2,
+                pointRadius: 0, // Remove bolinhas para visual limpo
+                pointHoverRadius: 4,
+                fill: true,
+                tension: 0.4 // Linha curva suave
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: '#151515',
+                    titleColor: '#fff',
+                    bodyColor: '#ccc',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    displayColors: false,
+                    callbacks: {
+                        label: (context) => `R$ ${context.parsed.y.toFixed(2)}`
+                    }
+                }
+            },
+            scales: {
+                x: { display: false }, // Esconde eixo X para visual minimalista
+                y: { 
+                    display: false,    // Esconde eixo Y
+                    min: Math.min(...dados.map(d => d.valor)) * 0.95, // Ajusta escala
+                    max: Math.max(...dados.map(d => d.valor)) * 1.05
+                }
+            }
+        }
+    });
+}
     
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
+    
+    // Limpa containers
     detalhesPreco.innerHTML = '';
     detalhesAiProvento.innerHTML = ''; 
-    detalhesHistoricoContainer.classList.remove('hidden'); 
+    const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
+    if(detalhesHistoricoContainer) {
+        detalhesHistoricoContainer.innerHTML = '';
+        detalhesHistoricoContainer.classList.remove('hidden');
+    }
     
     // --- 1. ÍCONE E CABEÇALHO ---
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
-    const ehFii = isFII(symbol);
+    const ehFii = isFII(symbol); // Certifique-se que essa função existe ou use symbol.endsWith('11')
     const ehAcao = !ehFii;
     
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
@@ -4739,44 +4807,61 @@ async function handleMostrarDetalhes(symbol) {
     
     currentDetalhesSymbol = symbol;
     
-    // --- 2. BUSCA DE DADOS ---
+    // --- 2. BUSCA DE DADOS (PARALELA PARA PERFORMANCE) ---
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
-    let precoData = await getCache(cacheKeyPreco);
     
-    if (!precoData) {
-        try {
-            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-            precoData = data.results?.[0];
-            if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO); 
-            else throw new Error(precoData?.error || 'Ativo não encontrado');
-        } catch (e) { 
-            precoData = null; 
-            if(typeof showToast === 'function') showToast("Erro ao buscar preço."); 
-        }
-    }
-
+    // Variáveis para armazenar resultados
+    let precoData = null;
     let fundamentos = {};
     let nextProventoData = null;
+    let historicoPrecos = [];
+    let historicoProventos = [];
 
     try {
-        const [fundData, provData] = await Promise.all([
-            callScraperFundamentosAPI(symbol),
-            callScraperProximoProventoAPI(symbol)
+        // Tenta cache de preço
+        precoData = await getCache(cacheKeyPreco);
+        if (!precoData) {
+            // Se não tem cache, adiciona na Promise.all abaixo, ou faz aqui se preferir a lógica separada
+             const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+             precoData = data.results?.[0];
+             if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
+        }
+
+        // Busca Scraper em Paralelo (Muito mais rápido)
+        const [fundRes, provRes, histPrecoRes, histProvRes] = await Promise.all([
+            callScraperFundamentosAPI(symbol),        // Traz DY, P/L, PVP...
+            callScraperProximoProventoAPI(symbol),    // Traz data com/pagamento
+            fetchBFF(`/api/scraper`, {                // Traz array para o gráfico de linha
+                method: 'POST', 
+                body: JSON.stringify({ mode: 'historico_cotacao', payload: { ticker: symbol } })
+            }),
+            fetchBFF(`/api/scraper`, {                // Traz array para o gráfico de barras
+                method: 'POST', 
+                body: JSON.stringify({ mode: 'historico_12m', payload: { ticker: symbol } })
+            })
         ]);
-        fundamentos = fundData || {};
-        nextProventoData = provData;
-    } catch (e) { console.error("Erro dados extras", e); }
+
+        fundamentos = fundRes || {};
+        nextProventoData = provRes;
+        historicoPrecos = (histPrecoRes && histPrecoRes.json) ? histPrecoRes.json : [];
+        historicoProventos = (histProvRes && histProvRes.json) ? histProvRes.json : [];
+
+    } catch (e) { 
+        console.error("Erro ao buscar dados:", e); 
+        if(typeof showToast === 'function') showToast("Alguns dados não puderam ser carregados.");
+    }
     
     detalhesLoading.classList.add('hidden');
 
-    // --- 3. RENDERIZAÇÃO DO GRÁFICO ---
+    // --- 3. RENDERIZAÇÃO DO GRÁFICO DE PREÇOS (LINHA) ---
     if (detalhesChartInstance) {
         detalhesChartInstance.destroy();
         detalhesChartInstance = null;
     }
 
-    if (fundamentos.historico_precos && fundamentos.historico_precos.length > 0) {
+    // AQUI ESTAVA O ERRO: Usamos a variável historicoPrecos que buscamos explicitamente agora
+    if (historicoPrecos && historicoPrecos.length > 0) {
         detalhesAiProvento.innerHTML = `
             <div class="mb-6 mt-2">
                 <div class="flex justify-between items-center mb-3 px-1">
@@ -4793,21 +4878,20 @@ async function handleMostrarDetalhes(symbol) {
         `;
         
         const ctx = document.getElementById('detalhes-preco-chart').getContext('2d');
-        const allData = fundamentos.historico_precos; // Dados totais (até 5 anos)
+        // Usa o histórico buscado
+        const allData = historicoPrecos; 
         
         const updateChart = (period) => {
             let filteredData = [];
-            // Slice para pegar os últimos X meses
-            // 1A = 12 meses, 5A = 60 meses
-            const limit = period === '1y' ? 12 : 60;
-            filteredData = allData.slice(-limit);
+            const limit = period === '1y' ? 250 : 1250; // Aprox dias úteis (1 ano / 5 anos)
+            // Se o array for menor que o limite, pega tudo
+            filteredData = allData.slice(Math.max(allData.length - limit, 0));
 
-            const labels = filteredData.map(h => h.mes);
+            const labels = filteredData.map(h => h.data); // O scraper retorna .data (dd/mm/yyyy)
             const values = filteredData.map(h => h.valor);
 
-            // Gradiente
             const gradient = ctx.createLinearGradient(0, 0, 0, 180);
-            gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); // Purple
+            gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); 
             gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
 
             if (detalhesChartInstance) detalhesChartInstance.destroy();
@@ -4841,10 +4925,7 @@ async function handleMostrarDetalhes(symbol) {
                         }
                     },
                     scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: { maxTicksLimit: 6, color: '#525252', font: { size: 10 } }
-                        },
+                        x: { display: false },
                         y: { display: false }
                     },
                     interaction: { mode: 'nearest', axis: 'x', intersect: false }
@@ -4852,23 +4933,25 @@ async function handleMostrarDetalhes(symbol) {
             });
         };
 
-        // Inicializa com 1 Ano
+        // Inicializa com 1 Ano (ou o que tiver disponível)
         updateChart('1y');
 
         const btn1y = document.getElementById('btn-chart-1y');
         const btn5y = document.getElementById('btn-chart-5y');
 
-        btn1y.onclick = () => {
-            btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
-            btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
-            updateChart('1y');
-        };
+        if(btn1y && btn5y){
+            btn1y.onclick = () => {
+                btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
+                btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
+                updateChart('1y');
+            };
 
-        btn5y.onclick = () => {
-            btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
-            btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
-            updateChart('5y');
-        };
+            btn5y.onclick = () => {
+                btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
+                btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
+                updateChart('5y');
+            };
+        }
 
     } else {
         detalhesAiProvento.innerHTML = '';
@@ -5000,6 +5083,17 @@ async function handleMostrarDetalhes(symbol) {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }
     
+    // --- 5. RENDERIZAÇÃO DO GRÁFICO DE BARRAS (PROVENTOS) ---
+    // NOVO: Verifica se temos histórico de proventos e chama o renderizador global
+    if (historicoProventos && historicoProventos.length > 0) {
+        if(typeof renderHistoricoIADetalhes === 'function') {
+            // Atualiza a variável global usada pela outra função
+            currentDetalhesHistoricoJSON = historicoProventos; 
+            // Renderiza 12 meses
+            renderHistoricoIADetalhes(12);
+        }
+    }
+
     if(typeof renderizarTransacoesDetalhes === 'function') renderizarTransacoesDetalhes(symbol);
     if(typeof atualizarIconeFavorito === 'function') atualizarIconeFavorito(symbol);
 }

@@ -4741,12 +4741,10 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
     
+    // Reset botões de período (opcional, já que agora focamos no gráfico de 12m)
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
-        const isActive = btn.dataset.meses === '3';
-        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
-            isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888]'
-        }`;
+        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 bg-[#151515] text-[#888888]`;
     });
     
     // --- 2. BUSCA DE DADOS ---
@@ -4769,7 +4767,8 @@ async function handleMostrarDetalhes(symbol) {
     let fundamentos = {};
     let nextProventoData = null;
 
-    fetchHistoricoScraper(symbol); 
+    // Removemos a chamada antiga de fetchHistoricoScraper pois agora os dados vêm com fundamentos
+    // fetchHistoricoScraper(symbol); 
     
     try {
         const [fundData, provData] = await Promise.all([
@@ -4782,7 +4781,88 @@ async function handleMostrarDetalhes(symbol) {
     
     detalhesLoading.classList.add('hidden');
 
-    // --- 3. CONSTRUÇÃO DO HTML ---
+    // --- 3. RENDERIZAÇÃO DO GRÁFICO (NOVO) ---
+    // Limpa gráfico anterior se existir
+    if (detalhesChartInstance) {
+        detalhesChartInstance.destroy();
+        detalhesChartInstance = null;
+    }
+
+    if (fundamentos.historico_precos && fundamentos.historico_precos.length > 0) {
+        // Prepara HTML do container do gráfico
+        detalhesAiProvento.innerHTML = `
+            <div class="mb-6 mt-2">
+                <h4 class="details-category-title mb-2">Histórico de Preços (12m)</h4>
+                <div class="w-full h-[180px] bg-[#151515] rounded-2xl p-2 border border-[#27272a]">
+                    <canvas id="detalhes-preco-chart"></canvas>
+                </div>
+            </div>
+        `;
+        
+        const ctx = document.getElementById('detalhes-preco-chart').getContext('2d');
+        const labels = fundamentos.historico_precos.map(h => h.mes);
+        const values = fundamentos.historico_precos.map(h => h.valor);
+
+        // Gradiente para o gráfico
+        const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+        gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); // Purple-600 com opacidade
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
+
+        detalhesChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Preço',
+                    data: values,
+                    borderColor: '#7c3aed', // Purple-600
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    pointRadius: 0, // Esconde pontos por padrão
+                    pointHoverRadius: 4,
+                    fill: true,
+                    tension: 0.4 // Suaviza a linha (curva)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: (ctx) => formatBRL(ctx.raw)
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { 
+                            maxTicksLimit: 6,
+                            color: '#525252',
+                            font: { size: 10 }
+                        }
+                    },
+                    y: {
+                        display: false, // Oculta eixo Y para visual mais limpo
+                        grid: { display: false }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+    } else {
+        detalhesAiProvento.innerHTML = '';
+    }
+
+    // --- 4. CONSTRUÇÃO DO RESTANTE DO HTML (Indicadores, etc.) ---
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const varPercent = precoData.regularMarketChangePercent || 0;

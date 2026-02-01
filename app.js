@@ -4738,16 +4738,6 @@ async function handleMostrarDetalhes(symbol) {
     detalhesNomeLongo.textContent = 'Carregando...';
     
     currentDetalhesSymbol = symbol;
-    currentDetalhesMeses = 3; 
-    currentDetalhesHistoricoJSON = null; 
-    
-    const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
-    btnsPeriodo.forEach(btn => {
-        const isActive = btn.dataset.meses === '3';
-        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
-            isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888]'
-        }`;
-    });
     
     // --- 2. BUSCA DE DADOS ---
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
@@ -4769,8 +4759,6 @@ async function handleMostrarDetalhes(symbol) {
     let fundamentos = {};
     let nextProventoData = null;
 
-    fetchHistoricoScraper(symbol); 
-    
     try {
         const [fundData, provData] = await Promise.all([
             callScraperFundamentosAPI(symbol),
@@ -4782,7 +4770,114 @@ async function handleMostrarDetalhes(symbol) {
     
     detalhesLoading.classList.add('hidden');
 
-    // --- 3. CONSTRUÇÃO DO HTML ---
+    // --- 3. RENDERIZAÇÃO DO GRÁFICO ---
+    if (detalhesChartInstance) {
+        detalhesChartInstance.destroy();
+        detalhesChartInstance = null;
+    }
+
+    if (fundamentos.historico_precos && fundamentos.historico_precos.length > 0) {
+        // Renderiza container com botões de filtro
+        detalhesAiProvento.innerHTML = `
+            <div class="mb-6 mt-2">
+                <div class="flex justify-between items-center mb-3 px-1">
+                     <h4 class="details-category-title mb-0">Histórico de Preços</h4>
+                     <div class="flex bg-[#151515] p-0.5 rounded-lg">
+                        <button id="btn-chart-1y" class="px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all">1A</button>
+                        <button id="btn-chart-5y" class="px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all">5A</button>
+                     </div>
+                </div>
+                <div class="w-full h-[180px] bg-[#151515] rounded-2xl p-2 border border-[#27272a] relative">
+                    <canvas id="detalhes-preco-chart"></canvas>
+                </div>
+            </div>
+        `;
+        
+        const ctx = document.getElementById('detalhes-preco-chart').getContext('2d');
+        const allData = fundamentos.historico_precos; // Dados totais (até 5 anos)
+        
+        // Função para atualizar o gráfico
+        const updateChart = (period) => {
+            let filteredData = [];
+            // Slice para pegar os últimos X meses
+            // 1A = 12 meses, 5A = 60 meses
+            const limit = period === '1y' ? 12 : 60;
+            filteredData = allData.slice(-limit);
+
+            const labels = filteredData.map(h => h.mes);
+            const values = filteredData.map(h => h.valor);
+
+            // Gradiente
+            const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+            gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); // Purple-600 opacidade
+            gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
+
+            if (detalhesChartInstance) detalhesChartInstance.destroy();
+
+            detalhesChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Preço',
+                        data: values,
+                        borderColor: '#7c3aed', 
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 400 },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: { label: (c) => formatBRL(c.raw) }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: 6, color: '#525252', font: { size: 10 } }
+                        },
+                        y: { display: false }
+                    },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                }
+            });
+        };
+
+        // Inicializa com 1 Ano
+        updateChart('1y');
+
+        // Event Listeners para botões
+        const btn1y = document.getElementById('btn-chart-1y');
+        const btn5y = document.getElementById('btn-chart-5y');
+
+        btn1y.onclick = () => {
+            btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
+            btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
+            updateChart('1y');
+        };
+
+        btn5y.onclick = () => {
+            btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
+            btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
+            updateChart('5y');
+        };
+
+    } else {
+        detalhesAiProvento.innerHTML = '';
+    }
+
+    // --- 4. RENDER RESTANTE ---
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const varPercent = precoData.regularMarketChangePercent || 0;
@@ -4804,7 +4899,7 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-'
         };
 
-        // --- CÁLCULO DE VALUATION (AÇÕES) ---
+        // --- VALUATION & MAGIC NUMBER ---
         let valuationHtml = '';
         let magicNumberHtml = '';
         
@@ -4815,53 +4910,23 @@ async function handleMostrarDetalhes(symbol) {
             const dyVal = parseVal(dados.dy);
             const preco = precoData.regularMarketPrice;
 
-            // 1. Graham
+            // Graham
             if (lpa > 0 && vpa > 0) {
                 const vi = Math.sqrt(22.5 * lpa * vpa);
                 const margemSeguranca = ((vi - preco) / preco) * 100;
                 const corGraham = margemSeguranca > 0 ? 'text-green-400' : 'text-red-400';
-                
-                valuationHtml += `
-                    <div class="details-group-card mt-3 relative overflow-hidden">
-                        <div class="flex justify-between items-center py-3 px-1">
-                            <div>
-                                <span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Graham</span>
-                                <span class="text-xs text-[#888] font-medium block">Preço Justo</span>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-xl font-bold text-white tracking-tighter">${formatBRL(vi)}</span>
-                                <span class="text-[10px] ${corGraham} block font-medium">Upside: ${margemSeguranca.toFixed(1)}%</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                valuationHtml += `<div class="details-group-card mt-3 relative overflow-hidden"><div class="flex justify-between items-center py-3 px-1"><div><span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Graham</span><span class="text-xs text-[#888] font-medium block">Preço Justo</span></div><div class="text-right"><span class="text-xl font-bold text-white tracking-tighter">${formatBRL(vi)}</span><span class="text-[10px] ${corGraham} block font-medium">Upside: ${margemSeguranca.toFixed(1)}%</span></div></div></div>`;
             }
-
-            // 2. Bazin
+            // Bazin
             if (dyVal > 0) {
                 const dividendosAnuais = preco * (dyVal / 100);
                 const bazinPrice = dividendosAnuais / 0.06;
                 const upsideBazin = ((bazinPrice - preco) / preco) * 100;
                 const corBazin = upsideBazin > 0 ? 'text-green-400' : 'text-red-400';
-
-                valuationHtml += `
-                    <div class="details-group-card mt-2 mb-2 relative overflow-hidden">
-                        <div class="flex justify-between items-center py-3 px-1">
-                            <div>
-                                <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Bazin</span>
-                                <span class="text-xs text-[#888] font-medium block">Preço Teto (6%)</span>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-xl font-bold text-white tracking-tighter">${formatBRL(bazinPrice)}</span>
-                                <span class="text-[10px] ${corBazin} block font-medium">Upside: ${upsideBazin.toFixed(1)}%</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                valuationHtml += `<div class="details-group-card mt-2 mb-2 relative overflow-hidden"><div class="flex justify-between items-center py-3 px-1"><div><span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Bazin</span><span class="text-xs text-[#888] font-medium block">Preço Teto (6%)</span></div><div class="text-right"><span class="text-xl font-bold text-white tracking-tighter">${formatBRL(bazinPrice)}</span><span class="text-[10px] ${corBazin} block font-medium">Upside: ${upsideBazin.toFixed(1)}%</span></div></div></div>`;
             }
         }
 
-        // --- CÁLCULO MAGIC NUMBER (FIIs) ---
         if (ehFii && dados.ultimo_rendimento !== '-' && dados.ultimo_rendimento !== 'N/A') {
             try {
                 const rendStr = dados.ultimo_rendimento.replace('R$', '').replace('.', '').replace(',', '.').trim();
@@ -4870,50 +4935,20 @@ async function handleMostrarDetalhes(symbol) {
                 if (rendimento > 0 && precoAtual > 0) {
                     const magicNumber = Math.ceil(precoAtual / rendimento);
                     const custoMagic = magicNumber * precoAtual;
-                    
-                    magicNumberHtml = `
-                        <div class="details-group-card mt-3 mb-2 relative overflow-hidden group">
-                            <div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <svg class="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg>
-                            </div>
-                            <div class="flex justify-between items-center py-3">
-                                <div>
-                                    <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Magic Number</span>
-                                    <span class="text-xs text-[#888] font-medium block">Cotas para reinvestir</span>
-                                </div>
-                                <div class="text-right z-10">
-                                    <span class="text-2xl font-bold text-white tracking-tighter">${magicNumber}</span>
-                                    <span class="text-[10px] text-[#666] block font-medium">Investimento: ~${formatBRL(custoMagic)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    magicNumberHtml = `<div class="details-group-card mt-3 mb-2 relative overflow-hidden group"><div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><svg class="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg></div><div class="flex justify-between items-center py-3"><div><span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Magic Number</span><span class="text-xs text-[#888] font-medium block">Cotas para reinvestir</span></div><div class="text-right z-10"><span class="text-2xl font-bold text-white tracking-tighter">${magicNumber}</span><span class="text-[10px] text-[#666] block font-medium">Investimento: ~${formatBRL(custoMagic)}</span></div></div></div>`;
                 }
-            } catch(e) { console.log('Erro calc magic number', e); }
+            } catch(e) {}
         }
 
-        // Posição do Usuário
+        // Posição Usuário
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
-            userPosHtml = `
-                <h4 class="details-category-title">Sua Posição</h4>
-                <div class="details-group-card flex justify-between items-center py-4 px-5">
-                    <div>
-                        <span class="text-xs text-gray-500 font-medium block">Total Investido</span>
-                        <div class="flex items-baseline gap-2 mt-0.5">
-                            <p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                         <span class="text-xs text-gray-500 font-medium block">Quantidade</span>
-                         <span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span>
-                    </div>
-                </div>`;
+            userPosHtml = `<h4 class="details-category-title">Sua Posição</h4><div class="details-group-card flex justify-between items-center py-4 px-5"><div><span class="text-xs text-gray-500 font-medium block">Total Investido</span><div class="flex items-baseline gap-2 mt-0.5"><p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p></div></div><div class="text-right"><span class="text-xs text-gray-500 font-medium block">Quantidade</span><span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span></div></div>`;
         }
 
-        // Próximo Provento
+        // Proventos
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
             const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
@@ -4928,87 +4963,27 @@ async function handleMostrarDetalhes(symbol) {
             const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
             const valueClass = isFuturo ? "text-green-400" : "text-white";
 
-            proximoProventoHtml = `
-                <h4 class="details-category-title">Proventos</h4>
-                <div class="w-full p-4 rounded-[1.5rem] ${bgClass} flex flex-col gap-3">
-                    <div class="flex justify-between items-center pb-2 border-b border-white/5">
-                        <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${isFuturo ? "Próximo Pagamento" : "Último Anúncio"}</span>
-                        <span class="text-xl font-bold ${valueClass}">${formatBRL(nextProventoData.value)}</span>
-                    </div>
-                    <div class="flex justify-between text-xs pt-1">
-                        <div class="text-left"><span class="block text-[#666] mb-0.5 font-medium">Data Com</span><span class="text-[#e5e5e5] font-bold">${dataComFmt}</span></div>
-                        <div class="text-right"><span class="block text-[#666] mb-0.5 font-medium">Pagamento</span><span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span></div>
-                    </div>
-                </div>`;
+            proximoProventoHtml = `<h4 class="details-category-title">Proventos</h4><div class="w-full p-4 rounded-[1.5rem] ${bgClass} flex flex-col gap-3"><div class="flex justify-between items-center pb-2 border-b border-white/5"><span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${isFuturo ? "Próximo Pagamento" : "Último Anúncio"}</span><span class="text-xl font-bold ${valueClass}">${formatBRL(nextProventoData.value)}</span></div><div class="flex justify-between text-xs pt-1"><div class="text-left"><span class="block text-[#666] mb-0.5 font-medium">Data Com</span><span class="text-[#e5e5e5] font-bold">${dataComFmt}</span></div><div class="text-right"><span class="block text-[#666] mb-0.5 font-medium">Pagamento</span><span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span></div></div></div>`;
         }
 
-        // Grid Destaques
+        // Grids
         let gridTopo = ehAcao ? 
-            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/L</span><span class="text-base font-bold text-white">${dados.pl}</span></div>
-             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
-             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>` :
-            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>
-             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
-             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span><span class="text-base font-bold text-white">${dados.ultimo_rendimento}</span></div>`;
+            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/L</span><span class="text-base font-bold text-white">${dados.pl}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>` :
+            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span><span class="text-base font-bold text-white">${dados.ultimo_rendimento}</span></div>`;
 
         const renderRow = (l, v) => `<div class="details-row"><span class="details-label">${l}</span><span class="details-value">${v}</span></div>`;
 
-        // Listas Categorizadas
-        let listasHtml = '';
-        if (ehAcao) {
-            listasHtml = `
-                ${valuationHtml}
-                <h4 class="details-category-title">Valuation</h4>
-                <div class="details-group-card">
-                    ${renderRow('P/L', dados.pl)}
-                    ${renderRow('P/VP', dados.pvp)}
-                    ${renderRow('EV / EBITDA', dados.ev_ebitda)}
-                    ${renderRow('Valor de Mercado', dados.val_mercado)}
-                </div>
-                <h4 class="details-category-title">Rentabilidade & Eficiência</h4>
-                <div class="details-group-card">
-                    ${renderRow('ROE', dados.roe)}
-                    ${renderRow('Margem Bruta', dados.margem_bruta)}
-                    ${renderRow('Margem EBIT', dados.margem_ebit)}
-                    ${renderRow('Margem Líquida', dados.margem_liquida)}
-                    ${renderRow('Payout', dados.payout)}
-                </div>
-                <h4 class="details-category-title">Crescimento (5 Anos)</h4>
-                <div class="details-group-card">
-                    ${renderRow('CAGR Receitas', dados.cagr_receita)}
-                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
-                </div>
-                <h4 class="details-category-title">Saúde Financeira</h4>
-                <div class="details-group-card">
-                    ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
-                    ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
-                    ${renderRow('Liquidez Diária', dados.liquidez)}
-                </div>`;
-        } else {
-            listasHtml = `
-                ${magicNumberHtml}
-                <h4 class="details-category-title">Métricas</h4>
-                <div class="details-group-card">
-                    ${renderRow('Liquidez Diária', dados.liquidez)}
-                    ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
-                    ${renderRow('VP por Cota', dados.vp_cota)}
-                    ${renderRow('Valor de Mercado', dados.val_mercado)}
-                </div>
-                <h4 class="details-category-title">Sobre o Fundo</h4>
-                <div class="details-group-card">
-                    ${renderRow('Segmento', dados.segmento)}
-                    ${renderRow('Tipo', dados.tipo_fundo)}
-                    ${renderRow('Público Alvo', dados.publico_alvo)}
-                    ${renderRow('Vacância', dados.vacancia)}
-                    ${renderRow('Gestão', dados.tipo_gestao)}
-                </div>
-                <h4 class="details-category-title">Taxas & Infos</h4>
-                <div class="details-group-card">
-                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
-                    ${renderRow('Num. Cotistas', dados.num_cotistas)}
-                    ${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}
-                </div>`;
-        }
+        let listasHtml = ehAcao ? `
+            ${valuationHtml}
+            <h4 class="details-category-title">Valuation</h4><div class="details-group-card">${renderRow('P/L', dados.pl)}${renderRow('P/VP', dados.pvp)}${renderRow('EV / EBITDA', dados.ev_ebitda)}${renderRow('Valor de Mercado', dados.val_mercado)}</div>
+            <h4 class="details-category-title">Rentabilidade & Eficiência</h4><div class="details-group-card">${renderRow('ROE', dados.roe)}${renderRow('Margem Bruta', dados.margem_bruta)}${renderRow('Margem EBIT', dados.margem_ebit)}${renderRow('Margem Líquida', dados.margem_liquida)}${renderRow('Payout', dados.payout)}</div>
+            <h4 class="details-category-title">Crescimento (5 Anos)</h4><div class="details-group-card">${renderRow('CAGR Receitas', dados.cagr_receita)}${renderRow('CAGR Lucros', dados.cagr_lucros)}</div>
+            <h4 class="details-category-title">Saúde Financeira</h4><div class="details-group-card">${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}${renderRow('Liquidez Diária', dados.liquidez)}</div>` 
+            : `
+            ${magicNumberHtml}
+            <h4 class="details-category-title">Métricas</h4><div class="details-group-card">${renderRow('Liquidez Diária', dados.liquidez)}${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}${renderRow('VP por Cota', dados.vp_cota)}${renderRow('Valor de Mercado', dados.val_mercado)}</div>
+            <h4 class="details-category-title">Sobre o Fundo</h4><div class="details-group-card">${renderRow('Segmento', dados.segmento)}${renderRow('Tipo', dados.tipo_fundo)}${renderRow('Público Alvo', dados.publico_alvo)}${renderRow('Vacância', dados.vacancia)}${renderRow('Gestão', dados.tipo_gestao)}</div>
+            <h4 class="details-category-title">Taxas & Infos</h4><div class="details-group-card">${renderRow('Taxa Adm.', dados.taxa_adm)}${renderRow('Num. Cotistas', dados.num_cotistas)}${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}</div>`;
 
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col">
@@ -5027,7 +5002,6 @@ async function handleMostrarDetalhes(symbol) {
                 <div class="grid grid-cols-3 gap-2 w-full mb-2">${gridTopo}</div>
                 ${listasHtml}
             </div>`;
-
     } else {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }

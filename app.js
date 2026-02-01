@@ -4704,86 +4704,18 @@ function handleAbrirModalEdicao(id) {
             btn.classList.toggle('active', btn.dataset.meses === '3'); 
         });
     }
-	
-	// --- NOVO: Renderiza o Gráfico de Linha (Cotações) ---
-function renderizarGraficoPrecosDetalhes(dados) {
-    const container = document.getElementById('detalhes-historico-container');
-    if (!container) return;
-
-    container.classList.remove('hidden');
-    container.innerHTML = '<canvas id="detalhes-precos-chart" style="width:100%; height:100%;"></canvas>';
-
-    const ctx = document.getElementById('detalhes-precos-chart').getContext('2d');
-    
-    // Cria gradiente para a linha (Roxo suave)
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(139, 92, 246, 0.5)'); // Roxo forte no topo
-    gradient.addColorStop(1, 'rgba(139, 92, 246, 0)');   // Transparente embaixo
-
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: dados.map(d => d.data.substring(0, 5)), // Pega só DD/MM
-            datasets: [{
-                label: 'Preço',
-                data: dados.map(d => d.valor),
-                borderColor: '#8b5cf6', // Roxo
-                backgroundColor: gradient,
-                borderWidth: 2,
-                pointRadius: 0, // Remove bolinhas para visual limpo
-                pointHoverRadius: 4,
-                fill: true,
-                tension: 0.4 // Linha curva suave
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    backgroundColor: '#151515',
-                    titleColor: '#fff',
-                    bodyColor: '#ccc',
-                    borderColor: '#333',
-                    borderWidth: 1,
-                    displayColors: false,
-                    callbacks: {
-                        label: (context) => `R$ ${context.parsed.y.toFixed(2)}`
-                    }
-                }
-            },
-            scales: {
-                x: { display: false }, // Esconde eixo X para visual minimalista
-                y: { 
-                    display: false,    // Esconde eixo Y
-                    min: Math.min(...dados.map(d => d.valor)) * 0.95, // Ajusta escala
-                    max: Math.max(...dados.map(d => d.valor)) * 1.05
-                }
-            }
-        }
-    });
-}
     
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
-    
-    // Limpa containers visuais
-    if (detalhesPreco) detalhesPreco.innerHTML = '';
-    if (detalhesAiProvento) detalhesAiProvento.innerHTML = ''; 
-    const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
-    if(detalhesHistoricoContainer) {
-        detalhesHistoricoContainer.innerHTML = '';
-        detalhesHistoricoContainer.classList.remove('hidden');
-    }
+    detalhesPreco.innerHTML = '';
+    detalhesAiProvento.innerHTML = ''; 
+    detalhesHistoricoContainer.classList.remove('hidden'); 
     
     // --- 1. ÍCONE E CABEÇALHO ---
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
-    const ehFii = typeof isFII === 'function' ? isFII(symbol) : symbol.endsWith('11');
+    const ehFii = isFII(symbol);
     const ehAcao = !ehFii;
     
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
@@ -4806,163 +4738,52 @@ async function handleMostrarDetalhes(symbol) {
     detalhesNomeLongo.textContent = 'Carregando...';
     
     currentDetalhesSymbol = symbol;
+    currentDetalhesMeses = 3; 
+    currentDetalhesHistoricoJSON = null; 
+    
+    const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
+    btnsPeriodo.forEach(btn => {
+        const isActive = btn.dataset.meses === '3';
+        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
+            isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888]'
+        }`;
+    });
     
     // --- 2. BUSCA DE DADOS ---
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
+    let precoData = await getCache(cacheKeyPreco);
     
-    let precoData = null;
+    if (!precoData) {
+        try {
+            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+            precoData = data.results?.[0];
+            if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO); 
+            else throw new Error(precoData?.error || 'Ativo não encontrado');
+        } catch (e) { 
+            precoData = null; 
+            showToast("Erro ao buscar preço."); 
+        }
+    }
+
     let fundamentos = {};
     let nextProventoData = null;
-    let historicoPrecos = [];
-    let historicoProventos = [];
 
+    fetchHistoricoScraper(symbol); 
+    
     try {
-        // Tenta cache de preço
-        precoData = await getCache(cacheKeyPreco);
-        if (!precoData) {
-             const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-             precoData = data.results?.[0];
-             if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
-        }
-
-        // Busca Scraper em Paralelo
-        const [fundRes, provRes, histPrecoRes, histProvRes] = await Promise.all([
-            callScraperFundamentosAPI(symbol),        
-            callScraperProximoProventoAPI(symbol),    
-            fetchBFF(`/api/scraper`, {                
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: 'historico_cotacao', payload: { ticker: symbol } })
-            }),
-            fetchBFF(`/api/scraper`, {                
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: 'historico_12m', payload: { ticker: symbol } })
-            })
+        const [fundData, provData] = await Promise.all([
+            callScraperFundamentosAPI(symbol),
+            callScraperProximoProventoAPI(symbol)
         ]);
-
-        fundamentos = fundRes || {};
-        nextProventoData = provRes;
-        historicoPrecos = (histPrecoRes && histPrecoRes.json) ? histPrecoRes.json : [];
-        historicoProventos = (histProvRes && histProvRes.json) ? histProvRes.json : [];
-
-    } catch (e) { 
-        console.error("Erro ao buscar dados:", e); 
-        if(typeof showToast === 'function') showToast("Erro ao carregar dados.");
-    }
+        fundamentos = fundData || {};
+        nextProventoData = provData;
+    } catch (e) { console.error("Erro dados extras", e); }
     
     detalhesLoading.classList.add('hidden');
 
-    // --- 3. RENDERIZAÇÃO DO GRÁFICO DE PREÇOS (LINHA) ---
-    if (detalhesChartInstance) {
-        detalhesChartInstance.destroy();
-        detalhesChartInstance = null;
-    }
-
-    // CORREÇÃO: Verifica se o elemento pai existe e usa querySelector interno
-    if (historicoPrecos && historicoPrecos.length > 0 && detalhesAiProvento) {
-        detalhesAiProvento.innerHTML = `
-            <div class="mb-6 mt-2">
-                <div class="flex justify-between items-center mb-3 px-1">
-                     <h4 class="details-category-title mb-0">Histórico de Preços</h4>
-                     <div class="flex bg-[#151515] p-0.5 rounded-lg">
-                        <button id="btn-chart-1y" class="px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all">1A</button>
-                        <button id="btn-chart-5y" class="px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all">5A</button>
-                     </div>
-                </div>
-                <div class="w-full h-[180px] bg-[#151515] rounded-2xl p-2 border border-[#27272a] relative">
-                    <canvas id="detalhes-preco-chart"></canvas>
-                </div>
-            </div>
-        `;
-        
-        // --- AQUI ESTAVA O ERRO --- 
-        // Em vez de document.getElementById, buscamos dentro do container que acabamos de preencher.
-        // Adicionamos também uma verificação de segurança.
-        const canvasEl = detalhesAiProvento.querySelector('canvas');
-        
-        if (canvasEl) {
-            const ctx = canvasEl.getContext('2d');
-            const allData = historicoPrecos; 
-            
-            const updateChart = (period) => {
-                let filteredData = [];
-                const limit = period === '1y' ? 250 : 1250; 
-                filteredData = allData.slice(Math.max(allData.length - limit, 0));
-
-                const labels = filteredData.map(h => h.data); 
-                const values = filteredData.map(h => h.valor);
-
-                const gradient = ctx.createLinearGradient(0, 0, 0, 180);
-                gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)'); 
-                gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
-
-                if (detalhesChartInstance) detalhesChartInstance.destroy();
-
-                detalhesChartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Preço',
-                            data: values,
-                            borderColor: '#7c3aed', 
-                            backgroundColor: gradient,
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: { duration: 400 },
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                callbacks: { label: (c) => typeof formatBRL === 'function' ? formatBRL(c.raw) : `R$ ${c.raw}` }
-                            }
-                        },
-                        scales: {
-                            x: { display: false },
-                            y: { display: false }
-                        },
-                        interaction: { mode: 'nearest', axis: 'x', intersect: false }
-                    }
-                });
-            };
-
-            updateChart('1y');
-
-            // Configuração dos botões (buscando dentro do container para garantir)
-            const btn1y = detalhesAiProvento.querySelector('#btn-chart-1y');
-            const btn5y = detalhesAiProvento.querySelector('#btn-chart-5y');
-
-            if(btn1y && btn5y){
-                btn1y.onclick = () => {
-                    btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
-                    btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
-                    updateChart('1y');
-                };
-
-                btn5y.onclick = () => {
-                    btn5y.className = "px-3 py-1 text-[10px] font-bold rounded-md bg-[#27272a] text-white transition-all";
-                    btn1y.className = "px-3 py-1 text-[10px] font-bold rounded-md text-[#666] hover:text-white transition-all";
-                    updateChart('5y');
-                };
-            }
-        }
-    } else {
-        if(detalhesAiProvento) detalhesAiProvento.innerHTML = '';
-    }
-
-    // --- 4. RENDER RESTANTE ---
-    if (precoData && detalhesPreco) {
+    // --- 3. CONSTRUÇÃO DO HTML ---
+    if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const varPercent = precoData.regularMarketChangePercent || 0;
         let variacaoCor = varPercent > 0 ? 'text-green-500' : (varPercent < 0 ? 'text-red-500' : 'text-[#888888]');
@@ -4983,32 +4804,64 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-'
         };
 
+        // --- CÁLCULO DE VALUATION (AÇÕES) ---
         let valuationHtml = '';
         let magicNumberHtml = '';
-        const fmtBRL = (v) => typeof formatBRL === 'function' ? formatBRL(v) : `R$ ${v.toFixed(2)}`;
-        const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
-
+        
         if (ehAcao) {
+            const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
             const lpa = parseVal(dados.lpa);
             const vpa = parseVal(dados.vp_cota);
             const dyVal = parseVal(dados.dy);
             const preco = precoData.regularMarketPrice;
 
+            // 1. Graham
             if (lpa > 0 && vpa > 0) {
                 const vi = Math.sqrt(22.5 * lpa * vpa);
                 const margemSeguranca = ((vi - preco) / preco) * 100;
                 const corGraham = margemSeguranca > 0 ? 'text-green-400' : 'text-red-400';
-                valuationHtml += `<div class="details-group-card mt-3 relative overflow-hidden"><div class="flex justify-between items-center py-3 px-1"><div><span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Graham</span><span class="text-xs text-[#888] font-medium block">Preço Justo</span></div><div class="text-right"><span class="text-xl font-bold text-white tracking-tighter">${fmtBRL(vi)}</span><span class="text-[10px] ${corGraham} block font-medium">Upside: ${margemSeguranca.toFixed(1)}%</span></div></div></div>`;
+                
+                valuationHtml += `
+                    <div class="details-group-card mt-3 relative overflow-hidden">
+                        <div class="flex justify-between items-center py-3 px-1">
+                            <div>
+                                <span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Graham</span>
+                                <span class="text-xs text-[#888] font-medium block">Preço Justo</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xl font-bold text-white tracking-tighter">${formatBRL(vi)}</span>
+                                <span class="text-[10px] ${corGraham} block font-medium">Upside: ${margemSeguranca.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
+
+            // 2. Bazin
             if (dyVal > 0) {
                 const dividendosAnuais = preco * (dyVal / 100);
                 const bazinPrice = dividendosAnuais / 0.06;
                 const upsideBazin = ((bazinPrice - preco) / preco) * 100;
                 const corBazin = upsideBazin > 0 ? 'text-green-400' : 'text-red-400';
-                valuationHtml += `<div class="details-group-card mt-2 mb-2 relative overflow-hidden"><div class="flex justify-between items-center py-3 px-1"><div><span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Bazin</span><span class="text-xs text-[#888] font-medium block">Preço Teto (6%)</span></div><div class="text-right"><span class="text-xl font-bold text-white tracking-tighter">${fmtBRL(bazinPrice)}</span><span class="text-[10px] ${corBazin} block font-medium">Upside: ${upsideBazin.toFixed(1)}%</span></div></div></div>`;
+
+                valuationHtml += `
+                    <div class="details-group-card mt-2 mb-2 relative overflow-hidden">
+                        <div class="flex justify-between items-center py-3 px-1">
+                            <div>
+                                <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Bazin</span>
+                                <span class="text-xs text-[#888] font-medium block">Preço Teto (6%)</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xl font-bold text-white tracking-tighter">${formatBRL(bazinPrice)}</span>
+                                <span class="text-[10px] ${corBazin} block font-medium">Upside: ${upsideBazin.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
         }
 
+        // --- CÁLCULO MAGIC NUMBER (FIIs) ---
         if (ehFii && dados.ultimo_rendimento !== '-' && dados.ultimo_rendimento !== 'N/A') {
             try {
                 const rendStr = dados.ultimo_rendimento.replace('R$', '').replace('.', '').replace(',', '.').trim();
@@ -5017,22 +4870,54 @@ async function handleMostrarDetalhes(symbol) {
                 if (rendimento > 0 && precoAtual > 0) {
                     const magicNumber = Math.ceil(precoAtual / rendimento);
                     const custoMagic = magicNumber * precoAtual;
-                    magicNumberHtml = `<div class="details-group-card mt-3 mb-2 relative overflow-hidden group"><div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><svg class="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg></div><div class="flex justify-between items-center py-3"><div><span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Magic Number</span><span class="text-xs text-[#888] font-medium block">Cotas para reinvestir</span></div><div class="text-right z-10"><span class="text-2xl font-bold text-white tracking-tighter">${magicNumber}</span><span class="text-[10px] text-[#666] block font-medium">Investimento: ~${fmtBRL(custoMagic)}</span></div></div></div>`;
+                    
+                    magicNumberHtml = `
+                        <div class="details-group-card mt-3 mb-2 relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <svg class="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/></svg>
+                            </div>
+                            <div class="flex justify-between items-center py-3">
+                                <div>
+                                    <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Magic Number</span>
+                                    <span class="text-xs text-[#888] font-medium block">Cotas para reinvestir</span>
+                                </div>
+                                <div class="text-right z-10">
+                                    <span class="text-2xl font-bold text-white tracking-tighter">${magicNumber}</span>
+                                    <span class="text-[10px] text-[#666] block font-medium">Investimento: ~${formatBRL(custoMagic)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
-            } catch(e) {}
+            } catch(e) { console.log('Erro calc magic number', e); }
         }
 
+        // Posição do Usuário
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
-            userPosHtml = `<h4 class="details-category-title">Sua Posição</h4><div class="details-group-card flex justify-between items-center py-4 px-5"><div><span class="text-xs text-gray-500 font-medium block">Total Investido</span><div class="flex items-baseline gap-2 mt-0.5"><p class="text-xl font-bold text-white tracking-tight">${fmtBRL(totalPosicao)}</p></div></div><div class="text-right"><span class="text-xs text-gray-500 font-medium block">Quantidade</span><span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span></div></div>`;
+            userPosHtml = `
+                <h4 class="details-category-title">Sua Posição</h4>
+                <div class="details-group-card flex justify-between items-center py-4 px-5">
+                    <div>
+                        <span class="text-xs text-gray-500 font-medium block">Total Investido</span>
+                        <div class="flex items-baseline gap-2 mt-0.5">
+                            <p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                         <span class="text-xs text-gray-500 font-medium block">Quantidade</span>
+                         <span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span>
+                    </div>
+                </div>`;
         }
 
+        // Próximo Provento
         let proximoProventoHtml = '';
         if (nextProventoData && nextProventoData.value > 0) {
-            const dataPagFmt = nextProventoData.paymentDate ? (typeof formatDate === 'function' ? formatDate(nextProventoData.paymentDate) : nextProventoData.paymentDate) : '-';
-            const dataComFmt = nextProventoData.dataCom ? (typeof formatDate === 'function' ? formatDate(nextProventoData.dataCom) : nextProventoData.dataCom) : '-';
+            const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
+            const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
             const hoje = new Date(); hoje.setHours(0,0,0,0);
             let isFuturo = false;
             if(nextProventoData.paymentDate) {
@@ -5043,33 +4928,94 @@ async function handleMostrarDetalhes(symbol) {
             const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
             const valueClass = isFuturo ? "text-green-400" : "text-white";
 
-            proximoProventoHtml = `<h4 class="details-category-title">Proventos</h4><div class="w-full p-4 rounded-[1.5rem] ${bgClass} flex flex-col gap-3"><div class="flex justify-between items-center pb-2 border-b border-white/5"><span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${isFuturo ? "Próximo Pagamento" : "Último Anúncio"}</span><span class="text-xl font-bold ${valueClass}">${fmtBRL(nextProventoData.value)}</span></div><div class="flex justify-between text-xs pt-1"><div class="text-left"><span class="block text-[#666] mb-0.5 font-medium">Data Com</span><span class="text-[#e5e5e5] font-bold">${dataComFmt}</span></div><div class="text-right"><span class="block text-[#666] mb-0.5 font-medium">Pagamento</span><span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span></div></div></div>`;
+            proximoProventoHtml = `
+                <h4 class="details-category-title">Proventos</h4>
+                <div class="w-full p-4 rounded-[1.5rem] ${bgClass} flex flex-col gap-3">
+                    <div class="flex justify-between items-center pb-2 border-b border-white/5">
+                        <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${isFuturo ? "Próximo Pagamento" : "Último Anúncio"}</span>
+                        <span class="text-xl font-bold ${valueClass}">${formatBRL(nextProventoData.value)}</span>
+                    </div>
+                    <div class="flex justify-between text-xs pt-1">
+                        <div class="text-left"><span class="block text-[#666] mb-0.5 font-medium">Data Com</span><span class="text-[#e5e5e5] font-bold">${dataComFmt}</span></div>
+                        <div class="text-right"><span class="block text-[#666] mb-0.5 font-medium">Pagamento</span><span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span></div>
+                    </div>
+                </div>`;
         }
 
+        // Grid Destaques
         let gridTopo = ehAcao ? 
-            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/L</span><span class="text-base font-bold text-white">${dados.pl}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>` :
-            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div><div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span><span class="text-base font-bold text-white">${dados.ultimo_rendimento}</span></div>`;
+            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/L</span><span class="text-base font-bold text-white">${dados.pl}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>` :
+            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span><span class="text-base font-bold text-white">${dados.ultimo_rendimento}</span></div>`;
 
         const renderRow = (l, v) => `<div class="details-row"><span class="details-label">${l}</span><span class="details-value">${v}</span></div>`;
 
-        let listasHtml = ehAcao ? `
-            ${valuationHtml}
-            <h4 class="details-category-title">Valuation</h4><div class="details-group-card">${renderRow('P/L', dados.pl)}${renderRow('P/VP', dados.pvp)}${renderRow('EV / EBITDA', dados.ev_ebitda)}${renderRow('Valor de Mercado', dados.val_mercado)}</div>
-            <h4 class="details-category-title">Rentabilidade & Eficiência</h4><div class="details-group-card">${renderRow('ROE', dados.roe)}${renderRow('Margem Bruta', dados.margem_bruta)}${renderRow('Margem EBIT', dados.margem_ebit)}${renderRow('Margem Líquida', dados.margem_liquida)}${renderRow('Payout', dados.payout)}</div>
-            <h4 class="details-category-title">Crescimento (5 Anos)</h4><div class="details-group-card">${renderRow('CAGR Receitas', dados.cagr_receita)}${renderRow('CAGR Lucros', dados.cagr_lucros)}</div>
-            <h4 class="details-category-title">Saúde Financeira</h4><div class="details-group-card">${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}${renderRow('Liquidez Diária', dados.liquidez)}</div>` 
-            : `
-            ${magicNumberHtml}
-            <h4 class="details-category-title">Métricas</h4><div class="details-group-card">${renderRow('Liquidez Diária', dados.liquidez)}${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}${renderRow('VP por Cota', dados.vp_cota)}${renderRow('Valor de Mercado', dados.val_mercado)}</div>
-            <h4 class="details-category-title">Sobre o Fundo</h4><div class="details-group-card">${renderRow('Segmento', dados.segmento)}${renderRow('Tipo', dados.tipo_fundo)}${renderRow('Público Alvo', dados.publico_alvo)}${renderRow('Vacância', dados.vacancia)}${renderRow('Gestão', dados.tipo_gestao)}</div>
-            <h4 class="details-category-title">Taxas & Infos</h4><div class="details-group-card">${renderRow('Taxa Adm.', dados.taxa_adm)}${renderRow('Num. Cotistas', dados.num_cotistas)}${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}</div>`;
+        // Listas Categorizadas
+        let listasHtml = '';
+        if (ehAcao) {
+            listasHtml = `
+                ${valuationHtml}
+                <h4 class="details-category-title">Valuation</h4>
+                <div class="details-group-card">
+                    ${renderRow('P/L', dados.pl)}
+                    ${renderRow('P/VP', dados.pvp)}
+                    ${renderRow('EV / EBITDA', dados.ev_ebitda)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                </div>
+                <h4 class="details-category-title">Rentabilidade & Eficiência</h4>
+                <div class="details-group-card">
+                    ${renderRow('ROE', dados.roe)}
+                    ${renderRow('Margem Bruta', dados.margem_bruta)}
+                    ${renderRow('Margem EBIT', dados.margem_ebit)}
+                    ${renderRow('Margem Líquida', dados.margem_liquida)}
+                    ${renderRow('Payout', dados.payout)}
+                </div>
+                <h4 class="details-category-title">Crescimento (5 Anos)</h4>
+                <div class="details-group-card">
+                    ${renderRow('CAGR Receitas', dados.cagr_receita)}
+                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
+                </div>
+                <h4 class="details-category-title">Saúde Financeira</h4>
+                <div class="details-group-card">
+                    ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
+                    ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                </div>`;
+        } else {
+            listasHtml = `
+                ${magicNumberHtml}
+                <h4 class="details-category-title">Métricas</h4>
+                <div class="details-group-card">
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                    ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
+                    ${renderRow('VP por Cota', dados.vp_cota)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                </div>
+                <h4 class="details-category-title">Sobre o Fundo</h4>
+                <div class="details-group-card">
+                    ${renderRow('Segmento', dados.segmento)}
+                    ${renderRow('Tipo', dados.tipo_fundo)}
+                    ${renderRow('Público Alvo', dados.publico_alvo)}
+                    ${renderRow('Vacância', dados.vacancia)}
+                    ${renderRow('Gestão', dados.tipo_gestao)}
+                </div>
+                <h4 class="details-category-title">Taxas & Infos</h4>
+                <div class="details-group-card">
+                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
+                    ${renderRow('Num. Cotistas', dados.num_cotistas)}
+                    ${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}
+                </div>`;
+        }
 
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col">
                 <div class="text-center pb-6 pt-4">
-                    <h2 class="text-[3.5rem] font-bold text-white tracking-tighter leading-none">${fmtBRL(precoData.regularMarketPrice)}</h2>
+                    <h2 class="text-[3.5rem] font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
                     <span class="text-base font-bold ${variacaoCor} mt-2 flex items-center justify-center gap-1 tracking-tight">
-                        ${variacaoIcone} ${typeof formatPercent === 'function' ? formatPercent(varPercent) : varPercent.toFixed(2) + '%'} Hoje
+                        ${variacaoIcone} ${formatPercent(varPercent)} Hoje
                     </span>
                     <span class="text-xs font-medium text-[#444] mt-1 block tracking-wide">
                         Variação 12m: <span class="${dados.variacao_12m?.includes('-') ? 'text-red-500' : 'text-green-500'}">${dados.variacao_12m}</span>
@@ -5081,20 +5027,13 @@ async function handleMostrarDetalhes(symbol) {
                 <div class="grid grid-cols-3 gap-2 w-full mb-2">${gridTopo}</div>
                 ${listasHtml}
             </div>`;
+
     } else {
-        if(detalhesPreco) detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
+        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }
     
-    // --- 5. RENDERIZAÇÃO DO GRÁFICO DE BARRAS (PROVENTOS) ---
-    if (historicoProventos && historicoProventos.length > 0) {
-        if(typeof renderHistoricoIADetalhes === 'function') {
-            currentDetalhesHistoricoJSON = historicoProventos; 
-            renderHistoricoIADetalhes(12);
-        }
-    }
-
-    if(typeof renderizarTransacoesDetalhes === 'function') renderizarTransacoesDetalhes(symbol);
-    if(typeof atualizarIconeFavorito === 'function') atualizarIconeFavorito(symbol);
+    renderizarTransacoesDetalhes(symbol);
+    atualizarIconeFavorito(symbol);
 }
 
 function renderizarTransacoesDetalhes(symbol) {

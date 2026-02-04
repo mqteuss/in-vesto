@@ -372,11 +372,31 @@ async function scrapeIpca() {
 // PARTE 4: COTAÇÃO HISTÓRICA (COM FALLBACK YAHOO FINANCE)
 // ---------------------------------------------------------
 
-async function fetchYahooFinance(ticker) {
+// --- HELPER: Mapeamento de Ranges do Yahoo ---
+function getYahooParams(range) {
+    switch (range) {
+        case '1D': return { range: '1d', interval: '5m' };   // Intraday
+        case '5D': return { range: '5d', interval: '15m' };  // Intraday
+        case '1M': return { range: '1mo', interval: '1d' };
+        case '6M': return { range: '6mo', interval: '1d' };
+        case 'YTD': return { range: 'ytd', interval: '1d' };
+        case '1Y': 
+        case '1A': return { range: '1y', interval: '1d' };
+        case '5Y': 
+        case '5A': return { range: '5y', interval: '1wk' };
+        case 'Tudo':
+        case 'MAX': return { range: 'max', interval: '1mo' };
+        default: return { range: '1y', interval: '1d' };
+    }
+}
+
+async function fetchYahooFinance(ticker, rangeFilter = '1A') {
     try {
-        // Adiciona sufixo .SA para ativos brasileiros se não tiver
         const symbol = ticker.toUpperCase().endsWith('.SA') ? ticker.toUpperCase() : `${ticker.toUpperCase()}.SA`;
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=5y&interval=1d`;
+        const { range, interval } = getYahooParams(rangeFilter);
+        
+        // URL Dinâmica baseada no filtro
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}&includePrePost=false`;
         
         const { data } = await axios.get(url);
         const result = data.chart.result[0];
@@ -386,12 +406,17 @@ async function fetchYahooFinance(ticker) {
         const timestamps = result.timestamp;
         const prices = result.indicators.quote[0].close;
 
-        // Formata para o padrão esperado (Array de arrays ou objetos)
-        // Yahoo entrega timestamp em SEGUNDOS, convertemos para MS (* 1000)
-        return timestamps.map((t, i) => {
-            if (prices[i] === null) return null; // Pula dias sem pregão
-            return [t * 1000, prices[i]]; 
+        // Formata
+        const points = timestamps.map((t, i) => {
+            if (prices[i] === null || prices[i] === undefined) return null;
+            return {
+                date: new Date(t * 1000).toISOString(), // Data ISO para o frontend processar
+                timestamp: t * 1000,
+                price: prices[i]
+            };
         }).filter(p => p !== null);
+
+        return points;
 
     } catch (e) {
         console.error(`[DEBUG] Erro Yahoo Finance para ${ticker}:`, e.message);
@@ -399,81 +424,22 @@ async function fetchYahooFinance(ticker) {
     }
 }
 
-async function scrapeCotacaoHistory(ticker) {
+// Atualize a função principal do scraper para receber o range
+async function scrapeCotacaoHistory(ticker, range = '1A') {
     const cleanTicker = ticker.toLowerCase().trim();
     
-    // --- FONTE 1: INVESTIDOR10 ---
-    let type = 'acoes';
-    if (cleanTicker.endsWith('11') || cleanTicker.endsWith('11b')) type = 'fii';
-    
-    const fetchFromInvestidor10 = async (assetType) => {
-        // Headers dinâmicos para tentar passar pelo bloqueio
-        const url = `https://investidor10.com.br/api/cotacao/${assetType}/${cleanTicker}`;
-        try {
-            const { data } = await client.get(url, {
-                headers: {
-                    'Referer': `https://investidor10.com.br/${assetType}/${cleanTicker}/`,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-            if (Array.isArray(data) && data.length > 0) return data;
-            return null;
-        } catch (e) {
-            // Apenas loga, não trava, pois tentaremos o fallback
-            return null;
-        }
-    };
+    // Para gráficos dinâmicos com filtros variados, o Yahoo Finance é mais estável e suporta intraday
+    // Vamos priorizar o Yahoo para essa funcionalidade específica
+    const data = await fetchYahooFinance(cleanTicker, range);
 
-    // Tenta buscar no Investidor10 (Ação ou FII)
-    let rawData = await fetchFromInvestidor10(type);
-    if (!rawData) rawData = await fetchFromInvestidor10((type === 'fii') ? 'acoes' : 'fii');
-
-    // --- FONTE 2 (FALLBACK): YAHOO FINANCE ---
-    if (!rawData || rawData.length === 0) {
-        console.log(`[INFO] Investidor10 bloqueado ou vazio para ${cleanTicker}. Tentando Yahoo Finance...`);
-        rawData = await fetchYahooFinance(cleanTicker);
+    if (!data || data.length === 0) {
+        return { error: "Dados não encontrados", points: [] };
     }
-
-    // Se ambas falharem, retorna erro
-    if (!rawData || rawData.length === 0) {
-        return { error: "Dados não encontrados em nenhuma fonte", history_1y: [], history_5y: [] };
-    }
-
-    // --- PROCESSAMENTO DOS DADOS ---
-    const now = new Date();
-    const oneYearAgo = new Date(); oneYearAgo.setFullYear(now.getFullYear() - 1);
-    const fiveYearsAgo = new Date(); fiveYearsAgo.setFullYear(now.getFullYear() - 5);
-
-    const formatPoint = (point) => {
-        // point[0] = timestamp (ms), point[1] = preço
-        let price = 0;
-        const rawVal = point[1];
-
-        if (typeof rawVal === 'number') {
-            price = rawVal;
-        } else if (typeof rawVal === 'string') {
-            price = parseFloat(rawVal.replace('R$', '').trim().replace(',', '.'));
-        }
-
-        return {
-            date: new Date(point[0]).toISOString().split('T')[0],
-            timestamp: point[0],
-            price: price || 0
-        };
-    };
-
-    const history1y = rawData
-        .filter(pt => pt[0] >= oneYearAgo.getTime())
-        .map(formatPoint);
-
-    const history5y = rawData
-        .filter(pt => pt[0] >= fiveYearsAgo.getTime())
-        .map(formatPoint);
 
     return {
         ticker: cleanTicker.toUpperCase(),
-        history_1y: history1y,
-        history_5y: history5y
+        range: range,
+        points: data // Retorna array único focado no range pedido
     };
 }
 
@@ -552,11 +518,12 @@ module.exports = async function handler(req, res) {
         }
 
         // --- MODO 4: COTAÇÃO HISTÓRICA (NOVO) ---
-        if (mode === 'cotacao_historica') {
-            if (!payload.ticker) return res.status(400).json({ error: "Ticker obrigatório" });
-            const dados = await scrapeCotacaoHistory(payload.ticker);
-            return res.status(200).json({ json: dados });
-        }
+// Exemplo dentro do seu router/handler da API:
+if (mode === 'cotacao_historica') {
+    const range = payload.range || '1D'; // Default muda conforme sua preferência
+    const dados = await scrapeCotacaoHistory(payload.ticker, range);
+    return res.status(200).json({ json: dados });
+}
 
         return res.status(400).json({ error: "Modo desconhecido" });
     } catch (error) {

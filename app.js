@@ -4895,6 +4895,7 @@ function renderPriceChart(dataPoints, range) {
     };
 
     // --- PLUGIN 2: LINHA DE PREÇO ATUAL (Badge Otimizado) ---
+// --- PLUGIN 2: LINHA DE PREÇO ATUAL (Com Trava Anti-Corte) ---
     const lastPricePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
@@ -4903,24 +4904,26 @@ function renderPriceChart(dataPoints, range) {
             if (!meta.data || meta.data.length === 0) return;
             
             const lastPoint = meta.data[meta.data.length - 1];
-            const y = lastPoint.y;
+            const y = lastPoint.y; // Posição Y real do ponto
             
             const leftEdge = chart.chartArea.left;
             const rightEdge = chart.chartArea.right; 
-            
+            const topEdge = chart.chartArea.top;
+            const bottomEdge = chart.chartArea.bottom;
+
             ctx.save();
 
-            // 1. LINHA PONTILHADA (Horizontal Completa)
+            // 1. LINHA PONTILHADA (Sempre na posição real Y)
             ctx.beginPath();
             ctx.moveTo(leftEdge, y);
             ctx.lineTo(rightEdge, y);
             ctx.lineWidth = 1;
             ctx.strokeStyle = colorLine; 
-            ctx.setLineDash([2, 2]); // Pontilhado fino
+            ctx.setLineDash([2, 2]); 
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // 2. BADGE (Etiqueta Compacta)
+            // 2. BADGE 
             const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             ctx.font = 'bold 9px sans-serif'; 
             
@@ -4929,25 +4932,36 @@ function renderPriceChart(dataPoints, range) {
             const badgeHeight = 16; 
             const badgeWidth = textMetrics.width + (paddingX * 2);
             
-            // Posição: Começa exatamente onde o gráfico termina (rightEdge)
-            // Se quiser que sobreponha um pouquinho pra dentro, subtraia pixels
-            const badgeX = rightEdge; 
-            const badgeY = y - (badgeHeight / 2);
+            // --- LÓGICA DE TRAVA (CLAMP) ---
+            // Calcula onde o CENTRO do badge deveria estar
+            let badgeCenterY = y;
+            const halfHeight = badgeHeight / 2;
 
-            // Fundo Retangular (Badge)
+            // Se estiver muito perto do topo, trava no topo
+            if (badgeCenterY - halfHeight < topEdge) {
+                badgeCenterY = topEdge + halfHeight;
+            }
+            // Se estiver muito perto do chão, trava no chão
+            if (badgeCenterY + halfHeight > bottomEdge) {
+                badgeCenterY = bottomEdge - halfHeight;
+            }
+
+            // Define posição final baseada no centro calculado
+            const badgeX = rightEdge; 
+            const badgeY = badgeCenterY - halfHeight; // Topo do retângulo
+
+            // Desenha Retângulo
             ctx.fillStyle = colorLine;
             const r = 3; 
             ctx.beginPath();
-            // Desenho do retângulo arredondado
-            ctx.moveTo(badgeX, badgeY); // Canto superior esquerdo "reto" (opcional) ou arredondado
-            // Vamos fazer totalmente arredondado
             ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, r);
             ctx.fill();
 
             // Texto
             ctx.fillStyle = '#FFFFFF';
             ctx.textBaseline = 'middle';
-            ctx.fillText(text, badgeX + paddingX, y + 1); 
+            // Ajuste o texto relativo ao novo centro do badge
+            ctx.fillText(text, badgeX + paddingX, badgeCenterY + 1); 
 
             ctx.restore();
         }
@@ -5011,9 +5025,12 @@ function renderPriceChart(dataPoints, range) {
                     }
                 }
             },
-            scales: {
+scales: {
                 x: { display: false },
-                y: { display: false } 
+                y: { 
+                    display: false,
+                    grace: '10%'
+                } 
             },
             interaction: {
                 mode: 'nearest',

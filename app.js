@@ -4852,12 +4852,11 @@ function renderPriceChart(dataPoints, range) {
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
 
-    // Cores (Verde/Vermelho)
     const startPrice = values[0];
     const endPrice = values[values.length - 1];
     const isPositive = endPrice >= startPrice;
     
-    // Cores vibrantes mas profissionais
+    // Cores (Verde/Vermelho)
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
 
@@ -4867,7 +4866,7 @@ function renderPriceChart(dataPoints, range) {
 
     const isIntraday = (range === '1D' || range === '5D');
 
-    // Plugin da linha vertical (Mantive pois ajuda na precisão)
+    // Plugin Crosshair (Linha Vertical)
     const crosshairPlugin = {
         id: 'crosshair',
         afterDraw: (chart) => {
@@ -4883,8 +4882,8 @@ function renderPriceChart(dataPoints, range) {
                 ctx.moveTo(x, topY);
                 ctx.lineTo(x, bottomY);
                 ctx.lineWidth = 1;
-                ctx.strokeStyle = '#3F3F46'; // Cinza escuro discreto
-                ctx.setLineDash([3, 3]); // Pontilhado mais fino
+                ctx.strokeStyle = '#3F3F46'; // Cinza escuro
+                ctx.setLineDash([3, 3]); // Pontilhado fino
                 ctx.stroke();
                 ctx.restore();
             }
@@ -4899,12 +4898,12 @@ function renderPriceChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 1.5,     // <--- AJUSTE: Linha mais fina e elegante
+                borderWidth: 1.5,     // <--- Linha fina
                 pointRadius: 0, 
-                pointHitRadius: 20,   // Área de toque grande para facilitar no celular
-                pointHoverRadius: 4,  // <--- AJUSTE: Tamanho original discreto
-                pointHoverBackgroundColor: colorLine, // <--- AJUSTE: Cor sólida (sem miolo branco)
-                pointHoverBorderWidth: 0, // <--- AJUSTE: Sem borda extra
+                pointHitRadius: 20,   
+                pointHoverRadius: 4,  // <--- Tamanho discreto
+                pointHoverBackgroundColor: colorLine, // <--- Bolinha sólida (cor da linha)
+                pointHoverBorderWidth: 0, 
                 fill: true,
                 tension: 0.05
             }]
@@ -4913,7 +4912,8 @@ function renderPriceChart(dataPoints, range) {
             responsive: true,
             maintainAspectRatio: false,
             layout: {
-                padding: { left: 0, right: 0, top: 20, bottom: 0 }
+                // Remove padding extra, aproveita todo o espaço
+                padding: { left: 0, right: 0, top: 10, bottom: 0 } 
             },
             plugins: {
                 legend: { display: false },
@@ -4932,11 +4932,12 @@ function renderPriceChart(dataPoints, range) {
                     callbacks: {
                         title: function(context) {
                             const date = new Date(context[0].label);
+                            // Formatação completa no Tooltip já que removemos do eixo X
                             if (isIntraday) {
                                 return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' ' + 
                                        date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                             }
-                            return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
+                            return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
                         },
                         label: function(context) {
                             return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -4946,31 +4947,14 @@ function renderPriceChart(dataPoints, range) {
             },
             scales: {
                 x: {
-                    display: true,
-                    grid: { display: false },
-                    ticks: {
-                        maxTicksLimit: 5,
-                        autoSkip: true,
-                        color: '#666',
-                        font: { size: 10 },
-                        callback: function(val) {
-                            const date = new Date(this.getLabelForValue(val));
-                            if (range === '1D') return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                            if (range === '5D') return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                            return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-                        }
-                    }
+                    display: false, // <--- Oculta o eixo X para economizar espaço
+                    grid: { display: false }
                 },
                 y: {
+                    display: false, // <--- Oculta o eixo Y (opcional, para visual 'limpo' total)
+                    // Se preferir manter o eixo Y visível, mude para display: true
                     position: 'right',
-                    grid: { color: '#262626', drawBorder: false, tickLength: 0 },
-                    border: { display: false },
-                    ticks: {
-                        color: '#666',
-                        font: { size: 10 },
-                        maxTicksLimit: 6,
-                        callback: function(value) { return value.toFixed(1); }
-                    }
+                    grid: { display: false } 
                 }
             },
             interaction: {
@@ -4979,7 +4963,7 @@ function renderPriceChart(dataPoints, range) {
                 intersect: false
             },
             animation: {
-                duration: 0 // <--- DICA: Remove animação de 'desenho' para parecer mais instantâneo ao trocar filtros
+                duration: 0 
             }
         },
         plugins: [crosshairPlugin]

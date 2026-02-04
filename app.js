@@ -4727,6 +4727,7 @@ async function callScraperCotacaoHistoricaAPI(ticker) {
 }
 
 // 2. Controlador Principal (Chame isso ao abrir o modal)
+// 2. Controlador Principal (Chame isso ao abrir o modal)
 async function fetchCotacaoHistorica(symbol) {
     // Tenta encontrar o container, se não existir, cria dinamicamente
     let container = document.getElementById('detalhes-cotacao-container');
@@ -4767,20 +4768,31 @@ async function fetchCotacaoHistorica(symbol) {
 
         if (!data) {
             data = await callScraperCotacaoHistoricaAPI(symbol);
-            if (data && (data.history_1y || data.history_5y)) {
+            if (data && (data.history_1y && data.history_1y.length > 0)) {
                 await setCache(cacheKey, data, 1000 * 60 * 60 * 24); // Cache de 24 horas
             }
         }
         
-        if (!data || !data.history_1y) throw new Error("Sem dados");
+        // Verificação extra de segurança para dados vazios
+        if (!data || !data.history_1y || data.history_1y.length === 0) {
+            throw new Error("Dados históricos vazios ou inválidos.");
+        }
 
         cotacaoDataCacheLocal = data; // Salva para troca rápida
-        renderPriceChart('1Y'); // Renderiza inicial
+        
+        // --- FIX CRÍTICO: Delay para garantir que o modal está visível ---
+        setTimeout(() => {
+            renderPriceChart('1Y'); 
+        }, 300); // 300ms espera a animação do CSS terminar
 
     } catch (e) {
         console.error("Erro gráfico:", e);
         const wrapper = document.getElementById('chart-area-wrapper');
-        if(wrapper) wrapper.innerHTML = `<span class="text-xs text-red-500">Indisponível</span>`;
+        if(wrapper) wrapper.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                <span class="text-2xl mb-2 opacity-30">📉</span>
+                <span class="text-xs">Gráfico indisponível</span>
+            </div>`;
     }
 }
 

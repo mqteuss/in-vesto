@@ -4710,13 +4710,13 @@ function handleAbrirModalEdicao(id) {
 // ======================================================
 
 let cotacaoChartInstance = null;
-// MUDANÇA: Cache apenas em memória RAM (RAM volátil), não pesa no armazenamento do celular
+// Cache agora usa chave composta: "PETR4_1D", "VALE3_5A"
 window.tempChartCache = {}; 
 
-async function callScraperCotacaoHistoricaAPI(ticker) {
+async function callScraperCotacaoHistoricaAPI(ticker, range) {
     const body = { 
         mode: 'cotacao_historica', 
-        payload: { ticker } 
+        payload: { ticker, range } // Envia o range
     };
     const data = await fetchBFF('/api/scraper', {
         method: 'POST',
@@ -4741,78 +4741,104 @@ async function fetchCotacaoHistorica(symbol) {
         }
     }
 
-    // MUDANÇA: Aumentei a altura para h-64 (maior) e ajustei espaçamentos
+    // HTML com barra de rolagem horizontal para os botões
     container.innerHTML = `
-        <div class="flex justify-between items-center mb-4 px-1">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Histórico de Preço</span>
-            <div class="flex gap-2 bg-[#1C1C1E] p-1 rounded-lg border border-[#2C2C2E]">
-                <button onclick="mudarPeriodoGrafico('1Y', '${symbol}')" id="btn-1y" class="px-3 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all">1A</button>
-                <button onclick="mudarPeriodoGrafico('5Y', '${symbol}')" id="btn-5y" class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-300 transition-all">5A</button>
+        <div class="flex flex-col mb-4 px-1">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Histórico de Preço</span>
+            
+            <div class="flex overflow-x-auto no-scrollbar gap-2 pb-1" id="chart-filters">
+                ${gerarBotaoFiltro('1D', symbol, true)}
+                ${gerarBotaoFiltro('5D', symbol)}
+                ${gerarBotaoFiltro('1M', symbol)}
+                ${gerarBotaoFiltro('6M', symbol)}
+                ${gerarBotaoFiltro('YTD', symbol)}
+                ${gerarBotaoFiltro('1A', symbol)}
+                ${gerarBotaoFiltro('5A', symbol)}
+                ${gerarBotaoFiltro('Tudo', symbol)}
             </div>
         </div>
+        
         <div class="relative h-64 w-full bg-[#151515] rounded-xl border border-[#2C2C2E] p-2" id="chart-area-wrapper">
             <div class="flex flex-col items-center justify-center h-full animate-pulse">
                 <div class="h-1 w-12 bg-gray-800 rounded mb-2"></div>
-                <span class="text-[10px] text-gray-600 tracking-wider font-medium">CARREGANDO DADOS...</span>
+                <span class="text-[10px] text-gray-600 tracking-wider font-medium">CARREGANDO...</span>
             </div>
         </div>
     `;
 
+    // Carrega o padrão (1D)
+    await carregarDadosGrafico('1D', symbol);
+}
+
+// Helper para gerar HTML dos botões
+function gerarBotaoFiltro(label, symbol, isActive = false) {
+    const activeClass = "bg-[#3A3A3C] text-white shadow";
+    const inactiveClass = "text-gray-500 hover:text-gray-300";
+    
+    return `<button 
+        onclick="mudarPeriodoGrafico('${label}', '${symbol}')" 
+        id="btn-${label}" 
+        class="px-3 py-1 text-[10px] font-bold rounded transition-all whitespace-nowrap min-w-[35px] ${isActive ? activeClass : inactiveClass}">
+        ${label}
+    </button>`;
+}
+
+// Função orquestradora de dados (Cache vs API)
+async function carregarDadosGrafico(range, symbol) {
+    const cacheKey = `${symbol}_${range}`;
+    
     try {
-        // MUDANÇA: Verifica primeiro na memória RAM
-        let data = window.tempChartCache[symbol];
+        let data = window.tempChartCache[cacheKey];
 
         if (!data) {
-            // Se não tem na RAM, busca na API
-            data = await callScraperCotacaoHistoricaAPI(symbol);
+            // UI Loading state se necessário (opcional aqui pois já iniciou com skeleton)
+            const wrapper = document.getElementById('chart-area-wrapper');
+            if(wrapper && !wrapper.querySelector('.animate-pulse')) {
+                 wrapper.innerHTML = `<div class="flex flex-col items-center justify-center h-full animate-pulse"><span class="text-[10px] text-gray-600">CARREGANDO...</span></div>`;
+            }
+
+            // Busca API
+            const response = await callScraperCotacaoHistoricaAPI(symbol, range);
             
-            // Salva na RAM se for válido
-            if (data && data.history_1y && data.history_1y.length > 0) {
-                window.tempChartCache[symbol] = data;
+            if (response && response.points && response.points.length > 0) {
+                data = response.points;
+                window.tempChartCache[cacheKey] = data; // Salva no cache específico
             } else {
                 throw new Error("Dados vazios");
             }
         }
         
-        // Renderiza
-        setTimeout(() => {
-            renderPriceChart('1Y', symbol); 
-        }, 300);
+        renderPriceChart(data, range);
 
     } catch (e) {
         console.error("Erro gráfico:", e);
         const wrapper = document.getElementById('chart-area-wrapper');
         if(wrapper) wrapper.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full text-gray-500">
-                <span class="text-xs">Gráfico indisponível</span>
+                <span class="text-xs">Indisponível para ${range}</span>
+                <button onclick="carregarDadosGrafico('${range}', '${symbol}')" class="mt-2 text-[10px] text-blue-500">Tentar novamente</button>
             </div>`;
     }
 }
 
-// Função Global atualizada para receber o symbol
-window.mudarPeriodoGrafico = function(periodo, symbol) {
-    const btn1y = document.getElementById('btn-1y');
-    const btn5y = document.getElementById('btn-5y');
-    
-    if (!btn1y || !btn5y) return;
+// Gerencia clique nos botões
+window.mudarPeriodoGrafico = function(range, symbol) {
+    // Atualiza classes visuais
+    const botoes = document.querySelectorAll('#chart-filters button');
+    botoes.forEach(btn => {
+        btn.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-300 transition-all whitespace-nowrap min-w-[35px]";
+    });
 
-    if (periodo === '1Y') {
-        btn1y.className = "px-3 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all";
-        btn5y.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 transition-all";
-    } else {
-        btn1y.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 transition-all";
-        btn5y.className = "px-3 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all";
+    const activeBtn = document.getElementById(`btn-${range}`);
+    if (activeBtn) {
+        activeBtn.className = "px-3 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all whitespace-nowrap min-w-[35px]";
     }
-    
-    // Passa o symbol para renderizar usando o cache correto
-    renderPriceChart(periodo, symbol);
+
+    // Chama carga de dados
+    carregarDadosGrafico(range, symbol);
 };
 
-function renderPriceChart(periodo, symbol) {
-    // Busca da memória RAM
-    const dataCache = window.tempChartCache[symbol];
-    if (!dataCache) return;
-
+function renderPriceChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
@@ -4823,10 +4849,8 @@ function renderPriceChart(periodo, symbol) {
         cotacaoChartInstance.destroy();
     }
 
-    const rawData = (periodo === '5Y') ? dataCache.history_5y : dataCache.history_1y;
-    
-    const labels = rawData.map(p => p.date); // Mantém a data completa para o tooltip
-    const values = rawData.map(p => p.price);
+    const labels = dataPoints.map(p => p.date);
+    const values = dataPoints.map(p => p.price);
 
     const startPrice = values[0];
     const endPrice = values[values.length - 1];
@@ -4836,6 +4860,9 @@ function renderPriceChart(periodo, symbol) {
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
     gradient.addColorStop(0, isPositive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)');
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+    // Define se deve mostrar Hora ou Data no eixo X
+    const isIntraday = (range === '1D' || range === '5D');
 
     cotacaoChartInstance = new Chart(ctx, {
         type: 'line',
@@ -4847,7 +4874,7 @@ function renderPriceChart(periodo, symbol) {
                 backgroundColor: gradient,
                 borderWidth: 2,
                 pointRadius: 0, 
-                pointHitRadius: 10, // Aumenta a área de toque
+                pointHitRadius: 20,
                 pointHoverRadius: 4,
                 fill: true,
                 tension: 0.1 
@@ -4857,7 +4884,7 @@ function renderPriceChart(periodo, symbol) {
             responsive: true,
             maintainAspectRatio: false,
             layout: {
-                padding: { left: -5, right: 0, top: 10, bottom: 0 } // Remove espaços mortos laterais
+                padding: { left: -5, right: 0, top: 10, bottom: 0 }
             },
             plugins: {
                 legend: { display: false },
@@ -4872,8 +4899,12 @@ function renderPriceChart(periodo, symbol) {
                     displayColors: false,
                     callbacks: {
                         title: function(context) {
-                            // Formata data no Tooltip: "25 out 23"
                             const date = new Date(context[0].label);
+                            // Formatação do Tooltip baseada no Range
+                            if (isIntraday) {
+                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' ' + 
+                                       date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                            }
                             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' });
                         },
                         label: function(context) {
@@ -4885,33 +4916,35 @@ function renderPriceChart(periodo, symbol) {
             scales: {
                 x: {
                     display: true,
-                    grid: { display: false, drawBorder: false }, // Remove grade vertical
+                    grid: { display: false, drawBorder: false },
                     ticks: {
-                        maxTicksLimit: 5, // MUDANÇA: Mostra no máximo 5 datas
-                        maxRotation: 0,   // Mantém texto reto
+                        maxTicksLimit: 5,
+                        maxRotation: 0,
                         autoSkip: true,
                         color: '#525252',
                         font: { size: 10, weight: 'bold' },
                         callback: function(val, index) {
-                            // Exibe apenas Mês/Ano no eixo X para economizar espaço
                             const date = new Date(this.getLabelForValue(val));
-                            return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+                            // Formatação do Eixo X baseada no Range
+                            if (range === '1D') {
+                                return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                            } else if (range === '5D') {
+                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                            } else {
+                                return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+                            }
                         }
                     }
                 },
                 y: {
                     position: 'right',
-                    grid: { 
-                        color: '#262626', 
-                        drawBorder: false,
-                        tickLength: 0 
-                    },
+                    grid: { color: '#262626', drawBorder: false, tickLength: 0 },
                     border: { display: false },
                     ticks: {
                         color: '#525252',
                         font: { size: 10 },
                         maxTicksLimit: 6,
-                        callback: function(value) { return value.toFixed(0); } // Remove centavos do eixo Y para limpar
+                        callback: function(value) { return value.toFixed(1); } // 1 casa decimal
                     }
                 }
             },

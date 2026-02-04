@@ -372,53 +372,64 @@ async function scrapeIpca() {
 // PARTE 4: COTAÇÃO HISTÓRICA (NOVA - 1 ANO E 5 ANOS)
 // ---------------------------------------------------------
 
+// ---------------------------------------------------------
+// PARTE 4: COTAÇÃO HISTÓRICA (CORRIGIDA E ROBUSTA)
+// ---------------------------------------------------------
+
 async function scrapeCotacaoHistory(ticker) {
     const cleanTicker = ticker.toLowerCase().trim();
     
-    // Tenta adivinhar o tipo, mas prepara fallback
+    // Fallback inteligente de tipo
     let type = 'acoes';
     if (cleanTicker.endsWith('11') || cleanTicker.endsWith('11b')) type = 'fii';
     
-    // Função interna para buscar na API oculta do Investidor10
     const fetchFromApi = async (assetType) => {
-        const url = `https://investidor10.com.br/api/cotacao/${assetType}/${cleanTicker}`;
+        // Adiciona timestamp para evitar cache do Cloudflare
+        const url = `https://investidor10.com.br/api/cotacao/${assetType}/${cleanTicker}?_=${Date.now()}`;
         try {
             const { data } = await client.get(url);
-            // A API retorna um array de arrays: [[timestamp_ms, valor], ...]
             if (Array.isArray(data) && data.length > 0) return data;
             return null;
         } catch (e) {
+            console.log(`[DEBUG] Erro fetch ${assetType}: ${e.message}`);
             return null;
         }
     };
 
-    // Tentativa 1: Tipo deduzido
     let rawData = await fetchFromApi(type);
-
-    // Tentativa 2: Se falhar, tenta o outro tipo
     if (!rawData) {
         const otherType = (type === 'fii') ? 'acoes' : 'fii';
         rawData = await fetchFromApi(otherType);
     }
 
+    // Se ainda assim estiver vazio, retorna erro explícito
     if (!rawData || rawData.length === 0) {
-        return { error: "Dados não encontrados", history_1y: [], history_5y: [] };
+        return { error: "Dados vazios na fonte", history_1y: [], history_5y: [] };
     }
 
     // Datas de corte
     const now = new Date();
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(now.getFullYear() - 1);
-    
-    const fiveYearsAgo = new Date();
-    fiveYearsAgo.setFullYear(now.getFullYear() - 5);
+    const oneYearAgo = new Date(); oneYearAgo.setFullYear(now.getFullYear() - 1);
+    const fiveYearsAgo = new Date(); fiveYearsAgo.setFullYear(now.getFullYear() - 5);
 
-    // Filtros e Formatação
-    const formatPoint = (point) => ({
-        date: new Date(point[0]).toISOString().split('T')[0], // YYYY-MM-DD
-        timestamp: point[0],
-        price: parseFloat(point[1])
-    });
+    // --- CORREÇÃO CRÍTICA AQUI ---
+    const formatPoint = (point) => {
+        // O point[1] pode vir como number (10.5) ou string ("10,50")
+        let rawPrice = point[1];
+        let price = 0;
+
+        if (typeof rawPrice === 'string') {
+            price = parseFloat(rawPrice.replace(',', '.'));
+        } else {
+            price = parseFloat(rawPrice);
+        }
+
+        return {
+            date: new Date(point[0]).toISOString().split('T')[0],
+            timestamp: point[0],
+            price: price || 0 // Garante que não seja NaN
+        };
+    };
 
     const history1y = rawData
         .filter(pt => pt[0] >= oneYearAgo.getTime())

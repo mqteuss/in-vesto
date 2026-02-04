@@ -4842,7 +4842,6 @@ function renderPriceChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
-    // Garante limpeza do canvas anterior
     wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
     const ctx = document.getElementById('canvas-cotacao').getContext('2d');
 
@@ -4850,28 +4849,25 @@ function renderPriceChart(dataPoints, range) {
         cotacaoChartInstance.destroy();
     }
 
-    // 1. Preparação dos Dados
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
 
-    // 2. Definição de Cores (Verde/Vermelho baseado na performance do período)
+    // Cores (Verde/Vermelho)
     const startPrice = values[0];
     const endPrice = values[values.length - 1];
     const isPositive = endPrice >= startPrice;
     
-    // Cores estilo Yahoo Finance (Verde Menta e Vermelho Tomate)
+    // Cores vibrantes mas profissionais
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
-    const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.20)' : 'rgba(255, 59, 48, 0.20)';
+    const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
 
-    // 3. Gradiente Profissional (Fade out vertical)
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
     gradient.addColorStop(0, colorFillStart);
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Termina transparente
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-    // Configurações de Formatação baseadas no Range
     const isIntraday = (range === '1D' || range === '5D');
 
-    // --- PLUGIN: CROSSHAIR (Linha Vertical) ---
+    // Plugin da linha vertical (Mantive pois ajuda na precisão)
     const crosshairPlugin = {
         id: 'crosshair',
         afterDraw: (chart) => {
@@ -4887,8 +4883,8 @@ function renderPriceChart(dataPoints, range) {
                 ctx.moveTo(x, topY);
                 ctx.lineTo(x, bottomY);
                 ctx.lineWidth = 1;
-                ctx.strokeStyle = '#555'; // Cor da linha guia
-                ctx.setLineDash([5, 5]); // Efeito pontilhado
+                ctx.strokeStyle = '#3F3F46'; // Cinza escuro discreto
+                ctx.setLineDash([3, 3]); // Pontilhado mais fino
                 ctx.stroke();
                 ctx.restore();
             }
@@ -4903,14 +4899,14 @@ function renderPriceChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 2,
-                pointRadius: 0, // Sem bolinhas normalmente
-                pointHoverRadius: 6, // Bolinha aparece no hover
-                pointHoverBackgroundColor: '#FFF', // Bolinha branca
-                pointHoverBorderColor: colorLine, // Borda da cor da linha
-                pointHoverBorderWidth: 3,
+                borderWidth: 1.5,     // <--- AJUSTE: Linha mais fina e elegante
+                pointRadius: 0, 
+                pointHitRadius: 20,   // Área de toque grande para facilitar no celular
+                pointHoverRadius: 4,  // <--- AJUSTE: Tamanho original discreto
+                pointHoverBackgroundColor: colorLine, // <--- AJUSTE: Cor sólida (sem miolo branco)
+                pointHoverBorderWidth: 0, // <--- AJUSTE: Sem borda extra
                 fill: true,
-                tension: 0.05 // Levemente curvo, mas preciso
+                tension: 0.05
             }]
         },
         options: {
@@ -4921,30 +4917,26 @@ function renderPriceChart(dataPoints, range) {
             },
             plugins: {
                 legend: { display: false },
-                // Tooltip Customizado
                 tooltip: {
                     mode: 'index',
                     intersect: false,
                     enabled: true,
-                    backgroundColor: 'rgba(28, 28, 30, 0.95)', // Fundo escuro quase sólido
+                    backgroundColor: 'rgba(28, 28, 30, 0.95)',
                     titleColor: '#9CA3AF',
                     bodyColor: '#FFF',
-                    bodyFont: { size: 14, weight: 'bold', family: 'sans-serif' },
-                    titleFont: { size: 11 },
                     borderColor: '#333',
                     borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8,
-                    displayColors: false, // Remove quadrado de cor
+                    padding: 8,
+                    cornerRadius: 6,
+                    displayColors: false,
                     callbacks: {
                         title: function(context) {
                             const date = new Date(context[0].label);
-                            // Formatação inteligente da data no topo do tooltip
                             if (isIntraday) {
-                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' às ' + 
+                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' ' + 
                                        date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                             }
-                            return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+                            return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
                         },
                         label: function(context) {
                             return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -4955,15 +4947,13 @@ function renderPriceChart(dataPoints, range) {
             scales: {
                 x: {
                     display: true,
-                    grid: { display: false, drawBorder: false },
+                    grid: { display: false },
                     ticks: {
-                        maxTicksLimit: 6,
-                        maxRotation: 0,
+                        maxTicksLimit: 5,
                         autoSkip: true,
                         color: '#666',
                         font: { size: 10 },
-                        align: 'start', // Alinha datas à esquerda
-                        callback: function(val, index) {
+                        callback: function(val) {
                             const date = new Date(this.getLabelForValue(val));
                             if (range === '1D') return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                             if (range === '5D') return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -4973,18 +4963,13 @@ function renderPriceChart(dataPoints, range) {
                 },
                 y: {
                     position: 'right',
-                    grid: { 
-                        color: '#262626', 
-                        borderDash: [5, 5], // Linhas de grade pontilhadas (mais sutil)
-                        drawBorder: false, 
-                        tickLength: 0 
-                    },
+                    grid: { color: '#262626', drawBorder: false, tickLength: 0 },
                     border: { display: false },
                     ticks: {
                         color: '#666',
                         font: { size: 10 },
                         maxTicksLimit: 6,
-                        callback: function(value) { return value.toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
+                        callback: function(value) { return value.toFixed(1); }
                     }
                 }
             },
@@ -4994,11 +4979,10 @@ function renderPriceChart(dataPoints, range) {
                 intersect: false
             },
             animation: {
-                duration: 600, // Animação suave ao trocar filtros
-                easing: 'easeOutQuart'
+                duration: 0 // <--- DICA: Remove animação de 'desenho' para parecer mais instantâneo ao trocar filtros
             }
         },
-        plugins: [crosshairPlugin] // Ativa o plugin da linha vertical
+        plugins: [crosshairPlugin]
     });
 }
     

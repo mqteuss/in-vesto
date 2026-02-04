@@ -4898,17 +4898,6 @@ function renderPriceChart(dataPoints, range) {
                 ctx.setLineDash([3, 3]);
                 ctx.stroke();
                 
-                // --- Opcional: Desenhar bolinha seguindo o dedo na linha vertical ---
-                // Se quiser uma bolinha onde seu dedo está, descomente abaixo:
-                
-                const eventY = chart.tooltip._eventPosition?.y;
-                if(eventY) {
-                    ctx.beginPath();
-                    ctx.arc(x, eventY, 3, 0, 2 * Math.PI);
-                    ctx.fillStyle = '#FFF';
-                    ctx.fill();
-                }
-               
                 ctx.restore();
             }
         }

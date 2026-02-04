@@ -4932,7 +4932,7 @@ function renderPriceChart(dataPoints, range) {
                     // --- A MÁGICA ACONTECE AQUI ---
                     position: 'followFinger', // Usa o nosso posicionador customizado
                     yAlign: 'bottom',         // O tooltip fica ACIMA do dedo
-                    caretPadding: 10,         // Distância do dedo
+                    caretPadding: 30,         // Distância do dedo
                     // -----------------------------
                     mode: 'index',
                     intersect: false,

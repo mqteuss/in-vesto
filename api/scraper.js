@@ -368,47 +368,22 @@ async function scrapeIpca() {
     }
 }
 
+
 // ---------------------------------------------------------
-// PARTE 4: COTAÇÃO HISTÓRICA (COM FALLBACK YAHOO FINANCE)
+// PARTE 4: COTAÇÃO HISTÓRICA (COM FILTROS 1M, 1A, 5A, 10A)
 // ---------------------------------------------------------
-
-async function fetchYahooFinance(ticker) {
-    try {
-        // Adiciona sufixo .SA para ativos brasileiros se não tiver
-        const symbol = ticker.toUpperCase().endsWith('.SA') ? ticker.toUpperCase() : `${ticker.toUpperCase()}.SA`;
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=5y&interval=1d`;
-        
-        const { data } = await axios.get(url);
-        const result = data.chart.result[0];
-        
-        if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
-
-        const timestamps = result.timestamp;
-        const prices = result.indicators.quote[0].close;
-
-        // Formata para o padrão esperado (Array de arrays ou objetos)
-        // Yahoo entrega timestamp em SEGUNDOS, convertemos para MS (* 1000)
-        return timestamps.map((t, i) => {
-            if (prices[i] === null) return null; // Pula dias sem pregão
-            return [t * 1000, prices[i]]; 
-        }).filter(p => p !== null);
-
-    } catch (e) {
-        console.error(`[DEBUG] Erro Yahoo Finance para ${ticker}:`, e.message);
-        return null;
-    }
-}
 
 async function scrapeCotacaoHistory(ticker) {
     const cleanTicker = ticker.toLowerCase().trim();
     
-    // --- FONTE 1: INVESTIDOR10 ---
+    // Tenta adivinhar o tipo
     let type = 'acoes';
     if (cleanTicker.endsWith('11') || cleanTicker.endsWith('11b')) type = 'fii';
     
+    // Função para buscar na API interna do Investidor10
     const fetchFromInvestidor10 = async (assetType) => {
-        // Headers dinâmicos para tentar passar pelo bloqueio
-        const url = `https://investidor10.com.br/api/cotacao/${assetType}/${cleanTicker}`;
+        // Adiciona timestamp para evitar cache velho
+        const url = `https://investidor10.com.br/api/cotacao/${assetType}/${cleanTicker}?_=${Date.now()}`;
         try {
             const { data } = await client.get(url, {
                 headers: {
@@ -419,42 +394,46 @@ async function scrapeCotacaoHistory(ticker) {
             if (Array.isArray(data) && data.length > 0) return data;
             return null;
         } catch (e) {
-            // Apenas loga, não trava, pois tentaremos o fallback
             return null;
         }
     };
 
-    // Tenta buscar no Investidor10 (Ação ou FII)
+    // Tenta buscar (Primeiro com o tipo deduzido, depois o outro)
     let rawData = await fetchFromInvestidor10(type);
     if (!rawData) rawData = await fetchFromInvestidor10((type === 'fii') ? 'acoes' : 'fii');
 
-    // --- FONTE 2 (FALLBACK): YAHOO FINANCE ---
     if (!rawData || rawData.length === 0) {
-        console.log(`[INFO] Investidor10 bloqueado ou vazio para ${cleanTicker}. Tentando Yahoo Finance...`);
-        rawData = await fetchYahooFinance(cleanTicker);
+        return { error: "Dados não encontrados", history_1m: [], history_1y: [], history_5y: [], history_10y: [] };
     }
 
-    // Se ambas falharem, retorna erro
-    if (!rawData || rawData.length === 0) {
-        return { error: "Dados não encontrados em nenhuma fonte", history_1y: [], history_5y: [] };
-    }
-
-    // --- PROCESSAMENTO DOS DADOS ---
+    // --- CÁLCULO DAS DATAS DE CORTE ---
     const now = new Date();
-    const oneYearAgo = new Date(); oneYearAgo.setFullYear(now.getFullYear() - 1);
-    const fiveYearsAgo = new Date(); fiveYearsAgo.setFullYear(now.getFullYear() - 5);
+    
+    // 1 Mês atrás
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(now.getDate() - 30); 
 
+    // 1 Ano atrás
+    const oneYearAgo = new Date(); 
+    oneYearAgo.setFullYear(now.getFullYear() - 1); 
+    
+    // 5 Anos atrás
+    const fiveYearsAgo = new Date(); 
+    fiveYearsAgo.setFullYear(now.getFullYear() - 5); 
+
+    // 10 Anos atrás
+    const tenYearsAgo = new Date();
+    tenYearsAgo.setFullYear(now.getFullYear() - 10); 
+
+    // Formatação e Tratamento de Erros
     const formatPoint = (point) => {
-        // point[0] = timestamp (ms), point[1] = preço
         let price = 0;
         const rawVal = point[1];
-
         if (typeof rawVal === 'number') {
             price = rawVal;
         } else if (typeof rawVal === 'string') {
             price = parseFloat(rawVal.replace('R$', '').trim().replace(',', '.'));
         }
-
         return {
             date: new Date(point[0]).toISOString().split('T')[0],
             timestamp: point[0],
@@ -462,18 +441,18 @@ async function scrapeCotacaoHistory(ticker) {
         };
     };
 
-    const history1y = rawData
-        .filter(pt => pt[0] >= oneYearAgo.getTime())
-        .map(formatPoint);
-
-    const history5y = rawData
-        .filter(pt => pt[0] >= fiveYearsAgo.getTime())
-        .map(formatPoint);
+    // Cria os arrays filtrados
+    const history1m = rawData.filter(pt => pt[0] >= oneMonthAgo.getTime()).map(formatPoint);
+    const history1y = rawData.filter(pt => pt[0] >= oneYearAgo.getTime()).map(formatPoint);
+    const history5y = rawData.filter(pt => pt[0] >= fiveYearsAgo.getTime()).map(formatPoint);
+    const history10y = rawData.filter(pt => pt[0] >= tenYearsAgo.getTime()).map(formatPoint);
 
     return {
         ticker: cleanTicker.toUpperCase(),
+        history_1m: history1m,
         history_1y: history1y,
-        history_5y: history5y
+        history_5y: history5y,
+        history_10y: history10y
     };
 }
 

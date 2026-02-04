@@ -368,59 +368,97 @@ async function scrapeIpca() {
     }
 }
 
+// ---------------------------------------------------------
+// PARTE 4: COTAÇÃO HISTÓRICA (COM FALLBACK YAHOO FINANCE)
+// ---------------------------------------------------------
+
+async function fetchYahooFinance(ticker) {
+    try {
+        // Adiciona sufixo .SA para ativos brasileiros se não tiver
+        const symbol = ticker.toUpperCase().endsWith('.SA') ? ticker.toUpperCase() : `${ticker.toUpperCase()}.SA`;
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=5y&interval=1d`;
+        
+        const { data } = await axios.get(url);
+        const result = data.chart.result[0];
+        
+        if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
+
+        const timestamps = result.timestamp;
+        const prices = result.indicators.quote[0].close;
+
+        // Formata para o padrão esperado (Array de arrays ou objetos)
+        // Yahoo entrega timestamp em SEGUNDOS, convertemos para MS (* 1000)
+        return timestamps.map((t, i) => {
+            if (prices[i] === null) return null; // Pula dias sem pregão
+            return [t * 1000, prices[i]]; 
+        }).filter(p => p !== null);
+
+    } catch (e) {
+        console.error(`[DEBUG] Erro Yahoo Finance para ${ticker}:`, e.message);
+        return null;
+    }
+}
 
 async function scrapeCotacaoHistory(ticker) {
     const cleanTicker = ticker.toLowerCase().trim();
     
-    // Fallback inteligente de tipo
+    // --- FONTE 1: INVESTIDOR10 ---
     let type = 'acoes';
     if (cleanTicker.endsWith('11') || cleanTicker.endsWith('11b')) type = 'fii';
     
-    const fetchFromApi = async (assetType) => {
-        // Adiciona timestamp para evitar cache do Cloudflare
-        const url = `https://investidor10.com.br/api/cotacao/${assetType}/${cleanTicker}?_=${Date.now()}`;
+    const fetchFromInvestidor10 = async (assetType) => {
+        // Headers dinâmicos para tentar passar pelo bloqueio
+        const url = `https://investidor10.com.br/api/cotacao/${assetType}/${cleanTicker}`;
         try {
-            const { data } = await client.get(url);
+            const { data } = await client.get(url, {
+                headers: {
+                    'Referer': `https://investidor10.com.br/${assetType}/${cleanTicker}/`,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
             if (Array.isArray(data) && data.length > 0) return data;
             return null;
         } catch (e) {
-            console.log(`[DEBUG] Erro fetch ${assetType}: ${e.message}`);
+            // Apenas loga, não trava, pois tentaremos o fallback
             return null;
         }
     };
 
-    let rawData = await fetchFromApi(type);
-    if (!rawData) {
-        const otherType = (type === 'fii') ? 'acoes' : 'fii';
-        rawData = await fetchFromApi(otherType);
-    }
+    // Tenta buscar no Investidor10 (Ação ou FII)
+    let rawData = await fetchFromInvestidor10(type);
+    if (!rawData) rawData = await fetchFromInvestidor10((type === 'fii') ? 'acoes' : 'fii');
 
-    // Se ainda assim estiver vazio, retorna erro explícito
+    // --- FONTE 2 (FALLBACK): YAHOO FINANCE ---
     if (!rawData || rawData.length === 0) {
-        return { error: "Dados vazios na fonte", history_1y: [], history_5y: [] };
+        console.log(`[INFO] Investidor10 bloqueado ou vazio para ${cleanTicker}. Tentando Yahoo Finance...`);
+        rawData = await fetchYahooFinance(cleanTicker);
     }
 
-    // Datas de corte
+    // Se ambas falharem, retorna erro
+    if (!rawData || rawData.length === 0) {
+        return { error: "Dados não encontrados em nenhuma fonte", history_1y: [], history_5y: [] };
+    }
+
+    // --- PROCESSAMENTO DOS DADOS ---
     const now = new Date();
     const oneYearAgo = new Date(); oneYearAgo.setFullYear(now.getFullYear() - 1);
     const fiveYearsAgo = new Date(); fiveYearsAgo.setFullYear(now.getFullYear() - 5);
 
-    // --- CORREÇÃO CRÍTICA AQUI ---
     const formatPoint = (point) => {
-        // O point[1] pode vir como number (10.5) ou string ("10,50")
-        let rawPrice = point[1];
+        // point[0] = timestamp (ms), point[1] = preço
         let price = 0;
+        const rawVal = point[1];
 
-        if (typeof rawPrice === 'string') {
-            price = parseFloat(rawPrice.replace(',', '.'));
-        } else {
-            price = parseFloat(rawPrice);
+        if (typeof rawVal === 'number') {
+            price = rawVal;
+        } else if (typeof rawVal === 'string') {
+            price = parseFloat(rawVal.replace('R$', '').trim().replace(',', '.'));
         }
 
         return {
             date: new Date(point[0]).toISOString().split('T')[0],
             timestamp: point[0],
-            price: price || 0 // Garante que não seja NaN
+            price: price || 0
         };
     };
 

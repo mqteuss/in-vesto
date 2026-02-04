@@ -4859,8 +4859,11 @@ function renderPriceChart(dataPoints, range) {
     // Cores Principais
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
-    const colorCrosshair = '#525252'; // Cinza para a mira ativa
-    const colorCrosshairText = '#E5E5E5'; // Texto da mira
+    
+    // --- MUDANÇA NAS CORES (Mais claras para contraste) ---
+    const colorCrosshairLine = '#A3A3A3'; // Cinza claro para a linha pontilhada (visível)
+    const colorBadgeBackground = '#404040'; // Fundo das etiquetas (mais claro que o fundo preto)
+    const colorBadgeText = '#FFFFFF'; // Texto branco brilhante
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
     gradient.addColorStop(0, colorFillStart);
@@ -4875,20 +4878,18 @@ function renderPriceChart(dataPoints, range) {
     };
 
     // =================================================================
-    // PLUGIN A: LINHA DE PREÇO ATUAL (Último valor - Fixo - Opção A)
+    // PLUGIN A: LINHA DE PREÇO ATUAL (Último valor - Fixo)
     // =================================================================
     const lastPricePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
+            // Se estiver interagindo, esconde a linha fixa para não poluir
+            if (chart.tooltip?._active?.length) return;
+
             const ctx = chart.ctx;
             const meta = chart.getDatasetMeta(0);
             if (!meta.data || meta.data.length === 0) return;
             
-            // Se o usuário estiver interagindo (tooltip ativo), 
-            // opcionalmente podemos esconder a linha do último preço para não poluir.
-            // Se quiser esconder quando toca, descomente a linha abaixo:
-            // if (chart.tooltip?._active?.length) return;
-
             const lastPoint = meta.data[meta.data.length - 1];
             const y = lastPoint.y;
             
@@ -4917,7 +4918,7 @@ function renderPriceChart(dataPoints, range) {
             const badgeHeight = 16; 
             const badgeWidth = textWidth + (paddingX * 2);
             
-            // Smart Clamp (Trava Inteligente da Opção A)
+            // Smart Clamp
             let badgeCenterY = y;
             const halfHeight = badgeHeight / 2;
             if (badgeCenterY - halfHeight < topEdge) badgeCenterY = topEdge + halfHeight;
@@ -4940,41 +4941,45 @@ function renderPriceChart(dataPoints, range) {
     };
 
     // =================================================================
-    // PLUGIN B: MIRA ATIVA (Crosshair Label - Data e Preço Focado)
+    // PLUGIN B: MIRA ATIVA (Segue o Click/Dedo - FLUIDO)
     // =================================================================
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
-            // Só desenha se tiver tooltip ativo (dedo na tela)
-            if (!chart.tooltip?._active?.length) return;
+            // Só desenha se tiver tooltip ativo E posição do evento
+            if (!chart.tooltip?._active?.length || !chart.tooltip._eventPosition) return;
 
             const activePoint = chart.tooltip._active[0];
+            const event = chart.tooltip._eventPosition; // Posição exata do dedo
             const ctx = chart.ctx;
-            const x = activePoint.element.x;
-            const y = activePoint.element.y; // Pega o Y do ponto (precisão)
+            
+            // --- MUDANÇA CRUCIAL: Usamos event.x em vez de activePoint.element.x ---
+            const x = event.x; 
+            const y = event.y; 
             
             const topY = chart.scales.y.top;
             const bottomY = chart.scales.y.bottom;
             const leftX = chart.scales.x.left;
             const rightX = chart.scales.x.right;
 
+            // Evita desenhar fora da área do gráfico se arrastar muito
+            if (x < leftX || x > rightX || y < topY || y > bottomY) return;
+
             ctx.save();
             ctx.lineWidth = 1;
-            ctx.strokeStyle = colorCrosshair; 
-            ctx.setLineDash([3, 3]);
+            ctx.strokeStyle = colorCrosshairLine; // Cor mais clara
+            ctx.setLineDash([4, 4]); // Pontilhado um pouco mais espaçado
 
-            // --- 1. LINHA VERTICAL (DATA) ---
+            // --- 1. LINHA VERTICAL (DATA) - Segue o dedo ---
             ctx.beginPath();
             ctx.moveTo(x, topY);
             ctx.lineTo(x, bottomY);
             ctx.stroke();
 
-            // Etiqueta de DATA (No rodapé)
-            // Pega a data original do ponto
+            // Etiqueta de DATA
             const index = activePoint.index;
             const rawDate = new Date(dataPoints[index].date);
             
-            // Formata data compacta (DD/MM/AA ou Hora se intraday)
             let dateText = "";
             if (isIntraday) {
                  dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + 
@@ -4984,53 +4989,51 @@ function renderPriceChart(dataPoints, range) {
             }
 
             ctx.font = 'bold 9px sans-serif';
-            const dateWidth = ctx.measureText(dateText).width + 12; // + padding
+            const dateWidth = ctx.measureText(dateText).width + 12; 
             const dateHeight = 16;
             
-            // Centraliza o badge da data no eixo X da linha
+            // Centraliza o badge no X do DEDO
             let dateBadgeX = x - (dateWidth / 2);
-            // Impede que saia da tela na esquerda ou direita
             if (dateBadgeX < leftX) dateBadgeX = leftX;
             if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
 
-            const dateBadgeY = bottomY + 2; // Logo abaixo do gráfico
+            const dateBadgeY = bottomY + 2; 
 
-            // Desenha fundo da data (Cinza Escuro)
-            ctx.fillStyle = '#2C2C2E'; 
+            // Fundo da data (Cinza Mais Claro)
+            ctx.fillStyle = colorBadgeBackground; 
             ctx.beginPath();
             ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 3);
             ctx.fill();
             
             // Texto da data
-            ctx.fillStyle = colorCrosshairText;
+            ctx.fillStyle = colorBadgeText;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
 
-
-            // --- 2. LINHA HORIZONTAL (PREÇO FOCADO) ---
-            // Desenha do ponto até a direita
+            // --- 2. LINHA HORIZONTAL (PREÇO) - Segue o dedo ---
             ctx.beginPath();
-            ctx.moveTo(leftX, y); // Atravessa a tela toda (igual ao Last Price)
+            ctx.moveTo(leftX, y); 
             ctx.lineTo(rightX, y);
             ctx.stroke();
 
-            // Etiqueta de PREÇO (Na direita - Igual dimensões do Last Price)
+            // Etiqueta de PREÇO (Calculado visualmente ou pelo ponto mais próximo)
+            // Nota: Para precisão total no Y do dedo, teríamos que inverter a escala Y.
+            // Mas mostrar o preço do PONTO mais próximo (activePoint) costuma ser mais útil
+            // para saber o valor exato daquele momento no gráfico.
             const focusedPrice = dataPoints[index].price;
             const priceText = focusedPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             
-            // Usa as mesmas métricas de fonte/padding do LastPrice para consistência visual
-            const priceWidth = ctx.measureText(priceText).width + 8; // 4 padding * 2
+            const priceWidth = ctx.measureText(priceText).width + 8;
             const priceHeight = 16;
             
-            // Badge na direita
             const priceBadgeX = rightX;
             const priceBadgeY = y - (priceHeight / 2);
 
-            // Desenha fundo do preço (Cinza Escuro para diferenciar do Verde/Vermelho)
-            ctx.fillStyle = '#2C2C2E'; 
+            // Fundo do preço
+            ctx.fillStyle = colorBadgeBackground; 
             ctx.beginPath();
-            // Verifica limites verticais (Smart Clamp também aqui)
+            
             let finalPriceY = priceBadgeY;
             if (finalPriceY < topY) finalPriceY = topY;
             if (finalPriceY + priceHeight > bottomY) finalPriceY = bottomY - priceHeight;
@@ -5039,7 +5042,7 @@ function renderPriceChart(dataPoints, range) {
             ctx.fill();
 
             // Texto do preço
-            ctx.fillStyle = colorCrosshairText;
+            ctx.fillStyle = colorBadgeText;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
             ctx.fillText(priceText, priceBadgeX + 4, finalPriceY + (priceHeight / 2) + 1);
@@ -5070,18 +5073,16 @@ function renderPriceChart(dataPoints, range) {
             responsive: true,
             maintainAspectRatio: false,
             layout: { 
-                // Padding ajustado:
-                // Right 38: Espaço para etiqueta de preço
-                // Bottom 20: Espaço para etiqueta de data
                 padding: { left: 0, right: 36, top: 10, bottom: 20 } 
             },
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    position: 'followFinger',
+                    // Garante que o tooltip interno do chartjs também use o dedo como referência Y
+                    position: 'followFinger', 
                     yAlign: 'bottom',
-                    caretPadding: 60,
+                    caretPadding: 35,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',
@@ -5093,9 +5094,8 @@ function renderPriceChart(dataPoints, range) {
                     cornerRadius: 6,
                     displayColors: false,
                     callbacks: {
-                        title: function(context) { return ''; }, // Remove título do tooltip pois já temos na etiqueta
+                        title: function() { return ''; },
                         label: function(context) {
-                            // Opcional: manter só o valor ou remover tooltip todo já que temos as etiquetas
                             return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         }
                     }

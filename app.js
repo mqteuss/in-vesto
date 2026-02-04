@@ -4859,7 +4859,6 @@ function renderPriceChart(dataPoints, range) {
     // Cores
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
-    
     const colorCrosshairLine = '#A3A3A3'; 
     const colorBadgeBackground = '#404040'; 
     const colorBadgeText = '#FFFFFF'; 
@@ -4870,33 +4869,42 @@ function renderPriceChart(dataPoints, range) {
 
     const isIntraday = (range === '1D' || range === '5D');
 
-    // Posicionador do Tooltip (Segue o dedo)
+    // Posicionador do Tooltip
     Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
         if (!elements.length) return false;
         return { x: elements[0].element.x, y: eventPosition.y };
     };
 
     // =================================================================
-    // PLUGIN A: LINHA DE PREÇO ATUAL (Badge Fixo do último valor)
+    // PLUGIN A: LINHA DE PREÇO ATUAL (Badge Fixo - Com Colisão)
     // =================================================================
     const lastPricePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
-            // Esconde se estiver tocando na tela (para não sobrepor a mira livre)
-            if (chart.tooltip?._active?.length) return;
-
             const ctx = chart.ctx;
             const meta = chart.getDatasetMeta(0);
             if (!meta.data || meta.data.length === 0) return;
             
             const lastPoint = meta.data[meta.data.length - 1];
-            const y = lastPoint.y;
+            const y = lastPoint.y; // Posição Y do último preço
+            
+            // --- DETECÇÃO DE COLISÃO ---
+            // Se o usuário estiver tocando na tela...
+            if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
+                const eventY = chart.tooltip._eventPosition.y; // Posição do dedo
+                // Se a distância entre o dedo e o último preço for menor que 25px...
+                if (Math.abs(eventY - y) < 25) {
+                    return; // ...NÃO desenha a etiqueta fixa (prioriza a mira)
+                }
+            }
+            // ---------------------------
+
             const rightEdge = chart.chartArea.right; 
             const leftEdge = chart.chartArea.left;
 
             ctx.save();
             
-            // Linha
+            // Linha Pontilhada Colorida
             ctx.beginPath();
             ctx.moveTo(leftEdge, y);
             ctx.lineTo(rightEdge, y);
@@ -4906,13 +4914,15 @@ function renderPriceChart(dataPoints, range) {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Badge
+            // Badge Colorido
             const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             ctx.font = 'bold 9px sans-serif'; 
             const textWidth = ctx.measureText(text).width;
             const paddingX = 4;
             const badgeHeight = 16; 
             const badgeWidth = textWidth + (paddingX * 2);
+            
+            // Posição do Badge
             const badgeX = rightEdge; 
             const badgeY = y - (badgeHeight / 2);
 
@@ -4935,13 +4945,12 @@ function renderPriceChart(dataPoints, range) {
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
-            // Só desenha se tiver evento de toque
             if (!chart.tooltip?._active?.length || !chart.tooltip._eventPosition) return;
 
             const event = chart.tooltip._eventPosition;
             const ctx = chart.ctx;
             
-            // COORDENADAS DO DEDO (LIVRES)
+            // Coordenadas Livres do Dedo
             const x = event.x; 
             const y = event.y; 
             
@@ -4950,7 +4959,7 @@ function renderPriceChart(dataPoints, range) {
             const leftX = chart.scales.x.left;
             const rightX = chart.scales.x.right;
 
-            // Limites da área do gráfico
+            // Limites de segurança
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
 
             ctx.save();
@@ -4958,16 +4967,14 @@ function renderPriceChart(dataPoints, range) {
             ctx.strokeStyle = colorCrosshairLine; 
             ctx.setLineDash([4, 4]);
 
-            // --- 1. LINHA VERTICAL (EIXO X) ---
+            // --- 1. EIXO X (DATA) ---
             ctx.beginPath();
             ctx.moveTo(x, topY);
             ctx.lineTo(x, bottomY);
             ctx.stroke();
 
-            // Etiqueta de DATA (Calculada pelo Index do Pixel X)
-            // Pegamos o valor da escala X baseado no pixel do dedo
+            // Lógica para pegar a Data baseada no Pixel X
             const xIndex = chart.scales.x.getValueForPixel(x);
-            // Proteção para índice válido
             const validIndex = Math.max(0, Math.min(xIndex, dataPoints.length - 1));
             const rawDate = new Date(dataPoints[validIndex].date);
             
@@ -5001,17 +5008,14 @@ function renderPriceChart(dataPoints, range) {
             ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
 
 
-            // --- 2. LINHA HORIZONTAL (EIXO Y - INDEPENDENTE) ---
+            // --- 2. EIXO Y (PREÇO DA MIRA) ---
             ctx.beginPath();
             ctx.moveTo(leftX, y); 
             ctx.lineTo(rightX, y);
             ctx.stroke();
 
-            // Etiqueta de PREÇO (Calculada pela Altura do Dedo na Escala Y)
-            // AQUI ESTÁ A MÁGICA: getValueForPixel converte altura em preço
+            // Converte Pixel Y do dedo -> Valor Monetário
             const cursorPrice = chart.scales.y.getValueForPixel(y);
-            
-            // Formata o preço da altura do cursor
             const priceText = cursorPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             
             const priceWidth = ctx.measureText(priceText).width + 8;
@@ -5019,10 +5023,10 @@ function renderPriceChart(dataPoints, range) {
             const priceBadgeX = rightX;
             const priceBadgeY = y - (priceHeight / 2);
 
-            // Fundo Preço
+            // Fundo Preço da Mira
             ctx.fillStyle = colorBadgeBackground; 
             ctx.beginPath();
-            // Clamp para não sair no teto/chão
+            
             let finalPriceY = priceBadgeY;
             if (finalPriceY < topY) finalPriceY = topY;
             if (finalPriceY + priceHeight > bottomY) finalPriceY = bottomY - priceHeight;
@@ -5068,8 +5072,6 @@ function renderPriceChart(dataPoints, range) {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    // Tooltip segue o dedo no Y para ficar perto da linha horizontal visualmente,
-                    // MAS mostra o valor do DATA POINT (activePoint)
                     position: 'followFinger', 
                     yAlign: 'bottom',
                     caretPadding: 60,
@@ -5084,9 +5086,9 @@ function renderPriceChart(dataPoints, range) {
                     cornerRadius: 6,
                     displayColors: false,
                     callbacks: {
-                        title: function() { return ''; }, // Título removido (redundante com eixo X)
+                        title: function() { return ''; },
                         label: function(context) {
-                            // Mostra o valor REAL do ponto do gráfico
+                            // Mostra apenas o valor do ponto real no tooltip flutuante
                             return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         }
                     }
@@ -5094,7 +5096,7 @@ function renderPriceChart(dataPoints, range) {
             },
             scales: {
                 x: { display: false },
-                y: { display: false } // Eixo Y oculto
+                y: { display: false } 
             },
             interaction: {
                 mode: 'nearest',

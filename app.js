@@ -4853,7 +4853,7 @@ function renderPriceChart(dataPoints, range) {
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
     const startPrice = values[0];
-    const endPrice = values[values.length - 1]; // Preço Atual
+    const endPrice = values[values.length - 1];
     const isPositive = endPrice >= startPrice;
     
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
@@ -4894,73 +4894,59 @@ function renderPriceChart(dataPoints, range) {
         }
     };
 
-    // --- PLUGIN 2: LINHA DE PREÇO ATUAL (Badge) ---
+    // --- PLUGIN 2: LINHA DE PREÇO ATUAL (Badge Otimizado) ---
     const lastPricePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
             const ctx = chart.ctx;
             const meta = chart.getDatasetMeta(0);
-            
-            // Verifica se tem dados
             if (!meta.data || meta.data.length === 0) return;
             
-            const lastIndex = meta.data.length - 1;
-            const lastPoint = meta.data[lastIndex];
-            
-            // Pega o Y do último ponto
+            const lastPoint = meta.data[meta.data.length - 1];
             const y = lastPoint.y;
             
-            // Limites da área do gráfico
             const leftEdge = chart.chartArea.left;
             const rightEdge = chart.chartArea.right; 
             
             ctx.save();
 
-            // 1. LINHA PONTILHADA (Atravessa a tela toda da esq para dir)
+            // 1. LINHA PONTILHADA (Horizontal Completa)
             ctx.beginPath();
-            ctx.moveTo(leftEdge, y); // Começa na esquerda
-            ctx.lineTo(rightEdge, y); // Vai até a direita (onde começa o badge)
+            ctx.moveTo(leftEdge, y);
+            ctx.lineTo(rightEdge, y);
             ctx.lineWidth = 1;
             ctx.strokeStyle = colorLine; 
             ctx.setLineDash([2, 2]); // Pontilhado fino
             ctx.stroke();
-            ctx.setLineDash([]); // Reseta
+            ctx.setLineDash([]);
 
-            // 2. BADGE (Etiqueta de Preço)
+            // 2. BADGE (Etiqueta Compacta)
             const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 9px sans-serif'; // Fonte menor
+            ctx.font = 'bold 9px sans-serif'; 
             
             const textMetrics = ctx.measureText(text);
-            const textWidth = textMetrics.width;
-            
-            // Dimensões Compactas
             const paddingX = 4;
-            const badgeHeight = 16; // Altura reduzida (antes era 20)
-            const badgeWidth = textWidth + (paddingX * 2);
+            const badgeHeight = 16; 
+            const badgeWidth = textMetrics.width + (paddingX * 2);
             
-            // Posição: Encostado na borda direita do grid
+            // Posição: Começa exatamente onde o gráfico termina (rightEdge)
+            // Se quiser que sobreponha um pouquinho pra dentro, subtraia pixels
             const badgeX = rightEdge; 
             const badgeY = y - (badgeHeight / 2);
 
-            // Desenha Retângulo Arredondado
+            // Fundo Retangular (Badge)
             ctx.fillStyle = colorLine;
-            const r = 3; // Raio da borda
+            const r = 3; 
             ctx.beginPath();
-            ctx.moveTo(badgeX + r, badgeY);
-            ctx.lineTo(badgeX + badgeWidth - r, badgeY);
-            ctx.quadraticCurveTo(badgeX + badgeWidth, badgeY, badgeX + badgeWidth, badgeY + r);
-            ctx.lineTo(badgeX + badgeWidth, badgeY + badgeHeight - r);
-            ctx.quadraticCurveTo(badgeX + badgeWidth, badgeY + badgeHeight, badgeX + badgeWidth - r, badgeY + badgeHeight);
-            ctx.lineTo(badgeX + r, badgeY + badgeHeight);
-            ctx.quadraticCurveTo(badgeX, badgeY + badgeHeight, badgeX, badgeY + badgeHeight - r);
-            ctx.lineTo(badgeX, badgeY + r);
-            ctx.quadraticCurveTo(badgeX, badgeY, badgeX + r, badgeY);
+            // Desenho do retângulo arredondado
+            ctx.moveTo(badgeX, badgeY); // Canto superior esquerdo "reto" (opcional) ou arredondado
+            // Vamos fazer totalmente arredondado
+            ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, r);
             ctx.fill();
 
             // Texto
             ctx.fillStyle = '#FFFFFF';
             ctx.textBaseline = 'middle';
-            // Ajuste fino vertical (+1px)
             ctx.fillText(text, badgeX + paddingX, y + 1); 
 
             ctx.restore();
@@ -4989,8 +4975,9 @@ function renderPriceChart(dataPoints, range) {
             responsive: true,
             maintainAspectRatio: false,
             layout: { 
-                // Padding direito para caber o badge sem cortar
-                padding: { left: 0, right: 50, top: 10, bottom: 0 } 
+                // AQUI ESTÁ O SEGREDO: Reduzi de 50 para 38.
+                // Ajuste este número se o preço for cortado (ex: Bitcoin precisa de uns 45)
+                padding: { left: 0, right: 38, top: 10, bottom: 0 } 
             },
             plugins: {
                 legend: { display: false },
@@ -4998,7 +4985,7 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger',
                     yAlign: 'bottom',
-                    caretPadding: 20, // Tooltip bem alto
+                    caretPadding: 60,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',
@@ -5026,7 +5013,7 @@ function renderPriceChart(dataPoints, range) {
             },
             scales: {
                 x: { display: false },
-                y: { display: false } // Eixo Y oculto, pois temos o badge agora
+                y: { display: false } 
             },
             interaction: {
                 mode: 'nearest',

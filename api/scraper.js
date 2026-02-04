@@ -2,7 +2,9 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
 
-// --- OTIMIZAÇÃO: AGENTE HTTPS ---
+// ---------------------------------------------------------
+// CONFIGURAÇÃO: AGENTE HTTPS & CLIENTE AXIOS
+// ---------------------------------------------------------
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 128,
@@ -21,7 +23,9 @@ const client = axios.create({
     timeout: 8000
 });
 
-// --- HELPERS ---
+// ---------------------------------------------------------
+// HELPERS (FUNÇÕES AUXILIARES)
+// ---------------------------------------------------------
 const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
@@ -156,7 +160,7 @@ async function scrapeFundamentos(ticker) {
             if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
             if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
             if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
-            
+
             // Margens & Payout
             if (titulo.includes('margem liquida')) dados.margem_liquida = valor;
             if (titulo.includes('margem bruta')) dados.margem_bruta = valor;
@@ -302,7 +306,7 @@ async function scrapeAsset(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 3: IPCA -> INVESTIDOR10 (NOVA LÓGICA COMPLETA)
+// PARTE 3: IPCA -> INVESTIDOR10
 // ---------------------------------------------------------
 
 async function scrapeIpca() {
@@ -315,41 +319,33 @@ async function scrapeIpca() {
         let acumulado12m = '0,00';
         let acumuladoAno = '0,00';
 
-        // 1. Localiza a tabela correta procurando pelo cabeçalho "Acumulado 12 meses"
-        // O HTML pode usar classes variadas, então buscamos pelo texto do header para garantir
         let $table = null;
         $('table').each((i, el) => {
             const headers = $(el).text().toLowerCase();
             if (headers.includes('acumulado 12 meses') || headers.includes('variação em %')) {
                 $table = $(el);
-                return false; // break loop
+                return false; 
             }
         });
 
         if ($table) {
-            // 2. Itera sobre as linhas do corpo da tabela
-            // Estrutura das colunas: 0=Data, 1=Var%, 2=VarAno, 3=Acum12m
             $table.find('tbody tr').each((i, el) => {
                 const cols = $(el).find('td');
                 if (cols.length >= 2) {
-                    const dataRef = $(cols[0]).text().trim(); // Ex: Jan/2025
-                    const valorStr = $(cols[1]).text().trim(); // Ex: 0,56
-                    const acAnoStr = $(cols[2]).text().trim(); // Ex: 0,56
-                    const ac12mStr = $(cols[3]).text().trim(); // Ex: 4,50
+                    const dataRef = $(cols[0]).text().trim();
+                    const valorStr = $(cols[1]).text().trim();
+                    const acAnoStr = $(cols[2]).text().trim();
+                    const ac12mStr = $(cols[3]).text().trim();
 
-                    // A primeira linha contém os dados mais recentes (Acumulados atuais)
                     if (i === 0) {
-                         acumulado12m = ac12mStr.replace('.', ','); // Garante formato BR
+                         acumulado12m = ac12mStr.replace('.', ','); 
                          acumuladoAno = acAnoStr.replace('.', ',');
                     }
 
-                    // Pega os últimos 13 meses (margem de segurança)
                     if (dataRef && valorStr && i < 13) {
                          historico.push({
                              mes: dataRef,
-                             // Converte para float para o gráfico (0,56 -> 0.56)
                              valor: parseFloat(valorStr.replace('.', '').replace(',', '.')),
-                             // Mantém string formatada para exibição
                              acumulado_12m: ac12mStr.replace('.', ','),
                              acumulado_ano: acAnoStr.replace('.', ',')
                          });
@@ -358,7 +354,6 @@ async function scrapeIpca() {
             });
         }
 
-        // Inverte array para ficar cronológico no gráfico (Jan -> Dez)
         const historicoCronologico = historico.reverse();
 
         return {
@@ -374,7 +369,74 @@ async function scrapeIpca() {
 }
 
 // ---------------------------------------------------------
-// HANDLER (API)
+// PARTE 4: COTAÇÃO HISTÓRICA (NOVA - 1 ANO E 5 ANOS)
+// ---------------------------------------------------------
+
+async function scrapeCotacaoHistory(ticker) {
+    const cleanTicker = ticker.toLowerCase().trim();
+    
+    // Tenta adivinhar o tipo, mas prepara fallback
+    let type = 'acoes';
+    if (cleanTicker.endsWith('11') || cleanTicker.endsWith('11b')) type = 'fii';
+    
+    // Função interna para buscar na API oculta do Investidor10
+    const fetchFromApi = async (assetType) => {
+        const url = `https://investidor10.com.br/api/cotacao/${assetType}/${cleanTicker}`;
+        try {
+            const { data } = await client.get(url);
+            // A API retorna um array de arrays: [[timestamp_ms, valor], ...]
+            if (Array.isArray(data) && data.length > 0) return data;
+            return null;
+        } catch (e) {
+            return null;
+        }
+    };
+
+    // Tentativa 1: Tipo deduzido
+    let rawData = await fetchFromApi(type);
+
+    // Tentativa 2: Se falhar, tenta o outro tipo
+    if (!rawData) {
+        const otherType = (type === 'fii') ? 'acoes' : 'fii';
+        rawData = await fetchFromApi(otherType);
+    }
+
+    if (!rawData || rawData.length === 0) {
+        return { error: "Dados não encontrados", history_1y: [], history_5y: [] };
+    }
+
+    // Datas de corte
+    const now = new Date();
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(now.getFullYear() - 1);
+    
+    const fiveYearsAgo = new Date();
+    fiveYearsAgo.setFullYear(now.getFullYear() - 5);
+
+    // Filtros e Formatação
+    const formatPoint = (point) => ({
+        date: new Date(point[0]).toISOString().split('T')[0], // YYYY-MM-DD
+        timestamp: point[0],
+        price: parseFloat(point[1])
+    });
+
+    const history1y = rawData
+        .filter(pt => pt[0] >= oneYearAgo.getTime())
+        .map(formatPoint);
+
+    const history5y = rawData
+        .filter(pt => pt[0] >= fiveYearsAgo.getTime())
+        .map(formatPoint);
+
+    return {
+        ticker: cleanTicker.toUpperCase(),
+        history_1y: history1y,
+        history_5y: history5y
+    };
+}
+
+// ---------------------------------------------------------
+// HANDLER (API MAIN)
 // ---------------------------------------------------------
 
 module.exports = async function handler(req, res) {
@@ -394,18 +456,20 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // --- MODO IPCA (ATUALIZADO) ---
+        // --- MODO 1: IPCA ---
         if (mode === 'ipca') {
             const dados = await scrapeIpca();
             return res.status(200).json({ json: dados });
         }
 
+        // --- MODO 2: FUNDAMENTOS ---
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
+        // --- MODO 3: PROVENTOS (LOTE OU INDIVIDUAL) ---
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 5);
@@ -445,9 +509,15 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: ultimo });
         }
 
+        // --- MODO 4: COTAÇÃO HISTÓRICA (NOVO) ---
+        if (mode === 'cotacao_historica') {
+            if (!payload.ticker) return res.status(400).json({ error: "Ticker obrigatório" });
+            const dados = await scrapeCotacaoHistory(payload.ticker);
+            return res.status(200).json({ json: dados });
+        }
+
         return res.status(400).json({ error: "Modo desconhecido" });
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
-
 };

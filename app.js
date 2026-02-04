@@ -4706,16 +4706,18 @@ function handleAbrirModalEdicao(id) {
     }
 
 // ======================================================
-//  LÓGICA DO GRÁFICO DE COTAÇÃO (VISUAL FINAL)
+//  LÓGICA DO GRÁFICO DE COTAÇÃO (VISUAL MELHORADO & SEM CACHE PERSISTENTE)
 // ======================================================
 
 let cotacaoChartInstance = null;
-// MUDANÇA: Cache apenas em memória RAM (não salva no banco/localStorage)
+// MUDANÇA: Cache apenas em memória RAM (RAM volátil), não pesa no armazenamento do celular
 window.tempChartCache = {}; 
 
 async function callScraperCotacaoHistoricaAPI(ticker) {
-    const body = { mode: 'cotacao_historica', payload: { ticker } };
-    // Usa sua função fetchBFF existente
+    const body = { 
+        mode: 'cotacao_historica', 
+        payload: { ticker } 
+    };
     const data = await fetchBFF('/api/scraper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4725,7 +4727,6 @@ async function callScraperCotacaoHistoricaAPI(ticker) {
 }
 
 async function fetchCotacaoHistorica(symbol) {
-    // 1. Prepara o Container
     let container = document.getElementById('detalhes-cotacao-container');
     
     if (!container) {
@@ -4740,42 +4741,40 @@ async function fetchCotacaoHistorica(symbol) {
         }
     }
 
-    // 2. Renderiza Interface (Skeleton + Botões)
+    // MUDANÇA: Aumentei a altura para h-64 (maior) e ajustei espaçamentos
     container.innerHTML = `
         <div class="flex justify-between items-center mb-4 px-1">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Histórico</span>
-            <div class="flex gap-1 bg-[#1C1C1E] p-1 rounded-lg border border-[#2C2C2E]">
-                <button onclick="mudarPeriodoGrafico('1M', '${symbol}')" id="btn-1m" class="px-2.5 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-300 transition-all">1M</button>
-                <button onclick="mudarPeriodoGrafico('1Y', '${symbol}')" id="btn-1y" class="px-2.5 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all">1A</button>
-                <button onclick="mudarPeriodoGrafico('5Y', '${symbol}')" id="btn-5y" class="px-2.5 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-300 transition-all">5A</button>
-                <button onclick="mudarPeriodoGrafico('10Y', '${symbol}')" id="btn-10y" class="px-2.5 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-300 transition-all">10A</button>
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Histórico de Preço</span>
+            <div class="flex gap-2 bg-[#1C1C1E] p-1 rounded-lg border border-[#2C2C2E]">
+                <button onclick="mudarPeriodoGrafico('1Y', '${symbol}')" id="btn-1y" class="px-3 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all">1A</button>
+                <button onclick="mudarPeriodoGrafico('5Y', '${symbol}')" id="btn-5y" class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-300 transition-all">5A</button>
             </div>
         </div>
         <div class="relative h-64 w-full bg-[#151515] rounded-xl border border-[#2C2C2E] p-2" id="chart-area-wrapper">
             <div class="flex flex-col items-center justify-center h-full animate-pulse">
                 <div class="h-1 w-12 bg-gray-800 rounded mb-2"></div>
-                <span class="text-[10px] text-gray-600 tracking-wider font-medium">CARREGANDO...</span>
+                <span class="text-[10px] text-gray-600 tracking-wider font-medium">CARREGANDO DADOS...</span>
             </div>
         </div>
     `;
 
     try {
-        // 3. Verifica Cache de RAM
+        // MUDANÇA: Verifica primeiro na memória RAM
         let data = window.tempChartCache[symbol];
 
         if (!data) {
-            // Busca API
+            // Se não tem na RAM, busca na API
             data = await callScraperCotacaoHistoricaAPI(symbol);
             
-            // Valida retorno
-            if (data && (data.history_1m || data.history_1y)) {
+            // Salva na RAM se for válido
+            if (data && data.history_1y && data.history_1y.length > 0) {
                 window.tempChartCache[symbol] = data;
             } else {
                 throw new Error("Dados vazios");
             }
         }
         
-        // 4. Renderiza Gráfico (com delay para animação do modal)
+        // Renderiza
         setTimeout(() => {
             renderPriceChart('1Y', symbol); 
         }, 300);
@@ -4790,33 +4789,33 @@ async function fetchCotacaoHistorica(symbol) {
     }
 }
 
-// Função Global
+// Função Global atualizada para receber o symbol
 window.mudarPeriodoGrafico = function(periodo, symbol) {
-    const btns = ['btn-1m', 'btn-1y', 'btn-5y', 'btn-10y'];
-    const activeId = 'btn-' + periodo.toLowerCase();
-
-    btns.forEach(id => {
-        const btn = document.getElementById(id);
-        if(!btn) return;
-        
-        if (id === activeId) {
-            btn.className = "px-2.5 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all";
-        } else {
-            btn.className = "px-2.5 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-300 transition-all";
-        }
-    });
+    const btn1y = document.getElementById('btn-1y');
+    const btn5y = document.getElementById('btn-5y');
     
+    if (!btn1y || !btn5y) return;
+
+    if (periodo === '1Y') {
+        btn1y.className = "px-3 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all";
+        btn5y.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 transition-all";
+    } else {
+        btn1y.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 transition-all";
+        btn5y.className = "px-3 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all";
+    }
+    
+    // Passa o symbol para renderizar usando o cache correto
     renderPriceChart(periodo, symbol);
 };
 
 function renderPriceChart(periodo, symbol) {
+    // Busca da memória RAM
     const dataCache = window.tempChartCache[symbol];
     if (!dataCache) return;
 
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
-    // Reinicia o Canvas
     wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
     const ctx = document.getElementById('canvas-cotacao').getContext('2d');
 
@@ -4824,28 +4823,16 @@ function renderPriceChart(periodo, symbol) {
         cotacaoChartInstance.destroy();
     }
 
-    // Seleciona dados
-    let rawData = [];
-    if (periodo === '1M') rawData = dataCache.history_1m;
-    else if (periodo === '1Y') rawData = dataCache.history_1y;
-    else if (periodo === '5Y') rawData = dataCache.history_5y;
-    else if (periodo === '10Y') rawData = dataCache.history_10y;
-
-    if (!rawData || rawData.length === 0) {
-        wrapper.innerHTML = `<div class="flex items-center justify-center h-full text-xs text-gray-500">Sem dados para ${periodo}</div>`;
-        return;
-    }
+    const rawData = (periodo === '5Y') ? dataCache.history_5y : dataCache.history_1y;
     
-    const labels = rawData.map(p => p.date);
+    const labels = rawData.map(p => p.date); // Mantém a data completa para o tooltip
     const values = rawData.map(p => p.price);
 
-    // Cor da linha
     const startPrice = values[0];
     const endPrice = values[values.length - 1];
     const isPositive = endPrice >= startPrice;
     const colorLine = isPositive ? '#10B981' : '#EF4444'; 
     
-    // Gradiente bonito
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
     gradient.addColorStop(0, isPositive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)');
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -4860,7 +4847,7 @@ function renderPriceChart(periodo, symbol) {
                 backgroundColor: gradient,
                 borderWidth: 2,
                 pointRadius: 0, 
-                pointHitRadius: 10,
+                pointHitRadius: 10, // Aumenta a área de toque
                 pointHoverRadius: 4,
                 fill: true,
                 tension: 0.1 
@@ -4869,7 +4856,9 @@ function renderPriceChart(periodo, symbol) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { left: -5, right: 0, top: 10, bottom: 0 } },
+            layout: {
+                padding: { left: -5, right: 0, top: 10, bottom: 0 } // Remove espaços mortos laterais
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -4883,11 +4872,9 @@ function renderPriceChart(periodo, symbol) {
                     displayColors: false,
                     callbacks: {
                         title: function(context) {
+                            // Formata data no Tooltip: "25 out 23"
                             const date = new Date(context[0].label);
-                            // Se 1M: mostra dia (15 Fev)
-                            if (periodo === '1M') return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-                            // Padrão: Mês/Ano (Fev 23)
-                            return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+                            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' });
                         },
                         label: function(context) {
                             return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -4898,32 +4885,33 @@ function renderPriceChart(periodo, symbol) {
             scales: {
                 x: {
                     display: true,
-                    grid: { display: false, drawBorder: false },
+                    grid: { display: false, drawBorder: false }, // Remove grade vertical
                     ticks: {
-                        maxTicksLimit: 5, // Limita etiquetas para não poluir
-                        maxRotation: 0,
+                        maxTicksLimit: 5, // MUDANÇA: Mostra no máximo 5 datas
+                        maxRotation: 0,   // Mantém texto reto
                         autoSkip: true,
                         color: '#525252',
                         font: { size: 10, weight: 'bold' },
                         callback: function(val, index) {
+                            // Exibe apenas Mês/Ano no eixo X para economizar espaço
                             const date = new Date(this.getLabelForValue(val));
-                            
-                            // Lógica inteligente de exibição
-                            if (periodo === '1M') return date.getDate(); // Apenas dia
-                            if (periodo === '10Y') return date.getFullYear(); // Apenas ano
                             return date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
                         }
                     }
                 },
                 y: {
                     position: 'right',
-                    grid: { color: '#262626', drawBorder: false, tickLength: 0 },
+                    grid: { 
+                        color: '#262626', 
+                        drawBorder: false,
+                        tickLength: 0 
+                    },
                     border: { display: false },
                     ticks: {
                         color: '#525252',
                         font: { size: 10 },
                         maxTicksLimit: 6,
-                        callback: function(value) { return value.toFixed(0); } // Sem centavos no eixo
+                        callback: function(value) { return value.toFixed(0); } // Remove centavos do eixo Y para limpar
                     }
                 }
             },

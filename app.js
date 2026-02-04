@@ -4849,25 +4849,14 @@ function renderPriceChart(dataPoints, range) {
         cotacaoChartInstance.destroy();
     }
 
-    // --- NOVO: Posicionador Customizado "Seguir o Dedo" ---
-    // Registra uma estratégia de posição chamada 'followFinger'
-    Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
-        if (!elements.length) return false;
-        
-        // Retorna a posição X do ponto (precisão temporal)
-        // Mas usa a posição Y do evento (seu dedo/mouse)
-        return {
-            x: elements[0].element.x,
-            y: eventPosition.y
-        };
-    };
-
+    // --- SETUP DE DADOS E CORES ---
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
     const startPrice = values[0];
-    const endPrice = values[values.length - 1];
+    const endPrice = values[values.length - 1]; // Preço Atual
     const isPositive = endPrice >= startPrice;
     
+    // Cores (Verde/Vermelho)
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
 
@@ -4877,7 +4866,14 @@ function renderPriceChart(dataPoints, range) {
 
     const isIntraday = (range === '1D' || range === '5D');
 
-    // Plugin Crosshair (Linha Vertical)
+    // =================================================================
+    // PLUGIN 1: MIRA (Crosshair) - Segue o dedo
+    // =================================================================
+    Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
+        if (!elements.length) return false;
+        return { x: elements[0].element.x, y: eventPosition.y };
+    };
+
     const crosshairPlugin = {
         id: 'crosshair',
         afterDraw: (chart) => {
@@ -4887,19 +4883,86 @@ function renderPriceChart(dataPoints, range) {
                 const x = activePoint.element.x;
                 const topY = chart.scales.y.top;
                 const bottomY = chart.scales.y.bottom;
-
-                // Desenha a linha
+                
                 ctx.save();
                 ctx.beginPath();
                 ctx.moveTo(x, topY);
                 ctx.lineTo(x, bottomY);
                 ctx.lineWidth = 1;
-                ctx.strokeStyle = '#3F3F46';
+                ctx.strokeStyle = '#3F3F46'; 
                 ctx.setLineDash([3, 3]);
                 ctx.stroke();
-                
                 ctx.restore();
             }
+        }
+    };
+
+    // =================================================================
+    // PLUGIN 2: LINHA DE PREÇO ATUAL (Badge na direita)
+    // =================================================================
+    const lastPricePlugin = {
+        id: 'lastPriceLine',
+        afterDraw: (chart) => {
+            const ctx = chart.ctx;
+            const meta = chart.getDatasetMeta(0);
+            const lastIndex = meta.data.length - 1;
+            
+            // Pega o último ponto visível (Coordenadas X e Y)
+            const lastPoint = meta.data[lastIndex];
+            
+            if (!lastPoint) return;
+
+            const x = lastPoint.x;
+            const y = lastPoint.y;
+            const rightEdge = chart.chartArea.right; 
+            const priceValue = values[lastIndex];
+
+            ctx.save();
+
+            // 1. Desenha a linha pontilhada Horizontal (do ponto até o eixo)
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(rightEdge + 10, y); // Vai um pouco além da área do gráfico
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = colorLine; // Usa a cor da tendência (Verde/Vermelho)
+            ctx.setLineDash([4, 4]); // Pontilhado
+            ctx.stroke();
+
+            // 2. Desenha a "Etiqueta" (Badge) com o preço
+            const text = priceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            ctx.font = 'bold 10px sans-serif';
+            const textWidth = ctx.measureText(text).width;
+            const paddingX = 6;
+            const paddingY = 4;
+            const badgeHeight = 20;
+            const badgeWidth = textWidth + (paddingX * 2);
+            
+            // Posição do badge (encostado na direita, centralizado no Y)
+            const badgeX = rightEdge + 5; 
+            const badgeY = y - (badgeHeight / 2);
+
+            // Fundo do Badge (Retângulo Arredondado)
+            ctx.fillStyle = colorLine;
+            ctx.beginPath();
+            // Desenha retângulo arredondado manualmente para compatibilidade
+            const r = 4; // raio
+            ctx.moveTo(badgeX + r, badgeY);
+            ctx.lineTo(badgeX + badgeWidth - r, badgeY);
+            ctx.quadraticCurveTo(badgeX + badgeWidth, badgeY, badgeX + badgeWidth, badgeY + r);
+            ctx.lineTo(badgeX + badgeWidth, badgeY + badgeHeight - r);
+            ctx.quadraticCurveTo(badgeX + badgeWidth, badgeY + badgeHeight, badgeX + badgeWidth - r, badgeY + badgeHeight);
+            ctx.lineTo(badgeX + r, badgeY + badgeHeight);
+            ctx.quadraticCurveTo(badgeX, badgeY + badgeHeight, badgeX, badgeY + badgeHeight - r);
+            ctx.lineTo(badgeX, badgeY + r);
+            ctx.quadraticCurveTo(badgeX, badgeY, badgeX + r, badgeY);
+            ctx.fill();
+
+            // Texto do Preço (Branco)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, badgeX + paddingX, y + 1); // +1 para ajuste ótico vertical
+
+            ctx.restore();
         }
     };
 
@@ -4911,12 +4974,12 @@ function renderPriceChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 1.2,
-                pointRadius: 0, 
-                pointHitRadius: 20,   
+                borderWidth: 1.5,
+                pointRadius: 0,
+                pointHitRadius: 20, 
                 pointHoverRadius: 4,
                 pointHoverBackgroundColor: colorLine,
-                pointHoverBorderWidth: 0, 
+                pointHoverBorderWidth: 0,
                 fill: true,
                 tension: 0.05
             }]
@@ -4924,16 +4987,17 @@ function renderPriceChart(dataPoints, range) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
+            layout: { 
+                // CRUCIAL: Deixa espaço na direita para a etiqueta não ser cortada
+                padding: { left: 0, right: 55, top: 10, bottom: 0 } 
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    // --- A MÁGICA ACONTECE AQUI ---
-                    position: 'followFinger', // Usa o nosso posicionador customizado
-                    yAlign: 'bottom',         // O tooltip fica ACIMA do dedo
-                    caretPadding: 30,         // Distância do dedo
-                    // -----------------------------
+                    position: 'followFinger',
+                    yAlign: 'bottom',
+                    caretPadding: 20,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',
@@ -4961,7 +5025,7 @@ function renderPriceChart(dataPoints, range) {
             },
             scales: {
                 x: { display: false },
-                y: { display: false }
+                y: { display: false } 
             },
             interaction: {
                 mode: 'nearest',
@@ -4970,7 +5034,7 @@ function renderPriceChart(dataPoints, range) {
             },
             animation: { duration: 0 }
         },
-        plugins: [crosshairPlugin]
+        plugins: [crosshairPlugin, lastPricePlugin] // Adiciona os dois plugins
     });
 }
     

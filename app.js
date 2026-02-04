@@ -4849,14 +4849,13 @@ function renderPriceChart(dataPoints, range) {
         cotacaoChartInstance.destroy();
     }
 
-    // --- SETUP DE DADOS E CORES ---
+    // --- SETUP DE DADOS ---
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
     const startPrice = values[0];
     const endPrice = values[values.length - 1]; // Preço Atual
     const isPositive = endPrice >= startPrice;
     
-    // Cores (Verde/Vermelho)
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
 
@@ -4866,9 +4865,7 @@ function renderPriceChart(dataPoints, range) {
 
     const isIntraday = (range === '1D' || range === '5D');
 
-    // =================================================================
-    // PLUGIN 1: MIRA (Crosshair) - Segue o dedo
-    // =================================================================
+    // --- PLUGIN 1: MIRA (Crosshair) ---
     Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
         if (!elements.length) return false;
         return { x: elements[0].element.x, y: eventPosition.y };
@@ -4897,55 +4894,58 @@ function renderPriceChart(dataPoints, range) {
         }
     };
 
-    // =================================================================
-    // PLUGIN 2: LINHA DE PREÇO ATUAL (Badge na direita)
-    // =================================================================
+    // --- PLUGIN 2: LINHA DE PREÇO ATUAL (Badge) ---
     const lastPricePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
             const ctx = chart.ctx;
             const meta = chart.getDatasetMeta(0);
-            const lastIndex = meta.data.length - 1;
             
-            // Pega o último ponto visível (Coordenadas X e Y)
+            // Verifica se tem dados
+            if (!meta.data || meta.data.length === 0) return;
+            
+            const lastIndex = meta.data.length - 1;
             const lastPoint = meta.data[lastIndex];
             
-            if (!lastPoint) return;
-
-            const x = lastPoint.x;
+            // Pega o Y do último ponto
             const y = lastPoint.y;
+            
+            // Limites da área do gráfico
+            const leftEdge = chart.chartArea.left;
             const rightEdge = chart.chartArea.right; 
-            const priceValue = values[lastIndex];
-
+            
             ctx.save();
 
-            // 1. Desenha a linha pontilhada Horizontal (do ponto até o eixo)
+            // 1. LINHA PONTILHADA (Atravessa a tela toda da esq para dir)
             ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(rightEdge + 10, y); // Vai um pouco além da área do gráfico
+            ctx.moveTo(leftEdge, y); // Começa na esquerda
+            ctx.lineTo(rightEdge, y); // Vai até a direita (onde começa o badge)
             ctx.lineWidth = 1;
-            ctx.strokeStyle = colorLine; // Usa a cor da tendência (Verde/Vermelho)
-            ctx.setLineDash([4, 4]); // Pontilhado
+            ctx.strokeStyle = colorLine; 
+            ctx.setLineDash([2, 2]); // Pontilhado fino
             ctx.stroke();
+            ctx.setLineDash([]); // Reseta
 
-            // 2. Desenha a "Etiqueta" (Badge) com o preço
-            const text = priceValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 10px sans-serif';
-            const textWidth = ctx.measureText(text).width;
-            const paddingX = 6;
-            const paddingY = 4;
-            const badgeHeight = 20;
+            // 2. BADGE (Etiqueta de Preço)
+            const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            ctx.font = 'bold 9px sans-serif'; // Fonte menor
+            
+            const textMetrics = ctx.measureText(text);
+            const textWidth = textMetrics.width;
+            
+            // Dimensões Compactas
+            const paddingX = 4;
+            const badgeHeight = 16; // Altura reduzida (antes era 20)
             const badgeWidth = textWidth + (paddingX * 2);
             
-            // Posição do badge (encostado na direita, centralizado no Y)
-            const badgeX = rightEdge + 5; 
+            // Posição: Encostado na borda direita do grid
+            const badgeX = rightEdge; 
             const badgeY = y - (badgeHeight / 2);
 
-            // Fundo do Badge (Retângulo Arredondado)
+            // Desenha Retângulo Arredondado
             ctx.fillStyle = colorLine;
+            const r = 3; // Raio da borda
             ctx.beginPath();
-            // Desenha retângulo arredondado manualmente para compatibilidade
-            const r = 4; // raio
             ctx.moveTo(badgeX + r, badgeY);
             ctx.lineTo(badgeX + badgeWidth - r, badgeY);
             ctx.quadraticCurveTo(badgeX + badgeWidth, badgeY, badgeX + badgeWidth, badgeY + r);
@@ -4957,10 +4957,11 @@ function renderPriceChart(dataPoints, range) {
             ctx.quadraticCurveTo(badgeX, badgeY, badgeX + r, badgeY);
             ctx.fill();
 
-            // Texto do Preço (Branco)
+            // Texto
             ctx.fillStyle = '#FFFFFF';
             ctx.textBaseline = 'middle';
-            ctx.fillText(text, badgeX + paddingX, y + 1); // +1 para ajuste ótico vertical
+            // Ajuste fino vertical (+1px)
+            ctx.fillText(text, badgeX + paddingX, y + 1); 
 
             ctx.restore();
         }
@@ -4988,8 +4989,8 @@ function renderPriceChart(dataPoints, range) {
             responsive: true,
             maintainAspectRatio: false,
             layout: { 
-                // CRUCIAL: Deixa espaço na direita para a etiqueta não ser cortada
-                padding: { left: 0, right: 55, top: 10, bottom: 0 } 
+                // Padding direito para caber o badge sem cortar
+                padding: { left: 0, right: 50, top: 10, bottom: 0 } 
             },
             plugins: {
                 legend: { display: false },
@@ -4997,7 +4998,7 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger',
                     yAlign: 'bottom',
-                    caretPadding: 20,
+                    caretPadding: 20, // Tooltip bem alto
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',
@@ -5025,7 +5026,7 @@ function renderPriceChart(dataPoints, range) {
             },
             scales: {
                 x: { display: false },
-                y: { display: false } 
+                y: { display: false } // Eixo Y oculto, pois temos o badge agora
             },
             interaction: {
                 mode: 'nearest',
@@ -5034,7 +5035,7 @@ function renderPriceChart(dataPoints, range) {
             },
             animation: { duration: 0 }
         },
-        plugins: [crosshairPlugin, lastPricePlugin] // Adiciona os dois plugins
+        plugins: [crosshairPlugin, lastPricePlugin]
     });
 }
     

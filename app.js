@@ -5052,7 +5052,7 @@ function renderPriceChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 1.5,
+                borderWidth: 1,
                 pointRadius: 0,
                 pointHitRadius: 20, 
                 pointHoverRadius: 4,
@@ -5066,7 +5066,7 @@ function renderPriceChart(dataPoints, range) {
             responsive: true,
             maintainAspectRatio: false,
             layout: { 
-                padding: { left: 0, right: 38, top: 10, bottom: 20 } 
+                padding: { left: 0, right: 36, top: 10, bottom: 20 } 
             },
             plugins: {
                 legend: { display: false },
@@ -5074,7 +5074,7 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger', 
                     yAlign: 'bottom',
-                    caretPadding: 60,
+                    caretPadding: 35,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',

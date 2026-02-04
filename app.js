@@ -4849,14 +4849,25 @@ function renderPriceChart(dataPoints, range) {
         cotacaoChartInstance.destroy();
     }
 
+    // --- NOVO: Posicionador Customizado "Seguir o Dedo" ---
+    // Registra uma estratégia de posição chamada 'followFinger'
+    Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
+        if (!elements.length) return false;
+        
+        // Retorna a posição X do ponto (precisão temporal)
+        // Mas usa a posição Y do evento (seu dedo/mouse)
+        return {
+            x: elements[0].element.x,
+            y: eventPosition.y
+        };
+    };
+
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
-
     const startPrice = values[0];
     const endPrice = values[values.length - 1];
     const isPositive = endPrice >= startPrice;
     
-    // Cores (Verde/Vermelho)
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
 
@@ -4877,14 +4888,27 @@ function renderPriceChart(dataPoints, range) {
                 const topY = chart.scales.y.top;
                 const bottomY = chart.scales.y.bottom;
 
+                // Desenha a linha
                 ctx.save();
                 ctx.beginPath();
                 ctx.moveTo(x, topY);
                 ctx.lineTo(x, bottomY);
                 ctx.lineWidth = 1;
-                ctx.strokeStyle = '#3F3F46'; // Cinza escuro
-                ctx.setLineDash([3, 3]); // Pontilhado fino
+                ctx.strokeStyle = '#3F3F46';
+                ctx.setLineDash([3, 3]);
                 ctx.stroke();
+                
+                // --- Opcional: Desenhar bolinha seguindo o dedo na linha vertical ---
+                // Se quiser uma bolinha onde seu dedo está, descomente abaixo:
+                
+                const eventY = chart.tooltip._eventPosition?.y;
+                if(eventY) {
+                    ctx.beginPath();
+                    ctx.arc(x, eventY, 3, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#FFF';
+                    ctx.fill();
+                }
+               
                 ctx.restore();
             }
         }
@@ -4898,11 +4922,11 @@ function renderPriceChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 1.5,     // <--- Linha fina
+                borderWidth: 1.2,
                 pointRadius: 0, 
                 pointHitRadius: 20,   
-                pointHoverRadius: 4,  // <--- Tamanho discreto
-                pointHoverBackgroundColor: colorLine, // <--- Bolinha sólida (cor da linha)
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: colorLine,
                 pointHoverBorderWidth: 0, 
                 fill: true,
                 tension: 0.05
@@ -4911,16 +4935,18 @@ function renderPriceChart(dataPoints, range) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: {
-                // Remove padding extra, aproveita todo o espaço
-                padding: { left: 0, right: 0, top: 10, bottom: 0 } 
-            },
+            layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    enabled: true,
+                    // --- A MÁGICA ACONTECE AQUI ---
+                    position: 'followFinger', // Usa o nosso posicionador customizado
+                    yAlign: 'bottom',         // O tooltip fica ACIMA do dedo
+                    caretPadding: 10,         // Distância do dedo
+                    // -----------------------------
                     mode: 'index',
                     intersect: false,
-                    enabled: true,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',
                     titleColor: '#9CA3AF',
                     bodyColor: '#FFF',
@@ -4932,7 +4958,6 @@ function renderPriceChart(dataPoints, range) {
                     callbacks: {
                         title: function(context) {
                             const date = new Date(context[0].label);
-                            // Formatação completa no Tooltip já que removemos do eixo X
                             if (isIntraday) {
                                 return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' ' + 
                                        date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -4946,25 +4971,15 @@ function renderPriceChart(dataPoints, range) {
                 }
             },
             scales: {
-                x: {
-                    display: false, // <--- Oculta o eixo X para economizar espaço
-                    grid: { display: false }
-                },
-                y: {
-                    display: false, // <--- Oculta o eixo Y (opcional, para visual 'limpo' total)
-                    // Se preferir manter o eixo Y visível, mude para display: true
-                    position: 'right',
-                    grid: { display: false } 
-                }
+                x: { display: false },
+                y: { display: false }
             },
             interaction: {
                 mode: 'nearest',
                 axis: 'x',
                 intersect: false
             },
-            animation: {
-                duration: 0 
-            }
+            animation: { duration: 0 }
         },
         plugins: [crosshairPlugin]
     });

@@ -5025,12 +5025,9 @@ function renderPriceChart(dataPoints, range) {
                     }
                 }
             },
-scales: {
+            scales: {
                 x: { display: false },
-                y: { 
-                    display: false,
-                    grace: '10%'
-                } 
+                y: { display: false } 
             },
             interaction: {
                 mode: 'nearest',

@@ -369,90 +369,73 @@ async function scrapeIpca() {
 }
 
 
-// ---------------------------------------------------------
-// PARTE 4: COTAÇÃO HISTÓRICA (COM FILTROS 1M, 1A, 5A, 10A)
-// ---------------------------------------------------------
-
 async function scrapeCotacaoHistory(ticker) {
     const cleanTicker = ticker.toLowerCase().trim();
     
-    // Tenta adivinhar o tipo
+    // Fallback inteligente de tipo
     let type = 'acoes';
     if (cleanTicker.endsWith('11') || cleanTicker.endsWith('11b')) type = 'fii';
     
-    // Função para buscar na API interna do Investidor10
-    const fetchFromInvestidor10 = async (assetType) => {
-        // Adiciona timestamp para evitar cache velho
+    const fetchFromApi = async (assetType) => {
+        // Adiciona timestamp para evitar cache do Cloudflare
         const url = `https://investidor10.com.br/api/cotacao/${assetType}/${cleanTicker}?_=${Date.now()}`;
         try {
-            const { data } = await client.get(url, {
-                headers: {
-                    'Referer': `https://investidor10.com.br/${assetType}/${cleanTicker}/`,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
+            const { data } = await client.get(url);
             if (Array.isArray(data) && data.length > 0) return data;
             return null;
         } catch (e) {
+            console.log(`[DEBUG] Erro fetch ${assetType}: ${e.message}`);
             return null;
         }
     };
 
-    // Tenta buscar (Primeiro com o tipo deduzido, depois o outro)
-    let rawData = await fetchFromInvestidor10(type);
-    if (!rawData) rawData = await fetchFromInvestidor10((type === 'fii') ? 'acoes' : 'fii');
-
-    if (!rawData || rawData.length === 0) {
-        return { error: "Dados não encontrados", history_1m: [], history_1y: [], history_5y: [], history_10y: [] };
+    let rawData = await fetchFromApi(type);
+    if (!rawData) {
+        const otherType = (type === 'fii') ? 'acoes' : 'fii';
+        rawData = await fetchFromApi(otherType);
     }
 
-    // --- CÁLCULO DAS DATAS DE CORTE ---
+    // Se ainda assim estiver vazio, retorna erro explícito
+    if (!rawData || rawData.length === 0) {
+        return { error: "Dados vazios na fonte", history_1y: [], history_5y: [] };
+    }
+
+    // Datas de corte
     const now = new Date();
-    
-    // 1 Mês atrás
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setDate(now.getDate() - 30); 
+    const oneYearAgo = new Date(); oneYearAgo.setFullYear(now.getFullYear() - 1);
+    const fiveYearsAgo = new Date(); fiveYearsAgo.setFullYear(now.getFullYear() - 5);
 
-    // 1 Ano atrás
-    const oneYearAgo = new Date(); 
-    oneYearAgo.setFullYear(now.getFullYear() - 1); 
-    
-    // 5 Anos atrás
-    const fiveYearsAgo = new Date(); 
-    fiveYearsAgo.setFullYear(now.getFullYear() - 5); 
-
-    // 10 Anos atrás
-    const tenYearsAgo = new Date();
-    tenYearsAgo.setFullYear(now.getFullYear() - 10); 
-
-    // Formatação e Tratamento de Erros
+    // --- CORREÇÃO CRÍTICA AQUI ---
     const formatPoint = (point) => {
+        // O point[1] pode vir como number (10.5) ou string ("10,50")
+        let rawPrice = point[1];
         let price = 0;
-        const rawVal = point[1];
-        if (typeof rawVal === 'number') {
-            price = rawVal;
-        } else if (typeof rawVal === 'string') {
-            price = parseFloat(rawVal.replace('R$', '').trim().replace(',', '.'));
+
+        if (typeof rawPrice === 'string') {
+            price = parseFloat(rawPrice.replace(',', '.'));
+        } else {
+            price = parseFloat(rawPrice);
         }
+
         return {
             date: new Date(point[0]).toISOString().split('T')[0],
             timestamp: point[0],
-            price: price || 0
+            price: price || 0 // Garante que não seja NaN
         };
     };
 
-    // Cria os arrays filtrados
-    const history1m = rawData.filter(pt => pt[0] >= oneMonthAgo.getTime()).map(formatPoint);
-    const history1y = rawData.filter(pt => pt[0] >= oneYearAgo.getTime()).map(formatPoint);
-    const history5y = rawData.filter(pt => pt[0] >= fiveYearsAgo.getTime()).map(formatPoint);
-    const history10y = rawData.filter(pt => pt[0] >= tenYearsAgo.getTime()).map(formatPoint);
+    const history1y = rawData
+        .filter(pt => pt[0] >= oneYearAgo.getTime())
+        .map(formatPoint);
+
+    const history5y = rawData
+        .filter(pt => pt[0] >= fiveYearsAgo.getTime())
+        .map(formatPoint);
 
     return {
         ticker: cleanTicker.toUpperCase(),
-        history_1m: history1m,
         history_1y: history1y,
-        history_5y: history5y,
-        history_10y: history10y
+        history_5y: history5y
     };
 }
 

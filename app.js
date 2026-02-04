@@ -4975,7 +4975,7 @@ function renderPriceChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 1.5,
+                borderWidth: 1,
                 pointRadius: 0,
                 pointHitRadius: 20, 
                 pointHoverRadius: 4,

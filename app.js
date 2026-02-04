@@ -4977,7 +4977,7 @@ function renderPriceChart(dataPoints, range) {
             layout: { 
                 // AQUI ESTÁ O SEGREDO: Reduzi de 50 para 38.
                 // Ajuste este número se o preço for cortado (ex: Bitcoin precisa de uns 45)
-                padding: { left: 0, right: 38, top: 10, bottom: 0 } 
+                padding: { left: 0, right: 20, top: 10, bottom: 0 } 
             },
             plugins: {
                 legend: { display: false },
@@ -4985,7 +4985,7 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger',
                     yAlign: 'bottom',
-                    caretPadding: 60,
+                    caretPadding: 30,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',

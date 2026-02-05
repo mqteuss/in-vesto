@@ -4876,7 +4876,7 @@ function renderPriceChart(dataPoints, range) {
     };
 
     // =================================================================
-    // PLUGIN A: LINHA DE PREÇO ATUAL (Badge Fixo - SEMPRE VISÍVEL)
+    // PLUGIN A: LINHA DE PREÇO ATUAL (Badge Fixo)
     // =================================================================
     const lastPricePlugin = {
         id: 'lastPriceLine',
@@ -4886,17 +4886,13 @@ function renderPriceChart(dataPoints, range) {
             if (!meta.data || meta.data.length === 0) return;
             
             const lastPoint = meta.data[meta.data.length - 1];
-            const y = lastPoint.y; // Posição Y do último preço
-            
-            // --- REMOVIDO: Lógica que escondia a etiqueta ---
-            // Agora ela desenha sempre, independente do tooltip.
-
+            const y = lastPoint.y; 
             const rightEdge = chart.chartArea.right; 
             const leftEdge = chart.chartArea.left;
 
             ctx.save();
             
-            // Linha Pontilhada Colorida (Fundo)
+            // Linha Pontilhada Colorida
             ctx.beginPath();
             ctx.moveTo(leftEdge, y);
             ctx.lineTo(rightEdge, y);
@@ -4913,7 +4909,6 @@ function renderPriceChart(dataPoints, range) {
             const paddingX = 4;
             const badgeHeight = 16; 
             const badgeWidth = textWidth + (paddingX * 2);
-            
             const badgeX = rightEdge; 
             const badgeY = y - (badgeHeight / 2);
 
@@ -4941,7 +4936,6 @@ function renderPriceChart(dataPoints, range) {
             const event = chart.tooltip._eventPosition;
             const ctx = chart.ctx;
             
-            // Coordenadas Livres do Dedo
             const x = event.x; 
             const y = event.y; 
             
@@ -4950,7 +4944,6 @@ function renderPriceChart(dataPoints, range) {
             const leftX = chart.scales.x.left;
             const rightX = chart.scales.x.right;
 
-            // Limites de segurança
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
 
             ctx.save();
@@ -4964,7 +4957,7 @@ function renderPriceChart(dataPoints, range) {
             ctx.lineTo(x, bottomY);
             ctx.stroke();
 
-            // Etiqueta de DATA
+            // Etiqueta de DATA Inferior
             const xIndex = chart.scales.x.getValueForPixel(x);
             const validIndex = Math.max(0, Math.min(xIndex, dataPoints.length - 1));
             const rawDate = new Date(dataPoints[validIndex].date);
@@ -4996,14 +4989,13 @@ function renderPriceChart(dataPoints, range) {
             ctx.textBaseline = 'middle';
             ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
 
-
             // --- 2. EIXO Y (PREÇO DA MIRA) ---
             ctx.beginPath();
             ctx.moveTo(leftX, y); 
             ctx.lineTo(rightX, y);
             ctx.stroke();
 
-            // Etiqueta de PREÇO
+            // Etiqueta de PREÇO Lateral
             const cursorPrice = chart.scales.y.getValueForPixel(y);
             const priceText = cursorPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             
@@ -5014,7 +5006,6 @@ function renderPriceChart(dataPoints, range) {
 
             ctx.fillStyle = colorBadgeBackground; 
             ctx.beginPath();
-            
             let finalPriceY = priceBadgeY;
             if (finalPriceY < topY) finalPriceY = topY;
             if (finalPriceY + priceHeight > bottomY) finalPriceY = bottomY - priceHeight;
@@ -5061,7 +5052,7 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger', 
                     yAlign: 'bottom',
-                    caretPadding: 60,
+                    caretPadding: 35,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',
@@ -5073,7 +5064,16 @@ function renderPriceChart(dataPoints, range) {
                     cornerRadius: 6,
                     displayColors: false,
                     callbacks: {
-                        title: function() { return ''; },
+                        // --- AQUI ESTÁ A MUDANÇA ---
+                        // Reativamos o título para mostrar a data
+                        title: function(context) {
+                            const date = new Date(context[0].label);
+                            if (isIntraday) {
+                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + 
+                                       date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                            }
+                            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                        },
                         label: function(context) {
                             return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         }
@@ -5091,8 +5091,6 @@ function renderPriceChart(dataPoints, range) {
             },
             animation: { duration: 0 }
         },
-        // IMPORTANTE: A ordem dos plugins define quem desenha por cima
-        // lastPricePlugin (Primeiro/Fundo) -> activeCrosshairPlugin (Segundo/Topo)
         plugins: [lastPricePlugin, activeCrosshairPlugin]
     });
 }

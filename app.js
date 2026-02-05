@@ -4730,6 +4730,7 @@ async function fetchCotacaoHistorica(symbol) {
     let container = document.getElementById('detalhes-cotacao-container');
     
     if (!container) {
+        // ... (código de criação do container igual ao anterior) ...
         const detalhesPreco = document.getElementById('detalhes-preco');
         if (detalhesPreco && detalhesPreco.parentNode) {
             container = document.createElement('div');
@@ -4740,23 +4741,23 @@ async function fetchCotacaoHistorica(symbol) {
     }
 
     container.innerHTML = `
-        <div class="flex flex-col mb-1 px-1">
-            <div class="flex justify-between items-end mb-3 mt-2 bg-[#1C1C1E] p-3 rounded-xl border border-[#2C2C2E]">
-                
-                <div class="flex flex-col gap-1">
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-1.5 h-1.5 rounded-full bg-gray-500"></div> 
-                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Referência</span>
-                    </div>
-                    <span id="stat-open" class="text-lg font-bold text-white leading-none tracking-tight">--</span>
+        <div class="flex flex-col mb-2 px-1">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Histórico de Preço</span>
+            
+            <div class="flex justify-between items-center mb-3 bg-[#1C1C1E] p-2 rounded-lg border border-[#2C2C2E]">
+                <div class="flex flex-col">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold">Abertura</span>
+                    <span id="stat-open" class="text-xs font-mono text-gray-300">--</span>
                 </div>
 
-                <div class="flex flex-col items-end gap-0.5">
-                    <span id="stat-close" class="text-2xl font-black text-white tracking-tight leading-none">--</span>
-                    
-                    <div id="stat-var-badge" class="flex items-center justify-center px-2 py-0.5 rounded bg-black border border-gray-800 transition-colors duration-200">
-                        <span id="stat-var" class="text-[10px] font-bold">--</span>
-                    </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold">Variação</span>
+                    <span id="stat-var" class="text-xs font-bold text-gray-300">--</span>
+                </div>
+
+                <div class="flex flex-col items-end">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold">Fechamento</span>
+                    <span id="stat-close" class="text-xs font-mono text-white">--</span>
                 </div>
             </div>
 
@@ -4861,7 +4862,7 @@ function renderPriceChart(dataPoints, range) {
         cotacaoChartInstance.destroy();
     }
 
-    // --- SETUP DE DADOS ---
+    // --- DADOS ---
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
     const startPrice = values[0];
@@ -4881,46 +4882,34 @@ function renderPriceChart(dataPoints, range) {
 
     const isIntraday = (range === '1D' || range === '5D');
 
-    // --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER (ESTILO BLACK) ---
+    // --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER HTML ---
     const updateHeaderStats = (currentPrice) => {
         const elOpen = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
         const elVar = document.getElementById('stat-var');
-        const elBadge = document.getElementById('stat-var-badge');
 
-        if (!elOpen || !elClose || !elVar || !elBadge) return;
+        if (!elOpen || !elClose || !elVar) return;
 
-        // 1. Abertura/Referência
+        // Abertura é sempre fixa (início do gráfico)
         elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // 2. Fechamento
+        // Fechamento é dinâmico (ou o último, ou o do dedo)
         elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elClose.style.color = (currentPrice >= startPrice) ? '#00C805' : '#FF3B30';
 
-        // 3. Variação
+        // Variação
         const diff = currentPrice - startPrice;
         const percent = (diff / startPrice) * 100;
         const sign = diff >= 0 ? '+' : '';
-        const isPos = diff >= 0;
-
-        elVar.innerText = `${sign}${percent.toFixed(2)}% (${sign}${diff.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`;
         
-        // --- AQUI ESTÁ A ALTERAÇÃO ---
-        // Fundo sempre escuro (bg-black ou bg-gray-900), só mudamos o texto
-        elBadge.className = "flex items-center justify-center px-2 py-0.5 rounded bg-black border border-gray-800";
-        
-        if (isPos) {
-            elVar.className = "text-[10px] font-extrabold text-[#00C805]"; // Texto Verde
-            elClose.style.color = '#FFFFFF'; 
-        } else {
-            elVar.className = "text-[10px] font-extrabold text-[#FF3B30]"; // Texto Vermelho
-            elClose.style.color = '#FFFFFF';
-        }
+        elVar.innerText = `${sign}${percent.toFixed(2)}%`;
+        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
     };
 
-    // Inicializa
+    // Inicializa o Header com os dados finais (Repouso)
     updateHeaderStats(endPrice);
 
-    // Posicionador do Tooltip
+    // Posicionador
     Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
         if (!elements.length) return false;
         return { x: elements[0].element.x, y: eventPosition.y };
@@ -4942,8 +4931,6 @@ function renderPriceChart(dataPoints, range) {
             const leftEdge = chart.chartArea.left;
 
             ctx.save();
-            
-            // Linha
             ctx.beginPath();
             ctx.moveTo(leftEdge, y);
             ctx.lineTo(rightEdge, y);
@@ -4971,18 +4958,17 @@ function renderPriceChart(dataPoints, range) {
             ctx.fillStyle = '#FFFFFF';
             ctx.textBaseline = 'middle';
             ctx.fillText(text, badgeX + paddingX, y + 1); 
-
             ctx.restore();
         }
     };
 
     // =================================================================
-    // PLUGIN B: MIRA LIVRE
+    // PLUGIN B: MIRA LIVRE + ATUALIZAÇÃO DO HEADER
     // =================================================================
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
-            // Se NÃO estiver tocando, reseta para o valor final
+            // Se NÃO estiver tocando, reseta o header para o valor final
             if (!chart.tooltip?._active?.length) {
                 if (chart.lastHeaderUpdate !== 'end') {
                     updateHeaderStats(endPrice);
@@ -4991,6 +4977,7 @@ function renderPriceChart(dataPoints, range) {
                 return;
             }
 
+            // Se ESTIVER tocando:
             if (!chart.tooltip._eventPosition) return;
             const event = chart.tooltip._eventPosition;
             const ctx = chart.ctx;
@@ -5004,7 +4991,8 @@ function renderPriceChart(dataPoints, range) {
 
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
 
-            // ATUALIZA HEADER COM VALOR DA MIRA
+            // --- ATUALIZA O HEADER COM O PREÇO FOCADO ---
+            // Pega o valor real do ponto mais próximo (activePoint) para precisão no header
             const activePoint = chart.tooltip._active[0];
             const focusedPrice = dataPoints[activePoint.index].price;
             
@@ -5013,13 +5001,14 @@ function renderPriceChart(dataPoints, range) {
                 chart.lastHeaderValue = focusedPrice;
                 chart.lastHeaderUpdate = 'active';
             }
+            // ---------------------------------------------
 
             ctx.save();
             ctx.lineWidth = 1;
             ctx.strokeStyle = colorCrosshairLine; 
             ctx.setLineDash([4, 4]);
 
-            // Eixo X
+            // 1. Eixo X (Linha + Data)
             ctx.beginPath();
             ctx.moveTo(x, topY);
             ctx.lineTo(x, bottomY);
@@ -5055,7 +5044,7 @@ function renderPriceChart(dataPoints, range) {
             ctx.textBaseline = 'middle';
             ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
 
-            // Eixo Y
+            // 2. Eixo Y (Linha + Preço da Mira)
             ctx.beginPath();
             ctx.moveTo(leftX, y); 
             ctx.lineTo(rightX, y);
@@ -5094,7 +5083,7 @@ function renderPriceChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 1,
+                borderWidth: 1.5,
                 pointRadius: 0,
                 pointHitRadius: 20, 
                 pointHoverRadius: 4,
@@ -5108,7 +5097,7 @@ function renderPriceChart(dataPoints, range) {
             responsive: true,
             maintainAspectRatio: false,
             layout: { 
-                padding: { left: 0, right: 36, top: 10, bottom: 20 } 
+                padding: { left: 0, right: 38, top: 10, bottom: 20 } 
             },
             plugins: {
                 legend: { display: false },
@@ -5116,7 +5105,7 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger', 
                     yAlign: 'bottom',
-                    caretPadding: 35,
+                    caretPadding: 60,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',
@@ -5128,6 +5117,7 @@ function renderPriceChart(dataPoints, range) {
                     cornerRadius: 6,
                     displayColors: false,
                     callbacks: {
+                        // Título com data no tooltip flutuante
                         title: function(context) {
                             const date = new Date(context[0].label);
                             if (isIntraday) {

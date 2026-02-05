@@ -5523,13 +5523,15 @@ function renderizarTransacoesDetalhes(symbol) {
             
             const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
             
-            // Cores
-            const cardBg = 'bg-black'; 
+            // Cores: Ícone Cinza Escuro
             const iconBg = 'bg-[#141414]'; 
 
             const item = document.createElement('div');
-            item.className = `history-card flex items-center justify-between py-3 px-3 mb-2 rounded-xl relative group w-full ${cardBg}`;
-            item.style.backgroundColor = 'black !important';
+            // Adiciona bg-black na classe
+            item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 rounded-xl relative group w-full bg-black';
+            
+            // CORREÇÃO: Aplica a cor preta forçada corretamente
+            item.style.setProperty('background-color', 'black', 'important');
             
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">

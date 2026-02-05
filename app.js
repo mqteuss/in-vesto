@@ -1745,36 +1745,34 @@ function renderizarHistorico() {
     // Flatten (calcula automaticamente price * quantity)
     const flatItems = flattenHistoricoData(grupos);
 
+// --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
         const dia = new Date(t.date).getDate().toString().padStart(2, '0');
         
-        // 1. Ícones Principais (Seta Baixo/Cima)
-        // Compra: Seta Verde para Baixo | Venda: Seta Vermelha para Cima
+        // 1. Ícones de Seta
+        // Compra: Seta Verde p/ Baixo | Venda: Seta Vermelha p/ Cima
         const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
         const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
         
         const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
-        const bgIcone = 'bg-[#151515]'; // Fundo do círculo do ícone
-
-        // 2. Badge (Pequeno ícone ao lado do ticker)
-        // Solicitação: "seta de gráfico", cor verde.
-        const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
-        const badgeBg = 'bg-green-500/10 border border-green-500/20'; // Mantendo coerência com o ícone verde
+        
+        // 2. Cores: Preto Puro para Card e Ícone
+        const cardBg = 'bg-black'; 
+        const iconBg = 'bg-black'; 
 
         return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black" data-action="edit-row" data-id="${t.id}">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBg}" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-10 h-10 rounded-full ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    
+                    <div class="w-10 h-10 rounded-full ${iconBg} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${mainIconHtml}
                     </div>
+
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-white tracking-tight leading-none">${t.symbol}</h4>
-                            <div class="${badgeBg} w-5 h-5 flex items-center justify-center rounded-md shrink-0">
-                                ${iconGraph}
-                            </div>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>

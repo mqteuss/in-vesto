@@ -1853,25 +1853,18 @@ function renderizarHistoricoProventos() {
 
     const flatItems = flattenHistoricoData(gruposLimpos);
 
-// --- RENDERIZADOR DE LINHA (PROVENTOS) ---
     const rowRenderer = (p) => {
         const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
         const total = p.totalCalculado; 
-        const sigla = p.symbol.substring(0, 2);
         
-        const ehFii = isFII(p.symbol);
-        
-        // CORRIGIDO: Ícone Cinza Escuro (#141414)
+        // Fundo do Ícone: Cinza Escuro
         const bgIcone = 'bg-[#141414]';
 
-        const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;
-        
-        const imageHtml = !ehFii 
-            ? `<img src="${iconUrl}" alt="${p.symbol}" class="w-full h-full object-contain p-0.5 rounded-full" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />` 
-            : '';
-        const fallbackClass = !ehFii ? 'hidden' : 'flex';
+        // Ícone PRINCIPAL: Sempre a Seta de Gráfico Verde (Substituindo logos e siglas)
+        const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
 
+        // Tags (DIV, JCP, REND)
         let tagHtml = '';
         const rawType = (p.type || '').toUpperCase();
         if (rawType.includes('JCP')) {
@@ -1885,10 +1878,11 @@ function renderizarHistoricoProventos() {
         return `
             <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black" style="background-color: black !important;">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
+                    
                     <div class="w-10 h-10 rounded-full ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
-                        ${imageHtml}
-                        <span class="${fallbackClass} w-full h-full items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 ${bgIcone}">${sigla}</span>
+                        ${iconGraph}
                     </div>
+
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 h-5">
                             <h4 class="text-sm font-bold text-white tracking-tight leading-none">${p.symbol}</h4>
@@ -1902,7 +1896,7 @@ function renderizarHistoricoProventos() {
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold text-green-400 tracking-tight">+ ${formatBRL(total)}</span>
+                    <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
                 </div>
             </div>
         `;

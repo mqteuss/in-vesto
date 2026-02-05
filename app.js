@@ -4742,16 +4742,19 @@ async function fetchCotacaoHistorica(symbol) {
 
 container.innerHTML = `
         <div class="flex flex-col mb-1 px-1">
-            <div class="flex justify-between items-end mb-3 mt-1">
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Referência</span>
-                    <span id="stat-open" class="text-sm font-mono text-gray-400 font-medium">--</span>
+            <div class="flex justify-between items-end mb-3 mt-2 bg-[#1C1C1E] p-3 rounded-xl border border-[#2C2C2E]">
+                
+                <div class="flex flex-col gap-1">
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-1.5 h-1.5 rounded-full bg-gray-500"></div> <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Referência</span>
+                    </div>
+                    <span id="stat-open" class="text-lg font-bold text-white leading-none tracking-tight">--</span>
                 </div>
 
-                <div class="flex flex-col items-end">
-                    <span id="stat-close" class="text-2xl font-bold text-white tracking-tight leading-none">--</span>
+                <div class="flex flex-col items-end gap-0.5">
+                    <span id="stat-close" class="text-2xl font-black text-white tracking-tight leading-none">--</span>
                     
-                    <div id="stat-var-badge" class="mt-1 px-2 py-0.5 rounded flex items-center gap-1 bg-gray-800">
+                    <div id="stat-var-badge" class="flex items-center justify-center px-2 py-0.5 rounded bg-gray-800 transition-colors duration-200">
                         <span id="stat-var" class="text-[10px] font-bold">--</span>
                     </div>
                 </div>
@@ -4878,8 +4881,6 @@ function renderPriceChart(dataPoints, range) {
 
     const isIntraday = (range === '1D' || range === '5D');
 
-    // --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER HTML ---
-// --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER (PREMIUM LOOK) ---
     const updateHeaderStats = (currentPrice) => {
         const elOpen = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
@@ -4888,28 +4889,33 @@ function renderPriceChart(dataPoints, range) {
 
         if (!elOpen || !elClose || !elVar || !elBadge) return;
 
-        // 1. Abertura (Discreto)
+        // 1. Abertura/Referência (Branco e Sólido)
         elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // 2. Fechamento (Hero)
+        // 2. Fechamento
         elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // 3. Variação (Cálculo)
+        // 3. Variação e Cores
         const diff = currentPrice - startPrice;
         const percent = (diff / startPrice) * 100;
         const sign = diff >= 0 ? '+' : '';
         const isPos = diff >= 0;
 
-        // Texto da Variação
         elVar.innerText = `${sign}${percent.toFixed(2)}% (${sign}${diff.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`;
         
-        // Estilo da Pílula (Badge)
+        // Estilo Condicional
         if (isPos) {
-            elBadge.className = "mt-1 px-2 py-0.5 rounded flex items-center gap-1 bg-[#00C805]/10"; // Fundo verde transparente
-            elVar.className = "text-[10px] font-bold text-[#00C805]"; // Texto verde
+            // Fundo Verde Translúcido + Texto Verde Neon
+            elBadge.className = "flex items-center justify-center px-2 py-0.5 rounded bg-[#00C805]/15"; 
+            elVar.className = "text-[10px] font-extrabold text-[#00C805]"; 
+            // Opcional: Se quiser que o preço atual fique verde também:
+            // elClose.style.color = '#00C805'; 
+            elClose.style.color = '#FFFFFF'; // Mantendo branco para consistência
         } else {
-            elBadge.className = "mt-1 px-2 py-0.5 rounded flex items-center gap-1 bg-[#FF3B30]/10"; // Fundo vermelho transparente
-            elVar.className = "text-[10px] font-bold text-[#FF3B30]"; // Texto vermelho
+            // Fundo Vermelho Translúcido + Texto Vermelho Neon
+            elBadge.className = "flex items-center justify-center px-2 py-0.5 rounded bg-[#FF3B30]/15";
+            elVar.className = "text-[10px] font-extrabold text-[#FF3B30]";
+            elClose.style.color = '#FFFFFF';
         }
     };
 

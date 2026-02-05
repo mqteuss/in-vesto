@@ -1745,41 +1745,35 @@ function renderizarHistorico() {
     // Flatten (calcula automaticamente price * quantity)
     const flatItems = flattenHistoricoData(grupos);
 
-    // --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
         const dia = new Date(t.date).getDate().toString().padStart(2, '0');
-        const sigla = t.symbol.substring(0, 2);
         
-        // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
-        const ehFii = isFII(t.symbol);
-        const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
-        // ------------------------------------------
+        // 1. Ícones Principais (Seta Baixo/Cima)
+        // Compra: Seta Verde para Baixo | Venda: Seta Vermelha para Cima
+        const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
+        const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
+        
+        const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
+        const bgIcone = 'bg-[#151515]'; // Fundo do círculo do ícone
 
-        const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
-
-        const iconHtml = !ehFii 
-            ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-               <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 z-0 ${bgIcone}">${sigla}</span>`
-            : `<span class="text-xs font-bold text-gray-300 tracking-wider">${sigla}</span>`;
-
-        const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-        const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
-        const labelContent = isVenda ? iconVenda : iconCompra;
-        const badgeBg = isVenda ? 'bg-red-500/10 border border-red-500/20' : 'bg-green-500/10 border border-green-500/20';
+        // 2. Badge (Pequeno ícone ao lado do ticker)
+        // Solicitação: "seta de gráfico", cor verde.
+        const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
+        const badgeBg = 'bg-green-500/10 border border-green-500/20'; // Mantendo coerência com o ícone verde
 
         return `
-            <div class="history-card flex items-center justify-between py-2 px-1 relative group h-full w-full bg-transparent" data-action="edit-row" data-id="${t.id}">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-10 h-10 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                        ${iconHtml}
+                    <div class="w-10 h-10 rounded-full ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                        ${mainIconHtml}
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <h4 class="text-sm font-bold text-white tracking-tight leading-none">${t.symbol}</h4>
                             <div class="${badgeBg} w-5 h-5 flex items-center justify-center rounded-md shrink-0">
-                                ${labelContent}
+                                ${iconGraph}
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
@@ -1861,22 +1855,23 @@ function renderizarHistoricoProventos() {
 
     const flatItems = flattenHistoricoData(gruposLimpos);
 
-    // --- RENDERIZADOR DE LINHA (PROVENTOS) ---
     const rowRenderer = (p) => {
         const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
         const total = p.totalCalculado; 
         const sigla = p.symbol.substring(0, 2);
         
-        // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
         const ehFii = isFII(p.symbol);
         const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
-        // ------------------------------------------
 
+        // Mantém a lógica original da imagem para proventos, ou quer setas aqui também? 
+        // Assumindo que o pedido de "setas" era focado nas transações de compra/venda.
+        // Se quiser mudar aqui também, avise. Por enquanto, mantive a imagem mas apliquei o fundo preto no card.
+        
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;
         
         const imageHtml = !ehFii 
-            ? `<img src="${iconUrl}" alt="${p.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />` 
+            ? `<img src="${iconUrl}" alt="${p.symbol}" class="w-full h-full object-contain p-0.5 rounded-full" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />` 
             : '';
         const fallbackClass = !ehFii ? 'hidden' : 'flex';
 
@@ -1891,9 +1886,9 @@ function renderizarHistoricoProventos() {
         }
 
         return `
-            <div class="history-card flex items-center justify-between py-2 px-1 relative group h-full w-full bg-transparent">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="w-10 h-10 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-full ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${imageHtml}
                         <span class="${fallbackClass} w-full h-full items-center justify-center text-xs font-bold text-gray-300 tracking-wider absolute inset-0 ${bgIcone}">${sigla}</span>
                     </div>
@@ -1910,7 +1905,7 @@ function renderizarHistoricoProventos() {
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
+                    <span class="text-[15px] font-bold text-green-400 tracking-tight">+ ${formatBRL(total)}</span>
                 </div>
             </div>
         `;

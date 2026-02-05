@@ -5490,11 +5490,13 @@ function renderizarTransacoesDetalhes(symbol) {
     const grupos = agruparPorMes(txsDoAtivo, 'date');
     const fragment = document.createDocumentFragment();
 
+    // Ícone PADRÃO (Seta de Gráfico Verde - Badge)
+    const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
+
     Object.keys(grupos).forEach(mes => {
         const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
 
         const header = document.createElement('div');
-        // Mudei mb-2 para mb-4 aqui também, para alinhar com o "respiro" que você pediu antes
         header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-4 flex justify-between items-center'; 
         header.style.top = '-1px'; 
         header.style.margin = '0 -8px 8px -8px'; 
@@ -5514,60 +5516,36 @@ function renderizarTransacoesDetalhes(symbol) {
         listaGrupo.className = 'pb-2'; 
 
         grupos[mes].forEach(t => {
-            const isVenda = t.type === 'sell';
             const totalTransacao = t.quantity * t.price;
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
-            const sigla = t.symbol.substring(0, 2);
-            
-            // --- LÓGICA DE ÍCONE ---
-            const ehFii = isFII(t.symbol);
-            
-            // --- ALTERAÇÃO: Lógica de Fundo do Ícone ---
-            const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
-            // ------------------------------------------
-            
-            const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${t.symbol}.png`;
-            const iconHtml = !ehFii 
-                ? `<img src="${iconUrl}" alt="${t.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-                   <span class="hidden w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-300 tracking-wider absolute inset-0 z-0 ${bgIcone}">${sigla}</span>`
-                : `<span class="text-[10px] font-bold text-gray-300 tracking-wider">${sigla}</span>`;
-            
-            // Ícones de Compra/Venda
-            const iconCompra = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>`;
-            const iconVenda = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" /></svg>`;
-
-            const labelContent = isVenda ? iconVenda : iconCompra;
-            
-            const badgeBg = isVenda 
-                ? 'bg-red-500/10 border border-red-500/20' 
-                : 'bg-green-500/10 border border-green-500/20';
+            const tipoLabel = t.type === 'buy' ? 'Compra' : 'Venda';
 
             const item = document.createElement('div');
-            item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 relative group';
+            // Card: Fundo Preto Puro (bg-black) com style inline para garantir prioridade sobre CSS
+            item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 rounded-xl relative group w-full bg-black';
+            item.style.backgroundColor = 'black'; 
             
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                     <div class="w-9 h-9 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                        ${iconHtml}
+                     <div class="w-10 h-10 rounded-full bg-[#141414] border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                        ${iconGraph}
                     </div>
                     
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                             <div class="${badgeBg} w-6 h-6 flex items-center justify-center rounded-md shrink-0">
-                                ${labelContent}
-                            </div>
-                            <span class="text-[10px] font-medium text-gray-500">Dia ${dia}</span>
+                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${tipoLabel}</h4>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-0.5 text-xs text-gray-300 leading-none">
+                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
+                            <span class="font-medium text-gray-400">Dia ${dia}</span>
+                            <span>•</span>
                             <span>${t.quantity} cotas</span>
-                            <span class="text-gray-600">•</span>
-                            <span>${formatBRL(t.price)}</span>
                         </div>
                     </div>
                 </div>
                 
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-sm font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
+                    <span class="text-[15px] font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
+                    <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(t.price)}</span>
                 </div>
             `;
             listaGrupo.appendChild(item);

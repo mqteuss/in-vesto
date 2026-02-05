@@ -1745,25 +1745,25 @@ function renderizarHistorico() {
     // Flatten (calcula automaticamente price * quantity)
     const flatItems = flattenHistoricoData(grupos);
 
-// --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
         const dia = new Date(t.date).getDate().toString().padStart(2, '0');
         
-        // 1. Ícones de Seta
-        // Compra: Seta Verde p/ Baixo | Venda: Seta Vermelha p/ Cima
+        // Ícones de Seta
         const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
         const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
         
         const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
         
-        // 2. Cores: Preto Puro para Card e Ícone
+        // CORRIGIDO:
+        // Card = bg-black (Preto Puro)
+        // Ícone = bg-[#141414] (Cinza Escuro)
         const cardBg = 'bg-black'; 
-        const iconBg = 'bg-black'; 
+        const iconBg = 'bg-[#141414]'; 
 
         return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBg}" data-action="edit-row" data-id="${t.id}">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBg}" style="background-color: black !important;" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     
                     <div class="w-10 h-10 rounded-full ${iconBg} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
@@ -1853,6 +1853,7 @@ function renderizarHistoricoProventos() {
 
     const flatItems = flattenHistoricoData(gruposLimpos);
 
+// --- RENDERIZADOR DE LINHA (PROVENTOS) ---
     const rowRenderer = (p) => {
         const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
@@ -1860,12 +1861,10 @@ function renderizarHistoricoProventos() {
         const sigla = p.symbol.substring(0, 2);
         
         const ehFii = isFII(p.symbol);
-        const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
-
-        // Mantém a lógica original da imagem para proventos, ou quer setas aqui também? 
-        // Assumindo que o pedido de "setas" era focado nas transações de compra/venda.
-        // Se quiser mudar aqui também, avise. Por enquanto, mantive a imagem mas apliquei o fundo preto no card.
         
+        // CORRIGIDO: Ícone Cinza Escuro (#141414)
+        const bgIcone = 'bg-[#141414]';
+
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${p.symbol}.png`;
         
         const imageHtml = !ehFii 
@@ -1884,7 +1883,7 @@ function renderizarHistoricoProventos() {
         }
 
         return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black" style="background-color: black !important;">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-10 h-10 rounded-full ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${imageHtml}

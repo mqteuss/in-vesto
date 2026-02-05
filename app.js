@@ -4740,24 +4740,20 @@ async function fetchCotacaoHistorica(symbol) {
         } else { return; }
     }
 
-    container.innerHTML = `
-        <div class="flex flex-col mb-2 px-1">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Histórico de Preço</span>
-            
-            <div class="flex justify-between items-center mb-3 bg-[#1C1C1E] p-2 rounded-lg border border-[#2C2C2E]">
+container.innerHTML = `
+        <div class="flex flex-col mb-1 px-1">
+            <div class="flex justify-between items-end mb-3 mt-1">
                 <div class="flex flex-col">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold">Abertura</span>
-                    <span id="stat-open" class="text-xs font-mono text-gray-300">--</span>
-                </div>
-
-                <div class="flex flex-col items-center">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold">Variação</span>
-                    <span id="stat-var" class="text-xs font-bold text-gray-300">--</span>
+                    <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Referência</span>
+                    <span id="stat-open" class="text-sm font-mono text-gray-400 font-medium">--</span>
                 </div>
 
                 <div class="flex flex-col items-end">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold">Fechamento</span>
-                    <span id="stat-close" class="text-xs font-mono text-white">--</span>
+                    <span id="stat-close" class="text-2xl font-bold text-white tracking-tight leading-none">--</span>
+                    
+                    <div id="stat-var-badge" class="mt-1 px-2 py-0.5 rounded flex items-center gap-1 bg-gray-800">
+                        <span id="stat-var" class="text-[10px] font-bold">--</span>
+                    </div>
                 </div>
             </div>
 
@@ -4883,27 +4879,38 @@ function renderPriceChart(dataPoints, range) {
     const isIntraday = (range === '1D' || range === '5D');
 
     // --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER HTML ---
+// --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER (PREMIUM LOOK) ---
     const updateHeaderStats = (currentPrice) => {
         const elOpen = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
         const elVar = document.getElementById('stat-var');
+        const elBadge = document.getElementById('stat-var-badge');
 
-        if (!elOpen || !elClose || !elVar) return;
+        if (!elOpen || !elClose || !elVar || !elBadge) return;
 
-        // Abertura é sempre fixa (início do gráfico)
+        // 1. Abertura (Discreto)
         elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // Fechamento é dinâmico (ou o último, ou o do dedo)
+        // 2. Fechamento (Hero)
         elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elClose.style.color = (currentPrice >= startPrice) ? '#00C805' : '#FF3B30';
 
-        // Variação
+        // 3. Variação (Cálculo)
         const diff = currentPrice - startPrice;
         const percent = (diff / startPrice) * 100;
         const sign = diff >= 0 ? '+' : '';
+        const isPos = diff >= 0;
+
+        // Texto da Variação
+        elVar.innerText = `${sign}${percent.toFixed(2)}% (${sign}${diff.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`;
         
-        elVar.innerText = `${sign}${percent.toFixed(2)}%`;
-        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
+        // Estilo da Pílula (Badge)
+        if (isPos) {
+            elBadge.className = "mt-1 px-2 py-0.5 rounded flex items-center gap-1 bg-[#00C805]/10"; // Fundo verde transparente
+            elVar.className = "text-[10px] font-bold text-[#00C805]"; // Texto verde
+        } else {
+            elBadge.className = "mt-1 px-2 py-0.5 rounded flex items-center gap-1 bg-[#FF3B30]/10"; // Fundo vermelho transparente
+            elVar.className = "text-[10px] font-bold text-[#FF3B30]"; // Texto vermelho
+        }
     };
 
     // Inicializa o Header com os dados finais (Repouso)

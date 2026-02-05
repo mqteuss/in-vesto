@@ -4730,23 +4730,38 @@ async function fetchCotacaoHistorica(symbol) {
     let container = document.getElementById('detalhes-cotacao-container');
     
     if (!container) {
+        // ... (código de criação do container igual ao anterior) ...
         const detalhesPreco = document.getElementById('detalhes-preco');
         if (detalhesPreco && detalhesPreco.parentNode) {
             container = document.createElement('div');
             container.id = 'detalhes-cotacao-container';
             container.className = "mt-6 mb-6 border-t border-[#2C2C2E] pt-4";
             detalhesPreco.parentNode.insertBefore(container, detalhesPreco.nextSibling);
-        } else {
-            return;
-        }
+        } else { return; }
     }
 
-    // HTML com barra de rolagem horizontal para os botões
     container.innerHTML = `
-        <div class="flex flex-col mb-4 px-1">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Histórico de Preço</span>
+        <div class="flex flex-col mb-2 px-1">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Histórico de Preço</span>
             
-            <div class="flex overflow-x-auto no-scrollbar gap-2 pb-1" id="chart-filters">
+            <div class="flex justify-between items-center mb-3 bg-[#1C1C1E] p-2 rounded-lg border border-[#2C2C2E]">
+                <div class="flex flex-col">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold">Abertura</span>
+                    <span id="stat-open" class="text-xs font-mono text-gray-300">--</span>
+                </div>
+
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold">Variação</span>
+                    <span id="stat-var" class="text-xs font-bold text-gray-300">--</span>
+                </div>
+
+                <div class="flex flex-col items-end">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold">Fechamento</span>
+                    <span id="stat-close" class="text-xs font-mono text-white">--</span>
+                </div>
+            </div>
+
+            <div class="flex overflow-x-auto no-scrollbar gap-2 pb-1 mb-2" id="chart-filters">
                 ${gerarBotaoFiltro('1D', symbol, true)}
                 ${gerarBotaoFiltro('5D', symbol)}
                 ${gerarBotaoFiltro('1M', symbol)}
@@ -4759,14 +4774,12 @@ async function fetchCotacaoHistorica(symbol) {
         </div>
         
         <div class="relative h-72 w-full bg-[#151515] rounded-xl border border-[#2C2C2E] p-2" id="chart-area-wrapper">
-            <div class="flex flex-col items-center justify-center h-full animate-pulse">
-                <div class="h-1 w-12 bg-gray-800 rounded mb-2"></div>
-                <span class="text-[10px] text-gray-600 tracking-wider font-medium">CARREGANDO...</span>
+             <div class="flex flex-col items-center justify-center h-full animate-pulse">
+                <span class="text-[10px] text-gray-600 tracking-wider">CARREGANDO...</span>
             </div>
         </div>
     `;
 
-    // Carrega o padrão (1D)
     await carregarDadosGrafico('1D', symbol);
 }
 
@@ -4849,7 +4862,7 @@ function renderPriceChart(dataPoints, range) {
         cotacaoChartInstance.destroy();
     }
 
-    // --- SETUP DE DADOS ---
+    // --- DADOS ---
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
     const startPrice = values[0];
@@ -4869,7 +4882,34 @@ function renderPriceChart(dataPoints, range) {
 
     const isIntraday = (range === '1D' || range === '5D');
 
-    // Posicionador do Tooltip
+    // --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER HTML ---
+    const updateHeaderStats = (currentPrice) => {
+        const elOpen = document.getElementById('stat-open');
+        const elClose = document.getElementById('stat-close');
+        const elVar = document.getElementById('stat-var');
+
+        if (!elOpen || !elClose || !elVar) return;
+
+        // Abertura é sempre fixa (início do gráfico)
+        elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Fechamento é dinâmico (ou o último, ou o do dedo)
+        elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elClose.style.color = (currentPrice >= startPrice) ? '#00C805' : '#FF3B30';
+
+        // Variação
+        const diff = currentPrice - startPrice;
+        const percent = (diff / startPrice) * 100;
+        const sign = diff >= 0 ? '+' : '';
+        
+        elVar.innerText = `${sign}${percent.toFixed(2)}%`;
+        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
+    };
+
+    // Inicializa o Header com os dados finais (Repouso)
+    updateHeaderStats(endPrice);
+
+    // Posicionador
     Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
         if (!elements.length) return false;
         return { x: elements[0].element.x, y: eventPosition.y };
@@ -4891,8 +4931,6 @@ function renderPriceChart(dataPoints, range) {
             const leftEdge = chart.chartArea.left;
 
             ctx.save();
-            
-            // Linha Pontilhada Colorida
             ctx.beginPath();
             ctx.moveTo(leftEdge, y);
             ctx.lineTo(rightEdge, y);
@@ -4902,7 +4940,7 @@ function renderPriceChart(dataPoints, range) {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Badge Colorido
+            // Badge
             const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             ctx.font = 'bold 9px sans-serif'; 
             const textWidth = ctx.measureText(text).width;
@@ -4920,22 +4958,29 @@ function renderPriceChart(dataPoints, range) {
             ctx.fillStyle = '#FFFFFF';
             ctx.textBaseline = 'middle';
             ctx.fillText(text, badgeX + paddingX, y + 1); 
-
             ctx.restore();
         }
     };
 
     // =================================================================
-    // PLUGIN B: MIRA LIVRE (Crosshair Independente)
+    // PLUGIN B: MIRA LIVRE + ATUALIZAÇÃO DO HEADER
     // =================================================================
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
-            if (!chart.tooltip?._active?.length || !chart.tooltip._eventPosition) return;
+            // Se NÃO estiver tocando, reseta o header para o valor final
+            if (!chart.tooltip?._active?.length) {
+                if (chart.lastHeaderUpdate !== 'end') {
+                    updateHeaderStats(endPrice);
+                    chart.lastHeaderUpdate = 'end';
+                }
+                return;
+            }
 
+            // Se ESTIVER tocando:
+            if (!chart.tooltip._eventPosition) return;
             const event = chart.tooltip._eventPosition;
             const ctx = chart.ctx;
-            
             const x = event.x; 
             const y = event.y; 
             
@@ -4946,18 +4991,29 @@ function renderPriceChart(dataPoints, range) {
 
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
 
+            // --- ATUALIZA O HEADER COM O PREÇO FOCADO ---
+            // Pega o valor real do ponto mais próximo (activePoint) para precisão no header
+            const activePoint = chart.tooltip._active[0];
+            const focusedPrice = dataPoints[activePoint.index].price;
+            
+            if (chart.lastHeaderValue !== focusedPrice) {
+                updateHeaderStats(focusedPrice);
+                chart.lastHeaderValue = focusedPrice;
+                chart.lastHeaderUpdate = 'active';
+            }
+            // ---------------------------------------------
+
             ctx.save();
             ctx.lineWidth = 1;
             ctx.strokeStyle = colorCrosshairLine; 
             ctx.setLineDash([4, 4]);
 
-            // --- 1. EIXO X (DATA) ---
+            // 1. Eixo X (Linha + Data)
             ctx.beginPath();
             ctx.moveTo(x, topY);
             ctx.lineTo(x, bottomY);
             ctx.stroke();
 
-            // Etiqueta de DATA Inferior
             const xIndex = chart.scales.x.getValueForPixel(x);
             const validIndex = Math.max(0, Math.min(xIndex, dataPoints.length - 1));
             const rawDate = new Date(dataPoints[validIndex].date);
@@ -4973,7 +5029,6 @@ function renderPriceChart(dataPoints, range) {
             ctx.font = 'bold 9px sans-serif';
             const dateWidth = ctx.measureText(dateText).width + 12; 
             const dateHeight = 16;
-            
             let dateBadgeX = x - (dateWidth / 2);
             if (dateBadgeX < leftX) dateBadgeX = leftX;
             if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
@@ -4989,16 +5044,14 @@ function renderPriceChart(dataPoints, range) {
             ctx.textBaseline = 'middle';
             ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
 
-            // --- 2. EIXO Y (PREÇO DA MIRA) ---
+            // 2. Eixo Y (Linha + Preço da Mira)
             ctx.beginPath();
             ctx.moveTo(leftX, y); 
             ctx.lineTo(rightX, y);
             ctx.stroke();
 
-            // Etiqueta de PREÇO Lateral
             const cursorPrice = chart.scales.y.getValueForPixel(y);
             const priceText = cursorPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            
             const priceWidth = ctx.measureText(priceText).width + 8;
             const priceHeight = 16;
             const priceBadgeX = rightX;
@@ -5030,7 +5083,7 @@ function renderPriceChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 1,
+                borderWidth: 1.5,
                 pointRadius: 0,
                 pointHitRadius: 20, 
                 pointHoverRadius: 4,
@@ -5044,7 +5097,7 @@ function renderPriceChart(dataPoints, range) {
             responsive: true,
             maintainAspectRatio: false,
             layout: { 
-                padding: { left: 0, right: 36, top: 10, bottom: 20 } 
+                padding: { left: 0, right: 38, top: 10, bottom: 20 } 
             },
             plugins: {
                 legend: { display: false },
@@ -5052,7 +5105,7 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger', 
                     yAlign: 'bottom',
-                    caretPadding: 40,
+                    caretPadding: 60,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',
@@ -5064,8 +5117,7 @@ function renderPriceChart(dataPoints, range) {
                     cornerRadius: 6,
                     displayColors: false,
                     callbacks: {
-                        // --- AQUI ESTÁ A MUDANÇA ---
-                        // Reativamos o título para mostrar a data
+                        // Título com data no tooltip flutuante
                         title: function(context) {
                             const date = new Date(context[0].label);
                             if (isIntraday) {

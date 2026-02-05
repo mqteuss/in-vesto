@@ -1745,6 +1745,7 @@ function renderizarHistorico() {
     // Flatten (calcula automaticamente price * quantity)
     const flatItems = flattenHistoricoData(grupos);
 
+// --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
@@ -1756,9 +1757,7 @@ function renderizarHistorico() {
         
         const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
         
-        // CORRIGIDO:
-        // Card = bg-black (Preto Puro)
-        // Ícone = bg-[#141414] (Cinza Escuro)
+        // Cores
         const cardBg = 'bg-black'; 
         const iconBg = 'bg-[#141414]'; 
 
@@ -1766,7 +1765,7 @@ function renderizarHistorico() {
             <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBg}" style="background-color: black !important;" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     
-                    <div class="w-10 h-10 rounded-full ${iconBg} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${mainIconHtml}
                     </div>
 
@@ -1853,18 +1852,18 @@ function renderizarHistoricoProventos() {
 
     const flatItems = flattenHistoricoData(gruposLimpos);
 
+// --- RENDERIZADOR DE LINHA (PROVENTOS) ---
     const rowRenderer = (p) => {
         const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
         const total = p.totalCalculado; 
         
-        // Fundo do Ícone: Cinza Escuro
         const bgIcone = 'bg-[#141414]';
 
-        // Ícone PRINCIPAL: Sempre a Seta de Gráfico Verde (Substituindo logos e siglas)
+        // Ícone Seta de Gráfico Verde (Badge)
         const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
 
-        // Tags (DIV, JCP, REND)
+        // Tags
         let tagHtml = '';
         const rawType = (p.type || '').toUpperCase();
         if (rawType.includes('JCP')) {
@@ -1879,7 +1878,7 @@ function renderizarHistoricoProventos() {
             <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black" style="background-color: black !important;">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     
-                    <div class="w-10 h-10 rounded-full ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${iconGraph}
                     </div>
 
@@ -5518,25 +5517,23 @@ function renderizarTransacoesDetalhes(symbol) {
             const dia = new Date(t.date).getDate().toString().padStart(2, '0');
             const tipoLabel = isVenda ? 'Venda' : 'Compra';
 
-            // --- LÓGICA IDENTICA À ABA EXTRATO (TRANSAÇÕES) ---
-
-            // 1. Ícones de Seta
+            // Ícones de Seta
             const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
             const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
             
             const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
             
-            // 2. Cores: Card Preto Puro, Ícone Cinza Escuro
+            // Cores
             const cardBg = 'bg-black'; 
             const iconBg = 'bg-[#141414]'; 
 
             const item = document.createElement('div');
             item.className = `history-card flex items-center justify-between py-3 px-3 mb-2 rounded-xl relative group w-full ${cardBg}`;
-            item.style.backgroundColor = 'black !important'; // Força o preto puro
+            item.style.backgroundColor = 'black !important';
             
             item.innerHTML = `
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                     <div class="w-10 h-10 rounded-full ${iconBg} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                     <div class="w-10 h-10 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${mainIconHtml}
                     </div>
                     

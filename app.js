@@ -5052,7 +5052,7 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger', 
                     yAlign: 'bottom',
-                    caretPadding: 35,
+                    caretPadding: 40,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',

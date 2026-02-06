@@ -2852,10 +2852,6 @@ function closeAlocacaoModal() {
     document.body.style.overflow = '';
 }
 
-// ======================================================
-//  GRÁFICO DE PATRIMÔNIO (COMPORTAMENTO IDÊNTICO AO DE COTAÇÕES)
-// ======================================================
-
 function renderizarGraficoPatrimonio(isRetry = false) {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
@@ -2881,7 +2877,9 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         precosAtuais.forEach(p => {
             const sym = p.symbol || p.ticker || p.codigo;
             const val = p.regularMarketPrice || p.price || p.cotacao || p.valor;
-            if (sym && val) mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
+            if (sym && val) {
+                mapPrecos.set(sym.toUpperCase().trim(), parseFloat(val));
+            }
         });
     }
 
@@ -2904,12 +2902,11 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // Elemento Principal do Header (Valor Gigante)
+    // --- 4. ATUALIZA CARDS SUPERIORES ---
     const elLive = document.getElementById('modal-patrimonio-live');
-    // Atualiza o valor inicial (estado de repouso)
     if (elLive) {
         elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elLive.className = "text-sm font-bold text-white mt-1 truncate"; // Garante cor branca
+        elLive.className = "text-sm font-bold text-white mt-1 truncate";
     }
 
     const elCusto = document.getElementById('modal-custo-valor');
@@ -2917,19 +2914,24 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // --- 4. PREPARAÇÃO DO GRÁFICO (DADOS HISTÓRICOS) ---
+    // --- 5. PREPARAÇÃO DO GRÁFICO (DADOS HISTÓRICOS) ---
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     let dataCorte;
 
+    // --- LÓGICA DE DATAS (ADICIONADO 7D) ---
     if (currentPatrimonioRange === '7D') {
-        dataCorte = new Date(hoje); dataCorte.setDate(hoje.getDate() - 7);
+        dataCorte = new Date(hoje);
+        dataCorte.setDate(hoje.getDate() - 7);
     } else if (currentPatrimonioRange === '1M') {
-        dataCorte = new Date(hoje); dataCorte.setDate(hoje.getDate() - 30);
+        dataCorte = new Date(hoje);
+        dataCorte.setDate(hoje.getDate() - 30);
     } else if (currentPatrimonioRange === '6M') {
-        dataCorte = new Date(hoje); dataCorte.setMonth(hoje.getMonth() - 6);
+        dataCorte = new Date(hoje);
+        dataCorte.setMonth(hoje.getMonth() - 6);
     } else if (currentPatrimonioRange === '1Y') {
-        dataCorte = new Date(hoje); dataCorte.setFullYear(hoje.getFullYear() - 1);
+        dataCorte = new Date(hoje);
+        dataCorte.setFullYear(hoje.getFullYear() - 1);
     } else {
         dataCorte = new Date('2000-01-01'); // ALL
     }
@@ -2943,24 +2945,114 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- 5. ESTATÍSTICAS E AGRUPAMENTO ---
-    // (Mantendo lógica original de estatísticas para não quebrar os cards)
+    // --- 6. CÁLCULO DAS ESTATÍSTICAS ---
     let variacaoPercent = 0;
     if (dadosOrdenados.length > 0) {
         const valorInicial = dadosOrdenados[0].value;
         const valorFinal = dadosOrdenados[dadosOrdenados.length - 1].value;
-        if (valorInicial > 0) variacaoPercent = ((valorFinal - valorInicial) / valorInicial) * 100;
+        if (valorInicial > 0) {
+            variacaoPercent = ((valorFinal - valorInicial) / valorInicial) * 100;
+        }
     }
 
-    // Atualiza Cards de Estatísticas (Ocultado para brevidade, mantém sua lógica original aqui se necessário)
+    let maxDrawdown = 0;
+    let pico = -Infinity;
+    dadosOrdenados.forEach(p => {
+        if (p.value > pico) pico = p.value;
+        const queda = (p.value - pico) / pico; 
+        if (queda < maxDrawdown) maxDrawdown = queda;
+    });
+    const drawdownDisplay = (maxDrawdown * 100).toFixed(2);
+
+    let volatilidade = 0;
+    if (dadosOrdenados.length > 1) {
+        const retornos = [];
+        for (let i = 1; i < dadosOrdenados.length; i++) {
+            const ret = (dadosOrdenados[i].value - dadosOrdenados[i-1].value) / dadosOrdenados[i-1].value;
+            retornos.push(ret);
+        }
+        const mediaRetornos = retornos.reduce((a, b) => a + b, 0) / retornos.length;
+        const variancia = retornos.reduce((a, b) => a + Math.pow(b - mediaRetornos, 2), 0) / retornos.length;
+        volatilidade = (Math.sqrt(variancia) * Math.sqrt(252)) * 100;
+    }
+
+// --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (ESTILO BLOOMBERG / MINIMALISTA) ---
     const elVariacao = document.getElementById('stat-variacao');
+    const elVariacaoBadge = document.getElementById('stat-variacao-badge');
+    
+    const elDrawdown = document.getElementById('stat-drawdown');
+    
+    const elVolatilidade = document.getElementById('stat-volatilidade');
+    const elVolTag = document.getElementById('stat-vol-tag');
+
+    // 1. Rentabilidade (Hero) - Verde ou Vermelho Fosco
     if (elVariacao) {
         const sinal = variacaoPercent >= 0 ? '+' : '';
         elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
-        elVariacao.style.color = variacaoPercent >= 0 ? '#4ade80' : '#ef4444'; 
+        
+        // Cores financeiras sóbrias (sem neon)
+        // Verde: #4ade80 (Green 400) | Vermelho: #ef4444 (Red 500)
+        const corVar = variacaoPercent >= 0 ? '#4ade80' : '#ef4444'; 
+        elVariacao.style.color = corVar;
+
+        // Badge de Status (Pílula Sólida)
+        if (elVariacaoBadge) {
+            // Reset classes
+            elVariacaoBadge.className = 'px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wide border';
+            
+            if (variacaoPercent >= 0) {
+                elVariacaoBadge.textContent = 'LUCRO';
+                // Fundo verde muito escuro, borda verde escura, texto verde claro
+                elVariacaoBadge.classList.add('bg-[#052e16]', 'border-[#14532d]', 'text-[#4ade80]');
+            } else {
+                elVariacaoBadge.textContent = 'PREJUÍZO';
+                // Fundo vermelho muito escuro, borda vermelha escura, texto vermelho claro
+                elVariacaoBadge.classList.add('bg-[#450a0a]', 'border-[#7f1d1d]', 'text-[#f87171]');
+            }
+        }
     }
 
-    // Agrupamento para ranges longos
+    // 2. Drawdown (Numérico Puro)
+    if (elDrawdown) {
+        // Se drawdown for insignificante (< 0.1%), mostra 0.00%
+        const displayVal = Math.abs(maxDrawdown) < 0.001 ? 0 : (maxDrawdown * 100).toFixed(2);
+        elDrawdown.textContent = `${displayVal}%`;
+        
+        // Se houver queda relevante (>1%), pinta de vermelho fosco. Senão, cinza neutro.
+        if (parseFloat(displayVal) < -0.01 || parseFloat(displayVal) > 1.00) {
+             elDrawdown.style.color = '#ef4444'; 
+        } else {
+             elDrawdown.style.color = '#a1a1aa'; // Zinc 400 (Cinza neutro)
+        }
+    }
+
+    // 3. Volatilidade (Tag Descritiva)
+    if (elVolatilidade) {
+        elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
+        
+        let labelVol = 'Baixa';
+        let colorClass = 'text-[#a1a1aa]'; // Cinza padrão
+        
+        if (volatilidade < 10) {
+            labelVol = 'Conservadora';
+            colorClass = 'text-[#4ade80]'; // Verde
+        } else if (volatilidade < 25) {
+            labelVol = 'Moderada';
+            colorClass = 'text-[#facc15]'; // Amarelo Ouro (não laranja neon)
+        } else {
+            labelVol = 'Agressiva';
+            colorClass = 'text-[#ef4444]'; // Vermelho
+        }
+
+        if (elVolTag) {
+            elVolTag.textContent = labelVol;
+            // Remove classes antigas e aplica a nova cor
+            elVolTag.className = `text-[9px] font-bold uppercase tracking-wider ${colorClass}`;
+        }
+    }
+
+    // --- 8. AGRUPAMENTO MENSAL (APENAS 6M E 1Y) ---
+    // 7D e 1M mostram todos os dias disponíveis
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -2976,10 +3068,12 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             patrimonioChartInstance.destroy();
             patrimonioChartInstance = null;
         }
+        const elChartVal = document.getElementById('modal-patrimonio-chart-val');
+        if (elChartVal) elChartVal.textContent = "R$ 0,00";
         return;
     }
 
-    // --- 6. GERAÇÃO DE ARRAYS PARA O CHARTJS ---
+    // --- 9. GERAÇÃO DE DADOS DO CHART ---
     const labels = [];
     const dataValor = [];
     const dataCusto = [];
@@ -2995,13 +3089,13 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const ano = d.getFullYear().toString().slice(-2);
 
-        // Labels para o Eixo X (Badge inferior)
-        if (['7D', '1M'].includes(currentPatrimonioRange)) labels.push(`${dia}/${mes}`); 
-        else labels.push(`${mes}/${ano}`); 
+        // FORMATAÇÃO DE LABELS: 7D e 1M mostram dia/mês
+        if (['7D', '1M'].includes(currentPatrimonioRange)) labels.push([dia, mes]); 
+        else if (['6M', '1Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]); 
+        else labels.push([dia, mes, ano]); 
 
         dataValor.push(parseFloat(p.value.toFixed(2)));
 
-        // Cálculo Custo
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
@@ -3012,241 +3106,136 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 if (tx.type === 'sell') custoAcumulado -= operacao;
                 custoAcumulado = parseFloat(custoAcumulado.toFixed(2));
                 txIndex++;
-            } else { break; }
+            } else {
+                break;
+            }
         }
         dataCusto.push(custoAcumulado);
     });
 
-    // =========================================================================
-    // --- RENDERIZAÇÃO VISUAL (AGORA IDÊNTICA AO DE COTAÇÕES) ---
-    // =========================================================================
-    
-    const ctx = canvas.getContext('2d');
-    if (patrimonioChartInstance) {
-        patrimonioChartInstance.destroy();
+    // --- 10. ATUALIZA CARD "GRÁFICO" ---
+    const elChartVal = document.getElementById('modal-patrimonio-chart-val');
+    if (elChartVal) {
+        if (dataValor.length > 0) {
+            const ultimoValorGrafico = dataValor[dataValor.length - 1];
+            elChartVal.textContent = ultimoValorGrafico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        } else {
+            elChartVal.textContent = "R$ 0,00";
+        }
     }
 
-    // 1. Definição de Cores Dinâmicas (Verde/Vermelho igual Cotação)
-    const startVal = dataValor[0];
-    const endVal = dataValor[dataValor.length - 1];
-    const isPositive = endVal >= startVal;
+    // --- 11. RENDERIZAÇÃO ---
+    const ctx = canvas.getContext('2d');
+    const isLight = document.body.classList.contains('light-mode');
+    const colorLinePatrimonio = '#c084fc'; 
+    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
+    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
+    const colorText = isLight ? '#6b7280' : '#737373'; 
 
-    // CORES DO TEMA DE COTAÇÃO
-    const colorLine = isPositive ? '#00C805' : '#FF3B30'; // Verde ou Vermelho
-    const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
-    const colorCrosshairLine = '#A3A3A3';
-    const colorBadgeBackground = '#1C1C1E'; // Cinza escuro
-    const colorBadgeText = '#FFFFFF';
-    const colorInvestido = '#525252'; // Linha pontilhada discreta
+    const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
+    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
+    gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
 
-    // Gradiente
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, colorFillStart);
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-    // 2. Função para Atualizar o Header (Valor Gigante)
-    const updateMainHeader = (value, isActive) => {
-        if (!elLive) return;
-        
-        elLive.textContent = value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        
-        if (isActive) {
-            // Se estiver interagindo, pinta o texto da cor do gráfico (Verde/Vermelho)
-            elLive.style.color = colorLine;
-        } else {
-            // Se soltar, volta para Branco
-            elLive.style.color = '#FFFFFF';
-        }
-    };
-
-    // Inicializa Header em Repouso
-    updateMainHeader(totalAtualLive, false);
-
-    // 3. PLUGIN: LINHA DO VALOR ATUAL (Tracejada + Badge Fixo na Direita)
-    const lastValuePlugin = {
-        id: 'lastValueLine',
-        afterDraw: (chart) => {
-            const ctx = chart.ctx;
-            const meta = chart.getDatasetMeta(0);
-            if (!meta.data || meta.data.length === 0) return;
-            
-            const lastPoint = meta.data[meta.data.length - 1];
-            const y = lastPoint.y; 
-            const rightEdge = chart.chartArea.right; 
-            const leftEdge = chart.chartArea.left;
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(leftEdge, y);
-            ctx.lineTo(rightEdge, y);
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = colorLine; 
-            ctx.setLineDash([2, 2]); 
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Badge Lateral
-            const text = endVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 9px sans-serif'; 
-            const textWidth = ctx.measureText(text).width;
-            const paddingX = 4;
-            const badgeHeight = 16; 
-            const badgeWidth = textWidth + (paddingX * 2);
-            const badgeX = rightEdge - badgeWidth; 
-            const badgeY = y - (badgeHeight / 2);
-
-            ctx.fillStyle = colorBadgeBackground;
-            ctx.beginPath();
-            ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3);
-            ctx.fill();
-
-            ctx.fillStyle = colorLine; 
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, badgeX + paddingX, y + 1); 
-            ctx.restore();
-        }
-    };
-
-    // 4. PLUGIN: INTERAÇÃO (Crosshair + Header Dinâmico)
-    const activeCrosshairPlugin = {
-        id: 'activeCrosshair',
-        afterDraw: (chart) => {
-            // Verifica se há interação ativa
-            if (!chart.tooltip?._active?.length) {
-                // Se soltou o dedo: Restaura o valor "AO VIVO"
-                if (chart.lastValUpdate !== 'end') {
-                    updateMainHeader(totalAtualLive, false);
-                    chart.lastValUpdate = 'end';
-                }
-                return;
-            }
-
-            // Se está tocando
-            if (!chart.tooltip._eventPosition) return;
-            const event = chart.tooltip._eventPosition;
-            const x = event.x; 
-            const y = event.y; 
-            
-            const topY = chart.scales.y.top;
-            const bottomY = chart.scales.y.bottom;
-            const leftX = chart.scales.x.left;
-            const rightX = chart.scales.x.right;
-
-            if (x < leftX || x > rightX || y < topY || y > bottomY) return;
-
-            // Pega o valor focado
-            const activePoint = chart.tooltip._active[0];
-            const focusedValue = dataValor[activePoint.index];
-            
-            // Atualiza o Header imediatamente para o valor histórico
-            if (chart.lastValHover !== focusedValue) {
-                updateMainHeader(focusedValue, true); // True ativa a cor colorida
-                chart.lastValHover = focusedValue;
-                chart.lastValUpdate = 'active';
-            }
-
-            // Desenha a Cruz (Mira)
-            ctx.save();
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = colorCrosshairLine; 
-            ctx.setLineDash([4, 4]);
-
-            // Linha Vertical
-            ctx.beginPath();
-            ctx.moveTo(x, topY);
-            ctx.lineTo(x, bottomY);
-            ctx.stroke();
-
-            // Badge de Data (Embaixo)
-            const xIndex = chart.scales.x.getValueForPixel(x);
-            const validIndex = Math.max(0, Math.min(xIndex, labels.length - 1));
-            const dateText = labels[validIndex]; 
-
-            ctx.font = 'bold 9px sans-serif';
-            const dateWidth = ctx.measureText(dateText).width + 12; 
-            const dateHeight = 16;
-            let dateBadgeX = x - (dateWidth / 2);
-            if (dateBadgeX < leftX) dateBadgeX = leftX;
-            if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
-            const dateBadgeY = bottomY - dateHeight - 2; 
-
-            ctx.fillStyle = colorBadgeBackground; 
-            ctx.beginPath();
-            ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 3);
-            ctx.fill();
-            
-            ctx.fillStyle = colorBadgeText;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
-
-            // Bolinha no ponto exato
-            const pointY = activePoint.element.y;
-            ctx.beginPath();
-            ctx.arc(x, pointY, 4, 0, 2 * Math.PI);
-            ctx.fillStyle = colorLine;
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            ctx.restore();
-        }
-    };
-
-    // 5. INICIALIZAÇÃO DO CHART (Configurações de Interação Cruciais)
-    patrimonioChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Patrimônio',
-                    data: dataValor,
-                    borderColor: colorLine,
-                    backgroundColor: gradient,
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    pointHitRadius: 20, // Área de toque
-                    pointHoverRadius: 0, // Desenhado manualmente no plugin
-                    fill: true,
-                    tension: 0.1, 
-                    order: 1
+    if (patrimonioChartInstance) {
+        patrimonioChartInstance.data.labels = labels;
+        patrimonioChartInstance.data.datasets[0].data = dataValor;
+        patrimonioChartInstance.data.datasets[1].data = dataCusto;
+        patrimonioChartInstance.update('none'); 
+    } else {
+        patrimonioChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Patrimônio',
+                        data: dataValor,
+                        fill: true,
+                        backgroundColor: gradientFill,
+                        borderColor: colorLinePatrimonio,
+                        borderWidth: 1.8,
+                        tension: 0.4,
+                        pointRadius: 0, 
+                        pointHitRadius: 30,
+                        pointHoverRadius: 4,
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: colorLinePatrimonio,
+                        pointHoverBorderWidth: 3,
+                        order: 1
+                    },
+                    {
+                        label: 'Investido',
+                        data: dataCusto,
+                        fill: false,
+                        borderColor: colorLineInvestido,
+                        borderWidth: 1.3,
+                        borderDash: [4, 4],
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                        pointHoverRadius: 0,
+                        order: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: '#151515',
+                        titleColor: '#9ca3af',
+                        bodyColor: '#fff',
+                        bodyFont: { weight: 'bold', size: 13 },
+                        borderColor: '#2C2C2E',
+                        borderWidth: 1,
+                        padding: 10,
+                        displayColors: true,
+                        callbacks: {
+                            title: function(context) {
+                                const label = context[0].label;
+                                return Array.isArray(label) ? label.join(' ') : label;
+                            },
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            }
+                        }
+                    }
                 },
-                {
-                    label: 'Investido',
-                    data: dataCusto,
-                    borderColor: colorInvestido,
-                    borderWidth: 1.5,
-                    borderDash: [4, 4],
-                    pointRadius: 0,
-                    pointHitRadius: 0, 
-                    pointHoverRadius: 0,
-                    fill: false,
-                    tension: 0.1,
-                    order: 2
+                scales: {
+                    y: { 
+                        display: true,
+                        position: 'right',
+                        grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
+                        ticks: {
+                            color: colorText,
+                            font: { size: 10, family: 'monospace' },
+                            maxTicksLimit: 6,
+                            callback: function(value) {
+                                if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
+                                return value;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { 
+                            display: true,
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 6, 
+                            color: colorText,
+                            font: { size: 10, weight: 'bold' }
+                        } 
+                    }
                 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: { top: 10, bottom: 10, left: -5, right: 0 } },
-            scales: { x: { display: false }, y: { display: false } },
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: false } // Desabilita tooltip nativo (usa o nosso plugin)
-            },
-            interaction: {
-                // CONFIGURAÇÃO CHAVE PARA SENTIR IGUAL AO STOCK CHART:
-                mode: 'index',
-                intersect: false, // Permite deslizar sem acertar o ponto exato
-                axis: 'x'
-            },
-            animation: { duration: 0 } // Performance instantânea
-        },
-        plugins: [lastValuePlugin, activeCrosshairPlugin]
-    });
+            }
+        });
+    }
 
     const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
     const txCount = (typeof transacoes !== 'undefined') ? transacoes.length : 0;

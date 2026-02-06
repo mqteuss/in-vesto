@@ -2919,7 +2919,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     hoje.setHours(23, 59, 59, 999);
     let dataCorte;
 
-    // --- LÓGICA DE DATAS (ADICIONADO 7D) ---
     if (currentPatrimonioRange === '7D') {
         dataCorte = new Date(hoje);
         dataCorte.setDate(hoje.getDate() - 7);
@@ -2962,6 +2961,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         const queda = (p.value - pico) / pico; 
         if (queda < maxDrawdown) maxDrawdown = queda;
     });
+    
+    // (Opcional) Usar drawdownDisplay em algum lugar se necessário
     const drawdownDisplay = (maxDrawdown * 100).toFixed(2);
 
     let volatilidade = 0;
@@ -2976,83 +2977,64 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         volatilidade = (Math.sqrt(variancia) * Math.sqrt(252)) * 100;
     }
 
-// --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (ESTILO BLOOMBERG / MINIMALISTA) ---
+    // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS ---
     const elVariacao = document.getElementById('stat-variacao');
     const elVariacaoBadge = document.getElementById('stat-variacao-badge');
-    
     const elDrawdown = document.getElementById('stat-drawdown');
-    
     const elVolatilidade = document.getElementById('stat-volatilidade');
     const elVolTag = document.getElementById('stat-vol-tag');
 
-    // 1. Rentabilidade (Hero) - Verde ou Vermelho Fosco
     if (elVariacao) {
         const sinal = variacaoPercent >= 0 ? '+' : '';
         elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
-        
-        // Cores financeiras sóbrias (sem neon)
-        // Verde: #4ade80 (Green 400) | Vermelho: #ef4444 (Red 500)
         const corVar = variacaoPercent >= 0 ? '#4ade80' : '#ef4444'; 
         elVariacao.style.color = corVar;
 
-        // Badge de Status (Pílula Sólida)
         if (elVariacaoBadge) {
-            // Reset classes
             elVariacaoBadge.className = 'px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wide border';
-            
             if (variacaoPercent >= 0) {
                 elVariacaoBadge.textContent = 'LUCRO';
-                // Fundo verde muito escuro, borda verde escura, texto verde claro
                 elVariacaoBadge.classList.add('bg-[#052e16]', 'border-[#14532d]', 'text-[#4ade80]');
             } else {
                 elVariacaoBadge.textContent = 'PREJUÍZO';
-                // Fundo vermelho muito escuro, borda vermelha escura, texto vermelho claro
                 elVariacaoBadge.classList.add('bg-[#450a0a]', 'border-[#7f1d1d]', 'text-[#f87171]');
             }
         }
     }
 
-    // 2. Drawdown (Numérico Puro)
     if (elDrawdown) {
-        // Se drawdown for insignificante (< 0.1%), mostra 0.00%
         const displayVal = Math.abs(maxDrawdown) < 0.001 ? 0 : (maxDrawdown * 100).toFixed(2);
         elDrawdown.textContent = `${displayVal}%`;
-        
-        // Se houver queda relevante (>1%), pinta de vermelho fosco. Senão, cinza neutro.
         if (parseFloat(displayVal) < -0.01 || parseFloat(displayVal) > 1.00) {
              elDrawdown.style.color = '#ef4444'; 
         } else {
-             elDrawdown.style.color = '#a1a1aa'; // Zinc 400 (Cinza neutro)
+             elDrawdown.style.color = '#a1a1aa';
         }
     }
 
-    // 3. Volatilidade (Tag Descritiva)
     if (elVolatilidade) {
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
-        
         let labelVol = 'Baixa';
-        let colorClass = 'text-[#a1a1aa]'; // Cinza padrão
+        let colorClass = 'text-[#a1a1aa]'; 
         
         if (volatilidade < 10) {
             labelVol = 'Conservadora';
-            colorClass = 'text-[#4ade80]'; // Verde
+            colorClass = 'text-[#4ade80]';
         } else if (volatilidade < 25) {
             labelVol = 'Moderada';
-            colorClass = 'text-[#facc15]'; // Amarelo Ouro (não laranja neon)
+            colorClass = 'text-[#facc15]';
         } else {
             labelVol = 'Agressiva';
-            colorClass = 'text-[#ef4444]'; // Vermelho
+            colorClass = 'text-[#ef4444]';
         }
 
         if (elVolTag) {
             elVolTag.textContent = labelVol;
-            // Remove classes antigas e aplica a nova cor
             elVolTag.className = `text-[9px] font-bold uppercase tracking-wider ${colorClass}`;
         }
     }
 
     // --- 8. AGRUPAMENTO MENSAL (APENAS 6M E 1Y) ---
-    // 7D e 1M mostram todos os dias disponíveis
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -3074,9 +3056,13 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     }
 
     // --- 9. GERAÇÃO DE DADOS DO CHART ---
+    // Usaremos Arrays para o ChartJS
     const labels = [];
     const dataValor = [];
     const dataCusto = [];
+    
+    // Arrays auxiliares para o Crosshair (datas completas)
+    const fullDates = []; 
     
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
@@ -3089,13 +3075,17 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const ano = d.getFullYear().toString().slice(-2);
 
-        // FORMATAÇÃO DE LABELS: 7D e 1M mostram dia/mês
-        if (['7D', '1M'].includes(currentPatrimonioRange)) labels.push([dia, mes]); 
-        else if (['6M', '1Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]); 
-        else labels.push([dia, mes, ano]); 
+        // Labels (X Axis)
+        if (['7D', '1M'].includes(currentPatrimonioRange)) labels.push(`${dia}/${mes}`); 
+        else if (['6M', '1Y'].includes(currentPatrimonioRange)) labels.push(`${mes}/${ano}`); 
+        else labels.push(`${mes}/${ano}`); 
+
+        // Data Completa para o Tooltip
+        fullDates.push(p.date);
 
         dataValor.push(parseFloat(p.value.toFixed(2)));
 
+        // Cálculo do Custo (Investido)
         const dataPontoLimite = new Date(p.date + 'T23:59:59');
         while(txIndex < txOrdenadas.length) {
             const tx = txOrdenadas[txIndex];
@@ -3113,129 +3103,242 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         dataCusto.push(custoAcumulado);
     });
 
-    // --- 10. ATUALIZA CARD "GRÁFICO" ---
+    // --- 10. ATUALIZA CARD "GRÁFICO" (Valor Inicial) ---
     const elChartVal = document.getElementById('modal-patrimonio-chart-val');
+    const valorFinalGrafico = dataValor.length > 0 ? dataValor[dataValor.length - 1] : 0;
+    
     if (elChartVal) {
-        if (dataValor.length > 0) {
-            const ultimoValorGrafico = dataValor[dataValor.length - 1];
-            elChartVal.textContent = ultimoValorGrafico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        } else {
-            elChartVal.textContent = "R$ 0,00";
-        }
+        elChartVal.textContent = valorFinalGrafico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // --- 11. RENDERIZAÇÃO ---
+    // =========================================================================
+    // --- 11. RENDERIZAÇÃO (ESTILO COTAÇÕES - CLEAN & CROSSHAIR) ---
+    // =========================================================================
+    
     const ctx = canvas.getContext('2d');
-    const isLight = document.body.classList.contains('light-mode');
-    const colorLinePatrimonio = '#c084fc'; 
-    const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
-    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
-    const colorText = isLight ? '#6b7280' : '#737373'; 
-
-    const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
-    gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
-
     if (patrimonioChartInstance) {
-        patrimonioChartInstance.data.labels = labels;
-        patrimonioChartInstance.data.datasets[0].data = dataValor;
-        patrimonioChartInstance.data.datasets[1].data = dataCusto;
-        patrimonioChartInstance.update('none'); 
-    } else {
-        patrimonioChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Patrimônio',
-                        data: dataValor,
-                        fill: true,
-                        backgroundColor: gradientFill,
-                        borderColor: colorLinePatrimonio,
-                        borderWidth: 1.8,
-                        tension: 0.4,
-                        pointRadius: 0, 
-                        pointHitRadius: 30,
-                        pointHoverRadius: 4,
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: colorLinePatrimonio,
-                        pointHoverBorderWidth: 3,
-                        order: 1
-                    },
-                    {
-                        label: 'Investido',
-                        data: dataCusto,
-                        fill: false,
-                        borderColor: colorLineInvestido,
-                        borderWidth: 1.3,
-                        borderDash: [4, 4],
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHitRadius: 10,
-                        pointHoverRadius: 0,
-                        order: 2
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: '#151515',
-                        titleColor: '#9ca3af',
-                        bodyColor: '#fff',
-                        bodyFont: { weight: 'bold', size: 13 },
-                        borderColor: '#2C2C2E',
-                        borderWidth: 1,
-                        padding: 10,
-                        displayColors: true,
-                        callbacks: {
-                            title: function(context) {
-                                const label = context[0].label;
-                                return Array.isArray(label) ? label.join(' ') : label;
-                            },
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: { 
-                        display: true,
-                        position: 'right',
-                        grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
-                        ticks: {
-                            color: colorText,
-                            font: { size: 10, family: 'monospace' },
-                            maxTicksLimit: 6,
-                            callback: function(value) {
-                                if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
-                                return value;
-                            }
-                        }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { 
-                            display: true,
-                            maxRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 6, 
-                            color: colorText,
-                            font: { size: 10, weight: 'bold' }
-                        } 
-                    }
-                }
-            }
-        });
+        patrimonioChartInstance.destroy();
     }
+
+    // A. LÓGICA DE COR (Rentabilidade)
+    const startVal = dataValor[0];
+    const endVal = dataValor[dataValor.length - 1];
+    const isPositive = endVal >= startVal;
+
+    // Cores Baseadas na Rentabilidade
+    const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
+    const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
+    const colorCrosshairLine = '#A3A3A3';
+    const colorBadgeBackground = '#1C1C1E'; 
+    const colorBadgeText = '#FFFFFF';
+    
+    // Cor da linha de "Investido" (Discreta)
+    const colorInvestido = '#525252'; 
+
+    // Gradiente Vertical
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, colorFillStart);
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+    // B. FUNÇÃO PARA ATUALIZAR HEADER (Valor no Topo)
+    const updateMainHeader = (value) => {
+        if (elChartVal) {
+            elChartVal.textContent = value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+    };
+
+    // C. PLUGIN 1: LINHA DO VALOR ATUAL (Tracejada + Badge Fixo)
+    const lastValuePlugin = {
+        id: 'lastValueLine',
+        afterDraw: (chart) => {
+            const ctx = chart.ctx;
+            const meta = chart.getDatasetMeta(0); // Dataset 0 = Patrimônio
+            if (!meta.data || meta.data.length === 0) return;
+            
+            const lastPoint = meta.data[meta.data.length - 1];
+            const y = lastPoint.y; 
+            const rightEdge = chart.chartArea.right; 
+            const leftEdge = chart.chartArea.left;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(leftEdge, y);
+            ctx.lineTo(rightEdge, y);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = colorLine; 
+            ctx.setLineDash([2, 2]); // Tracejado
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Badge Lateral
+            const text = endVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            ctx.font = 'bold 9px sans-serif'; 
+            const textWidth = ctx.measureText(text).width;
+            const paddingX = 4;
+            const badgeHeight = 16; 
+            const badgeWidth = textWidth + (paddingX * 2);
+            const badgeX = rightEdge - badgeWidth; 
+            const badgeY = y - (badgeHeight / 2);
+
+            // Fundo Badge
+            ctx.fillStyle = colorBadgeBackground;
+            ctx.beginPath();
+            ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3);
+            ctx.fill();
+
+            // Texto Badge (Cor da linha para destaque)
+            ctx.fillStyle = colorLine; 
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, badgeX + paddingX, y + 1); 
+            ctx.restore();
+        }
+    };
+
+    // D. PLUGIN 2: MIRA INTERATIVA (Crosshair + Header Update)
+    const activeCrosshairPlugin = {
+        id: 'activeCrosshair',
+        afterDraw: (chart) => {
+            // Se NÃO estiver tocando, restaura valor final
+            if (!chart.tooltip?._active?.length) {
+                if (chart.lastValUpdate !== 'end') {
+                    updateMainHeader(endVal);
+                    chart.lastValUpdate = 'end';
+                }
+                return;
+            }
+
+            // Se ESTIVER tocando
+            if (!chart.tooltip._eventPosition) return;
+            const event = chart.tooltip._eventPosition;
+            const x = event.x; 
+            const y = event.y; 
+            
+            const topY = chart.scales.y.top;
+            const bottomY = chart.scales.y.bottom;
+            const leftX = chart.scales.x.left;
+            const rightX = chart.scales.x.right;
+
+            if (x < leftX || x > rightX || y < topY || y > bottomY) return;
+
+            // Pega o ponto ativo (Patrimônio)
+            const activePoint = chart.tooltip._active[0];
+            const focusedValue = dataValor[activePoint.index];
+            
+            // Atualiza Header se mudou o valor
+            if (chart.lastValHover !== focusedValue) {
+                updateMainHeader(focusedValue);
+                chart.lastValHover = focusedValue;
+                chart.lastValUpdate = 'active';
+            }
+
+            // Desenha Mira
+            ctx.save();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = colorCrosshairLine; 
+            ctx.setLineDash([4, 4]);
+
+            // Linha Vertical (X)
+            ctx.beginPath();
+            ctx.moveTo(x, topY);
+            ctx.lineTo(x, bottomY);
+            ctx.stroke();
+
+            // Badge de Data (Inferior)
+            const xIndex = chart.scales.x.getValueForPixel(x);
+            const validIndex = Math.max(0, Math.min(xIndex, labels.length - 1));
+            const dateText = labels[validIndex]; // Usa o label já formatado (ex: "12/FEV")
+
+            ctx.font = 'bold 9px sans-serif';
+            const dateWidth = ctx.measureText(dateText).width + 12; 
+            const dateHeight = 16;
+            let dateBadgeX = x - (dateWidth / 2);
+            if (dateBadgeX < leftX) dateBadgeX = leftX;
+            if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
+            const dateBadgeY = bottomY - dateHeight - 2; 
+
+            // Fundo Badge Data
+            ctx.fillStyle = colorBadgeBackground; 
+            ctx.beginPath();
+            ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 3);
+            ctx.fill();
+            
+            ctx.fillStyle = colorBadgeText;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
+
+            // Círculo no Ponto (Dataset 0)
+            const pointY = activePoint.element.y;
+            ctx.beginPath();
+            ctx.arc(x, pointY, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = colorLine;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    };
+
+    // E. INICIALIZAÇÃO CHARTJS
+    patrimonioChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Patrimônio',
+                    data: dataValor,
+                    borderColor: colorLine,
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHitRadius: 20,
+                    pointHoverRadius: 0, // Desenhado manualmente no plugin
+                    fill: true,
+                    tension: 0.1, // Pouca curva para precisão
+                    order: 1
+                },
+                {
+                    label: 'Investido',
+                    data: dataCusto,
+                    borderColor: colorInvestido,
+                    borderWidth: 1,
+                    borderDash: [4, 4],
+                    pointRadius: 0,
+                    pointHitRadius: 0,
+                    pointHoverRadius: 0,
+                    fill: false,
+                    tension: 0.1,
+                    order: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                // Remove padding lateral extra, apenas em cima/baixo
+                padding: { top: 10, bottom: 10, left: -5, right: 0 } 
+            },
+            scales: {
+                x: { display: false }, // Esconde eixos padrões
+                y: { display: false }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false } // Desabilita tooltip nativo
+            },
+            interaction: {
+                mode: 'index',
+                intersect: false,
+                axis: 'x'
+            },
+            animation: { duration: 0 } // Zero delay para performance na troca de abas
+        },
+        plugins: [lastValuePlugin, activeCrosshairPlugin]
+    });
 
     const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
     const txCount = (typeof transacoes !== 'undefined') ? transacoes.length : 0;

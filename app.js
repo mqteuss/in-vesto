@@ -4713,35 +4713,37 @@ async function fetchCotacaoHistorica(symbol) {
     let container = document.getElementById('detalhes-cotacao-container');
     
     if (!container) {
-        // ... (código de criação do container igual ao anterior) ...
         const detalhesPreco = document.getElementById('detalhes-preco');
         if (detalhesPreco && detalhesPreco.parentNode) {
             container = document.createElement('div');
             container.id = 'detalhes-cotacao-container';
-            container.className = "mt-6 mb-6 border-t border-[#2C2C2E] pt-4";
+            // Removi a borda superior dura para ficar mais clean, mantendo apenas margens
+            container.className = "mt-6 mb-6 pt-2"; 
             detalhesPreco.parentNode.insertBefore(container, detalhesPreco.nextSibling);
         } else { return; }
     }
 
     container.innerHTML = `
         <div class="flex flex-col mb-2 px-1">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Histórico de Preço</span>
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 pl-1">Histórico de Preço</span>
             
-            <div class="flex justify-between items-center mb-3 bg-[#1C1C1E] p-2 rounded-lg border border-[#2C2C2E]">
-                <div class="flex flex-col">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold">Abertura</span>
-                    <span id="stat-open" class="text-xs font-mono text-gray-300">--</span>
+            <div class="grid grid-cols-3 gap-2 mb-4">
+                
+                <div class="bg-[#1C1C1E] rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-1">Abertura</span>
+                    <span id="stat-open" class="text-xs font-bold text-gray-200">--</span>
                 </div>
 
-                <div class="flex flex-col items-center">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold">Variação</span>
+                <div class="bg-[#1C1C1E] rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-1">Variação</span>
                     <span id="stat-var" class="text-xs font-bold text-gray-300">--</span>
                 </div>
 
-                <div class="flex flex-col items-end">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold">Fechamento</span>
-                    <span id="stat-close" class="text-xs font-mono text-white">--</span>
+                <div class="bg-[#1C1C1E] rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-1">Fechamento</span>
+                    <span id="stat-close" class="text-xs font-bold text-white">--</span>
                 </div>
+
             </div>
 
             <div class="flex overflow-x-auto no-scrollbar gap-2 pb-1 mb-2" id="chart-filters">
@@ -5066,7 +5068,7 @@ function renderPriceChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 1.5,
+                borderWidth: 1,
                 pointRadius: 0,
                 pointHitRadius: 20, 
                 pointHoverRadius: 4,
@@ -5080,7 +5082,7 @@ function renderPriceChart(dataPoints, range) {
             responsive: true,
             maintainAspectRatio: false,
             layout: { 
-                padding: { left: 0, right: 38, top: 10, bottom: 20 } 
+                padding: { left: 0, right: 36, top: 10, bottom: 20 } 
             },
             plugins: {
                 legend: { display: false },
@@ -5088,7 +5090,7 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger', 
                     yAlign: 'bottom',
-                    caretPadding: 60,
+                    caretPadding: 35,
                     mode: 'index',
                     intersect: false,
                     backgroundColor: 'rgba(28, 28, 30, 0.95)',

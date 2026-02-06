@@ -1746,6 +1746,7 @@ function renderizarHistorico() {
     const flatItems = flattenHistoricoData(grupos);
 
 // --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
+// --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
@@ -1757,9 +1758,9 @@ function renderizarHistorico() {
         
         const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
         
-        // Cores
+        // COR AJUSTADA: #1C1C1E (Cinza mais leve, padrão visual de cards)
+        const iconBg = 'bg-[#1C1C1E]'; 
         const cardBg = 'bg-black'; 
-        const iconBg = 'bg-[#141414]'; 
 
         return `
             <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBg}" style="background-color: black !important;" data-action="edit-row" data-id="${t.id}">
@@ -1853,17 +1854,18 @@ function renderizarHistoricoProventos() {
     const flatItems = flattenHistoricoData(gruposLimpos);
 
 // --- RENDERIZADOR DE LINHA (PROVENTOS) ---
+// --- RENDERIZADOR DE LINHA (PROVENTOS) ---
     const rowRenderer = (p) => {
         const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
         const total = p.totalCalculado; 
         
-        const bgIcone = 'bg-[#141414]';
+        // COR AJUSTADA: #1C1C1E
+        const bgIcone = 'bg-[#1C1C1E]';
 
         // Ícone Seta de Gráfico Verde (Badge)
         const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
 
-        // Tags
         let tagHtml = '';
         const rawType = (p.type || '').toUpperCase();
         if (rawType.includes('JCP')) {
@@ -5523,14 +5525,11 @@ function renderizarTransacoesDetalhes(symbol) {
             
             const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
             
-            // Cores: Ícone Cinza Escuro
-            const iconBg = 'bg-[#141414]'; 
+            // COR AJUSTADA: #1C1C1E
+            const iconBg = 'bg-[#1C1C1E]'; 
 
             const item = document.createElement('div');
-            // Adiciona bg-black na classe
             item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 rounded-xl relative group w-full bg-black';
-            
-            // CORREÇÃO: Aplica a cor preta forçada corretamente
             item.style.setProperty('background-color', 'black', 'important');
             
             item.innerHTML = `

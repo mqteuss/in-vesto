@@ -1751,12 +1751,11 @@ function renderizarHistorico() {
         const totalTransacao = t.quantity * t.price;
         const dia = new Date(t.date).getDate().toString().padStart(2, '0');
         
-        // Ícones de Seta (Tamanho Normal: h-5 w-5)
+        // Ícones
         const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
         const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
         
         const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
-        
         const iconBg = 'bg-[#1C1C1E]'; 
         const cardBg = 'bg-black'; 
 
@@ -1769,9 +1768,9 @@ function renderizarHistorico() {
                     </div>
 
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 h-5">
                             <h4 class="text-sm font-bold text-white tracking-tight leading-none">${t.symbol}</h4>
-                        </div>
+                            </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
                             <span>•</span>
@@ -1857,13 +1856,16 @@ function renderizarHistoricoProventos() {
         const dia = p.paymentDate.split('-')[2]; 
         const total = p.totalCalculado; 
         
-        const bgIcone = 'bg-[#1C1C1E]';
+        // Cálculo do Valor Unitário (para exibir abaixo do total)
+        const valorUnitario = total / (qtd || 1); 
 
-        // Ícone Seta de Gráfico Verde (Tamanho Normal: h-5 w-5)
+        const bgIcone = 'bg-[#1C1C1E]';
         const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
 
         let tagHtml = '';
         const rawType = (p.type || '').toUpperCase();
+        
+        // Tags com altura de linha ajustada (leading-none) para não empurrar demais
         if (rawType.includes('JCP')) {
             tagHtml = `<span class="text-[9px] font-extrabold text-amber-400 bg-amber-900/20 border border-amber-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">JCP</span>`;
         } else if (rawType.includes('DIV')) {
@@ -1894,6 +1896,8 @@ function renderizarHistoricoProventos() {
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
                     <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
+                    
+                    <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(valorUnitario)}</span>
                 </div>
             </div>
         `;

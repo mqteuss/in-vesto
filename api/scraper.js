@@ -499,25 +499,16 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-// No arquivo scraper.js
-
-if (mode === 'historico_12m') {
-    if (!payload.ticker) return res.json({ json: [] });
-    
-    // Pega os dados brutos
-    const history = await scrapeAsset(payload.ticker);
-
-    const formatted = history.slice(0, 24).map(h => {
-        return {
-            paymentDate: h.paymentDate, // IMPORTANTE: Data completa (YYYY-MM-DD)
-            value: h.value,
-            type: h.type || 'Outros',   // IMPORTANTE: O Tipo (JCP, Dividendo...)
-            mes: h.paymentDate ? h.paymentDate.substring(0, 7) : '' 
-        };
-    });
-
-    return res.status(200).json({ json: formatted });
-}
+        if (mode === 'historico_12m') {
+            if (!payload.ticker) return res.json({ json: [] });
+            const history = await scrapeAsset(payload.ticker);
+            const formatted = history.slice(0, 18).map(h => {
+                if (!h.paymentDate) return null;
+                const [ano, mes] = h.paymentDate.split('-');
+                return { mes: `${mes}/${ano.substring(2)}`, valor: h.value };
+            }).filter(h => h !== null);
+            return res.status(200).json({ json: formatted });
+        }
 
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });

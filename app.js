@@ -5588,35 +5588,43 @@ function renderHistoricoIADetalhes(mesesIgnore) {
         return;
     }
 
-    // --- 1. INJEÇÃO DOS BOTÕES INTELIGENTES ---
-    // Localiza o container de botões que já existe no seu HTML
+    // --- 1. FILTROS VISUAIS (ESTILO COTAÇÃO) ---
     const containerBotoes = document.getElementById('periodo-selector-group');
     
     if (containerBotoes) {
-        // Substitui os botões "3M 6M 9M" pelos seus filtros personalizados
-        containerBotoes.className = "flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar justify-start"; // Ajusta layout
+        // Limpa classes antigas e aplica layout flexível
+        containerBotoes.className = "flex justify-center bg-[#151515] p-1 rounded-xl mb-4 w-full max-w-xs mx-auto";
+        
+        // Define os botões com o estilo exato do app
+        const getBtnClass = (filterKey) => {
+            const isActive = currentProventosFilter === filterKey;
+            // Estilo base pílula
+            return `flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold text-center transition-all duration-200 ${
+                isActive 
+                ? 'bg-purple-600 text-white shadow-md' 
+                : 'text-[#888888] hover:text-white'
+            }`;
+        };
+
         containerBotoes.innerHTML = `
-            <button onclick="mudarFiltroProventos('12m')" id="btn-filter-12m" 
-                class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap border border-gray-800 ${currentProventosFilter === '12m' ? 'bg-purple-600 text-white border-purple-500' : 'bg-[#151515] text-gray-400'}">
-                Últimos 12 Meses
+            <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')}">
+                12 Meses
             </button>
-            <button onclick="mudarFiltroProventos('ytd')" id="btn-filter-ytd" 
-                class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap border border-gray-800 ${currentProventosFilter === 'ytd' ? 'bg-purple-600 text-white border-purple-500' : 'bg-[#151515] text-gray-400'}">
-                Ano Atual (YTD)
+            <button onclick="mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')}">
+                Ano (YTD)
             </button>
-            <button onclick="mudarFiltroProventos('desde_aporte')" id="btn-filter-aporte" 
-                class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap border border-gray-800 ${currentProventosFilter === 'desde_aporte' ? 'bg-purple-600 text-white border-purple-500' : 'bg-[#151515] text-gray-400'}">
-                Desde o Aporte
+            <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')}">
+                Posição
             </button>
         `;
     }
 
-    // Garante que o canvas existe e está limpo
+    // Garante container do gráfico
     if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `<div class="relative h-48 w-full"><canvas id="detalhes-proventos-chart"></canvas></div>`;
     }
 
-    // Renderiza o Gráfico com os dados crus
+    // Renderiza Gráfico
     renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
 }
 
@@ -5637,7 +5645,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
 
     const ctx = canvas.getContext('2d');
 
-    // --- 1. LÓGICA DE FILTRAGEM ---
+    // --- 1. LÓGICA DE FILTRAGEM (Mantida e Robusta) ---
     let filteredData = rawData.filter(d => d.paymentDate); 
     const hoje = new Date();
 
@@ -5652,77 +5660,61 @@ function renderizarGraficoProventosDetalhes(rawData) {
         filteredData = filteredData.filter(d => new Date(d.paymentDate) >= inicioAno);
     }
     else if (currentProventosFilter === 'desde_aporte') {
-        // Busca a data de compra na variável global carteiraCalculada
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === currentDetalhesSymbol);
         if (ativoCarteira && ativoCarteira.dataCompra) {
             const dataCompra = new Date(ativoCarteira.dataCompra);
-            // Mostra apenas proventos pagos DEPOIS da compra
+            // Ajuste: Mostra mês da compra em diante
+            dataCompra.setDate(1); 
             filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataCompra);
         } else {
-            // Fallback: Se não achar data de compra, mostra tudo (ou últimos 5 anos)
+            // Fallback: 5 anos se não achar compra
              const dataLimite = new Date();
              dataLimite.setFullYear(hoje.getFullYear() - 5);
              filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
         }
     }
 
-    // Ordena Cronologicamente
     filteredData.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
-    // --- 2. AGRUPAMENTO (EMPILHAMENTO) ---
+    // --- 2. AGRUPAMENTO ---
     const grouped = {};
     const allMonths = [];
 
     filteredData.forEach(item => {
         const d = new Date(item.paymentDate);
-        // Chave para ordenação: "2023-10"
         const sortKey = d.toISOString().slice(0, 7); 
-        // Label visual: "Out/23"
-        const labelKey = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.','');
+        const labelKey = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.','').toUpperCase();
 
         if (!grouped[sortKey]) {
             grouped[sortKey] = { 
                 label: labelKey,
-                JCP: 0, 
-                TRIB: 0, 
-                DIV: 0, 
-                events: [] 
+                JCP: 0, TRIB: 0, DIV: 0, 
+                rawTotal: 0 
             };
             allMonths.push(sortKey);
         }
 
-        // Detecta Tipo
         let type = 'DIV';
         const rawType = (item.rawType || item.type || '').toUpperCase();
-        
-        // Prioridade para TRIB para não cair em DIV
         if (rawType.includes('TRIB')) type = 'TRIB';
         else if (rawType.includes('JCP') || rawType.includes('JURO')) type = 'JCP';
         
         const val = parseFloat(item.value || 0);
-        
-        // Soma na pilha correspondente
         grouped[sortKey][type] += val;
-
-        // Guarda evento para Tooltip
-        grouped[sortKey].events.push({
-            date: d.toLocaleDateString('pt-BR'), // dia/mês/ano
-            value: val,
-            type: type
-        });
+        grouped[sortKey].rawTotal += val;
     });
 
-    // Remove duplicatas de meses e ordena
     const uniqueMonths = [...new Set(allMonths)].sort();
     
-    // Arrays para o ChartJS
+    // Dados para ChartJS
     const labels = uniqueMonths.map(k => grouped[k].label);
     const dataJCP = uniqueMonths.map(k => grouped[k].JCP);
     const dataTRIB = uniqueMonths.map(k => grouped[k].TRIB);
     const dataDIV = uniqueMonths.map(k => grouped[k].DIV);
-    const customEvents = uniqueMonths.map(k => grouped[k].events);
+    // Passamos o objeto completo para o tooltip usar no 'customInfo'
+    const customInfo = uniqueMonths.map(k => grouped[k]);
 
-    // --- 3. CONFIGURAÇÃO DO CHART.JS ---
+    // --- 3. CONFIGURAÇÃO VISUAL ---
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -5734,8 +5726,12 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     backgroundColor: CHART_COLORS.JCP.bg,
                     borderColor: CHART_COLORS.JCP.border,
                     borderWidth: 1,
-                    stack: 'Stack 0', // Força empilhamento na mesma barra
-                    customEvents: customEvents 
+                    stack: 'Stack 0',
+                    customInfo: customInfo, // Dados extras para o tooltip
+                    // Visual das Barras (Igual ao do app)
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8,
+                    borderRadius: 4
                 },
                 {
                     label: 'Tributado',
@@ -5744,7 +5740,10 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderColor: CHART_COLORS.TRIB.border,
                     borderWidth: 1,
                     stack: 'Stack 0',
-                    customEvents: customEvents
+                    customInfo: customInfo,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8,
+                    borderRadius: 4
                 },
                 {
                     label: 'Dividendos',
@@ -5753,7 +5752,10 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderColor: CHART_COLORS.DIV.border,
                     borderWidth: 1,
                     stack: 'Stack 0',
-                    customEvents: customEvents
+                    customInfo: customInfo,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8,
+                    borderRadius: 4
                 }
             ]
         },
@@ -5761,65 +5763,46 @@ function renderizarGraficoProventosDetalhes(rawData) {
             responsive: true,
             maintainAspectRatio: false,
             interaction: {
-                mode: 'index', // Tooltip pega todos os itens da pilha (mês)
+                mode: 'index',
                 intersect: false,
             },
             scales: {
-                x: {
-                    display: false, // Remove Eixo X como pedido
-                },
-                y: {
-                    display: false, // Remove Eixo Y
-                }
+                x: { display: false },
+                y: { display: false }
             },
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    backgroundColor: 'rgba(21, 21, 21, 0.98)',
+                    // Visual do Tooltip (Escuro e Clean)
+                    backgroundColor: '#18181b', 
                     titleColor: '#fff',
-                    bodyColor: '#cbd5e1',
-                    borderColor: '#333',
+                    bodyColor: '#a1a1aa',
+                    borderColor: '#27272a',
                     borderWidth: 1,
-                    padding: 12,
-                    cornerRadius: 12,
-                    displayColors: false, // Remove quadradinhos padrão
+                    padding: 10,
+                    cornerRadius: 8,
+                    displayColors: true, // Mostra bolinhas de cor
+                    boxWidth: 8,
+                    boxHeight: 8,
+                    usePointStyle: true,
                     
                     callbacks: {
-                        title: (items) => items[0].label.toUpperCase(),
+                        // Título: Mês e Valor Total Grande
+                        title: function(context) {
+                            const info = context[0].dataset.customInfo[context[0].dataIndex];
+                            const totalFmt = info.rawTotal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                            return `${info.label}  •  ${totalFmt}`;
+                        },
+                        // Corpo: Lista compacta apenas dos tipos que existem (> 0)
                         label: function(context) {
-                            // Hack: O ChartJS chama essa função para cada dataset (DIV, JCP, TRIB).
-                            // Retornamos null para ignorar os outros e desenhar tudo no primeiro (index 0)
-                            if (context.datasetIndex !== 0) return null;
+                            const val = context.parsed.y;
+                            // Se o valor for 0, não mostra no tooltip para economizar espaço
+                            if (val <= 0.001) return null;
 
-                            const monthEvents = context.dataset.customEvents[context.dataIndex];
-                            
-                            // Ordena eventos do mês por dia
-                            monthEvents.sort((a,b) => {
-                                const da = a.date.split('/').reverse().join('-');
-                                const db = b.date.split('/').reverse().join('-');
-                                return da.localeCompare(db);
-                            });
-
-                            let lines = [];
-                            let totalMes = 0;
-
-                            monthEvents.forEach(evt => {
-                                totalMes += evt.value;
-                                const valorFmt = evt.value.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-                                
-                                // Ícone/Texto do Tipo
-                                let typeLabel = 'DIV';
-                                if(evt.type === 'JCP') typeLabel = 'JCP';
-                                if(evt.type === 'TRIB') typeLabel = 'TRIB';
-
-                                lines.push(`${evt.date}  •  ${typeLabel}  •  ${valorFmt}`);
-                            });
-
-                            lines.push(' '); 
-                            lines.push(`TOTAL: ${totalMes.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`);
-
-                            return lines;
+                            const label = context.dataset.label;
+                            const valFmt = val.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                            return `${label}: ${valFmt}`;
                         }
                     }
                 }

@@ -5592,30 +5592,27 @@ function renderHistoricoIADetalhes(mesesIgnore) {
     const containerBotoes = document.getElementById('periodo-selector-group');
     
     if (containerBotoes) {
-        // Limpa classes antigas e aplica layout flexível
-        containerBotoes.className = "flex justify-center bg-[#151515] p-1 rounded-xl mb-4 w-full max-w-xs mx-auto";
+        // Layout flexível para caber todos os botões com rolagem suave se necessário
+        containerBotoes.className = "flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar px-1";
         
-        // Define os botões com o estilo exato do app
+        // Função para gerar classes idênticas ao filtro de Cotação
         const getBtnClass = (filterKey) => {
             const isActive = currentProventosFilter === filterKey;
-            // Estilo base pílula
-            return `flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold text-center transition-all duration-200 ${
+            // Estilo Cotação: rounded-xl, fundo #151515, texto #888888
+            return `flex-shrink-0 py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border border-transparent ${
                 isActive 
                 ? 'bg-purple-600 text-white shadow-md' 
-                : 'text-[#888888] hover:text-white'
+                : 'bg-[#151515] text-[#888888] hover:text-gray-300'
             }`;
         };
 
+        // Novos Botões: 1A, 5A, MAX, YTD, Posição
         containerBotoes.innerHTML = `
-            <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')}">
-                12 Meses
-            </button>
-            <button onclick="mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')}">
-                Ano (YTD)
-            </button>
-            <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')}">
-                Posição
-            </button>
+            <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')}">1A</button>
+            <button onclick="mudarFiltroProventos('5y')" class="${getBtnClass('5y')}">5A</button>
+            <button onclick="mudarFiltroProventos('max')" class="${getBtnClass('max')}">MAX</button>
+            <button onclick="mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')}">YTD</button>
+            <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')}">Posição</button>
         `;
     }
 
@@ -5645,7 +5642,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
 
     const ctx = canvas.getContext('2d');
 
-    // --- 1. LÓGICA DE FILTRAGEM (Mantida e Robusta) ---
+    // --- 1. LÓGICA DE FILTRAGEM ---
     let filteredData = rawData.filter(d => d.paymentDate); 
     const hoje = new Date();
 
@@ -5654,7 +5651,18 @@ function renderizarGraficoProventosDetalhes(rawData) {
         dataLimite.setMonth(hoje.getMonth() - 11);
         dataLimite.setDate(1);
         filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
-    } 
+    }
+    else if (currentProventosFilter === '5y') {
+        // NOVO: Últimos 5 Anos
+        const dataLimite = new Date();
+        dataLimite.setFullYear(hoje.getFullYear() - 5);
+        dataLimite.setDate(1);
+        filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
+    }
+    else if (currentProventosFilter === 'max') {
+        // NOVO: Todo o histórico (sem filtro de data)
+        filteredData = [...filteredData];
+    }
     else if (currentProventosFilter === 'ytd') {
         const inicioAno = new Date(hoje.getFullYear(), 0, 1);
         filteredData = filteredData.filter(d => new Date(d.paymentDate) >= inicioAno);
@@ -5663,17 +5671,17 @@ function renderizarGraficoProventosDetalhes(rawData) {
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === currentDetalhesSymbol);
         if (ativoCarteira && ativoCarteira.dataCompra) {
             const dataCompra = new Date(ativoCarteira.dataCompra);
-            // Ajuste: Mostra mês da compra em diante
             dataCompra.setDate(1); 
             filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataCompra);
         } else {
-            // Fallback: 5 anos se não achar compra
+             // Fallback para 5 anos se não tiver data de compra
              const dataLimite = new Date();
              dataLimite.setFullYear(hoje.getFullYear() - 5);
              filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
         }
     }
 
+    // Ordena Cronologicamente
     filteredData.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
     // --- 2. AGRUPAMENTO ---
@@ -5711,7 +5719,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const dataJCP = uniqueMonths.map(k => grouped[k].JCP);
     const dataTRIB = uniqueMonths.map(k => grouped[k].TRIB);
     const dataDIV = uniqueMonths.map(k => grouped[k].DIV);
-    // Passamos o objeto completo para o tooltip usar no 'customInfo'
     const customInfo = uniqueMonths.map(k => grouped[k]);
 
     // --- 3. CONFIGURAÇÃO VISUAL ---
@@ -5727,8 +5734,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderColor: CHART_COLORS.JCP.border,
                     borderWidth: 1,
                     stack: 'Stack 0',
-                    customInfo: customInfo, // Dados extras para o tooltip
-                    // Visual das Barras (Igual ao do app)
+                    customInfo: customInfo,
                     barPercentage: 0.6,
                     categoryPercentage: 0.8,
                     borderRadius: 4
@@ -5774,7 +5780,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    // Visual do Tooltip (Escuro e Clean)
                     backgroundColor: '#18181b', 
                     titleColor: '#fff',
                     bodyColor: '#a1a1aa',
@@ -5782,23 +5787,20 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderWidth: 1,
                     padding: 10,
                     cornerRadius: 8,
-                    displayColors: true, // Mostra bolinhas de cor
+                    displayColors: true,
                     boxWidth: 8,
                     boxHeight: 8,
                     usePointStyle: true,
                     
                     callbacks: {
-                        // Título: Mês e Valor Total Grande
                         title: function(context) {
                             const info = context[0].dataset.customInfo[context[0].dataIndex];
                             const totalFmt = info.rawTotal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
                             return `${info.label}  •  ${totalFmt}`;
                         },
-                        // Corpo: Lista compacta apenas dos tipos que existem (> 0)
                         label: function(context) {
                             const val = context.parsed.y;
-                            // Se o valor for 0, não mostra no tooltip para economizar espaço
-                            if (val <= 0.001) return null;
+                            if (val <= 0.001) return null; // Oculta valores zerados
 
                             const label = context.dataset.label;
                             const valFmt = val.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});

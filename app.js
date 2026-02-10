@@ -23,6 +23,15 @@ window.dismissNotificationGlobal = function(id, btnElement) {
     }
 };
 
+// --- CONFIGURAÇÃO DE CORES E FILTROS ---
+let currentProventosFilter = '12m'; // Padrão
+
+const CHART_COLORS = {
+    JCP:  { bg: '#fbbf24', border: '#d97706' }, // Amber (Amarelo)
+    TRIB: { bg: '#fb7185', border: '#e11d48' }, // Rose (Vermelho Suave)
+    DIV:  { bg: '#c084fc', border: '#9333ea' }  // Roxo (Padrão)
+};
+
 // Verificar se a lista ficou vazia
 function checkEmptyState() {
     const list = document.getElementById('notifications-list');
@@ -5566,105 +5575,254 @@ function renderizarTransacoesDetalhes(symbol) {
         }
     }
     
-    function renderHistoricoIADetalhes(meses) {
-        if (!currentDetalhesHistoricoJSON) {
-            return;
+function renderHistoricoIADetalhes(mesesIgnore) {
+    if (!currentDetalhesHistoricoJSON) return;
+
+    // Se não tiver dados
+    if (currentDetalhesHistoricoJSON.length === 0) {
+        detalhesAiProvento.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">Sem histórico disponível.</p>`;
+        if (detalhesChartInstance) {
+            detalhesChartInstance.destroy();
+            detalhesChartInstance = null;
         }
-
-        if (currentDetalhesHistoricoJSON.length === 0) {
-            detalhesAiProvento.innerHTML = `
-                <p class="text-sm text-gray-500 text-center py-4">
-                    Sem histórico recente.
-                </p>
-            `;
-            if (detalhesChartInstance) {
-                detalhesChartInstance.destroy();
-                detalhesChartInstance = null;
-            }
-            return;
-        }
-
-        if (!document.getElementById('detalhes-proventos-chart')) {
-             detalhesAiProvento.innerHTML = `
-                <div class="relative h-48 w-full">
-                    <canvas id="detalhes-proventos-chart"></canvas>
-                </div>
-             `;
-        }
-
-        const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
-        
-        const labels = dadosFiltrados.map(item => item.mes);
-        const data = dadosFiltrados.map(item => item.valor);
-
-        renderizarGraficoProventosDetalhes({ labels, data });
+        return;
     }
+
+    // --- 1. INJEÇÃO DOS BOTÕES INTELIGENTES ---
+    // Localiza o container de botões que já existe no seu HTML
+    const containerBotoes = document.getElementById('periodo-selector-group');
+    
+    if (containerBotoes) {
+        // Substitui os botões "3M 6M 9M" pelos seus filtros personalizados
+        containerBotoes.className = "flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar justify-start"; // Ajusta layout
+        containerBotoes.innerHTML = `
+            <button onclick="mudarFiltroProventos('12m')" id="btn-filter-12m" 
+                class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap border border-gray-800 ${currentProventosFilter === '12m' ? 'bg-purple-600 text-white border-purple-500' : 'bg-[#151515] text-gray-400'}">
+                Últimos 12 Meses
+            </button>
+            <button onclick="mudarFiltroProventos('ytd')" id="btn-filter-ytd" 
+                class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap border border-gray-800 ${currentProventosFilter === 'ytd' ? 'bg-purple-600 text-white border-purple-500' : 'bg-[#151515] text-gray-400'}">
+                Ano Atual (YTD)
+            </button>
+            <button onclick="mudarFiltroProventos('desde_aporte')" id="btn-filter-aporte" 
+                class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap border border-gray-800 ${currentProventosFilter === 'desde_aporte' ? 'bg-purple-600 text-white border-purple-500' : 'bg-[#151515] text-gray-400'}">
+                Desde o Aporte
+            </button>
+        `;
+    }
+
+    // Garante que o canvas existe e está limpo
+    if (!document.getElementById('detalhes-proventos-chart')) {
+        detalhesAiProvento.innerHTML = `<div class="relative h-48 w-full"><canvas id="detalhes-proventos-chart"></canvas></div>`;
+    }
+
+    // Renderiza o Gráfico com os dados crus
+    renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
+}
+
+// Função Global para clique nos botões
+window.mudarFiltroProventos = function(modo) {
+    currentProventosFilter = modo;
+    renderHistoricoIADetalhes(); // Re-renderiza para atualizar classes dos botões e o gráfico
+};
 	
-	function renderizarGraficoProventosDetalhes(dados) {
+function renderizarGraficoProventosDetalhes(rawData) {
     const canvas = document.getElementById('detalhes-proventos-chart');
     if (!canvas) return;
 
-    // Destrói gráfico anterior se existir para evitar sobreposição
     if (detalhesChartInstance) {
         detalhesChartInstance.destroy();
         detalhesChartInstance = null;
     }
 
     const ctx = canvas.getContext('2d');
-    
-    // Configuração visual (Barra roxa vibrante)
-    const corBarra = '#8b5cf6'; 
-    const corBarraHover = '#7c3aed';
 
+    // --- 1. LÓGICA DE FILTRAGEM ---
+    let filteredData = rawData.filter(d => d.paymentDate); 
+    const hoje = new Date();
+
+    if (currentProventosFilter === '12m') {
+        const dataLimite = new Date();
+        dataLimite.setMonth(hoje.getMonth() - 11);
+        dataLimite.setDate(1);
+        filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
+    } 
+    else if (currentProventosFilter === 'ytd') {
+        const inicioAno = new Date(hoje.getFullYear(), 0, 1);
+        filteredData = filteredData.filter(d => new Date(d.paymentDate) >= inicioAno);
+    }
+    else if (currentProventosFilter === 'desde_aporte') {
+        // Busca a data de compra na variável global carteiraCalculada
+        const ativoCarteira = carteiraCalculada.find(a => a.symbol === currentDetalhesSymbol);
+        if (ativoCarteira && ativoCarteira.dataCompra) {
+            const dataCompra = new Date(ativoCarteira.dataCompra);
+            // Mostra apenas proventos pagos DEPOIS da compra
+            filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataCompra);
+        } else {
+            // Fallback: Se não achar data de compra, mostra tudo (ou últimos 5 anos)
+             const dataLimite = new Date();
+             dataLimite.setFullYear(hoje.getFullYear() - 5);
+             filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
+        }
+    }
+
+    // Ordena Cronologicamente
+    filteredData.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+
+    // --- 2. AGRUPAMENTO (EMPILHAMENTO) ---
+    const grouped = {};
+    const allMonths = [];
+
+    filteredData.forEach(item => {
+        const d = new Date(item.paymentDate);
+        // Chave para ordenação: "2023-10"
+        const sortKey = d.toISOString().slice(0, 7); 
+        // Label visual: "Out/23"
+        const labelKey = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.','');
+
+        if (!grouped[sortKey]) {
+            grouped[sortKey] = { 
+                label: labelKey,
+                JCP: 0, 
+                TRIB: 0, 
+                DIV: 0, 
+                events: [] 
+            };
+            allMonths.push(sortKey);
+        }
+
+        // Detecta Tipo
+        let type = 'DIV';
+        const rawType = (item.rawType || item.type || '').toUpperCase();
+        
+        // Prioridade para TRIB para não cair em DIV
+        if (rawType.includes('TRIB')) type = 'TRIB';
+        else if (rawType.includes('JCP') || rawType.includes('JURO')) type = 'JCP';
+        
+        const val = parseFloat(item.value || 0);
+        
+        // Soma na pilha correspondente
+        grouped[sortKey][type] += val;
+
+        // Guarda evento para Tooltip
+        grouped[sortKey].events.push({
+            date: d.toLocaleDateString('pt-BR'), // dia/mês/ano
+            value: val,
+            type: type
+        });
+    });
+
+    // Remove duplicatas de meses e ordena
+    const uniqueMonths = [...new Set(allMonths)].sort();
+    
+    // Arrays para o ChartJS
+    const labels = uniqueMonths.map(k => grouped[k].label);
+    const dataJCP = uniqueMonths.map(k => grouped[k].JCP);
+    const dataTRIB = uniqueMonths.map(k => grouped[k].TRIB);
+    const dataDIV = uniqueMonths.map(k => grouped[k].DIV);
+    const customEvents = uniqueMonths.map(k => grouped[k].events);
+
+    // --- 3. CONFIGURAÇÃO DO CHART.JS ---
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: dados.labels,
-            datasets: [{
-                label: 'Proventos',
-                data: dados.data,
-                backgroundColor: corBarra,
-                hoverBackgroundColor: corBarraHover,
-                borderRadius: 4,
-                barPercentage: 0.6,
-                categoryPercentage: 0.8
-            }]
+            labels: labels,
+            datasets: [
+                {
+                    label: 'JCP',
+                    data: dataJCP,
+                    backgroundColor: CHART_COLORS.JCP.bg,
+                    borderColor: CHART_COLORS.JCP.border,
+                    borderWidth: 1,
+                    stack: 'Stack 0', // Força empilhamento na mesma barra
+                    customEvents: customEvents 
+                },
+                {
+                    label: 'Tributado',
+                    data: dataTRIB,
+                    backgroundColor: CHART_COLORS.TRIB.bg,
+                    borderColor: CHART_COLORS.TRIB.border,
+                    borderWidth: 1,
+                    stack: 'Stack 0',
+                    customEvents: customEvents
+                },
+                {
+                    label: 'Dividendos',
+                    data: dataDIV,
+                    backgroundColor: CHART_COLORS.DIV.bg,
+                    borderColor: CHART_COLORS.DIV.border,
+                    borderWidth: 1,
+                    stack: 'Stack 0',
+                    customEvents: customEvents
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index', // Tooltip pega todos os itens da pilha (mês)
+                intersect: false,
+            },
+            scales: {
+                x: {
+                    display: false, // Remove Eixo X como pedido
+                },
+                y: {
+                    display: false, // Remove Eixo Y
+                }
+            },
             plugins: {
-                legend: { display: false }, // Esconde legenda
+                legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#151515',
+                    enabled: true,
+                    backgroundColor: 'rgba(21, 21, 21, 0.98)',
                     titleColor: '#fff',
-                    bodyColor: '#ccc',
+                    bodyColor: '#cbd5e1',
                     borderColor: '#333',
                     borderWidth: 1,
-                    displayColors: false,
+                    padding: 12,
+                    cornerRadius: 12,
+                    displayColors: false, // Remove quadradinhos padrão
+                    
                     callbacks: {
+                        title: (items) => items[0].label.toUpperCase(),
                         label: function(context) {
-                            return formatBRL(context.parsed.y);
+                            // Hack: O ChartJS chama essa função para cada dataset (DIV, JCP, TRIB).
+                            // Retornamos null para ignorar os outros e desenhar tudo no primeiro (index 0)
+                            if (context.datasetIndex !== 0) return null;
+
+                            const monthEvents = context.dataset.customEvents[context.dataIndex];
+                            
+                            // Ordena eventos do mês por dia
+                            monthEvents.sort((a,b) => {
+                                const da = a.date.split('/').reverse().join('-');
+                                const db = b.date.split('/').reverse().join('-');
+                                return da.localeCompare(db);
+                            });
+
+                            let lines = [];
+                            let totalMes = 0;
+
+                            monthEvents.forEach(evt => {
+                                totalMes += evt.value;
+                                const valorFmt = evt.value.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                                
+                                // Ícone/Texto do Tipo
+                                let typeLabel = 'DIV';
+                                if(evt.type === 'JCP') typeLabel = 'JCP';
+                                if(evt.type === 'TRIB') typeLabel = 'TRIB';
+
+                                lines.push(`${evt.date}  •  ${typeLabel}  •  ${valorFmt}`);
+                            });
+
+                            lines.push(' '); 
+                            lines.push(`TOTAL: ${totalMes.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`);
+
+                            return lines;
                         }
                     }
                 }
-            },
-            scales: {
-                y: {
-                    display: false, // Esconde eixo Y para visual mais limpo
-                    grid: { display: false }
-                },
-                x: {
-                    grid: { display: false, drawBorder: false },
-                    ticks: {
-                        color: '#666',
-                        font: { size: 10, weight: 'bold' }
-                    }
-                }
-            },
-            animation: {
-                duration: 500,
-                easing: 'easeOutQuart'
             }
         }
     });

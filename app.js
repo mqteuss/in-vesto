@@ -1867,15 +1867,19 @@ let tagHtml = '';
         
         // Tags com altura de linha ajustada
         if (rawType.includes('JCP')) {
+            // JCP -> Mantém Âmbar
             tagHtml = `<span class="text-[9px] font-extrabold text-amber-400 bg-amber-900/20 border border-amber-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">JCP</span>`;
             
-        } else if (rawType.includes('TRIBUTADO')) {
+        } else if (rawType.includes('TRIB')) { 
+            // CORREÇÃO AQUI: Mudamos de 'TRIBUTADO' para 'TRIB' para pegar 'REND_TRIB'
             tagHtml = `<span class="text-[9px] font-extrabold text-rose-400 bg-rose-900/20 border border-rose-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">TRIB</span>`;
             
         } else if (rawType.includes('DIV') || rawType.includes('REND')) {
+            // Dividendos e Rendimentos de FIIs -> Roxo
             tagHtml = `<span class="text-[9px] font-extrabold text-purple-400 bg-purple-900/20 border border-purple-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">DIV</span>`;
             
         } else {
+            // Outros
             tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">OUTROS</span>`;
         }
 

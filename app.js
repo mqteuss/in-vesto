@@ -4840,14 +4840,6 @@ window.mudarPeriodoGrafico = function(range, symbol) {
     carregarDadosGrafico(range, symbol);
 };
 
-// ======================================================
-//  GRÁFICO VISUAL PREMIUM (ESTILO BINANCE / TRADINGVIEW)
-// ======================================================
-
-// ======================================================
-//  GRÁFICO DE CANDLESTICK (VELAS REAIS) - ESTILO BINANCE
-// ======================================================
-
 function renderPriceChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
@@ -4859,63 +4851,53 @@ function renderPriceChart(dataPoints, range) {
         cotacaoChartInstance.destroy();
     }
 
-    // --- 1. PREPARAÇÃO DOS DADOS (OHLC) ---
-    // A API agora retorna { x, o, h, l, c }.
-    // Se por acaso vier apenas price (linha antiga), fazemos fallback.
+    // --- 1. DADOS ---
+    // Verifica se temos dados de velas (Open existe?)
     const isCandleData = dataPoints.length > 0 && dataPoints[0].o !== undefined;
 
     let labels, datasets;
     let startPrice, endPrice;
     
-    // Cores (Binance)
-    const colorUp = '#0ECB81';   // Verde
-    const colorDown = '#F6465D'; // Vermelho
+    // Cores Binance
+    const colorUp = '#0ECB81';   
+    const colorDown = '#F6465D'; 
     const colorGrid = '#2B2F36';
     const colorText = '#848E9C';
 
     if (isCandleData) {
-        // --- MODO VELAS (CANDLES) ---
-        labels = dataPoints.map(p => p.x); // Timestamps
+        // --- MODO VELAS ---
+        labels = dataPoints.map(p => p.x); 
         startPrice = dataPoints[0].c;
         endPrice = dataPoints[dataPoints.length - 1].c;
 
-        // O Chart.js "Bar" pode receber [min, max] para fazer barras flutuantes.
-        // Usaremos isso para o CORPO da vela (Open até Close).
-        // As SOMBRAS (High/Low) serão desenhadas por um Plugin ou Dataset de linha (mais complexo).
-        // SOLUÇÃO SIMPLIFICADA E LEVE: Usar um plugin customizado de desenho.
-        
-        // Vamos usar uma abordagem de "Bar Chart" onde:
-        // x = data
-        // y = [Open, Close] (O corpo da vela)
-        // A cor depende se Close > Open.
-        
         const candleData = dataPoints.map(p => ({
             x: p.x,
-            y: [p.o, p.c],     // Corpo: de Open até Close
-            h: p.h,            // Guardamos High/Low para desenhar a sombra manualmente
+            y: [p.o, p.c],     
+            h: p.h,            
             l: p.l,
             c: p.c,
             o: p.o
         }));
 
-        // Cores individuais para cada barra
         const bgColors = candleData.map(d => d.c >= d.o ? colorUp : colorDown);
-        const borderColors = bgColors;
 
         datasets = [{
-            type: 'bar',
+            type: 'bar', // Truque: Velas são barras flutuantes
             label: 'Candles',
             data: candleData,
             backgroundColor: bgColors,
-            borderColor: borderColors,
+            borderColor: bgColors, // Borda da mesma cor
             borderWidth: 0,
-            barPercentage: 0.8,
-            categoryPercentage: 0.8,
-            borderSkipped: false // Importante para desenhar o retângulo completo
+            
+            // --- CORREÇÃO DE TAMANHO VISUAL ---
+            barPercentage: 0.85,      // Velas mais largas
+            categoryPercentage: 0.9,  // Menos espaço entre elas
+            
+            borderSkipped: false 
         }];
 
     } else {
-        // --- FALLBACK MODO LINHA (Se a API falhar e mandar só preço) ---
+        // --- FALLBACK LINHA ---
         labels = dataPoints.map(p => p.date || p.x);
         const values = dataPoints.map(p => p.price || p.c);
         startPrice = values[0];
@@ -4933,16 +4915,13 @@ function renderPriceChart(dataPoints, range) {
         }];
     }
 
-    // --- HEADER UPDATE ---
+    // --- HEADER ---
     const updateHeaderStats = (currentPrice) => {
         const elOpen = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
         const elVar = document.getElementById('stat-var');
-
         if (!elOpen || !elClose || !elVar) return;
 
-        // No modo candle, 'Abertura' geralmente se refere ao dia ou período
-        // Mas para simplificar, usamos o primeiro ponto do gráfico como referência de variação
         elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         elClose.style.color = (currentPrice >= startPrice) ? colorUp : colorDown;
@@ -4956,29 +4935,24 @@ function renderPriceChart(dataPoints, range) {
     };
     updateHeaderStats(endPrice);
 
-    // =================================================================
-    // PLUGIN: DESENHAR SOMBRAS (PAVIOS) DAS VELAS
-    // =================================================================
+    // --- PLUGINS ---
+    
+    // 1. Pavios (Sombras)
     const candleWicksPlugin = {
         id: 'candleWicks',
         beforeDatasetsDraw: (chart) => {
             if (!isCandleData) return;
-
             const ctx = chart.ctx;
             const meta = chart.getDatasetMeta(0);
-            
             ctx.save();
-            ctx.lineWidth = 1; // Largura do pavio (fino)
-
+            ctx.lineWidth = 1; 
             meta.data.forEach((bar, index) => {
                 const raw = dataPoints[index];
                 if (!raw) return;
-
-                const x = bar.x; // Centro da barra
+                const x = bar.x;
                 const yHigh = chart.scales.y.getPixelForValue(raw.h);
                 const yLow = chart.scales.y.getPixelForValue(raw.l);
                 const color = raw.c >= raw.o ? colorUp : colorDown;
-
                 ctx.strokeStyle = color;
                 ctx.beginPath();
                 ctx.moveTo(x, yHigh);
@@ -4989,17 +4963,12 @@ function renderPriceChart(dataPoints, range) {
         }
     };
 
-    // =================================================================
-    // PLUGIN: PREÇO ATUAL (LINHA HORIZONTAL)
-    // =================================================================
+    // 2. Linha Preço Atual
     const lastPriceLinePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
             const ctx = chart.ctx;
-            const yAxis = chart.scales.y;
-            const xAxis = chart.scales.x;
-            
-            const y = yAxis.getPixelForValue(endPrice);
+            const y = chart.scales.y.getPixelForValue(endPrice);
             const rightEdge = chart.chartArea.right; 
             const leftEdge = chart.chartArea.left;
             const color = endPrice >= startPrice ? colorUp : colorDown;
@@ -5014,31 +4983,26 @@ function renderPriceChart(dataPoints, range) {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Badge Eixo Y
+            // Badge
             const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             ctx.font = 'bold 10px sans-serif'; 
             const textWidth = ctx.measureText(text).width;
-            const paddingX = 6;
-            const badgeHeight = 18; 
-            const badgeWidth = textWidth + (paddingX * 2);
+            const badgeWidth = textWidth + 12;
             const badgeX = rightEdge - badgeWidth; 
-            const badgeY = y - (badgeHeight / 2);
+            const badgeY = y - 9;
 
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3);
+            ctx.roundRect(badgeX, badgeY, badgeWidth, 18, 3);
             ctx.fill();
-
             ctx.fillStyle = '#FFFFFF';
             ctx.textBaseline = 'middle';
-            ctx.fillText(text, badgeX + paddingX, y + 1); 
+            ctx.fillText(text, badgeX + 6, y + 1); 
             ctx.restore();
         }
     };
 
-    // =================================================================
-    // PLUGIN: CROSSHAIR (MIRA TÉCNICA)
-    // =================================================================
+    // 3. Crosshair
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
@@ -5049,8 +5013,8 @@ function renderPriceChart(dataPoints, range) {
                 }
                 return;
             }
-
             if (!chart.tooltip._eventPosition) return;
+            
             const event = chart.tooltip._eventPosition;
             const ctx = chart.ctx;
             const x = event.x; 
@@ -5062,11 +5026,8 @@ function renderPriceChart(dataPoints, range) {
 
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
 
-            // Header Update
             const activePoint = chart.tooltip._active[0];
-            const dataIndex = activePoint.index;
-            // No modo candle, pegamos o fechamento (c)
-            const focusedPrice = isCandleData ? dataPoints[dataIndex].c : dataPoints[dataIndex].price;
+            const focusedPrice = isCandleData ? dataPoints[activePoint.index].c : dataPoints[activePoint.index].price;
             
             if (chart.lastHeaderValue !== focusedPrice) {
                 updateHeaderStats(focusedPrice);
@@ -5080,70 +5041,52 @@ function renderPriceChart(dataPoints, range) {
             ctx.setLineDash([6, 6]);
 
             // Vertical
-            ctx.beginPath();
-            ctx.moveTo(x, topY);
-            ctx.lineTo(x, bottomY);
-            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x, topY); ctx.lineTo(x, bottomY); ctx.stroke();
+            // Horizontal
+            ctx.beginPath(); ctx.moveTo(leftX, y); ctx.lineTo(rightX, y); ctx.stroke();
 
-            // Date Badge
-            const rawDate = new Date(isCandleData ? dataPoints[dataIndex].x : dataPoints[dataIndex].date);
+            // Badge Data (X)
+            const rawDate = new Date(isCandleData ? dataPoints[activePoint.index].x : dataPoints[activePoint.index].date);
             const isIntraday = (range === '1D' || range === '5D');
-            let dateText = isIntraday 
-                ? rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + rawDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' })
-                : rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+            const dateText = isIntraday 
+                ? rawDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' })
+                : rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
             ctx.font = 'bold 10px sans-serif';
-            const dateWidth = ctx.measureText(dateText).width + 12; 
-            const dateHeight = 20;
-            let dateBadgeX = x - (dateWidth / 2);
-            if (dateBadgeX < leftX) dateBadgeX = leftX;
-            if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
-            const dateBadgeY = bottomY + 2; 
+            const dateWidth = ctx.measureText(dateText).width + 12;
+            let dateX = x - (dateWidth / 2);
+            if (dateX < leftX) dateX = leftX;
+            if (dateX + dateWidth > rightX) dateX = rightX - dateWidth;
 
             ctx.fillStyle = '#1E2329';
-            ctx.beginPath();
-            ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 4);
+            ctx.roundRect(dateX, bottomY + 2, dateWidth, 20, 4);
             ctx.fill();
             ctx.fillStyle = '#D1D5DB';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
+            ctx.fillText(dateText, dateX + (dateWidth/2), bottomY + 12);
 
-            // Horizontal
-            ctx.beginPath();
-            ctx.moveTo(leftX, y); 
-            ctx.lineTo(rightX, y);
-            ctx.stroke();
-
-            // Price Badge (Y Axis)
+            // Badge Preço (Y)
             const cursorPrice = chart.scales.y.getValueForPixel(y);
             const priceText = cursorPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const priceWidth = ctx.measureText(priceText).width + 10;
-            const priceHeight = 20;
-            const priceBadgeX = rightX;
-            const priceBadgeY = y - (priceHeight / 2);
+            const priceY = Math.max(topY, Math.min(y - 10, bottomY - 20));
 
             ctx.fillStyle = '#1E2329';
-            ctx.beginPath();
-            let finalPriceY = priceBadgeY;
-            if (finalPriceY < topY) finalPriceY = topY;
-            if (finalPriceY + priceHeight > bottomY) finalPriceY = bottomY - priceHeight;
-
-            ctx.roundRect(priceBadgeX, finalPriceY, priceWidth, priceHeight, 4);
+            ctx.roundRect(rightX, priceY, priceWidth, 20, 4);
             ctx.fill();
-
             ctx.fillStyle = '#D1D5DB';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(priceText, priceBadgeX + 5, finalPriceY + (priceHeight / 2) + 1);
+            ctx.fillText(priceText, rightX + 5, priceY + 11);
 
             ctx.restore();
         }
     };
 
-    // --- RENDERIZAÇÃO ---
+    // --- CHART INSTANCE ---
     cotacaoChartInstance = new Chart(ctx, {
-        type: isCandleData ? 'bar' : 'line', // Truque: Velas são Barras
+        type: isCandleData ? 'bar' : 'line',
         data: {
             labels: labels,
             datasets: datasets
@@ -5154,13 +5097,19 @@ function renderPriceChart(dataPoints, range) {
             layout: { padding: { left: 0, right: 0, top: 10, bottom: 20 } },
             plugins: {
                 legend: { display: false },
-                tooltip: { enabled: false } // Customizado via Crosshair
+                tooltip: { enabled: false }
             },
             scales: {
                 x: { display: false },
                 y: { 
                     display: true,
                     position: 'right',
+                    
+                    // --- CORREÇÃO DE ESCALA PARA CANDLES ---
+                    beginAtZero: false, // FOCA NO PREÇO
+                    grace: '10%',       // RESPIRO NAS BORDAS
+                    // ---------------------------------------
+
                     grid: {
                         color: colorGrid,
                         borderDash: [2, 4],

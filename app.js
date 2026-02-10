@@ -5603,7 +5603,7 @@ function renderHistoricoIADetalhes(mesesIgnore) {
     if (!currentDetalhesHistoricoJSON) return;
 
     if (currentDetalhesHistoricoJSON.length === 0) {
-        detalhesAiProvento.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">Sem histórico disponível.</p>`;
+        detalhesAiProvento.innerHTML = `<p class="text-sm text-[#666] text-center py-8 font-medium">Sem histórico disponível.</p>`;
         if (detalhesChartInstance) {
             detalhesChartInstance.destroy();
             detalhesChartInstance = null;
@@ -5614,47 +5614,47 @@ function renderHistoricoIADetalhes(mesesIgnore) {
     const containerBotoes = document.getElementById('periodo-selector-group');
     
     if (containerBotoes) {
-        // AJUSTE: gap reduzido para 1.5 e just-center para tentar caber tudo
-        containerBotoes.className = "flex flex-col gap-3 mb-4 px-1";
+        containerBotoes.className = "flex flex-col mb-2 px-1";
         
-        // 1. LINHA DE BOTÕES
+        // --- 1. BOTÕES (Estilo "Segmented Control" Minimalista) ---
         const getBtnClass = (filterKey) => {
             const isActive = currentProventosFilter === filterKey;
-            
-            // Padding reduzido (px-2.5) para economizar espaço
-            return `flex-shrink-0 py-1.5 px-2.5 rounded-xl text-[10px] font-bold transition-all duration-200 border border-transparent ${
+            // Design Clean: Sem bordas, apenas contraste de fundo/texto
+            return `flex-shrink-0 h-7 px-3 rounded-lg text-[10px] tracking-wide font-bold transition-all duration-200 select-none ${
                 isActive 
-                ? 'bg-[#333333] text-white shadow-md' // Ativo: Cinza Neutro
-                : 'bg-[#151515] text-[#888888] hover:text-gray-300'
+                ? 'bg-[#333333] text-white shadow-sm' 
+                : 'bg-transparent text-[#666] hover:text-[#999] hover:bg-[#1a1a1a]'
             }`;
         };
 
-        // NOMES ABREVIADOS: POS e PERS
         let html = `
-            <div class="flex gap-1.5 justify-between items-center overflow-x-auto pb-1 no-scrollbar w-full">
-                <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')}">1A</button>
-                <button onclick="mudarFiltroProventos('5y')" class="${getBtnClass('5y')}">5A</button>
-                <button onclick="mudarFiltroProventos('max')" class="${getBtnClass('max')}">MAX</button>
-                <button onclick="mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')}">YTD</button>
-                <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')}">POS</button>
-                <button onclick="mudarFiltroProventos('custom')" class="${getBtnClass('custom')}">PERS</button>
+            <div class="flex items-center gap-1 overflow-x-auto pb-2 no-scrollbar w-full snap-x">
+                <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
+                <button onclick="mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>
+                <button onclick="mudarFiltroProventos('max')" class="${getBtnClass('max')} snap-start">MAX</button>
+                <button onclick="mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')} snap-start">YTD</button>
+                <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')} snap-start">POS</button>
+                <button onclick="mudarFiltroProventos('custom')" class="${getBtnClass('custom')} snap-start">PERS</button>
             </div>
         `;
 
-        // 2. INPUTS DE DATA (Mantido o estilo neutro)
+        // --- 2. ÁREA DE DATA PERSONALIZADA (Design "Card" Integrado) ---
         if (currentProventosFilter === 'custom') {
             html += `
-                <div class="flex items-center justify-center gap-2 animate-fade-in bg-[#151515] p-2 rounded-lg border border-[#333333]">
-                    <div class="flex flex-col w-1/2">
-                        <label class="text-[9px] text-[#888] ml-1 mb-0.5">De:</label>
+                <div class="mt-1 animate-fade-in grid grid-cols-2 gap-3 bg-[#111] p-3 rounded-xl border border-[#222]">
+                    <div class="relative group">
+                        <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555] group-focus-within:text-[#888]">DE</label>
                         <input type="month" id="custom-start" value="${customRangeStart}" 
-                               class="w-full bg-[#222] text-white text-[10px] border border-[#444] rounded px-2 py-1 outline-none focus:border-[#666]"
+                               class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none placeholder-transparent"
+                               style="color-scheme: dark;"
                                onchange="atualizarFiltroCustom()">
                     </div>
-                    <div class="flex flex-col w-1/2">
-                        <label class="text-[9px] text-[#888] ml-1 mb-0.5">Até:</label>
+                    
+                    <div class="relative group">
+                        <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555] group-focus-within:text-[#888]">ATÉ</label>
                         <input type="month" id="custom-end" value="${customRangeEnd}" 
-                               class="w-full bg-[#222] text-white text-[10px] border border-[#444] rounded px-2 py-1 outline-none focus:border-[#666]"
+                               class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none placeholder-transparent"
+                               style="color-scheme: dark;"
                                onchange="atualizarFiltroCustom()">
                     </div>
                 </div>
@@ -5664,9 +5664,9 @@ function renderHistoricoIADetalhes(mesesIgnore) {
         containerBotoes.innerHTML = html;
     }
 
-    // Altura 72 (aprox 288px)
+    // ALTURA AJUSTADA PARA FICAR PROPORCIONAL (h-72 = 288px)
     if (!document.getElementById('detalhes-proventos-chart')) {
-        detalhesAiProvento.innerHTML = `<div class="relative h-72 w-full"><canvas id="detalhes-proventos-chart"></canvas></div>`;
+        detalhesAiProvento.innerHTML = `<div class="relative h-72 w-full mt-2"><canvas id="detalhes-proventos-chart"></canvas></div>`;
     }
 
     renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
@@ -5793,7 +5793,10 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderWidth: 1,
                     stack: 'Stack 0',
                     customInfo: customInfo,
-                    barPercentage: 0.6, categoryPercentage: 0.8, borderRadius: 4
+                    // BARRAS UM POUCO MAIS LARGAS E MENOS ARREDONDADAS
+                    barPercentage: 0.7, 
+                    categoryPercentage: 0.8, 
+                    borderRadius: 3
                 },
                 {
                     label: 'Trib',
@@ -5803,7 +5806,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderWidth: 1,
                     stack: 'Stack 0',
                     customInfo: customInfo,
-                    barPercentage: 0.6, categoryPercentage: 0.8, borderRadius: 4
+                    barPercentage: 0.7, categoryPercentage: 0.8, borderRadius: 3
                 },
                 {
                     label: 'Div',
@@ -5813,7 +5816,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderWidth: 1,
                     stack: 'Stack 0',
                     customInfo: customInfo,
-                    barPercentage: 0.6, categoryPercentage: 0.8, borderRadius: 4
+                    barPercentage: 0.7, categoryPercentage: 0.8, borderRadius: 3
                 }
             ]
         },
@@ -5832,17 +5835,19 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    // CORES NEUTRAS PURAS (Sem tom azulado)
-                    backgroundColor: '#111111', 
+                    // ESTILO PREMIUM: PRETO ABSOLUTO COM OPACIDADE
+                    backgroundColor: 'rgba(10, 10, 10, 0.95)', 
                     titleColor: '#ffffff',
-                    bodyColor: '#cccccc', 
-                    borderColor: '#333333',
+                    bodyColor: '#bbbbbb', 
+                    titleFont: { family: 'Inter', size: 11, weight: '600' },
+                    bodyFont: { family: 'Inter', size: 10 },
+                    borderColor: '#262626', // Borda sutil quase invisível
                     borderWidth: 1,
                     padding: 10,
-                    cornerRadius: 8,
+                    cornerRadius: 6,
                     displayColors: true,
-                    boxWidth: 8,
-                    boxHeight: 8,
+                    boxWidth: 6,
+                    boxHeight: 6,
                     usePointStyle: true,
                     position: 'nearest', 
                     

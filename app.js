@@ -4851,161 +4851,113 @@ function renderPriceChart(dataPoints, range) {
         cotacaoChartInstance.destroy();
     }
 
-    // --- 1. DADOS ---
-    // Verifica se temos dados de velas (Open existe?)
-    const isCandleData = dataPoints.length > 0 && dataPoints[0].o !== undefined;
-
-    let labels, datasets;
-    let startPrice, endPrice;
+    // --- DADOS ---
+    const labels = dataPoints.map(p => p.date);
+    const values = dataPoints.map(p => p.price);
+    const startPrice = values[0];
+    const endPrice = values[values.length - 1];
+    const isPositive = endPrice >= startPrice;
     
-    // Cores Binance
-    const colorUp = '#0ECB81';   
-    const colorDown = '#F6465D'; 
-    const colorGrid = '#2B2F36';
-    const colorText = '#848E9C';
+    // Cores
+    const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
+    const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
+    const colorCrosshairLine = '#A3A3A3'; 
+    const colorBadgeBackground = '#404040'; 
+    const colorBadgeText = '#FFFFFF'; 
 
-    if (isCandleData) {
-        // --- MODO VELAS ---
-        labels = dataPoints.map(p => p.x); 
-        startPrice = dataPoints[0].c;
-        endPrice = dataPoints[dataPoints.length - 1].c;
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, colorFillStart);
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-        const candleData = dataPoints.map(p => ({
-            x: p.x,
-            y: [p.o, p.c],     
-            h: p.h,            
-            l: p.l,
-            c: p.c,
-            o: p.o
-        }));
+    const isIntraday = (range === '1D' || range === '5D');
 
-        const bgColors = candleData.map(d => d.c >= d.o ? colorUp : colorDown);
-
-        datasets = [{
-            type: 'bar', // Truque: Velas são barras flutuantes
-            label: 'Candles',
-            data: candleData,
-            backgroundColor: bgColors,
-            borderColor: bgColors, // Borda da mesma cor
-            borderWidth: 0,
-            
-            // --- CORREÇÃO DE TAMANHO VISUAL ---
-            barPercentage: 0.85,      // Velas mais largas
-            categoryPercentage: 0.9,  // Menos espaço entre elas
-            
-            borderSkipped: false 
-        }];
-
-    } else {
-        // --- FALLBACK LINHA ---
-        labels = dataPoints.map(p => p.date || p.x);
-        const values = dataPoints.map(p => p.price || p.c);
-        startPrice = values[0];
-        endPrice = values[values.length - 1];
-        
-        const mainColor = endPrice >= startPrice ? colorUp : colorDown;
-        
-        datasets = [{
-            type: 'line',
-            data: values,
-            borderColor: mainColor,
-            borderWidth: 2,
-            pointRadius: 0,
-            tension: 0.1
-        }];
-    }
-
-    // --- HEADER ---
+    // --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER HTML ---
     const updateHeaderStats = (currentPrice) => {
         const elOpen = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
         const elVar = document.getElementById('stat-var');
+
         if (!elOpen || !elClose || !elVar) return;
 
+        // Abertura é sempre fixa (início do gráfico)
         elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elClose.style.color = (currentPrice >= startPrice) ? colorUp : colorDown;
 
+        // Fechamento é dinâmico (ou o último, ou o do dedo)
+        elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elClose.style.color = (currentPrice >= startPrice) ? '#00C805' : '#FF3B30';
+
+        // Variação
         const diff = currentPrice - startPrice;
         const percent = (diff / startPrice) * 100;
         const sign = diff >= 0 ? '+' : '';
         
         elVar.innerText = `${sign}${percent.toFixed(2)}%`;
-        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`;
+        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
     };
+
+    // Inicializa o Header com os dados finais (Repouso)
     updateHeaderStats(endPrice);
 
-    // --- PLUGINS ---
-    
-    // 1. Pavios (Sombras)
-    const candleWicksPlugin = {
-        id: 'candleWicks',
-        beforeDatasetsDraw: (chart) => {
-            if (!isCandleData) return;
-            const ctx = chart.ctx;
-            const meta = chart.getDatasetMeta(0);
-            ctx.save();
-            ctx.lineWidth = 1; 
-            meta.data.forEach((bar, index) => {
-                const raw = dataPoints[index];
-                if (!raw) return;
-                const x = bar.x;
-                const yHigh = chart.scales.y.getPixelForValue(raw.h);
-                const yLow = chart.scales.y.getPixelForValue(raw.l);
-                const color = raw.c >= raw.o ? colorUp : colorDown;
-                ctx.strokeStyle = color;
-                ctx.beginPath();
-                ctx.moveTo(x, yHigh);
-                ctx.lineTo(x, yLow);
-                ctx.stroke();
-            });
-            ctx.restore();
-        }
+    // Posicionador
+    Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
+        if (!elements.length) return false;
+        return { x: elements[0].element.x, y: eventPosition.y };
     };
 
-    // 2. Linha Preço Atual
-    const lastPriceLinePlugin = {
+    // =================================================================
+    // PLUGIN A: LINHA DE PREÇO ATUAL (Badge Fixo)
+    // =================================================================
+    const lastPricePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
             const ctx = chart.ctx;
-            const y = chart.scales.y.getPixelForValue(endPrice);
+            const meta = chart.getDatasetMeta(0);
+            if (!meta.data || meta.data.length === 0) return;
+            
+            const lastPoint = meta.data[meta.data.length - 1];
+            const y = lastPoint.y; 
             const rightEdge = chart.chartArea.right; 
             const leftEdge = chart.chartArea.left;
-            const color = endPrice >= startPrice ? colorUp : colorDown;
 
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(leftEdge, y);
             ctx.lineTo(rightEdge, y);
             ctx.lineWidth = 1;
-            ctx.strokeStyle = color; 
-            ctx.setLineDash([4, 4]); 
+            ctx.strokeStyle = colorLine; 
+            ctx.setLineDash([2, 2]); 
             ctx.stroke();
             ctx.setLineDash([]);
 
             // Badge
             const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 10px sans-serif'; 
+            ctx.font = 'bold 9px sans-serif'; 
             const textWidth = ctx.measureText(text).width;
-            const badgeWidth = textWidth + 12;
-            const badgeX = rightEdge - badgeWidth; 
-            const badgeY = y - 9;
+            const paddingX = 4;
+            const badgeHeight = 16; 
+            const badgeWidth = textWidth + (paddingX * 2);
+            const badgeX = rightEdge; 
+            const badgeY = y - (badgeHeight / 2);
 
-            ctx.fillStyle = color;
+            ctx.fillStyle = colorLine;
             ctx.beginPath();
-            ctx.roundRect(badgeX, badgeY, badgeWidth, 18, 3);
+            ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3);
             ctx.fill();
+
             ctx.fillStyle = '#FFFFFF';
             ctx.textBaseline = 'middle';
-            ctx.fillText(text, badgeX + 6, y + 1); 
+            ctx.fillText(text, badgeX + paddingX, y + 1); 
             ctx.restore();
         }
     };
 
-    // 3. Crosshair
+    // =================================================================
+    // PLUGIN B: MIRA LIVRE + ATUALIZAÇÃO DO HEADER
+    // =================================================================
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
+            // Se NÃO estiver tocando, reseta o header para o valor final
             if (!chart.tooltip?._active?.length) {
                 if (chart.lastHeaderUpdate !== 'end') {
                     updateHeaderStats(endPrice);
@@ -5013,12 +4965,14 @@ function renderPriceChart(dataPoints, range) {
                 }
                 return;
             }
+
+            // Se ESTIVER tocando:
             if (!chart.tooltip._eventPosition) return;
-            
             const event = chart.tooltip._eventPosition;
             const ctx = chart.ctx;
             const x = event.x; 
             const y = event.y; 
+            
             const topY = chart.scales.y.top;
             const bottomY = chart.scales.y.bottom;
             const leftX = chart.scales.x.left;
@@ -5026,112 +4980,159 @@ function renderPriceChart(dataPoints, range) {
 
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
 
+            // --- ATUALIZA O HEADER COM O PREÇO FOCADO ---
+            // Pega o valor real do ponto mais próximo (activePoint) para precisão no header
             const activePoint = chart.tooltip._active[0];
-            const focusedPrice = isCandleData ? dataPoints[activePoint.index].c : dataPoints[activePoint.index].price;
+            const focusedPrice = dataPoints[activePoint.index].price;
             
             if (chart.lastHeaderValue !== focusedPrice) {
                 updateHeaderStats(focusedPrice);
                 chart.lastHeaderValue = focusedPrice;
                 chart.lastHeaderUpdate = 'active';
             }
+            // ---------------------------------------------
 
             ctx.save();
             ctx.lineWidth = 1;
-            ctx.strokeStyle = '#5E6673'; 
-            ctx.setLineDash([6, 6]);
+            ctx.strokeStyle = colorCrosshairLine; 
+            ctx.setLineDash([4, 4]);
 
-            // Vertical
-            ctx.beginPath(); ctx.moveTo(x, topY); ctx.lineTo(x, bottomY); ctx.stroke();
-            // Horizontal
-            ctx.beginPath(); ctx.moveTo(leftX, y); ctx.lineTo(rightX, y); ctx.stroke();
+            // 1. Eixo X (Linha + Data)
+            ctx.beginPath();
+            ctx.moveTo(x, topY);
+            ctx.lineTo(x, bottomY);
+            ctx.stroke();
 
-            // Badge Data (X)
-            const rawDate = new Date(isCandleData ? dataPoints[activePoint.index].x : dataPoints[activePoint.index].date);
-            const isIntraday = (range === '1D' || range === '5D');
-            const dateText = isIntraday 
-                ? rawDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' })
-                : rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            const xIndex = chart.scales.x.getValueForPixel(x);
+            const validIndex = Math.max(0, Math.min(xIndex, dataPoints.length - 1));
+            const rawDate = new Date(dataPoints[validIndex].date);
+            
+            let dateText = "";
+            if (isIntraday) {
+                 dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + 
+                            rawDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' });
+            } else {
+                 dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+            }
 
-            ctx.font = 'bold 10px sans-serif';
-            const dateWidth = ctx.measureText(dateText).width + 12;
-            let dateX = x - (dateWidth / 2);
-            if (dateX < leftX) dateX = leftX;
-            if (dateX + dateWidth > rightX) dateX = rightX - dateWidth;
+            ctx.font = 'bold 9px sans-serif';
+            const dateWidth = ctx.measureText(dateText).width + 12; 
+            const dateHeight = 16;
+            let dateBadgeX = x - (dateWidth / 2);
+            if (dateBadgeX < leftX) dateBadgeX = leftX;
+            if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
+            const dateBadgeY = bottomY + 2; 
 
-            ctx.fillStyle = '#1E2329';
-            ctx.roundRect(dateX, bottomY + 2, dateWidth, 20, 4);
+            ctx.fillStyle = colorBadgeBackground; 
+            ctx.beginPath();
+            ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 3);
             ctx.fill();
-            ctx.fillStyle = '#D1D5DB';
+            
+            ctx.fillStyle = colorBadgeText;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(dateText, dateX + (dateWidth/2), bottomY + 12);
+            ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
 
-            // Badge Preço (Y)
+            // 2. Eixo Y (Linha + Preço da Mira)
+            ctx.beginPath();
+            ctx.moveTo(leftX, y); 
+            ctx.lineTo(rightX, y);
+            ctx.stroke();
+
             const cursorPrice = chart.scales.y.getValueForPixel(y);
             const priceText = cursorPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const priceWidth = ctx.measureText(priceText).width + 10;
-            const priceY = Math.max(topY, Math.min(y - 10, bottomY - 20));
+            const priceWidth = ctx.measureText(priceText).width + 8;
+            const priceHeight = 16;
+            const priceBadgeX = rightX;
+            const priceBadgeY = y - (priceHeight / 2);
 
-            ctx.fillStyle = '#1E2329';
-            ctx.roundRect(rightX, priceY, priceWidth, 20, 4);
+            ctx.fillStyle = colorBadgeBackground; 
+            ctx.beginPath();
+            let finalPriceY = priceBadgeY;
+            if (finalPriceY < topY) finalPriceY = topY;
+            if (finalPriceY + priceHeight > bottomY) finalPriceY = bottomY - priceHeight;
+
+            ctx.roundRect(priceBadgeX, finalPriceY, priceWidth, priceHeight, 3);
             ctx.fill();
-            ctx.fillStyle = '#D1D5DB';
+
+            ctx.fillStyle = colorBadgeText;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(priceText, rightX + 5, priceY + 11);
+            ctx.fillText(priceText, priceBadgeX + 4, finalPriceY + (priceHeight / 2) + 1);
 
             ctx.restore();
         }
     };
 
-    // --- CHART INSTANCE ---
     cotacaoChartInstance = new Chart(ctx, {
-        type: isCandleData ? 'bar' : 'line',
+        type: 'line',
         data: {
             labels: labels,
-            datasets: datasets
+            datasets: [{
+                data: values,
+                borderColor: colorLine,
+                backgroundColor: gradient,
+                borderWidth: 1,
+                pointRadius: 0,
+                pointHitRadius: 20, 
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: colorLine,
+                pointHoverBorderWidth: 0,
+                fill: true,
+                tension: 0.05
+            }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { left: 0, right: 0, top: 10, bottom: 20 } },
+            layout: { 
+                padding: { left: 0, right: 36, top: 10, bottom: 20 } 
+            },
             plugins: {
                 legend: { display: false },
-                tooltip: { enabled: false }
+                tooltip: {
+                    enabled: true,
+                    position: 'followFinger', 
+                    yAlign: 'bottom',
+                    caretPadding: 35,
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(28, 28, 30, 0.95)',
+                    titleColor: '#9CA3AF',
+                    bodyColor: '#FFF',
+                    borderColor: '#333',
+                    borderWidth: 1,
+                    padding: 8,
+                    cornerRadius: 6,
+                    displayColors: false,
+                    callbacks: {
+                        // Título com data no tooltip flutuante
+                        title: function(context) {
+                            const date = new Date(context[0].label);
+                            if (isIntraday) {
+                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + 
+                                       date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                            }
+                            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                        },
+                        label: function(context) {
+                            return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                        }
+                    }
+                }
             },
             scales: {
                 x: { display: false },
-                y: { 
-                    display: true,
-                    position: 'right',
-                    
-                    // --- CORREÇÃO DE ESCALA PARA CANDLES ---
-                    beginAtZero: false, // FOCA NO PREÇO
-                    grace: '10%',       // RESPIRO NAS BORDAS
-                    // ---------------------------------------
-
-                    grid: {
-                        color: colorGrid,
-                        borderDash: [2, 4],
-                        drawBorder: false,
-                        tickLength: 0
-                    },
-                    ticks: {
-                        color: colorText,
-                        font: { size: 10, family: 'monospace' },
-                        maxTicksLimit: 6,
-                        callback: function(value) { return value.toFixed(2); }
-                    }
-                } 
+                y: { display: false } 
             },
             interaction: {
-                mode: 'index',
+                mode: 'nearest',
                 axis: 'x',
                 intersect: false
             },
             animation: { duration: 0 }
         },
-        plugins: [candleWicksPlugin, lastPriceLinePlugin, activeCrosshairPlugin]
+        plugins: [lastPricePlugin, activeCrosshairPlugin]
     });
 }
     

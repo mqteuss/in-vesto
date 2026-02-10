@@ -499,16 +499,15 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-        if (mode === 'historico_12m') {
-            if (!payload.ticker) return res.json({ json: [] });
-            const history = await scrapeAsset(payload.ticker);
-            const formatted = history.slice(0, 18).map(h => {
-                if (!h.paymentDate) return null;
-                const [ano, mes] = h.paymentDate.split('-');
-                return { mes: `${mes}/${ano.substring(2)}`, valor: h.value };
-            }).filter(h => h !== null);
-            return res.status(200).json({ json: formatted });
-        }
+if (mode === 'historico_12m') {
+            if (!payload.ticker) return res.json({ json: [] });
+            
+            // Pega todo o histórico cru (sem limite de 18 meses e sem agrupar ainda)
+            const history = await scrapeAsset(payload.ticker);
+            
+            // Retorna o array completo. O agrupamento será feito no app.js para permitir filtros dinâmicos
+            return res.status(200).json({ json: history });
+        }
 
         if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });

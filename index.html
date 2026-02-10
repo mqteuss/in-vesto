@@ -978,9 +978,14 @@
     <button class="patrimonio-range-btn py-2 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition-colors" data-range="ALL">Tudo</button>
 </div>
 
-        <div class="relative w-full h-80 bg-[#151515] rounded-[2rem] p-4 mb-6 shadow-xl flex flex-col justify-end">
-            <canvas id="patrimonio-chart"></canvas>
+<div class="relative w-full h-64 bg-[#121212] rounded-xl border border-[#27272a] overflow-hidden shadow-sm mb-6">
+    <div class="w-full h-full relative">
+        <canvas id="patrimonio-chart" class="w-full h-full block"></canvas>
+    </div>
+    
+    <div id="patrimonio-loading" class="hidden absolute inset-0 bg-[#121212] z-10 flex items-center justify-center">
         </div>
+</div>
 
 <div class="grid grid-cols-3 gap-2">
     

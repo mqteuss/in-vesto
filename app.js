@@ -3018,7 +3018,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         }
     }
 
-    // --- 11. RENDERIZAÇÃO (VISUAL COTAÇÃO - IDÊNTICO) ---
+    // --- 11. RENDERIZAÇÃO ---
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     
@@ -3029,8 +3029,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     const colorCrosshair = isLight ? '#d1d5db' : '#404040';
 
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)'); // Roxo transparente
-    gradientFill.addColorStop(1, 'rgba(0, 0, 0, 0)');          // Transparente total
+    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
+    gradientFill.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Fade to transparent
 
     const patrimonioCrosshairPlugin = {
         id: 'patrimonioCrosshair',
@@ -3075,7 +3075,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 if (dateBadgeX < leftX) dateBadgeX = leftX;
                 if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
                 
-                const dateBadgeY = bottomY + 2; 
+                // Força o badge para dentro da área visível inferior
+                const dateBadgeY = bottomY - dateHeight - 2; 
 
                 ctx.fillStyle = colorBadgeBg;
                 ctx.beginPath();
@@ -3134,13 +3135,13 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                         fill: true,
                         backgroundColor: gradientFill,
                         borderColor: colorLinePatrimonio,
-                        borderWidth: 1, // Fina (igual Cotação)
-                        tension: 0.05,  // Quase reta (igual Cotação)
-                        pointRadius: 0, // Invisível por padrão
+                        borderWidth: 1, 
+                        tension: 0.05, 
+                        pointRadius: 0, 
                         pointHitRadius: 20,
-                        pointHoverRadius: 4, // Aparece no hover
+                        pointHoverRadius: 4, 
                         pointHoverBackgroundColor: colorLinePatrimonio,
-                        pointHoverBorderWidth: 0, // Sem borda branca
+                        pointHoverBorderWidth: 0, 
                         order: 1
                     },
                     {
@@ -3161,7 +3162,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 0, right: 0, top: 10, bottom: 20 } },
+                // Layout "Zero Margem" (Full Bleed)
+                layout: { padding: { left: 0, right: 0, top: 0, bottom: 0 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },

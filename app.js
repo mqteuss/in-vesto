@@ -2923,7 +2923,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     hoje.setHours(23, 59, 59, 999);
     let dataCorte;
 
-    // --- LÓGICA DE DATAS (ADICIONADO 7D) ---
     if (currentPatrimonioRange === '7D') {
         dataCorte = new Date(hoje);
         dataCorte.setDate(hoje.getDate() - 7);
@@ -2966,7 +2965,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         const queda = (p.value - pico) / pico; 
         if (queda < maxDrawdown) maxDrawdown = queda;
     });
-    const drawdownDisplay = (maxDrawdown * 100).toFixed(2);
 
     let volatilidade = 0;
     if (dadosOrdenados.length > 1) {
@@ -2980,83 +2978,56 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         volatilidade = (Math.sqrt(variancia) * Math.sqrt(252)) * 100;
     }
 
-// --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS (ESTILO BLOOMBERG / MINIMALISTA) ---
+    // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS ---
     const elVariacao = document.getElementById('stat-variacao');
     const elVariacaoBadge = document.getElementById('stat-variacao-badge');
-    
     const elDrawdown = document.getElementById('stat-drawdown');
-    
     const elVolatilidade = document.getElementById('stat-volatilidade');
     const elVolTag = document.getElementById('stat-vol-tag');
 
-    // 1. Rentabilidade (Hero) - Verde ou Vermelho Fosco
     if (elVariacao) {
         const sinal = variacaoPercent >= 0 ? '+' : '';
         elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
-        
-        // Cores financeiras sóbrias (sem neon)
-        // Verde: #4ade80 (Green 400) | Vermelho: #ef4444 (Red 500)
         const corVar = variacaoPercent >= 0 ? '#4ade80' : '#ef4444'; 
         elVariacao.style.color = corVar;
 
-        // Badge de Status (Pílula Sólida)
         if (elVariacaoBadge) {
-            // Reset classes
             elVariacaoBadge.className = 'px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wide border';
-            
             if (variacaoPercent >= 0) {
                 elVariacaoBadge.textContent = 'LUCRO';
-                // Fundo verde muito escuro, borda verde escura, texto verde claro
                 elVariacaoBadge.classList.add('bg-[#052e16]', 'border-[#14532d]', 'text-[#4ade80]');
             } else {
                 elVariacaoBadge.textContent = 'PREJUÍZO';
-                // Fundo vermelho muito escuro, borda vermelha escura, texto vermelho claro
                 elVariacaoBadge.classList.add('bg-[#450a0a]', 'border-[#7f1d1d]', 'text-[#f87171]');
             }
         }
     }
 
-    // 2. Drawdown (Numérico Puro)
     if (elDrawdown) {
-        // Se drawdown for insignificante (< 0.1%), mostra 0.00%
         const displayVal = Math.abs(maxDrawdown) < 0.001 ? 0 : (maxDrawdown * 100).toFixed(2);
         elDrawdown.textContent = `${displayVal}%`;
-        
-        // Se houver queda relevante (>1%), pinta de vermelho fosco. Senão, cinza neutro.
         if (parseFloat(displayVal) < -0.01 || parseFloat(displayVal) > 1.00) {
              elDrawdown.style.color = '#ef4444'; 
         } else {
-             elDrawdown.style.color = '#a1a1aa'; // Zinc 400 (Cinza neutro)
+             elDrawdown.style.color = '#a1a1aa'; 
         }
     }
 
-    // 3. Volatilidade (Tag Descritiva)
     if (elVolatilidade) {
         elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
-        
         let labelVol = 'Baixa';
-        let colorClass = 'text-[#a1a1aa]'; // Cinza padrão
-        
-        if (volatilidade < 10) {
-            labelVol = 'Conservadora';
-            colorClass = 'text-[#4ade80]'; // Verde
-        } else if (volatilidade < 25) {
-            labelVol = 'Moderada';
-            colorClass = 'text-[#facc15]'; // Amarelo Ouro (não laranja neon)
-        } else {
-            labelVol = 'Agressiva';
-            colorClass = 'text-[#ef4444]'; // Vermelho
-        }
+        let colorClass = 'text-[#a1a1aa]'; 
+        if (volatilidade < 10) { labelVol = 'Conservadora'; colorClass = 'text-[#4ade80]'; }
+        else if (volatilidade < 25) { labelVol = 'Moderada'; colorClass = 'text-[#facc15]'; }
+        else { labelVol = 'Agressiva'; colorClass = 'text-[#ef4444]'; }
 
         if (elVolTag) {
             elVolTag.textContent = labelVol;
-            // Remove classes antigas e aplica a nova cor
             elVolTag.className = `text-[9px] font-bold uppercase tracking-wider ${colorClass}`;
         }
     }
 
-    // --- 8. AGRUPAMENTO MENSAL (APENAS 6M E 1Y) ---
-    // 7D e 1M mostram todos os dias disponíveis
+    // --- 8. AGRUPAMENTO MENSAL ---
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -3093,7 +3064,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         const mes = d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const ano = d.getFullYear().toString().slice(-2);
 
-        // FORMATAÇÃO DE LABELS: 7D e 1M mostram dia/mês
         if (['7D', '1M'].includes(currentPatrimonioRange)) labels.push([dia, mes]); 
         else if (['6M', '1Y'].includes(currentPatrimonioRange)) labels.push([mes, ano]); 
         else labels.push([dia, mes, ano]); 
@@ -3117,7 +3087,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         dataCusto.push(custoAcumulado);
     });
 
-    // --- 10. ATUALIZA CARD "GRÁFICO" ---
     const elChartVal = document.getElementById('modal-patrimonio-chart-val');
     if (elChartVal) {
         if (dataValor.length > 0) {
@@ -3128,22 +3097,108 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         }
     }
 
-    // --- 11. RENDERIZAÇÃO ---
+    // --- 11. RENDERIZAÇÃO (VISUAL ESTILO COTAÇÃO) ---
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
+    
     const colorLinePatrimonio = '#c084fc'; 
     const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorText = isLight ? '#6b7280' : '#737373'; 
+    const colorBadgeBg = isLight ? '#f3f4f6' : '#1f2937';
+    const colorBadgeText = isLight ? '#1f2937' : '#f9fafb';
+    const colorCrosshair = isLight ? '#d1d5db' : '#404040';
 
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
 
+    // PLUGIN: Crosshair + Badges (Estilo Cotação)
+    const patrimonioCrosshairPlugin = {
+        id: 'patrimonioCrosshair',
+        afterDraw: (chart) => {
+            if (chart.tooltip?._active?.length) {
+                const ctx = chart.ctx;
+                const activePoint = chart.tooltip._active[0];
+                const x = activePoint.element.x; 
+                const y = chart.tooltip._eventPosition.y; 
+                
+                const topY = chart.scales.y.top;
+                const bottomY = chart.scales.y.bottom;
+                const leftX = chart.scales.x.left;
+                const rightX = chart.scales.x.right;
+
+                ctx.save();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = colorCrosshair;
+                ctx.setLineDash([4, 4]);
+
+                // Linhas
+                ctx.beginPath();
+                ctx.moveTo(x, topY);
+                ctx.lineTo(x, bottomY);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(leftX, y);
+                ctx.lineTo(rightX, y);
+                ctx.stroke();
+
+                // Badge X (Data)
+                const xIndex = activePoint.index;
+                const labelRaw = chart.data.labels[xIndex];
+                const labelText = Array.isArray(labelRaw) ? labelRaw.join(' ') : labelRaw;
+
+                ctx.font = 'bold 10px Inter, sans-serif';
+                const dateWidth = ctx.measureText(labelText).width + 12;
+                const dateHeight = 20;
+                let dateBadgeX = x - (dateWidth / 2);
+                if (dateBadgeX < leftX) dateBadgeX = leftX;
+                if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
+                const dateBadgeY = bottomY + 4;
+
+                ctx.fillStyle = colorBadgeBg;
+                ctx.beginPath();
+                ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 4);
+                ctx.fill();
+
+                ctx.fillStyle = colorBadgeText;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(labelText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2));
+
+                // Badge Y (Valor)
+                const yValue = chart.scales.y.getValueForPixel(y);
+                const priceText = yValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const priceWidth = ctx.measureText(priceText).width + 12;
+                const priceHeight = 20;
+                const priceBadgeX = rightX; 
+                let priceBadgeY = y - (priceHeight / 2);
+                if (priceBadgeY < topY) priceBadgeY = topY;
+                if (priceBadgeY + priceHeight > bottomY) priceBadgeY = bottomY - priceHeight;
+
+                ctx.fillStyle = colorBadgeBg;
+                ctx.beginPath();
+                ctx.roundRect(priceBadgeX, priceBadgeY, priceWidth, priceHeight, 4);
+                ctx.fill();
+
+                ctx.fillStyle = colorBadgeText;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(priceText, priceBadgeX + 6, priceBadgeY + (priceHeight / 2));
+
+                ctx.restore();
+            }
+        }
+    };
+
     if (patrimonioChartInstance) {
         patrimonioChartInstance.data.labels = labels;
         patrimonioChartInstance.data.datasets[0].data = dataValor;
         patrimonioChartInstance.data.datasets[1].data = dataCusto;
+        patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill;
+        patrimonioChartInstance.data.datasets[0].borderColor = colorLinePatrimonio;
+        patrimonioChartInstance.data.datasets[1].borderColor = colorLineInvestido;
         patrimonioChartInstance.update('none'); 
     } else {
         patrimonioChartInstance = new Chart(ctx, {
@@ -3157,14 +3212,14 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                         fill: true,
                         backgroundColor: gradientFill,
                         borderColor: colorLinePatrimonio,
-                        borderWidth: 1.8,
-                        tension: 0.4,
+                        borderWidth: 1.5,
+                        tension: 0.1, 
                         pointRadius: 0, 
-                        pointHitRadius: 30,
+                        pointHitRadius: 20,
                         pointHoverRadius: 4,
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: colorLinePatrimonio,
-                        pointHoverBorderWidth: 3,
+                        pointHoverBackgroundColor: colorLinePatrimonio,
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2,
                         order: 1
                     },
                     {
@@ -3172,9 +3227,9 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                         data: dataCusto,
                         fill: false,
                         borderColor: colorLineInvestido,
-                        borderWidth: 1.3,
+                        borderWidth: 1.2,
                         borderDash: [4, 4],
-                        tension: 0.4,
+                        tension: 0.1,
                         pointRadius: 0,
                         pointHitRadius: 10,
                         pointHoverRadius: 0,
@@ -3185,30 +3240,11 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 0, right: 0, top: 10, bottom: 0 } },
+                layout: { padding: { left: 0, right: 0, top: 10, bottom: 20 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: '#151515',
-                        titleColor: '#9ca3af',
-                        bodyColor: '#fff',
-                        bodyFont: { weight: 'bold', size: 13 },
-                        borderColor: '#2C2C2E',
-                        borderWidth: 1,
-                        padding: 10,
-                        displayColors: true,
-                        callbacks: {
-                            title: function(context) {
-                                const label = context[0].label;
-                                return Array.isArray(label) ? label.join(' ') : label;
-                            },
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            }
-                        }
-                    }
+                    tooltip: { enabled: false } 
                 },
                 scales: {
                     y: { 
@@ -3237,7 +3273,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                         } 
                     }
                 }
-            }
+            },
+            plugins: [patrimonioCrosshairPlugin]
         });
     }
 

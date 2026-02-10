@@ -5614,47 +5614,47 @@ function renderHistoricoIADetalhes(mesesIgnore) {
     const containerBotoes = document.getElementById('periodo-selector-group');
     
     if (containerBotoes) {
+        // AJUSTE: gap reduzido para 1.5 e just-center para tentar caber tudo
         containerBotoes.className = "flex flex-col gap-3 mb-4 px-1";
         
         // 1. LINHA DE BOTÕES
         const getBtnClass = (filterKey) => {
             const isActive = currentProventosFilter === filterKey;
             
-            // CORRIGIDO: Cores neutras estritas
-            // Inativo: bg-[#151515] texto-[#888]
-            // Ativo:   bg-[#333333] texto-white (Cinza neutro, sem azul)
-            return `flex-shrink-0 py-1.5 px-3 rounded-xl text-[11px] font-bold transition-all duration-200 border border-transparent ${
+            // Padding reduzido (px-2.5) para economizar espaço
+            return `flex-shrink-0 py-1.5 px-2.5 rounded-xl text-[10px] font-bold transition-all duration-200 border border-transparent ${
                 isActive 
-                ? 'bg-[#333333] text-white shadow-md' 
+                ? 'bg-[#333333] text-white shadow-md' // Ativo: Cinza Neutro
                 : 'bg-[#151515] text-[#888888] hover:text-gray-300'
             }`;
         };
 
+        // NOMES ABREVIADOS: POS e PERS
         let html = `
-            <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar w-full">
+            <div class="flex gap-1.5 justify-between items-center overflow-x-auto pb-1 no-scrollbar w-full">
                 <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')}">1A</button>
                 <button onclick="mudarFiltroProventos('5y')" class="${getBtnClass('5y')}">5A</button>
                 <button onclick="mudarFiltroProventos('max')" class="${getBtnClass('max')}">MAX</button>
                 <button onclick="mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')}">YTD</button>
-                <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')}">Posição</button>
-                <button onclick="mudarFiltroProventos('custom')" class="${getBtnClass('custom')}">Personalizado</button>
+                <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')}">POS</button>
+                <button onclick="mudarFiltroProventos('custom')" class="${getBtnClass('custom')}">PERS</button>
             </div>
         `;
 
-        // 2. INPUTS DE DATA (Estilo Neutro)
+        // 2. INPUTS DE DATA (Mantido o estilo neutro)
         if (currentProventosFilter === 'custom') {
             html += `
                 <div class="flex items-center justify-center gap-2 animate-fade-in bg-[#151515] p-2 rounded-lg border border-[#333333]">
-                    <div class="flex flex-col">
-                        <label class="text-[9px] text-[#888] ml-1">De:</label>
+                    <div class="flex flex-col w-1/2">
+                        <label class="text-[9px] text-[#888] ml-1 mb-0.5">De:</label>
                         <input type="month" id="custom-start" value="${customRangeStart}" 
-                               class="bg-[#222] text-white text-xs border border-[#444] rounded px-2 py-1 outline-none focus:border-[#666]"
+                               class="w-full bg-[#222] text-white text-[10px] border border-[#444] rounded px-2 py-1 outline-none focus:border-[#666]"
                                onchange="atualizarFiltroCustom()">
                     </div>
-                    <div class="flex flex-col">
-                        <label class="text-[9px] text-[#888] ml-1">Até:</label>
+                    <div class="flex flex-col w-1/2">
+                        <label class="text-[9px] text-[#888] ml-1 mb-0.5">Até:</label>
                         <input type="month" id="custom-end" value="${customRangeEnd}" 
-                               class="bg-[#222] text-white text-xs border border-[#444] rounded px-2 py-1 outline-none focus:border-[#666]"
+                               class="w-full bg-[#222] text-white text-[10px] border border-[#444] rounded px-2 py-1 outline-none focus:border-[#666]"
                                onchange="atualizarFiltroCustom()">
                     </div>
                 </div>

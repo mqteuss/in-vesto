@@ -3117,13 +3117,10 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     const patrimonioCrosshairPlugin = {
         id: 'patrimonioCrosshair',
         afterDraw: (chart) => {
-            // CORREÇÃO: Verifica se existe o _active E se existe o _eventPosition
             if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
                 const ctx = chart.ctx;
                 const activePoint = chart.tooltip._active[0];
                 const x = activePoint.element.x; 
-                
-                // Agora é seguro acessar .y, pois testamos _eventPosition antes
                 const y = chart.tooltip._eventPosition.y; 
                 
                 const topY = chart.scales.y.top;
@@ -3243,37 +3240,48 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 0, right: 0, top: 10, bottom: 20 } },
+                // Layout com padding para caber os badges dos eixos (limpeza visual)
+                layout: { padding: { left: 0, right: 36, top: 10, bottom: 20 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { enabled: false } 
+                    tooltip: {
+                        enabled: true, // Tooltip ativado
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(28, 28, 30, 0.95)', // Estilo "Cotação"
+                        titleColor: '#9CA3AF',
+                        bodyColor: '#FFF',
+                        borderColor: '#333',
+                        borderWidth: 1,
+                        padding: 8,
+                        cornerRadius: 6,
+                        displayColors: false,
+                        callbacks: {
+                             title: function(context) {
+                                // Mostra a data no topo do tooltip
+                                const label = context[0].label;
+                                return Array.isArray(label) ? label.join(' ') : label;
+                             },
+                             label: function(context) {
+                                 let label = context.dataset.label || '';
+                                 if (label) {
+                                     label += ': ';
+                                 }
+                                 if (context.parsed.y !== null) {
+                                     label += context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                 }
+                                 return label;
+                             }
+                        }
+                    }
                 },
                 scales: {
                     y: { 
-                        display: true,
-                        position: 'right',
-                        grid: { color: colorGrid, borderDash: [4, 4], drawBorder: false },
-                        ticks: {
-                            color: colorText,
-                            font: { size: 10, family: 'monospace' },
-                            maxTicksLimit: 6,
-                            callback: function(value) {
-                                if(value >= 1000) return 'R$ ' + (value/1000).toFixed(1) + 'k';
-                                return value;
-                            }
-                        }
+                        display: false, // Oculta eixo Y padrão (usa o badge do plugin)
                     },
                     x: {
-                        grid: { display: false },
-                        ticks: { 
-                            display: true,
-                            maxRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 6, 
-                            color: colorText,
-                            font: { size: 10, weight: 'bold' }
-                        } 
+                        display: false, // Oculta eixo X padrão (usa o badge do plugin)
                     }
                 }
             },

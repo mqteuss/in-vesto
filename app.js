@@ -5601,49 +5601,75 @@ function renderHistoricoIADetalhes(meses) {
     renderizarGraficoProventosDetalhes(dadosFiltrados);
 }
 	
-// --- No arquivo app.js ---
+// ====================================================================
+// FUNÇÕES DO GRÁFICO DE PROVENTOS DETALHADO (STACKED/EMPILHADO)
+// ====================================================================
 
-// Função auxiliar para processar e empilhar os dados
+/**
+ * FUNÇÃO AUXILIAR: Processa a lista bruta de proventos.
+ * Agrupa por mês e separa os valores em categorias (Dividendos, JCP, Rendimentos).
+ */
 function processarDadosProventosStack(listaProventos) {
     const agrupado = {};
     
-    // Garante que seja um array
-    if (!Array.isArray(listaProventos)) return { labels: [], datasets: {} };
+    // Validação básica
+    if (!listaProventos || !Array.isArray(listaProventos)) {
+        console.warn("Lista de proventos inválida para processamento.");
+        return { labels: [], datasets: {} };
+    }
 
-    // Ordena por data
-    const listaOrdenada = [...listaProventos].sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+    // 1. Ordena cronologicamente (do mais antigo para o mais novo)
+    const listaOrdenada = [...listaProventos].sort((a, b) => {
+        const dateA = a.paymentDate ? new Date(a.paymentDate) : new Date(0);
+        const dateB = b.paymentDate ? new Date(b.paymentDate) : new Date(0);
+        return dateA - dateB;
+    });
 
+    // 2. Agrupa os valores
     listaOrdenada.forEach(p => {
-        if (!p.paymentDate || p.value <= 0) return;
+        // Ignora se não tiver data ou valor zerado
+        if (!p.paymentDate || !p.value || p.value <= 0) return;
         
         const data = new Date(p.paymentDate);
-        // Cria chave única por mês (ex: "2023-08")
+        // Chave para agrupar internamente (ex: "2023-08")
         const sortKey = p.paymentDate.substring(0, 7); 
-        // Label visual (ex: "AGO/23")
+        // Label visual para o Tooltip (ex: "AGO/23")
         const mesAnoLabel = data.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase().replace('.', '');
 
+        // Inicializa o objeto do mês se não existir
         if (!agrupado[sortKey]) {
             agrupado[sortKey] = {
                 label: mesAnoLabel,
                 DIVIDENDO: 0,
                 JCP: 0,
-                RENDIMENTO: 0,
+                RENDIMENTO: 0, // Aqui ficarão os FIIs
                 OUTROS: 0
             };
         }
 
-        const tipo = (p.type || '').toUpperCase();
+        // Normaliza o tipo para maiúsculo para facilitar a comparação
+        const tipo = (p.type || '').toUpperCase().trim();
         
-        // Separa os valores nas "gavetas" certas
-        if (tipo.includes('DIVIDEND')) agrupado[sortKey].DIVIDENDO += p.value;
-        else if (tipo.includes('JUROS') || tipo.includes('JCP')) agrupado[sortKey].JCP += p.value;
-        else if (tipo.includes('RENDIMENTO')) agrupado[sortKey].RENDIMENTO += p.value;
-        else agrupado[sortKey].OUTROS += p.value;
+        // --- LÓGICA DE CLASSIFICAÇÃO ---
+        if (tipo.includes('DIVIDEND')) {
+            agrupado[sortKey].DIVIDENDO += p.value;
+        } else if (tipo.includes('JUROS') || tipo.includes('JCP')) {
+            agrupado[sortKey].JCP += p.value;
+        } else if (tipo.includes('RENDIMENTO')) {
+            // Se o scraper enviar "Rendimento", cai aqui e ficará VERDE
+            agrupado[sortKey].RENDIMENTO += p.value;
+        } else {
+            // Se não casar com nada acima, cai aqui e fica CINZA
+            agrupado[sortKey].OUTROS += p.value;
+            // Debug: descomente a linha abaixo se os FIIs continuarem cinzas para ver o que o scraper está enviando
+            // console.log('Caiu em Outros (Cinza):', tipo, p.value); 
+        }
     });
 
-    // Pega os últimos 12 meses disponíveis
+    // 3. Pega os últimos 12 meses disponíveis
     const chavesOrdenadas = Object.keys(agrupado).sort().slice(-12);
     
+    // 4. Retorna no formato que o Chart.js precisa
     return {
         labels: chavesOrdenadas.map(k => agrupado[k].label),
         datasets: {
@@ -5655,75 +5681,139 @@ function processarDadosProventosStack(listaProventos) {
     };
 }
 
-// Função Principal de Renderização
+/**
+ * FUNÇÃO PRINCIPAL: Renderiza o gráfico no canvas.
+ * Recebe a lista BRUTA de dados (com paymentDate e type).
+ */
 function renderizarGraficoProventosDetalhes(dadosRaw) {
     const canvas = document.getElementById('detalhes-proventos-chart');
     if (!canvas) return;
 
-    if (detalhesChartInstance) {
+    // Destrói instância anterior para não sobrepor gráficos
+    if (typeof detalhesChartInstance !== 'undefined' && detalhesChartInstance) {
         detalhesChartInstance.destroy();
         detalhesChartInstance = null;
     }
 
-    // Processa os dados brutos
+    // Processa os dados brutos para o formato de pilhas
     const dadosStack = processarDadosProventosStack(dadosRaw);
-
     const ctx = canvas.getContext('2d');
     
-    // Cores Tech/Dark
-    const colorDiv = '#c084fc';  // Roxo
-    const colorJCP = '#3b82f6';  // Azul
-    const colorRend = '#10b981'; // Verde
-    const colorOutros = '#9ca3af'; // Cinza
+    // --- CONFIGURAÇÃO DE CORES ---
+    const colorDiv = '#c084fc';  // Roxo (Dividendos)
+    const colorJCP = '#3b82f6';  // Azul (JCP)
+    const colorRend = '#10b981'; // Verde (Rendimentos/FIIs) <-- Esta é a cor que você quer
+    const colorOutros = '#9ca3af'; // Cinza (Outros)
 
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: dadosStack.labels,
+            // As labels existem aqui para o Tooltip usar, mas serão ocultadas no eixo X
+            labels: dadosStack.labels, 
             datasets: [
-                { label: 'Dividendos', data: dadosStack.datasets.DIVIDENDO, backgroundColor: colorDiv, borderRadius: 2, stack: 'Stack 0' },
-                { label: 'JCP', data: dadosStack.datasets.JCP, backgroundColor: colorJCP, borderRadius: 2, stack: 'Stack 0' },
-                { label: 'Rendimentos', data: dadosStack.datasets.RENDIMENTO, backgroundColor: colorRend, borderRadius: 2, stack: 'Stack 0' },
-                { label: 'Outros', data: dadosStack.datasets.OUTROS, backgroundColor: colorOutros, borderRadius: 2, stack: 'Stack 0' }
+                // Cada objeto aqui é uma "camada" da pilha
+                {
+                    label: 'Dividendos',
+                    data: dadosStack.datasets.DIVIDENDO,
+                    backgroundColor: colorDiv,
+                    borderRadius: 2,
+                    stack: 'Stack 0' // 'stack' igual agrupa na mesma barra
+                },
+                {
+                    label: 'JCP',
+                    data: dadosStack.datasets.JCP,
+                    backgroundColor: colorJCP,
+                    borderRadius: 2,
+                    stack: 'Stack 0'
+                },
+                {
+                    label: 'Rendimentos',
+                    data: dadosStack.datasets.RENDIMENTO,
+                    backgroundColor: colorRend, // Aplica a cor Verde
+                    borderRadius: 2,
+                    stack: 'Stack 0'
+                },
+                {
+                    label: 'Outros',
+                    data: dadosStack.datasets.OUTROS,
+                    backgroundColor: colorOutros, // Aplica a cor Cinza
+                    borderRadius: 2,
+                    stack: 'Stack 0'
+                }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            // Remove paddings laterais e inferiores para o gráfico ocupar todo o espaço
             layout: { padding: { top: 10, bottom: 0, left: 0, right: 0 } },
-            interaction: { mode: 'index', intersect: false },
+            interaction: {
+                mode: 'index', // O tooltip pega todos os itens do mesmo mês
+                intersect: false,
+            },
             plugins: {
                 legend: { 
-                    display: true, 
+                    display: true, // Mantém a legenda para identificar as cores
                     position: 'bottom',
-                    labels: { color: '#9ca3af', font: { size: 9, weight: '600' }, usePointStyle: true, boxWidth: 6 }
-                },
+                    labels: {
+                        color: '#9ca3af',
+                        font: { size: 10, weight: '600', family: 'Inter, sans-serif' },
+                        usePointStyle: true,
+                        boxWidth: 8,
+                        padding: 15
+                    }
+                }, 
                 tooltip: {
+                    // Estilo do Tooltip (Dark)
                     backgroundColor: '#151515',
                     titleColor: '#fff',
                     bodyColor: '#ccc',
                     borderColor: '#333',
                     borderWidth: 1,
                     cornerRadius: 8,
-                    padding: 10,
+                    padding: 12,
+                    boxPadding: 4,
                     callbacks: {
-                        label: function(context) {
-                            if (context.parsed.y !== null && context.parsed.y > 0) {
-                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            }
-                            return null;
+                        // Formata o título (Mês/Ano)
+                        title: function(context) {
+                             return context[0].label;
                         },
+                        // Formata cada item (Tipo: Valor)
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            // Só mostra se o valor for maior que zero
+                            if (context.parsed.y !== null && context.parsed.y > 0) {
+                                return label + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            }
+                            return null; // Retorna null para não exibir linha vazia no tooltip
+                        },
+                        // Adiciona o Total no rodapé do tooltip
                         footer: function(tooltipItems) {
                             let total = 0;
-                            tooltipItems.forEach(t => total += t.parsed.y);
-                            return total > 0 ? 'Total: ' + total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+                            tooltipItems.forEach(function(tooltipItem) {
+                                total += tooltipItem.parsed.y;
+                            });
+                            if (total > 0) {
+                                return '\nTotal: ' + total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            }
+                            return '';
                         }
                     }
                 }
             },
             scales: {
-                x: { stacked: true, display: true, grid: { display: false }, ticks: { color: '#666', font: { size: 9, weight: 'bold' } } },
-                y: { stacked: true, display: false }
+                x: {
+                    stacked: true,
+                    // --- MUDANÇA AQUI: OCULTA O EIXO X ---
+                    display: false, 
+                    grid: { display: false }
+                },
+                y: {
+                    stacked: true,
+                    display: false, // Oculta o eixo Y
+                    grid: { display: false }
+                }
             }
         }
     });

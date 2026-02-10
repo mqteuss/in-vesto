@@ -4840,6 +4840,10 @@ window.mudarPeriodoGrafico = function(range, symbol) {
     carregarDadosGrafico(range, symbol);
 };
 
+// ======================================================
+//  GRÁFICO VISUAL PREMIUM (ESTILO BINANCE / TRADINGVIEW)
+// ======================================================
+
 function renderPriceChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
@@ -4857,21 +4861,24 @@ function renderPriceChart(dataPoints, range) {
     const startPrice = values[0];
     const endPrice = values[values.length - 1];
     const isPositive = endPrice >= startPrice;
-    
-    // Cores
-    const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
-    const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
-    const colorCrosshairLine = '#A3A3A3'; 
-    const colorBadgeBackground = '#404040'; 
-    const colorBadgeText = '#FFFFFF'; 
-
-    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, colorFillStart);
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
     const isIntraday = (range === '1D' || range === '5D');
 
+    // --- PALETA DE CORES PREMIUM (Binance/TradingView) ---
+    const colorBullish = '#0ECB81'; // Verde Binance
+    const colorBearish = '#F6465D'; // Vermelho Binance
+    const colorGrid = '#2B2F36';    // Cinza Grid Escuro
+    const colorText = '#848E9C';    // Cinza Texto Broker
+    
+    // Cor atual
+    const mainColor = isPositive ? colorBullish : colorBearish;
+
+    // Gradiente Vertical (Fade suave para baixo)
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, isPositive ? 'rgba(14, 203, 129, 0.2)' : 'rgba(246, 70, 93, 0.2)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
     // --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER HTML ---
+    // (Mantida igual para preservar a lógica que já criamos)
     const updateHeaderStats = (currentPrice) => {
         const elOpen = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
@@ -4879,35 +4886,68 @@ function renderPriceChart(dataPoints, range) {
 
         if (!elOpen || !elClose || !elVar) return;
 
-        // Abertura é sempre fixa (início do gráfico)
         elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-        // Fechamento é dinâmico (ou o último, ou o do dedo)
         elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elClose.style.color = (currentPrice >= startPrice) ? '#00C805' : '#FF3B30';
+        elClose.style.color = (currentPrice >= startPrice) ? colorBullish : colorBearish;
 
-        // Variação
         const diff = currentPrice - startPrice;
         const percent = (diff / startPrice) * 100;
         const sign = diff >= 0 ? '+' : '';
         
         elVar.innerText = `${sign}${percent.toFixed(2)}%`;
-        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
+        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`;
     };
 
-    // Inicializa o Header com os dados finais (Repouso)
     updateHeaderStats(endPrice);
 
-    // Posicionador
+    // Posicionador Tooltip
     Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
         if (!elements.length) return false;
         return { x: elements[0].element.x, y: eventPosition.y };
     };
 
     // =================================================================
-    // PLUGIN A: LINHA DE PREÇO ATUAL (Badge Fixo)
+    // PLUGIN 1: PONTO PULSANTE (GLOWING DOT) - EFEITO "AO VIVO"
     // =================================================================
-    const lastPricePlugin = {
+    const pulsingDotPlugin = {
+        id: 'pulsingDot',
+        afterDraw: (chart) => {
+            if (chart.tooltip?._active?.length) return; // Esconde se estiver interagindo
+
+            const ctx = chart.ctx;
+            const meta = chart.getDatasetMeta(0);
+            if (!meta.data || meta.data.length === 0) return;
+
+            const lastPoint = meta.data[meta.data.length - 1];
+            const x = lastPoint.x;
+            const y = lastPoint.y;
+
+            // 1. Halo Externo (Glow)
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = isPositive ? 'rgba(14, 203, 129, 0.3)' : 'rgba(246, 70, 93, 0.3)';
+            ctx.fill();
+
+            // 2. Ponto Central Sólido
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.fillStyle = mainColor;
+            ctx.fill();
+            
+            // 3. Brilho Branco Centro
+            ctx.beginPath();
+            ctx.arc(x, y, 1, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.restore();
+        }
+    };
+
+    // =================================================================
+    // PLUGIN 2: LINHA DO PREÇO ATUAL (TRACEJADA ATÉ O EIXO Y)
+    // =================================================================
+    const lastPriceLinePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
             const ctx = chart.ctx;
@@ -4924,27 +4964,28 @@ function renderPriceChart(dataPoints, range) {
             ctx.moveTo(leftEdge, y);
             ctx.lineTo(rightEdge, y);
             ctx.lineWidth = 1;
-            ctx.strokeStyle = colorLine; 
-            ctx.setLineDash([2, 2]); 
+            ctx.strokeStyle = mainColor; 
+            ctx.setLineDash([4, 4]); // Tracejado mais largo estilo Pro
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Badge
+            // Badge de Preço no Eixo Y (Direita)
             const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 9px sans-serif'; 
+            ctx.font = 'bold 10px sans-serif'; 
             const textWidth = ctx.measureText(text).width;
-            const paddingX = 4;
-            const badgeHeight = 16; 
+            const paddingX = 6;
+            const badgeHeight = 18; 
             const badgeWidth = textWidth + (paddingX * 2);
-            const badgeX = rightEdge; 
+            const badgeX = rightEdge - badgeWidth; 
             const badgeY = y - (badgeHeight / 2);
 
-            ctx.fillStyle = colorLine;
+            // Fundo do Badge
+            ctx.fillStyle = mainColor;
             ctx.beginPath();
-            ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3);
+            ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 4);
             ctx.fill();
 
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = '#FFFFFF'; // Texto Sempre Branco
             ctx.textBaseline = 'middle';
             ctx.fillText(text, badgeX + paddingX, y + 1); 
             ctx.restore();
@@ -4952,12 +4993,11 @@ function renderPriceChart(dataPoints, range) {
     };
 
     // =================================================================
-    // PLUGIN B: MIRA LIVRE + ATUALIZAÇÃO DO HEADER
+    // PLUGIN 3: MIRA (CROSSHAIR) ESTILO TRADINGVIEW
     // =================================================================
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
-            // Se NÃO estiver tocando, reseta o header para o valor final
             if (!chart.tooltip?._active?.length) {
                 if (chart.lastHeaderUpdate !== 'end') {
                     updateHeaderStats(endPrice);
@@ -4966,13 +5006,11 @@ function renderPriceChart(dataPoints, range) {
                 return;
             }
 
-            // Se ESTIVER tocando:
             if (!chart.tooltip._eventPosition) return;
             const event = chart.tooltip._eventPosition;
             const ctx = chart.ctx;
             const x = event.x; 
             const y = event.y; 
-            
             const topY = chart.scales.y.top;
             const bottomY = chart.scales.y.bottom;
             const leftX = chart.scales.x.left;
@@ -4980,29 +5018,28 @@ function renderPriceChart(dataPoints, range) {
 
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
 
-            // --- ATUALIZA O HEADER COM O PREÇO FOCADO ---
-            // Pega o valor real do ponto mais próximo (activePoint) para precisão no header
+            // Atualiza Header
             const activePoint = chart.tooltip._active[0];
             const focusedPrice = dataPoints[activePoint.index].price;
-            
             if (chart.lastHeaderValue !== focusedPrice) {
                 updateHeaderStats(focusedPrice);
                 chart.lastHeaderValue = focusedPrice;
                 chart.lastHeaderUpdate = 'active';
             }
-            // ---------------------------------------------
 
             ctx.save();
+            // Linhas Cinza Escuro Tracejadas (Estilo TradingView)
             ctx.lineWidth = 1;
-            ctx.strokeStyle = colorCrosshairLine; 
-            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = '#5E6673'; 
+            ctx.setLineDash([6, 6]);
 
-            // 1. Eixo X (Linha + Data)
+            // Eixo X
             ctx.beginPath();
             ctx.moveTo(x, topY);
             ctx.lineTo(x, bottomY);
             ctx.stroke();
 
+            // Badge Data (Preto Sólido)
             const xIndex = chart.scales.x.getValueForPixel(x);
             const validIndex = Math.max(0, Math.min(xIndex, dataPoints.length - 1));
             const rawDate = new Date(dataPoints[validIndex].date);
@@ -5015,25 +5052,25 @@ function renderPriceChart(dataPoints, range) {
                  dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
             }
 
-            ctx.font = 'bold 9px sans-serif';
+            ctx.font = 'bold 10px sans-serif';
             const dateWidth = ctx.measureText(dateText).width + 12; 
-            const dateHeight = 16;
+            const dateHeight = 20;
             let dateBadgeX = x - (dateWidth / 2);
             if (dateBadgeX < leftX) dateBadgeX = leftX;
             if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
-            const dateBadgeY = bottomY + 2; 
+            const dateBadgeY = bottomY + 4; 
 
-            ctx.fillStyle = colorBadgeBackground; 
+            ctx.fillStyle = '#1E2329'; // Fundo quase preto
             ctx.beginPath();
-            ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 3);
+            ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 4);
             ctx.fill();
             
-            ctx.fillStyle = colorBadgeText;
+            ctx.fillStyle = '#D1D5DB'; // Texto claro
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
 
-            // 2. Eixo Y (Linha + Preço da Mira)
+            // Eixo Y
             ctx.beginPath();
             ctx.moveTo(leftX, y); 
             ctx.lineTo(rightX, y);
@@ -5041,52 +5078,55 @@ function renderPriceChart(dataPoints, range) {
 
             const cursorPrice = chart.scales.y.getValueForPixel(y);
             const priceText = cursorPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const priceWidth = ctx.measureText(priceText).width + 8;
-            const priceHeight = 16;
+            const priceWidth = ctx.measureText(priceText).width + 10;
+            const priceHeight = 20;
             const priceBadgeX = rightX;
             const priceBadgeY = y - (priceHeight / 2);
 
-            ctx.fillStyle = colorBadgeBackground; 
+            ctx.fillStyle = '#1E2329'; // Fundo quase preto
             ctx.beginPath();
             let finalPriceY = priceBadgeY;
             if (finalPriceY < topY) finalPriceY = topY;
             if (finalPriceY + priceHeight > bottomY) finalPriceY = bottomY - priceHeight;
 
-            ctx.roundRect(priceBadgeX, finalPriceY, priceWidth, priceHeight, 3);
+            ctx.roundRect(priceBadgeX, finalPriceY, priceWidth, priceHeight, 4);
             ctx.fill();
 
-            ctx.fillStyle = colorBadgeText;
+            ctx.fillStyle = '#D1D5DB'; // Texto claro
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(priceText, priceBadgeX + 4, finalPriceY + (priceHeight / 2) + 1);
+            ctx.fillText(priceText, priceBadgeX + 5, finalPriceY + (priceHeight / 2) + 1);
 
             ctx.restore();
         }
     };
 
+    // --- RENDERIZAÇÃO ---
     cotacaoChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
                 data: values,
-                borderColor: colorLine,
+                borderColor: mainColor,
                 backgroundColor: gradient,
-                borderWidth: 1,
+                borderWidth: 2, // Linha um pouco mais grossa
                 pointRadius: 0,
                 pointHitRadius: 20, 
                 pointHoverRadius: 4,
-                pointHoverBackgroundColor: colorLine,
-                pointHoverBorderWidth: 0,
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: mainColor,
+                pointHoverBorderWidth: 2,
                 fill: true,
-                tension: 0.05
+                tension: 0.1 // Curva leve, quase reta (precisão)
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             layout: { 
-                padding: { left: 0, right: 36, top: 10, bottom: 20 } 
+                // Padding ajustado para o eixo Y na direita
+                padding: { left: 0, right: 0, top: 10, bottom: 20 } 
             },
             plugins: {
                 legend: { display: false },
@@ -5094,27 +5134,19 @@ function renderPriceChart(dataPoints, range) {
                     enabled: true,
                     position: 'followFinger', 
                     yAlign: 'bottom',
-                    caretPadding: 35,
+                    caretPadding: 20,
                     mode: 'index',
                     intersect: false,
-                    backgroundColor: 'rgba(28, 28, 30, 0.95)',
-                    titleColor: '#9CA3AF',
-                    bodyColor: '#FFF',
-                    borderColor: '#333',
+                    backgroundColor: 'rgba(30, 35, 41, 0.9)', // Cor de fundo Tooltip Binance
+                    titleColor: '#848E9C',
+                    bodyColor: '#EAECEF',
+                    borderColor: '#474D57',
                     borderWidth: 1,
-                    padding: 8,
-                    cornerRadius: 6,
+                    padding: 10,
+                    cornerRadius: 4,
                     displayColors: false,
                     callbacks: {
-                        // Título com data no tooltip flutuante
-                        title: function(context) {
-                            const date = new Date(context[0].label);
-                            if (isIntraday) {
-                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + 
-                                       date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                            }
-                            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-                        },
+                        title: function(context) { return ''; }, // Oculta título, já temos no badge
                         label: function(context) {
                             return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         }
@@ -5122,8 +5154,28 @@ function renderPriceChart(dataPoints, range) {
                 }
             },
             scales: {
-                x: { display: false },
-                y: { display: false } 
+                x: { 
+                    display: false // Eixo X oculto (só aparece no crosshair)
+                },
+                y: { 
+                    display: true,
+                    position: 'right', // EIXO Y NA DIREITA (PADRÃO BROKER)
+                    grid: {
+                        color: colorGrid,
+                        borderDash: [4, 4], // Grid pontilhado
+                        drawBorder: false,
+                        tickLength: 0
+                    },
+                    ticks: {
+                        color: colorText,
+                        font: { size: 10, family: 'monospace' },
+                        maxTicksLimit: 6,
+                        callback: function(value) {
+                            // Formatação abreviada se necessário
+                            return value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                        }
+                    }
+                } 
             },
             interaction: {
                 mode: 'nearest',
@@ -5132,7 +5184,7 @@ function renderPriceChart(dataPoints, range) {
             },
             animation: { duration: 0 }
         },
-        plugins: [lastPricePlugin, activeCrosshairPlugin]
+        plugins: [pulsingDotPlugin, lastPriceLinePlugin, activeCrosshairPlugin]
     });
 }
     

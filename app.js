@@ -5583,24 +5583,30 @@ function renderizarTransacoesDetalhes(symbol) {
              `;
         }
 
-        renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
-    }
+if (currentDetalhesHistoricoJSON && Array.isArray(currentDetalhesHistoricoJSON)) {
+    renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
+}
 	
-// --- FUNÇÃO AUXILIAR: Agrupa dados por Mês e Tipo ---
+// --- No arquivo app.js ---
+
+// Função auxiliar para processar e empilhar os dados
 function processarDadosProventosStack(listaProventos) {
     const agrupado = {};
     
-    // Ordena por data de pagamento
+    // Garante que seja um array
+    if (!Array.isArray(listaProventos)) return { labels: [], datasets: {} };
+
+    // Ordena por data
     const listaOrdenada = [...listaProventos].sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
     listaOrdenada.forEach(p => {
         if (!p.paymentDate || p.value <= 0) return;
         
         const data = new Date(p.paymentDate);
-        // Chave para ordenação: "2023-08"
-        // Label visual: "AGO/23"
+        // Cria chave única por mês (ex: "2023-08")
+        const sortKey = p.paymentDate.substring(0, 7); 
+        // Label visual (ex: "AGO/23")
         const mesAnoLabel = data.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase().replace('.', '');
-        const sortKey = data.toISOString().slice(0, 7); 
 
         if (!agrupado[sortKey]) {
             agrupado[sortKey] = {
@@ -5608,22 +5614,20 @@ function processarDadosProventosStack(listaProventos) {
                 DIVIDENDO: 0,
                 JCP: 0,
                 RENDIMENTO: 0,
-                OUTROS: 0,
-                total: 0
+                OUTROS: 0
             };
         }
 
         const tipo = (p.type || '').toUpperCase();
-        // Classifica o tipo
+        
+        // Separa os valores nas "gavetas" certas
         if (tipo.includes('DIVIDEND')) agrupado[sortKey].DIVIDENDO += p.value;
         else if (tipo.includes('JUROS') || tipo.includes('JCP')) agrupado[sortKey].JCP += p.value;
         else if (tipo.includes('RENDIMENTO')) agrupado[sortKey].RENDIMENTO += p.value;
         else agrupado[sortKey].OUTROS += p.value;
-
-        agrupado[sortKey].total += p.value;
     });
 
-    // Pega apenas os últimos 12 meses com dados
+    // Pega os últimos 12 meses disponíveis
     const chavesOrdenadas = Object.keys(agrupado).sort().slice(-12);
     
     return {
@@ -5637,83 +5641,49 @@ function processarDadosProventosStack(listaProventos) {
     };
 }
 
-// --- FUNÇÃO PRINCIPAL DE RENDERIZAÇÃO (MODIFICADA) ---
+// Função Principal de Renderização
 function renderizarGraficoProventosDetalhes(dadosRaw) {
     const canvas = document.getElementById('detalhes-proventos-chart');
     if (!canvas) return;
 
-    // Destrói gráfico anterior
     if (detalhesChartInstance) {
         detalhesChartInstance.destroy();
         detalhesChartInstance = null;
     }
 
-    // Processa os dados brutos para o formato empilhado
-    // Se "dadosRaw" for null ou vazio, o gráfico ficará vazio, ok.
-    const dadosStack = processarDadosProventosStack(dadosRaw || []);
+    // Processa os dados brutos
+    const dadosStack = processarDadosProventosStack(dadosRaw);
 
     const ctx = canvas.getContext('2d');
     
-    // Cores do Tema
-    const colorDiv = '#c084fc';  // Roxo (Dividendos)
-    const colorJCP = '#3b82f6';  // Azul (JCP)
-    const colorRend = '#10b981'; // Verde (FIIs)
-    const colorOutros = '#9ca3af'; // Cinza (Outros)
+    // Cores Tech/Dark
+    const colorDiv = '#c084fc';  // Roxo
+    const colorJCP = '#3b82f6';  // Azul
+    const colorRend = '#10b981'; // Verde
+    const colorOutros = '#9ca3af'; // Cinza
 
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: dadosStack.labels,
             datasets: [
-                {
-                    label: 'Dividendos',
-                    data: dadosStack.datasets.DIVIDENDO,
-                    backgroundColor: colorDiv,
-                    borderRadius: 2,
-                    stack: 'Stack 0' // Define que pertence à mesma pilha
-                },
-                {
-                    label: 'JCP',
-                    data: dadosStack.datasets.JCP,
-                    backgroundColor: colorJCP,
-                    borderRadius: 2,
-                    stack: 'Stack 0'
-                },
-                {
-                    label: 'Rendimentos',
-                    data: dadosStack.datasets.RENDIMENTO,
-                    backgroundColor: colorRend,
-                    borderRadius: 2,
-                    stack: 'Stack 0'
-                },
-                {
-                    label: 'Outros',
-                    data: dadosStack.datasets.OUTROS,
-                    backgroundColor: colorOutros,
-                    borderRadius: 2,
-                    stack: 'Stack 0'
-                }
+                { label: 'Dividendos', data: dadosStack.datasets.DIVIDENDO, backgroundColor: colorDiv, borderRadius: 2, stack: 'Stack 0' },
+                { label: 'JCP', data: dadosStack.datasets.JCP, backgroundColor: colorJCP, borderRadius: 2, stack: 'Stack 0' },
+                { label: 'Rendimentos', data: dadosStack.datasets.RENDIMENTO, backgroundColor: colorRend, borderRadius: 2, stack: 'Stack 0' },
+                { label: 'Outros', data: dadosStack.datasets.OUTROS, backgroundColor: colorOutros, borderRadius: 2, stack: 'Stack 0' }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             layout: { padding: { top: 10, bottom: 0, left: 0, right: 0 } },
-            interaction: {
-                mode: 'index', // Mostra tooltip com todos os itens daquele mês
-                intersect: false,
-            },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { 
                     display: true, 
                     position: 'bottom',
-                    labels: {
-                        color: '#9ca3af',
-                        font: { size: 10, weight: '600', family: 'Inter' },
-                        usePointStyle: true,
-                        boxWidth: 6
-                    }
-                }, 
+                    labels: { color: '#9ca3af', font: { size: 9, weight: '600' }, usePointStyle: true, boxWidth: 6 }
+                },
                 tooltip: {
                     backgroundColor: '#151515',
                     titleColor: '#fff',
@@ -5723,47 +5693,23 @@ function renderizarGraficoProventosDetalhes(dadosRaw) {
                     cornerRadius: 8,
                     padding: 10,
                     callbacks: {
-                        // Formata cada linha do tooltip
                         label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            // Só mostra se tiver valor > 0
                             if (context.parsed.y !== null && context.parsed.y > 0) {
-                                return label + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                             }
                             return null;
                         },
-                        // Soma o total no rodapé do tooltip
                         footer: function(tooltipItems) {
                             let total = 0;
-                            tooltipItems.forEach(function(tooltipItem) {
-                                total += tooltipItem.parsed.y;
-                            });
-                            if (total > 0) {
-                                return 'Total: ' + total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            }
-                            return '';
+                            tooltipItems.forEach(t => total += t.parsed.y);
+                            return total > 0 ? 'Total: ' + total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
                         }
                     }
                 }
             },
             scales: {
-                x: {
-                    stacked: true, // Habilita empilhamento X
-                    grid: { display: false, drawBorder: false },
-                    ticks: {
-                        color: '#666',
-                        font: { size: 10, weight: 'bold' },
-                        maxRotation: 0,
-                        autoSkip: true,
-                        maxTicksLimit: 6
-                    }
-                },
-                y: {
-                    stacked: true, // Habilita empilhamento Y
-                    display: false, 
-                    grid: { display: false }
-                }
+                x: { stacked: true, display: true, grid: { display: false }, ticks: { color: '#666', font: { size: 9, weight: 'bold' } } },
+                y: { stacked: true, display: false }
             }
         }
     });

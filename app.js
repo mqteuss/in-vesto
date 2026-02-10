@@ -2906,7 +2906,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // --- 4. ATUALIZA CARDS SUPERIORES ---
+    // --- 4. ATUALIZA CARDS SUPERIORES (Patrimônio e Investido) ---
     const elLive = document.getElementById('modal-patrimonio-live');
     if (elLive) {
         elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -2948,84 +2948,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- 6. CÁLCULO DAS ESTATÍSTICAS ---
-    let variacaoPercent = 0;
-    if (dadosOrdenados.length > 0) {
-        const valorInicial = dadosOrdenados[0].value;
-        const valorFinal = dadosOrdenados[dadosOrdenados.length - 1].value;
-        if (valorInicial > 0) {
-            variacaoPercent = ((valorFinal - valorInicial) / valorInicial) * 100;
-        }
-    }
-
-    let maxDrawdown = 0;
-    let pico = -Infinity;
-    dadosOrdenados.forEach(p => {
-        if (p.value > pico) pico = p.value;
-        const queda = (p.value - pico) / pico; 
-        if (queda < maxDrawdown) maxDrawdown = queda;
-    });
-
-    let volatilidade = 0;
-    if (dadosOrdenados.length > 1) {
-        const retornos = [];
-        for (let i = 1; i < dadosOrdenados.length; i++) {
-            const ret = (dadosOrdenados[i].value - dadosOrdenados[i-1].value) / dadosOrdenados[i-1].value;
-            retornos.push(ret);
-        }
-        const mediaRetornos = retornos.reduce((a, b) => a + b, 0) / retornos.length;
-        const variancia = retornos.reduce((a, b) => a + Math.pow(b - mediaRetornos, 2), 0) / retornos.length;
-        volatilidade = (Math.sqrt(variancia) * Math.sqrt(252)) * 100;
-    }
-
-    // --- 7. ATUALIZA OS CARDS DE ESTATÍSTICAS ---
-    const elVariacao = document.getElementById('stat-variacao');
-    const elVariacaoBadge = document.getElementById('stat-variacao-badge');
-    const elDrawdown = document.getElementById('stat-drawdown');
-    const elVolatilidade = document.getElementById('stat-volatilidade');
-    const elVolTag = document.getElementById('stat-vol-tag');
-
-    if (elVariacao) {
-        const sinal = variacaoPercent >= 0 ? '+' : '';
-        elVariacao.textContent = `${sinal}${variacaoPercent.toFixed(2)}%`;
-        const corVar = variacaoPercent >= 0 ? '#4ade80' : '#ef4444'; 
-        elVariacao.style.color = corVar;
-
-        if (elVariacaoBadge) {
-            elVariacaoBadge.className = 'px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wide border';
-            if (variacaoPercent >= 0) {
-                elVariacaoBadge.textContent = 'LUCRO';
-                elVariacaoBadge.classList.add('bg-[#052e16]', 'border-[#14532d]', 'text-[#4ade80]');
-            } else {
-                elVariacaoBadge.textContent = 'PREJUÍZO';
-                elVariacaoBadge.classList.add('bg-[#450a0a]', 'border-[#7f1d1d]', 'text-[#f87171]');
-            }
-        }
-    }
-
-    if (elDrawdown) {
-        const displayVal = Math.abs(maxDrawdown) < 0.001 ? 0 : (maxDrawdown * 100).toFixed(2);
-        elDrawdown.textContent = `${displayVal}%`;
-        if (parseFloat(displayVal) < -0.01 || parseFloat(displayVal) > 1.00) {
-             elDrawdown.style.color = '#ef4444'; 
-        } else {
-             elDrawdown.style.color = '#a1a1aa'; 
-        }
-    }
-
-    if (elVolatilidade) {
-        elVolatilidade.textContent = `${volatilidade.toFixed(1)}%`;
-        let labelVol = 'Baixa';
-        let colorClass = 'text-[#a1a1aa]'; 
-        if (volatilidade < 10) { labelVol = 'Conservadora'; colorClass = 'text-[#4ade80]'; }
-        else if (volatilidade < 25) { labelVol = 'Moderada'; colorClass = 'text-[#facc15]'; }
-        else { labelVol = 'Agressiva'; colorClass = 'text-[#ef4444]'; }
-
-        if (elVolTag) {
-            elVolTag.textContent = labelVol;
-            elVolTag.className = `text-[9px] font-bold uppercase tracking-wider ${colorClass}`;
-        }
-    }
+    // (REMOVIDO: Cálculos de Volatilidade e Drawdown que não são mais usados)
 
     // --- 8. AGRUPAMENTO MENSAL ---
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
@@ -3097,14 +3020,13 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         }
     }
 
-    // --- 11. RENDERIZAÇÃO ---
+    // --- 11. RENDERIZAÇÃO (LAYOUT COMPACTO & LIMPO) ---
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     
     const colorLinePatrimonio = '#c084fc'; 
     const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
     const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
-    const colorText = isLight ? '#6b7280' : '#737373'; 
     const colorBadgeBg = isLight ? '#f3f4f6' : '#1f2937';
     const colorBadgeText = isLight ? '#1f2937' : '#f9fafb';
     const colorCrosshair = isLight ? '#d1d5db' : '#404040';
@@ -3117,7 +3039,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     const patrimonioCrosshairPlugin = {
         id: 'patrimonioCrosshair',
         afterDraw: (chart) => {
-            // Verifica se há interação ativa e segura
             if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
                 const ctx = chart.ctx;
                 const activePoint = chart.tooltip._active[0];
@@ -3155,11 +3076,9 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 const dateHeight = 20;
                 let dateBadgeX = x - (dateWidth / 2);
                 
-                // Evita corte nas bordas laterais
                 if (dateBadgeX < leftX) dateBadgeX = leftX;
                 if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
                 
-                // Desenha na margem inferior (Bottom Padding)
                 const dateBadgeY = bottomY + 2; 
 
                 ctx.fillStyle = colorBadgeBg;
@@ -3172,13 +3091,12 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 ctx.textBaseline = 'middle';
                 ctx.fillText(labelText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2));
 
-                // 3. Badge Y (Valor)
+                // 3. Badge Y (Valor) - Alinhado à direita
                 const yValue = chart.scales.y.getValueForPixel(y);
                 const priceText = yValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 const priceWidth = ctx.measureText(priceText).width + 12;
                 const priceHeight = 20;
                 
-                // Desenha alinhado à DIREITA (dentro do gráfico)
                 const priceBadgeX = rightX - priceWidth; 
                 let priceBadgeY = y - (priceHeight / 2);
                 

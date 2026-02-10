@@ -530,5 +530,3 @@ if (mode === 'cotacao_historica') {
         return res.status(500).json({ error: error.message });
     }
 };
-
-verifique

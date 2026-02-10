@@ -3117,10 +3117,13 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     const patrimonioCrosshairPlugin = {
         id: 'patrimonioCrosshair',
         afterDraw: (chart) => {
-            if (chart.tooltip?._active?.length) {
+            // CORREÇÃO: Verifica se existe o _active E se existe o _eventPosition
+            if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
                 const ctx = chart.ctx;
                 const activePoint = chart.tooltip._active[0];
                 const x = activePoint.element.x; 
+                
+                // Agora é seguro acessar .y, pois testamos _eventPosition antes
                 const y = chart.tooltip._eventPosition.y; 
                 
                 const topY = chart.scales.y.top;

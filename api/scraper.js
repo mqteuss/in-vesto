@@ -395,35 +395,24 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
         const symbol = ticker.toUpperCase().endsWith('.SA') ? ticker.toUpperCase() : `${ticker.toUpperCase()}.SA`;
         const { range, interval } = getYahooParams(rangeFilter);
         
+        // URL Dinâmica baseada no filtro
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}&includePrePost=false`;
         
         const { data } = await axios.get(url);
         const result = data.chart.result[0];
         
-        // Validação mais robusta
-        if (!result || !result.timestamp || !result.indicators.quote[0]) return null;
+        if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
 
         const timestamps = result.timestamp;
-        const quote = result.indicators.quote[0];
-
-        // 1. EXTRAIR TODOS OS PREÇOS (OHLC)
-        const opens = quote.open;
-        const highs = quote.high;
-        const lows = quote.low;
-        const closes = quote.close;
+        const prices = result.indicators.quote[0].close;
 
         // Formata
         const points = timestamps.map((t, i) => {
-            // Se algum dado estiver faltando (comum em feriados/gaps), pula
-            if (closes[i] === null || opens[i] === null) return null;
-
+            if (prices[i] === null || prices[i] === undefined) return null;
             return {
-                x: t * 1000, // Timestamp (Eixo X)
-                // Formato padrão para lib financeira (OHLC)
-                o: parseFloat(opens[i].toFixed(2)),  // Open
-                h: parseFloat(highs[i].toFixed(2)),  // High
-                l: parseFloat(lows[i].toFixed(2)),   // Low
-                c: parseFloat(closes[i].toFixed(2))  // Close
+                date: new Date(t * 1000).toISOString(), // Data ISO para o frontend processar
+                timestamp: t * 1000,
+                price: prices[i]
             };
         }).filter(p => p !== null);
 

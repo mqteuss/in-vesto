@@ -5577,7 +5577,7 @@ function renderHistoricoIADetalhes(meses) {
         return;
     }
 
-    // 3. Garante que o Canvas existe (com o novo visual padronizado)
+    // 3. Garante que o Canvas existe (Visual atualizado: h-64, bg-[#242424], borda)
     if (!document.getElementById('detalhes-proventos-chart')) {
          detalhesAiProvento.innerHTML = `
             <div class="relative w-full h-64 bg-[#242424] rounded-xl border border-[#27272a] overflow-hidden shadow-sm">
@@ -5587,13 +5587,13 @@ function renderHistoricoIADetalhes(meses) {
     }
 
     // 4. LÓGICA DE FILTRO (IMPORTANTE)
-    // Ordenamos por data (antigo -> novo) para garantir a ordem cronológica
+    // Ordenamos por data (antigo -> novo) para garantir a ordem cronológica correta
     const dadosOrdenados = [...currentDetalhesHistoricoJSON].sort((a, b) => 
         new Date(a.paymentDate) - new Date(b.paymentDate)
     );
 
     // Filtramos os últimos 'meses' solicitados (ex: últimos 6, 12, etc)
-    // Usamos slice negativo para pegar do final do array
+    // Usamos slice negativo para pegar do final do array (os mais recentes)
     const qtdRecortar = parseInt(meses) || 12; // Padrão 12 se não vier nada
     const dadosFiltrados = dadosOrdenados.slice(-qtdRecortar);
 

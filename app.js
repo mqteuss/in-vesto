@@ -5614,16 +5614,18 @@ function renderHistoricoIADetalhes(mesesIgnore) {
     const containerBotoes = document.getElementById('periodo-selector-group');
     
     if (containerBotoes) {
-        // Layout: container principal dos botões
         containerBotoes.className = "flex flex-col gap-3 mb-4 px-1";
         
         // 1. LINHA DE BOTÕES
         const getBtnClass = (filterKey) => {
             const isActive = currentProventosFilter === filterKey;
-            // COR ALTERADA: De Roxo (purple-600) para Cinza Claro (gray-600)
+            
+            // CORRIGIDO: Cores neutras estritas
+            // Inativo: bg-[#151515] texto-[#888]
+            // Ativo:   bg-[#333333] texto-white (Cinza neutro, sem azul)
             return `flex-shrink-0 py-1.5 px-3 rounded-xl text-[11px] font-bold transition-all duration-200 border border-transparent ${
                 isActive 
-                ? 'bg-gray-600 text-white shadow-md' // Ativo: Cinza Claro
+                ? 'bg-[#333333] text-white shadow-md' 
                 : 'bg-[#151515] text-[#888888] hover:text-gray-300'
             }`;
         };
@@ -5639,20 +5641,20 @@ function renderHistoricoIADetalhes(mesesIgnore) {
             </div>
         `;
 
-        // 2. INPUTS DE DATA (Só aparecem se 'custom' estiver selecionado)
+        // 2. INPUTS DE DATA (Estilo Neutro)
         if (currentProventosFilter === 'custom') {
             html += `
-                <div class="flex items-center justify-center gap-2 animate-fade-in bg-[#151515] p-2 rounded-lg border border-gray-800">
+                <div class="flex items-center justify-center gap-2 animate-fade-in bg-[#151515] p-2 rounded-lg border border-[#333333]">
                     <div class="flex flex-col">
-                        <label class="text-[9px] text-gray-500 ml-1">De:</label>
+                        <label class="text-[9px] text-[#888] ml-1">De:</label>
                         <input type="month" id="custom-start" value="${customRangeStart}" 
-                               class="bg-[#222] text-white text-xs border border-gray-700 rounded px-2 py-1 outline-none focus:border-gray-500"
+                               class="bg-[#222] text-white text-xs border border-[#444] rounded px-2 py-1 outline-none focus:border-[#666]"
                                onchange="atualizarFiltroCustom()">
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-[9px] text-gray-500 ml-1">Até:</label>
+                        <label class="text-[9px] text-[#888] ml-1">Até:</label>
                         <input type="month" id="custom-end" value="${customRangeEnd}" 
-                               class="bg-[#222] text-white text-xs border border-gray-700 rounded px-2 py-1 outline-none focus:border-gray-500"
+                               class="bg-[#222] text-white text-xs border border-[#444] rounded px-2 py-1 outline-none focus:border-[#666]"
                                onchange="atualizarFiltroCustom()">
                     </div>
                 </div>
@@ -5662,7 +5664,7 @@ function renderHistoricoIADetalhes(mesesIgnore) {
         containerBotoes.innerHTML = html;
     }
 
-    // ALTURA AUMENTADA: h-72 (aprox 288px)
+    // Altura 72 (aprox 288px)
     if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `<div class="relative h-72 w-full"><canvas id="detalhes-proventos-chart"></canvas></div>`;
     }
@@ -5708,7 +5710,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
         filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
     }
     else if (currentProventosFilter === 'custom') {
-        // FILTRO PERSONALIZADO (Mês/Ano)
         if (customRangeStart) {
             const [anoStart, mesStart] = customRangeStart.split('-');
             const dateStart = new Date(parseInt(anoStart), parseInt(mesStart) - 1, 1);
@@ -5716,7 +5717,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
         }
         if (customRangeEnd) {
             const [anoEnd, mesEnd] = customRangeEnd.split('-');
-            // Pega o último dia do mês final
             const dateEnd = new Date(parseInt(anoEnd), parseInt(mesEnd), 0); 
             filteredData = filteredData.filter(d => new Date(d.paymentDate) <= dateEnd);
         }
@@ -5772,7 +5772,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
 
     const uniqueMonths = [...new Set(allMonths)].sort();
     
-    // Dados para ChartJS
     const labels = uniqueMonths.map(k => grouped[k].label);
     const dataJCP = uniqueMonths.map(k => grouped[k].JCP);
     const dataTRIB = uniqueMonths.map(k => grouped[k].TRIB);
@@ -5782,7 +5781,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
     // --- CONFIGURAÇÃO DO GRÁFICO ---
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
-        plugins: [crosshairPlugin], // ATIVANDO CROSSHAIR
+        plugins: [crosshairPlugin], 
         data: {
             labels: labels,
             datasets: [
@@ -5797,7 +5796,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     barPercentage: 0.6, categoryPercentage: 0.8, borderRadius: 4
                 },
                 {
-                    label: 'Trib', // ABREVIADO
+                    label: 'Trib',
                     data: dataTRIB,
                     backgroundColor: CHART_COLORS.TRIB.bg,
                     borderColor: CHART_COLORS.TRIB.border,
@@ -5807,7 +5806,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     barPercentage: 0.6, categoryPercentage: 0.8, borderRadius: 4
                 },
                 {
-                    label: 'Div', // ABREVIADO
+                    label: 'Div',
                     data: dataDIV,
                     backgroundColor: CHART_COLORS.DIV.bg,
                     borderColor: CHART_COLORS.DIV.border,
@@ -5822,8 +5821,8 @@ function renderizarGraficoProventosDetalhes(rawData) {
             responsive: true,
             maintainAspectRatio: false,
             interaction: {
-                mode: 'index', // Isso permite ver todos do mês
-                intersect: false, // Isso permite que o tooltip siga o mouse mesmo fora da barra
+                mode: 'index', 
+                intersect: false, 
             },
             scales: {
                 x: { display: false },
@@ -5833,10 +5832,11 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    backgroundColor: '#18181b', 
-                    titleColor: '#fff',
-                    bodyColor: '#a1a1aa',
-                    borderColor: '#27272a',
+                    // CORES NEUTRAS PURAS (Sem tom azulado)
+                    backgroundColor: '#111111', 
+                    titleColor: '#ffffff',
+                    bodyColor: '#cccccc', 
+                    borderColor: '#333333',
                     borderWidth: 1,
                     padding: 10,
                     cornerRadius: 8,
@@ -5844,7 +5844,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     boxWidth: 8,
                     boxHeight: 8,
                     usePointStyle: true,
-                    position: 'nearest', // Tenta ficar perto do cursor
+                    position: 'nearest', 
                     
                     callbacks: {
                         title: function(context) {
@@ -5855,8 +5855,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
                         label: function(context) {
                             const val = context.parsed.y;
                             if (val <= 0.001) return null;
-
-                            // Nomes já vêm abreviados do dataset.label ('Div', 'Trib', 'JCP')
                             const label = context.dataset.label;
                             const valFmt = val.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
                             return `${label}: ${valFmt}`;

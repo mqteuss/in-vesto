@@ -24,12 +24,15 @@ window.dismissNotificationGlobal = function(id, btnElement) {
 };
 
 // --- CONFIGURAÇÃO DE CORES E FILTROS ---
-let currentProventosFilter = '12m'; // Padrão
+// --- ESTADO GLOBAL DO GRÁFICO ---
+let currentProventosFilter = '12m'; 
+let customRangeStart = ''; // Formato: 'YYYY-MM'
+let customRangeEnd = '';   // Formato: 'YYYY-MM'
 
 const CHART_COLORS = {
-    JCP:  { bg: '#fbbf24', border: '#d97706' }, // Amber (Amarelo)
-    TRIB: { bg: '#fb7185', border: '#e11d48' }, // Rose (Vermelho Suave)
-    DIV:  { bg: '#c084fc', border: '#9333ea' }  // Roxo (Padrão)
+    JCP:  { bg: '#fbbf24', border: '#d97706' }, 
+    TRIB: { bg: '#fb7185', border: '#e11d48' }, 
+    DIV:  { bg: '#c084fc', border: '#9333ea' }  
 };
 
 // Verificar se a lista ficou vazia
@@ -5574,11 +5577,31 @@ function renderizarTransacoesDetalhes(symbol) {
             `;
         }
     }
+	
+	// Plugin para desenhar a Linha Vertical (Crosshair)
+const crosshairPlugin = {
+    id: 'crosshair',
+    afterDatasetsDraw: (chart) => {
+        if (chart.tooltip?._active?.length) {
+            const x = chart.tooltip._active[0].element.x;
+            const yAxis = chart.scales.y;
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(x, yAxis.top);
+            ctx.lineTo(x, yAxis.bottom);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // Linha branca suave
+            ctx.setLineDash([5, 5]); // Tracejado
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+};
     
 function renderHistoricoIADetalhes(mesesIgnore) {
     if (!currentDetalhesHistoricoJSON) return;
 
-    // Se não tiver dados
     if (currentDetalhesHistoricoJSON.length === 0) {
         detalhesAiProvento.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">Sem histórico disponível.</p>`;
         if (detalhesChartInstance) {
@@ -5588,42 +5611,75 @@ function renderHistoricoIADetalhes(mesesIgnore) {
         return;
     }
 
-    // --- 1. FILTROS VISUAIS (ESTILO COTAÇÃO) ---
     const containerBotoes = document.getElementById('periodo-selector-group');
     
     if (containerBotoes) {
-        // Layout flexível para caber todos os botões com rolagem suave se necessário
-        containerBotoes.className = "flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar px-1";
+        // Layout: container principal dos botões
+        containerBotoes.className = "flex flex-col gap-3 mb-4 px-1";
         
-        // Função para gerar classes idênticas ao filtro de Cotação
+        // 1. LINHA DE BOTÕES
         const getBtnClass = (filterKey) => {
             const isActive = currentProventosFilter === filterKey;
-            // Estilo Cotação: rounded-xl, fundo #151515, texto #888888
-            return `flex-shrink-0 py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border border-transparent ${
+            // COR ALTERADA: De Roxo (purple-600) para Cinza Claro (gray-600)
+            return `flex-shrink-0 py-1.5 px-3 rounded-xl text-[11px] font-bold transition-all duration-200 border border-transparent ${
                 isActive 
-                ? 'bg-purple-600 text-white shadow-md' 
+                ? 'bg-gray-600 text-white shadow-md' // Ativo: Cinza Claro
                 : 'bg-[#151515] text-[#888888] hover:text-gray-300'
             }`;
         };
 
-        // Novos Botões: 1A, 5A, MAX, YTD, Posição
-        containerBotoes.innerHTML = `
-            <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')}">1A</button>
-            <button onclick="mudarFiltroProventos('5y')" class="${getBtnClass('5y')}">5A</button>
-            <button onclick="mudarFiltroProventos('max')" class="${getBtnClass('max')}">MAX</button>
-            <button onclick="mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')}">YTD</button>
-            <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')}">Posição</button>
+        let html = `
+            <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar w-full">
+                <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')}">1A</button>
+                <button onclick="mudarFiltroProventos('5y')" class="${getBtnClass('5y')}">5A</button>
+                <button onclick="mudarFiltroProventos('max')" class="${getBtnClass('max')}">MAX</button>
+                <button onclick="mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')}">YTD</button>
+                <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')}">Posição</button>
+                <button onclick="mudarFiltroProventos('custom')" class="${getBtnClass('custom')}">Personalizado</button>
+            </div>
         `;
+
+        // 2. INPUTS DE DATA (Só aparecem se 'custom' estiver selecionado)
+        if (currentProventosFilter === 'custom') {
+            html += `
+                <div class="flex items-center justify-center gap-2 animate-fade-in bg-[#151515] p-2 rounded-lg border border-gray-800">
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-gray-500 ml-1">De:</label>
+                        <input type="month" id="custom-start" value="${customRangeStart}" 
+                               class="bg-[#222] text-white text-xs border border-gray-700 rounded px-2 py-1 outline-none focus:border-gray-500"
+                               onchange="atualizarFiltroCustom()">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[9px] text-gray-500 ml-1">Até:</label>
+                        <input type="month" id="custom-end" value="${customRangeEnd}" 
+                               class="bg-[#222] text-white text-xs border border-gray-700 rounded px-2 py-1 outline-none focus:border-gray-500"
+                               onchange="atualizarFiltroCustom()">
+                    </div>
+                </div>
+            `;
+        }
+
+        containerBotoes.innerHTML = html;
     }
 
-    // Garante container do gráfico
+    // ALTURA AUMENTADA: h-72 (aprox 288px)
     if (!document.getElementById('detalhes-proventos-chart')) {
-        detalhesAiProvento.innerHTML = `<div class="relative h-48 w-full"><canvas id="detalhes-proventos-chart"></canvas></div>`;
+        detalhesAiProvento.innerHTML = `<div class="relative h-72 w-full"><canvas id="detalhes-proventos-chart"></canvas></div>`;
     }
 
-    // Renderiza Gráfico
     renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
 }
+
+// Nova função global para capturar mudanças nos inputs de data
+window.atualizarFiltroCustom = function() {
+    const startEl = document.getElementById('custom-start');
+    const endEl = document.getElementById('custom-end');
+    if (startEl && endEl) {
+        customRangeStart = startEl.value;
+        customRangeEnd = endEl.value;
+        renderHistoricoIADetalhes(); // Re-renderiza o gráfico
+    }
+};
 
 // Função Global para clique nos botões
 window.mudarFiltroProventos = function(modo) {
@@ -5641,27 +5697,35 @@ function renderizarGraficoProventosDetalhes(rawData) {
     }
 
     const ctx = canvas.getContext('2d');
-
-    // --- 1. LÓGICA DE FILTRAGEM ---
     let filteredData = rawData.filter(d => d.paymentDate); 
     const hoje = new Date();
 
+    // --- LÓGICA DE FILTROS ---
     if (currentProventosFilter === '12m') {
         const dataLimite = new Date();
         dataLimite.setMonth(hoje.getMonth() - 11);
         dataLimite.setDate(1);
         filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
     }
+    else if (currentProventosFilter === 'custom') {
+        // FILTRO PERSONALIZADO (Mês/Ano)
+        if (customRangeStart) {
+            const [anoStart, mesStart] = customRangeStart.split('-');
+            const dateStart = new Date(parseInt(anoStart), parseInt(mesStart) - 1, 1);
+            filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dateStart);
+        }
+        if (customRangeEnd) {
+            const [anoEnd, mesEnd] = customRangeEnd.split('-');
+            // Pega o último dia do mês final
+            const dateEnd = new Date(parseInt(anoEnd), parseInt(mesEnd), 0); 
+            filteredData = filteredData.filter(d => new Date(d.paymentDate) <= dateEnd);
+        }
+    }
     else if (currentProventosFilter === '5y') {
-        // NOVO: Últimos 5 Anos
         const dataLimite = new Date();
         dataLimite.setFullYear(hoje.getFullYear() - 5);
         dataLimite.setDate(1);
         filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
-    }
-    else if (currentProventosFilter === 'max') {
-        // NOVO: Todo o histórico (sem filtro de data)
-        filteredData = [...filteredData];
     }
     else if (currentProventosFilter === 'ytd') {
         const inicioAno = new Date(hoje.getFullYear(), 0, 1);
@@ -5674,17 +5738,15 @@ function renderizarGraficoProventosDetalhes(rawData) {
             dataCompra.setDate(1); 
             filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataCompra);
         } else {
-             // Fallback para 5 anos se não tiver data de compra
              const dataLimite = new Date();
              dataLimite.setFullYear(hoje.getFullYear() - 5);
              filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
         }
     }
 
-    // Ordena Cronologicamente
     filteredData.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
-    // --- 2. AGRUPAMENTO ---
+    // --- AGRUPAMENTO ---
     const grouped = {};
     const allMonths = [];
 
@@ -5694,11 +5756,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
         const labelKey = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.','').toUpperCase();
 
         if (!grouped[sortKey]) {
-            grouped[sortKey] = { 
-                label: labelKey,
-                JCP: 0, TRIB: 0, DIV: 0, 
-                rawTotal: 0 
-            };
+            grouped[sortKey] = { label: labelKey, JCP: 0, TRIB: 0, DIV: 0, rawTotal: 0 };
             allMonths.push(sortKey);
         }
 
@@ -5721,9 +5779,10 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const dataDIV = uniqueMonths.map(k => grouped[k].DIV);
     const customInfo = uniqueMonths.map(k => grouped[k]);
 
-    // --- 3. CONFIGURAÇÃO VISUAL ---
+    // --- CONFIGURAÇÃO DO GRÁFICO ---
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
+        plugins: [crosshairPlugin], // ATIVANDO CROSSHAIR
         data: {
             labels: labels,
             datasets: [
@@ -5735,33 +5794,27 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderWidth: 1,
                     stack: 'Stack 0',
                     customInfo: customInfo,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.8,
-                    borderRadius: 4
+                    barPercentage: 0.6, categoryPercentage: 0.8, borderRadius: 4
                 },
                 {
-                    label: 'Tributado',
+                    label: 'Trib', // ABREVIADO
                     data: dataTRIB,
                     backgroundColor: CHART_COLORS.TRIB.bg,
                     borderColor: CHART_COLORS.TRIB.border,
                     borderWidth: 1,
                     stack: 'Stack 0',
                     customInfo: customInfo,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.8,
-                    borderRadius: 4
+                    barPercentage: 0.6, categoryPercentage: 0.8, borderRadius: 4
                 },
                 {
-                    label: 'Dividendos',
+                    label: 'Div', // ABREVIADO
                     data: dataDIV,
                     backgroundColor: CHART_COLORS.DIV.bg,
                     borderColor: CHART_COLORS.DIV.border,
                     borderWidth: 1,
                     stack: 'Stack 0',
                     customInfo: customInfo,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.8,
-                    borderRadius: 4
+                    barPercentage: 0.6, categoryPercentage: 0.8, borderRadius: 4
                 }
             ]
         },
@@ -5769,8 +5822,8 @@ function renderizarGraficoProventosDetalhes(rawData) {
             responsive: true,
             maintainAspectRatio: false,
             interaction: {
-                mode: 'index',
-                intersect: false,
+                mode: 'index', // Isso permite ver todos do mês
+                intersect: false, // Isso permite que o tooltip siga o mouse mesmo fora da barra
             },
             scales: {
                 x: { display: false },
@@ -5791,6 +5844,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     boxWidth: 8,
                     boxHeight: 8,
                     usePointStyle: true,
+                    position: 'nearest', // Tenta ficar perto do cursor
                     
                     callbacks: {
                         title: function(context) {
@@ -5800,8 +5854,9 @@ function renderizarGraficoProventosDetalhes(rawData) {
                         },
                         label: function(context) {
                             const val = context.parsed.y;
-                            if (val <= 0.001) return null; // Oculta valores zerados
+                            if (val <= 0.001) return null;
 
+                            // Nomes já vêm abreviados do dataset.label ('Div', 'Trib', 'JCP')
                             const label = context.dataset.label;
                             const valFmt = val.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
                             return `${label}: ${valFmt}`;

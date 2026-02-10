@@ -4655,10 +4655,6 @@ function handleAbrirModalEdicao(id) {
         });
     }
 
-// ======================================================
-//  LÓGICA DO GRÁFICO DE COTAÇÃO (VISUAL MELHORADO & SEM CACHE PERSISTENTE)
-// ======================================================
-
 let cotacaoChartInstance = null;
 // Cache agora usa chave composta: "PETR4_1D", "VALE3_5A"
 window.tempChartCache = {}; 
@@ -5587,79 +5583,187 @@ function renderizarTransacoesDetalhes(symbol) {
              `;
         }
 
-        const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
-        
-        const labels = dadosFiltrados.map(item => item.mes);
-        const data = dadosFiltrados.map(item => item.valor);
-
-        renderizarGraficoProventosDetalhes({ labels, data });
+        renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
     }
 	
-	function renderizarGraficoProventosDetalhes(dados) {
+// --- FUNÇÃO AUXILIAR: Agrupa dados por Mês e Tipo ---
+function processarDadosProventosStack(listaProventos) {
+    const agrupado = {};
+    
+    // Ordena por data de pagamento
+    const listaOrdenada = [...listaProventos].sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+
+    listaOrdenada.forEach(p => {
+        if (!p.paymentDate || p.value <= 0) return;
+        
+        const data = new Date(p.paymentDate);
+        // Chave para ordenação: "2023-08"
+        // Label visual: "AGO/23"
+        const mesAnoLabel = data.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase().replace('.', '');
+        const sortKey = data.toISOString().slice(0, 7); 
+
+        if (!agrupado[sortKey]) {
+            agrupado[sortKey] = {
+                label: mesAnoLabel,
+                DIVIDENDO: 0,
+                JCP: 0,
+                RENDIMENTO: 0,
+                OUTROS: 0,
+                total: 0
+            };
+        }
+
+        const tipo = (p.type || '').toUpperCase();
+        // Classifica o tipo
+        if (tipo.includes('DIVIDEND')) agrupado[sortKey].DIVIDENDO += p.value;
+        else if (tipo.includes('JUROS') || tipo.includes('JCP')) agrupado[sortKey].JCP += p.value;
+        else if (tipo.includes('RENDIMENTO')) agrupado[sortKey].RENDIMENTO += p.value;
+        else agrupado[sortKey].OUTROS += p.value;
+
+        agrupado[sortKey].total += p.value;
+    });
+
+    // Pega apenas os últimos 12 meses com dados
+    const chavesOrdenadas = Object.keys(agrupado).sort().slice(-12);
+    
+    return {
+        labels: chavesOrdenadas.map(k => agrupado[k].label),
+        datasets: {
+            DIVIDENDO: chavesOrdenadas.map(k => agrupado[k].DIVIDENDO),
+            JCP: chavesOrdenadas.map(k => agrupado[k].JCP),
+            RENDIMENTO: chavesOrdenadas.map(k => agrupado[k].RENDIMENTO),
+            OUTROS: chavesOrdenadas.map(k => agrupado[k].OUTROS)
+        }
+    };
+}
+
+// --- FUNÇÃO PRINCIPAL DE RENDERIZAÇÃO (MODIFICADA) ---
+function renderizarGraficoProventosDetalhes(dadosRaw) {
     const canvas = document.getElementById('detalhes-proventos-chart');
     if (!canvas) return;
 
-    // Destrói gráfico anterior se existir para evitar sobreposição
+    // Destrói gráfico anterior
     if (detalhesChartInstance) {
         detalhesChartInstance.destroy();
         detalhesChartInstance = null;
     }
 
+    // Processa os dados brutos para o formato empilhado
+    // Se "dadosRaw" for null ou vazio, o gráfico ficará vazio, ok.
+    const dadosStack = processarDadosProventosStack(dadosRaw || []);
+
     const ctx = canvas.getContext('2d');
     
-    // Configuração visual (Barra roxa vibrante)
-    const corBarra = '#8b5cf6'; 
-    const corBarraHover = '#7c3aed';
+    // Cores do Tema
+    const colorDiv = '#c084fc';  // Roxo (Dividendos)
+    const colorJCP = '#3b82f6';  // Azul (JCP)
+    const colorRend = '#10b981'; // Verde (FIIs)
+    const colorOutros = '#9ca3af'; // Cinza (Outros)
 
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: dados.labels,
-            datasets: [{
-                label: 'Proventos',
-                data: dados.data,
-                backgroundColor: corBarra,
-                hoverBackgroundColor: corBarraHover,
-                borderRadius: 4,
-                barPercentage: 0.6,
-                categoryPercentage: 0.8
-            }]
+            labels: dadosStack.labels,
+            datasets: [
+                {
+                    label: 'Dividendos',
+                    data: dadosStack.datasets.DIVIDENDO,
+                    backgroundColor: colorDiv,
+                    borderRadius: 2,
+                    stack: 'Stack 0' // Define que pertence à mesma pilha
+                },
+                {
+                    label: 'JCP',
+                    data: dadosStack.datasets.JCP,
+                    backgroundColor: colorJCP,
+                    borderRadius: 2,
+                    stack: 'Stack 0'
+                },
+                {
+                    label: 'Rendimentos',
+                    data: dadosStack.datasets.RENDIMENTO,
+                    backgroundColor: colorRend,
+                    borderRadius: 2,
+                    stack: 'Stack 0'
+                },
+                {
+                    label: 'Outros',
+                    data: dadosStack.datasets.OUTROS,
+                    backgroundColor: colorOutros,
+                    borderRadius: 2,
+                    stack: 'Stack 0'
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: { padding: { top: 10, bottom: 0, left: 0, right: 0 } },
+            interaction: {
+                mode: 'index', // Mostra tooltip com todos os itens daquele mês
+                intersect: false,
+            },
             plugins: {
-                legend: { display: false }, // Esconde legenda
+                legend: { 
+                    display: true, 
+                    position: 'bottom',
+                    labels: {
+                        color: '#9ca3af',
+                        font: { size: 10, weight: '600', family: 'Inter' },
+                        usePointStyle: true,
+                        boxWidth: 6
+                    }
+                }, 
                 tooltip: {
                     backgroundColor: '#151515',
                     titleColor: '#fff',
                     bodyColor: '#ccc',
                     borderColor: '#333',
                     borderWidth: 1,
-                    displayColors: false,
+                    cornerRadius: 8,
+                    padding: 10,
                     callbacks: {
+                        // Formata cada linha do tooltip
                         label: function(context) {
-                            return formatBRL(context.parsed.y);
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            // Só mostra se tiver valor > 0
+                            if (context.parsed.y !== null && context.parsed.y > 0) {
+                                return label + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            }
+                            return null;
+                        },
+                        // Soma o total no rodapé do tooltip
+                        footer: function(tooltipItems) {
+                            let total = 0;
+                            tooltipItems.forEach(function(tooltipItem) {
+                                total += tooltipItem.parsed.y;
+                            });
+                            if (total > 0) {
+                                return 'Total: ' + total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            }
+                            return '';
                         }
                     }
                 }
             },
             scales: {
-                y: {
-                    display: false, // Esconde eixo Y para visual mais limpo
-                    grid: { display: false }
-                },
                 x: {
+                    stacked: true, // Habilita empilhamento X
                     grid: { display: false, drawBorder: false },
                     ticks: {
                         color: '#666',
-                        font: { size: 10, weight: 'bold' }
+                        font: { size: 10, weight: 'bold' },
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 6
                     }
+                },
+                y: {
+                    stacked: true, // Habilita empilhamento Y
+                    display: false, 
+                    grid: { display: false }
                 }
-            },
-            animation: {
-                duration: 500,
-                easing: 'easeOutQuart'
             }
         }
     });

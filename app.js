@@ -1862,16 +1862,21 @@ function renderizarHistoricoProventos() {
         const bgIcone = 'bg-[#1C1C1E]';
         const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
 
-        let tagHtml = '';
+let tagHtml = '';
         const rawType = (p.type || '').toUpperCase();
         
-        // Tags com altura de linha ajustada (leading-none) para não empurrar demais
+        // Tags com altura de linha ajustada
         if (rawType.includes('JCP')) {
             tagHtml = `<span class="text-[9px] font-extrabold text-amber-400 bg-amber-900/20 border border-amber-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">JCP</span>`;
-        } else if (rawType.includes('DIV')) {
-            tagHtml = `<span class="text-[9px] font-extrabold text-sky-400 bg-sky-900/20 border border-sky-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">DIV</span>`;
+            
+        } else if (rawType.includes('TRIBUTADO')) {
+            tagHtml = `<span class="text-[9px] font-extrabold text-rose-400 bg-rose-900/20 border border-rose-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">TRIB</span>`;
+            
+        } else if (rawType.includes('DIV') || rawType.includes('REND')) {
+            tagHtml = `<span class="text-[9px] font-extrabold text-purple-400 bg-purple-900/20 border border-purple-900/30 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">DIV</span>`;
+            
         } else {
-            tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">REND</span>`;
+            tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">OUTROS</span>`;
         }
 
         return `

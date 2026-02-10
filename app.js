@@ -3097,7 +3097,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         }
     }
 
-    // --- 11. RENDERIZAÇÃO (LAYOUT COMPACTO) ---
+    // --- 11. RENDERIZAÇÃO ---
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     
@@ -3113,66 +3113,11 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
     gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
 
-    // PLUGIN A: Last Price Line (Etiqueta Fixa)
-    const lastValuePlugin = {
-        id: 'lastValueLine',
-        afterDraw: (chart) => {
-            const ctx = chart.ctx;
-            const meta = chart.getDatasetMeta(0);
-            if (!meta.data || meta.data.length === 0) return;
-            
-            const lastPoint = meta.data[meta.data.length - 1];
-            const lastValue = chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1];
-            
-            const y = lastPoint.y; 
-            const rightEdge = chart.chartArea.right; 
-            const leftEdge = chart.chartArea.left;
-            
-            // Linha tracejada
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(leftEdge, y);
-            ctx.lineTo(rightEdge, y);
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = colorLinePatrimonio; 
-            ctx.setLineDash([2, 2]); 
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Badge - Agora alinhado À ESQUERDA da borda direita (dentro do gráfico)
-            // para economizar espaço de padding externo
-            const text = lastValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            ctx.font = 'bold 10px Inter, sans-serif'; 
-            
-            const textWidth = ctx.measureText(text).width;
-            const paddingX = 6;
-            const badgeHeight = 20; 
-            const badgeWidth = textWidth + (paddingX * 2);
-            
-            // Posição Inteligente: Desenha "dentro" do gráfico, encostado na direita
-            // Mas apenas se o ponto não estiver cobrindo o texto.
-            // Para garantir legibilidade, vamos desenhar um pequeno fundo semi-transparente ou sólido.
-            
-            const badgeX = rightEdge - badgeWidth; // Encostado na direita interna
-            const badgeY = y - (badgeHeight / 2);
-
-            ctx.fillStyle = colorLinePatrimonio; 
-            ctx.beginPath();
-            ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3);
-            ctx.fill();
-
-            ctx.fillStyle = '#FFFFFF';
-            ctx.textBaseline = 'middle';
-            ctx.textAlign = 'left';
-            ctx.fillText(text, badgeX + paddingX, y + 1); 
-            ctx.restore();
-        }
-    };
-
-    // PLUGIN B: Crosshair Interativo
+    // PLUGIN: Crosshair Interativo
     const patrimonioCrosshairPlugin = {
         id: 'patrimonioCrosshair',
         afterDraw: (chart) => {
+            // Verifica se há interação ativa e segura
             if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
                 const ctx = chart.ctx;
                 const activePoint = chart.tooltip._active[0];
@@ -3189,7 +3134,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 ctx.strokeStyle = colorCrosshair;
                 ctx.setLineDash([4, 4]);
 
-                // Linhas
+                // 1. Linhas Cruzadas
                 ctx.beginPath();
                 ctx.moveTo(x, topY);
                 ctx.lineTo(x, bottomY);
@@ -3200,7 +3145,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 ctx.lineTo(rightX, y);
                 ctx.stroke();
 
-                // Badge X (Data)
+                // 2. Badge X (Data)
                 const xIndex = activePoint.index;
                 const labelRaw = chart.data.labels[xIndex];
                 const labelText = Array.isArray(labelRaw) ? labelRaw.join(' ') : labelRaw;
@@ -3214,8 +3159,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 if (dateBadgeX < leftX) dateBadgeX = leftX;
                 if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
                 
-                // Posiciona ACIMA do eixo X se estiver muito embaixo (para não cortar)
-                const dateBadgeY = bottomY - dateHeight - 2; 
+                // Desenha na margem inferior (Bottom Padding)
+                const dateBadgeY = bottomY + 2; 
 
                 ctx.fillStyle = colorBadgeBg;
                 ctx.beginPath();
@@ -3227,13 +3172,13 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 ctx.textBaseline = 'middle';
                 ctx.fillText(labelText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2));
 
-                // Badge Y (Valor) - Flutuante
+                // 3. Badge Y (Valor)
                 const yValue = chart.scales.y.getValueForPixel(y);
                 const priceText = yValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 const priceWidth = ctx.measureText(priceText).width + 12;
                 const priceHeight = 20;
                 
-                // Desenha na direita, mas ALINHADO PARA DENTRO (como o badge fixo)
+                // Desenha alinhado à DIREITA (dentro do gráfico)
                 const priceBadgeX = rightX - priceWidth; 
                 let priceBadgeY = y - (priceHeight / 2);
                 
@@ -3303,8 +3248,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                // LAYOUT FULL BLEED (Margens mínimas)
-                layout: { padding: { left: 0, right: 0, top: 5, bottom: 0 } },
+                // Layout limpo: sem margens laterais, apenas inferior para o badge da data
+                layout: { padding: { left: 0, right: 0, top: 10, bottom: 20 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },
@@ -3337,11 +3282,11 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                     }
                 },
                 scales: {
-                    y: { display: false }, // Oculta eixos para ganhar espaço
+                    y: { display: false }, 
                     x: { display: false }
                 }
             },
-            plugins: [lastValuePlugin, patrimonioCrosshairPlugin]
+            plugins: [patrimonioCrosshairPlugin]
         });
     }
 

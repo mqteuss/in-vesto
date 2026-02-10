@@ -2906,7 +2906,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // --- 4. ATUALIZA CARDS SUPERIORES (Patrimônio e Investido) ---
+    // --- 4. ATUALIZA CARDS SUPERIORES ---
     const elLive = document.getElementById('modal-patrimonio-live');
     if (elLive) {
         elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -2947,8 +2947,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
              return dataPonto >= dataCorte;
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    // (REMOVIDO: Cálculos de Volatilidade e Drawdown que não são mais usados)
 
     // --- 8. AGRUPAMENTO MENSAL ---
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
@@ -3020,22 +3018,20 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         }
     }
 
-    // --- 11. RENDERIZAÇÃO (LAYOUT COMPACTO & LIMPO) ---
+    // --- 11. RENDERIZAÇÃO (VISUAL COTAÇÃO - IDÊNTICO) ---
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
     
     const colorLinePatrimonio = '#c084fc'; 
     const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
-    const colorGrid = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; 
     const colorBadgeBg = isLight ? '#f3f4f6' : '#1f2937';
     const colorBadgeText = isLight ? '#1f2937' : '#f9fafb';
     const colorCrosshair = isLight ? '#d1d5db' : '#404040';
 
     const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
-    gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0)');
+    gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)'); // Roxo transparente
+    gradientFill.addColorStop(1, 'rgba(0, 0, 0, 0)');          // Transparente total
 
-    // PLUGIN: Crosshair Interativo
     const patrimonioCrosshairPlugin = {
         id: 'patrimonioCrosshair',
         afterDraw: (chart) => {
@@ -3055,7 +3051,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 ctx.strokeStyle = colorCrosshair;
                 ctx.setLineDash([4, 4]);
 
-                // 1. Linhas Cruzadas
+                // Crosshair
                 ctx.beginPath();
                 ctx.moveTo(x, topY);
                 ctx.lineTo(x, bottomY);
@@ -3066,7 +3062,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 ctx.lineTo(rightX, y);
                 ctx.stroke();
 
-                // 2. Badge X (Data)
+                // Badge X (Data)
                 const xIndex = activePoint.index;
                 const labelRaw = chart.data.labels[xIndex];
                 const labelText = Array.isArray(labelRaw) ? labelRaw.join(' ') : labelRaw;
@@ -3091,7 +3087,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 ctx.textBaseline = 'middle';
                 ctx.fillText(labelText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2));
 
-                // 3. Badge Y (Valor) - Alinhado à direita
+                // Badge Y (Valor)
                 const yValue = chart.scales.y.getValueForPixel(y);
                 const priceText = yValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 const priceWidth = ctx.measureText(priceText).width + 12;
@@ -3138,14 +3134,13 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                         fill: true,
                         backgroundColor: gradientFill,
                         borderColor: colorLinePatrimonio,
-                        borderWidth: 1.5,
-                        tension: 0.1, 
-                        pointRadius: 0, 
+                        borderWidth: 1, // Fina (igual Cotação)
+                        tension: 0.05,  // Quase reta (igual Cotação)
+                        pointRadius: 0, // Invisível por padrão
                         pointHitRadius: 20,
-                        pointHoverRadius: 4,
+                        pointHoverRadius: 4, // Aparece no hover
                         pointHoverBackgroundColor: colorLinePatrimonio,
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2,
+                        pointHoverBorderWidth: 0, // Sem borda branca
                         order: 1
                     },
                     {
@@ -3155,7 +3150,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                         borderColor: colorLineInvestido,
                         borderWidth: 1.2,
                         borderDash: [4, 4],
-                        tension: 0.1,
+                        tension: 0.05,
                         pointRadius: 0,
                         pointHitRadius: 10,
                         pointHoverRadius: 0,
@@ -3166,7 +3161,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                // Layout limpo: sem margens laterais, apenas inferior para o badge da data
                 layout: { padding: { left: 0, right: 0, top: 10, bottom: 20 } },
                 interaction: { mode: 'index', intersect: false },
                 plugins: {

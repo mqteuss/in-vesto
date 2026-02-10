@@ -5557,34 +5557,48 @@ function renderizarTransacoesDetalhes(symbol) {
         }
     }
     
-    function renderHistoricoIADetalhes(meses) {
-        if (!currentDetalhesHistoricoJSON) {
-            return;
-        }
+function renderHistoricoIADetalhes(meses) {
+    // 1. Validação de segurança
+    if (!currentDetalhesHistoricoJSON || !Array.isArray(currentDetalhesHistoricoJSON)) {
+        return;
+    }
 
-        if (currentDetalhesHistoricoJSON.length === 0) {
-            detalhesAiProvento.innerHTML = `
-                <p class="text-sm text-gray-500 text-center py-4">
-                    Sem histórico recente.
-                </p>
-            `;
-            if (detalhesChartInstance) {
-                detalhesChartInstance.destroy();
-                detalhesChartInstance = null;
-            }
-            return;
+    // 2. Tratamento de Lista Vazia
+    if (currentDetalhesHistoricoJSON.length === 0) {
+        detalhesAiProvento.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-8">
+                <span class="text-sm text-gray-500 font-medium">Sem histórico recente.</span>
+            </div>
+        `;
+        if (typeof detalhesChartInstance !== 'undefined' && detalhesChartInstance) {
+            detalhesChartInstance.destroy();
+            detalhesChartInstance = null;
         }
+        return;
+    }
 
-        if (!document.getElementById('detalhes-proventos-chart')) {
-             detalhesAiProvento.innerHTML = `
-                <div class="relative h-48 w-full">
-                    <canvas id="detalhes-proventos-chart"></canvas>
-                </div>
-             `;
-        }
+    // 3. Garante que o Canvas existe (com o novo visual padronizado)
+    if (!document.getElementById('detalhes-proventos-chart')) {
+         detalhesAiProvento.innerHTML = `
+            <div class="relative w-full h-64 bg-[#242424] rounded-xl border border-[#27272a] overflow-hidden shadow-sm">
+                <canvas id="detalhes-proventos-chart"></canvas>
+            </div>
+         `;
+    }
 
-if (currentDetalhesHistoricoJSON && Array.isArray(currentDetalhesHistoricoJSON)) {
-    renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
+    // 4. LÓGICA DE FILTRO (IMPORTANTE)
+    // Ordenamos por data (antigo -> novo) para garantir a ordem cronológica
+    const dadosOrdenados = [...currentDetalhesHistoricoJSON].sort((a, b) => 
+        new Date(a.paymentDate) - new Date(b.paymentDate)
+    );
+
+    // Filtramos os últimos 'meses' solicitados (ex: últimos 6, 12, etc)
+    // Usamos slice negativo para pegar do final do array
+    const qtdRecortar = parseInt(meses) || 12; // Padrão 12 se não vier nada
+    const dadosFiltrados = dadosOrdenados.slice(-qtdRecortar);
+
+    // 5. Chama a função de renderização passando os OBJETOS COMPLETOS (com type, paymentDate, value)
+    renderizarGraficoProventosDetalhes(dadosFiltrados);
 }
 	
 // --- No arquivo app.js ---

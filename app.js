@@ -4655,6 +4655,10 @@ function handleAbrirModalEdicao(id) {
         });
     }
 
+// ======================================================
+//  LÓGICA DO GRÁFICO DE COTAÇÃO (VISUAL MELHORADO & SEM CACHE PERSISTENTE)
+// ======================================================
+
 let cotacaoChartInstance = null;
 // Cache agora usa chave composta: "PETR4_1D", "VALE3_5A"
 window.tempChartCache = {}; 
@@ -5557,231 +5561,105 @@ function renderizarTransacoesDetalhes(symbol) {
         }
     }
     
-function renderHistoricoIADetalhes(meses) {
-    // 1. Validação de segurança
-    if (!currentDetalhesHistoricoJSON || !Array.isArray(currentDetalhesHistoricoJSON)) {
-        return;
-    }
-
-    // 2. Tratamento de Lista Vazia
-    if (currentDetalhesHistoricoJSON.length === 0) {
-        detalhesAiProvento.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-8">
-                <span class="text-sm text-gray-500 font-medium">Sem histórico recente.</span>
-            </div>
-        `;
-        if (typeof detalhesChartInstance !== 'undefined' && detalhesChartInstance) {
-            detalhesChartInstance.destroy();
-            detalhesChartInstance = null;
+    function renderHistoricoIADetalhes(meses) {
+        if (!currentDetalhesHistoricoJSON) {
+            return;
         }
-        return;
+
+        if (currentDetalhesHistoricoJSON.length === 0) {
+            detalhesAiProvento.innerHTML = `
+                <p class="text-sm text-gray-500 text-center py-4">
+                    Sem histórico recente.
+                </p>
+            `;
+            if (detalhesChartInstance) {
+                detalhesChartInstance.destroy();
+                detalhesChartInstance = null;
+            }
+            return;
+        }
+
+        if (!document.getElementById('detalhes-proventos-chart')) {
+             detalhesAiProvento.innerHTML = `
+                <div class="relative h-48 w-full">
+                    <canvas id="detalhes-proventos-chart"></canvas>
+                </div>
+             `;
+        }
+
+        const dadosFiltrados = currentDetalhesHistoricoJSON.slice(0, meses).reverse();
+        
+        const labels = dadosFiltrados.map(item => item.mes);
+        const data = dadosFiltrados.map(item => item.valor);
+
+        renderizarGraficoProventosDetalhes({ labels, data });
     }
-
-    // 3. Garante que o Canvas existe (Visual atualizado: h-64, bg-[#242424], borda)
-    if (!document.getElementById('detalhes-proventos-chart')) {
-         detalhesAiProvento.innerHTML = `
-            <div class="relative w-full h-64 bg-[#242424] rounded-xl border border-[#27272a] overflow-hidden shadow-sm">
-                <canvas id="detalhes-proventos-chart"></canvas>
-            </div>
-         `;
-    }
-
-    // 4. LÓGICA DE FILTRO (IMPORTANTE)
-    // Ordenamos por data (antigo -> novo) para garantir a ordem cronológica correta
-    const dadosOrdenados = [...currentDetalhesHistoricoJSON].sort((a, b) => 
-        new Date(a.paymentDate) - new Date(b.paymentDate)
-    );
-
-    // Filtramos os últimos 'meses' solicitados (ex: últimos 6, 12, etc)
-    // Usamos slice negativo para pegar do final do array (os mais recentes)
-    const qtdRecortar = parseInt(meses) || 12; // Padrão 12 se não vier nada
-    const dadosFiltrados = dadosOrdenados.slice(-qtdRecortar);
-
-    // 5. Chama a função de renderização passando os OBJETOS COMPLETOS (com type, paymentDate, value)
-    renderizarGraficoProventosDetalhes(dadosFiltrados);
-}
 	
-// ====================================================================
-// FUNÇÕES DO GRÁFICO DE PROVENTOS DETALHADO (CORES CORRIGIDAS)
-// ====================================================================
-
-function processarDadosProventosStack(listaProventos) {
-    const agrupado = {};
-    
-    if (!listaProventos || !Array.isArray(listaProventos)) {
-        return { labels: [], datasets: {} };
-    }
-
-    // 1. Ordena cronologicamente
-    const listaOrdenada = [...listaProventos].sort((a, b) => {
-        const dateA = a.paymentDate ? new Date(a.paymentDate) : new Date(0);
-        const dateB = b.paymentDate ? new Date(b.paymentDate) : new Date(0);
-        return dateA - dateB;
-    });
-
-    listaOrdenada.forEach(p => {
-        if (!p.paymentDate || !p.value || p.value <= 0) return;
-        
-        const sortKey = p.paymentDate.substring(0, 7); // "2023-08"
-        
-        // Formata Data para o Tooltip (ex: AGO 23)
-        const dateObj = new Date(p.paymentDate);
-        const mesStr = dateObj.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
-        const anoStr = dateObj.getFullYear().toString().slice(-2);
-        const mesAnoLabel = `${mesStr} ${anoStr}`;
-
-        if (!agrupado[sortKey]) {
-            agrupado[sortKey] = {
-                label: mesAnoLabel,
-                DIVIDENDO: 0,
-                JCP: 0,
-                RENDIMENTO: 0,
-                OUTROS: 0
-            };
-        }
-
-        // --- LÓGICA DE CLASSIFICAÇÃO ROBUSTA ---
-        const tipo = (p.type || '').toUpperCase().trim();
-        
-        if (tipo.includes('DIVIDEND')) {
-            agrupado[sortKey].DIVIDENDO += p.value;
-        } 
-        else if (tipo.includes('JUROS') || tipo.includes('JCP') || tipo.includes('CAPITAL')) {
-            agrupado[sortKey].JCP += p.value;
-        } 
-        // Pega "Rendimento", "Rendimentos", "Rend" (comum em FIIs)
-        else if (tipo.includes('RENDIMENTO') || tipo.includes('REND')) {
-            agrupado[sortKey].RENDIMENTO += p.value;
-        } 
-        else {
-            agrupado[sortKey].OUTROS += p.value;
-        }
-    });
-
-    const chavesOrdenadas = Object.keys(agrupado).sort().slice(-12);
-    
-    return {
-        labels: chavesOrdenadas.map(k => agrupado[k].label),
-        datasets: {
-            DIVIDENDO: chavesOrdenadas.map(k => agrupado[k].DIVIDENDO),
-            JCP: chavesOrdenadas.map(k => agrupado[k].JCP),
-            RENDIMENTO: chavesOrdenadas.map(k => agrupado[k].RENDIMENTO),
-            OUTROS: chavesOrdenadas.map(k => agrupado[k].OUTROS)
-        }
-    };
-}
-
-function renderizarGraficoProventosDetalhes(dadosRaw) {
+	function renderizarGraficoProventosDetalhes(dados) {
     const canvas = document.getElementById('detalhes-proventos-chart');
     if (!canvas) return;
 
-    if (typeof detalhesChartInstance !== 'undefined' && detalhesChartInstance) {
+    // Destrói gráfico anterior se existir para evitar sobreposição
+    if (detalhesChartInstance) {
         detalhesChartInstance.destroy();
         detalhesChartInstance = null;
     }
 
-    const dadosStack = processarDadosProventosStack(dadosRaw);
     const ctx = canvas.getContext('2d');
     
-    // --- CORES DA ABA EXTRATO ---
-    // Ajustadas para bater com o padrão visual (Roxo, Azul, Laranja/Amarelo)
-    const colorDiv = '#8b5cf6';  // Roxo (Dividendos)
-    const colorJCP = '#3b82f6';  // Azul (JCP)
-    const colorRend = '#f59e0b'; // Laranja/Amber (Rendimentos FIIs - Padrão Extrato)
-    const colorOutros = '#52525b'; // Cinza Escuro (Zinc 600)
+    // Configuração visual (Barra roxa vibrante)
+    const corBarra = '#8b5cf6'; 
+    const corBarraHover = '#7c3aed';
 
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: dadosStack.labels,
-            datasets: [
-                {
-                    label: 'Dividendos',
-                    data: dadosStack.datasets.DIVIDENDO,
-                    backgroundColor: colorDiv,
-                    borderRadius: 2,
-                    stack: 'Stack 0'
-                },
-                {
-                    label: 'JCP',
-                    data: dadosStack.datasets.JCP,
-                    backgroundColor: colorJCP,
-                    borderRadius: 2,
-                    stack: 'Stack 0'
-                },
-                {
-                    label: 'Rendimentos',
-                    data: dadosStack.datasets.RENDIMENTO,
-                    backgroundColor: colorRend, // Agora Laranja/Amarelo
-                    borderRadius: 2,
-                    stack: 'Stack 0'
-                },
-                {
-                    label: 'Outros',
-                    data: dadosStack.datasets.OUTROS,
-                    backgroundColor: colorOutros,
-                    borderRadius: 2,
-                    stack: 'Stack 0'
-                }
-            ]
+            labels: dados.labels,
+            datasets: [{
+                label: 'Proventos',
+                data: dados.data,
+                backgroundColor: corBarra,
+                hoverBackgroundColor: corBarraHover,
+                borderRadius: 4,
+                barPercentage: 0.6,
+                categoryPercentage: 0.8
+            }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            // Zero margens para ocupar todo o container
-            layout: { padding: { top: 10, bottom: 0, left: 0, right: 0 } },
-            interaction: {
-                mode: 'index', 
-                intersect: false,
-            },
             plugins: {
-                legend: { 
-                    display: true, 
-                    position: 'bottom',
-                    labels: {
-                        color: '#a1a1aa', // Cinza claro
-                        font: { size: 9, weight: '600', family: 'Inter' },
-                        usePointStyle: true,
-                        boxWidth: 6,
-                        padding: 10
-                    }
-                }, 
+                legend: { display: false }, // Esconde legenda
                 tooltip: {
-                    backgroundColor: '#242424', // Cinza do tema novo
+                    backgroundColor: '#151515',
                     titleColor: '#fff',
-                    bodyColor: '#e4e4e7',
-                    borderColor: '#3f3f46',
+                    bodyColor: '#ccc',
+                    borderColor: '#333',
                     borderWidth: 1,
-                    cornerRadius: 8,
-                    padding: 10,
+                    displayColors: false,
                     callbacks: {
-                        title: (ctx) => ctx[0].label,
                         label: function(context) {
-                            // Pega a cor do dataset para a bolinha do tooltip
-                            if (context.parsed.y !== null && context.parsed.y > 0.01) {
-                                return ' ' + context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            }
-                            return null;
-                        },
-                        footer: function(tooltipItems) {
-                            let total = 0;
-                            tooltipItems.forEach(t => total += t.parsed.y);
-                            return total > 0 ? '\nTotal: ' + total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+                            return formatBRL(context.parsed.y);
                         }
                     }
                 }
             },
             scales: {
-                x: {
-                    stacked: true,
-                    display: false, // EIXO X REMOVIDO
+                y: {
+                    display: false, // Esconde eixo Y para visual mais limpo
                     grid: { display: false }
                 },
-                y: {
-                    stacked: true,
-                    display: false, // EIXO Y REMOVIDO
-                    grid: { display: false }
+                x: {
+                    grid: { display: false, drawBorder: false },
+                    ticks: {
+                        color: '#666',
+                        font: { size: 10, weight: 'bold' }
+                    }
                 }
+            },
+            animation: {
+                duration: 500,
+                easing: 'easeOutQuart'
             }
         }
     });

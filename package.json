@@ -12,7 +12,6 @@
     "rss-parser": "^3.13.0",
     "axios": "^1.13.2",
     "cheerio": "^1.1.2",
-    "p-limit": "^7.3.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

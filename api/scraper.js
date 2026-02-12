@@ -20,7 +20,7 @@ const client = axios.create({
         'Accept-Encoding': 'gzip, deflate, br',
         'Referer': 'https://investidor10.com.br/'
     },
-    timeout: 8000
+    timeout: 10000
 });
 
 // ---------------------------------------------------------

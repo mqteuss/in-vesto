@@ -7,7 +7,6 @@
     "build": "tailwindcss -i ./input.css -o ./style-tailwind.css --minify"
   },
   "dependencies": {
-    "@vercel/kv": "^2.0.0",
     "uuid": "^13.0.0",
     "@supabase/supabase-js": "^2.89.0",
     "rss-parser": "^3.13.0",

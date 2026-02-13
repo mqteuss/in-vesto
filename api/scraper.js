@@ -99,7 +99,7 @@ async function scrapeFundamentos(ticker) {
 
             // FIIs
             segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A', vacancia: 'N/A',
-            patrimonio_liquido: 'N/A', cnpj: 'N/A',
+            patrimonio_liquido: 'N/A', ultimo_rendimento: 'N/A', cnpj: 'N/A',
             num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A',
 

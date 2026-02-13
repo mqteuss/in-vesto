@@ -5326,33 +5326,56 @@ async function handleMostrarDetalhes(symbol) {
         }
 
         // Próximo Provento
-        let proximoProventoHtml = '';
-        if (nextProventoData && nextProventoData.value > 0) {
-            const dataPagFmt = nextProventoData.paymentDate ? formatDate(nextProventoData.paymentDate) : '-';
-            const dataComFmt = nextProventoData.dataCom ? formatDate(nextProventoData.dataCom) : '-';
-            const hoje = new Date(); hoje.setHours(0,0,0,0);
-            let isFuturo = false;
-            if(nextProventoData.paymentDate) {
-                const parts = nextProventoData.paymentDate.split('-');
-                if(new Date(parts[0], parts[1]-1, parts[2]) >= hoje) isFuturo = true;
-            }
-            const bgClass = isFuturo ? "bg-[#0f291e]" : "bg-[#151515]"; 
-            const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
-            const valueClass = isFuturo ? "text-green-400" : "text-white";
+// O objeto agora vem com duas propriedades: { ultimoPago, proximo }
+const pData = nextProventoData || {};
 
-            proximoProventoHtml = `
-                <h4 class="details-category-title">Proventos</h4>
-                <div class="w-full p-4 rounded-[1.5rem] ${bgClass} flex flex-col gap-3">
-                    <div class="flex justify-between items-center pb-2 border-b border-white/5">
-                        <span class="text-[10px] uppercase tracking-widest font-bold ${textClass}">${isFuturo ? "Próximo Pagamento" : "Último Anúncio"}</span>
-                        <span class="text-xl font-bold ${valueClass}">${formatBRL(nextProventoData.value)}</span>
-                    </div>
-                    <div class="flex justify-between text-xs pt-1">
-                        <div class="text-left"><span class="block text-[#666] mb-0.5 font-medium">Data Com</span><span class="text-[#e5e5e5] font-bold">${dataComFmt}</span></div>
-                        <div class="text-right"><span class="block text-[#666] mb-0.5 font-medium">Pagamento</span><span class="text-[#e5e5e5] font-bold">${dataPagFmt}</span></div>
-                    </div>
-                </div>`;
-        }
+// Função auxiliar para renderizar cada card com o estilo atual
+const formatarCardProvento = (titulo, provento, isFuturo) => {
+    if (!provento) {
+        return `
+        <div class="flex-1 p-3 rounded-2xl bg-[#151515] flex flex-col justify-center items-center opacity-40 border border-[#2C2C2E]">
+            <span class="text-[9px] uppercase tracking-widest font-bold text-[#666] mb-1">${titulo}</span>
+            <span class="text-sm font-bold text-[#444]">-</span>
+        </div>`;
+    }
+    
+    // Formata datas
+    const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
+    const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
+    
+    const bgClass = isFuturo ? "bg-[#0f291e]" : "bg-[#151515]";
+    const borderClass = isFuturo ? "border-green-900/30" : "border-[#2C2C2E]";
+    const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
+    const valueClass = isFuturo ? "text-green-400" : "text-white";
+    
+    return `
+    <div class="flex-1 p-3 rounded-2xl ${bgClass} border ${borderClass} flex flex-col justify-between">
+        <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-2">${titulo}</span>
+        <span class="text-lg font-bold ${valueClass} mb-3 leading-none">${formatBRL(provento.value)}</span>
+        
+        <div class="flex justify-between items-end mt-auto">
+            <div class="flex flex-col">
+                <span class="text-[9px] text-[#666] font-medium leading-none mb-1">Data Com</span>
+                <span class="text-[11px] text-[#ccc] font-bold leading-none">${dataComFmt}</span>
+            </div>
+            <div class="flex flex-col text-right">
+                <span class="text-[9px] text-[#666] font-medium leading-none mb-1">Pagamento</span>
+                <span class="text-[11px] text-[#ccc] font-bold leading-none">${dataPagFmt}</span>
+            </div>
+        </div>
+    </div>`;
+};
+
+// Gera a interface lado a lado
+let proximoProventoHtml = '';
+if (pData.ultimoPago || pData.proximo) {
+    proximoProventoHtml = `
+    <h4 class="details-category-title mt-4">Proventos</h4>
+    <div class="flex gap-2 w-full mt-2">
+        ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
+        ${formatarCardProvento("Próximo Pagamento", pData.proximo, true)}
+    </div>`;
+}
 
         // Grid Destaques
         let gridTopo = ehAcao ? 

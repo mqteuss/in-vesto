@@ -5382,7 +5382,7 @@ if (pData.ultimoPago || pData.proximo) {
              <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
              <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>` :
             `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>
-             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div> ;
 
         const renderRow = (l, v) => `<div class="details-row"><span class="details-label">${l}</span><span class="details-value">${v}</span></div>`;
 

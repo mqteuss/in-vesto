@@ -5325,15 +5325,14 @@ async function handleMostrarDetalhes(symbol) {
                 </div>`;
         }
 
-        // Próximo Provento
 // O objeto agora vem com duas propriedades: { ultimoPago, proximo }
 const pData = nextProventoData || {};
 
-// Função auxiliar para renderizar cada card com o estilo atual
+// Função auxiliar para renderizar cada card com o estilo atual (sem bordas)
 const formatarCardProvento = (titulo, provento, isFuturo) => {
     if (!provento) {
         return `
-        <div class="flex-1 p-3 rounded-2xl bg-[#151515] flex flex-col justify-center items-center opacity-40 border border-[#2C2C2E]">
+        <div class="flex-1 p-3 rounded-2xl bg-[#151515] flex flex-col justify-center items-center opacity-40">
             <span class="text-[9px] uppercase tracking-widest font-bold text-[#666] mb-1">${titulo}</span>
             <span class="text-sm font-bold text-[#444]">-</span>
         </div>`;
@@ -5343,13 +5342,13 @@ const formatarCardProvento = (titulo, provento, isFuturo) => {
     const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
     const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
     
+    // Classes de fundo e texto (sem variáveis de borda)
     const bgClass = isFuturo ? "bg-[#0f291e]" : "bg-[#151515]";
-    const borderClass = isFuturo ? "border-green-900/30" : "border-[#2C2C2E]";
     const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
     const valueClass = isFuturo ? "text-green-400" : "text-white";
     
     return `
-    <div class="flex-1 p-3 rounded-2xl ${bgClass} border ${borderClass} flex flex-col justify-between">
+    <div class="flex-1 p-3 rounded-2xl ${bgClass} flex flex-col justify-between">
         <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-2">${titulo}</span>
         <span class="text-lg font-bold ${valueClass} mb-3 leading-none">${formatBRL(provento.value)}</span>
         

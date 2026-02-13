@@ -509,12 +509,39 @@ if (mode === 'historico_12m') {
             return res.status(200).json({ json: history });
         }
 
-        if (mode === 'proximo_provento') {
-            if (!payload.ticker) return res.json({ json: null });
-            const history = await scrapeAsset(payload.ticker);
-            const ultimo = history.length > 0 ? history[0] : null;
-            return res.status(200).json({ json: ultimo });
-        }
+if (mode === 'proximo_provento') {
+            if (!payload.ticker) return res.json({ json: null });
+            const history = await scrapeAsset(payload.ticker);
+            
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+            
+            let ultimoPago = null;
+            let proximo = null;
+            
+            // O history já vem ordenado do mais recente para o mais antigo
+            for (const p of history) {
+                if (!p.paymentDate) continue;
+                const parts = p.paymentDate.split('-');
+                const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+                
+                if (dataPag > hoje) {
+                    if (!proximo) proximo = p;
+                } else {
+                    if (!ultimoPago) ultimoPago = p;
+                }
+                
+                // Se já achou os dois, pode parar o loop
+                if (ultimoPago && proximo) break;
+            }
+            
+            // Fallback: se não achou 'ultimoPago' mas tem dados, pega o primeiro possível
+            if (!ultimoPago && history.length > 0 && !proximo) {
+                ultimoPago = history[0];
+            }
+
+            return res.status(200).json({ json: { ultimoPago, proximo } });
+        }
 
         // --- MODO 4: COTAÇÃO HISTÓRICA (NOVO) ---
 // Exemplo dentro do seu router/handler da API:

@@ -8347,15 +8347,19 @@ function closeObjetivosModal() {
     }, 300);
 }
 
-// Lógica Principal de Renderização
+
 async function renderizarObjetivos() {
     if (!objetivosLista) return;
+    
+    // Captura o elemento do novo total global
+    const objetivosTotalInvestir = document.getElementById('objetivos-total-investir');
+    
     objetivosLista.innerHTML = '<div class="text-center py-10"><span class="loader-sm"></span><p class="text-xs text-gray-500 mt-2">Analisando carteira...</p></div>';
 
-    // 1. Filtra apenas FIIs e Fiagros (nomes terminados em 11, 12 ou tipo específico)
+    // 1. Filtra apenas FIIs e Fiagros
     const fiisCarteira = carteiraCalculada.filter(ativo => {
         const symbol = ativo.symbol.toUpperCase();
-        return symbol.endsWith('11') || symbol.endsWith('12'); // Filtro simples e eficaz
+        return symbol.endsWith('11') || symbol.endsWith('12');
     });
 
     if (fiisCarteira.length === 0) {
@@ -8364,49 +8368,45 @@ async function renderizarObjetivos() {
                 <svg class="w-12 h-12 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                 <p class="text-sm text-gray-400">Nenhum FII encontrado na carteira.</p>
             </div>`;
-        if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = "0 FIIs";
+        if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = "0";
+        if(objetivosTotalInvestir) objetivosTotalInvestir.textContent = "R$ 0,00";
         return;
     }
 
-    if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = `${fiisCarteira.length} FIIs`;
+    if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = fiisCarteira.length;
 
     let htmlFinal = '';
+    let somaTotalInvestir = 0; // <--- Inicializa a soma global
 
     // 2. Para cada FII, busca/calcula dados
     for (const ativo of fiisCarteira) {
         const symbol = ativo.symbol;
         
         // Tenta pegar cache de fundamentos para o Último Rendimento
-        const cacheKey = `detalhe_preco_${symbol}`; // Usamos o mesmo cache dos detalhes se tiver
+        const cacheKey = `detalhe_preco_${symbol}`; 
         let dadosFund = null;
         
-        // Busca fundamentos se não tiver
         try {
             dadosFund = await callScraperFundamentosAPI(symbol);
         } catch (e) { console.log(`Erro ao buscar fundamentos para ${symbol}`); }
 
-        // Dados base
         const precoAtual = precosAtuais.find(p => p.symbol === symbol)?.regularMarketPrice || 0;
         let ultimoRendimento = 0;
 
-        // Tenta extrair o rendimento do scraper
         if (dadosFund && dadosFund.ultimo_rendimento && dadosFund.ultimo_rendimento !== 'N/A') {
             const valStr = dadosFund.ultimo_rendimento.replace('R$', '').replace('.', '').replace(',', '.').trim();
             ultimoRendimento = parseFloat(valStr);
         }
 
-        // Se não achou no scraper, tenta uma média dos últimos proventos conhecidos (Fallback Inteligente)
         if (!ultimoRendimento || ultimoRendimento === 0) {
              const provs = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
              if (provs.length > 0) {
-                 // Pega o último pago
                  provs.sort((a,b) => new Date(b.paymentDate) - new Date(a.paymentDate));
                  ultimoRendimento = provs[0].value;
              }
         }
 
         // CÁLCULO MAGIC NUMBER
-// CÁLCULO MAGIC NUMBER
         if (precoAtual > 0 && ultimoRendimento > 0) {
             const magicNumber = Math.ceil(precoAtual / ultimoRendimento);
             const cotasAtuais = ativo.quantity;
@@ -8415,6 +8415,9 @@ async function renderizarObjetivos() {
             const cotasFaltantes = Math.max(0, magicNumber - cotasAtuais);
             const investimentoNecessario = cotasFaltantes * precoAtual;
             
+            // SOMA AO TOTAL GLOBAL
+            somaTotalInvestir += investimentoNecessario;
+
             // Status Visual Refinado
             const atingiu = cotasAtuais >= magicNumber;
             const corBarra = atingiu ? 'bg-yellow-500' : 'bg-white';
@@ -8458,7 +8461,7 @@ async function renderizarObjetivos() {
                 </div>
             </div>`;
         } else {
-            // Caso falte dados para calcular (Versão sem borda)
+            // Caso falte dados para calcular
             htmlFinal += `
             <div class="bg-[#151515] p-4 rounded-3xl relative overflow-hidden opacity-50">
                 <div class="flex items-center gap-3">
@@ -8475,6 +8478,11 @@ async function renderizarObjetivos() {
     }
     
     objetivosLista.innerHTML = htmlFinal;
+    
+    // Atualiza o valor total formatado no DOM da tela (Card do Topo)
+    if (objetivosTotalInvestir) {
+        objetivosTotalInvestir.textContent = formatBRL(somaTotalInvestir);
+    }
 }
 
 // Listeners

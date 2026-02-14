@@ -8406,6 +8406,7 @@ async function renderizarObjetivos() {
         }
 
         // CÁLCULO MAGIC NUMBER
+// CÁLCULO MAGIC NUMBER
         if (precoAtual > 0 && ultimoRendimento > 0) {
             const magicNumber = Math.ceil(precoAtual / ultimoRendimento);
             const cotasAtuais = ativo.quantity;
@@ -8414,58 +8415,59 @@ async function renderizarObjetivos() {
             const cotasFaltantes = Math.max(0, magicNumber - cotasAtuais);
             const investimentoNecessario = cotasFaltantes * precoAtual;
             
-            // Status Visual
+            // Status Visual Refinado
             const atingiu = cotasAtuais >= magicNumber;
-            const corBarra = atingiu ? 'bg-yellow-500' : 'bg-purple-600';
-            const corTexto = atingiu ? 'text-yellow-500' : 'text-purple-400';
-            const msgStatus = atingiu ? 'MAGIC NUMBER ATINGIDO! 🎉' : `Faltam <b>${cotasFaltantes}</b> cotas`;
-            const msgInvest = atingiu ? 'A bola de neve começou.' : `Falta investir <b>${formatBRL(investimentoNecessario)}</b>`;
+            const corBarra = atingiu ? 'bg-yellow-500' : 'bg-white';
+            const corTexto = atingiu ? 'text-yellow-500' : 'text-white';
+            const msgStatus = atingiu ? 'MAGIC NUMBER ATINGIDO! 🎉' : `Faltam <b class="text-white">${cotasFaltantes}</b> cotas`;
+            const msgInvest = atingiu ? 'A bola de neve começou.' : `Falta investir <b class="text-white">${formatBRL(investimentoNecessario)}</b>`;
 
             htmlFinal += `
-            <div class="bg-[#151515] p-4 rounded-2xl border border-[#2C2C2E] relative overflow-hidden">
-                <div class="flex justify-between items-start mb-3">
+            <div class="bg-[#151515] p-4 rounded-3xl relative overflow-hidden">
+                <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E]">
+                        <div class="w-10 h-10 rounded-2xl bg-[#0a0a0a] flex items-center justify-center shadow-inner border border-white/5">
                             <span class="text-xs font-bold text-white tracking-wider">${symbol.substring(0,2)}</span>
                         </div>
                         <div>
-                            <h4 class="text-sm font-bold text-white">${symbol}</h4>
-                            <span class="text-[10px] text-gray-500 font-medium">Preço: ${formatBRL(precoAtual)} • Div: ${formatBRL(ultimoRendimento)}</span>
+                            <h4 class="text-base font-bold text-white leading-none">${symbol}</h4>
+                            <span class="text-[10px] text-gray-500 font-medium mt-1 block">Preço: ${formatBRL(precoAtual)} • Div: ${formatBRL(ultimoRendimento)}</span>
                         </div>
                     </div>
                     <div class="text-right">
-                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block">Meta</span>
-                        <span class="text-base font-bold text-white">${magicNumber} <span class="text-[10px] text-gray-600">cotas</span></span>
+                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest block mb-0.5">Meta</span>
+                        <span class="text-lg font-bold text-white leading-none">${magicNumber}</span>
+                        <span class="text-[9px] text-gray-600 block font-medium">cotas</span>
                     </div>
                 </div>
 
-                <div class="w-full bg-[#222] h-2 rounded-full overflow-hidden mb-2">
-                    <div class="h-full ${corBarra} transition-all duration-1000" style="width: ${progresso}%"></div>
+                <div class="w-full bg-[#27272a] h-1.5 rounded-full overflow-hidden mb-2 shadow-inner">
+                    <div class="h-full rounded-full ${corBarra} transition-all duration-1000" style="width: ${progresso}%"></div>
                 </div>
 
-                <div class="flex justify-between items-center text-xs">
-                    <span class="text-gray-300">${Math.floor(progresso)}% concluído</span>
-                    <span class="${corTexto} font-medium">${cotasAtuais} / ${magicNumber}</span>
+                <div class="flex justify-between items-center text-[10px] font-bold tracking-wider">
+                    <span class="text-gray-500">${Math.floor(progresso)}% CONCLUÍDO</span>
+                    <span class="${corTexto}">${cotasAtuais} / ${magicNumber}</span>
                 </div>
 
-                <div class="mt-3 pt-3 border-t border-[#2C2C2E] flex justify-between items-center">
-                    <div class="text-xs text-gray-400">${msgStatus}</div>
-                    <div class="text-xs text-gray-300 bg-[#1C1C1E] px-2 py-1 rounded-lg border border-[#333]">
+                <div class="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
+                    <div class="text-[11px] text-gray-400">${msgStatus}</div>
+                    <div class="text-[10px] font-bold text-gray-300 bg-[#222] px-2.5 py-1.5 rounded-xl border border-white/5">
                         ${msgInvest}
                     </div>
                 </div>
             </div>`;
         } else {
-            // Caso falte dados para calcular
+            // Caso falte dados para calcular (Versão sem borda)
             htmlFinal += `
-            <div class="bg-[#151515] p-4 rounded-2xl border border-[#2C2C2E] opacity-60">
+            <div class="bg-[#151515] p-4 rounded-3xl relative overflow-hidden opacity-50">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E]">
+                    <div class="w-10 h-10 rounded-2xl bg-[#0a0a0a] flex items-center justify-center border border-white/5">
                          <span class="text-xs font-bold text-white tracking-wider">${symbol.substring(0,2)}</span>
                     </div>
                     <div>
-                        <h4 class="text-sm font-bold text-white">${symbol}</h4>
-                        <span class="text-[10px] text-red-400 font-medium">Dados insuficientes para cálculo</span>
+                        <h4 class="text-base font-bold text-white leading-none">${symbol}</h4>
+                        <span class="text-[10px] text-red-400 font-medium mt-1 block">Dados insuficientes para cálculo</span>
                     </div>
                 </div>
             </div>`;

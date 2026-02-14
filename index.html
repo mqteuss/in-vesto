@@ -591,7 +591,7 @@
         <div class="settings-group mb-6">
             <button id="btn-open-calculadora" onclick="openCalculadoraModal()" class="settings-item w-full">
                 <div class="flex items-center">
-<div class="w-10 h-10 rounded-xl bg-[#1C1C1E] flex items-center justify-center text-white">
+                    <div class="settings-icon-box icon-box-green">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
@@ -712,8 +712,10 @@
 
             <button id="export-csv-btn" class="settings-item w-full">
                 <div class="flex items-center">
-                    <div class="settings-icon-box icon-box-green">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+<div class="settings-icon-box icon-box-green">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
                     </div>
                     <div>
                         <span class="settings-label">Exportar Excel</span>
@@ -1280,7 +1282,7 @@
 </div>
 
 <div id="calculadora-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" style="opacity: 0; pointer-events: none; transition: opacity 0.3s ease-out;" aria-labelledby="calculadora-title" role="dialog" aria-modal="true">
-    <div id="tab-calculadora-content" class="page-content w-full h-[90vh] rounded-t-[2rem] shadow-2xl bg-[#000000] border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform flex flex-col">
+    <div id="tab-calculadora-content" class="page-content w-full h-[90vh] rounded-t-[2rem] shadow-2xl bg-[#000000] border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform transform-gpu translate-y-full transition-transform duration-300 ease-in-out will-change-transform flex flex-col">
         
         <div class="sticky top-0 bg-[#0a0a0a] z-30 rounded-t-[2rem] border-b border-white/5 shrink-0">
             <div class="w-full flex justify-center pt-3 pb-1">
@@ -1302,7 +1304,7 @@
             </div>
         </div>
 
-<div class="flex-1 overflow-y-auto p-5 pb-10 custom-scroll">
+        <div class="flex-1 overflow-y-auto p-5 pb-10 custom-scroll">
             
             <div class="bg-[#151515] p-6 rounded-3xl text-center mb-6">
                 <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Total Acumulado</span>
@@ -1310,7 +1312,7 @@
                 
                 <div class="w-full bg-[#0a0a0a] h-2 rounded-full overflow-hidden mb-3 flex border border-white/5">
                     <div id="calc-barra-investido" class="h-full bg-purple-600 transition-all duration-500" style="width: 50%"></div>
-                    <div id="calc-barra-juros" class="h-full bg-white transition-all duration-500" style="width: 50%"></div>
+                    <div id="calc-barra-juros" class="h-full bg-gray-500 transition-all duration-500" style="width: 50%"></div>
                 </div>
 
                 <div class="flex justify-between text-xs font-medium px-1">
@@ -1319,7 +1321,7 @@
                         <span id="calc-total-investido" class="text-white font-bold ml-1">R$ 0,00</span>
                     </div>
                     <div class="flex items-center gap-1.5 text-gray-400">
-                        <div class="w-2 h-2 rounded-full bg-white"></div> Juros
+                        <div class="w-2 h-2 rounded-full bg-gray-500"></div> Juros
                         <span id="calc-total-juros" class="text-white font-bold ml-1">R$ 0,00</span>
                     </div>
                 </div>

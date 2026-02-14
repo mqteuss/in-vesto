@@ -8535,12 +8535,12 @@ window.openObjetivosModal = openObjetivosModal;
     const barInvestido = document.getElementById('calc-barra-investido');
     const barJuros = document.getElementById('calc-barra-juros');
 
-    // Variáveis de controle do Swipe
+    // Variáveis de controlo do Swipe
     let isDraggingCalc = false;
     let touchStartCalcY = 0;
     let touchMoveCalcY = 0;
 
-    // Função de Animação de Abertura (Padrão Vesto)
+    // Função de Animação de Abertura (Com GPU)
     window.openCalculadoraModal = function() {
         if (!calcModal || !calcContent) return;
         
@@ -8548,34 +8548,33 @@ window.openObjetivosModal = openObjetivosModal;
         calcModal.style.opacity = '1';
         calcModal.classList.add('visible');
         
-        // Prepara a transição antes de mover
         calcContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
         
         setTimeout(() => {
-            calcContent.style.transform = 'translateY(0)';
+            // TRANSLATE 3D PARA ATIVAR A GPU
+            calcContent.style.transform = 'translate3d(0, 0, 0)';
         }, 10);
         
         document.body.style.overflow = 'hidden';
         calcularJuros(); // Faz um cálculo inicial ao abrir
     }
 
-    // Função de Animação de Fechamento (Padrão Vesto com Clean Up)
+    // Função de Animação de Fechamento (Com GPU)
     function closeCalculadoraModal() {
         if (!calcModal || !calcContent) return;
         
         calcContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        calcContent.style.transform = 'translateY(100%)';
+        // TRANSLATE 3D PARA ATIVAR A GPU
+        calcContent.style.transform = 'translate3d(0, 100%, 0)';
         
         calcModal.style.transition = 'opacity 0.3s ease-out';
         calcModal.style.opacity = '0';
         calcModal.style.pointerEvents = 'none';
         
-        // Aguarda a animação terminar para limpar tudo e destravar a tela
         setTimeout(() => {
             calcModal.classList.remove('visible');
             document.body.style.overflow = '';
             
-            // Limpa os estilos inline injetados pelo JS
             calcContent.style.transform = '';
             calcContent.style.transition = '';
             calcModal.style.transition = '';
@@ -8606,7 +8605,7 @@ window.openObjetivosModal = openObjetivosModal;
 
         let totalJuros = totalAculumado - totalInvestido;
 
-        // Proteção contra números negativos se o usuário zerar os campos
+        // Proteção contra números negativos se o utilizador zerar os campos
         if (totalAculumado < 0) totalAculumado = 0;
         if (totalJuros < 0) totalJuros = 0;
 
@@ -8636,10 +8635,8 @@ window.openObjetivosModal = openObjetivosModal;
     if (calcModal) calcModal.addEventListener('click', (e) => { 
         if(e.target === calcModal) closeCalculadoraModal(); 
     });
-    
-    // ======================================================
-    // Swipe Down Logic (O Comportamento Genuíno do App)
-    // ======================================================
+
+    // Swipe Down Logic (Com GPU)
     if (calcContent) {
         const scrollAreaCalc = calcContent.querySelector('.overflow-y-auto');
 
@@ -8648,7 +8645,7 @@ window.openObjetivosModal = openObjetivosModal;
                 touchStartCalcY = e.touches[0].clientY;
                 touchMoveCalcY = touchStartCalcY;
                 isDraggingCalc = true;
-                calcContent.style.transition = 'none'; // Desliga a animação para a janela grudar no dedo
+                calcContent.style.transition = 'none'; 
             }
         }, { passive: true });
 
@@ -8659,7 +8656,8 @@ window.openObjetivosModal = openObjetivosModal;
             
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault(); 
-                calcContent.style.transform = `translateY(${diff}px)`; // Arrasta a janela visualmente para baixo
+                // TRANSLATE 3D DURANTE O ARRASTO
+                calcContent.style.transform = `translate3d(0, ${diff}px, 0)`; 
             }
         }, { passive: false });
 
@@ -8671,11 +8669,10 @@ window.openObjetivosModal = openObjetivosModal;
             calcContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
             
             if (diff > 120) {
-                // Se arrastou mais de 120px para baixo, fecha a janela
                 closeCalculadoraModal();
             } else {
-                // Se arrastou pouco e soltou, dá o efeito "Bounce Back" (volta pro topo)
-                calcContent.style.transform = 'translateY(0)';
+                // VOLTA PRO TOPO COM 3D
+                calcContent.style.transform = 'translate3d(0, 0, 0)';
                 setTimeout(() => {
                     calcContent.style.transition = '';
                     calcContent.style.transform = '';

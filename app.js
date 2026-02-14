@@ -5438,7 +5438,7 @@ if (pData.ultimoPago || pData.proximo) {
                 </div>
                 <h4 class="details-category-title">Taxas & Infos</h4>
                 <div class="details-group-card">
-                    ${renderRow('Num. Cotistas', dados.num_cotistas)}
+                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}
                 </div>`;
         }

@@ -8296,6 +8296,230 @@ window.closePagamentosModal = function() {
         });
     }
 	
+	// ======================================================
+//  MÓDULO OBJETIVOS (MAGIC NUMBER)
+// ======================================================
+
+const objetivosModal = document.getElementById('objetivos-page-modal');
+const objetivosContent = document.getElementById('tab-objetivos-content');
+const objetivosVoltarBtn = document.getElementById('objetivos-voltar-btn');
+const objetivosLista = document.getElementById('objetivos-lista');
+const objetivosTotalAtivos = document.getElementById('objetivos-total-ativos');
+
+// Variáveis de controle de arrastar (Swipe Down)
+let isDraggingObjetivos = false;
+let touchStartObjetivosY = 0;
+let touchMoveObjetivosY = 0;
+
+async function openObjetivosModal() {
+    if (!objetivosModal) return;
+
+    // 1. Mostra o fundo escuro (fade in)
+    objetivosModal.style.pointerEvents = 'auto';
+    objetivosModal.style.opacity = '1';
+    objetivosModal.classList.add('visible');
+    
+    // 2. Faz o modal deslizar para cima
+    setTimeout(() => {
+        objetivosContent.style.transform = 'translateY(0)';
+    }, 10); // Pequeno delay para o navegador renderizar a animação
+    
+    document.body.style.overflow = 'hidden';
+
+    renderizarObjetivos();
+}
+
+function closeObjetivosModal() {
+    if (!objetivosContent) return;
+    
+    // 1. Faz o modal deslizar para baixo
+    objetivosContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    objetivosContent.style.transform = 'translateY(100%)';
+    
+    // 2. Tira o fundo escuro (fade out)
+    objetivosModal.style.opacity = '0';
+    objetivosModal.style.pointerEvents = 'none';
+    
+    // 3. Aguarda a animação terminar para limpar
+    setTimeout(() => {
+        objetivosModal.classList.remove('visible');
+        document.body.style.overflow = '';
+    }, 300);
+}
+
+// Lógica Principal de Renderização
+async function renderizarObjetivos() {
+    if (!objetivosLista) return;
+    objetivosLista.innerHTML = '<div class="text-center py-10"><span class="loader-sm"></span><p class="text-xs text-gray-500 mt-2">Analisando carteira...</p></div>';
+
+    // 1. Filtra apenas FIIs e Fiagros (nomes terminados em 11, 12 ou tipo específico)
+    const fiisCarteira = carteiraCalculada.filter(ativo => {
+        const symbol = ativo.symbol.toUpperCase();
+        return symbol.endsWith('11') || symbol.endsWith('12'); // Filtro simples e eficaz
+    });
+
+    if (fiisCarteira.length === 0) {
+        objetivosLista.innerHTML = `
+            <div class="flex flex-col items-center justify-center pt-10 opacity-50">
+                <svg class="w-12 h-12 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                <p class="text-sm text-gray-400">Nenhum FII encontrado na carteira.</p>
+            </div>`;
+        if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = "0 FIIs";
+        return;
+    }
+
+    if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = `${fiisCarteira.length} FIIs`;
+
+    let htmlFinal = '';
+
+    // 2. Para cada FII, busca/calcula dados
+    for (const ativo of fiisCarteira) {
+        const symbol = ativo.symbol;
+        
+        // Tenta pegar cache de fundamentos para o Último Rendimento
+        const cacheKey = `detalhe_preco_${symbol}`; // Usamos o mesmo cache dos detalhes se tiver
+        let dadosFund = null;
+        
+        // Busca fundamentos se não tiver
+        try {
+            dadosFund = await callScraperFundamentosAPI(symbol);
+        } catch (e) { console.log(`Erro ao buscar fundamentos para ${symbol}`); }
+
+        // Dados base
+        const precoAtual = precosAtuais.find(p => p.symbol === symbol)?.regularMarketPrice || 0;
+        let ultimoRendimento = 0;
+
+        // Tenta extrair o rendimento do scraper
+        if (dadosFund && dadosFund.ultimo_rendimento && dadosFund.ultimo_rendimento !== 'N/A') {
+            const valStr = dadosFund.ultimo_rendimento.replace('R$', '').replace('.', '').replace(',', '.').trim();
+            ultimoRendimento = parseFloat(valStr);
+        }
+
+        // Se não achou no scraper, tenta uma média dos últimos proventos conhecidos (Fallback Inteligente)
+        if (!ultimoRendimento || ultimoRendimento === 0) {
+             const provs = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
+             if (provs.length > 0) {
+                 // Pega o último pago
+                 provs.sort((a,b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+                 ultimoRendimento = provs[0].value;
+             }
+        }
+
+        // CÁLCULO MAGIC NUMBER
+        if (precoAtual > 0 && ultimoRendimento > 0) {
+            const magicNumber = Math.ceil(precoAtual / ultimoRendimento);
+            const cotasAtuais = ativo.quantity;
+            const progresso = Math.min(100, (cotasAtuais / magicNumber) * 100);
+            
+            const cotasFaltantes = Math.max(0, magicNumber - cotasAtuais);
+            const investimentoNecessario = cotasFaltantes * precoAtual;
+            
+            // Status Visual
+            const atingiu = cotasAtuais >= magicNumber;
+            const corBarra = atingiu ? 'bg-yellow-500' : 'bg-purple-600';
+            const corTexto = atingiu ? 'text-yellow-500' : 'text-purple-400';
+            const msgStatus = atingiu ? 'MAGIC NUMBER ATINGIDO! 🎉' : `Faltam <b>${cotasFaltantes}</b> cotas`;
+            const msgInvest = atingiu ? 'A bola de neve começou.' : `Falta investir <b>${formatBRL(investimentoNecessario)}</b>`;
+
+            htmlFinal += `
+            <div class="bg-[#151515] p-4 rounded-2xl border border-[#2C2C2E] relative overflow-hidden">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E]">
+                            <span class="text-xs font-bold text-white tracking-wider">${symbol.substring(0,2)}</span>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">${symbol}</h4>
+                            <span class="text-[10px] text-gray-500 font-medium">Preço: ${formatBRL(precoAtual)} • Div: ${formatBRL(ultimoRendimento)}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block">Meta</span>
+                        <span class="text-base font-bold text-white">${magicNumber} <span class="text-[10px] text-gray-600">cotas</span></span>
+                    </div>
+                </div>
+
+                <div class="w-full bg-[#222] h-2 rounded-full overflow-hidden mb-2">
+                    <div class="h-full ${corBarra} transition-all duration-1000" style="width: ${progresso}%"></div>
+                </div>
+
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-gray-300">${Math.floor(progresso)}% concluído</span>
+                    <span class="${corTexto} font-medium">${cotasAtuais} / ${magicNumber}</span>
+                </div>
+
+                <div class="mt-3 pt-3 border-t border-[#2C2C2E] flex justify-between items-center">
+                    <div class="text-xs text-gray-400">${msgStatus}</div>
+                    <div class="text-xs text-gray-300 bg-[#1C1C1E] px-2 py-1 rounded-lg border border-[#333]">
+                        ${msgInvest}
+                    </div>
+                </div>
+            </div>`;
+        } else {
+            // Caso falte dados para calcular
+            htmlFinal += `
+            <div class="bg-[#151515] p-4 rounded-2xl border border-[#2C2C2E] opacity-60">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E]">
+                         <span class="text-xs font-bold text-white tracking-wider">${symbol.substring(0,2)}</span>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-white">${symbol}</h4>
+                        <span class="text-[10px] text-red-400 font-medium">Dados insuficientes para cálculo</span>
+                    </div>
+                </div>
+            </div>`;
+        }
+    }
+    
+    objetivosLista.innerHTML = htmlFinal;
+}
+
+// Listeners
+if (objetivosVoltarBtn) objetivosVoltarBtn.addEventListener('click', closeObjetivosModal);
+if (objetivosModal) objetivosModal.addEventListener('click', (e) => { if(e.target === objetivosModal) closeObjetivosModal(); });
+
+// Swipe Down Logic (Objetivos)
+if (objetivosContent) {
+    const scrollContainerObj = objetivosContent.querySelector('.overflow-y-auto');
+
+    objetivosContent.addEventListener('touchstart', (e) => {
+        if (scrollContainerObj && scrollContainerObj.scrollTop === 0) {
+            touchStartObjetivosY = e.touches[0].clientY;
+            touchMoveObjetivosY = touchStartObjetivosY;
+            isDraggingObjetivos = true;
+            objetivosContent.style.transition = 'none'; 
+        }
+    }, { passive: true });
+
+    objetivosContent.addEventListener('touchmove', (e) => {
+        if (!isDraggingObjetivos) return;
+        touchMoveObjetivosY = e.touches[0].clientY;
+        const diff = touchMoveObjetivosY - touchStartObjetivosY;
+        if (diff > 0) {
+            if (e.cancelable) e.preventDefault(); 
+            objetivosContent.style.transform = `translateY(${diff}px)`;
+        }
+    }, { passive: false });
+
+    objetivosContent.addEventListener('touchend', (e) => {
+        if (!isDraggingObjetivos) return;
+        isDraggingObjetivos = false;
+        const diff = touchMoveObjetivosY - touchStartObjetivosY;
+        objetivosContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        
+        if (diff > 120) {
+            closeObjetivosModal();
+        } else {
+            objetivosContent.style.transform = '';
+        }
+        touchStartObjetivosY = 0; touchMoveObjetivosY = 0;
+    });
+}
+
+// Torna global
+window.openObjetivosModal = openObjetivosModal;
+	
     await init();
 });
 

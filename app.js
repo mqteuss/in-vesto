@@ -8348,12 +8348,14 @@ function closeObjetivosModal() {
 }
 
 
+// Lógica Principal de Renderização (VERSÃO SUPER OTIMIZADA)
 async function renderizarObjetivos() {
     if (!objetivosLista) return;
     
     // Captura o elemento do novo total global
     const objetivosTotalInvestir = document.getElementById('objetivos-total-investir');
     
+    // Como agora é instantâneo, mal vamos ver esse loader, mas é bom manter por segurança
     objetivosLista.innerHTML = '<div class="text-center py-10"><span class="loader-sm"></span><p class="text-xs text-gray-500 mt-2">Analisando carteira...</p></div>';
 
     // 1. Filtra apenas FIIs e Fiagros
@@ -8365,7 +8367,7 @@ async function renderizarObjetivos() {
     if (fiisCarteira.length === 0) {
         objetivosLista.innerHTML = `
             <div class="flex flex-col items-center justify-center pt-10 opacity-50">
-                <svg class="w-12 h-12 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                <svg class="w-12 h-12 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012-2v2M7 7h10" /></svg>
                 <p class="text-sm text-gray-400">Nenhum FII encontrado na carteira.</p>
             </div>`;
         if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = "0";
@@ -8376,34 +8378,21 @@ async function renderizarObjetivos() {
     if(objetivosTotalAtivos) objetivosTotalAtivos.textContent = fiisCarteira.length;
 
     let htmlFinal = '';
-    let somaTotalInvestir = 0; // <--- Inicializa a soma global
+    let somaTotalInvestir = 0; // Inicializa a soma global
 
-    // 2. Para cada FII, busca/calcula dados
+    // 2. Para cada FII, calcula os dados IMEDIATAMENTE a partir da memória
     for (const ativo of fiisCarteira) {
         const symbol = ativo.symbol;
-        
-        // Tenta pegar cache de fundamentos para o Último Rendimento
-        const cacheKey = `detalhe_preco_${symbol}`; 
-        let dadosFund = null;
-        
-        try {
-            dadosFund = await callScraperFundamentosAPI(symbol);
-        } catch (e) { console.log(`Erro ao buscar fundamentos para ${symbol}`); }
-
         const precoAtual = precosAtuais.find(p => p.symbol === symbol)?.regularMarketPrice || 0;
         let ultimoRendimento = 0;
 
-        if (dadosFund && dadosFund.ultimo_rendimento && dadosFund.ultimo_rendimento !== 'N/A') {
-            const valStr = dadosFund.ultimo_rendimento.replace('R$', '').replace('.', '').replace(',', '.').trim();
-            ultimoRendimento = parseFloat(valStr);
-        }
-
-        if (!ultimoRendimento || ultimoRendimento === 0) {
-             const provs = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
-             if (provs.length > 0) {
-                 provs.sort((a,b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-                 ultimoRendimento = provs[0].value;
-             }
+        // BUSCA INSTANTÂNEA: Olha direto para os proventos que já vieram do StatusInvest na inicialização
+        const historicoDoFii = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
+        
+        if (historicoDoFii.length > 0) {
+            // Ordena e pega o último valor pago
+            historicoDoFii.sort((a,b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+            ultimoRendimento = historicoDoFii[0].value;
         }
 
         // CÁLCULO MAGIC NUMBER
@@ -8418,7 +8407,7 @@ async function renderizarObjetivos() {
             // SOMA AO TOTAL GLOBAL
             somaTotalInvestir += investimentoNecessario;
 
-            // Status Visual Refinado
+            // Status Visual Refinado (Barra Branca fina, sem bordas no card)
             const atingiu = cotasAtuais >= magicNumber;
             const corBarra = atingiu ? 'bg-yellow-500' : 'bg-white';
             const corTexto = atingiu ? 'text-yellow-500' : 'text-white';
@@ -8479,7 +8468,7 @@ async function renderizarObjetivos() {
     
     objetivosLista.innerHTML = htmlFinal;
     
-    // Atualiza o valor total formatado no DOM da tela (Card do Topo)
+    // Atualiza o valor total formatado no DOM da tela
     if (objetivosTotalInvestir) {
         objetivosTotalInvestir.textContent = formatBRL(somaTotalInvestir);
     }

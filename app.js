@@ -8535,32 +8535,51 @@ window.openObjetivosModal = openObjetivosModal;
     const barInvestido = document.getElementById('calc-barra-investido');
     const barJuros = document.getElementById('calc-barra-juros');
 
-    // Função de Animação de Abertura
+    // Variáveis de controle do Swipe
+    let isDraggingCalc = false;
+    let touchStartCalcY = 0;
+    let touchMoveCalcY = 0;
+
+    // Função de Animação de Abertura (Padrão Vesto)
     window.openCalculadoraModal = function() {
-        if (!calcModal) return;
+        if (!calcModal || !calcContent) return;
+        
         calcModal.style.pointerEvents = 'auto';
         calcModal.style.opacity = '1';
         calcModal.classList.add('visible');
         
+        // Prepara a transição antes de mover
+        calcContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        
         setTimeout(() => {
             calcContent.style.transform = 'translateY(0)';
         }, 10);
-        document.body.style.overflow = 'hidden';
         
+        document.body.style.overflow = 'hidden';
         calcularJuros(); // Faz um cálculo inicial ao abrir
     }
 
+    // Função de Animação de Fechamento (Padrão Vesto com Clean Up)
     function closeCalculadoraModal() {
-        if (!calcContent) return;
+        if (!calcModal || !calcContent) return;
+        
         calcContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
         calcContent.style.transform = 'translateY(100%)';
         
+        calcModal.style.transition = 'opacity 0.3s ease-out';
         calcModal.style.opacity = '0';
         calcModal.style.pointerEvents = 'none';
         
+        // Aguarda a animação terminar para limpar tudo e destravar a tela
         setTimeout(() => {
             calcModal.classList.remove('visible');
             document.body.style.overflow = '';
+            
+            // Limpa os estilos inline injetados pelo JS
+            calcContent.style.transform = '';
+            calcContent.style.transition = '';
+            calcModal.style.transition = '';
+            calcModal.style.opacity = '';
         }, 300);
     }
 
@@ -8587,7 +8606,7 @@ window.openObjetivosModal = openObjetivosModal;
 
         let totalJuros = totalAculumado - totalInvestido;
 
-        // Proteção contra números negativos bizarros se o usuário apagar os campos
+        // Proteção contra números negativos se o usuário zerar os campos
         if (totalAculumado < 0) totalAculumado = 0;
         if (totalJuros < 0) totalJuros = 0;
 
@@ -8609,28 +8628,63 @@ window.openObjetivosModal = openObjetivosModal;
     if (btnCalcular) btnCalcular.addEventListener('click', calcularJuros);
     if (calcVoltarBtn) calcVoltarBtn.addEventListener('click', closeCalculadoraModal);
     
-    // Auto-cálculo ao mudar opções
+    // Auto-cálculo ao mudar as caixas de seleção
     document.getElementById('calc-taxa-tipo')?.addEventListener('change', calcularJuros);
     document.getElementById('calc-tempo-tipo')?.addEventListener('change', calcularJuros);
 
-    // Fechar ao tocar fora e Swipe Down
-    if (calcModal) calcModal.addEventListener('click', (e) => { if(e.target === calcModal) closeCalculadoraModal(); });
+    // Fechar ao tocar no fundo escuro fora do modal
+    if (calcModal) calcModal.addEventListener('click', (e) => { 
+        if(e.target === calcModal) closeCalculadoraModal(); 
+    });
     
-    let touchStartCalcY = 0;
+    // ======================================================
+    // Swipe Down Logic (O Comportamento Genuíno do App)
+    // ======================================================
     if (calcContent) {
-        const scrollArea = calcContent.querySelector('.overflow-y-auto');
+        const scrollAreaCalc = calcContent.querySelector('.overflow-y-auto');
+
         calcContent.addEventListener('touchstart', (e) => {
-            if (scrollArea && scrollArea.scrollTop === 0) touchStartCalcY = e.touches[0].clientY;
+            if (scrollAreaCalc && scrollAreaCalc.scrollTop === 0) {
+                touchStartCalcY = e.touches[0].clientY;
+                touchMoveCalcY = touchStartCalcY;
+                isDraggingCalc = true;
+                calcContent.style.transition = 'none'; // Desliga a animação para a janela grudar no dedo
+            }
         }, { passive: true });
+
+        calcContent.addEventListener('touchmove', (e) => {
+            if (!isDraggingCalc) return;
+            touchMoveCalcY = e.touches[0].clientY;
+            const diff = touchMoveCalcY - touchStartCalcY;
+            
+            if (diff > 0) {
+                if (e.cancelable) e.preventDefault(); 
+                calcContent.style.transform = `translateY(${diff}px)`; // Arrasta a janela visualmente para baixo
+            }
+        }, { passive: false });
+
         calcContent.addEventListener('touchend', (e) => {
-            if (touchStartCalcY === 0) return;
-            const diff = e.changedTouches[0].clientY - touchStartCalcY;
-            if (diff > 120) closeCalculadoraModal();
-            touchStartCalcY = 0;
+            if (!isDraggingCalc) return;
+            isDraggingCalc = false;
+            
+            const diff = touchMoveCalcY - touchStartCalcY;
+            calcContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            
+            if (diff > 120) {
+                // Se arrastou mais de 120px para baixo, fecha a janela
+                closeCalculadoraModal();
+            } else {
+                // Se arrastou pouco e soltou, dá o efeito "Bounce Back" (volta pro topo)
+                calcContent.style.transform = 'translateY(0)';
+                setTimeout(() => {
+                    calcContent.style.transition = '';
+                    calcContent.style.transform = '';
+                }, 400);
+            }
+            touchStartCalcY = 0; 
+            touchMoveCalcY = 0;
         });
     }
-
-    // ======================================================
 	
     await init();
 });

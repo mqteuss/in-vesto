@@ -1302,20 +1302,20 @@
             </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-5 pb-10 custom-scroll">
+<div class="flex-1 overflow-y-auto p-5 pb-10 custom-scroll">
             
             <div class="bg-[#151515] p-6 rounded-3xl text-center mb-6">
                 <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Total Acumulado</span>
                 <h2 id="calc-resultado-final" class="text-4xl font-bold text-white mb-5 leading-none">R$ 0,00</h2>
                 
-                <div class="w-full bg-[#0a0a0a] h-2 rounded-full overflow-hidden mb-3 flex">
-                    <div id="calc-barra-investido" class="h-full bg-[#2C2C2E] transition-all duration-500" style="width: 50%"></div>
+                <div class="w-full bg-[#0a0a0a] h-2 rounded-full overflow-hidden mb-3 flex border border-white/5">
+                    <div id="calc-barra-investido" class="h-full bg-purple-600 transition-all duration-500" style="width: 50%"></div>
                     <div id="calc-barra-juros" class="h-full bg-white transition-all duration-500" style="width: 50%"></div>
                 </div>
 
                 <div class="flex justify-between text-xs font-medium px-1">
                     <div class="flex items-center gap-1.5 text-gray-400">
-                        <div class="w-2 h-2 rounded-full bg-[#2C2C2E]"></div> Investido
+                        <div class="w-2 h-2 rounded-full bg-purple-600"></div> Investido
                         <span id="calc-total-investido" class="text-white font-bold ml-1">R$ 0,00</span>
                     </div>
                     <div class="flex items-center gap-1.5 text-gray-400">
@@ -1345,25 +1345,25 @@
                 </div>
 
                 <div class="flex gap-3">
-                    <div class="bg-[#151515] p-2 rounded-2xl flex items-center flex-1">
-                        <div class="flex-1 flex flex-col px-3 py-1.5">
+                    <div class="bg-[#151515] p-2 rounded-2xl flex items-center flex-1 min-w-0">
+                        <div class="flex-1 flex flex-col px-3 py-1.5 min-w-0">
                             <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Taxa (%)</span>
                             <input type="number" id="calc-taxa" value="1.0" step="0.1" class="bg-transparent text-white font-bold text-base w-full focus:outline-none placeholder-gray-700">
                         </div>
-                        <div class="w-px h-6 bg-[#2C2C2E] mx-1"></div>
-                        <select id="calc-taxa-tipo" class="bg-transparent text-gray-400 font-bold text-xs pr-2 focus:outline-none appearance-none cursor-pointer text-right">
+                        <div class="w-px h-6 bg-[#2C2C2E] mx-1 shrink-0"></div>
+                        <select id="calc-taxa-tipo" class="bg-transparent text-gray-400 font-bold text-xs pl-2 pr-1 focus:outline-none appearance-none cursor-pointer text-center shrink-0 w-10">
                             <option value="mensal" class="bg-black text-white">a.m.</option>
                             <option value="anual" class="bg-black text-white">a.a.</option>
                         </select>
                     </div>
 
-                    <div class="bg-[#151515] p-2 rounded-2xl flex items-center flex-1">
-                        <div class="flex-1 flex flex-col px-3 py-1.5">
+                    <div class="bg-[#151515] p-2 rounded-2xl flex items-center flex-1 min-w-0">
+                        <div class="flex-1 flex flex-col px-3 py-1.5 min-w-0">
                             <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Tempo</span>
                             <input type="number" id="calc-tempo" value="10" class="bg-transparent text-white font-bold text-base w-full focus:outline-none placeholder-gray-700">
                         </div>
-                        <div class="w-px h-6 bg-[#2C2C2E] mx-1"></div>
-                        <select id="calc-tempo-tipo" class="bg-transparent text-gray-400 font-bold text-xs pr-2 focus:outline-none appearance-none cursor-pointer text-right">
+                        <div class="w-px h-6 bg-[#2C2C2E] mx-1 shrink-0"></div>
+                        <select id="calc-tempo-tipo" class="bg-transparent text-gray-400 font-bold text-xs pl-2 pr-1 focus:outline-none appearance-none cursor-pointer text-center shrink-0 w-12">
                             <option value="anos" class="bg-black text-white">Anos</option>
                             <option value="meses" class="bg-black text-white">Meses</option>
                         </select>
@@ -1371,7 +1371,7 @@
                 </div>
             </div>
 
-            <button id="calc-btn-calcular" class="w-full mt-6 bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-4 rounded-2xl shadow-lg shadow-yellow-900/20 transition-all active:scale-95 text-sm uppercase tracking-wider">
+            <button id="calc-btn-calcular" class="w-full mt-6 bg-white hover:bg-gray-200 text-black font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95 text-sm uppercase tracking-wider">
                 Calcular Resultado
             </button>
 

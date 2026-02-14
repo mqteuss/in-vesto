@@ -95,7 +95,7 @@ async function scrapeFundamentos(ticker) {
         let dados = {
             // Campos Comuns
             dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
-            val_mercado: 'N/A', liquidez: 'N/A', variacao_12m: 'N/A',
+            val_mercado: 'N/A', liquidez: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
 
             // FIIs
             segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A', vacancia: 'N/A',
@@ -141,6 +141,7 @@ async function scrapeFundamentos(ticker) {
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
             if (dados.val_mercado === 'N/A' && titulo.includes('mercado')) dados.val_mercado = valor;
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
+            if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
 
             // FIIs
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;

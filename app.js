@@ -5383,7 +5383,7 @@ if (pData.ultimoPago || pData.proximo) {
              <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>` :
             `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>
              <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
-             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Últ. Rend.</span><span class="text-base font-bold text-white">${dados.ultimo_rendimento}</span></div>`;
+<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Nº Cotistas</span><span class="text-base font-bold text-white">${dados.num_cotistas}</span></div>`;
 
         const renderRow = (l, v) => `<div class="details-row"><span class="details-label">${l}</span><span class="details-value">${v}</span></div>`;
 
@@ -5438,7 +5438,6 @@ if (pData.ultimoPago || pData.proximo) {
                 </div>
                 <h4 class="details-category-title">Taxas & Infos</h4>
                 <div class="details-group-card">
-                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('Num. Cotistas', dados.num_cotistas)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}
                 </div>`;
@@ -8332,3 +8331,4 @@ window.closePagamentosModal = function() {
 	
     await init();
 });
+

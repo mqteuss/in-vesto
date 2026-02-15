@@ -4650,10 +4650,6 @@ function handleAbrirModalEdicao(id) {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
         
-        document.getElementById('detalhes-transacoes-container').classList.add('hidden');
-        document.getElementById('detalhes-lista-transacoes').innerHTML = '';
-        document.getElementById('detalhes-transacoes-vazio').classList.add('hidden');
-        
         if (detalhesChartInstance) {
             detalhesChartInstance.destroy();
             detalhesChartInstance = null;
@@ -5272,27 +5268,6 @@ async function handleMostrarDetalhes(symbol) {
             }
         }
 
-        // Posição do Usuário
-        const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
-        let userPosHtml = '';
-        if (ativoCarteira) {
-            const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
-            userPosHtml = `
-                <h4 class="details-category-title">Sua Posição</h4>
-                <div class="details-group-card flex justify-between items-center py-4 px-5">
-                    <div>
-                        <span class="text-xs text-gray-500 font-medium block">Total Investido</span>
-                        <div class="flex items-baseline gap-2 mt-0.5">
-                            <p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                         <span class="text-xs text-gray-500 font-medium block">Quantidade</span>
-                         <span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span>
-                    </div>
-                </div>`;
-        }
-
 // O objeto agora vem com duas propriedades: { ultimoPago, proximo }
 const pData = nextProventoData || {};
 
@@ -5421,7 +5396,6 @@ if (pData.ultimoPago || pData.proximo) {
                         Variação 12m: <span class="${dados.variacao_12m?.includes('-') ? 'text-red-500' : 'text-green-500'}">${dados.variacao_12m}</span>
                     </span>
                 </div>
-                ${userPosHtml}
                 ${proximoProventoHtml}
                 <h4 class="details-category-title">Indicadores</h4>
                 <div class="grid grid-cols-3 gap-2 w-full mb-2">${gridTopo}</div>
@@ -5432,104 +5406,7 @@ if (pData.ultimoPago || pData.proximo) {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
     }
     
-    renderizarTransacoesDetalhes(symbol);
     atualizarIconeFavorito(symbol);
-}
-
-function renderizarTransacoesDetalhes(symbol) {
-    const listaContainer = document.getElementById('detalhes-lista-transacoes');
-    const vazioMsg = document.getElementById('detalhes-transacoes-vazio');
-    const container = document.getElementById('detalhes-transacoes-container');
-
-    listaContainer.innerHTML = '';
-    
-    const txsDoAtivo = transacoes
-        .filter(t => t.symbol === symbol)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    if (txsDoAtivo.length === 0) {
-        vazioMsg.classList.remove('hidden');
-        listaContainer.classList.add('hidden');
-        container.classList.remove('hidden');
-        return;
-    } 
-    
-    vazioMsg.classList.add('hidden');
-    listaContainer.classList.remove('hidden');
-    container.classList.remove('hidden');
-
-    const grupos = agruparPorMes(txsDoAtivo, 'date');
-    const fragment = document.createDocumentFragment();
-
-    Object.keys(grupos).forEach(mes => {
-        const totalMes = grupos[mes].reduce((acc, t) => acc + (t.quantity * t.price), 0);
-
-        const header = document.createElement('div');
-        header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-4 flex justify-between items-center'; 
-        header.style.top = '-1px'; 
-        header.style.margin = '0 -8px 8px -8px'; 
-        header.style.borderRadius = '12px'; 
-        
-        header.innerHTML = `
-            <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">
-                ${mes}
-            </h3>
-            <span class="text-[10px] font-mono font-medium text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-md border border-neutral-800">
-                Mov: ${formatBRL(totalMes)}
-            </span>
-        `;
-        fragment.appendChild(header);
-
-        const listaGrupo = document.createElement('div');
-        listaGrupo.className = 'pb-2'; 
-
-        grupos[mes].forEach(t => {
-            const isVenda = t.type === 'sell';
-            const totalTransacao = t.quantity * t.price;
-            const dia = new Date(t.date).getDate().toString().padStart(2, '0');
-            const tipoLabel = isVenda ? 'Venda' : 'Compra';
-
-            // Ícones de Seta (Tamanho Normal: h-5 w-5)
-            const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
-            const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
-            
-            const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
-            
-            const iconBg = 'bg-[#1C1C1E]'; 
-
-            const item = document.createElement('div');
-            item.className = 'history-card flex items-center justify-between py-3 px-3 mb-2 rounded-xl relative group w-full bg-black';
-            item.style.setProperty('background-color', 'black', 'important');
-            
-            item.innerHTML = `
-                <div class="flex items-center gap-3 flex-1 min-w-0">
-                     <div class="w-10 h-10 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                        ${mainIconHtml}
-                    </div>
-                    
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${tipoLabel}</h4>
-                        </div>
-                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
-                            <span class="font-medium text-gray-400">Dia ${dia}</span>
-                            <span>•</span>
-                            <span>${t.quantity} cotas</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
-                    <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(t.price)}</span>
-                </div>
-            `;
-            listaGrupo.appendChild(item);
-        });
-        fragment.appendChild(listaGrupo);
-    });
-
-    listaContainer.appendChild(fragment);
 }
     
     async function fetchHistoricoScraper(symbol) {
@@ -8685,3 +8562,4 @@ window.openObjetivosModal = openObjetivosModal;
 	
     await init();
 });
+

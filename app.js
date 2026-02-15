@@ -5139,9 +5139,9 @@ async function handleMostrarDetalhes(symbol) {
     
     if (iconContainer) {
         iconContainer.innerHTML = `
-             <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                 ${iconHtml}
-             </div>
+            <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                ${iconHtml}
+            </div>
         `;
     }
     
@@ -5181,7 +5181,7 @@ async function handleMostrarDetalhes(symbol) {
     let nextProventoData = null;
 
     fetchHistoricoScraper(symbol); 
-    fetchCotacaoHistorica(symbol);
+	fetchCotacaoHistorica(symbol);
     
     try {
         const [fundData, provData] = await Promise.all([
@@ -5218,6 +5218,7 @@ async function handleMostrarDetalhes(symbol) {
 
         // --- CÁLCULO DE VALUATION (AÇÕES) ---
         let valuationHtml = '';
+        
         if (ehAcao) {
             const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
             const lpa = parseVal(dados.lpa);
@@ -5225,15 +5226,17 @@ async function handleMostrarDetalhes(symbol) {
             const dyVal = parseVal(dados.dy);
             const preco = precoData.regularMarketPrice;
 
+            // 1. Graham
             if (lpa > 0 && vpa > 0) {
                 const vi = Math.sqrt(22.5 * lpa * vpa);
                 const margemSeguranca = ((vi - preco) / preco) * 100;
                 const corGraham = margemSeguranca > 0 ? 'text-green-400' : 'text-red-400';
+                
                 valuationHtml += `
                     <div class="details-group-card mt-3 relative overflow-hidden">
                         <div class="flex justify-between items-center py-3 px-1">
                             <div>
-                                <span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Fórmula de Graham</span>
+                                <span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Graham</span>
                                 <span class="text-xs text-[#888] font-medium block">Preço Justo</span>
                             </div>
                             <div class="text-right">
@@ -5241,19 +5244,22 @@ async function handleMostrarDetalhes(symbol) {
                                 <span class="text-[10px] ${corGraham} block font-medium">Upside: ${margemSeguranca.toFixed(1)}%</span>
                             </div>
                         </div>
-                    </div>`;
+                    </div>
+                `;
             }
 
+            // 2. Bazin
             if (dyVal > 0) {
                 const dividendosAnuais = preco * (dyVal / 100);
                 const bazinPrice = dividendosAnuais / 0.06;
                 const upsideBazin = ((bazinPrice - preco) / preco) * 100;
                 const corBazin = upsideBazin > 0 ? 'text-green-400' : 'text-red-400';
+
                 valuationHtml += `
                     <div class="details-group-card mt-2 mb-2 relative overflow-hidden">
                         <div class="flex justify-between items-center py-3 px-1">
                             <div>
-                                <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Método de Bazin</span>
+                                <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Bazin</span>
                                 <span class="text-xs text-[#888] font-medium block">Preço Teto (6%)</span>
                             </div>
                             <div class="text-right">
@@ -5261,207 +5267,165 @@ async function handleMostrarDetalhes(symbol) {
                                 <span class="text-[10px] ${corBazin} block font-medium">Upside: ${upsideBazin.toFixed(1)}%</span>
                             </div>
                         </div>
-                    </div>`;
+                    </div>
+                `;
             }
         }
 
-        // --- POSIÇÃO DO USUÁRIO ---
+        // Posição do Usuário
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === symbol);
         let userPosHtml = '';
         if (ativoCarteira) {
             const totalPosicao = precoData.regularMarketPrice * ativoCarteira.quantity;
             userPosHtml = `
-                <div class="details-group-card flex justify-between items-center py-4 px-5 mt-4 border border-purple-500/20 bg-purple-500/5">
+                <h4 class="details-category-title">Sua Posição</h4>
+                <div class="details-group-card flex justify-between items-center py-4 px-5">
                     <div>
-                        <span class="text-xs text-purple-400 font-medium block mb-1">Total Investido</span>
-                        <p class="text-xl font-bold text-white tracking-tight leading-none">${formatBRL(totalPosicao)}</p>
+                        <span class="text-xs text-gray-500 font-medium block">Total Investido</span>
+                        <div class="flex items-baseline gap-2 mt-0.5">
+                            <p class="text-xl font-bold text-white tracking-tight">${formatBRL(totalPosicao)}</p>
+                        </div>
                     </div>
                     <div class="text-right">
-                         <span class="text-xs text-purple-400 font-medium block mb-1">Na Carteira</span>
-                         <span class="text-base text-gray-200 font-bold leading-none">${ativoCarteira.quantity} cotas</span>
+                         <span class="text-xs text-gray-500 font-medium block">Quantidade</span>
+                         <span class="text-base text-gray-200 font-bold">${ativoCarteira.quantity} cotas</span>
                     </div>
                 </div>`;
         }
 
-        // --- PRÓXIMOS PROVENTOS ---
-        const pData = nextProventoData || {};
-        const formatarCardProvento = (titulo, provento, isFuturo) => {
-            if (!provento) {
-                return `
-                <div class="flex-1 p-3 rounded-2xl bg-[#151515] flex flex-col justify-center items-center opacity-40">
-                    <span class="text-[9px] uppercase tracking-widest font-bold text-[#666] mb-1">${titulo}</span>
-                    <span class="text-sm font-bold text-[#444]">-</span>
-                </div>`;
-            }
-            const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
-            const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
-            const bgClass = isFuturo ? "bg-[#0f291e]" : "bg-[#151515]";
-            const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
-            const valueClass = isFuturo ? "text-green-400" : "text-white";
-            
-            return `
-            <div class="flex-1 p-3 rounded-2xl ${bgClass} flex flex-col justify-between">
-                <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-2">${titulo}</span>
-                <span class="text-lg font-bold ${valueClass} mb-3 leading-none">${formatBRL(provento.value)}</span>
-                <div class="flex justify-between items-end mt-auto">
-                    <div class="flex flex-col">
-                        <span class="text-[9px] text-[#666] font-medium leading-none mb-1">Data Com</span>
-                        <span class="text-[11px] text-[#ccc] font-bold leading-none">${dataComFmt}</span>
-                    </div>
-                    <div class="flex flex-col text-right">
-                        <span class="text-[9px] text-[#666] font-medium leading-none mb-1">Pagamento</span>
-                        <span class="text-[11px] text-[#ccc] font-bold leading-none">${dataPagFmt}</span>
-                    </div>
-                </div>
-            </div>`;
-        };
+// O objeto agora vem com duas propriedades: { ultimoPago, proximo }
+const pData = nextProventoData || {};
 
-        let proximoProventoHtml = '';
-        if (pData.ultimoPago || pData.proximo) {
-            proximoProventoHtml = `
-            <div class="flex gap-2 w-full mt-4">
-                ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
-                ${formatarCardProvento("Próximo Pagamento", pData.proximo, true)}
-            </div>`;
-        }
+// Função auxiliar para renderizar cada card com o estilo atual (sem bordas)
+const formatarCardProvento = (titulo, provento, isFuturo) => {
+    if (!provento) {
+        return `
+        <div class="flex-1 p-3 rounded-2xl bg-[#151515] flex flex-col justify-center items-center opacity-40">
+            <span class="text-[9px] uppercase tracking-widest font-bold text-[#666] mb-1">${titulo}</span>
+            <span class="text-sm font-bold text-[#444]">-</span>
+        </div>`;
+    }
+    
+    // Formata datas
+    const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
+    const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
+    
+    // Classes de fundo e texto (sem variáveis de borda)
+    const bgClass = isFuturo ? "bg-[#0f291e]" : "bg-[#151515]";
+    const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
+    const valueClass = isFuturo ? "text-green-400" : "text-white";
+    
+    return `
+    <div class="flex-1 p-3 rounded-2xl ${bgClass} flex flex-col justify-between">
+        <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-2">${titulo}</span>
+        <span class="text-lg font-bold ${valueClass} mb-3 leading-none">${formatBRL(provento.value)}</span>
+        
+        <div class="flex justify-between items-end mt-auto">
+            <div class="flex flex-col">
+                <span class="text-[9px] text-[#666] font-medium leading-none mb-1">Data Com</span>
+                <span class="text-[11px] text-[#ccc] font-bold leading-none">${dataComFmt}</span>
+            </div>
+            <div class="flex flex-col text-right">
+                <span class="text-[9px] text-[#666] font-medium leading-none mb-1">Pagamento</span>
+                <span class="text-[11px] text-[#ccc] font-bold leading-none">${dataPagFmt}</span>
+            </div>
+        </div>
+    </div>`;
+};
 
-        // ==========================================
-        // MONTAGEM DO SISTEMA DE ABAS (STATUS INVEST STYLE)
-        // ==========================================
+// Gera a interface lado a lado
+let proximoProventoHtml = '';
+if (pData.ultimoPago || pData.proximo) {
+    proximoProventoHtml = `
+    <h4 class="details-category-title mt-4">Proventos</h4>
+    <div class="flex gap-2 w-full mt-2">
+        ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
+        ${formatarCardProvento("Próximo Pagamento", pData.proximo, true)}
+    </div>`;
+}
 
-        // Funções Auxiliares de Renderização (Status Invest Grids)
-        const renderSiCard = (label, value, corVal = "text-white") => `
-            <div class="bg-[#151515] p-3 rounded-2xl flex flex-col justify-center">
-                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">${label}</span>
-                <span class="text-sm font-bold ${corVal} truncate">${value}</span>
-            </div>`;
-            
+        // Grid Destaques
+        let gridTopo = ehAcao ? 
+            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/L</span><span class="text-base font-bold text-white">${dados.pl}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>` :
+            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>
+             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
+<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Nº Cotistas</span><span class="text-base font-bold text-white">${dados.num_cotistas}</span></div>`;
+
         const renderRow = (l, v) => `<div class="details-row"><span class="details-label">${l}</span><span class="details-value">${v}</span></div>`;
 
-        // 1. Cabeçalho Fixo (Preço)
-        const headerFixoHtml = `
-            <div class="text-center pb-2 pt-4">
-                <h2 class="text-[3.5rem] font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
-                <span class="text-base font-bold ${variacaoCor} mt-2 flex items-center justify-center gap-1 tracking-tight">
-                    ${variacaoIcone} ${formatPercent(varPercent)} Hoje
-                </span>
-                <span class="text-xs font-medium text-[#444] mt-1 block tracking-wide">
-                    Variação 12m: <span class="${dados.variacao_12m?.includes('-') ? 'text-red-500' : 'text-green-500'}">${dados.variacao_12m}</span>
-                </span>
-            </div>
-        `;
-
-        // 2. Menu de Navegação (Agora com Analise/Sobre em vez de Histórico)
-        const labelTab3 = ehAcao ? 'Análise & Valuation' : 'Sobre o Fundo';
-        const tabsNavHtml = `
-            <div class="sticky top-0 bg-[#0a0a0a] z-20 -mx-4 px-4 pb-3 pt-4 mt-2 border-b border-[#2C2C2E] flex gap-2 overflow-x-auto hide-scrollbar">
-                <button onclick="switchDetalhesTab('resumo')" id="btn-tab-resumo" class="detalhes-tab-btn px-4 py-2 rounded-2xl text-[11px] font-bold bg-white text-black whitespace-nowrap transition-all shadow-sm">Resumo</button>
-                <button onclick="switchDetalhesTab('indicadores')" id="btn-tab-indicadores" class="detalhes-tab-btn px-4 py-2 rounded-2xl text-[11px] font-bold bg-[#1C1C1E] text-gray-400 whitespace-nowrap transition-all">Indicadores</button>
-                <button onclick="switchDetalhesTab('analise')" id="btn-tab-analise" class="detalhes-tab-btn px-4 py-2 rounded-2xl text-[11px] font-bold bg-[#1C1C1E] text-gray-400 whitespace-nowrap transition-all">${labelTab3}</button>
-            </div>
-        `;
-
-        // 3. ABA 1: Resumo (Apenas Posição e Proventos)
-        const tabResumoHtml = `
-            ${userPosHtml}
-            ${proximoProventoHtml}
-        `;
-
-        // 4. ABA 2: Indicadores (Grid Style)
-        let tabIndicadoresHtml = '';
+        // Listas Categorizadas
+        let listasHtml = '';
         if (ehAcao) {
-            tabIndicadoresHtml = `
-                <h4 class="details-category-title mt-4">Valuation</h4>
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                    ${renderSiCard('Dividend Yield', dados.dy, 'text-green-500')}
-                    ${renderSiCard('P/L', dados.pl)}
-                    ${renderSiCard('P/VP', dados.pvp)}
-                    ${renderSiCard('EV / EBITDA', dados.ev_ebitda)}
-                    ${renderSiCard('VPA', dados.vp_cota)}
-                    ${renderSiCard('LPA', dados.lpa)}
+            listasHtml = `
+                ${valuationHtml}
+                <h4 class="details-category-title">Valuation</h4>
+                <div class="details-group-card">
+                    ${renderRow('P/L', dados.pl)}
+                    ${renderRow('P/VP', dados.pvp)}
+                    ${renderRow('EV / EBITDA', dados.ev_ebitda)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
-                
-                <h4 class="details-category-title">Eficiência & Rentabilidade</h4>
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                    ${renderSiCard('ROE', dados.roe)}
-                    ${renderSiCard('Margem Líquida', dados.margem_liquida)}
-                    ${renderSiCard('Margem Bruta', dados.margem_bruta)}
-                    ${renderSiCard('Margem EBIT', dados.margem_ebit)}
+                <h4 class="details-category-title">Rentabilidade & Eficiência</h4>
+                <div class="details-group-card">
+                    ${renderRow('ROE', dados.roe)}
+                    ${renderRow('Margem Bruta', dados.margem_bruta)}
+                    ${renderRow('Margem EBIT', dados.margem_ebit)}
+                    ${renderRow('Margem Líquida', dados.margem_liquida)}
+                    ${renderRow('Payout', dados.payout)}
                 </div>
-
-                <h4 class="details-category-title">Endividamento</h4>
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                    ${renderSiCard('Dív. Líq / PL', dados.divida_liquida_pl)}
-                    ${renderSiCard('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
+                <h4 class="details-category-title">Crescimento (5 Anos)</h4>
+                <div class="details-group-card">
+                    ${renderRow('CAGR Receitas', dados.cagr_receita)}
+                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
+                </div>
+                <h4 class="details-category-title">Saúde Financeira</h4>
+                <div class="details-group-card">
+                    ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
+                    ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
                 </div>`;
         } else {
-            tabIndicadoresHtml = `
-                <h4 class="details-category-title mt-4">Indicadores Principais</h4>
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                    ${renderSiCard('Dividend Yield', dados.dy, 'text-green-500')}
-                    ${renderSiCard('P/VP', dados.pvp)}
-                    ${renderSiCard('Valor Patrimonial', dados.vp_cota)}
-                    ${renderSiCard('Patrimônio Líq.', dados.patrimonio_liquido)}
-                    ${renderSiCard('Últ. Rendimento', dados.ultimo_rendimento)}
-                    ${renderSiCard('Liquidez Diária', dados.liquidez)}
+            listasHtml = `
+                <h4 class="details-category-title">Métricas</h4>
+                <div class="details-group-card">
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                    ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
+                    ${renderRow('VP por Cota', dados.vp_cota)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
-                
-                <h4 class="details-category-title">Performance</h4>
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                    ${renderSiCard('Variação 12m', dados.variacao_12m)}
-                    ${renderSiCard('Valor de Mercado', dados.val_mercado)}
-                </div>`;
-        }
-
-        // 5. ABA 3: Análise & Sobre (Graham/Bazin ou Infos do FII)
-        let tabAnaliseHtml = '';
-        if (ehAcao) {
-            tabAnaliseHtml = `
-                <h4 class="details-category-title mt-4">Modelos de Valuation</h4>
-                ${valuationHtml || '<div class="text-center py-4 opacity-50 text-xs text-gray-400">Dados insuficientes para cálculo.</div>'}
-                
-                <h4 class="details-category-title mt-6">Crescimento (5 Anos)</h4>
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                    ${renderSiCard('CAGR Receitas', dados.cagr_receita)}
-                    ${renderSiCard('CAGR Lucros', dados.cagr_lucros)}
-                </div>
-            `;
-        } else {
-            tabAnaliseHtml = `
-                <h4 class="details-category-title mt-4">Sobre o Fundo</h4>
-                <div class="details-group-card mb-4">
+                <h4 class="details-category-title">Sobre o Fundo</h4>
+                <div class="details-group-card">
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Tipo', dados.tipo_fundo)}
-                    ${renderRow('Mandato', dados.mandato)}
                     ${renderRow('Público Alvo', dados.publico_alvo)}
-                </div>
-                
-                <h4 class="details-category-title">Gestão & Taxas</h4>
-                <div class="details-group-card mb-4">
-                    ${renderRow('Gestão', dados.tipo_gestao)}
-                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('Vacância', dados.vacancia)}
-                    ${renderRow('Nº Cotistas', dados.num_cotistas)}
-                    ${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}
+                    ${renderRow('Gestão', dados.tipo_gestao)}
                 </div>
-            `;
+                <h4 class="details-category-title">Taxas & Infos</h4>
+                <div class="details-group-card">
+                    ${renderRow('Taxa Adm.', dados.taxa_adm)}
+                    ${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}
+                </div>`;
         }
 
-        // 6. Injeção Final na Tela
         detalhesPreco.innerHTML = `
-            <div class="col-span-12 w-full flex flex-col relative">
-                ${headerFixoHtml}
-                ${tabsNavHtml}
-                
-                <div id="content-tab-resumo" class="detalhes-tab-content block pb-6 transition-opacity duration-300">
-                    ${tabResumoHtml}
+            <div class="col-span-12 w-full flex flex-col">
+                <div class="text-center pb-6 pt-4">
+                    <h2 class="text-[3.5rem] font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
+                    <span class="text-base font-bold ${variacaoCor} mt-2 flex items-center justify-center gap-1 tracking-tight">
+                        ${variacaoIcone} ${formatPercent(varPercent)} Hoje
+                    </span>
+                    <span class="text-xs font-medium text-[#444] mt-1 block tracking-wide">
+                        Variação 12m: <span class="${dados.variacao_12m?.includes('-') ? 'text-red-500' : 'text-green-500'}">${dados.variacao_12m}</span>
+                    </span>
                 </div>
-                <div id="content-tab-indicadores" class="detalhes-tab-content hidden pb-6 transition-opacity duration-300">
-                    ${tabIndicadoresHtml}
-                </div>
-                <div id="content-tab-analise" class="detalhes-tab-content hidden pb-6 transition-opacity duration-300">
-                    ${tabAnaliseHtml}
-                </div>
+                ${userPosHtml}
+                ${proximoProventoHtml}
+                <h4 class="details-category-title">Indicadores</h4>
+                <div class="grid grid-cols-3 gap-2 w-full mb-2">${gridTopo}</div>
+                ${listasHtml}
             </div>`;
 
     } else {
@@ -8718,37 +8682,6 @@ window.openObjetivosModal = openObjetivosModal;
             touchMoveCalcY = 0;
         });
     }
-	
-// ======================================================
-// LÓGICA DE ABAS DO MODAL DE DETALHES (STATUS INVEST)
-// ======================================================
-window.switchDetalhesTab = function(tabName) {
-    // 1. Reseta todos os botões (deixa cinza)
-    document.querySelectorAll('.detalhes-tab-btn').forEach(btn => {
-        btn.classList.remove('bg-white', 'text-black');
-        btn.classList.add('bg-[#1C1C1E]', 'text-gray-400');
-    });
-    
-    // 2. Destaca o botão clicado (deixa branco)
-    const activeBtn = document.getElementById(`btn-tab-${tabName}`);
-    if(activeBtn) {
-        activeBtn.classList.remove('bg-[#1C1C1E]', 'text-gray-400');
-        activeBtn.classList.add('bg-white', 'text-black');
-    }
-
-    // 3. Esconde todos os conteúdos
-    document.querySelectorAll('.detalhes-tab-content').forEach(content => {
-        content.classList.add('hidden');
-        content.classList.remove('block');
-    });
-    
-    // 4. Mostra o conteúdo da aba clicada
-    const activeContent = document.getElementById(`content-tab-${tabName}`);
-    if(activeContent) {
-        activeContent.classList.remove('hidden');
-        activeContent.classList.add('block');
-    }
-};
 	
     await init();
 });

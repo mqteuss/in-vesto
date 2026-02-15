@@ -2560,16 +2560,16 @@ function renderizarGraficoHistorico(dadosExternos = null) {
         data: {
             labels: labelsFiltrados,
             datasets: [
-                {
+{
                     type: 'line',
                     label: 'Crescimento',
-                    data: dataTotal, // <- Usando os valores totais absolutos
-                    borderColor: '#FBBF24', 
-                    borderWidth: 2.5,
+                    data: dataTotal,
+                    borderColor: '#F3F4F6', // Cinza muito claro (quase branco)
+                    borderWidth: 1,         // Linha fina
                     tension: 0.4, 
                     pointRadius: 2,
                     pointHoverRadius: 5,
-                    pointBackgroundColor: '#FBBF24',
+                    pointBackgroundColor: '#F3F4F6', // Bolinha acompanhando a cor
                     spanGaps: true, 
                     order: 0 
                 },

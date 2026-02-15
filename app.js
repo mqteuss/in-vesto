@@ -2548,12 +2548,24 @@ function renderizarGraficoHistorico(dadosExternos = null) {
 
     const ctx = canvas.getContext('2d');
     
-    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
+    // Cores das Barras (Roxo para Recebido, Cinza Escuro para Futuro)
     const colorRecebido = '#8B5CF6'; 
     const colorAReceber = '#333333'; 
 
-    // --- CÁLCULO DA LINHA DE TENDÊNCIA TOTAL ---
+    // --- CÁLCULO DE CRESCIMENTO (MÊS A MÊS) ---
     const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
+    
+    const dataCrescimento = dataTotal.map((totalAtual, index) => {
+        if (index === 0) return null; // Primeiro mês não tem mês anterior para comparar na tela
+        
+        const totalAnterior = dataTotal[index - 1];
+        if (totalAnterior === 0) {
+            return totalAtual > 0 ? 100 : 0; // Se antes era 0 e agora tem valor, considera 100% de aumento
+        }
+        
+        // Fórmula de crescimento percentual: ((Atual - Anterior) / Anterior) * 100
+        return ((totalAtual - totalAnterior) / totalAnterior) * 100;
+    });
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -2562,17 +2574,17 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             datasets: [
                 {
                     type: 'line',
-                    label: 'Total',
-                    data: dataTotal,
-                    borderColor: '#10B981', // Linha Verde
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointRadius: 0,
-                    pointHitRadius: 10,
-                    pointHoverRadius: 4,
-                    pointHoverBackgroundColor: '#10B981',
-                    fill: false,
-                    order: 0 // Linha fica sempre na frente
+                    label: 'Crescimento',
+                    data: dataCrescimento,
+                    borderColor: '#FBBF24', // Cor Âmbar/Dourada premium
+                    borderWidth: 2.5,
+                    tension: 0.4, // Deixa a linha com curvas suaves
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: '#FBBF24',
+                    spanGaps: true, // Conecta a linha caso o primeiro ponto seja nulo
+                    yAxisID: 'y1', // <-- Mapeia para o eixo secundário invisível
+                    order: 0 // Garante que fique por cima das barras
                 },
                 {
                     label: 'A Receber', 
@@ -2623,7 +2635,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     bodyColor: '#cccccc',
                     borderColor: '#333333',
                     borderWidth: 1,
-                    padding: 8,
+                    padding: 10,
                     displayColors: true,
                     boxWidth: 6,
                     boxHeight: 6,
@@ -2646,12 +2658,19 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                         },
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
+                            if (label) label += ': ';
+                            
                             if (context.parsed.y !== null) {
-                                if(context.parsed.y === 0) return null;
-                                label += formatBRL(context.parsed.y);
+                                // Se o tooltip estiver lendo a LINHA, formata como Porcentagem
+                                if (context.dataset.type === 'line') {
+                                    const signal = context.parsed.y > 0 ? '+' : '';
+                                    label += signal + context.parsed.y.toFixed(1) + '%';
+                                } 
+                                // Se estiver lendo as BARRAS, formata como Dinheiro
+                                else {
+                                    if(context.parsed.y === 0) return null;
+                                    label += formatBRL(context.parsed.y);
+                                }
                             }
                             return label;
                         }
@@ -2659,7 +2678,18 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                 } 
             },
             scales: {
-                y: { display: false, stacked: true },
+                // Eixo das Barras (Dinheiro)
+                y: { 
+                    display: false, 
+                    stacked: true 
+                },
+                // Eixo exclusivo da Linha (Porcentagem)
+                y1: {
+                    type: 'linear',
+                    display: false, // Mantido invisível para um visual limpo
+                    position: 'right',
+                    grid: { display: false }
+                },
                 x: { 
                     stacked: true, 
                     grid: { display: false }, 

@@ -2548,24 +2548,12 @@ function renderizarGraficoHistorico(dadosExternos = null) {
 
     const ctx = canvas.getContext('2d');
     
-    // Cores das Barras (Roxo para Recebido, Cinza Escuro para Futuro)
+    // Cores das Barras
     const colorRecebido = '#8B5CF6'; 
     const colorAReceber = '#333333'; 
 
-    // --- CÁLCULO DE CRESCIMENTO (MÊS A MÊS) ---
+    // O truque: A linha agora volta a usar o Total de Dinheiro para acompanhar o topo das barras
     const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
-    
-    const dataCrescimento = dataTotal.map((totalAtual, index) => {
-        if (index === 0) return null; // Primeiro mês não tem mês anterior para comparar na tela
-        
-        const totalAnterior = dataTotal[index - 1];
-        if (totalAnterior === 0) {
-            return totalAtual > 0 ? 100 : 0; // Se antes era 0 e agora tem valor, considera 100% de aumento
-        }
-        
-        // Fórmula de crescimento percentual: ((Atual - Anterior) / Anterior) * 100
-        return ((totalAtual - totalAnterior) / totalAnterior) * 100;
-    });
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -2575,16 +2563,15 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                 {
                     type: 'line',
                     label: 'Crescimento',
-                    data: dataCrescimento,
-                    borderColor: '#FBBF24', // Cor Âmbar/Dourada premium
+                    data: dataTotal, // <- Usando os valores totais absolutos
+                    borderColor: '#FBBF24', 
                     borderWidth: 2.5,
-                    tension: 0.4, // Deixa a linha com curvas suaves
+                    tension: 0.4, 
                     pointRadius: 2,
                     pointHoverRadius: 5,
                     pointBackgroundColor: '#FBBF24',
-                    spanGaps: true, // Conecta a linha caso o primeiro ponto seja nulo
-                    yAxisID: 'y1', // <-- Mapeia para o eixo secundário invisível
-                    order: 0 // Garante que fique por cima das barras
+                    spanGaps: true, 
+                    order: 0 
                 },
                 {
                     label: 'A Receber', 
@@ -2660,35 +2647,34 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                             let label = context.dataset.label || '';
                             if (label) label += ': ';
                             
-                            if (context.parsed.y !== null) {
-                                // Se o tooltip estiver lendo a LINHA, formata como Porcentagem
-                                if (context.dataset.type === 'line') {
-                                    const signal = context.parsed.y > 0 ? '+' : '';
-                                    label += signal + context.parsed.y.toFixed(1) + '%';
-                                } 
-                                // Se estiver lendo as BARRAS, formata como Dinheiro
-                                else {
-                                    if(context.parsed.y === 0) return null;
-                                    label += formatBRL(context.parsed.y);
-                                }
+                            // SE O TOOLTIP ESTIVER NA LINHA (Cálculo de Porcentagem em tempo real)
+                            if (context.dataset.type === 'line') {
+                                const currentIndex = context.dataIndex;
+                                if (currentIndex === 0) return label + '---'; // Primeiro mês não tem comparação
+                                
+                                const atual = context.raw;
+                                const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
+                                
+                                if (anterior === 0) return label + (atual > 0 ? '+100%' : '0%');
+                                
+                                const percent = ((atual - anterior) / anterior) * 100;
+                                const signal = percent > 0 ? '+' : '';
+                                return label + signal + percent.toFixed(1) + '%';
+                            } 
+                            // SE O TOOLTIP ESTIVER NAS BARRAS (Dinheiro)
+                            else {
+                                if(context.parsed.y === 0) return null;
+                                return label + formatBRL(context.parsed.y);
                             }
-                            return label;
                         }
                     }
                 } 
             },
             scales: {
-                // Eixo das Barras (Dinheiro)
+                // Eixo das Barras e da Linha (Agora unificados)
                 y: { 
                     display: false, 
                     stacked: true 
-                },
-                // Eixo exclusivo da Linha (Porcentagem)
-                y1: {
-                    type: 'linear',
-                    display: false, // Mantido invisível para um visual limpo
-                    position: 'right',
-                    grid: { display: false }
                 },
                 x: { 
                     stacked: true, 

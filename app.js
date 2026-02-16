@@ -8459,46 +8459,25 @@ window.openObjetivosModal = openObjetivosModal;
 window.openCalculadoraModal = function() {
         if (!calcModal || !calcContent) return;
         
-        calcModal.style.pointerEvents = 'auto';
-        calcModal.style.opacity = '1';
         calcModal.classList.add('visible');
-        
-        calcContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        
-        setTimeout(() => {
-            // TRANSLATE 3D PARA ATIVAR A GPU
-            calcContent.style.transform = 'translate3d(0, 0, 0)';
-        }, 10);
-        
+        calcContent.style.transform = ''; 
+        calcContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
         
-        // Espera a animação de 300ms terminar para não travar a abertura
+        // Atrasar o cálculo para não engasgar a animação CSS (Mantido por performance)
         setTimeout(() => {
             calcularJuros(); 
         }, 50);
     }
 
     // Função de Animação de Fechamento (Com GPU)
-    function closeCalculadoraModal() {
+function closeCalculadoraModal() {
         if (!calcModal || !calcContent) return;
         
-        calcContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        // TRANSLATE 3D PARA ATIVAR A GPU
-        calcContent.style.transform = 'translate3d(0, 100%, 0)';
-        
-        calcModal.style.transition = 'opacity 0.3s ease-out';
-        calcModal.style.opacity = '0';
-        calcModal.style.pointerEvents = 'none';
-        
-        setTimeout(() => {
-            calcModal.classList.remove('visible');
-            document.body.style.overflow = '';
-            
-            calcContent.style.transform = '';
-            calcContent.style.transition = '';
-            calcModal.style.transition = '';
-            calcModal.style.opacity = '';
-        }, 300);
+        calcContent.style.transform = '';
+        calcContent.classList.add('closing');
+        calcModal.classList.remove('visible');
+        document.body.style.overflow = '';
     }
 	
     function calcularJuros() {
@@ -8559,7 +8538,7 @@ window.openCalculadoraModal = function() {
     });
 
     // Swipe Down Logic (Com GPU)
-    if (calcContent) {
+if (calcContent) {
         const scrollAreaCalc = calcContent.querySelector('.overflow-y-auto');
 
         calcContent.addEventListener('touchstart', (e) => {
@@ -8578,8 +8557,7 @@ window.openCalculadoraModal = function() {
             
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault(); 
-                // TRANSLATE 3D DURANTE O ARRASTO
-                calcContent.style.transform = `translate3d(0, ${diff}px, 0)`; 
+                calcContent.style.transform = `translateY(${diff}px)`; 
             }
         }, { passive: false });
 
@@ -8593,12 +8571,8 @@ window.openCalculadoraModal = function() {
             if (diff > 120) {
                 closeCalculadoraModal();
             } else {
-                // VOLTA PRO TOPO COM 3D
-                calcContent.style.transform = 'translate3d(0, 0, 0)';
-                setTimeout(() => {
-                    calcContent.style.transition = '';
-                    calcContent.style.transform = '';
-                }, 400);
+                // RESET PADRÃO
+                calcContent.style.transform = '';
             }
             touchStartCalcY = 0; 
             touchMoveCalcY = 0;

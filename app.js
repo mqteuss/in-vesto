@@ -5467,10 +5467,17 @@ async function handleMostrarDetalhes(symbol) {
                 ${listasHtml}
             </div>`;
 
-    } else {
+} else {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
     }
     
+    if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
+        window.renderizarListaImoveis(fundamentos.imoveis);
+    } else {
+        const containerImoveis = document.getElementById('detalhes-imoveis-container');
+        if (containerImoveis) containerImoveis.innerHTML = '';
+    }
+
     atualizarIconeFavorito(symbol);
 }
     
@@ -8616,6 +8623,125 @@ if (calcContent) {
             touchMoveCalcY = 0;
         });
     }
+	
+	window.renderizarListaImoveis = function(imoveis) {
+    let container = document.getElementById('detalhes-imoveis-container');
+    
+    // Se o container não existe, cria-o e coloca-o logo após o Histórico de Proventos
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'detalhes-imoveis-container';
+        container.className = "w-full"; 
+        
+        const historicoContainer = document.getElementById('detalhes-historico-container');
+        if (historicoContainer) {
+            historicoContainer.parentNode.insertBefore(container, historicoContainer.nextSibling);
+        }
+    }
+
+    if (!imoveis || imoveis.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    // Processar dados para o Gráfico de Pizza (Agrupar por Estado)
+    const estadosCount = {};
+    imoveis.forEach(imovel => {
+        const uf = imovel.estado || 'Outros';
+        estadosCount[uf] = (estadosCount[uf] || 0) + 1;
+    });
+
+    const labels = Object.keys(estadosCount);
+    const data = Object.values(estadosCount);
+    
+    // Paleta de cores moderna (inspirada em Dashboards Financeiros)
+    const bgColors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4', '#ec4899', '#84cc16'];
+
+    // Gera os cartões da lista de imóveis (Padrão Flat)
+    let listaHtml = imoveis.map(imovel => `
+        <div class="bg-[#151515] rounded-xl p-3 mb-2 shadow-sm flex flex-col justify-center relative overflow-hidden">
+            <span class="text-[12px] font-bold text-white tracking-tight leading-tight mb-2.5 relative z-10">${imovel.nome}</span>
+            <div class="flex justify-between items-end relative z-10 border-t border-white/5 pt-2">
+                <div class="flex flex-col">
+                    <span class="text-[8px] text-gray-500 font-bold tracking-wider uppercase leading-none mb-1">Localização</span>
+                    <span class="text-[10px] text-gray-300 font-bold leading-none">${imovel.estado}</span>
+                </div>
+                <div class="flex flex-col text-right">
+                    <span class="text-[8px] text-gray-500 font-bold tracking-wider uppercase leading-none mb-1">A.B.L.</span>
+                    <span class="text-[10px] text-gray-300 font-bold leading-none">${imovel.abl || '-'}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Injeta o Gráfico e a Lista
+    container.innerHTML = `
+        <div class="border-t border-[#2C2C2E] pt-8 mb-10 mt-8">
+            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
+            
+            <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
+                <div class="relative w-full h-48">
+                    <canvas id="imoveis-chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="flex flex-col">
+                ${listaHtml}
+            </div>
+        </div>
+    `;
+
+    // Renderizar o Gráfico com Chart.js
+    const ctx = document.getElementById('imoveis-chart').getContext('2d');
+    
+    if (window.imoveisChartInstance) {
+        window.imoveisChartInstance.destroy();
+    }
+
+    window.imoveisChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: bgColors.slice(0, labels.length),
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%', // Anel mais fino para ficar elegante
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: '#9ca3af',
+                        font: { size: 10, family: 'Inter' },
+                        boxWidth: 10,
+                        usePointStyle: true,
+                        padding: 12
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(21, 21, 21, 0.95)',
+                    titleColor: '#fff',
+                    bodyColor: '#ccc',
+                    borderColor: '#2C2C2E',
+                    borderWidth: 1,
+                    padding: 10,
+                    bodyFont: { size: 12, weight: 'bold' },
+                    callbacks: {
+                        label: function(context) {
+                            return ' ' + context.label + ': ' + context.raw + ' imóvel(is)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
 	
     await init();
 });

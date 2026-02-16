@@ -8716,16 +8716,16 @@ window.renderizarListaImoveis = function(imoveis) {
         <div class="border-t border-[#2C2C2E] pt-8 mb-10 mt-8">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
             
-            <div class="bg-[#151515] rounded-xl p-3 py-4 shadow-sm mb-4">
-                <div class="flex items-center h-40">
-                    <div class="relative w-[55%] h-full flex items-center justify-center flex-shrink-0">
+<div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="relative w-28 h-28 flex-shrink-0 flex items-center justify-center">
                         <canvas id="imoveis-chart" class="relative z-10 w-full h-full"></canvas>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0 mt-1">
                             <span class="text-[8px] text-gray-500 font-bold tracking-widest uppercase mb-0.5">Total</span>
-                            <span class="text-3xl font-bold text-white leading-none tracking-tighter">${totalImoveis}</span>
+                            <span class="text-2xl font-bold text-white leading-none tracking-tighter">${totalImoveis}</span>
                         </div>
                     </div>
-                    <div class="w-[45%] pl-3 flex flex-col border-l border-[#2C2C2E] ml-1 h-full justify-center overflow-y-auto no-scrollbar">
+                    <div class="flex-1 pl-4 border-l border-[#2C2C2E] max-h-28 overflow-y-auto no-scrollbar py-1">
                         ${legendHtml}
                     </div>
                 </div>
@@ -8759,7 +8759,7 @@ window.renderizarListaImoveis = function(imoveis) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '72%', // <- Diminuímos o "buraco" de 80% para 72%. A rosca fica mais grossa e visível!
+            cutout: '76%', // <- Diminuímos o "buraco" de 80% para 72%. A rosca fica mais grossa e visível!
             layout: { padding: 0 },
             plugins: {
                 legend: {

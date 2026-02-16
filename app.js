@@ -2548,16 +2548,32 @@ function renderizarGraficoHistorico(dadosExternos = null) {
 
     const ctx = canvas.getContext('2d');
     
-    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
+    // Cores das Barras
     const colorRecebido = '#8B5CF6'; 
     const colorAReceber = '#333333'; 
 
+    // Total usado para traçar a linha de crescimento
+    const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
+
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
-        plugins: [crosshairPlugin], // <--- ADICIONADO: Plugin da linha pontilhada
+        plugins: [crosshairPlugin], // <-- PLUGIN DA LINHA VERTICAL PONTILHADA AQUI
         data: {
             labels: labelsFiltrados,
             datasets: [
+                {
+                    type: 'line', // <-- LINHA DE CRESCIMENTO (Fina e Clara) DE VOLTA
+                    label: 'Crescimento',
+                    data: dataTotal, 
+                    borderColor: '#F3F4F6', 
+                    borderWidth: 1,
+                    tension: 0.4, 
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: '#F3F4F6',
+                    spanGaps: true, 
+                    order: 0 
+                },
                 {
                     label: 'A Receber', 
                     data: dataAReceberFiltrados,
@@ -2565,7 +2581,8 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     borderRadius: 4,
                     barPercentage: 0.6,
                     stack: 'Stack 0',
-                    rawKeys: keysFiltrados 
+                    rawKeys: keysFiltrados,
+                    order: 1
                 },
                 {
                     label: 'Recebido',
@@ -2574,7 +2591,8 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     borderRadius: 4,
                     barPercentage: 0.6,
                     stack: 'Stack 0',
-                    rawKeys: keysFiltrados
+                    rawKeys: keysFiltrados,
+                    order: 1
                 }
             ]
         },
@@ -2583,7 +2601,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             maintainAspectRatio: false,
             animation: { duration: 600 },
             layout: { padding: { top: 10, bottom: 0 } },
-            interaction: { mode: 'index', axis: 'x', intersect: false }, // <--- MUDADO para 'index' para a linha flutuar corretamente
+            interaction: { mode: 'index', axis: 'x', intersect: false }, // <-- MODO INDEX PARA A LINHA VERTICAL FUNCIONAR
             
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
@@ -2598,7 +2616,6 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             plugins: {
                 legend: { display: false }, 
                 
-                // --- CUSTOMIZAÇÃO DO TOOLTIP (FONTE INTER + TAMANHO REDUZIDO) ---
                 tooltip: { 
                     enabled: true,
                     backgroundColor: 'rgba(20, 20, 20, 0.95)',
@@ -2606,21 +2623,20 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     bodyColor: '#cccccc',
                     borderColor: '#333333',
                     borderWidth: 1,
-                    padding: 8,              
+                    padding: 10,
                     displayColors: true,
-                    boxWidth: 6,             
+                    boxWidth: 6,
                     boxHeight: 6,
                     usePointStyle: true,
                     
-                    // Configurações de Fonte
                     titleFont: {
                         family: "'Inter', sans-serif",
-                        size: 11,            
+                        size: 11,
                         weight: 'bold'
                     },
                     bodyFont: {
                         family: "'Inter', sans-serif",
-                        size: 11,            
+                        size: 11,
                         weight: '500'
                     },
 
@@ -2630,14 +2646,25 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                         },
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
+                            if (label) label += ': ';
+                            
+                            // Lógica inteligente: Porcentagem para a Linha, Dinheiro para as Barras
+                            if (context.dataset.type === 'line') {
+                                const currentIndex = context.dataIndex;
+                                if (currentIndex === 0) return label + '---'; 
+                                
+                                const atual = context.raw;
+                                const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
+                                
+                                if (anterior === 0) return label + (atual > 0 ? '+100%' : '0%');
+                                
+                                const percent = ((atual - anterior) / anterior) * 100;
+                                const signal = percent > 0 ? '+' : '';
+                                return label + signal + percent.toFixed(1) + '%';
+                            } else {
                                 if(context.parsed.y === 0) return null;
-                                label += formatBRL(context.parsed.y);
+                                return label + formatBRL(context.parsed.y);
                             }
-                            return label;
                         }
                     }
                 } 

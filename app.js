@@ -4731,10 +4731,10 @@ async function fetchCotacaoHistorica(symbol) {
     if (!container) {
         const detalhesPreco = document.getElementById('detalhes-preco');
         if (detalhesPreco && detalhesPreco.parentNode) {
-            container = document.createElement('div');
+container = document.createElement('div');
             container.id = 'detalhes-cotacao-container';
-            // Removi a borda superior dura para ficar mais clean, mantendo apenas margens
-            container.className = "mt-6 mb-6 pt-2"; 
+            // Adicionada linha divisória sutil com espaçamento elegante
+            container.className = "mt-8 mb-6 pt-8 border-t border-[#2C2C2E]"; 
             detalhesPreco.parentNode.insertBefore(container, detalhesPreco.nextSibling);
         } else { return; }
     }
@@ -5609,8 +5609,8 @@ function renderHistoricoIADetalhes(mesesIgnore) {
         }, 10);
     }
 
-    if (!document.getElementById('detalhes-proventos-chart')) {
-        detalhesAiProvento.innerHTML = `<div class="relative h-72 w-full mt-2 bg-[#151515] rounded-xl p-4 shadow-sm"><canvas id="detalhes-proventos-chart"></canvas></div>`;
+if (!document.getElementById('detalhes-proventos-chart')) {
+        detalhesAiProvento.innerHTML = `<div class="relative h-72 w-full mt-4 mb-10 bg-[#151515] rounded-xl p-4 shadow-sm"><canvas id="detalhes-proventos-chart"></canvas></div>`;
     }
 
     renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);

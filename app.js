@@ -2548,31 +2548,16 @@ function renderizarGraficoHistorico(dadosExternos = null) {
 
     const ctx = canvas.getContext('2d');
     
-    // Cores das Barras
+    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
     const colorRecebido = '#8B5CF6'; 
     const colorAReceber = '#333333'; 
 
-    // O truque: A linha agora volta a usar o Total de Dinheiro para acompanhar o topo das barras
-    const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
-
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
+        plugins: [crosshairPlugin], // <--- ADICIONADO: Plugin da linha pontilhada
         data: {
             labels: labelsFiltrados,
             datasets: [
-{
-                    type: 'line',
-                    label: 'Crescimento',
-                    data: dataTotal,
-                    borderColor: '#F3F4F6', // Cinza muito claro (quase branco)
-                    borderWidth: 1,         // Linha fina
-                    tension: 0.4, 
-                    pointRadius: 2,
-                    pointHoverRadius: 5,
-                    pointBackgroundColor: '#F3F4F6', // Bolinha acompanhando a cor
-                    spanGaps: true, 
-                    order: 0 
-                },
                 {
                     label: 'A Receber', 
                     data: dataAReceberFiltrados,
@@ -2580,8 +2565,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     borderRadius: 4,
                     barPercentage: 0.6,
                     stack: 'Stack 0',
-                    rawKeys: keysFiltrados,
-                    order: 1
+                    rawKeys: keysFiltrados 
                 },
                 {
                     label: 'Recebido',
@@ -2590,8 +2574,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     borderRadius: 4,
                     barPercentage: 0.6,
                     stack: 'Stack 0',
-                    rawKeys: keysFiltrados,
-                    order: 1
+                    rawKeys: keysFiltrados
                 }
             ]
         },
@@ -2600,7 +2583,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             maintainAspectRatio: false,
             animation: { duration: 600 },
             layout: { padding: { top: 10, bottom: 0 } },
-            interaction: { mode: 'index', axis: 'x', intersect: false },
+            interaction: { mode: 'index', axis: 'x', intersect: false }, // <--- MUDADO para 'index' para a linha flutuar corretamente
             
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
@@ -2615,6 +2598,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             plugins: {
                 legend: { display: false }, 
                 
+                // --- CUSTOMIZAÇÃO DO TOOLTIP (FONTE INTER + TAMANHO REDUZIDO) ---
                 tooltip: { 
                     enabled: true,
                     backgroundColor: 'rgba(20, 20, 20, 0.95)',
@@ -2622,20 +2606,21 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     bodyColor: '#cccccc',
                     borderColor: '#333333',
                     borderWidth: 1,
-                    padding: 10,
+                    padding: 8,              
                     displayColors: true,
-                    boxWidth: 6,
+                    boxWidth: 6,             
                     boxHeight: 6,
                     usePointStyle: true,
                     
+                    // Configurações de Fonte
                     titleFont: {
                         family: "'Inter', sans-serif",
-                        size: 11,
+                        size: 11,            
                         weight: 'bold'
                     },
                     bodyFont: {
                         family: "'Inter', sans-serif",
-                        size: 11,
+                        size: 11,            
                         weight: '500'
                     },
 
@@ -2645,37 +2630,20 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                         },
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            
-                            // SE O TOOLTIP ESTIVER NA LINHA (Cálculo de Porcentagem em tempo real)
-                            if (context.dataset.type === 'line') {
-                                const currentIndex = context.dataIndex;
-                                if (currentIndex === 0) return label + '---'; // Primeiro mês não tem comparação
-                                
-                                const atual = context.raw;
-                                const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
-                                
-                                if (anterior === 0) return label + (atual > 0 ? '+100%' : '0%');
-                                
-                                const percent = ((atual - anterior) / anterior) * 100;
-                                const signal = percent > 0 ? '+' : '';
-                                return label + signal + percent.toFixed(1) + '%';
-                            } 
-                            // SE O TOOLTIP ESTIVER NAS BARRAS (Dinheiro)
-                            else {
-                                if(context.parsed.y === 0) return null;
-                                return label + formatBRL(context.parsed.y);
+                            if (label) {
+                                label += ': ';
                             }
+                            if (context.parsed.y !== null) {
+                                if(context.parsed.y === 0) return null;
+                                label += formatBRL(context.parsed.y);
+                            }
+                            return label;
                         }
                     }
                 } 
             },
             scales: {
-                // Eixo das Barras e da Linha (Agora unificados)
-                y: { 
-                    display: false, 
-                    stacked: true 
-                },
+                y: { display: false, stacked: true },
                 x: { 
                     stacked: true, 
                     grid: { display: false }, 

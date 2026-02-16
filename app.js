@@ -2745,19 +2745,19 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
         const foiRecebido = dataPagamentoObj <= hoje;
         const valorUnitario = item.valorTotal / (item.qtd || 1);
 
-        // --- LÓGICA DO ÍCONE E COR (IGUAL AO EXTRATO) ---
+        // --- LÓGICA DO ÍCONE E COR ---
         const colorIcon = foiRecebido ? 'text-green-500' : 'text-yellow-500';
         
-        // Seta de gráfico idêntica à da aba Proventos > Extrato
+        // Seta de gráfico
         const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${colorIcon}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
         const bgIcone = 'bg-[#1C1C1E]';
 
-        // Badge no estilo "Etiqueta" idêntico ao do Extrato
+        // Badge no estilo "Etiqueta"
         const badgeHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${foiRecebido ? 'RECEBIDO' : 'A RECEBER'}</span>`;
 
-        // Card com Preto Puro (bg-black) e margens ajustadas
+        // Card estático (sem cursor-pointer e sem onclick)
         const cardHTML = `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black cursor-pointer" style="background-color: black !important;" onclick="if(typeof window.abrirDetalhesAtivo === 'function') window.abrirDetalhesAtivo('${item.symbol}')">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black" style="background-color: black !important;">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     
                     <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">

@@ -8456,7 +8456,7 @@ window.openObjetivosModal = openObjetivosModal;
     let touchMoveCalcY = 0;
 
     // Função de Animação de Abertura (Com GPU)
-    window.openCalculadoraModal = function() {
+window.openCalculadoraModal = function() {
         if (!calcModal || !calcContent) return;
         
         calcModal.style.pointerEvents = 'auto';
@@ -8471,7 +8471,11 @@ window.openObjetivosModal = openObjetivosModal;
         }, 10);
         
         document.body.style.overflow = 'hidden';
-        calcularJuros(); // Faz um cálculo inicial ao abrir
+        
+        // Espera a animação de 300ms terminar para não travar a abertura
+        setTimeout(() => {
+            calcularJuros(); 
+        }, 50);
     }
 
     // Função de Animação de Fechamento (Com GPU)
@@ -8496,8 +8500,7 @@ window.openObjetivosModal = openObjetivosModal;
             calcModal.style.opacity = '';
         }, 300);
     }
-
-    // O Motor Matemático
+	
     function calcularJuros() {
         const vInicial = parseFloat(document.getElementById('calc-inicial').value) || 0;
         const aMensal = parseFloat(document.getElementById('calc-mensal').value) || 0;
@@ -8510,17 +8513,21 @@ window.openObjetivosModal = openObjetivosModal;
         let meses = tempoTipo === 'anos' ? tempoBase * 12 : tempoBase;
         let taxaMensal = taxaTipo === 'anual' ? (Math.pow(1 + (taxaBase / 100), 1 / 12) - 1) : (taxaBase / 100);
 
-        let totalAculumado = vInicial;
         let totalInvestido = vInicial + (aMensal * meses);
+        let totalAculumado = 0;
 
-        // Loop de Juros Compostos
-        for (let i = 0; i < meses; i++) {
-            totalAculumado = totalAculumado * (1 + taxaMensal) + aMensal;
+        // --- SOLUÇÃO: FÓRMULA MATEMÁTICA DIRETA ---
+        // Elimina o For Loop. Calcula tudo em 1 único passo.
+        if (taxaMensal > 0) {
+            const fatorJuros = Math.pow(1 + taxaMensal, meses);
+            totalAculumado = (vInicial * fatorJuros) + (aMensal * ((fatorJuros - 1) / taxaMensal));
+        } else {
+            totalAculumado = totalInvestido; // Se a taxa for 0, é apenas o dinheiro guardado
         }
 
         let totalJuros = totalAculumado - totalInvestido;
 
-        // Proteção contra números negativos se o utilizador zerar os campos
+        // Proteção contra números negativos
         if (totalAculumado < 0) totalAculumado = 0;
         if (totalJuros < 0) totalJuros = 0;
 

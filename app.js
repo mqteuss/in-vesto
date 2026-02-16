@@ -4774,9 +4774,9 @@ async function fetchCotacaoHistorica(symbol) {
             </div>
         </div>
         
-        <div class="relative h-72 w-full bg-[#151515] rounded-xl border border-[#2C2C2E] p-2" id="chart-area-wrapper">
+        <div class="relative h-72 w-full bg-[#151515] rounded-xl p-2" id="chart-area-wrapper">
              <div class="flex flex-col items-center justify-center h-full animate-pulse">
-                <span class="text-[10px] text-gray-600 tracking-wider">CARREGANDO...</span>
+                <span class="text-[10px] text-gray-600 tracking-wider">Carregando...</span>
             </div>
         </div>
     `;
@@ -5565,9 +5565,8 @@ function renderHistoricoIADetalhes(mesesIgnore) {
         containerBotoes.innerHTML = html;
     }
 
-    // ALTURA AJUSTADA PARA FICAR PROPORCIONAL (h-72 = 288px)
     if (!document.getElementById('detalhes-proventos-chart')) {
-        detalhesAiProvento.innerHTML = `<div class="relative h-72 w-full mt-2"><canvas id="detalhes-proventos-chart"></canvas></div>`;
+        detalhesAiProvento.innerHTML = `<div class="relative h-72 w-full mt-2 bg-[#151515] rounded-xl p-4 shadow-sm"><canvas id="detalhes-proventos-chart"></canvas></div>`;
     }
 
     renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);

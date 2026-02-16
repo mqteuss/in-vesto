@@ -2560,7 +2560,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
         data: {
             labels: labelsFiltrados,
             datasets: [
-                {
+{
                     type: 'line',
                     label: 'Crescimento',
                     data: dataTotal,
@@ -2740,43 +2740,45 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     hoje.setHours(0, 0, 0, 0);
 
     lista.forEach(item => {
-        const percent = ((item.valorTotal / totalMes) * 100).toFixed(1);
-        const [ano, mes, dia] = item.dataPag.split('-').map(Number); // Separa YYYY-MM-DD
-        
-        // Cria objeto data do pagamento
+        const [ano, mes, dia] = item.dataPag.split('-').map(Number);
         const dataPagamentoObj = new Date(ano, mes - 1, dia);
-
-        // Lógica: Se a data do pagamento for menor ou igual a hoje, foi recebido.
         const foiRecebido = dataPagamentoObj <= hoje;
+        const valorUnitario = item.valorTotal / (item.qtd || 1);
 
-        const tickerInitials = item.symbol.substring(0, 2);
+        // --- LÓGICA DO ÍCONE E COR (IGUAL AO EXTRATO) ---
+        const colorIcon = foiRecebido ? 'text-green-500' : 'text-yellow-500';
         
-        // --- ALTERAÇÃO SOLICITADA ---
-        // 1. Definimos a cor apenas para o STATUS, não para o valor.
-        const corStatus = foiRecebido ? 'text-green-500' : 'text-amber-400'; 
-        const textoStatus = foiRecebido ? 'Recebido' : 'A Receber';
+        // Seta de gráfico idêntica à da aba Proventos > Extrato
+        const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${colorIcon}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
+        const bgIcone = 'bg-[#1C1C1E]';
 
-        // 2. O Valor monetário agora é fixo 'text-white'
+        // Badge no estilo "Etiqueta" idêntico ao do Extrato
+        const badgeHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${foiRecebido ? 'RECEBIDO' : 'A RECEBER'}</span>`;
+
+        // Card com Preto Puro (bg-black) e margens ajustadas
         const cardHTML = `
-            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2 active:scale-[0.98] transition-transform">
-                
-                <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
-                     <span class="text-xs font-bold text-white tracking-wider">${tickerInitials}</span>
-                </div>
-
-                <div class="flex-1 min-w-0">
-                    <div class="flex justify-between items-center mb-0.5">
-                        <span class="text-sm font-bold text-white uppercase">${item.symbol}</span>
-                        <span class="text-sm font-bold text-white tracking-tight">${formatBRL(item.valorTotal)}</span>
-                    </div>
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black cursor-pointer" style="background-color: black !important;" onclick="if(typeof window.abrirDetalhesAtivo === 'function') window.abrirDetalhesAtivo('${item.symbol}')">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
                     
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] text-gray-500 font-medium">Dia ${dia} • ${item.qtd} cotas</span>
-                        <span class="text-[10px] ${corStatus} font-medium flex items-center gap-1">
-                           ${!foiRecebido ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>' : ''} 
-                           ${textoStatus}
-                        </span>
+                    <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                        ${iconGraph}
                     </div>
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 h-5">
+                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${item.symbol}</h4>
+                            ${badgeHtml}
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
+                            <span class="font-medium text-gray-400">Dia ${dia}</span>
+                            <span>•</span>
+                            <span>${item.qtd} cotas</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right flex flex-col items-end justify-center">
+                    <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(item.valorTotal)}</span>
+                    <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(valorUnitario)} /cota</span>
                 </div>
             </div>
         `;

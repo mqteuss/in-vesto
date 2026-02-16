@@ -2074,8 +2074,6 @@ function agruparNoticiasPorData(articles) {
     return grupos;
 }
 
-// --- RENDERIZAR NOTÍCIAS (VISUAL IDÊNTICO AO HISTÓRICO) ---
-// --- RENDERIZAR NOTÍCIAS (AJUSTES FINAIS: TAMANHO, BORDAS E COR) ---
 function renderizarNoticias(articles) { 
     fiiNewsSkeleton.classList.add('hidden');
     
@@ -2208,7 +2206,81 @@ function renderizarNoticias(articles) {
     });
     
     fiiNewsList.appendChild(fragment);
+    
+    // Atualiza o radar da aba Início sem abrir nenhum modal
+    if (typeof window.renderizarNoticiasDashboard === 'function') {
+        window.renderizarNoticiasDashboard();
+    }
 }
+
+window.renderizarNoticiasDashboard = function() {
+    const container = document.getElementById('dashboard-news-container');
+    const list = document.getElementById('dashboard-news-list');
+    if (!container || !list) return;
+
+    list.innerHTML = '';
+
+    if (!window.noticiasCache || window.noticiasCache.length === 0 || !carteiraCalculada || carteiraCalculada.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
+    
+    const noticiasCarteira = window.noticiasCache.filter(noticia => {
+        return meusTickers.some(ticker => noticia.title.toUpperCase().includes(ticker));
+    });
+
+    if (noticiasCarteira.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    const noticiasParaExibir = noticiasCarteira.slice(0, 5);
+
+    noticiasParaExibir.forEach(noticia => {
+        const sourceName = noticia.sourceName || 'Mercado';
+        const faviconUrl = noticia.favicon || `https://www.google.com/s2/favicons?domain=${noticia.sourceHostname || 'google.com'}&sz=64`;
+        
+        const tickerMencionado = meusTickers.find(t => noticia.title.toUpperCase().includes(t)) || '';
+
+        let dataPub = '';
+        if (noticia.pubDate) {
+            const d = new Date(noticia.pubDate);
+            if (!isNaN(d)) dataPub = d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+        }
+
+        const card = document.createElement('div');
+        // Estilo igual aos atalhos, só que retangular. SEM MODAL.
+        card.className = 'snap-start shrink-0 w-64 bg-[#151515] border border-[#2C2C2E] rounded-2xl p-3 flex flex-col justify-between active:scale-[0.98] transition-transform cursor-pointer shadow-sm relative overflow-hidden';
+        
+        // Abre direto no navegador
+        card.onclick = () => window.open(noticia.link, '_blank');
+
+        card.innerHTML = `
+            <div class="absolute top-0 left-0 w-1 h-full bg-blue-500/80"></div>
+            <div class="pl-2">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <img src="${faviconUrl}" class="w-3.5 h-3.5 rounded-[3px] bg-white/10" onerror="this.style.display='none'">
+                        <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider truncate">${sourceName}</span>
+                    </div>
+                    <span class="text-[9px] text-gray-600 font-medium whitespace-nowrap ml-2">${dataPub}</span>
+                </div>
+                <h4 class="text-xs font-bold text-gray-200 leading-snug line-clamp-3 mb-3 pr-1">${noticia.title}</h4>
+            </div>
+            <div class="mt-auto pl-2 flex items-center">
+                <span class="text-[10px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
+                    ${tickerMencionado}
+                </span>
+            </div>
+        `;
+        
+        list.appendChild(card);
+    });
+
+    container.classList.remove('hidden');
+};
 
 function renderizarGraficoAlocacao(isRetry = false) {
     const canvas = document.getElementById('alocacao-chart');
@@ -3520,11 +3592,6 @@ async function renderizarCarteira() {
         dashboardLoading.classList.add('hidden');
         dashboardStatus.classList.remove('hidden');
         
-        // --- LAZY LOAD: COMENTADO PARA NÃO INICIAR AUTOMATICAMENTE ---
-        // renderizarGraficoAlocacao([]);
-        // renderizarGraficoHistorico({ labels: [], data: [] });
-        // renderizarGraficoPatrimonio();
-
         await salvarSnapshotPatrimonio(saldoCaixa);
         return; 
     } else {
@@ -3604,7 +3671,7 @@ async function renderizarCarteira() {
             totalPosicao, custoTotal, lucroPrejuizo, lucroPrejuizoPercent,
             corPL, 
             dadoProvento,       
-            listaProventos: listaProventosFuturos, // Passa APENAS os futuros para o renderizador do card
+            listaProventos: listaProventosFuturos, 
             proventoReceber, 
             percentWallet
         };
@@ -3656,13 +3723,17 @@ async function renderizarCarteira() {
         }
         
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
-        renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
+        renderizarTimelinePagamentos(); 
+
+        // ==========================================
+        // GATILHO DO RADAR DE NOTÍCIAS DA CARTEIRA
+        // ==========================================
+        if (typeof window.renderizarNoticiasDashboard === 'function') {
+            window.renderizarNoticiasDashboard();
+        }
+
         await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
     }
-    
-    // --- LAZY LOAD: COMENTADO PARA NÃO INICIAR AUTOMATICAMENTE ---
-    // renderizarGraficoAlocacao(dadosGrafico);
-    // renderizarGraficoPatrimonio();
     
     if (carteiraSearchInput && carteiraSearchInput.value) {
         const term = carteiraSearchInput.value.trim().toUpperCase();

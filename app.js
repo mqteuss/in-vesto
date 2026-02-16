@@ -4835,17 +4835,21 @@ async function carregarDadosGrafico(range, symbol) {
     }
 }
 
-// Gerencia clique nos botões
 window.mudarPeriodoGrafico = function(range, symbol) {
-    // Atualiza classes visuais
+    const baseClass = "chart-filter-btn flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-all duration-200 select-none";
+    const inactiveClass = "bg-transparent text-gray-500 hover:text-gray-300 border border-transparent hover:bg-white/5";
+    const activeClass = "bg-[#2C2C2E] text-white shadow-sm border border-[#3C3C3E]";
+
+    // Atualiza todos para o estado inativo
     const botoes = document.querySelectorAll('#chart-filters button');
     botoes.forEach(btn => {
-        btn.className = "px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-300 transition-all whitespace-nowrap min-w-[35px]";
+        btn.className = `${baseClass} ${inactiveClass}`;
     });
 
+    // Pinta o botão clicado com o estado ativo (com borda)
     const activeBtn = document.getElementById(`btn-${range}`);
     if (activeBtn) {
-        activeBtn.className = "px-3 py-1 text-[10px] font-bold rounded bg-[#3A3A3C] text-white shadow transition-all whitespace-nowrap min-w-[35px]";
+        activeBtn.className = `${baseClass} ${activeClass}`;
     }
 
     // Chama carga de dados

@@ -952,7 +952,13 @@
              
              <div id="detalhes-historico-container" class="hidden">
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Proventos</h4>
-               
+                
+                <div id="periodo-selector-group" class="grid grid-cols-4 gap-2 mb-4">
+                    <button class="periodo-selector-btn" data-meses="3">3M</button>
+                    <button class="periodo-selector-btn" data-meses="6">6M</button>
+                    <button class="periodo-selector-btn" data-meses="9">9M</button>
+                    <button class="periodo-selector-btn" data-meses="12">12M</button>
+                </div>
                 
                 <div id="detalhes-ai-provento" class="mt-2"><div class="relative h-48 w-full bg-[#151515] rounded-xl p-4 shadow-sm"><canvas id="detalhes-proventos-chart"></canvas></div></div>
              </div>

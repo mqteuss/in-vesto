@@ -4790,7 +4790,7 @@ window.gerarBotaoFiltro = function(label, symbol, isActive = false) {
         ? 'bg-[#2C2C2E] text-white shadow-sm border border-[#3C3C3E]' 
         : 'bg-transparent text-gray-500 hover:text-gray-300 border border-transparent hover:bg-white/5';
     
-    return `<button onclick="atualizarGraficoCotacao('${label}', '${symbol}')" 
+    return `<button id="btn-${label}" onclick="window.mudarPeriodoGrafico('${label}', '${symbol}')" 
             class="chart-filter-btn flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-all duration-200 ${activeClass}" 
             data-range="${label}">
         ${label}

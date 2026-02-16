@@ -4743,27 +4743,27 @@ async function fetchCotacaoHistorica(symbol) {
         <div class="flex flex-col mb-2 px-1">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Preço</h4>
             
-            <div class="grid grid-cols-3 gap-2 mb-4">
+<div class="grid grid-cols-3 gap-2 mb-4">
                 
-                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Abertura</span>
                     <span id="stat-open" class="text-base font-bold text-white leading-none">--</span>
                 </div>
 
-                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Variação</span>
                     <span id="stat-var" class="text-base font-bold text-white leading-none">--</span>
                 </div>
 
-                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Fechamento</span>
                     <span id="stat-close" class="text-base font-bold text-white leading-none">--</span>
                 </div>
 
             </div>
 
-            <div class="relative flex overflow-x-auto no-scrollbar gap-1 p-1 bg-[#151515] rounded-xl border border-[#2C2C2E] mb-4 w-full" id="chart-filters">
-                <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg border border-[#3C3C3E] shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
+            <div class="relative flex overflow-x-auto no-scrollbar gap-1 p-1 bg-[#151515] rounded-xl mb-4 w-full" id="chart-filters">
+                <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                 ${gerarBotaoFiltro('1D', symbol, true)}
                 ${gerarBotaoFiltro('5D', symbol)}
                 ${gerarBotaoFiltro('1M', symbol)}
@@ -5187,7 +5187,7 @@ async function handleMostrarDetalhes(symbol) {
     
     if (iconContainer) {
         iconContainer.innerHTML = `
-            <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden border border-[#2C2C2E]/50 shadow-sm">
+            <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
                 ${iconHtml}
             </div>
         `;
@@ -5275,7 +5275,7 @@ async function handleMostrarDetalhes(symbol) {
             const preco = precoData.regularMarketPrice;
 
             if ((lpa > 0 && vpa > 0) || dyVal > 0) {
-                valuationHtml += `<h4 class="details-category-title mt-4 mb-2">Valuation</h4><div class="grid grid-cols-1 gap-2 mb-4">`;
+                valuationHtml += `<h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation</h4><div class="grid grid-cols-1 gap-2 mb-4">`;
                 
                 // 1. Graham
                 if (lpa > 0 && vpa > 0) {
@@ -5284,7 +5284,7 @@ async function handleMostrarDetalhes(symbol) {
                     const corGraham = margemSeguranca > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
                     
                     valuationHtml += `
-                        <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] p-3 flex justify-between items-center shadow-sm">
+                        <div class="bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
                             <div>
                                 <span class="text-[10px] text-blue-400 font-bold uppercase tracking-widest block mb-0.5">Fórmula de Graham</span>
                                 <span class="text-xs text-gray-500 font-medium block">Preço Justo Estimado</span>
@@ -5307,7 +5307,7 @@ async function handleMostrarDetalhes(symbol) {
                     const corBazin = upsideBazin > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
 
                     valuationHtml += `
-                        <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] p-3 flex justify-between items-center shadow-sm">
+                        <div class="bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
                             <div>
                                 <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block mb-0.5">Método de Bazin</span>
                                 <span class="text-xs text-gray-500 font-medium block">Preço Teto (Mín. 6% DY)</span>
@@ -5327,11 +5327,11 @@ async function handleMostrarDetalhes(symbol) {
 
         const pData = nextProventoData || {};
 
-        // Estilo Premium para os cards de Proventos
+        // Estilo Premium para os cards de Proventos (Sem bordas)
         const formatarCardProvento = (titulo, provento, isFuturo) => {
             if (!provento) {
                 return `
-                <div class="flex-1 p-3 rounded-xl bg-[#151515] border border-[#2C2C2E]/50 flex flex-col justify-center items-center opacity-50 shadow-sm">
+                <div class="flex-1 p-3 rounded-xl bg-[#151515] flex flex-col justify-center items-center opacity-50 shadow-sm">
                     <span class="text-[9px] uppercase tracking-widest font-bold text-gray-500 mb-1">${titulo}</span>
                     <span class="text-sm font-bold text-[#444]">-</span>
                 </div>`;
@@ -5340,9 +5340,9 @@ async function handleMostrarDetalhes(symbol) {
             const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
             const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
             
-            // Fundo escuro com borda subtil. Se for futuro, borda verde levemente iluminada.
-            const bgClass = isFuturo ? "bg-[#151515] border border-green-500/30 shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515] border border-[#2C2C2E]";
-            const textClass = isFuturo ? "text-green-400" : "text-gray-500";
+            // Fundo escuro SEM bordas. Apenas o brilho suave no futuro.
+            const bgClass = isFuturo ? "bg-[#151515] shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515]";
+            const textClass = isFuturo ? "text-green-400" : "text-gray-300";
             const valueClass = isFuturo ? "text-green-400" : "text-white";
             
             return `
@@ -5376,9 +5376,9 @@ async function handleMostrarDetalhes(symbol) {
             </div>`;
         }
 
-        // NOVO GRID DE DESTAQUES (Simétrico e moderno)
+        // NOVO GRID DE DESTAQUES (Simétrico, SEM bordas)
         const renderHighlight = (label, value) => `
-            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                 <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">${label}</span>
                 <span class="text-lg font-bold text-white leading-none">${value}</span>
             </div>
@@ -5390,19 +5390,19 @@ async function handleMostrarDetalhes(symbol) {
 
         const renderRow = (l, v) => `<div class="flex justify-between items-center py-2.5 px-1 border-b border-[#2C2C2E] last:border-0"><span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">${l}</span><span class="text-[13px] font-bold text-gray-200">${v}</span></div>`;
 
-let listasHtml = '';
+        let listasHtml = '';
         if (ehAcao) {
             listasHtml = `
                 ${valuationHtml}
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation Básico</h4>
-                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('P/L', dados.pl)}
                     ${renderRow('P/VP', dados.pvp)}
                     ${renderRow('EV / EBITDA', dados.ev_ebitda)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Rentabilidade & Eficiência</h4>
-                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('ROE', dados.roe)}
                     ${renderRow('Margem Bruta', dados.margem_bruta)}
                     ${renderRow('Margem EBIT', dados.margem_ebit)}
@@ -5410,12 +5410,12 @@ let listasHtml = '';
                     ${renderRow('Payout', dados.payout)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5 Anos)</h4>
-                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('CAGR Receitas', dados.cagr_receita)}
                     ${renderRow('CAGR Lucros', dados.cagr_lucros)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Saúde Financeira</h4>
-                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
                     ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
                     ${renderRow('Liquidez Diária', dados.liquidez)}
@@ -5423,14 +5423,14 @@ let listasHtml = '';
         } else {
             listasHtml = `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Métricas Principais</h4>
-                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Sobre o Fundo</h4>
-                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Tipo', dados.tipo_fundo)}
                     ${renderRow('Público Alvo', dados.publico_alvo)}
@@ -5438,13 +5438,13 @@ let listasHtml = '';
                     ${renderRow('Gestão', dados.tipo_gestao)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Taxas & Informações</h4>
-                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs opacity-80">${dados.cnpj}</span>`)}
                 </div>`;
         }
 
-        // CABEÇALHO DE PREÇO POLIDO
+        // CABEÇALHO DE PREÇO POLIDO (Badges com bordas mantidas como pedido)
         const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
         
         detalhesPreco.innerHTML = `
@@ -5554,8 +5554,8 @@ function renderHistoricoIADetalhes(mesesIgnore) {
             };
 
             let html = `
-                <div class="relative flex items-center gap-1 p-1 bg-[#151515] rounded-xl border border-[#2C2C2E] overflow-x-auto no-scrollbar w-full snap-x mb-2" id="proventos-filters-container">
-                    <div id="proventos-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg border border-[#3C3C3E] shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
+                <div class="relative flex items-center gap-1 p-1 bg-[#151515] rounded-xl overflow-x-auto no-scrollbar w-full snap-x mb-2" id="proventos-filters-container">
+                    <div id="proventos-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                     <button id="btn-prov-12m" onclick="window.mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
                     <button id="btn-prov-5y" onclick="window.mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>
                     <button id="btn-prov-max" onclick="window.mudarFiltroProventos('max')" class="${getBtnClass('max')} snap-start">MAX</button>

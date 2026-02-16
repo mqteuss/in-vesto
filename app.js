@@ -4743,26 +4743,26 @@ async function fetchCotacaoHistorica(symbol) {
         <div class="flex flex-col mb-2 px-1">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Preço</h4>
             
-            <div class="grid grid-cols-3 gap-2 mb-4">
+<div class="grid grid-cols-3 gap-2 mb-4">
                 
-                <div class="bg-[#1C1C1E] rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-1">Abertura</span>
-                    <span id="stat-open" class="text-xs font-bold text-gray-200">--</span>
+                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Abertura</span>
+                    <span id="stat-open" class="text-base font-bold text-white leading-none">--</span>
                 </div>
 
-                <div class="bg-[#1C1C1E] rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-1">Variação</span>
-                    <span id="stat-var" class="text-xs font-bold text-gray-300">--</span>
+                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Variação</span>
+                    <span id="stat-var" class="text-base font-bold text-white leading-none">--</span>
                 </div>
 
-                <div class="bg-[#1C1C1E] rounded-xl p-2 flex flex-col items-center justify-center shadow-sm">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-wider mb-1">Fechamento</span>
-                    <span id="stat-close" class="text-xs font-bold text-white">--</span>
+                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Fechamento</span>
+                    <span id="stat-close" class="text-base font-bold text-white leading-none">--</span>
                 </div>
 
             </div>
 
-            <div class="flex overflow-x-auto no-scrollbar gap-2 pb-1 mb-2" id="chart-filters">
+            <div class="flex overflow-x-auto no-scrollbar gap-1 p-1 bg-[#151515] rounded-xl border border-[#2C2C2E] mb-4 w-full" id="chart-filters">
                 ${gerarBotaoFiltro('1D', symbol, true)}
                 ${gerarBotaoFiltro('5D', symbol)}
                 ${gerarBotaoFiltro('1M', symbol)}
@@ -4784,18 +4784,18 @@ async function fetchCotacaoHistorica(symbol) {
     await carregarDadosGrafico('1D', symbol);
 }
 
-// Helper para gerar HTML dos botões
-function gerarBotaoFiltro(label, symbol, isActive = false) {
-    const activeClass = "bg-[#3A3A3C] text-white shadow";
-    const inactiveClass = "text-gray-500 hover:text-gray-300";
+window.gerarBotaoFiltro = function(label, symbol, isActive = false) {
+    // Estilo unificado: fundo em relevo para o ativo, invisível para os inativos
+    const activeClass = isActive 
+        ? 'bg-[#2C2C2E] text-white shadow-sm border border-[#3C3C3E]' 
+        : 'bg-transparent text-gray-500 hover:text-gray-300 border border-transparent hover:bg-white/5';
     
-    return `<button 
-        onclick="mudarPeriodoGrafico('${label}', '${symbol}')" 
-        id="btn-${label}" 
-        class="px-3 py-1 text-[10px] font-bold rounded transition-all whitespace-nowrap min-w-[35px] ${isActive ? activeClass : inactiveClass}">
+    return `<button onclick="atualizarGraficoCotacao('${label}', '${symbol}')" 
+            class="chart-filter-btn flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-all duration-200 ${activeClass}" 
+            data-range="${label}">
         ${label}
     </button>`;
-}
+};
 
 // Função orquestradora de dados (Cache vs API)
 async function carregarDadosGrafico(range, symbol) {
@@ -5530,18 +5530,17 @@ function renderHistoricoIADetalhes(mesesIgnore) {
         containerBotoes.className = "flex flex-col mb-2 px-1";
         
         // --- 1. BOTÕES (Estilo "Segmented Control" Minimalista) ---
-        const getBtnClass = (filterKey) => {
+const getBtnClass = (filterKey) => {
             const isActive = currentProventosFilter === filterKey;
-            // Design Clean: Sem bordas, apenas contraste de fundo/texto
-            return `flex-shrink-0 h-7 px-3 rounded-lg text-[10px] tracking-wide font-bold transition-all duration-200 select-none ${
+            return `flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-all duration-200 select-none ${
                 isActive 
-                ? 'bg-[#333333] text-white shadow-sm' 
-                : 'bg-transparent text-[#666] hover:text-[#999] hover:bg-[#1a1a1a]'
+                ? 'bg-[#2C2C2E] text-white shadow-sm border border-[#3C3C3E]' 
+                : 'bg-transparent text-gray-500 hover:text-gray-300 border border-transparent hover:bg-white/5'
             }`;
         };
 
         let html = `
-            <div class="flex items-center gap-1 overflow-x-auto pb-2 no-scrollbar w-full snap-x">
+            <div class="flex items-center gap-1 p-1 bg-[#151515] rounded-xl border border-[#2C2C2E] overflow-x-auto no-scrollbar w-full snap-x mb-2">
                 <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
                 <button onclick="mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>
                 <button onclick="mudarFiltroProventos('max')" class="${getBtnClass('max')} snap-start">MAX</button>

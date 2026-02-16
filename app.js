@@ -5171,7 +5171,7 @@ async function handleMostrarDetalhes(symbol) {
     
     if (iconContainer) {
         iconContainer.innerHTML = `
-            <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+            <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden border border-[#2C2C2E]/50 shadow-sm">
                 ${iconHtml}
             </div>
         `;
@@ -5188,7 +5188,7 @@ async function handleMostrarDetalhes(symbol) {
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
         btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
-            isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888]'
+            isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888] hover:text-white'
         }`;
     });
     
@@ -5213,7 +5213,7 @@ async function handleMostrarDetalhes(symbol) {
     let nextProventoData = null;
 
     fetchHistoricoScraper(symbol); 
-	fetchCotacaoHistorica(symbol);
+    fetchCotacaoHistorica(symbol);
     
     try {
         const [fundData, provData] = await Promise.all([
@@ -5230,7 +5230,7 @@ async function handleMostrarDetalhes(symbol) {
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const varPercent = precoData.regularMarketChangePercent || 0;
-        let variacaoCor = varPercent > 0 ? 'text-green-500' : (varPercent < 0 ? 'text-red-500' : 'text-[#888888]');
+        let variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
         const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
 
         const dados = { 
@@ -5258,188 +5258,200 @@ async function handleMostrarDetalhes(symbol) {
             const dyVal = parseVal(dados.dy);
             const preco = precoData.regularMarketPrice;
 
-            // 1. Graham
-            if (lpa > 0 && vpa > 0) {
-                const vi = Math.sqrt(22.5 * lpa * vpa);
-                const margemSeguranca = ((vi - preco) / preco) * 100;
-                const corGraham = margemSeguranca > 0 ? 'text-green-400' : 'text-red-400';
+            if ((lpa > 0 && vpa > 0) || dyVal > 0) {
+                valuationHtml += `<h4 class="details-category-title mt-4 mb-2">Valuation</h4><div class="grid grid-cols-1 gap-2 mb-4">`;
                 
-                valuationHtml += `
-                    <div class="details-group-card mt-3 relative overflow-hidden">
-                        <div class="flex justify-between items-center py-3 px-1">
+                // 1. Graham
+                if (lpa > 0 && vpa > 0) {
+                    const vi = Math.sqrt(22.5 * lpa * vpa);
+                    const margemSeguranca = ((vi - preco) / preco) * 100;
+                    const corGraham = margemSeguranca > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
+                    
+                    valuationHtml += `
+                        <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] p-3 flex justify-between items-center shadow-sm">
                             <div>
-                                <span class="text-[10px] text-blue-400 font-bold uppercase tracking-wider block mb-0.5">Graham</span>
-                                <span class="text-xs text-[#888] font-medium block">Preço Justo</span>
+                                <span class="text-[10px] text-blue-400 font-bold uppercase tracking-widest block mb-0.5">Fórmula de Graham</span>
+                                <span class="text-xs text-gray-500 font-medium block">Preço Justo Estimado</span>
                             </div>
                             <div class="text-right">
-                                <span class="text-xl font-bold text-white tracking-tighter">${formatBRL(vi)}</span>
-                                <span class="text-[10px] ${corGraham} block font-medium">Upside: ${margemSeguranca.toFixed(1)}%</span>
+                                <span class="text-lg font-bold text-white tracking-tight block">${formatBRL(vi)}</span>
+                                <span class="text-[9px] font-bold px-1.5 py-[2px] rounded uppercase tracking-wider ${corGraham} mt-1 inline-block">
+                                    UPSIDE: ${margemSeguranca.toFixed(1)}%
+                                </span>
                             </div>
                         </div>
-                    </div>
-                `;
-            }
+                    `;
+                }
 
-            // 2. Bazin
-            if (dyVal > 0) {
-                const dividendosAnuais = preco * (dyVal / 100);
-                const bazinPrice = dividendosAnuais / 0.06;
-                const upsideBazin = ((bazinPrice - preco) / preco) * 100;
-                const corBazin = upsideBazin > 0 ? 'text-green-400' : 'text-red-400';
+                // 2. Bazin
+                if (dyVal > 0) {
+                    const dividendosAnuais = preco * (dyVal / 100);
+                    const bazinPrice = dividendosAnuais / 0.06;
+                    const upsideBazin = ((bazinPrice - preco) / preco) * 100;
+                    const corBazin = upsideBazin > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
 
-                valuationHtml += `
-                    <div class="details-group-card mt-2 mb-2 relative overflow-hidden">
-                        <div class="flex justify-between items-center py-3 px-1">
+                    valuationHtml += `
+                        <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] p-3 flex justify-between items-center shadow-sm">
                             <div>
-                                <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-wider block mb-0.5">Bazin</span>
-                                <span class="text-xs text-[#888] font-medium block">Preço Teto (6%)</span>
+                                <span class="text-[10px] text-yellow-500 font-bold uppercase tracking-widest block mb-0.5">Método de Bazin</span>
+                                <span class="text-xs text-gray-500 font-medium block">Preço Teto (Mín. 6% DY)</span>
                             </div>
                             <div class="text-right">
-                                <span class="text-xl font-bold text-white tracking-tighter">${formatBRL(bazinPrice)}</span>
-                                <span class="text-[10px] ${corBazin} block font-medium">Upside: ${upsideBazin.toFixed(1)}%</span>
+                                <span class="text-lg font-bold text-white tracking-tight block">${formatBRL(bazinPrice)}</span>
+                                <span class="text-[9px] font-bold px-1.5 py-[2px] rounded uppercase tracking-wider ${corBazin} mt-1 inline-block">
+                                    UPSIDE: ${upsideBazin.toFixed(1)}%
+                                </span>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
+                valuationHtml += `</div>`;
             }
         }
 
-// O objeto agora vem com duas propriedades: { ultimoPago, proximo }
-const pData = nextProventoData || {};
+        const pData = nextProventoData || {};
 
-// Função auxiliar para renderizar cada card com o estilo atual (sem bordas)
-const formatarCardProvento = (titulo, provento, isFuturo) => {
-    if (!provento) {
-        return `
-        <div class="flex-1 p-3 rounded-2xl bg-[#151515] flex flex-col justify-center items-center opacity-40">
-            <span class="text-[9px] uppercase tracking-widest font-bold text-[#666] mb-1">${titulo}</span>
-            <span class="text-sm font-bold text-[#444]">-</span>
-        </div>`;
-    }
-    
-    // Formata datas
-    const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
-    const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
-    
-    // Classes de fundo e texto (sem variáveis de borda)
-    const bgClass = isFuturo ? "bg-[#0f291e]" : "bg-[#151515]";
-    const textClass = isFuturo ? "text-green-400" : "text-[#888888]";
-    const valueClass = isFuturo ? "text-green-400" : "text-white";
-    
-    return `
-    <div class="flex-1 p-3 rounded-2xl ${bgClass} flex flex-col justify-between">
-        <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-2">${titulo}</span>
-        <span class="text-lg font-bold ${valueClass} mb-3 leading-none">${formatBRL(provento.value)}</span>
-        
-        <div class="flex justify-between items-end mt-auto">
-            <div class="flex flex-col">
-                <span class="text-[9px] text-[#666] font-medium leading-none mb-1">Data Com</span>
-                <span class="text-[11px] text-[#ccc] font-bold leading-none">${dataComFmt}</span>
+        // Estilo Premium para os cards de Proventos
+        const formatarCardProvento = (titulo, provento, isFuturo) => {
+            if (!provento) {
+                return `
+                <div class="flex-1 p-3 rounded-xl bg-[#151515] border border-[#2C2C2E]/50 flex flex-col justify-center items-center opacity-50 shadow-sm">
+                    <span class="text-[9px] uppercase tracking-widest font-bold text-gray-500 mb-1">${titulo}</span>
+                    <span class="text-sm font-bold text-[#444]">-</span>
+                </div>`;
+            }
+            
+            const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
+            const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
+            
+            // Fundo escuro com borda subtil. Se for futuro, borda verde levemente iluminada.
+            const bgClass = isFuturo ? "bg-[#151515] border border-green-500/30 shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515] border border-[#2C2C2E]";
+            const textClass = isFuturo ? "text-green-400" : "text-gray-500";
+            const valueClass = isFuturo ? "text-green-400" : "text-white";
+            
+            return `
+            <div class="flex-1 p-3 rounded-xl ${bgClass} flex flex-col justify-between shadow-sm relative overflow-hidden">
+                ${isFuturo ? '<div class="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full"></div>' : ''}
+                <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-1.5 relative z-10">${titulo}</span>
+                <span class="text-xl font-bold ${valueClass} mb-3 leading-none tracking-tight relative z-10">${formatBRL(provento.value)}</span>
+                
+                <div class="flex justify-between items-end mt-auto relative z-10 border-t border-white/5 pt-2">
+                    <div class="flex flex-col">
+                        <span class="text-[8px] text-gray-500 font-bold tracking-wider uppercase leading-none mb-1">Data Com</span>
+                        <span class="text-[10px] text-gray-300 font-bold leading-none">${dataComFmt}</span>
+                    </div>
+                    <div class="flex flex-col text-right">
+                        <span class="text-[8px] text-gray-500 font-bold tracking-wider uppercase leading-none mb-1">Pagamento</span>
+                        <span class="text-[10px] text-gray-300 font-bold leading-none">${dataPagFmt}</span>
+                    </div>
+                </div>
+            </div>`;
+        };
+
+        let proximoProventoHtml = '';
+        if (pData.ultimoPago || pData.proximo) {
+            proximoProventoHtml = `
+            <div class="mt-2 mb-6">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 pl-1">Dividendos</h4>
+                <div class="flex gap-2 w-full">
+                    ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
+                    ${formatarCardProvento("Próximo a Receber", pData.proximo, true)}
+                </div>
+            </div>`;
+        }
+
+        // NOVO GRID DE DESTAQUES (Simétrico e moderno)
+        const renderHighlight = (label, value) => `
+            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
+                <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">${label}</span>
+                <span class="text-lg font-bold text-white leading-none">${value}</span>
             </div>
-            <div class="flex flex-col text-right">
-                <span class="text-[9px] text-[#666] font-medium leading-none mb-1">Pagamento</span>
-                <span class="text-[11px] text-[#ccc] font-bold leading-none">${dataPagFmt}</span>
-            </div>
-        </div>
-    </div>`;
-};
+        `;
 
-// Gera a interface lado a lado
-let proximoProventoHtml = '';
-if (pData.ultimoPago || pData.proximo) {
-    proximoProventoHtml = `
-    <h4 class="details-category-title mt-4">Proventos</h4>
-    <div class="flex gap-2 w-full mt-2">
-        ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
-        ${formatarCardProvento("Próximo Pagamento", pData.proximo, true)}
-    </div>`;
-}
-
-        // Grid Destaques
         let gridTopo = ehAcao ? 
-            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/L</span><span class="text-base font-bold text-white">${dados.pl}</span></div>
-             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
-             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>` :
-            `<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">DY (12m)</span><span class="text-base font-bold text-white">${dados.dy}</span></div>
-             <div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">P/VP</span><span class="text-base font-bold text-white">${dados.pvp}</span></div>
-<div class="details-highlight-card"><span class="text-[9px] text-[#666] uppercase font-bold tracking-wider mb-1">Nº Cotistas</span><span class="text-base font-bold text-white">${dados.num_cotistas}</span></div>`;
+            `${renderHighlight('P/L', dados.pl)}${renderHighlight('P/VP', dados.pvp)}${renderHighlight('DY (12m)', dados.dy)}` :
+            `${renderHighlight('DY (12m)', dados.dy)}${renderHighlight('P/VP', dados.pvp)}${renderHighlight('Cotistas', dados.num_cotistas)}`;
 
-        const renderRow = (l, v) => `<div class="details-row"><span class="details-label">${l}</span><span class="details-value">${v}</span></div>`;
+        const renderRow = (l, v) => `<div class="flex justify-between items-center py-2.5 px-1 border-b border-[#2C2C2E] last:border-0"><span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">${l}</span><span class="text-[13px] font-bold text-gray-200">${v}</span></div>`;
 
-        // Listas Categorizadas
         let listasHtml = '';
         if (ehAcao) {
             listasHtml = `
                 ${valuationHtml}
-                <h4 class="details-category-title">Valuation</h4>
-                <div class="details-group-card">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation Básico</h4>
+                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('P/L', dados.pl)}
                     ${renderRow('P/VP', dados.pvp)}
                     ${renderRow('EV / EBITDA', dados.ev_ebitda)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
-                <h4 class="details-category-title">Rentabilidade & Eficiência</h4>
-                <div class="details-group-card">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Rentabilidade & Eficiência</h4>
+                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('ROE', dados.roe)}
                     ${renderRow('Margem Bruta', dados.margem_bruta)}
                     ${renderRow('Margem EBIT', dados.margem_ebit)}
                     ${renderRow('Margem Líquida', dados.margem_liquida)}
                     ${renderRow('Payout', dados.payout)}
                 </div>
-                <h4 class="details-category-title">Crescimento (5 Anos)</h4>
-                <div class="details-group-card">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5 Anos)</h4>
+                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('CAGR Receitas', dados.cagr_receita)}
                     ${renderRow('CAGR Lucros', dados.cagr_lucros)}
                 </div>
-                <h4 class="details-category-title">Saúde Financeira</h4>
-                <div class="details-group-card">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Saúde Financeira</h4>
+                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
                     ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                 </div>`;
         } else {
             listasHtml = `
-                <h4 class="details-category-title">Métricas</h4>
-                <div class="details-group-card">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Métricas Principais</h4>
+                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
-                <h4 class="details-category-title">Sobre o Fundo</h4>
-                <div class="details-group-card">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Sobre o Fundo</h4>
+                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Tipo', dados.tipo_fundo)}
                     ${renderRow('Público Alvo', dados.publico_alvo)}
                     ${renderRow('Vacância', dados.vacancia)}
                     ${renderRow('Gestão', dados.tipo_gestao)}
                 </div>
-                <h4 class="details-category-title">Taxas & Infos</h4>
-                <div class="details-group-card">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Taxas & Informações</h4>
+                <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
-                    ${renderRow('CNPJ', `<span class="font-mono text-xs">${dados.cnpj}</span>`)}
+                    ${renderRow('CNPJ', `<span class="font-mono text-xs opacity-80">${dados.cnpj}</span>`)}
                 </div>`;
         }
 
+        // CABEÇALHO DE PREÇO POLIDO
+        const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
+        
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col">
-                <div class="text-center pb-6 pt-4">
-                    <h2 class="text-[3.5rem] font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
-                    <span class="text-base font-bold ${variacaoCor} mt-2 flex items-center justify-center gap-1 tracking-tight">
-                        ${variacaoIcone} ${formatPercent(varPercent)} Hoje
-                    </span>
-                    <span class="text-xs font-medium text-[#444] mt-1 block tracking-wide">
-                        Variação 12m: <span class="${dados.variacao_12m?.includes('-') ? 'text-red-500' : 'text-green-500'}">${dados.variacao_12m}</span>
-                    </span>
+                <div class="text-center pb-8 pt-2">
+                    <h2 class="text-5xl font-bold text-white tracking-tighter leading-none mb-4">${formatBRL(precoData.regularMarketPrice)}</h2>
+                    <div class="flex items-center justify-center gap-2">
+                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold ${variacaoCor} flex items-center gap-1 tracking-wider shadow-sm">
+                            ${variacaoIcone} ${formatPercent(varPercent)} Hoje
+                        </span>
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 bg-[#151515] border border-[#2C2C2E] uppercase tracking-widest shadow-sm">
+                            12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>
+                        </span>
+                    </div>
                 </div>
                 ${proximoProventoHtml}
-                <h4 class="details-category-title">Indicadores</h4>
-                <div class="grid grid-cols-3 gap-2 w-full mb-2">${gridTopo}</div>
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-2 mb-3 pl-1">Indicadores Rápidos</h4>
+                <div class="grid grid-cols-3 gap-2 w-full mb-6">${gridTopo}</div>
                 ${listasHtml}
             </div>`;
 
     } else {
-        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4">Erro ao buscar preço.</p>';
+        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
     }
     
     atualizarIconeFavorito(symbol);

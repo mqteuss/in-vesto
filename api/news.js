@@ -9,6 +9,7 @@ export default async function handler(request, response) {
         'Access-Control-Allow-Headers',
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
+    // Cache adaptativo: 15 minutos para a Vercel
     response.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=60');
 
     if (request.method === 'OPTIONS') {
@@ -47,8 +48,7 @@ export default async function handler(request, response) {
         'inteligência financeira': { name: 'Inteligência Financeira', domain: 'inteligenciafinanceira.com.br' }
     };
 
-    // Função auxiliar para limpar e validar itens
-    // Isso evita repetir código para FIIs e Ações
+    // Função auxiliar para limpar e validar itens (usada tanto pelo Radar quanto pela aba Mercado)
     const processItems = (items, seenTitles) => {
         return items.map((item) => {
             let rawSourceName = '';
@@ -98,16 +98,46 @@ export default async function handler(request, response) {
         }).filter(item => item !== null);
     };
 
+    // ========================================================
+    // NOVO: BUSCA DIRECIONADA PARA A CARTEIRA DO USUÁRIO
+    // ========================================================
+    const { tickers } = request.query; 
+
+    if (tickers) {
+        // Transforma a string "PETR4,MXRF11" em um array e limita a 30 para evitar erro de URL muito longa
+        const tickerList = tickers.split(',').slice(0, 30); 
+        
+        // Monta uma query dinâmica, ex: ("PETR4" OR "MXRF11") when:7d
+        const queryCarteira = `(${tickerList.map(t => `"${t}"`).join(' OR ')}) when:7d`;
+        const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(queryCarteira)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+
+        try {
+            const feed = await parser.parseURL(feedUrl);
+            const seenTitles = new Set();
+            const articles = processItems(feed.items || [], seenTitles);
+            
+            // Retorna apenas as notícias exclusivas da carteira e encerra a requisição aqui
+            return response.status(200).json(articles);
+        } catch (error) {
+            console.error("Erro ao buscar notícias da carteira:", error);
+            // Retorna array vazio em caso de erro para não travar a UI
+            return response.status(200).json([]); 
+        }
+    }
+    // ========================================================
+
+    // ========================================================
+    // BUSCA GERAL (Para a Aba "Mercado")
+    // ========================================================
     try {
-        // 1. Definição das Queries separadas para garantir volume de ambos os lados
-        // Nota: Adicionei termos negativos na query de ações para evitar contaminação cruzada
+        // Definição das Queries separadas
         const queryFII = 'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII" when:14d';
         const queryStocks = '"Ações" OR "Ibovespa" OR "Dividendos Ações" OR "Mercado de Ações" -FII -"Fundos Imobiliários" when:14d';
 
         const feedUrlFII = `https://news.google.com/rss/search?q=${encodeURIComponent(queryFII)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
         const feedUrlStocks = `https://news.google.com/rss/search?q=${encodeURIComponent(queryStocks)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
 
-        // 2. Busca paralela (Promise.all) para não dobrar o tempo de carregamento
+        // Busca paralela para velocidade máxima
         const [feedFII, feedStocks] = await Promise.all([
             parser.parseURL(feedUrlFII),
             parser.parseURL(feedUrlStocks)
@@ -115,13 +145,11 @@ export default async function handler(request, response) {
 
         const seenTitles = new Set();
         
-        // 3. Processamento separado
+        // Processamento separado
         const articlesFII = processItems(feedFII.items || [], seenTitles);
         const articlesStocks = processItems(feedStocks.items || [], seenTitles);
 
-        // 4. União e Ordenação Final
-        // Juntamos tudo e ordenamos pela data mais recente.
-        // Como buscamos separadamente, garantimos que temos conteúdo dos dois tipos no array final.
+        // União e Ordenação Final pela data mais recente
         const allArticles = [...articlesFII, ...articlesStocks]
             .sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
 

@@ -2700,8 +2700,7 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     if (!container) return;
     if (labelMes) labelMes.textContent = labelAmigavel;
 
-    // --- CORREÇÃO DE ESPAÇAMENTO (IGUALA AO EXTRATO) ---
-    // Remove o espaçamento forçado do HTML para permitir a lista contínua
+    // Remove o espaçamento forçado de blocos para permitir a lista contínua
     container.classList.remove('space-y-3');
 
     const agrupado = {};
@@ -2749,8 +2748,9 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
 
         const badgeHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${foiRecebido ? 'RECEBIDO' : 'A RECEBER'}</span>`;
 
+        // --- CORRIGIDO: Sem linhas divisórias (border-b removido) ---
         const cardHTML = `
-            <div class="flex items-center justify-between py-3 px-2 border-b border-[#2C2C2E] last:border-0 relative group w-full bg-transparent">
+            <div class="flex items-center justify-between py-3 px-2 relative group w-full bg-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     
                     <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
@@ -2779,7 +2779,7 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     });
 
     const totalHTML = `
-        <div class="mt-2 pt-4 flex justify-between items-center px-2 pb-8">
+        <div class="mt-2 pt-4 border-t border-[#2C2C2E] flex justify-between items-center px-2 pb-8">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total ${labelAmigavel}</span>
             <span class="text-lg font-bold text-white tracking-tight">${formatBRL(totalMes)}</span>
         </div>

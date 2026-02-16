@@ -2206,11 +2206,6 @@ function renderizarNoticias(articles) {
     });
     
     fiiNewsList.appendChild(fragment);
-    
-    // Atualiza o radar da aba Início sem abrir nenhum modal
-    if (typeof window.renderizarNoticiasDashboard === 'function') {
-        window.renderizarNoticiasDashboard();
-    }
 }
 
 // ======================================================
@@ -8685,4 +8680,3 @@ if (calcContent) {
 	
     await init();
 });
-

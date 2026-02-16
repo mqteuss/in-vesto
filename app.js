@@ -4741,7 +4741,7 @@ async function fetchCotacaoHistorica(symbol) {
 
     container.innerHTML = `
         <div class="flex flex-col mb-2 px-1">
-            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 pl-1">Histórico de Preço</span>
+            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Preço</h4>
             
             <div class="grid grid-cols-3 gap-2 mb-4">
                 

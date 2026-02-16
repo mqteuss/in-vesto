@@ -8728,7 +8728,7 @@ window.renderizarListaImoveis = function(imoveis) {
                     </div>
                     
                     <div class="w-full mt-2 pt-4 border-t border-[#2C2C2E]">
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-3 max-h-32 overflow-y-auto no-scrollbar pr-1">
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
                             ${legendHtml}
                         </div>
                     </div>
@@ -8769,9 +8769,9 @@ window.renderizarListaImoveis = function(imoveis) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '76%', // Ajustado para manter a grossura elegante
+            cutout: '76%',
             layout: { 
-                padding: 18 // A MÁGICA: Empurra o gráfico 18px para dentro, criando uma área safe para o Tooltip!
+                padding: 18 
             },
             plugins: {
                 legend: { display: false },

@@ -5352,7 +5352,7 @@ async function handleMostrarDetalhes(symbol) {
         if (pData.ultimoPago || pData.proximo) {
             proximoProventoHtml = `
             <div class="mt-2 mb-6">
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 pl-1">Dividendos</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Dividendos</h4>
                 <div class="flex gap-2 w-full">
                     ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
                     ${formatarCardProvento("Próximo a Receber", pData.proximo, true)}
@@ -5374,18 +5374,18 @@ async function handleMostrarDetalhes(symbol) {
 
         const renderRow = (l, v) => `<div class="flex justify-between items-center py-2.5 px-1 border-b border-[#2C2C2E] last:border-0"><span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">${l}</span><span class="text-[13px] font-bold text-gray-200">${v}</span></div>`;
 
-        let listasHtml = '';
+let listasHtml = '';
         if (ehAcao) {
             listasHtml = `
                 ${valuationHtml}
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation Básico</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation Básico</h4>
                 <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('P/L', dados.pl)}
                     ${renderRow('P/VP', dados.pvp)}
                     ${renderRow('EV / EBITDA', dados.ev_ebitda)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Rentabilidade & Eficiência</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Rentabilidade & Eficiência</h4>
                 <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('ROE', dados.roe)}
                     ${renderRow('Margem Bruta', dados.margem_bruta)}
@@ -5393,12 +5393,12 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Margem Líquida', dados.margem_liquida)}
                     ${renderRow('Payout', dados.payout)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5 Anos)</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5 Anos)</h4>
                 <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('CAGR Receitas', dados.cagr_receita)}
                     ${renderRow('CAGR Lucros', dados.cagr_lucros)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Saúde Financeira</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Saúde Financeira</h4>
                 <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
                     ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
@@ -5406,14 +5406,14 @@ async function handleMostrarDetalhes(symbol) {
                 </div>`;
         } else {
             listasHtml = `
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Métricas Principais</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Métricas Principais</h4>
                 <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Sobre o Fundo</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Sobre o Fundo</h4>
                 <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Tipo', dados.tipo_fundo)}
@@ -5421,7 +5421,7 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Vacância', dados.vacancia)}
                     ${renderRow('Gestão', dados.tipo_gestao)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-4 mb-2 pl-1">Taxas & Informações</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Taxas & Informações</h4>
                 <div class="bg-[#151515] rounded-xl border border-[#2C2C2E] px-3 shadow-sm mb-4">
                     ${renderRow('Taxa Adm.', dados.taxa_adm)}
                     ${renderRow('CNPJ', `<span class="font-mono text-xs opacity-80">${dados.cnpj}</span>`)}
@@ -5445,7 +5445,7 @@ async function handleMostrarDetalhes(symbol) {
                     </div>
                 </div>
                 ${proximoProventoHtml}
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-2 mb-3 pl-1">Indicadores Rápidos</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-3 pl-1">Indicadores Rápidos</h4>
                 <div class="grid grid-cols-3 gap-2 w-full mb-6">${gridTopo}</div>
                 ${listasHtml}
             </div>`;

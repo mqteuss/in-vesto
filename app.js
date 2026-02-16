@@ -4743,7 +4743,7 @@ async function fetchCotacaoHistorica(symbol) {
         <div class="flex flex-col mb-2 px-1">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Preço</h4>
             
-<div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="grid grid-cols-3 gap-2 mb-4">
                 
                 <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Abertura</span>
@@ -4762,7 +4762,8 @@ async function fetchCotacaoHistorica(symbol) {
 
             </div>
 
-            <div class="flex overflow-x-auto no-scrollbar gap-1 p-1 bg-[#151515] rounded-xl border border-[#2C2C2E] mb-4 w-full" id="chart-filters">
+            <div class="relative flex overflow-x-auto no-scrollbar gap-1 p-1 bg-[#151515] rounded-xl border border-[#2C2C2E] mb-4 w-full" id="chart-filters">
+                <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg border border-[#3C3C3E] shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                 ${gerarBotaoFiltro('1D', symbol, true)}
                 ${gerarBotaoFiltro('5D', symbol)}
                 ${gerarBotaoFiltro('1M', symbol)}
@@ -4774,24 +4775,30 @@ async function fetchCotacaoHistorica(symbol) {
             </div>
         </div>
         
-        <div class="relative h-72 w-full bg-[#151515] rounded-xl p-2" id="chart-area-wrapper">
+        <div class="relative h-72 w-full bg-[#151515] rounded-xl p-2 shadow-sm" id="chart-area-wrapper">
              <div class="flex flex-col items-center justify-center h-full animate-pulse">
                 <span class="text-[10px] text-gray-600 tracking-wider">Carregando...</span>
             </div>
         </div>
     `;
 
+    // INICIA A POSIÇÃO DO SLIDER NO "1D" (Tempo de delay pequeno para o DOM renderizar o CSS)
+    setTimeout(() => {
+        const activeBtn = document.getElementById('btn-1D');
+        const slider = document.getElementById('cotacao-slider');
+        if (activeBtn && slider) {
+            slider.style.width = `${activeBtn.offsetWidth}px`;
+            slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+        }
+    }, 50);
+
     await carregarDadosGrafico('1D', symbol);
 }
 
 window.gerarBotaoFiltro = function(label, symbol, isActive = false) {
-    // Estilo unificado: fundo em relevo para o ativo, invisível para os inativos
-    const activeClass = isActive 
-        ? 'bg-[#2C2C2E] text-white shadow-sm border border-[#3C3C3E]' 
-        : 'bg-transparent text-gray-500 hover:text-gray-300 border border-transparent hover:bg-white/5';
-    
+    const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
     return `<button id="btn-${label}" onclick="window.mudarPeriodoGrafico('${label}', '${symbol}')" 
-            class="chart-filter-btn flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-all duration-200 ${activeClass}" 
+            class="relative z-10 chart-filter-btn flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 select-none ${textClass}" 
             data-range="${label}">
         ${label}
     </button>`;
@@ -4836,23 +4843,28 @@ async function carregarDadosGrafico(range, symbol) {
 }
 
 window.mudarPeriodoGrafico = function(range, symbol) {
-    const baseClass = "chart-filter-btn flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-all duration-200 select-none";
-    const inactiveClass = "bg-transparent text-gray-500 hover:text-gray-300 border border-transparent hover:bg-white/5";
-    const activeClass = "bg-[#2C2C2E] text-white shadow-sm border border-[#3C3C3E]";
-
-    // Atualiza todos para o estado inativo
+    // 1. Volta todos os textos para cinza
     const botoes = document.querySelectorAll('#chart-filters button');
     botoes.forEach(btn => {
-        btn.className = `${baseClass} ${inactiveClass}`;
+        btn.classList.remove('text-white');
+        btn.classList.add('text-gray-500', 'hover:text-gray-300');
     });
 
-    // Pinta o botão clicado com o estado ativo (com borda)
     const activeBtn = document.getElementById(`btn-${range}`);
+    const slider = document.getElementById('cotacao-slider');
+    
     if (activeBtn) {
-        activeBtn.className = `${baseClass} ${activeClass}`;
+        // 2. Acende o texto do botão clicado
+        activeBtn.classList.remove('text-gray-500', 'hover:text-gray-300');
+        activeBtn.classList.add('text-white');
+
+        // 3. Move o slider (animação mágica)
+        if (slider) {
+            slider.style.width = `${activeBtn.offsetWidth}px`;
+            slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+        }
     }
 
-    // Chama carga de dados
     carregarDadosGrafico(range, symbol);
 };
 
@@ -5533,51 +5545,67 @@ function renderHistoricoIADetalhes(mesesIgnore) {
     if (containerBotoes) {
         containerBotoes.className = "flex flex-col mb-2 px-1";
         
-        // --- 1. BOTÕES (Estilo "Segmented Control" Minimalista) ---
-const getBtnClass = (filterKey) => {
-            const isActive = currentProventosFilter === filterKey;
-            return `flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-all duration-200 select-none ${
-                isActive 
-                ? 'bg-[#2C2C2E] text-white shadow-sm border border-[#3C3C3E]' 
-                : 'bg-transparent text-gray-500 hover:text-gray-300 border border-transparent hover:bg-white/5'
-            }`;
-        };
+        // SÓ CRIA O HTML DOS BOTÕES SE AINDA NÃO EXISTIREM (Para não quebrar a animação)
+        if (!document.getElementById('proventos-slider')) {
+            const getBtnClass = (filterKey) => {
+                const isActive = currentProventosFilter === filterKey;
+                const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
+                return `relative z-10 flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 select-none proventos-filter-btn ${textClass}`;
+            };
 
-        let html = `
-            <div class="flex items-center gap-1 p-1 bg-[#151515] rounded-xl border border-[#2C2C2E] overflow-x-auto no-scrollbar w-full snap-x mb-2">
-                <button onclick="mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
-                <button onclick="mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>
-                <button onclick="mudarFiltroProventos('max')" class="${getBtnClass('max')} snap-start">MAX</button>
-                <button onclick="mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')} snap-start">YTD</button>
-                <button onclick="mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')} snap-start">POS</button>
-                <button onclick="mudarFiltroProventos('custom')" class="${getBtnClass('custom')} snap-start">PERS</button>
-            </div>
-        `;
-
-        // --- 2. ÁREA DE DATA PERSONALIZADA (Design "Card" Integrado) ---
-        if (currentProventosFilter === 'custom') {
-            html += `
-                <div class="mt-1 animate-fade-in grid grid-cols-2 gap-3 bg-[#111] p-3 rounded-xl border border-[#222]">
-                    <div class="relative group">
-                        <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555] group-focus-within:text-[#888]">DE</label>
-                        <input type="month" id="custom-start" value="${customRangeStart}" 
-                               class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none placeholder-transparent"
-                               style="color-scheme: dark;"
-                               onchange="atualizarFiltroCustom()">
-                    </div>
-                    
-                    <div class="relative group">
-                        <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555] group-focus-within:text-[#888]">ATÉ</label>
-                        <input type="month" id="custom-end" value="${customRangeEnd}" 
-                               class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none placeholder-transparent"
-                               style="color-scheme: dark;"
-                               onchange="atualizarFiltroCustom()">
-                    </div>
+            let html = `
+                <div class="relative flex items-center gap-1 p-1 bg-[#151515] rounded-xl border border-[#2C2C2E] overflow-x-auto no-scrollbar w-full snap-x mb-2" id="proventos-filters-container">
+                    <div id="proventos-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg border border-[#3C3C3E] shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
+                    <button id="btn-prov-12m" onclick="window.mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
+                    <button id="btn-prov-5y" onclick="window.mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>
+                    <button id="btn-prov-max" onclick="window.mudarFiltroProventos('max')" class="${getBtnClass('max')} snap-start">MAX</button>
+                    <button id="btn-prov-ytd" onclick="window.mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')} snap-start">YTD</button>
+                    <button id="btn-prov-desde_aporte" onclick="window.mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')} snap-start">POS</button>
+                    <button id="btn-prov-custom" onclick="window.mudarFiltroProventos('custom')" class="${getBtnClass('custom')} snap-start">PERS</button>
                 </div>
+                <div id="custom-date-container"></div>
             `;
+            containerBotoes.innerHTML = html;
         }
 
-        containerBotoes.innerHTML = html;
+        // --- ATUALIZA A ÁREA DE DATA PERSONALIZADA (Sem piscar os botões) ---
+        const customContainer = document.getElementById('custom-date-container');
+        if (customContainer) {
+            if (currentProventosFilter === 'custom') {
+                customContainer.innerHTML = `
+                    <div class="mt-1 animate-fade-in grid grid-cols-2 gap-3 bg-[#111] p-3 rounded-xl border border-[#222]">
+                        <div class="relative group">
+                            <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555]">DE</label>
+                            <input type="month" id="custom-start" value="${customRangeStart}" class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: dark;" onchange="window.atualizarFiltroCustom()">
+                        </div>
+                        <div class="relative group">
+                            <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555]">ATÉ</label>
+                            <input type="month" id="custom-end" value="${customRangeEnd}" class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: dark;" onchange="window.atualizarFiltroCustom()">
+                        </div>
+                    </div>
+                `;
+            } else {
+                customContainer.innerHTML = '';
+            }
+        }
+        
+        // Sincroniza a posição do Slider sempre (Animação)
+        setTimeout(() => {
+            const activeBtn = document.getElementById(`btn-prov-${currentProventosFilter}`);
+            const slider = document.getElementById('proventos-slider');
+            if (activeBtn && slider) {
+                slider.style.width = `${activeBtn.offsetWidth}px`;
+                slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+                
+                // Força as cores corretas
+                document.querySelectorAll('.proventos-filter-btn').forEach(btn => {
+                    btn.classList.remove('text-white');
+                    btn.classList.add('text-gray-500', 'hover:text-gray-300');
+                });
+                activeBtn.classList.remove('text-gray-500', 'hover:text-gray-300');
+                activeBtn.classList.add('text-white');
+            }
+        }, 10);
     }
 
     if (!document.getElementById('detalhes-proventos-chart')) {

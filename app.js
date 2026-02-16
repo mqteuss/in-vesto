@@ -8686,17 +8686,17 @@ window.renderizarListaImoveis = function(imoveis) {
     const imoveisOcultos = imoveis.slice(LIMIT);
 
     // Novo Layout de Cartão (Adaptado para 2 por linha)
-    const gerarCardImovel = (imovel) => `
+const gerarCardImovel = (imovel) => `
         <div class="bg-[#151515] rounded-xl p-2.5 shadow-sm flex flex-col justify-between relative overflow-hidden h-full">
             <span class="text-[11px] font-bold text-white tracking-tight leading-snug mb-2 relative z-10">${imovel.nome}</span>
             <div class="flex justify-between items-end relative z-10 border-t border-white/5 pt-1.5 mt-auto">
-                <div class="flex flex-col">
+                <div class="flex flex-col min-w-[30%]">
                     <span class="text-[7px] text-gray-500 font-bold tracking-widest uppercase leading-none mb-1">UF</span>
                     <span class="text-[10px] text-gray-300 font-bold leading-none">${imovel.estado}</span>
                 </div>
-                <div class="flex flex-col text-right">
+                <div class="flex flex-col text-right max-w-[65%]">
                     <span class="text-[7px] text-gray-500 font-bold tracking-widest uppercase leading-none mb-1">A.B.L.</span>
-                    <span class="text-[9px] text-gray-300 font-bold leading-none truncate max-w-[50px]">${imovel.abl || '-'}</span>
+                    <span class="text-[9px] text-gray-300 font-bold leading-none truncate w-full">${imovel.abl || '-'}</span>
                 </div>
             </div>
         </div>

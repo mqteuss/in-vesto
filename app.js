@@ -2213,36 +2213,74 @@ function renderizarNoticias(articles) {
     }
 }
 
-window.renderizarNoticiasDashboard = function() {
+// ======================================================
+// BUSCA ATIVA NA API PARA O RADAR DA CARTEIRA
+// ======================================================
+window.buscarNoticiasRadar = async function(force = false) {
+    const container = document.getElementById('dashboard-news-container');
+    
+    if (!carteiraCalculada || carteiraCalculada.length === 0) {
+        if (container) container.classList.add('hidden');
+        return;
+    }
+
+    const cacheKey = 'noticias_radar_carteira';
+    
+    // 1. Tenta carregar do Cache primeiro
+    if (!force) {
+        const cache = await getCache(cacheKey);
+        if (cache && cache.length > 0) {
+            window.renderizarRadar(cache);
+            return;
+        }
+    }
+
+    // 2. Extrai os Tickers da Carteira (até 25 para não pesar a URL)
+    const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))].slice(0, 25).join(',');
+
+    // 3. Faz a requisição na API passando os ativos exatos
+    try {
+        const url = `/api/news?tickers=${meusTickers}&t=${Date.now()}`;
+        const response = await fetchBFF(url, { method: 'GET' });
+        
+        if (response && Array.isArray(response) && response.length > 0) {
+            await setCache(cacheKey, response, CACHE_NOTICIAS);
+            window.renderizarRadar(response);
+        } else {
+            if (container) container.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error("Erro ao buscar Radar Ativo:", error);
+        if (container) container.classList.add('hidden');
+    }
+};
+
+// ======================================================
+// RENDERIZAÇÃO DO CARROSSEL (RADAR)
+// ======================================================
+window.renderizarRadar = function(noticiasRadar) {
     const container = document.getElementById('dashboard-news-container');
     const list = document.getElementById('dashboard-news-list');
     if (!container || !list) return;
 
     list.innerHTML = '';
 
-    if (!window.noticiasCache || window.noticiasCache.length === 0 || !carteiraCalculada || carteiraCalculada.length === 0) {
+    if (!noticiasRadar || noticiasRadar.length === 0) {
         container.classList.add('hidden');
         return;
     }
 
     const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
     
-    const noticiasCarteira = window.noticiasCache.filter(noticia => {
-        return meusTickers.some(ticker => noticia.title.toUpperCase().includes(ticker));
-    });
-
-    if (noticiasCarteira.length === 0) {
-        container.classList.add('hidden');
-        return;
-    }
-
-    const noticiasParaExibir = noticiasCarteira.slice(0, 5);
+    // Limita para as 6 notícias mais relevantes para não sobrecarregar o painel inicial
+    const noticiasParaExibir = noticiasRadar.slice(0, 6);
 
     noticiasParaExibir.forEach(noticia => {
         const sourceName = noticia.sourceName || 'Mercado';
         const faviconUrl = noticia.favicon || `https://www.google.com/s2/favicons?domain=${noticia.sourceHostname || 'google.com'}&sz=64`;
         
-        const tickerMencionado = meusTickers.find(t => noticia.title.toUpperCase().includes(t)) || '';
+        // Tenta achar qual ativo da carteira engatilhou a notícia para criar a badge
+        const tickerMencionado = meusTickers.find(t => noticia.title.toUpperCase().includes(t)) || 'CARTEIRA';
 
         let dataPub = '';
         if (noticia.pubDate) {
@@ -2251,10 +2289,7 @@ window.renderizarNoticiasDashboard = function() {
         }
 
         const card = document.createElement('div');
-        // Estilo igual aos atalhos, só que retangular. SEM MODAL.
         card.className = 'snap-start shrink-0 w-64 bg-[#151515] border border-[#2C2C2E] rounded-2xl p-3 flex flex-col justify-between active:scale-[0.98] transition-transform cursor-pointer shadow-sm relative overflow-hidden';
-        
-        // Abre direto no navegador
         card.onclick = () => window.open(noticia.link, '_blank');
 
         card.innerHTML = `
@@ -2275,7 +2310,6 @@ window.renderizarNoticiasDashboard = function() {
                 </span>
             </div>
         `;
-        
         list.appendChild(card);
     });
 
@@ -3726,14 +3760,13 @@ async function renderizarCarteira() {
         renderizarTimelinePagamentos(); 
 
         // ==========================================
-        // GATILHO DO RADAR DE NOTÍCIAS DA CARTEIRA
+        // BUSCA ATIVA DO RADAR DE NOTÍCIAS (NOVO)
         // ==========================================
-        if (typeof window.renderizarNoticiasDashboard === 'function') {
-            window.renderizarNoticiasDashboard();
+        if (typeof window.buscarNoticiasRadar === 'function') {
+            window.buscarNoticiasRadar();
         }
 
         await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
-    }
     
     if (carteiraSearchInput && carteiraSearchInput.value) {
         const term = carteiraSearchInput.value.trim().toUpperCase();

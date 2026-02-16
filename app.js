@@ -8208,9 +8208,6 @@ window.closePagamentosModal = function() {
         });
     }
 	
-	// ======================================================
-//  MÓDULO OBJETIVOS (MAGIC NUMBER)
-// ======================================================
 
 const objetivosModal = document.getElementById('objetivos-page-modal');
 const objetivosContent = document.getElementById('tab-objetivos-content');
@@ -8234,7 +8231,7 @@ async function openObjetivosModal() {
     // 2. Faz o modal deslizar para cima
     setTimeout(() => {
         objetivosContent.style.transform = 'translateY(0)';
-    }, 10); // Pequeno delay para o navegador renderizar a animação
+    }, 50); // Pequeno delay para o navegador renderizar a animação
     
     document.body.style.overflow = 'hidden';
 
@@ -8256,7 +8253,7 @@ function closeObjetivosModal() {
     setTimeout(() => {
         objetivosModal.classList.remove('visible');
         document.body.style.overflow = '';
-    }, 300);
+    }, 50);
 }
 
 
@@ -8323,7 +8320,7 @@ async function renderizarObjetivos() {
             const atingiu = cotasAtuais >= magicNumber;
             const corBarra = atingiu ? 'bg-yellow-500' : 'bg-white';
             const corTexto = atingiu ? 'text-yellow-500' : 'text-white';
-            const msgStatus = atingiu ? 'MAGIC NUMBER ATINGIDO! 🎉' : `Faltam <b class="text-white">${cotasFaltantes}</b> cotas`;
+            const msgStatus = atingiu ? 'Concluido!' : `Faltam <b class="text-white">${cotasFaltantes}</b> cotas`;
             const msgInvest = atingiu ? 'A bola de neve começou.' : `Falta investir <b class="text-white">${formatBRL(investimentoNecessario)}</b>`;
 
             htmlFinal += `

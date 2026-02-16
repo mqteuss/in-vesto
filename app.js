@@ -2548,31 +2548,15 @@ function renderizarGraficoHistorico(dadosExternos = null) {
 
     const ctx = canvas.getContext('2d');
     
-    // Cores das Barras
+    // Cores (Roxo para Recebido, Cinza Escuro para Futuro)
     const colorRecebido = '#8B5CF6'; 
     const colorAReceber = '#333333'; 
-
-    // O truque: A linha agora volta a usar o Total de Dinheiro para acompanhar o topo das barras
-    const dataTotal = dataRecebidoFiltrados.map((recebido, index) => recebido + dataAReceberFiltrados[index]);
 
     historicoChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labelsFiltrados,
             datasets: [
-{
-                    type: 'line',
-                    label: 'Crescimento',
-                    data: dataTotal,
-                    borderColor: '#F3F4F6', // Cinza muito claro (quase branco)
-                    borderWidth: 1,         // Linha fina
-                    tension: 0.4, 
-                    pointRadius: 2,
-                    pointHoverRadius: 5,
-                    pointBackgroundColor: '#F3F4F6', // Bolinha acompanhando a cor
-                    spanGaps: true, 
-                    order: 0 
-                },
                 {
                     label: 'A Receber', 
                     data: dataAReceberFiltrados,
@@ -2580,8 +2564,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     borderRadius: 4,
                     barPercentage: 0.6,
                     stack: 'Stack 0',
-                    rawKeys: keysFiltrados,
-                    order: 1
+                    rawKeys: keysFiltrados 
                 },
                 {
                     label: 'Recebido',
@@ -2590,8 +2573,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     borderRadius: 4,
                     barPercentage: 0.6,
                     stack: 'Stack 0',
-                    rawKeys: keysFiltrados,
-                    order: 1
+                    rawKeys: keysFiltrados
                 }
             ]
         },
@@ -2600,7 +2582,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             maintainAspectRatio: false,
             animation: { duration: 600 },
             layout: { padding: { top: 10, bottom: 0 } },
-            interaction: { mode: 'nearest', axis: 'x', intersect: false },
+            interaction: { mode: 'index', axis: 'x', intersect: false },
             
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
@@ -2615,6 +2597,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             plugins: {
                 legend: { display: false }, 
                 
+                // --- CUSTOMIZAÇÃO DO TOOLTIP (FONTE INTER + TAMANHO REDUZIDO) ---
                 tooltip: { 
                     enabled: true,
                     backgroundColor: 'rgba(20, 20, 20, 0.95)',
@@ -2622,20 +2605,21 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     bodyColor: '#cccccc',
                     borderColor: '#333333',
                     borderWidth: 1,
-                    padding: 10,
+                    padding: 8,              // Reduzi o padding de 10 para 8
                     displayColors: true,
-                    boxWidth: 6,
+                    boxWidth: 6,             // Reduzi a caixa de cor de 8 para 6
                     boxHeight: 6,
                     usePointStyle: true,
                     
+                    // Configurações de Fonte
                     titleFont: {
                         family: "'Inter', sans-serif",
-                        size: 11,
+                        size: 11,            // Título menor
                         weight: 'bold'
                     },
                     bodyFont: {
                         family: "'Inter', sans-serif",
-                        size: 11,
+                        size: 11,            // Corpo menor
                         weight: '500'
                     },
 
@@ -2645,42 +2629,26 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                         },
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            
-                            // SE O TOOLTIP ESTIVER NA LINHA (Cálculo de Porcentagem em tempo real)
-                            if (context.dataset.type === 'line') {
-                                const currentIndex = context.dataIndex;
-                                if (currentIndex === 0) return label + '---'; // Primeiro mês não tem comparação
-                                
-                                const atual = context.raw;
-                                const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
-                                
-                                if (anterior === 0) return label + (atual > 0 ? '+100%' : '0%');
-                                
-                                const percent = ((atual - anterior) / anterior) * 100;
-                                const signal = percent > 0 ? '+' : '';
-                                return label + signal + percent.toFixed(1) + '%';
-                            } 
-                            // SE O TOOLTIP ESTIVER NAS BARRAS (Dinheiro)
-                            else {
-                                if(context.parsed.y === 0) return null;
-                                return label + formatBRL(context.parsed.y);
+                            if (label) {
+                                label += ': ';
                             }
+                            if (context.parsed.y !== null) {
+                                if(context.parsed.y === 0) return null;
+                                label += formatBRL(context.parsed.y);
+                            }
+                            return label;
                         }
                     }
                 } 
             },
             scales: {
-                // Eixo das Barras e da Linha (Agora unificados)
-                y: { 
-                    display: false, 
-                    stacked: true 
-                },
+                y: { display: false, stacked: true },
                 x: { 
                     stacked: true, 
                     grid: { display: false }, 
                     ticks: {
                         color: '#666',
+                        // Fonte do Eixo X também ajustada para Inter
                         font: { 
                             family: "'Inter', sans-serif",
                             size: 10, 
@@ -2740,45 +2708,43 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     hoje.setHours(0, 0, 0, 0);
 
     lista.forEach(item => {
-        const [ano, mes, dia] = item.dataPag.split('-').map(Number);
-        const dataPagamentoObj = new Date(ano, mes - 1, dia);
-        const foiRecebido = dataPagamentoObj <= hoje;
-        const valorUnitario = item.valorTotal / (item.qtd || 1);
-
-        // --- LÓGICA DO ÍCONE E COR (IGUAL AO EXTRATO) ---
-        const colorIcon = foiRecebido ? 'text-green-500' : 'text-yellow-500';
+        const percent = ((item.valorTotal / totalMes) * 100).toFixed(1);
+        const [ano, mes, dia] = item.dataPag.split('-').map(Number); // Separa YYYY-MM-DD
         
-        // Seta de gráfico idêntica à da aba Proventos > Extrato
-        const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ${colorIcon}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
-        const bgIcone = 'bg-[#1C1C1E]';
+        // Cria objeto data do pagamento
+        const dataPagamentoObj = new Date(ano, mes - 1, dia);
 
-        // Badge no estilo "Etiqueta" idêntico ao do Extrato
-        const badgeHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${foiRecebido ? 'RECEBIDO' : 'A RECEBER'}</span>`;
+        // Lógica: Se a data do pagamento for menor ou igual a hoje, foi recebido.
+        const foiRecebido = dataPagamentoObj <= hoje;
 
-        // Card com Preto Puro (bg-black) e margens ajustadas
+        const tickerInitials = item.symbol.substring(0, 2);
+        
+        // --- ALTERAÇÃO SOLICITADA ---
+        // 1. Definimos a cor apenas para o STATUS, não para o valor.
+        const corStatus = foiRecebido ? 'text-green-500' : 'text-amber-400'; 
+        const textoStatus = foiRecebido ? 'Recebido' : 'A Receber';
+
+        // 2. O Valor monetário agora é fixo 'text-white'
         const cardHTML = `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black cursor-pointer" style="background-color: black !important;" onclick="if(typeof window.abrirDetalhesAtivo === 'function') window.abrirDetalhesAtivo('${item.symbol}')">
-                <div class="flex items-center gap-3 flex-1 min-w-0">
-                    
-                    <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
-                        ${iconGraph}
-                    </div>
-
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 h-5">
-                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${item.symbol}</h4>
-                            ${badgeHtml}
-                        </div>
-                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
-                            <span class="font-medium text-gray-400">Dia ${dia}</span>
-                            <span>•</span>
-                            <span>${item.qtd} cotas</span>
-                        </div>
-                    </div>
+            <div class="flex items-center gap-3 p-3 bg-[#151515] rounded-2xl mb-2 active:scale-[0.98] transition-transform">
+                
+                <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center border border-[#2C2C2E] flex-shrink-0">
+                     <span class="text-xs font-bold text-white tracking-wider">${tickerInitials}</span>
                 </div>
-                <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(item.valorTotal)}</span>
-                    <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(valorUnitario)} /cota</span>
+
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="text-sm font-bold text-white uppercase">${item.symbol}</span>
+                        <span class="text-sm font-bold text-white tracking-tight">${formatBRL(item.valorTotal)}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] text-gray-500 font-medium">Dia ${dia} • ${item.qtd} cotas</span>
+                        <span class="text-[10px] ${corStatus} font-medium flex items-center gap-1">
+                           ${!foiRecebido ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>' : ''} 
+                           ${textoStatus}
+                        </span>
+                    </div>
                 </div>
             </div>
         `;
@@ -2846,12 +2812,21 @@ function closePatrimonioModal() {
         document.body.style.overflow = '';
     }
 	
-	function openProventosModal() {
-    if(!proventosPageModal) return;
+function openProventosModal() {
+    if(!proventosPageModal || !proventosPageContent) return;
 
+    // Lógica idêntica aos modais mais novos (Calculadora/Objetivos)
+    proventosPageModal.style.pointerEvents = 'auto';
+    proventosPageModal.style.opacity = '1';
     proventosPageModal.classList.add('visible');
-    proventosPageContent.style.transform = ''; 
-    proventosPageContent.classList.remove('closing');
+    
+    proventosPageContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    
+    setTimeout(() => {
+        // Usa Translate 3D para ativar a GPU e evitar travamentos na animação
+        proventosPageContent.style.transform = 'translate3d(0, 0, 0)';
+    }, 10);
+    
     document.body.style.overflow = 'hidden';
 
     // Redimensiona o gráfico de histórico (Barras)
@@ -2861,7 +2836,6 @@ function closePatrimonioModal() {
                 historicoChartInstance.resize();
                 historicoChartInstance.update('none');
             } else {
-                // Se não existir ainda, renderiza
                 renderizarGraficoHistorico(); 
             }
         }, 50);
@@ -2869,12 +2843,26 @@ function closePatrimonioModal() {
 }
 
 function closeProventosModal() {
-    if(!proventosPageContent) return;
+    if(!proventosPageModal || !proventosPageContent) return;
     
-    proventosPageContent.style.transform = '';
-    proventosPageContent.classList.add('closing');
-    proventosPageModal.classList.remove('visible');
-    document.body.style.overflow = '';
+    // Lógica idêntica aos modais mais novos (Calculadora/Objetivos)
+    proventosPageContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    proventosPageContent.style.transform = 'translate3d(0, 100%, 0)';
+    
+    proventosPageModal.style.transition = 'opacity 0.3s ease-out';
+    proventosPageModal.style.opacity = '0';
+    proventosPageModal.style.pointerEvents = 'none';
+    
+    setTimeout(() => {
+        proventosPageModal.classList.remove('visible');
+        document.body.style.overflow = '';
+        
+        // Limpeza dos estilos embutidos
+        proventosPageContent.style.transform = '';
+        proventosPageContent.style.transition = '';
+        proventosPageModal.style.transition = '';
+        proventosPageModal.style.opacity = '';
+    }, 50);
 }
 
 function openAlocacaoModal() {

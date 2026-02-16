@@ -8628,7 +8628,6 @@ if (calcContent) {
 window.renderizarListaImoveis = function(imoveis) {
     let container = document.getElementById('detalhes-imoveis-container');
     
-    // Se o container não existe, cria-o e coloca-o logo após o Histórico de Proventos
     if (!container) {
         container = document.createElement('div');
         container.id = 'detalhes-imoveis-container';
@@ -8645,21 +8644,48 @@ window.renderizarListaImoveis = function(imoveis) {
         return;
     }
 
-    // Processar dados para o Gráfico de Pizza (Agrupar por Estado)
+    // 1. Processar dados: Agrupar por Estado e Ordenar (Maior pro Menor)
     const estadosCount = {};
     imoveis.forEach(imovel => {
         const uf = imovel.estado || 'Outros';
         estadosCount[uf] = (estadosCount[uf] || 0) + 1;
     });
 
-    const labels = Object.keys(estadosCount);
-    const data = Object.values(estadosCount);
-    
-    // Paleta de cores moderna (inspirada em Dashboards Financeiros)
-    const bgColors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4', '#ec4899', '#84cc16'];
+    const sortedEstados = Object.entries(estadosCount).sort((a, b) => b[1] - a[1]);
+    const labels = sortedEstados.map(e => e[0]);
+    const data = sortedEstados.map(e => e[1]);
+    const bgColors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4', '#ec4899', '#84cc16', '#a855f7', '#14b8a6'];
 
-    // Gera os cartões da lista de imóveis (Padrão Flat)
-    let listaHtml = imoveis.map(imovel => `
+    const totalImoveis = imoveis.length;
+
+    // 2. Gerar a Legenda Customizada (HTML)
+    let legendHtml = sortedEstados.map((estadoInfo, index) => {
+        const uf = estadoInfo[0];
+        const count = estadoInfo[1];
+        const color = bgColors[index % bgColors.length];
+        const percent = Math.round((count / totalImoveis) * 100);
+
+        return `
+            <div class="flex items-center justify-between mb-2.5 last:mb-0">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full shadow-sm" style="background-color: ${color}"></span>
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${uf}</span>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <span class="text-[9px] text-gray-600 font-bold">${percent}%</span>
+                    <span class="text-[11px] font-bold text-white">${count}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // 3. Lógica do "Ver Mais" (Lista de Imóveis)
+    const LIMIT = 4;
+    const temMais = totalImoveis > LIMIT;
+    const imoveisIniciais = imoveis.slice(0, LIMIT);
+    const imoveisOcultos = imoveis.slice(LIMIT);
+
+    const gerarCardImovel = (imovel) => `
         <div class="bg-[#151515] rounded-xl p-3 mb-2 shadow-sm flex flex-col justify-center relative overflow-hidden">
             <span class="text-[12px] font-bold text-white tracking-tight leading-tight mb-2.5 relative z-10">${imovel.nome}</span>
             <div class="flex justify-between items-end relative z-10 border-t border-white/5 pt-2">
@@ -8673,31 +8699,51 @@ window.renderizarListaImoveis = function(imoveis) {
                 </div>
             </div>
         </div>
-    `).join('');
+    `;
 
-    // Injeta o Gráfico e a Lista
+    const htmlVisivel = imoveisIniciais.map(gerarCardImovel).join('');
+    const htmlOculto = temMais ? imoveisOcultos.map(gerarCardImovel).join('') : '';
+
+    const btnVerMaisHtml = temMais ? `
+        <button id="btn-toggle-imoveis" onclick="window.toggleListaImoveis(this)" class="w-full mt-2 py-3 bg-[#151515] hover:bg-[#1c1c1e] text-gray-400 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors flex items-center justify-center gap-2">
+            Ver todos os ${totalImoveis} imóveis
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" id="icon-toggle-imoveis" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        </button>
+    ` : '';
+
+    // 4. Injeta o HTML completo
     container.innerHTML = `
         <div class="border-t border-[#2C2C2E] pt-8 mb-10 mt-8">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
             
             <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
-                <div class="relative w-full h-48">
-                    <canvas id="imoveis-chart"></canvas>
+                <div class="flex items-center h-36">
+                    <div class="relative w-1/2 h-full flex items-center justify-center flex-shrink-0">
+                        <canvas id="imoveis-chart" class="relative z-10"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+                            <span class="text-[8px] text-gray-500 font-bold tracking-widest uppercase mb-0.5">Total</span>
+                            <span class="text-2xl font-bold text-white leading-none tracking-tighter">${totalImoveis}</span>
+                        </div>
+                    </div>
+                    <div class="w-1/2 pl-4 flex flex-col border-l border-[#2C2C2E] ml-2 h-full justify-center overflow-y-auto no-scrollbar">
+                        ${legendHtml}
+                    </div>
                 </div>
             </div>
             
-            <div class="flex flex-col">
-                ${listaHtml}
+            <div class="flex flex-col" id="lista-imoveis-wrapper">
+                ${htmlVisivel}
+                <div id="imoveis-extras" class="hidden flex-col">
+                    ${htmlOculto}
+                </div>
+                ${btnVerMaisHtml}
             </div>
         </div>
     `;
 
-    // Renderizar o Gráfico com Chart.js
+    // 5. Renderizar o Gráfico com Chart.js
     const ctx = document.getElementById('imoveis-chart').getContext('2d');
-    
-    if (window.imoveisChartInstance) {
-        window.imoveisChartInstance.destroy();
-    }
+    if (window.imoveisChartInstance) window.imoveisChartInstance.destroy();
 
     window.imoveisChartInstance = new Chart(ctx, {
         type: 'doughnut',
@@ -8707,41 +8753,57 @@ window.renderizarListaImoveis = function(imoveis) {
                 data: data,
                 backgroundColor: bgColors.slice(0, labels.length),
                 borderWidth: 0,
-                hoverOffset: 4
+                hoverOffset: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '75%', // Anel mais fino para ficar elegante
+            cutout: '80%', // Deixa o anel mais fino, visual mais moderno
+            layout: { padding: 0 },
             plugins: {
                 legend: {
-                    position: 'right',
-                    labels: {
-                        color: '#9ca3af',
-                        font: { size: 10, family: 'Inter' },
-                        boxWidth: 10,
-                        usePointStyle: true,
-                        padding: 12
-                    }
+                    display: false // Escondemos a legenda feia do canvas
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(21, 21, 21, 0.95)',
-                    titleColor: '#fff',
-                    bodyColor: '#ccc',
-                    borderColor: '#2C2C2E',
-                    borderWidth: 1,
-                    padding: 10,
-                    bodyFont: { size: 12, weight: 'bold' },
-                    callbacks: {
-                        label: function(context) {
-                            return ' ' + context.label + ': ' + context.raw + ' imóvel(is)';
-                        }
-                    }
+                    backgroundColor: 'rgba(21, 21, 21, 0.95)', titleColor: '#fff', bodyColor: '#ccc', borderColor: '#2C2C2E', borderWidth: 1, padding: 10, bodyFont: { size: 12, weight: 'bold' },
+                    callbacks: { label: function(context) { return ' ' + context.label + ': ' + context.raw + ' imóvel(is)'; } }
                 }
             }
         }
     });
+};
+
+// --- FUNÇÃO PARA ABRIR/FECHAR A LISTA DE IMÓVEIS ---
+window.toggleListaImoveis = function(btn) {
+    const extras = document.getElementById('imoveis-extras');
+    const icon = document.getElementById('icon-toggle-imoveis');
+    
+    if (extras.classList.contains('hidden')) {
+        // Expandir
+        extras.classList.remove('hidden');
+        extras.classList.add('flex');
+        btn.innerHTML = `
+            Mostrar Menos
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300 rotate-180" id="icon-toggle-imoveis" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        `;
+    } else {
+        // Recolher
+        extras.classList.add('hidden');
+        extras.classList.remove('flex');
+        
+        // Faz um pequeno scroll de volta para o topo da lista de imóveis para não perder o utilizador de vista
+        const chartWrapper = document.getElementById('lista-imoveis-wrapper');
+        if (chartWrapper) chartWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        // Conta quantos tem para voltar ao texto original
+        const total = document.querySelectorAll('#lista-imoveis-wrapper > div.bg-\\[\\#151515\\]').length + document.querySelectorAll('#imoveis-extras > div').length;
+        
+        btn.innerHTML = `
+            Ver todos os ${total} imóveis
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" id="icon-toggle-imoveis" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        `;
+    }
 };
 	
     await init();

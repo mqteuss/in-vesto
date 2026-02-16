@@ -8658,7 +8658,7 @@ window.renderizarListaImoveis = function(imoveis) {
 
     const totalImoveis = imoveis.length;
 
-    // 2. Gerar a Legenda Customizada (HTML)
+// 2. Gerar a Legenda Customizada (HTML)
     let legendHtml = sortedEstados.map((estadoInfo, index) => {
         const uf = estadoInfo[0];
         const count = estadoInfo[1];
@@ -8666,12 +8666,12 @@ window.renderizarListaImoveis = function(imoveis) {
         const percent = Math.round((count / totalImoveis) * 100);
 
         return `
-            <div class="flex items-center justify-between mb-2.5 last:mb-0">
-                <div class="flex items-center gap-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
                     <span class="w-2.5 h-2.5 rounded-full shadow-sm" style="background-color: ${color}"></span>
                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${uf}</span>
                 </div>
-                <div class="flex items-center gap-2.5">
+                <div class="flex items-center gap-2">
                     <span class="text-[9px] text-gray-600 font-bold">${percent}%</span>
                     <span class="text-[11px] font-bold text-white">${count}</span>
                 </div>
@@ -8712,23 +8712,28 @@ const gerarCardImovel = (imovel) => `
         </button>
     ` : '';
 
-    // 4. Injeta o HTML completo (Com o Gráfico Responsivo da Última Versão)
+// 4. Injeta o HTML completo
     container.innerHTML = `
         <div class="border-t border-[#2C2C2E] pt-8 mb-10 mt-8">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
             
             <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
-                <div class="flex items-center gap-2">
-                    <div class="relative w-28 h-28 flex-shrink-0 flex items-center justify-center">
+                <div class="flex flex-col items-center">
+                    
+                    <div class="relative w-36 h-36 flex-shrink-0 flex items-center justify-center">
                         <canvas id="imoveis-chart" class="relative z-10 w-full h-full"></canvas>
                         <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0 mt-1">
-                            <span class="text-[8px] text-gray-500 font-bold tracking-widest uppercase mb-0.5">Total</span>
-                            <span class="text-2xl font-bold text-white leading-none tracking-tighter">${totalImoveis}</span>
+                            <span class="text-[9px] text-gray-500 font-bold tracking-widest uppercase mb-0.5">Total</span>
+                            <span class="text-3xl font-bold text-white leading-none tracking-tighter">${totalImoveis}</span>
                         </div>
                     </div>
-                    <div class="flex-1 pl-4 border-l border-[#2C2C2E] max-h-28 overflow-y-auto no-scrollbar py-1">
-                        ${legendHtml}
+                    
+                    <div class="w-full mt-5 pt-4 border-t border-[#2C2C2E]">
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-3 max-h-32 overflow-y-auto no-scrollbar pr-1">
+                            ${legendHtml}
+                        </div>
                     </div>
+
                 </div>
             </div>
             

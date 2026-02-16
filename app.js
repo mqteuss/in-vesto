@@ -4762,7 +4762,7 @@ async function fetchCotacaoHistorica(symbol) {
 
             </div>
 
-            <div class="relative flex overflow-x-auto no-scrollbar gap-1 p-1 bg-[#151515] rounded-xl mb-4 w-full" id="chart-filters">
+            <div class="relative flex overflow-x-auto no-scrollbar gap-0.5 p-1 bg-[#151515] rounded-xl mb-4 w-full" id="chart-filters">
                 <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                 ${gerarBotaoFiltro('1D', symbol, true)}
                 ${gerarBotaoFiltro('5D', symbol)}
@@ -4797,8 +4797,9 @@ async function fetchCotacaoHistorica(symbol) {
 
 window.gerarBotaoFiltro = function(label, symbol, isActive = false) {
     const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
+    
     return `<button id="btn-${label}" onclick="window.mudarPeriodoGrafico('${label}', '${symbol}')" 
-            class="relative z-10 chart-filter-btn flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 select-none ${textClass}" 
+            class="relative z-10 chart-filter-btn flex-1 px-1 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-colors duration-300 select-none text-center ${textClass}" 
             data-range="${label}">
         ${label}
     </button>`;

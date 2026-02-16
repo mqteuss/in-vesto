@@ -8658,7 +8658,7 @@ window.renderizarListaImoveis = function(imoveis) {
 
     const totalImoveis = imoveis.length;
 
-// 2. Gerar a Legenda Customizada (HTML)
+    // 2. Gerar a Legenda Customizada (HTML)
     let legendHtml = sortedEstados.map((estadoInfo, index) => {
         const uf = estadoInfo[0];
         const count = estadoInfo[1];
@@ -8679,14 +8679,13 @@ window.renderizarListaImoveis = function(imoveis) {
         `;
     }).join('');
 
-    // 3. Lógica do "Ver Mais" (Lista de Imóveis em GRID)
-    const LIMIT = 4; // Mostra os 4 primeiros (2 linhas inteiras)
+    // 3. Lógica do "Ver Mais" (Lista de Imóveis)
+    const LIMIT = 4;
     const temMais = totalImoveis > LIMIT;
     const imoveisIniciais = imoveis.slice(0, LIMIT);
     const imoveisOcultos = imoveis.slice(LIMIT);
 
-    // Novo Layout de Cartão (Adaptado para 2 por linha)
-const gerarCardImovel = (imovel) => `
+    const gerarCardImovel = (imovel) => `
         <div class="bg-[#151515] rounded-xl p-2.5 shadow-sm flex flex-col justify-between relative overflow-hidden h-full">
             <span class="text-[11px] font-bold text-white tracking-tight leading-snug mb-2 relative z-10">${imovel.nome}</span>
             <div class="flex justify-between items-end relative z-10 border-t border-white/5 pt-1.5 mt-auto">
@@ -8712,7 +8711,7 @@ const gerarCardImovel = (imovel) => `
         </button>
     ` : '';
 
-// 4. Injeta o HTML completo
+    // 4. Injeta o HTML completo
     container.innerHTML = `
         <div class="border-t border-[#2C2C2E] pt-8 mb-10 mt-8">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
@@ -8720,7 +8719,7 @@ const gerarCardImovel = (imovel) => `
             <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
                 <div class="flex flex-col items-center">
                     
-                    <div class="relative w-36 h-36 flex-shrink-0 flex items-center justify-center">
+                    <div class="relative w-44 h-44 flex-shrink-0 flex items-center justify-center -my-2">
                         <canvas id="imoveis-chart" class="relative z-10 w-full h-full"></canvas>
                         <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0 mt-1">
                             <span class="text-[9px] text-gray-500 font-bold tracking-widest uppercase mb-0.5">Total</span>
@@ -8728,7 +8727,7 @@ const gerarCardImovel = (imovel) => `
                         </div>
                     </div>
                     
-                    <div class="w-full mt-5 pt-4 border-t border-[#2C2C2E]">
+                    <div class="w-full mt-2 pt-4 border-t border-[#2C2C2E]">
                         <div class="grid grid-cols-2 gap-x-4 gap-y-3 max-h-32 overflow-y-auto no-scrollbar pr-1">
                             ${legendHtml}
                         </div>
@@ -8764,18 +8763,26 @@ const gerarCardImovel = (imovel) => `
                 data: data,
                 backgroundColor: bgColors.slice(0, labels.length),
                 borderWidth: 0,
-                hoverOffset: 2
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '76%', 
-            layout: { padding: 0 },
+            cutout: '76%', // Ajustado para manter a grossura elegante
+            layout: { 
+                padding: 18 // A MÁGICA: Empurra o gráfico 18px para dentro, criando uma área safe para o Tooltip!
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(21, 21, 21, 0.95)', titleColor: '#fff', bodyColor: '#ccc', borderColor: '#2C2C2E', borderWidth: 1, padding: 10, bodyFont: { size: 12, weight: 'bold' },
+                    backgroundColor: 'rgba(21, 21, 21, 0.95)', 
+                    titleColor: '#fff', 
+                    bodyColor: '#ccc', 
+                    borderColor: '#2C2C2E', 
+                    borderWidth: 1, 
+                    padding: 10, 
+                    bodyFont: { size: 12, weight: 'bold' },
                     callbacks: { label: function(context) { return ' ' + context.label + ': ' + context.raw + ' imóvel(is)'; } }
                 }
             }

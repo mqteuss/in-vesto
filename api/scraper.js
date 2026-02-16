@@ -92,22 +92,25 @@ async function scrapeFundamentos(ticker) {
 
         const $ = cheerio.load(html);
 
-        let dados = {
-            // Campos Comuns
-            dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
-            val_mercado: 'N/A', liquidez: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
+let dados = {
+            // Campos Comuns
+            dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
+            val_mercado: 'N/A', liquidez: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
 
-            // FIIs
-            segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A', vacancia: 'N/A',
+            // FIIs
+            segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A', vacancia: 'N/A',
             patrimonio_liquido: 'N/A', cnpj: 'N/A',
-            num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
-            taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A',
+            num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
+            taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A',
 
-            // Ações (Novos Campos)
-            margem_liquida: 'N/A', margem_bruta: 'N/A', margem_ebit: 'N/A',
-            divida_liquida_ebitda: 'N/A', divida_liquida_pl: 'N/A', ev_ebitda: 'N/A',
-            payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A'
-        };
+            // Ações (Novos Campos)
+            margem_liquida: 'N/A', margem_bruta: 'N/A', margem_ebit: 'N/A',
+            divida_liquida_ebitda: 'N/A', divida_liquida_pl: 'N/A', ev_ebitda: 'N/A',
+            payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A',
+            
+            // --- NOVO: ARRAY DE IMÓVEIS ---
+            imoveis: [] 
+        };
 
         let cotacao_atual = 0;
         let num_cotas = 0;
@@ -242,6 +245,21 @@ async function scrapeFundamentos(ticker) {
                 else dados.val_mercado = formatCurrency(mercadoCalc);
             }
         }
+
+// --- BUSCA DE IMÓVEIS (FIIs) ---
+        $('#properties-section .card-propertie').each((i, el) => {
+            const nome = $(el).find('h3').text().trim();
+            let estado = '';
+            let abl = '';
+            $(el).find('small').each((j, small) => {
+                const t = $(small).text().trim();
+                if (t.includes('Estado:')) estado = t.replace('Estado:', '').trim();
+                if (t.includes('Área bruta locável:')) abl = t.replace('Área bruta locável:', '').trim();
+            });
+            if (nome) {
+                dados.imoveis.push({ nome, estado, abl });
+            }
+        });
 
         return dados;
     } catch (error) {

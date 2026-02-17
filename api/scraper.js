@@ -268,8 +268,8 @@ let dados = {
     }
 }
 
-/// ---------------------------------------------------------
-// PARTE 2: PROVENTOS -> INVESTIDOR10 (COM REND_TRIB)
+// ---------------------------------------------------------
+// PARTE 2: PROVENTOS -> INVESTIDOR10 (CORREÇÃO JSCP/JCP)
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
@@ -300,7 +300,10 @@ async function scrapeAsset(ticker) {
         $('#table-dividends-history tbody tr').each((i, el) => {
             const cols = $(el).find('td');
             if (cols.length >= 4) {
-                const tipoRaw = $(cols[0]).text().trim().toUpperCase();
+                // Pega o tipo e já tira acentos para evitar falhas com "PRÓPRIO" ou "PROPRIO"
+                let tipoRaw = $(cols[0]).text().trim().toUpperCase();
+                tipoRaw = tipoRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                
                 const dataComRaw = $(cols[1]).text().trim();
                 const pagamentoRaw = $(cols[2]).text().trim();
                 const valorText = $(cols[3]).text().trim();
@@ -323,14 +326,27 @@ async function scrapeAsset(ticker) {
                 const dataCom = parseDateBR(dataComRaw);
                 const paymentDate = parseDateBR(pagamentoRaw);
 
-                // Padronização dos Tipos (Ordem importa!)
+                // --- RADAR DE TIPOS DE PROVENTOS (AGORA PEGA TODAS AS VARIAÇÕES DE JCP) ---
                 let labelTipo = 'REND';
-                if (tipoRaw.includes('JCP') || tipoRaw.includes('JUROS')) labelTipo = 'JCP';
-                else if (tipoRaw.includes('DIVIDEND')) labelTipo = 'DIV';
-                else if (tipoRaw.includes('TRIBUTADO')) labelTipo = 'REND_TRIB'; // <--- ADICIONADO AQUI!
-                else if (tipoRaw.includes('RENDIMENTO')) labelTipo = 'REND';
-                else if (tipoRaw.includes('AMORTIZA')) labelTipo = 'AMORT';
-                else if (tipoRaw.includes('RESTITUI')) labelTipo = 'REST';
+                
+                if (tipoRaw.includes('JCP') || tipoRaw.includes('JSCP') || tipoRaw.includes('JURO') || tipoRaw.includes('JRS') || tipoRaw.includes('CAPITAL PROPRIO')) {
+                    labelTipo = 'JCP';
+                } 
+                else if (tipoRaw.includes('DIVIDEND')) {
+                    labelTipo = 'DIV';
+                } 
+                else if (tipoRaw.includes('TRIBUTADO')) {
+                    labelTipo = 'REND_TRIB';
+                } 
+                else if (tipoRaw.includes('RENDIMENTO')) {
+                    labelTipo = 'REND';
+                } 
+                else if (tipoRaw.includes('AMORTIZA')) {
+                    labelTipo = 'AMORT';
+                } 
+                else if (tipoRaw.includes('RESTITUI')) {
+                    labelTipo = 'REST';
+                }
                 
                 if (paymentDate && value > 0) {
                     dividendos.push({
@@ -338,7 +354,7 @@ async function scrapeAsset(ticker) {
                         paymentDate: paymentDate,
                         value: value,
                         type: labelTipo,
-                        rawType: tipoRaw
+                        rawType: tipoRaw // Mantém o original apenas para debug se precisar
                     });
                 }
             }

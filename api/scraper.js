@@ -272,6 +272,10 @@ let dados = {
 // PARTE 2: PROVENTOS -> INVESTIDOR10 (CORREÇÃO JSCP/JCP)
 // ---------------------------------------------------------
 
+// ---------------------------------------------------------
+// PARTE 2: PROVENTOS -> INVESTIDOR10 (ATUALIZADO PARA AÇÕES)
+// ---------------------------------------------------------
+
 async function scrapeAsset(ticker) {
     try {
         const t = ticker.toLowerCase().trim();
@@ -296,56 +300,55 @@ async function scrapeAsset(ticker) {
         const $ = cheerio.load(html);
         const dividendos = [];
 
-        // Busca a tabela de histórico de dividendos na página
+        // Localiza a tabela de histórico de dividendos
         $('#table-dividends-history tbody tr').each((i, el) => {
             const cols = $(el).find('td');
             if (cols.length >= 4) {
-                // Pega o tipo e já tira acentos para evitar falhas com "PRÓPRIO" ou "PROPRIO"
-                let tipoRaw = $(cols[0]).text().trim().toUpperCase();
-                tipoRaw = tipoRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                // Extrai o tipo e normaliza para comparação (remove acentos e espaços extras)
+                const tipoOriginal = $(cols[0]).text().trim();
+                const tipoNormalizado = tipoOriginal
+                    .toUpperCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "");
                 
                 const dataComRaw = $(cols[1]).text().trim();
                 const pagamentoRaw = $(cols[2]).text().trim();
                 const valorText = $(cols[3]).text().trim();
                 
-                // Extrai apenas os números e vírgulas do valor
+                // Extrai apenas o valor numérico
                 const match = valorText.match(/[\d,\.]+/);
                 let value = 0;
                 if (match) {
                     value = parseFloat(match[0].replace(/\./g, '').replace(',', '.')) || 0;
                 }
 
-                // Função para converter formato BR (DD/MM/YYYY) para ISO (YYYY-MM-DD)
                 const parseDateBR = (dStr) => {
-                    if (!dStr || dStr === '-' || dStr.includes('N/D') || dStr.includes('n/d')) return null;
+                    if (!dStr || dStr === '-' || dStr.includes('N/D')) return null;
                     const parts = dStr.split('/');
-                    if (parts.length !== 3) return null;
-                    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : null;
                 };
 
                 const dataCom = parseDateBR(dataComRaw);
                 const paymentDate = parseDateBR(pagamentoRaw);
 
-                // --- RADAR DE TIPOS DE PROVENTOS (AGORA PEGA TODAS AS VARIAÇÕES DE JCP) ---
-                let labelTipo = 'REND';
-                
-                if (tipoRaw.includes('JCP') || tipoRaw.includes('JSCP') || tipoRaw.includes('JURO') || tipoRaw.includes('JRS') || tipoRaw.includes('CAPITAL PROPRIO')) {
+                // --- CLASSIFICAÇÃO PRECISA ---
+                let labelTipo = 'REND'; // Padrão para FIIs
+
+                // Verifica Juros Sobre Capital Próprio (JCP)
+                if (tipoNormalizado.includes('JUROS SOBRE CAPITAL PROPRIO') || tipoNormalizado.includes('JSCP') || tipoNormalizado.includes('JCP')) {
                     labelTipo = 'JCP';
                 } 
-                else if (tipoRaw.includes('DIVIDEND')) {
+                // Verifica Dividendos (DIV)
+                else if (tipoNormalizado.includes('DIVIDENDO')) {
                     labelTipo = 'DIV';
                 } 
-                else if (tipoRaw.includes('TRIBUTADO')) {
+                // Verifica Rendimentos Tributados
+                else if (tipoNormalizado.includes('TRIBUTADO')) {
                     labelTipo = 'REND_TRIB';
-                } 
-                else if (tipoRaw.includes('RENDIMENTO')) {
-                    labelTipo = 'REND';
-                } 
-                else if (tipoRaw.includes('AMORTIZA')) {
+                }
+                // Amortizações ou Restituições
+                else if (tipoNormalizado.includes('AMORTIZA') || tipoNormalizado.includes('RESTITUI')) {
                     labelTipo = 'AMORT';
-                } 
-                else if (tipoRaw.includes('RESTITUI')) {
-                    labelTipo = 'REST';
                 }
                 
                 if (paymentDate && value > 0) {
@@ -354,13 +357,13 @@ async function scrapeAsset(ticker) {
                         paymentDate: paymentDate,
                         value: value,
                         type: labelTipo,
-                        rawType: tipoRaw // Mantém o original apenas para debug se precisar
+                        rawType: tipoOriginal
                     });
                 }
             }
         });
 
-        // Retorna a lista ordenada pela data de pagamento (mais recente primeiro)
+        // Ordena por data de pagamento (mais recente primeiro)
         return dividendos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     } catch (error) { 

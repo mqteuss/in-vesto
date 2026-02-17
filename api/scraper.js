@@ -268,11 +268,7 @@ let dados = {
     }
 }
 
-// ---------------------------------------------------------
-// PARTE 2: PROVENTOS -> INVESTIDOR10 (CORREÇÃO JSCP/JCP)
-// ---------------------------------------------------------
-
-// ---------------------------------------------------------
+/// ---------------------------------------------------------
 // PARTE 2: PROVENTOS -> INVESTIDOR10 (ATUALIZADO PARA AÇÕES)
 // ---------------------------------------------------------
 
@@ -334,8 +330,8 @@ async function scrapeAsset(ticker) {
                 // --- CLASSIFICAÇÃO PRECISA ---
                 let labelTipo = 'REND'; // Padrão para FIIs
 
-                // Verifica Juros Sobre Capital Próprio (JCP)
-                if (tipoNormalizado.includes('JUROS SOBRE CAPITAL PROPRIO') || tipoNormalizado.includes('JSCP') || tipoNormalizado.includes('JCP')) {
+                // Verifica Juros Sobre Capital Próprio usando "JURO" como raiz
+                if (tipoNormalizado.includes('JURO') || tipoNormalizado.includes('JSCP') || tipoNormalizado.includes('JCP')) {
                     labelTipo = 'JCP';
                 } 
                 // Verifica Dividendos (DIV)
@@ -371,6 +367,7 @@ async function scrapeAsset(ticker) {
         return []; 
     }
 }
+
 
 
 // ---------------------------------------------------------

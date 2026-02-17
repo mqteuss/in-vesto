@@ -268,8 +268,8 @@ let dados = {
     }
 }
 
-// ---------------------------------------------------------
-// PARTE 2: PROVENTOS -> INVESTIDOR10
+/// ---------------------------------------------------------
+// PARTE 2: PROVENTOS -> INVESTIDOR10 (COM REND_TRIB)
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
@@ -287,7 +287,7 @@ async function scrapeAsset(ticker) {
                 const res2 = await client.get(`https://investidor10.com.br/acoes/${t}/`);
                 html = res2.data;
             } catch (e2) {
-                // 3. Se ainda falhar, tenta como BDR (Opcional, mas útil)
+                // 3. Se ainda falhar, tenta como BDR
                 const res3 = await client.get(`https://investidor10.com.br/bdrs/${t}/`);
                 html = res3.data;
             }
@@ -305,7 +305,7 @@ async function scrapeAsset(ticker) {
                 const pagamentoRaw = $(cols[2]).text().trim();
                 const valorText = $(cols[3]).text().trim();
                 
-                // Extrai apenas os números e vírgulas do valor (Ignora ícones e interrogações de HTML)
+                // Extrai apenas os números e vírgulas do valor
                 const match = valorText.match(/[\d,\.]+/);
                 let value = 0;
                 if (match) {
@@ -323,10 +323,11 @@ async function scrapeAsset(ticker) {
                 const dataCom = parseDateBR(dataComRaw);
                 const paymentDate = parseDateBR(pagamentoRaw);
 
-                // Padronização dos Tipos (Garante que o Frontend continua a entender os tipos de ações)
+                // Padronização dos Tipos (Ordem importa!)
                 let labelTipo = 'REND';
                 if (tipoRaw.includes('JCP') || tipoRaw.includes('JUROS')) labelTipo = 'JCP';
                 else if (tipoRaw.includes('DIVIDEND')) labelTipo = 'DIV';
+                else if (tipoRaw.includes('TRIBUTADO')) labelTipo = 'REND_TRIB'; // <--- ADICIONADO AQUI!
                 else if (tipoRaw.includes('RENDIMENTO')) labelTipo = 'REND';
                 else if (tipoRaw.includes('AMORTIZA')) labelTipo = 'AMORT';
                 else if (tipoRaw.includes('RESTITUI')) labelTipo = 'REST';

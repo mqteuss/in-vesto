@@ -1,13 +1,41 @@
 const { createClient } = require('@supabase/supabase-js');
 const webpush = require('web-push');
-
-// Ajuste o caminho do scraper conforme sua estrutura de pastas
 const scraperHandler = require('../scraper.js');
 
+// ---------------------------------------------------------
+// CONFIGURAÇÃO
+// ---------------------------------------------------------
+const CONFIG = {
+    brapiTimeoutMs:  8000,
+    timezone_offset: -3,    // BRT (UTC-3)
+    notif: {
+        icon:  'https://in-vesto.vercel.app/icons/icon-192x192.png',
+        badge: 'https://in-vesto.vercel.app/sininhov2.png',
+        url:   '/?tab=tab-carteira',
+    },
+};
+
+// ---------------------------------------------------------
+// LOGGER ESTRUTURADO
+// ---------------------------------------------------------
+const log = {
+    _w: (level, msg, meta) =>
+        console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
+            JSON.stringify({ level, msg, ...meta, ts: new Date().toISOString() })
+        ),
+    info:  (msg, meta = {}) => log._w('info',  msg, meta),
+    warn:  (msg, meta = {}) => log._w('warn',  msg, meta),
+    error: (msg, meta = {}) => log._w('error', msg, meta),
+    timer: () => { const s = Date.now(); return () => Date.now() - s; },
+};
+
+// ---------------------------------------------------------
+// INICIALIZAÇÃO (módulo — executada uma única vez)
+// ---------------------------------------------------------
 webpush.setVapidDetails(
-  'mailto:mh.umateus@gmail.com',
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
+    'mailto:mh.umateus@gmail.com',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
 );
 
 const supabase = createClient(
@@ -15,332 +43,444 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+// ---------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------
+function requestId() {
+    return Math.random().toString(36).slice(2, 9);
+}
 
-// Normaliza Símbolos
 function normalizeSymbol(symbol) {
-    if (!symbol) return "";
+    if (!symbol) return '';
     return symbol.trim().toUpperCase().replace('.SA', '');
 }
 
-// Pausa (Sleep)
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Obtém a data de hoje em BRT (UTC-3) sem depender de setHours frágil.
+// setHours(h - 3) quebra silenciosamente quando hour < 3 (vira o dia anterior).
+function getTodayBRT() {
+    const now = new Date();
+    const brt = new Date(now.getTime() + CONFIG.timezone_offset * 60 * 60 * 1000);
+    return brt.toISOString().split('T')[0]; // YYYY-MM-DD
+}
 
-// --- CONFIGURAÇÃO DE VELOCIDADE ---
-// 300ms é rápido o suficiente para não dar timeout na Vercel, 
-// mas lento o suficiente para a Brapi não bloquear (Erro 429).
-const INTERVALO_MS = 250; 
+// Guard para fmtBRL — evita TypeError se value for null/undefined/NaN
+function fmtBRL(val) {
+    const n = Number(val);
+    if (!isFinite(n)) return 'R$ --';
+    return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
 
-async function atualizarPatrimonioJob() {
-    console.log("=== INICIANDO JOB DE PATRIMÔNIO (MODO RÁPIDO) ===");
-    try {
-        // 1. Buscar dados
-        const { data: transacoes, error: errTx } = await supabase
-            .from('transacoes')
-            .select('user_id, symbol, type, quantity');
+// ---------------------------------------------------------
+// PARTE 1: PREÇOS SEQUENCIAIS VIA BRAPI
+// Chamadas 1 a 1 com intervalo entre elas para respeitar o rate limit.
+// ---------------------------------------------------------
+const INTERVALO_MS = 250;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-        const { data: appStates, error: errApp } = await supabase
-            .from('appstate')
-            .select('user_id, value_json')
-            .eq('key', 'saldoCaixa');
+async function fetchPricesBatch(symbols) {
+    const token = process.env.BRAPI_API_TOKEN;
+    if (!token) throw new Error('BRAPI_API_TOKEN não configurado.');
 
-        if (errTx || errApp) {
-            console.error("Erro BD:", errTx || errApp);
-            return 0;
-        }
+    const pricesMap = {};
+    log.info('Fetching prices sequentially', { count: symbols.length, intervalMs: INTERVALO_MS });
 
-        if (!transacoes || transacoes.length === 0) return 0;
+    for (const symbol of symbols) {
+        const ticker     = symbol.endsWith('.SA') ? symbol : `${symbol}.SA`;
+        const controller = new AbortController();
+        const timeoutId  = setTimeout(() => controller.abort(), CONFIG.brapiTimeoutMs);
 
-        // 2. Mapear Carteiras
-        const userHoldings = {};
-        const uniqueSymbolsSet = new Set();
+        try {
+            // Token via header Authorization — não expõe na URL / logs de acesso
+            const res = await fetch(`https://brapi.dev/api/quote/${ticker}`, {
+                signal:  controller.signal,
+                headers: {
+                    'Accept':        'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+            clearTimeout(timeoutId);
 
-        transacoes.forEach(tx => {
-            if (!userHoldings[tx.user_id]) userHoldings[tx.user_id] = {};
-            const rawSymbol = tx.symbol.trim().toUpperCase();
-            uniqueSymbolsSet.add(rawSymbol);
-            const cleanSymbol = normalizeSymbol(rawSymbol);
-
-            if (!userHoldings[tx.user_id][cleanSymbol]) userHoldings[tx.user_id][cleanSymbol] = 0;
-            const qtd = Number(tx.quantity);
-            if (tx.type === 'buy') userHoldings[tx.user_id][cleanSymbol] += qtd;
-            else if (tx.type === 'sell') userHoldings[tx.user_id][cleanSymbol] -= qtd;
-        });
-
-        const symbolsToFetch = Array.from(uniqueSymbolsSet);
-        console.log(`Buscando ${symbolsToFetch.length} ativos. Intervalo: ${INTERVALO_MS}ms.`);
-
-        // 3. Buscar Preços (Sequencial Rápido com Timeout Controller)
-        const pricesMap = {};
-        const token = process.env.BRAPI_API_TOKEN;
-
-        if (!token) {
-            console.error("ERRO: Token Brapi faltando.");
-            return 0;
-        }
-
-        for (const symbol of symbolsToFetch) {
-            const tickerParaApi = symbol.endsWith('.SA') ? symbol : `${symbol}.SA`;
-
-            try {
-                // Controller para abortar requisição se travar por mais de 3s
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000); 
-
-                const response = await fetch(`https://brapi.dev/api/quote/${tickerParaApi}?token=${token}`, {
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-
-                if (response.status === 429) {
-                    console.warn(`⚠️ Rate Limit em ${symbol}. Pulando para evitar travamento geral.`);
-                    continue; 
-                }
-
-                if (response.ok) {
-                    const json = await response.json();
-                    if (json.results && json.results.length > 0) {
-                        const p = json.results[0].regularMarketPrice || 0;
-                        pricesMap[symbol] = p;
-                        pricesMap[normalizeSymbol(symbol)] = p;
-                    }
-                }
-            } catch (err) {
-                console.error(`Falha ao buscar ${symbol}: ${err.name}`);
+            if (res.status === 429) {
+                log.warn('Brapi rate limit', { symbol });
+                await sleep(INTERVALO_MS);
+                continue;
             }
 
-            // Pausa curta para respeitar a API
-            await sleep(INTERVALO_MS);
-        }
-
-        // Se não pegou NENHUM preço, aborta para não zerar saldo
-        if (Object.keys(pricesMap).length === 0 && symbolsToFetch.length > 0) {
-            console.error("Nenhum preço obtido. Abortando atualização de patrimônio.");
-            return 0;
-        }
-
-        // 4. Calcular e Salvar
-        const userCash = {};
-        if (appStates) {
-            appStates.forEach(item => {
-                let val = 0;
-                try {
-                    const jsonVal = typeof item.value_json === 'string' ? JSON.parse(item.value_json) : item.value_json;
-                    if (jsonVal?.value !== undefined) val = Number(jsonVal.value);
-                    else if (typeof jsonVal === 'number') val = jsonVal;
-                } catch (e) {}
-                userCash[item.user_id] = val;
-            });
-        }
-
-        const hoje = new Date();
-        hoje.setHours(hoje.getHours() - 3);
-        const dataHoje = hoje.toISOString().split('T')[0];
-        const snapshots = [];
-
-        Object.keys(userHoldings).forEach(userId => {
-            let totalAtivos = 0;
-            const portfolio = userHoldings[userId];
-
-            Object.keys(portfolio).forEach(sym => {
-                const qtd = portfolio[sym];
-                if (qtd <= 0.0001) return;
-                const preco = pricesMap[sym] || 0;
-                if (preco > 0) totalAtivos += (qtd * preco);
-            });
-
-            const caixa = userCash[userId] || 0;
-            const patrimonioTotal = totalAtivos + caixa;
-
-            if (patrimonioTotal > 0) {
-                snapshots.push({
-                    user_id: userId,
-                    date: dataHoje,
-                    value: parseFloat(patrimonioTotal.toFixed(2))
-                });
+            if (!res.ok) {
+                log.warn('Brapi non-ok response', { status: res.status, symbol });
+                await sleep(INTERVALO_MS);
+                continue;
             }
-        });
 
-        if (snapshots.length > 0) {
-            const { error } = await supabase.from('patrimonio').upsert(snapshots, { onConflict: 'user_id, date' });
-            if (error) console.error("Erro ao salvar:", error);
-            return snapshots.length;
+            const json  = await res.json();
+            const price = json.results?.[0]?.regularMarketPrice ?? 0;
+            if (price > 0) pricesMap[normalizeSymbol(symbol)] = price;
+
+        } catch (err) {
+            clearTimeout(timeoutId);
+            log.error('Brapi fetch failed', { symbol, error: err.name });
         }
 
-        return 0;
-    } catch (e) {
-        console.error("Erro Fatal Job:", e);
+        await sleep(INTERVALO_MS);
+    }
+
+    return pricesMap;
+}
+
+// ---------------------------------------------------------
+// PARTE 2: JOB DE PATRIMÔNIO
+// ---------------------------------------------------------
+async function atualizarPatrimonioJob(rid) {
+    const elapsed = log.timer();
+    log.info('Patrimônio job started', { rid });
+
+    const [{ data: transacoes, error: errTx }, { data: appStates, error: errApp }] =
+        await Promise.all([
+            supabase.from('transacoes').select('user_id, symbol, type, quantity'),
+            supabase.from('appstate').select('user_id, value_json').eq('key', 'saldoCaixa'),
+        ]);
+
+    if (errTx || errApp) {
+        log.error('BD query failed', { rid, error: String(errTx || errApp) });
         return 0;
     }
+
+    if (!transacoes?.length) return 0;
+
+    // Mapeia carteiras por usuário
+    const userHoldings    = {};
+    const uniqueSymbolSet = new Set();
+
+    for (const tx of transacoes) {
+        const sym = normalizeSymbol(tx.symbol);
+        uniqueSymbolSet.add(sym);
+        if (!userHoldings[tx.user_id]) userHoldings[tx.user_id] = {};
+        if (!userHoldings[tx.user_id][sym]) userHoldings[tx.user_id][sym] = 0;
+        const qtd = Number(tx.quantity);
+        if (tx.type === 'buy')  userHoldings[tx.user_id][sym] += qtd;
+        if (tx.type === 'sell') userHoldings[tx.user_id][sym] -= qtd;
+    }
+
+    const symbolsToFetch = [...uniqueSymbolSet];
+    log.info('Fetching prices', { rid, count: symbolsToFetch.length });
+
+    const pricesMap = await fetchPricesBatch(symbolsToFetch);
+
+    if (Object.keys(pricesMap).length === 0) {
+        log.error('No prices obtained — aborting patrimônio update', { rid });
+        return 0;
+    }
+
+    // Monta mapa de caixa por usuário
+    const userCash = {};
+    for (const item of appStates ?? []) {
+        try {
+            const raw    = typeof item.value_json === 'string' ? JSON.parse(item.value_json) : item.value_json;
+            const val    = raw?.value !== undefined ? Number(raw.value) : (typeof raw === 'number' ? raw : 0);
+            userCash[item.user_id] = isFinite(val) ? val : 0;
+        } catch (e) {
+            log.warn('Failed to parse value_json', { rid, user_id: item.user_id, error: e.message });
+            userCash[item.user_id] = 0;
+        }
+    }
+
+    const dataHoje  = getTodayBRT();
+    const snapshots = [];
+
+    for (const [userId, portfolio] of Object.entries(userHoldings)) {
+        let totalAtivos = 0;
+        for (const [sym, qtd] of Object.entries(portfolio)) {
+            if (qtd <= 0.0001) continue;
+            const preco = pricesMap[sym] ?? 0;
+            if (preco > 0) totalAtivos += qtd * preco;
+        }
+        const patrimonioTotal = totalAtivos + (userCash[userId] ?? 0);
+        if (patrimonioTotal > 0) {
+            snapshots.push({
+                user_id: userId,
+                date:    dataHoje,
+                value:   parseFloat(patrimonioTotal.toFixed(2)),
+            });
+        }
+    }
+
+    if (snapshots.length > 0) {
+        const { error } = await supabase
+            .from('patrimonio')
+            .upsert(snapshots, { onConflict: 'user_id, date' });
+        if (error) log.error('Erro ao salvar patrimônio', { rid, error: String(error) });
+    }
+
+    log.info('Patrimônio job done', { rid, snapshots: snapshots.length, ms: elapsed() });
+    return snapshots.length;
 }
 
+// ---------------------------------------------------------
+// PARTE 3: ATUALIZAÇÃO DE PROVENTOS
+//
+// Substitui o padrão de req/res falso por uma chamada direta
+// ao scraperHandler com objetos mínimos mas corretos.
+// Se a assinatura do handler mudar, o erro será explícito.
+// ---------------------------------------------------------
 async function atualizarProventosPeloScraper(fiiList) {
-    const req = { method: 'POST', body: { mode: 'proventos_carteira', payload: { fiiList } } };
-    let resultado = [];
-    const res = { setHeader: () => {}, status: () => ({ json: (d) => resultado = d.json }), json: (d) => resultado = d.json };
-    try { await scraperHandler(req, res); return resultado || []; } catch (e) { return []; }
+    return new Promise((resolve) => {
+        let resultado = [];
+        const fakeReq = {
+            method: 'POST',
+            body:   { mode: 'proventos_carteira', payload: { fiiList } },
+        };
+        const fakeRes = {
+            setHeader: () => {},
+            status:    () => ({
+                json: (d) => { resultado = d?.json ?? []; resolve(resultado); },
+            }),
+            json: (d) => { resultado = d?.json ?? []; resolve(resultado); },
+        };
+        scraperHandler(fakeReq, fakeRes).catch(err => {
+            log.error('scraperHandler error', { error: err.message });
+            resolve([]);
+        });
+    });
 }
 
-module.exports = async function handler(req, res) {
-    try {
-        console.log("Cron Iniciado...");
-        const start = Date.now();
+// ---------------------------------------------------------
+// PARTE 4: NOTIFICAÇÕES PUSH
+//
+// ANTES: 1 query ao Supabase por usuário dentro do loop.
+//        N usuários = N queries.
+// AGORA: 1 query para todos os usuários, resultado indexado por Map.
+// ---------------------------------------------------------
+async function enviarNotificacoes(rid) {
+    const elapsed   = log.timer();
+    const hojeString = getTodayBRT();
+    const inicioDoDia = `${hojeString}T00:00:00`;
+    const hojeDateObj = new Date(`${hojeString}T00:00:00Z`);
 
+    const { data: proventos, error } = await supabase
+        .from('proventosconhecidos')
+        .select('*')
+        .or(`paymentdate.eq.${hojeString},datacom.eq.${hojeString},created_at.gte.${inicioDoDia}`);
+
+    if (error) {
+        log.error('Erro ao buscar proventos para notificações', { rid, error: String(error) });
+        return 0;
+    }
+
+    if (!proventos?.length) return 0;
+
+    // Agrupa proventos por usuário
+    const userEvents = {};
+    for (const p of proventos) {
+        if (!userEvents[p.user_id]) userEvents[p.user_id] = [];
+        userEvents[p.user_id].push(p);
+    }
+
+    const userIds = Object.keys(userEvents);
+
+    // Busca TODAS as subscriptions de uma vez, indexa por user_id
+    const { data: allSubs, error: subErr } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .in('user_id', userIds);
+
+    if (subErr) {
+        log.error('Erro ao buscar subscriptions', { rid, error: String(subErr) });
+        return 0;
+    }
+
+    const subsByUser = {};
+    for (const sub of allSubs ?? []) {
+        if (!subsByUser[sub.user_id]) subsByUser[sub.user_id] = [];
+        subsByUser[sub.user_id].push(sub);
+    }
+
+    let totalSent      = 0;
+    const staleSubIds  = []; // Coleta subs inválidas para deletar em lote ao final
+
+    const matchDate = (field, dateStr) => field?.startsWith(dateStr) ?? false;
+
+    for (const userId of userIds) {
+        const subs = subsByUser[userId];
+        if (!subs?.length) continue;
+
+        const eventos     = userEvents[userId];
+        const pagamentos  = eventos.filter(e => matchDate(e.paymentdate, hojeString));
+        const dataComs    = eventos.filter(e => matchDate(e.datacom, hojeString));
+        const novosAnuncios = eventos.filter(e => {
+            const createdToday = matchDate(e.created_at, hojeString);
+            const isDuplicate  = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
+            const isFuturo     = e.paymentdate
+                ? new Date(e.paymentdate.split('T')[0] + 'T00:00:00Z') >= hojeDateObj
+                : false;
+            return createdToday && !isDuplicate && isFuturo;
+        });
+
+        let title = '', body = '';
+
+        if (pagamentos.length > 0) {
+            const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
+            title = 'Crédito de Proventos';
+            body  = pagamentos.length === 1
+                ? `O ativo ${pagamentos[0].symbol} realizou pagamento de ${fmtBRL(pagamentos[0].value)}/cota hoje.`
+                : `Pagamentos realizados hoje: ${lista}.`;
+
+        } else if (dataComs.length > 0) {
+            const lista = dataComs.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
+            title = 'Data Com (Corte)';
+            body  = `Data limite registrada hoje para: ${lista}.`;
+
+        } else if (novosAnuncios.length > 0) {
+            const lista = novosAnuncios
+                .slice(0, 3)
+                .map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`)
+                .join(', ');
+            title = 'Comunicado de Proventos';
+            body  = novosAnuncios.length === 1
+                ? `Comunicado: ${novosAnuncios[0].symbol} anunciou pagamento de ${fmtBRL(novosAnuncios[0].value)}/cota.`
+                : `Novos anúncios: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
+
+        } else {
+            continue;
+        }
+
+        const notifPayload = JSON.stringify({
+            title,
+            body,
+            icon:  CONFIG.notif.icon,
+            badge: CONFIG.notif.badge,
+            url:   CONFIG.notif.url,
+        });
+
+        const pushResults = await Promise.allSettled(
+            subs.map(sub => webpush.sendNotification(sub.subscription, notifPayload))
+        );
+
+        for (let i = 0; i < pushResults.length; i++) {
+            const result = pushResults[i];
+            if (result.status === 'fulfilled') {
+                totalSent++;
+            } else {
+                const code = result.reason?.statusCode;
+                if (code === 410 || code === 404) {
+                    // Inscrição expirada — coleta para deletar em lote
+                    staleSubIds.push(subs[i].id);
+                } else {
+                    log.warn('Push send failed', { userId, error: result.reason?.message });
+                }
+            }
+        }
+    }
+
+    // Remove todas as subs inválidas de uma vez (1 query em vez de N)
+    if (staleSubIds.length > 0) {
+        const { error: delErr } = await supabase
+            .from('push_subscriptions')
+            .delete()
+            .in('id', staleSubIds);
+        if (delErr) log.warn('Erro ao deletar subs inválidas', { rid, error: String(delErr) });
+        else log.info('Stale subs removed', { rid, count: staleSubIds.length });
+    }
+
+    log.info('Notificações enviadas', { rid, totalSent, ms: elapsed() });
+    return totalSent;
+}
+
+// ---------------------------------------------------------
+// HANDLER PRINCIPAL (CRON)
+// ---------------------------------------------------------
+module.exports = async function handler(req, res) {
+    const rid     = requestId();
+    const elapsed = log.timer();
+
+    // Autenticação do cron — qualquer requisição não autorizada
+    // poderia disparar o job inteiro e consumir cota da Brapi.
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret) {
+        const authHeader = req.headers['authorization'] ?? '';
+        const token      = authHeader.replace('Bearer ', '').trim();
+        if (token !== cronSecret) {
+            log.warn('Unauthorized cron attempt', { rid });
+            return res.status(401).json({ error: 'Não autorizado.' });
+        }
+    }
+
+    log.info('Cron started', { rid });
+
+    try {
         // 1. Proventos
         const { data: ativos } = await supabase.from('transacoes').select('symbol');
         if (ativos?.length > 0) {
-            const symbols = [...new Set(ativos.map(a => a.symbol))];
+            const symbols = [...new Set(ativos.map(a => normalizeSymbol(a.symbol)))].filter(Boolean);
             if (symbols.length > 0) {
-                await sleep(500); 
                 const novosDados = await atualizarProventosPeloScraper(symbols);
 
                 if (novosDados?.length > 0) {
+                    // Busca transações para montar mapeamento symbol → users
+                    const { data: allTransacoes } = await supabase
+                        .from('transacoes')
+                        .select('user_id, symbol');
+
+                    // Índice O(1): symbol normalizado → Set de user_ids
+                    // ANTES: .filter() O(n×m) para cada item de novosDados
+                    // AGORA: Map lookup O(1)
+                    const symbolUserMap = {};
+                    for (const t of allTransacoes ?? []) {
+                        const sym = normalizeSymbol(t.symbol);
+                        if (!symbolUserMap[sym]) symbolUserMap[sym] = new Set();
+                        symbolUserMap[sym].add(t.user_id);
+                    }
+
                     const upserts = [];
-                    const { data: allTransacoes } = await supabase.from('transacoes').select('user_id, symbol');
-                    
                     for (const dado of novosDados) {
                         if (!dado.paymentDate || !dado.value) continue;
+                        const users = symbolUserMap[normalizeSymbol(dado.symbol)] ?? new Set();
+                        const tipo  = (dado.type || 'REND').toUpperCase().trim();
+                        const id    = `${dado.symbol}_${dado.paymentDate}_${tipo}_${parseFloat(dado.value).toFixed(4)}`;
 
-                        const usersInteressados = allTransacoes
-                            .filter(t => normalizeSymbol(t.symbol) === normalizeSymbol(dado.symbol))
-                            .map(u => u.user_id);
-
-                        const usersUnicos = [...new Set(usersInteressados)];
-
-                        usersUnicos.forEach(uid => {
-                             const tipoProvento = (dado.type || 'REND').toUpperCase().trim();
-                             const idGerado = `${dado.symbol}_${dado.paymentDate}_${tipoProvento}_${parseFloat(dado.value).toFixed(4)}`;
-
-                             upserts.push({
-                                 id: idGerado,
-                                 user_id: uid,
-                                 symbol: dado.symbol,
-                                 value: dado.value,
-                                 paymentdate: dado.paymentDate,
-                                 datacom: dado.dataCom,
-                                 type: tipoProvento, 
-                                 processado: false
-                             });
-                        });
+                        for (const uid of users) {
+                            upserts.push({
+                                id,
+                                user_id:     uid,
+                                symbol:      dado.symbol,
+                                value:       dado.value,
+                                paymentdate: dado.paymentDate,
+                                datacom:     dado.dataCom,
+                                type:        tipo,
+                                processado:  false,
+                            });
+                        }
                     }
 
                     if (upserts.length > 0) {
-                        // Salva proventos
-                        await supabase.from('proventosconhecidos')
+                        const { error } = await supabase
+                            .from('proventosconhecidos')
                             .upsert(upserts, { onConflict: 'user_id, id', ignoreDuplicates: true });
+                        if (error) log.error('Erro ao salvar proventos', { rid, error: String(error) });
+                        else log.info('Proventos upserted', { rid, count: upserts.length });
                     }
                 }
             }
         }
 
-        // 2. Patrimônio (Versão Otimizada)
-        const totalSnapshots = await atualizarPatrimonioJob();
+        // 2. Patrimônio
+        const totalSnapshots = await atualizarPatrimonioJob(rid);
 
-        // 3. Notificações (VERSÃO ORIGINAL RESTAURADA)
-        const agora = new Date();
-        agora.setHours(agora.getHours() - 3); 
-        const hojeString = agora.toISOString().split('T')[0];
-        const inicioDoDia = `${hojeString}T00:00:00`;
-        const hojeDateObj = new Date(hojeString + 'T00:00:00');
+        // 3. Notificações
+        const totalSent = await enviarNotificacoes(rid);
 
-        const { data: proventos } = await supabase
-            .from('proventosconhecidos')
-            .select('*')
-            .or(`paymentdate.eq.${hojeString},datacom.eq.${hojeString},created_at.gte.${inicioDoDia}`);
+        const duration = ((Date.now() - elapsed()) / 1000 + elapsed() / 1000).toFixed(2);
+        log.info('Cron finished', { rid, snapshots: totalSnapshots, notifications: totalSent, ms: elapsed() });
 
-        let totalSent = 0;
-
-        if (proventos && proventos.length > 0) {
-            const userEvents = {};
-            proventos.forEach(p => {
-                if (!userEvents[p.user_id]) userEvents[p.user_id] = [];
-                userEvents[p.user_id].push(p);
-            });
-
-            const usersIds = Object.keys(userEvents);
-
-            for (const userId of usersIds) {
-                try {
-                    const eventos = userEvents[userId];
-                    const { data: subs } = await supabase
-                        .from('push_subscriptions').select('*').eq('user_id', userId);
-
-                    if (!subs?.length) continue;
-
-                    const matchDate = (f, s) => f && f.startsWith(s);
-
-                    // Filtros
-                    const pagamentos = eventos.filter(e => matchDate(e.paymentdate, hojeString));
-                    const dataComs = eventos.filter(e => matchDate(e.datacom, hojeString));
-                    const novosAnuncios = eventos.filter(e => {
-                        const createdToday = (e.created_at || '').startsWith(hojeString);
-                        const duplicate = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
-                        let isFuturo = false;
-                        if (e.paymentdate) {
-                            const d = new Date(e.paymentdate.split('T')[0] + 'T00:00:00');
-                            isFuturo = d >= hojeDateObj;
-                        }
-                        return createdToday && !duplicate && isFuturo;
-                    });
-
-                    // --- RECONSTRUÇÃO DAS MENSAGENS ORIGINAIS ---
-                    let title = '', body = '';
-                    const icon = 'https://in-vesto.vercel.app/icons/icon-192x192.png'; 
-                    const badge = 'https://in-vesto.vercel.app/sininhov2.png';
-
-                    if (pagamentos.length > 0) {
-                        const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
-                        title = 'Crédito de Proventos';
-                        body = pagamentos.length === 1 
-                            ? `O ativo ${pagamentos[0].symbol} realizou pagamento de ${fmtBRL(pagamentos[0].value)}/cota hoje.` 
-                            : `Pagamentos realizados hoje: ${lista}.`;
-
-                    } else if (dataComs.length > 0) {
-                        const lista = dataComs.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
-                        title = 'Data Com (Corte)';
-                        body = `Data limite registrada hoje para: ${lista}.`;
-
-                    } else if (novosAnuncios.length > 0) {
-                        const lista = novosAnuncios.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).slice(0,3).join(', ');
-                        title = 'Comunicado de Proventos';
-                        body = novosAnuncios.length === 1
-                            ? `Comunicado: ${novosAnuncios[0].symbol} anunciou pagamento de ${fmtBRL(novosAnuncios[0].value)}/cota.`
-                            : `Novos anúncios: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
-                    } else {
-                        continue; 
-                    }
-
-                    const payload = JSON.stringify({ 
-                        title, 
-                        body, 
-                        icon, 
-                        badge,
-                        url: '/?tab=tab-carteira'
-                    });
-
-                    const pushPromises = subs.map(sub => 
-                        webpush.sendNotification(sub.subscription, payload).catch(err => {
-                            // Remove inscrição inválida
-                            if (err.statusCode === 410 || err.statusCode === 404) {
-                                supabase.from('push_subscriptions').delete().match({ id: sub.id }).then(()=>{});
-                            }
-                        })
-                    );
-                    await Promise.all(pushPromises);
-                    totalSent += pushPromises.length;
-
-                } catch (errUser) {
-                    console.error(`Erro user ${userId}:`, errUser.message);
-                }
-            }
-        }
-
-        const duration = (Date.now() - start) / 1000;
-        console.log(`Fim. Tempo: ${duration}s. Snapshots: ${totalSnapshots}. Msg: ${totalSent}`);
-        return res.status(200).json({ status: 'Ok', snapshots: totalSnapshots, time: duration });
+        return res.status(200).json({
+            status:        'ok',
+            rid,
+            snapshots:     totalSnapshots,
+            notifications: totalSent,
+            ms:            elapsed(),
+        });
 
     } catch (e) {
-        console.error('Fatal:', e);
+        log.error('Cron fatal error', { rid, error: e.message, stack: e.stack });
         return res.status(500).json({ error: e.message });
     }
 };

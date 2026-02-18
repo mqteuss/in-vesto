@@ -9,7 +9,7 @@ const CONFIG = {
     timeoutMs:      10000,
     maxQueryLength: 200,
     defaultQuery:   'FII OR "Fundos Imobiliários" OR IFIX OR "Dividendos FII"',
-    windowDays:     5,     // when:Nd no Google News
+    windowDays:     14,     // when:Nd no Google News
 };
 
 // ---------------------------------------------------------

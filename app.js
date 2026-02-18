@@ -3508,6 +3508,13 @@ async function renderizarCarteira() {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
+    // OTIMIZAÇÃO: Monta um Map symbol → HTMLElement UMA vez antes do loop
+    // para eliminar o querySelector repetido a cada iteração (O(n²) → O(1))
+    const existingCards = new Map();
+    listaCarteira.querySelectorAll('[data-symbol]').forEach(el => {
+        existingCards.set(el.dataset.symbol, el);
+    });
+
     // PASS 2: Renderizar ou Atualizar cada Card
     carteiraOrdenada.forEach((ativo, index) => { 
         const dadoPreco = precosMap.get(ativo.symbol);
@@ -3576,7 +3583,8 @@ async function renderizarCarteira() {
         }
 
         // DOM: Cria ou Atualiza
-        let card = listaCarteira.querySelector(`[data-symbol="${ativo.symbol}"]`);
+        // OTIMIZAÇÃO: acesso O(1) via Map em vez de querySelector O(n) dentro do loop
+        let card = existingCards.get(ativo.symbol);
         
         if (card) {
             atualizarCardElemento(card, ativo, dadosRender);
@@ -4171,6 +4179,21 @@ function verificarNotificacoesFinanceiras() {
     checkEmptyState();
 }
 	
+// OTIMIZAÇÃO: Debounce genérico — agrupa chamadas que chegam em sequência
+// e executa apenas a última após `delay` ms de silêncio.
+function debounce(fn, delay) {
+    let timer = null;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+// Versão debounced de renderizarCarteira (100 ms).
+// Garante que, se preços e proventos resolverem quase ao mesmo tempo,
+// a re-renderização visual ocorra apenas UMA vez com os dados consolidados.
+const renderizarCarteiraDebounced = debounce(renderizarCarteira, 100);
+
 async function atualizarTodosDados(force = false) { 
 
     if (force) {
@@ -4230,18 +4253,22 @@ async function atualizarTodosDados(force = false) {
     const promessaProventos = buscarProventosFuturos(force);
     const promessaHistorico = buscarHistoricoProventosAgregado(force);
 
-    // Tratamento individual das promessas para renderizar assim que chegarem
+    // Tratamento individual das promessas para renderizar assim que chegarem.
+    // OTIMIZAÇÃO: usamos renderizarCarteiraDebounced (100 ms) em vez de chamar
+    // renderizarCarteira() diretamente. Se preços e proventos resolverem quase
+    // ao mesmo tempo, o debounce garante que a renderização visual ocorra apenas
+    // UMA vez com os dados já consolidados, evitando o "double render".
     promessaPrecos.then(async precos => {
         if (precos.length > 0) {
-            precosAtuais = precos; 
-            await renderizarCarteira(); // Atualiza a lista assim que os preços chegam
-        } else if (precosAtuais.length === 0) { 
-            await renderizarCarteira(); 
+            precosAtuais = precos;
+            renderizarCarteiraDebounced(); // debounced — aguarda 100 ms antes de renderizar
+        } else if (precosAtuais.length === 0) {
+            renderizarCarteiraDebounced();
         }
     }).catch(async err => {
         console.error("Erro ao buscar preços (BFF):", err);
-        showToast("Erro ao buscar preços."); 
-        if (precosAtuais.length === 0) { await renderizarCarteira(); }
+        showToast("Erro ao buscar preços.");
+        if (precosAtuais.length === 0) { renderizarCarteiraDebounced(); }
     });
 
     promessaProventos.then(async proventosFuturos => {
@@ -4250,16 +4277,18 @@ async function atualizarTodosDados(force = false) {
         
         // --- CORREÇÃO IMPORTANTE AQUI ---
         // Força o recálculo do saldo "Recebidos" agora que temos dados novos da nuvem
-        await processarDividendosPagos(); 
+        await processarDividendosPagos();
         // --------------------------------
 
         renderizarProventos(); // Atualiza o widget de proventos
-        
-        // Re-renderiza a carteira para atualizar as tags de "Data Com" nos cards
-        if (precosAtuais.length > 0) { 
-            await renderizarCarteira(); 
+
+        // Re-renderiza a carteira para atualizar as tags de "Data Com" nos cards.
+        // Também via debounce — se preços já resolveram, esta chamada será "absorvida"
+        // pelo mesmo timer e a renderização final acontece uma única vez.
+        if (precosAtuais.length > 0) {
+            renderizarCarteiraDebounced();
         }
-        
+
         // Atualiza gráfico histórico se houver dados novos
         if (typeof renderizarHistoricoProventos === 'function') {
              renderizarHistoricoProventos();
@@ -4270,9 +4299,9 @@ async function atualizarTodosDados(force = false) {
         if (proventosConhecidos.length > 0) {
                 proventosAtuais = processarProventosScraper(proventosConhecidos);
                 renderizarProventos();
-                if (precosAtuais.length > 0) { await renderizarCarteira(); }
-        } else if (proventosAtuais.length === 0) { 
-                totalProventosEl.textContent = "Erro"; 
+                if (precosAtuais.length > 0) { renderizarCarteiraDebounced(); }
+        } else if (proventosAtuais.length === 0) {
+                totalProventosEl.textContent = "Erro";
         }
     });
     

@@ -86,6 +86,27 @@
                 document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f9fafb');
             }
         } catch (e) { console.error('Erro ao verificar configs iniciais', e); }
+
+        // Reativa o bloqueio biométrico quando o usuário sai e volta ao app.
+        // O inline script inicial só roda no carregamento da página — o
+        // visibilitychange é o único evento confiável para capturar retorno
+        // de background (troca de app, minimizar, bloqueio de tela, etc.).
+        document.addEventListener('visibilitychange', () => {
+            // Só age quando o app fica visível novamente
+            if (document.visibilityState !== 'visible') return;
+
+            try {
+                // Condições para travar: bio ativa + não é pós-logout + app autenticado
+                const bioOn      = localStorage.getItem('vesto_bio_enabled') === 'true';
+                const loggedOut  = sessionStorage.getItem('vesto_just_logged_out') === 'true';
+                const appVisible = !document.getElementById('app-wrapper').classList.contains('hidden');
+                const lockScreen = document.getElementById('biometric-lock-screen');
+
+                if (bioOn && !loggedOut && appVisible && lockScreen.classList.contains('hidden')) {
+                    lockScreen.classList.remove('hidden');
+                }
+            } catch (e) { console.error('Erro no visibilitychange biométrico', e); }
+        });
     </script>
 
 <div id="auth-container" class="fixed inset-0 z-50 w-full h-[100dvh] bg-black flex flex-col items-center justify-center p-6 overflow-hidden transition-all duration-300">

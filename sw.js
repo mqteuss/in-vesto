@@ -1,150 +1,273 @@
-const CACHE_NAME = 'vesto-cache-v15'; // Incrementado para v15 para forçar atualização
+// ---------------------------------------------------------
+// CONFIGURAÇÃO
+// Incremente CACHE_VERSION a cada deploy para forçar atualização.
+// ---------------------------------------------------------
+const CACHE_VERSION = 'v16';
+const CACHE_NAME    = `vesto-cache-${CACHE_VERSION}`;
 
-// Lista unificada de todos os arquivos que o App precisa para funcionar offline
-const APP_FILES = [
-  '/',
-  '/index.html',
-  '/app.js',
-  '/supabase.js',
-  '/style.css',
-  '/style-tailwind.css',
-  '/public/sininhov2.png', 
-  '/manifest.json',
-  '/icons/carteira.png',
-  '/icons/noticias.png',
-  '/icons/historico.png',
-  '/logo-vesto.png',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-  'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
-  'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+// ---------------------------------------------------------
+// LOGGER — identifica logs do SW em produção
+// ---------------------------------------------------------
+const log = {
+    info:  (...a) => console.log(`[SW ${CACHE_VERSION}]`, ...a),
+    warn:  (...a) => console.warn(`[SW ${CACHE_VERSION}]`, ...a),
+    error: (...a) => console.error(`[SW ${CACHE_VERSION}]`, ...a),
+};
+
+// ---------------------------------------------------------
+// ARQUIVOS LOCAIS — cacheados na instalação
+// Separados dos externos para tratamento individual de falhas.
+// ---------------------------------------------------------
+const LOCAL_FILES = [
+    '/',
+    '/index.html',
+    '/app.js',
+    '/supabase.js',
+    '/style.css',
+    '/style-tailwind.css',
+    '/manifest.json',
+    '/logo-vesto.png',
+    '/public/sininhov2.png',
+    '/icons/carteira.png',
+    '/icons/noticias.png',
+    '/icons/historico.png',
+    '/icons/icon-192x192.png',
+    '/icons/icon-512x512.png',
 ];
 
-// 1. INSTALAÇÃO: Baixa e salva tudo no cache inicial
+// Versões fixadas com hash/versão exata para evitar que atualizações
+// do CDN invalidem o cache silenciosamente.
+const EXTERNAL_FILES = [
+    'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
+    'https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js',
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js',
+    // Google Fonts: cacheado como CSS opaque. As fontes em si são
+    // buscadas separadamente pelo browser — sem garantia de offline.
+    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
+];
+
+// ---------------------------------------------------------
+// HELPER: cacheia um arquivo individualmente, sem quebrar
+// a instalação se falhar (ao contrário de cache.addAll que
+// é atômico e derruba tudo se 1 arquivo der 404).
+// ---------------------------------------------------------
+async function cacheFile(cache, url, options = {}) {
+    try {
+        const request  = new Request(url, options);
+        const response = await fetch(request);
+        await cache.put(request, response);
+    } catch (err) {
+        log.warn(`Falha ao cachear ${url}:`, err.message);
+        // Não relança — instalação continua mesmo se um arquivo falhar
+    }
+}
+
+// ---------------------------------------------------------
+// 1. INSTALAÇÃO
+// ---------------------------------------------------------
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Força o SW a ativar imediatamente (Atualização Automática)
+    log.info('Instalando...');
 
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      // Separa arquivos externos (CDN) para tratar com no-cors
-      const externalFiles = APP_FILES.filter(url => url.startsWith('http'));
-      const localFiles = APP_FILES.filter(url => !url.startsWith('http'));
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(async cache => {
+            // Arquivos locais: individualmente para não abortar tudo por um 404
+            await Promise.all(LOCAL_FILES.map(url => cacheFile(cache, url)));
 
-      const externalPromise = Promise.all(
-        externalFiles.map(url => {
-          const request = new Request(url, { mode: 'no-cors' });
-          return fetch(request)
-            .then(response => cache.put(request, response))
-            .catch(console.warn);
+            // Arquivos externos: mode no-cors para evitar erros de CORS
+            await Promise.all(EXTERNAL_FILES.map(url => cacheFile(cache, url, { mode: 'no-cors' })));
+
+            log.info('Cache populado.');
+
+            // skipWaiting DENTRO do waitUntil garante que o SW só
+            // avança para activate após o cache estar completamente pronto.
+            return self.skipWaiting();
+        }).catch(err => {
+            log.error('Falha na instalação:', err);
         })
-      );
-
-      return Promise.all([
-        cache.addAll(localFiles),
-        externalPromise
-      ]);
-    })
-  );
+    );
 });
 
-// 2. ATIVAÇÃO: Limpa caches antigos para economizar espaço
+// ---------------------------------------------------------
+// 2. ATIVAÇÃO
+// ---------------------------------------------------------
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => Promise.all(
-      cacheNames.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))
-    )).then(() => self.clients.claim()) // Assume controle das páginas abertas
-  );
+    log.info('Ativando...');
+
+    event.waitUntil(
+        Promise.all([
+            // Remove todos os caches antigos
+            caches.keys().then(names =>
+                Promise.all(
+                    names
+                        .filter(name => name !== CACHE_NAME)
+                        .map(name => {
+                            log.info(`Removendo cache antigo: ${name}`);
+                            return caches.delete(name);
+                        })
+                )
+            ),
+            // Assume controle de todas as abas abertas imediatamente
+            self.clients.claim(),
+        ]).then(() => log.info('Ativo e no controle.'))
+    );
 });
 
-// 3. INTERCEPTAÇÃO DE REDE (A Mágica da Performance)
+// ---------------------------------------------------------
+// 3. FETCH — ESTRATÉGIA STALE-WHILE-REVALIDATE
+// ---------------------------------------------------------
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
+    const url = new URL(event.request.url);
 
-  // A. Ignora requests que não sejam HTTP/HTTPS (ex: chrome-extension://)
-  if (!url.protocol.startsWith('http')) return;
+    // Ignora protocolos não-HTTP (chrome-extension://, etc.)
+    if (!url.protocol.startsWith('http')) return;
 
-  // B. Ignora API, Supabase e rotas de Cron (Sempre Network Only - dados frescos)
-  if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+    // Network-only: API, Supabase e cron — dados sempre frescos
+    if (
+        url.pathname.startsWith('/api/') ||
+        url.hostname.includes('supabase.co')
+    ) {
+        event.respondWith(
+            fetch(event.request).catch(() => {
+                // Se offline e é uma chamada de API, retorna 503 legível
+                return new Response(
+                    JSON.stringify({ error: 'Sem conexão. Tente novamente.' }),
+                    { status: 503, headers: { 'Content-Type': 'application/json' } }
+                );
+            })
+        );
+        return;
+    }
 
-  // C. Apenas métodos GET são cacheados
-  if (event.request.method !== 'GET') {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+    // Apenas GET é cacheável
+    if (event.request.method !== 'GET') {
+        event.respondWith(fetch(event.request));
+        return;
+    }
 
-  // D. Estratégia: Stale-While-Revalidate (Cache Imediato + Atualização em Background)
-  event.respondWith(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.match(event.request).then(cachedResponse => {
+    // Stale-While-Revalidate para todo o resto
+    event.respondWith(
+        caches.open(CACHE_NAME).then(async cache => {
+            const cachedResponse = await cache.match(event.request);
 
-        // Dispara a atualização na rede em paralelo (Background)
-        const fetchPromise = fetch(event.request).then(networkResponse => {
-          // Se a resposta for válida, atualiza o cache
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            cache.put(event.request, networkResponse.clone());
-          }
-          return networkResponse;
-        }).catch(() => {
-           // Se estiver offline, não faz nada (já retornou o cache se existir)
-        });
+            // Atualização em background — não bloqueia a resposta
+            const revalidate = fetch(event.request)
+                .then(networkResponse => {
+                    // Cacheia respostas válidas: basic (mesmo origem) ou opaque (no-cors CDN)
+                    const cacheable =
+                        networkResponse.status === 200 &&
+                        (networkResponse.type === 'basic' || networkResponse.type === 'opaque');
 
-        // Retorna o cache IMEDIATAMENTE se existir. 
-        // Se não existir (primeiro acesso), espera a rede.
-        return cachedResponse || fetchPromise;
-      });
-    })
-  );
+                    if (cacheable) {
+                        cache.put(event.request, networkResponse.clone());
+                    }
+                    return networkResponse;
+                })
+                .catch(err => {
+                    log.warn(`Revalidação falhou para ${url.pathname}:`, err.message);
+                    // Retorna null — tratado abaixo no fallback
+                    return null;
+                });
+
+            if (cachedResponse) {
+                // Tem cache: retorna imediatamente, revalida em background
+                return cachedResponse;
+            }
+
+            // Sem cache: aguarda a rede
+            const networkResponse = await revalidate;
+
+            if (networkResponse) return networkResponse;
+
+            // Offline e sem cache: fallback para página principal
+            // (permite que o app mostre uma UI offline em vez de tela em branco)
+            if (url.pathname !== '/') {
+                const fallback = await cache.match('/');
+                if (fallback) {
+                    log.warn(`Offline fallback para ${url.pathname}`);
+                    return fallback;
+                }
+            }
+
+            // Último recurso: resposta de erro legível
+            return new Response('Sem conexão e sem cache disponível.', {
+                status: 503,
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            });
+        })
+    );
 });
 
-// --- NOTIFICAÇÕES PUSH ---
+// ---------------------------------------------------------
+// 4. MENSAGENS DO APP → SW
+// Permite que o app solicite atualizações sem forçar reload.
+// Uso no app: navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' })
+// ---------------------------------------------------------
+self.addEventListener('message', event => {
+    if (event.data?.type === 'SKIP_WAITING') {
+        log.info('SKIP_WAITING solicitado pelo app.');
+        self.skipWaiting();
+    }
+});
 
-// 1. Receber a notificação do servidor
-self.addEventListener('push', function(event) {
-  if (event.data) {
-    const data = event.data.json();
+// ---------------------------------------------------------
+// 5. NOTIFICAÇÕES PUSH
+// ---------------------------------------------------------
+self.addEventListener('push', event => {
+    if (!event.data) return;
+
+    // try/catch: payload malformado não derruba o evento push
+    let data;
+    try {
+        data = event.data.json();
+    } catch {
+        log.error('Push payload inválido — não é JSON:', event.data.text());
+        return;
+    }
 
     const options = {
-      body: data.body,
-      icon: '/icons/icon-192x192.png',
-      badge: '/public/sininhov2.png', // Ícone monocromático para Android
-      vibrate: [100, 50, 100], // Vibra: Vrumm-pa-Vrumm
-      data: {
-        dateOfArrival: Date.now(),
-        url: data.url || '/?tab=tab-carteira' // URL para abrir ao clicar
-      },
-      actions: [
-        { action: 'explore', title: 'Ver Portfólio' }
-      ]
+        body:    data.body  || '',
+        icon:    data.icon  || '/icons/icon-192x192.png',
+        badge:   data.badge || '/public/sininhov2.png',
+        vibrate: [100, 50, 100],
+        data: {
+            url:           data.url || '/?tab=tab-carteira',
+            dateOfArrival: Date.now(),
+        },
+        actions: [
+            { action: 'open',    title: 'Ver Portfólio' },
+            { action: 'dismiss', title: 'Dispensar'     },
+        ],
     };
 
     event.waitUntil(
-      self.registration.showNotification(data.title, options)
+        self.registration.showNotification(data.title || 'In-Vesto', options)
     );
-  }
 });
 
-// 2. Clicar na notificação
-self.addEventListener('notificationclick', function(event) {
-  event.notification.close(); // Fecha a notificação da barra
+// ---------------------------------------------------------
+// 6. CLIQUE NA NOTIFICAÇÃO
+// ---------------------------------------------------------
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
 
-  event.waitUntil(
-    clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
-      // Se o app já estiver aberto em alguma aba, foca nela
-      for (var i = 0; i < clientList.length; i++) {
-        var client = clientList[i];
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // Se não estiver aberto, abre uma nova janela/aba
-      if (clients.openWindow) {
-        return clients.openWindow(event.notification.data.url);
-      }
-    })
-  );
+    // Trata a action "dismiss" explicitamente — apenas fecha
+    if (event.action === 'dismiss') return;
+
+    const targetUrl = event.notification.data?.url || '/?tab=tab-carteira';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+            // Procura aba já aberta no mesmo origin
+            for (const client of clientList) {
+                if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+                    // Foca a aba E navega para a URL correta da notificação
+                    return client.focus().then(c => c.navigate(targetUrl));
+                }
+            }
+            // Nenhuma aba aberta: abre nova janela
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
+    );
 });

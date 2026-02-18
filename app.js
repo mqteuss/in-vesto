@@ -1,5 +1,14 @@
 
 
+// --- UTILITÁRIO: Debounce — evita chamadas excessivas em inputs de busca ---
+function debounce(fn, wait = 200) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), wait);
+    };
+}
+
 import * as supabaseDB from './supabase.js';
 
 // --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
@@ -95,7 +104,13 @@ Chart.defaults.color = '#9ca3af';
 Chart.defaults.borderColor = '#374151'; 
 
 function bufferToBase64(buffer) {
-    return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    // Avoid spread operator on large Uint8Arrays which can overflow the call stack
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
 }
 
 function base64ToBuffer(base64) {
@@ -288,7 +303,7 @@ function criarCardElemento(ativo, dados) {
     // HTML Proventos
     let proventosHtml = '';
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
-    proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+    proventosParaExibir.sort((a, b) => a.paymentDate < b.paymentDate ? -1 : a.paymentDate > b.paymentDate ? 1 : 0);
     proventosHtml = renderProventosHtml(proventosParaExibir, ativo.quantity);
 
     const card = document.createElement('div');
@@ -451,7 +466,7 @@ function atualizarCardElemento(card, ativo, dados) {
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
 
     if (containerProventos) {
-        proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+        proventosParaExibir.sort((a, b) => a.paymentDate < b.paymentDate ? -1 : a.paymentDate > b.paymentDate ? 1 : 0);
         containerProventos.innerHTML = renderProventosHtml(proventosParaExibir, ativo.quantity);
     }
 }
@@ -1427,7 +1442,8 @@ function calcularCarteira() {
 
     const ativosMap = new Map();
     // Ordenamos por data para garantir que o cálculo do Preço Médio siga a ordem real das operações
-    const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Datas ISO (YYYY-MM-DD) são lexicograficamente ordenáveis sem criar objetos Date
+    const transacoesOrdenadas = [...transacoes].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
 
     for (const t of transacoesOrdenadas) {
         const symbol = t.symbol;
@@ -1464,6 +1480,8 @@ function calcularCarteira() {
 
     // 3. Salva a nova assinatura para o próximo ciclo de atualização
     lastTransacoesSignature = currentSignature;
+    // Invalida o cache de quantidade para que chamadas futuras reflitam as novas transações
+    invalidarCacheQtd();
 }
 
 // Substitua a função inteira em app.js
@@ -1474,8 +1492,17 @@ function agruparPorMes(itens, dateField) {
     itens.forEach(item => {
         if (!item[dateField]) return;
         
-        // Ajuste de fuso horário simples para garantir o mês correto
-        const dataObj = new Date(item[dateField]);
+        // Parsing seguro de timezone: trata strings YYYY-MM-DD como data local,
+        // evitando conversão UTC que pode mudar o mês em fusos negativos (ex: GMT-3).
+        const ds = item[dateField];
+        let dataObj;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(ds)) {
+            const [y, m, d] = ds.split('-').map(Number);
+            dataObj = new Date(y, m - 1, d);
+        } else {
+            dataObj = new Date(ds);
+        }
+
         // Formata como "Dezembro 2025" com primeira letra maiúscula
         const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         const chave = mesAno[0].toUpperCase() + mesAno.slice(1);
@@ -1677,23 +1704,22 @@ function renderizarHistorico() {
     
     historicoStatus.classList.add('hidden');
     
-    dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
+    dadosFiltrados.sort((a, b) => b.date < a.date ? -1 : b.date > a.date ? 1 : 0);
     const grupos = agruparPorMes(dadosFiltrados, 'date');
     
     // Flatten (calcula automaticamente price * quantity)
     const flatItems = flattenHistoricoData(grupos);
 
 // --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
+    // SVGs pré-computados como constantes para não recriar strings a cada render
+    const _SVG_ARROW_DOWN_GREEN = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
+    const _SVG_ARROW_UP_RED    = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
         const dia = new Date(t.date).getDate().toString().padStart(2, '0');
         
-        // Ícones
-        const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
-        const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
-        
-        const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
+        const mainIconHtml = isVenda ? _SVG_ARROW_UP_RED : _SVG_ARROW_DOWN_GREEN;
         const iconBg = 'bg-[#1C1C1E]'; 
         const cardBg = 'bg-black'; 
 
@@ -1757,7 +1783,7 @@ function renderizarHistoricoProventos() {
 
         const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
         return buscaValida;
-    }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+    }).sort((a, b) => b.paymentDate < a.paymentDate ? -1 : b.paymentDate > a.paymentDate ? 1 : 0);
 
     if (proventosIniciais.length === 0) {
         listaHistoricoProventos.innerHTML = `
@@ -1789,6 +1815,7 @@ function renderizarHistoricoProventos() {
     const flatItems = flattenHistoricoData(gruposLimpos);
 
 // --- RENDERIZADOR DE LINHA (PROVENTOS) ---
+    const _SVG_ICON_GRAPH = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
     const rowRenderer = (p) => {
         const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
@@ -1798,7 +1825,7 @@ function renderizarHistoricoProventos() {
         const valorUnitario = total / (qtd || 1); 
 
         const bgIcone = 'bg-[#1C1C1E]';
-        const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
+        const iconGraph = _SVG_ICON_GRAPH;
 
 let tagHtml = '';
         const rawType = (p.type || '').toUpperCase();
@@ -1892,21 +1919,21 @@ let tagHtml = '';
     // 2. Busca no Histórico
     const histSearchInput = document.getElementById('historico-search-input');
     if (histSearchInput) {
-        histSearchInput.addEventListener('input', (e) => {
+        histSearchInput.addEventListener('input', debounce((e) => {
             histSearchTerm = e.target.value.trim().toUpperCase();
             renderizarHistorico();
-        });
+        }, 200));
     }
 	
 	// 2.1 Busca nos Proventos (Faltava este bloco)
     const provSearchInput = document.getElementById('proventos-search-input');
     if (provSearchInput) {
-        provSearchInput.addEventListener('input', (e) => {
+        provSearchInput.addEventListener('input', debounce((e) => {
             // Atualiza a variável global definida no início do arquivo
             provSearchTerm = e.target.value.trim().toUpperCase();
             // Chama a renderização novamente para aplicar o filtro
             renderizarHistoricoProventos();
-        });
+        }, 200));
     }
 
     // 3. NOVO: Lógica do Menu de Filtro (Funil) - Substitui os Chips antigos
@@ -3368,13 +3395,20 @@ function renderizarCarteiraSkeletons(show) {
         });
     }
     
+// Cache de memoização para getQuantidadeNaData; deve ser limpo sempre que `transacoes` mudar.
+const _qtdCache = new Map();
+function invalidarCacheQtd() { _qtdCache.clear(); }
+
 function getQuantidadeNaData(symbol, dataLimiteStr) {
         if (!dataLimiteStr) return 0;
+
+        const cacheKey = `${symbol}|${dataLimiteStr}`;
+        if (_qtdCache.has(cacheKey)) return _qtdCache.get(cacheKey);
         
         // Define o limite como o final do dia da "Data Com"
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
 
-        return transacoes.reduce((total, t) => {
+        const result = transacoes.reduce((total, t) => {
             // Verifica se é o mesmo ativo
             if (t.symbol === symbol) {
                 const dataTransacao = new Date(t.date);
@@ -3391,6 +3425,9 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
             }
             return total;
         }, 0);
+
+        _qtdCache.set(cacheKey, result);
+        return result;
     }
 
 async function renderizarCarteira() {
@@ -3748,11 +3785,12 @@ async function renderizarCarteira() {
         dataLimitePassado.setHours(0, 0, 0, 0);
 
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        // Pré-computa um Set de symbols para lookup O(1) em vez de Array.find O(n)
+        const symbolsNaCarteira = new Set(carteiraCalculada.map(a => a.symbol));
 
         return proventosScraper
             .map(provento => {
-                const ativoCarteira = carteiraCalculada.find(a => a.symbol === provento.symbol);
-                if (!ativoCarteira) return null;
+                if (!symbolsNaCarteira.has(provento.symbol)) return null;
                 
                 if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
                     const parts = provento.paymentDate.split('-');
@@ -4105,11 +4143,16 @@ function verificarNotificacoesFinanceiras() {
     if (window.noticiasCache && window.noticiasCache.length > 0 && carteiraCalculada.length > 0) {
         
         const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
+        // Pré-computa regex para busca eficiente nos títulos das notícias
+        const tickersRegex = new RegExp(meusTickers.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'));
         
         window.noticiasCache.slice(0, 30).forEach(noticia => {
-            const tickerEncontrado = meusTickers.find(ticker => {
-                return noticia.title.toUpperCase().includes(ticker); 
-            });
+            const tituloUpper = noticia.title.toUpperCase();
+            // Verifica rapidamente se algum ticker existe no título
+            const matchGlobal = tickersRegex.test(tituloUpper);
+            if (!matchGlobal) return;
+            // Encontra qual ticker específico aparece no título
+            const tickerEncontrado = meusTickers.find(ticker => tituloUpper.includes(ticker));
 
             if (tickerEncontrado) {
                 const safeId = 'news_mkt_' + noticia.title.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);

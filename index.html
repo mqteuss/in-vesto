@@ -19,6 +19,11 @@
 
     <link href="./style-tailwind.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <!-- Pré-carrega os módulos críticos durante o parsing do HTML,
+         ganhando vantagem de rede antes de chegar ao final do body. -->
+    <link rel="modulepreload" href="supabase.js">
+    <link rel="modulepreload" href="app.js">
 </head>
 <body class="antialiased">
 
@@ -1476,12 +1481,16 @@
 
     </div> 
 	 
-	<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <!-- supabase CDN: defer — precisa executar antes de supabase.js -->
+	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="supabase.js" type="module"></script>
     <script src="app.js" type="module"></script>
+
+    <!-- chart.js e marked: async — não são necessários na tela de biometria.
+         Com defer ficavam na mesma fila de app.js, bloqueando ~265 KB.
+         Com async executam assim que baixam, sem travar nada. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" async></script>
 
 </body>
 

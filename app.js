@@ -1220,7 +1220,27 @@ function hideAddModal() {
         detalhesPageContent.style.transform = ''; 
         detalhesPageContent.classList.add('closing'); 
         detalhesPageModal.classList.remove('visible'); 
-        document.body.style.overflow = ''; 
+        document.body.style.overflow = '';
+
+        // CORRECAO REAL: os charts precisam ser destruidos AGORA, nao apos 400ms.
+        // A animacao de fechamento e apenas CSS — nao depende dos charts existirem.
+        // Se o usuario navegar para outra aba em < 400ms, o ResizeObserver do
+        // Chart.js disparava no canvas ainda vivo no DOM → crash.
+        currentChartFetchId++; // Cancela qualquer fetch em voo imediatamente
+
+        if (cotacaoChartInstance) {
+            cotacaoChartInstance.destroy();
+            cotacaoChartInstance = null;
+        }
+        if (detalhesChartInstance) {
+            detalhesChartInstance.destroy();
+            detalhesChartInstance = null;
+        }
+        const cotacaoContainerImmediate = document.getElementById('detalhes-cotacao-container');
+        if (cotacaoContainerImmediate) cotacaoContainerImmediate.remove();
+        window.tempChartCache = {};
+
+        // Limpeza visual (reset de textos, icones, estado) continua apos a animacao
         setTimeout(() => {
             limparDetalhes(); 
         }, 400); 
@@ -4604,8 +4624,15 @@ function handleAbrirModalEdicao(id) {
     }
 
     function limparDetalhes() {
-        // FIX: Incrementa o token de cancelamento para abortar qualquer fetch de grafico em voo
+        // Destruicao dos charts e cancelamento de fetch ja feitos em hideDetalhesModal.
+        // Aqui fazemos apenas a limpeza visual (reset de textos, icones, estado UI).
+        // Guardas defensivas mantidas caso limparDetalhes seja chamada diretamente.
         currentChartFetchId++;
+        if (cotacaoChartInstance) { cotacaoChartInstance.destroy(); cotacaoChartInstance = null; }
+        if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; }
+        const cotacaoContainer = document.getElementById('detalhes-cotacao-container');
+        if (cotacaoContainer) cotacaoContainer.remove();
+        window.tempChartCache = {};
 
         detalhesMensagem.classList.remove('hidden');
         detalhesLoading.classList.add('hidden');
@@ -4614,25 +4641,6 @@ function handleAbrirModalEdicao(id) {
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
-        
-        if (detalhesChartInstance) {
-            detalhesChartInstance.destroy();
-            detalhesChartInstance = null;
-        }
-
-        // FIX 1: cotacaoChartInstance era ignorado, deixando ResizeObserver ativo apos fechar modal
-        if (cotacaoChartInstance) {
-            cotacaoChartInstance.destroy();
-            cotacaoChartInstance = null;
-        }
-
-        // FIX 2: Remove o container do DOM. Ele e irmao de detalhesPreco, nao filho,
-        // por isso detalhesPreco.innerHTML='' nao o removia e ele acumulava no DOM.
-        const cotacaoContainer = document.getElementById('detalhes-cotacao-container');
-        if (cotacaoContainer) cotacaoContainer.remove();
-
-        // FIX 3: Limpa cache temporario para nao exibir dados do ativo anterior
-        window.tempChartCache = {};
         
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');

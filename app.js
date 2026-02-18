@@ -1227,6 +1227,18 @@ function hideAddModal() {
     
     function hideDetalhesModal() {
         detalhesModalOpen = false;
+
+        // Destrói os charts IMEDIATAMENTE para liberar o loop de animação
+        // do Chart.js (requestAnimationFrame) antes das transições de UI
+        if (cotacaoChartInstance) {
+            cotacaoChartInstance.destroy();
+            cotacaoChartInstance = null;
+        }
+        if (detalhesChartInstance) {
+            detalhesChartInstance.destroy();
+            detalhesChartInstance = null;
+        }
+
         detalhesPageContent.style.transform = ''; 
         detalhesPageContent.classList.add('closing'); 
         detalhesPageModal.classList.remove('visible'); 

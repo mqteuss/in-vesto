@@ -12,11 +12,10 @@ html, body {
     background-image: none;
     color: #f3f4f6;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-smoothing: grayscale;
+    -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.3s ease, color 0.3s ease;
     overscroll-behavior-y: auto; 
     scrollbar-width: none;
-    -ms-overflow-style: none;
     margin: 0;
     padding: 0;
 }
@@ -37,7 +36,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 .scrollable-content,
 #detalhes-conteudo-scroll,
 .custom-scroll {
-    -ms-overflow-style: none;
     scrollbar-width: none;
 }
 
@@ -262,7 +260,6 @@ body.light-mode .agenda-card.is-today .agenda-header {
     color: #000;
 }
 
-
 /* =========================================
    UI GERAL & CARDS (DESIGN FLAT & BORDERLESS)
    ========================================= */
@@ -398,14 +395,12 @@ body.light-mode .btn-cancel:hover {
 .animate-shimmer, 
 .animate-shimmer-parent .bg-gray-700 { position: relative; overflow: hidden; }
 
-
 /* =========================================
    SISTEMA DE ABAS E LAYOUT
    ========================================= */
 #tabs-slider { width: 100%; height: 100%; will-change: transform; }
 .tab-content { 
     display: block !important; 
-    -webkit-overflow-scrolling: touch; 
     overflow-x: hidden; 
 }
 .tab-content.active { animation: none; }
@@ -472,7 +467,6 @@ body.light-mode .btn-cancel:hover {
     opacity: 1; height: auto; transform: translateY(0);
     color: #ffffff; font-weight: 600;
 }
-
 
 /* =========================================
    INPUTS & MODAIS (BORDERLESS)
@@ -575,7 +569,6 @@ input:-webkit-autofill:active {
 .card-arrow-icon { transition: transform 0.3s ease-in-out; color: #525252; }
 .card-arrow-icon.open { transform: rotate(90deg); color: #a1a1aa; }
 
-
 /* =========================================
    DASHBOARD & CARTEIRA (CLEAN, MAIN CARD ORIGINAL)
    ========================================= */
@@ -669,7 +662,6 @@ input:-webkit-autofill:active {
     margin-bottom: 0;
 }
 
-
 .premium-badge {
     display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
     border-radius: 99px; 
@@ -678,7 +670,6 @@ input:-webkit-autofill:active {
     backdrop-filter: blur(10px);
     margin-top: 1rem; width: fit-content;
 }
-
 
 .premium-stat-box { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 0.5rem; cursor: pointer; }
 
@@ -728,7 +719,6 @@ input:-webkit-autofill:active {
     transform: scale(1.05);
 }
 
-
 /* Wallet Cards & History (BORDERLESS) */
 .wallet-card, .history-card {
     background-color: #141414;
@@ -769,7 +759,6 @@ input:-webkit-autofill:active {
 .fav-card:active { transform: scale(0.95); background-color: #1c1c1e; }
 .fav-card-skeleton { background-color: #1c1c1e; border: none; }
 
-
 /* Badges */
 .badge-type {
     font-size: 0.40rem; padding: 2px 6px; border-radius: 4px;
@@ -778,7 +767,6 @@ input:-webkit-autofill:active {
 .badge-status-pago { background-color: rgba(34, 197, 94, 0.1); color: #4ade80; border: none; }
 .badge-status-agendado { background-color: rgba(234, 179, 8, 0.1); color: #facc15; border: none; }
 .badge-status-sem-direito { background-color: rgba(115, 115, 115, 0.1); color: #a3a3a3; border: none; }
-
 
 /* =========================================
    HISTÓRICO & FILTROS
@@ -872,7 +860,6 @@ input:-webkit-autofill:active {
 }
 .indicator-right { transform: translateX(100%); }
 
-
 /* =========================================
    CONFIGURAÇÕES & PAGE TITLES
    ========================================= */
@@ -935,7 +922,6 @@ input:-webkit-autofill:active {
 .patrimonio-range-btn:hover { color: #e5e5e5; background-color: #1a1a1a; }
 .patrimonio-range-btn.active { background-color: #27272a !important; border-color: transparent !important; color: #ffffff !important; font-weight: 700; }
 
-
 /* =========================================
    NOTIFICAÇÕES & NEWS (BORDERLESS)
    ========================================= */
@@ -988,7 +974,6 @@ input:-webkit-autofill:active {
     font-weight: 500; padding: 2px 10px; border-radius: 9999px; margin-right: 6px; margin-bottom: 6px;
     transition: all 0.2s ease; cursor: pointer; z-index: 20; position: relative; font-variant-numeric: tabular-nums;
 }
-.news-ticker-tag:hover { background-color: #27272a; color: #d1d5db; }
 .news-card-interactive { cursor: pointer; }
 
 #fii-news-list .card-drawer { background-color: transparent; }
@@ -997,7 +982,6 @@ input:-webkit-autofill:active {
     opacity: 0; transform: translateY(-100%); transition: opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 1.5rem;
 }
 #toast-notification.toast-visible { opacity: 1; transform: translateY(1rem); }
-
 
 /* =========================================
    ANIMAÇÕES & HELPERS
@@ -1039,17 +1023,8 @@ body.privacy-mode [data-field="pl-valor"] {
 
 @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 
-@keyframes fabPopIn { 0% { opacity: 0; transform: scale(0) rotate(-45deg); } 70% { opacity: 1; transform: scale(1.1) rotate(5deg); } 100% { opacity: 1; transform: scale(1) rotate(0deg); } }
-.fab-animate { animation: fabPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; will-change: transform, opacity; }
-
 @keyframes slideInRight { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes fadeInDropdown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-
-/* Animação para o efeito Aurora */
-@keyframes auroraPulse {
-    0% { opacity: 0.6; transform: scale(1); }
-    100% { opacity: 1; transform: scale(1.1); }
-}
 
 /* Botões Active Scale */
 /* --- NOVO ESTILO DO BOTÃO ADICIONAR (GELO SUAVE) --- */
@@ -1352,7 +1327,6 @@ body.light-mode .details-highlight-card { background-color: #ffffff; box-shadow:
     padding-right: 1rem;
 }
 
-
 /* =========================================
    CORREÇÃO DEFINITIVA DO AUTOFILL (ATUALIZADO PARA #151515)
    ========================================= */
@@ -1416,7 +1390,6 @@ body.light-mode .floating-input:-webkit-autofill {
 /* Carrossel Dash */
 #dashboard-carousel {
     scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
 }
 
 /* Garante que o scroll pare item por item, sem pular (NOVO) */

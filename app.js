@@ -4623,7 +4623,15 @@ function handleAbrirModalEdicao(id) {
         detalhesMensagem.classList.remove('hidden');
         detalhesLoading.classList.add('hidden');
         detalhesTituloTexto.textContent = 'Detalhes'; 
-        detalhesNomeLongo.textContent = ''; 
+        detalhesNomeLongo.textContent = '';
+
+        // Destruir o gráfico de cotação ANTES de limpar o innerHTML
+        // para evitar que o Chart.js anime um canvas desanexado do DOM
+        if (cotacaoChartInstance) {
+            cotacaoChartInstance.destroy();
+            cotacaoChartInstance = null;
+        }
+
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';

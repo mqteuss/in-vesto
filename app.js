@@ -1,8 +1,5 @@
-
-
 import * as supabaseDB from './supabase.js';
 
-// --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
 window.dismissNotificationGlobal = function(id, btnElement) {
     // Usa o Set em RAM — localStorage só é escrito aqui, nunca relido
     if (typeof dismissedNotifsSet !== 'undefined') {
@@ -14,13 +11,13 @@ window.dismissNotificationGlobal = function(id, btnElement) {
         d.add(id);
         localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...d]));
     }
-    
+
     // Animação de saída
     const card = btnElement.closest('.notif-item');
     if (card) {
         card.style.transform = 'translateX(100%)';
         card.style.opacity = '0';
-        
+
         setTimeout(() => {
             card.remove();
             checkEmptyState();
@@ -28,8 +25,6 @@ window.dismissNotificationGlobal = function(id, btnElement) {
     }
 };
 
-// --- CONFIGURAÇÃO DE CORES E FILTROS ---
-// --- ESTADO GLOBAL DO GRÁFICO ---
 let currentProventosFilter = '12m'; 
 let customRangeStart = ''; // Formato: 'YYYY-MM'
 let customRangeEnd = '';   // Formato: 'YYYY-MM'
@@ -40,7 +35,6 @@ const CHART_COLORS = {
     DIV:  { bg: '#c084fc', border: '#9333ea' }  
 };
 
-// Verificar se a lista ficou vazia
 function checkEmptyState() {
     const list = document.getElementById('notifications-list');
     const badge = document.getElementById('notification-badge');
@@ -61,7 +55,6 @@ function checkEmptyState() {
     }
 }
 
-// Limpar TODAS as notificações
 function limparTodasNotificacoes() {
     const list = document.getElementById('notifications-list');
     if (!list) return;
@@ -98,7 +91,6 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    // beforeinstallprompt fired
 });
 
 Chart.defaults.color = '#9ca3af'; 
@@ -127,7 +119,7 @@ const formatDate = (dateString, includeTime = false) => {
         if (dateString.length === 10) {
             date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
         }
-        
+
         const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
         if (includeTime) {
             options.hour = '2-digit';
@@ -149,7 +141,6 @@ const formatDateToInput = (dateString) => {
 
 const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
 const isAcao = (symbol) => !!(symbol && !isFII(symbol));
-
 
 function parseMesAno(mesAnoStr) { 
     try {
@@ -198,7 +189,7 @@ const DB_VERSION = 1;
 function toggleDrawer(symbol) {
     const drawer = document.getElementById(`drawer-${symbol}`);
     if (!drawer) return;
-    
+
     // Fecha outros drawers abertos (efeito sanfona)
     document.querySelectorAll('.card-drawer.open').forEach(d => {
         if (d !== drawer) d.classList.remove('open');
@@ -208,7 +199,6 @@ function toggleDrawer(symbol) {
     drawer.classList.toggle('open');
 }
 
-// --- FUNÇÃO DE LAZY LOADING (Carrega o Excel só quando precisa) ---
 function loadSheetJS() {
     return new Promise((resolve, reject) => {
         // Se a biblioteca já existe na janela, não baixa de novo
@@ -219,7 +209,6 @@ function loadSheetJS() {
         const script = document.createElement('script');
         script.src = "https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js";
         script.onload = () => {
-            // XLSX loaded
             resolve();
         };
         script.onerror = () => reject(new Error("Falha ao baixar a biblioteca Excel. Verifique sua conexão."));
@@ -227,7 +216,6 @@ function loadSheetJS() {
     });
 }
 
-// --- HELPER: Renderiza HTML de proventos (reutilizado em criarCardElemento e atualizarCardElemento) ---
 function renderProventosHtml(proventosParaExibir, quantidade) {
     if (!proventosParaExibir || proventosParaExibir.length === 0) {
         return `<div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
@@ -300,22 +288,20 @@ function criarCardElemento(ativo, dados) {
            </span>` 
         : '';
 
-    // HTML Proventos
     let proventosHtml = '';
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
     proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
     proventosHtml = renderProventosHtml(proventosParaExibir, ativo.quantity);
 
     const card = document.createElement('div');
-    
-    // --- ALTERAÇÃO: Removido 'transition-transform' e 'active:scale' ---
+
     // O card agora é estático no clique, apenas a seta vai girar.
     card.className = 'wallet-card group cursor-pointer select-none';
     card.setAttribute('data-symbol', ativo.symbol);
-    
+
     card.onclick = function(e) {
         if (e.target.closest('button')) return;
-        
+
         // 1. Identifica a seta deste card
         const currentArrow = this.querySelector('.drawer-arrow');
 
@@ -339,12 +325,12 @@ function criarCardElemento(ativo, dados) {
     card.innerHTML = `
         <div class="p-3 pb-1"> 
             <div class="flex justify-between items-center">
-                
+
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${iconHtml}
                     </div>
-                    
+
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="font-bold text-white text-sm tracking-tight">${ativo.symbol}</span>
@@ -376,7 +362,7 @@ function criarCardElemento(ativo, dados) {
                 </div>
             </div>
         </div>
-        
+
         <div id="drawer-${ativo.symbol}" class="card-drawer">
              <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f] border-t border-[#2C2C2E]">
                 <div class="grid grid-cols-2 gap-4 mt-3">
@@ -397,7 +383,7 @@ function criarCardElemento(ativo, dados) {
                          <p data-field="peso-valor" class="text-sm text-gray-300 font-medium">${formatPercent(percentWallet)}</p>
                     </div>
                 </div>
-                
+
                 <div data-field="provento-container">
                     ${proventosHtml} 
                 </div>
@@ -428,10 +414,10 @@ function atualizarCardElemento(card, ativo, dados) {
     // Atualiza Cabeçalho
     card.querySelector('[data-field="cota-qtd"]').textContent = `${ativo.quantity} cotas`;
     card.querySelector('[data-field="preco-unitario"]').textContent = precoFormatado;
-    
+
     // Atualiza Valores Principais
     card.querySelector('[data-field="posicao-valor"]').textContent = dadoPreco ? formatBRL(totalPosicao) : '...';
-    
+
     // Atualiza Variação
     const varEl = card.querySelector('[data-field="variacao-valor"]');
     varEl.className = `text-xs font-medium ${corVariacao} mt-0.5`;
@@ -446,10 +432,9 @@ function atualizarCardElemento(card, ativo, dados) {
         headerDiv.innerHTML = `${plArrow} ${Math.abs(lucroPrejuizoPercent).toFixed(1)}%`;
     }
 
-    // --- Atualização do Drawer ---
     const custoValorEl = card.querySelector('[data-field="custo-valor"]');
     if (custoValorEl) custoValorEl.textContent = formatBRL(custoTotal);
-    
+
     const plEl = card.querySelector('[data-field="pl-valor"]');
     if (plEl) {
         plEl.textContent = dadoPreco ? formatBRL(lucroPrejuizo) : '...';
@@ -472,8 +457,7 @@ function atualizarCardElemento(card, ativo, dados) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-	
-	// --- MOVA ESTAS VARIÁVEIS PARA CÁ (TOPO) ---
+
 	let historicoVirtualizer = null;
     let proventosVirtualizer = null;
     const ROW_HEIGHT_CARD = 84;   // Altura estimada do card de transação (pixels)
@@ -528,34 +512,28 @@ const patrimonioVoltarBtn = document.getElementById('patrimonio-voltar-btn');
 const modalPatrimonioValor = document.getElementById('modal-patrimonio-valor');
 const modalCustoValor = document.getElementById('modal-custo-valor');
 
-// Variáveis de controle de arrastar (Swipe Down)
 let isDraggingPatrimonio = false;
 let touchStartPatrimonioY = 0;
 let touchMovePatrimonioY = 0;
 
-// --- REFERÊNCIAS DO MODAL DE PROVENTOS ---
 const btnOpenProventos = document.getElementById('btn-open-proventos');
 const proventosPageModal = document.getElementById('proventos-page-modal');
 const proventosPageContent = document.getElementById('tab-proventos-content');
 const proventosVoltarBtn = document.getElementById('proventos-voltar-btn');
 
-// Controle de arrastar (Swipe Down) - Proventos
 let isDraggingProventos = false;
 let touchStartProventosY = 0;
 let touchMoveProventosY = 0;
 
-	// --- REFERÊNCIAS DO MODAL DE ALOCAÇÃO ---
 const btnOpenAlocacao = document.getElementById('btn-open-alocacao');
 const alocacaoPageModal = document.getElementById('alocacao-page-modal');
 const alocacaoPageContent = document.getElementById('tab-alocacao-content');
 const alocacaoVoltarBtn = document.getElementById('alocacao-voltar-btn');
 
-// Controle de Swipe (Alocação)
 let isDraggingAlocacao = false;
 let touchStartAlocacaoY = 0;
 let touchMoveAlocacaoY = 0;
 
-// --- REFERÊNCIAS MODAL IPCA ---
 const btnOpenIpca = document.getElementById('btn-open-ipca');
 const ipcaPageModal = document.getElementById('ipca-page-modal');
 const ipcaPageContent = document.getElementById('tab-ipca-content');
@@ -566,7 +544,7 @@ let touchStartIpcaY = 0;
 let touchMoveIpcaY = 0;
 // Variável para armazenar cache simples do IPCA
 let ipcaCacheData = null;
-    
+
     const vestoDB = {
         db: null,
         init() {
@@ -625,7 +603,7 @@ let ipcaCacheData = null;
             });
         }
     };
-    
+
 	const btnNotifications = document.getElementById('btn-notifications');
 	const updateNotification = document.getElementById('update-notification');
     const notificationBadge = document.getElementById('notification-badge');
@@ -768,7 +746,7 @@ let ipcaCacheData = null;
             installSection.classList.remove('hidden');
         }
     }
-    
+
     verificarStatusInstalacao();
 
     window.addEventListener('beforeinstallprompt', () => {
@@ -785,7 +763,6 @@ let ipcaCacheData = null;
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            // Install outcome: ${outcome}
             deferredPrompt = null;
             if (outcome === 'accepted') {
                 installSection.classList.add('hidden');
@@ -796,25 +773,24 @@ let ipcaCacheData = null;
 function updateThemeUI() {
     const isLight = localStorage.getItem('vesto_theme') === 'light';
     const metaTheme = document.querySelector('meta[name="theme-color"]');
-    
+
     // 1. Alterna classe no Body
     if (isLight) {
         document.body.classList.add('light-mode');
         if (metaTheme) metaTheme.setAttribute('content', '#f2f2f7');
-        
+
         // Cores globais do Chart.js para Light Mode
         Chart.defaults.color = '#4b5563'; // Gray 600
         Chart.defaults.borderColor = 'rgba(0,0,0,0.05)'; // Linhas de grade sutis
     } else {
         document.body.classList.remove('light-mode');
         if (metaTheme) metaTheme.setAttribute('content', '#000000');
-        
+
         // Cores globais do Chart.js para Dark Mode
         Chart.defaults.color = '#9ca3af'; // Gray 400
         Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
     }
 
-    // Toggle Botão Visual
     if (toggleThemeBtn && themeToggleKnob) {
         if (isLight) {
             toggleThemeBtn.className = "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none bg-purple-600";
@@ -833,7 +809,7 @@ function updateThemeUI() {
         const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(28, 28, 30, 0.95)';
         const tooltipText = isLight ? '#1f2937' : '#f3f4f6';
         const tooltipBorder = isLight ? '#e5e7eb' : '#374151';
-        
+
         // Borda do Donut: Branco no light mode para "cortar" as fatias, Preto no dark
         const doughnutBorder = isLight ? '#ffffff' : '#121212'; 
 
@@ -860,7 +836,7 @@ function updateThemeUI() {
             chart.options.plugins.tooltip.bodyColor = tooltipText;
             chart.options.plugins.tooltip.borderColor = tooltipBorder;
             chart.options.plugins.tooltip.borderWidth = 1;
-            
+
             // Adiciona sombra no tooltip light mode via CSS (ChartJS não suporta shadow nativo fácil, mas o bg ajuda)
         }
 
@@ -871,7 +847,7 @@ function updateThemeUI() {
                 chart.data.datasets[0].borderWidth = 2;
             }
         }
-        
+
         // Cores do Gráfico de Patrimônio (Linha)
         if (chart.config.type === 'line' && chart.data.datasets.length > 1) {
              // Linha de "Investido" (tracejada) precisa escurecer no light mode
@@ -907,7 +883,7 @@ function updateThemeUI() {
             'bg-red-800', 'border-red-600',
             'bg-green-700', 'border-green-500'
         );
-        
+
         if (type === 'success') {
             toastElement.classList.add('bg-green-700', 'border-green-500');
             toastIconError.classList.add('hidden'); 
@@ -934,7 +910,7 @@ function updateThemeUI() {
 
     async function verificarStatusBiometria() {
         const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
-        
+
         if (toggleBioBtn && bioToggleKnob) {
              if (bioEnabled) {
                  toggleBioBtn.classList.remove('bg-gray-700');
@@ -999,7 +975,7 @@ function updateThemeUI() {
             };
 
             const credential = await navigator.credentials.create({ publicKey });
-            
+
             if (credential) {
                 const credentialId = bufferToBase64(credential.rawId);
                 localStorage.setItem('vesto_bio_id', credentialId);
@@ -1015,7 +991,7 @@ function updateThemeUI() {
     async function autenticarBiometria() {
         if (!window.PublicKeyCredential) return;
         const savedCredId = localStorage.getItem('vesto_bio_id');
-        
+
         if (!savedCredId) {
             console.warn("Nenhuma credencial salva encontrada.");
             desativarBiometria();
@@ -1060,7 +1036,7 @@ function updateThemeUI() {
     if (btnDesbloquear) {
         btnDesbloquear.addEventListener('click', autenticarBiometria);
     }
-    
+
     if (btnSairLock) {
         btnSairLock.addEventListener('click', async () => {
             await supabaseDB.signOut();
@@ -1092,7 +1068,7 @@ function updateThemeUI() {
             window.location.reload();
         });
     }
-    
+
     async function setCache(key, data, duration) { 
         const finalDuration = duration || (1000 * 60 * 60); 
         const cacheItem = { key: key, timestamp: Date.now(), data: data, duration: finalDuration };
@@ -1104,14 +1080,14 @@ function updateThemeUI() {
             await clearBrapiCache();
         }
     }
-    
+
     async function removerCacheAtivo(symbol) {
         try {
             await vestoDB.delete('apiCache', `preco_${symbol}`);
             await vestoDB.delete('apiCache', `provento_ia_${symbol}`);
             await vestoDB.delete('apiCache', `detalhe_preco_${symbol}`);
             await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
-            
+
             if (isFII(symbol)) {
                  const userKey = currentUserId ? `_${currentUserId}` : '';
                  await vestoDB.delete('apiCache', `cache_grafico_historico${userKey}`);
@@ -1121,7 +1097,7 @@ function updateThemeUI() {
             console.error("Erro ao remover cache do ativo:", e);
         }
     }
-    
+
     async function removerProventosConhecidos(symbol) {
         proventosConhecidos = proventosConhecidos.filter(p => p.symbol !== symbol);
         try {
@@ -1135,10 +1111,10 @@ function updateThemeUI() {
         try {
             const cacheItem = await vestoDB.get('apiCache', key);
             if (!cacheItem) return null;
-            
+
             const duration = cacheItem.duration; 
             if (duration === -1) { return cacheItem.data; }
-            
+
             const isExpired = (Date.now() - cacheItem.timestamp) > duration;
             if (isExpired) { 
                 await vestoDB.delete('apiCache', key).catch(err => {
@@ -1152,7 +1128,7 @@ function updateThemeUI() {
             return null;
         }
     }
-    
+
     async function clearBrapiCache() {
         await vestoDB.clear('apiCache');
     }
@@ -1167,7 +1143,7 @@ const PALETA_CORES = [
 function gerarCores(num) {
     return Array.from({ length: num }, (_, i) => PALETA_CORES[i % PALETA_CORES.length]);
 }
-    
+
     function showModal(title, message, onConfirm) {
         customModalTitle.textContent = title;
         customModalMessage.textContent = message;
@@ -1184,47 +1160,46 @@ function gerarCores(num) {
             customModalContent.classList.remove('modal-out');
         }, 200); 
     }
-    
+
     function showAddModal() {
         addAtivoModal.classList.add('visible');
         addAtivoModalContent.classList.remove('modal-out');
-        
+
         if (!transacaoEmEdicao) {
             dateInput.value = new Date().toISOString().split('T')[0];
             tickerInput.focus();
         }
     }
-    
+
 function hideAddModal() {
     addAtivoModalContent.classList.add('modal-out');
     setTimeout(() => {
         addAtivoModal.classList.remove('visible');
         addAtivoModalContent.classList.remove('modal-out');
-        
+
         tickerInput.value = '';
         quantityInput.value = '';
         precoMedioInput.value = '';
         dateInput.value = '';
         transacaoIdInput.value = '';
-        
+
         // Reset do Total
         document.getElementById('total-transacao-preview').textContent = "R$ 0,00";
 
         // Reset do Toggle para Compra
         const btnCompra = document.getElementById('btn-opt-compra');
         if(btnCompra) btnCompra.click(); // Simula clique para resetar animação e valor
-        
+
         transacaoEmEdicao = null;
         tickerInput.disabled = false;
         addModalTitle.textContent = 'Nova Transação'; // Texto genérico melhor
         addButton.textContent = 'Salvar';
-        
+
         // Remove erros visuais
         tickerInput.parentElement.classList.remove('ring-2', 'ring-red-500');
-        // ...
     }, 200);
 }
-    
+
     function showDetalhesModal(symbol) {
         detalhesPageContent.style.transform = ''; 
         detalhesPageContent.classList.remove('closing'); 
@@ -1233,7 +1208,7 @@ function hideAddModal() {
         detalhesConteudoScroll.scrollTop = 0; 
         handleMostrarDetalhes(symbol); 
     }
-    
+
     function hideDetalhesModal() {
         detalhesPageContent.style.transform = ''; 
         detalhesPageContent.classList.add('closing'); 
@@ -1285,24 +1260,24 @@ function hideAddModal() {
     async function carregarTransacoes() {
         transacoes = await supabaseDB.getTransacoes();
     }
-    
+
     async function carregarPatrimonio() {
          let allPatrimonio = await supabaseDB.getPatrimonio();
          allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
          patrimonio = allPatrimonio.length > 365 ? allPatrimonio.slice(-365) : allPatrimonio;
     }
-    
+
 async function salvarSnapshotPatrimonio(totalValor) {
     if (totalValor <= 0 && patrimonio.length === 0) return; 
-    
+
     // Pega a data local do usuário em formato YYYY-MM-DD
     const today = new Date().toLocaleDateString('en-CA'); // en-CA produz YYYY-MM-DD
-    
+
     const snapshot = { date: today, value: totalValor };
-    
+
     // Salva no banco
     await supabaseDB.savePatrimonioSnapshot(snapshot);
-    
+
     // Atualiza o gráfico localmente sem precisar recarregar
     const index = patrimonio.findIndex(p => p.date === today);
     if (index > -1) {
@@ -1324,7 +1299,7 @@ async function salvarSnapshotPatrimonio(totalValor) {
     async function carregarProventosConhecidos() {
         proventosConhecidos = await supabaseDB.getProventosConhecidos();
     }
-    
+
     async function carregarWatchlist() {
         watchlist = await supabaseDB.getWatchlist();
     }
@@ -1332,7 +1307,7 @@ async function salvarSnapshotPatrimonio(totalValor) {
 function renderizarWatchlist() {
     const carouselEl = document.getElementById('dashboard-favorites-list');
     if (!carouselEl) return;
-    
+
     carouselEl.innerHTML = '';
 
     // 1. ESTADO VAZIO (BOTÃO "ADD")
@@ -1348,14 +1323,13 @@ function renderizarWatchlist() {
 
     const precosMap = new Map(precosAtuais.map(p => [p.symbol, p]));
 
-    // --- NOVA ORDEM: ALFABÉTICA (A-Z) ---
     // Isso garante que os ícones fiquem sempre na mesma posição
     watchlist.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
     watchlist.forEach(item => {
         const symbol = item.symbol;
         const dadoPreco = precosMap.get(symbol);
-        
+
         let preco = ''; 
         let corTexto = 'text-gray-400';
 
@@ -1365,10 +1339,9 @@ function renderizarWatchlist() {
         }
 
         const card = document.createElement('div');
-        
-        // Estilo Circular sem bordas
+
         card.className = 'w-16 h-16 rounded-full bg-[#151515] flex flex-col items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all shadow-sm relative group overflow-hidden';
-        
+
         card.onclick = () => window.abrirDetalhesAtivo(symbol);
 
         card.innerHTML = `
@@ -1377,8 +1350,7 @@ function renderizarWatchlist() {
         `;
         carouselEl.appendChild(card);
     });
-    
-    // Botão "Add" no final
+
     const btnAdd = document.createElement('div');
     btnAdd.className = "w-16 h-16 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-all text-gray-500 hover:text-white hover:bg-gray-800";
     btnAdd.onclick = () => {
@@ -1388,12 +1360,12 @@ function renderizarWatchlist() {
     btnAdd.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>`;
     carouselEl.appendChild(btnAdd);
 }
-    
+
     function atualizarIconeFavorito(symbol) {
         if (!symbol || !detalhesFavoritoBtn) return;
 
         const isFavorite = watchlist.some(item => item.symbol === symbol);
-        
+
         detalhesFavoritoIconEmpty.classList.toggle('hidden', isFavorite);
         detalhesFavoritoIconFilled.classList.toggle('hidden', !isFavorite);
         detalhesFavoritoBtn.dataset.symbol = symbol; 
@@ -1439,7 +1411,7 @@ async function processarDividendosPagos() {
                         const valorRecebido = provento.value * qtdElegivel;
                         novoSaldoCalculado += valorRecebido;
                     }
-                    
+
                     if (!provento.processado) {
                         provento.processado = true;
                         proventosParaMarcarComoProcessado.push(provento);
@@ -1447,7 +1419,7 @@ async function processarDividendosPagos() {
                 }
             }
         }
-        
+
         saldoCaixa = novoSaldoCalculado;
         cachedSaldoCaixa = novoSaldoCalculado;
         lastProventosCalcSignature = currentSignature;
@@ -1455,7 +1427,7 @@ async function processarDividendosPagos() {
         // Atualiza UI e Salva Saldo Localmente
         await salvarCaixa();
         if (totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
-        
+
         // 2. OTIMIZAÇÃO AQUI: Atualização em Massa no Supabase
         // Em vez de esperar um por um (await no loop), disparamos todos juntos.
         if (proventosParaMarcarComoProcessado.length > 0) {
@@ -1503,12 +1475,12 @@ function calcularCarteira() {
                 ativo.totalCost -= t.quantity * pmAtual;
             }
         }
-        
+
         // Proteção contra dízimas periódicas (resíduos matemáticos do JS)
         if (ativo.quantity < 0.0001) { ativo.quantity = 0; ativo.totalCost = 0; }
         ativosMap.set(symbol, ativo);
     }
-    
+
     // Converte o Mapa consolidado em um array para a interface
     carteiraCalculada = Array.from(ativosMap.values())
         .filter(a => a.quantity > 0.0001)
@@ -1523,47 +1495,44 @@ function calcularCarteira() {
     lastTransacoesSignature = currentSignature;
 }
 
-// Substitua a função inteira em app.js
 
-// --- FUNÇÃO AUXILIAR PARA AGRUPAR POR MÊS ---
 function agruparPorMes(itens, dateField) {
     const grupos = {};
     itens.forEach(item => {
         if (!item[dateField]) return;
-        
+
         // Ajuste de fuso horário simples para garantir o mês correto
         const dataObj = new Date(item[dateField]);
         // Formata como "Dezembro 2025" com primeira letra maiúscula
         const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         const chave = mesAno[0].toUpperCase() + mesAno.slice(1);
-        
+
         if (!grupos[chave]) grupos[chave] = [];
         grupos[chave].push(item);
     });
     return grupos;
 }
 
-// --- CLASSE DE VIRTUALIZAÇÃO V11 (ESTÁVEL - SEM HEADER FLUTUANTE) ---
 class VirtualScroller {
     constructor(scrollContainer, listContainer, items, renderRowFn) {
         // 1. Inicializa variáveis CRÍTICAS primeiro para evitar crash
         this.visibleItems = new Map();
         this.positions = [];
         this.totalHeight = 0;
-        
+
         this.scrollContainer = scrollContainer;
         this.listContainer = listContainer;
         this.items = items;
         this.renderRowFn = renderRowFn;
-        
+
         // Configurações de altura
         this.headerHeight = 50; 
         this.rowHeight = 72;
-        
+
         // Limpeza de estilos conflitantes do container original
         this.listContainer.classList.remove('px-4', 'pt-2', 'pb-20');
         this.listContainer.style.marginTop = '0px'; 
-        
+
         // Removemos qualquer lógica de header fixo/sticky aqui.
         // O código fica muito mais leve.
 
@@ -1572,7 +1541,7 @@ class VirtualScroller {
 
 init() {
         let currentY = 0; 
-        
+
         // Mapeia posições de TODOS os itens
         this.positions = this.items.map(item => {
             const height = item.type === 'header' ? this.headerHeight : this.rowHeight; 
@@ -1580,17 +1549,17 @@ init() {
             currentY += height;
             return pos;
         });
-        
+
         // AUMENTEI DE 120 PARA 180 AQUI
         // Isso garante que o último item suba acima da navbar
         this.totalHeight = currentY + 100; 
-        
+
         this.listContainer.style.height = `${this.totalHeight}px`;
         this.listContainer.classList.add('virtual-list-container');
-        
+
         this.boundOnScroll = this.onScroll.bind(this);
         this.scrollContainer.addEventListener('scroll', this.boundOnScroll, { passive: true });
-        
+
         this.onScroll();
     }
 
@@ -1604,7 +1573,7 @@ init() {
 
         const startY = Math.max(0, scrollTop - buffer);
         const endY = scrollTop + viewportHeight + buffer;
-        
+
         const activeIndices = new Set();
 
         // Loop principal: decide o que desenhar
@@ -1615,14 +1584,14 @@ init() {
             // Se o item está dentro da área visível (+ buffer)
             if (bottom >= startY && pos.top <= endY) {
                 activeIndices.add(i);
-                
+
                 // Se ainda não está no DOM, cria
                 if (!this.visibleItems.has(i)) {
                     const el = document.createElement('div');
                     el.className = 'virtual-item';
                     el.style.transform = `translateY(${pos.top}px)`;
                     el.style.height = `${pos.height}px`;
-                    
+
                     if (pos.item.type === 'header') {
                          // Renderiza o header como um item normal da lista
                          el.innerHTML = `<div class="virtual-header-row">${pos.item.htmlContent}</div>`;
@@ -1653,25 +1622,24 @@ init() {
         if (this.scrollContainer) {
             this.scrollContainer.removeEventListener('scroll', this.boundOnScroll);
         }
-        
+
         // Limpa DOM e Estilos
         this.listContainer.innerHTML = '';
         this.listContainer.style.height = '';
         this.listContainer.classList.remove('virtual-list-container');
         this.listContainer.style.marginTop = '';
-        
+
         // Restaura estilo original (Opcional, caso você desligue a virtualização)
         this.listContainer.classList.add('px-4', 'pt-2', 'pb-20');
-        
+
         this.visibleItems.clear();
         this.visibleItems = null; // Evita memory leak
     }
 }
-// Helper Simplificado e Robusto
 function flattenHistoricoData(grupos) {
     const flatList = [];
     for (const [mes, itens] of Object.entries(grupos)) {
-        
+
         // SOMA DO CABEÇALHO
         const totalMes = itens.reduce((acc, item) => {
             if (item.totalCalculado !== undefined) {
@@ -1682,7 +1650,7 @@ function flattenHistoricoData(grupos) {
             }
             return acc + Number(item.value || 0);
         }, 0);
-        
+
         // HTML do Header (COM FUNDO VERDE E TEXTO VERDE)
         const headerHtml = `
             <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>
@@ -1719,7 +1687,7 @@ function renderizarHistorico() {
     }
 
     lastHistoricoListSignature = currentSignature;
-    
+
     let dadosFiltrados = transacoes.filter(t => {
         const matchType = histFilterType === 'all' || t.type === histFilterType;
         const matchSearch = histSearchTerm === '' || t.symbol.includes(histSearchTerm);
@@ -1731,26 +1699,25 @@ function renderizarHistorico() {
         historicoMensagem.textContent = transacoes.length > 0 ? "Nenhum resultado para o filtro." : "Nenhum registro encontrado.";
         return;
     }
-    
+
     historicoStatus.classList.add('hidden');
-    
+
     // OTIMIZAÇÃO: localeCompare em strings ISO é equivalente e não cria objetos Date.
     dadosFiltrados.sort((a, b) => b.date.localeCompare(a.date)); // desc: b antes de a
     const grupos = agruparPorMes(dadosFiltrados, 'date');
-    
+
     // Flatten (calcula automaticamente price * quantity)
     const flatItems = flattenHistoricoData(grupos);
 
-// --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
         const dia = new Date(t.date).getDate().toString().padStart(2, '0');
-        
+
         // Ícones
         const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
         const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
-        
+
         const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
         const iconBg = 'bg-[#1C1C1E]'; 
         const cardBg = 'bg-black'; 
@@ -1758,7 +1725,7 @@ function renderizarHistorico() {
         return `
             <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBg}" style="background-color: black !important;" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    
+
                     <div class="w-10 h-10 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${mainIconHtml}
                     </div>
@@ -1788,7 +1755,7 @@ function renderizarHistorico() {
 function renderizarHistoricoProventos() {
     const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
     const scrollContainer = document.getElementById('tab-historico');
-    
+
     const lastProvId = proventosConhecidos.length > 0 ? proventosConhecidos[proventosConhecidos.length - 1].id : 'none';
     const termoBusca = provSearchTerm || ''; 
     const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}`;
@@ -1802,7 +1769,7 @@ function renderizarHistoricoProventos() {
         proventosVirtualizer.destroy();
         proventosVirtualizer = null;
     }
-    
+
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
@@ -1846,12 +1813,11 @@ function renderizarHistoricoProventos() {
 
     const flatItems = flattenHistoricoData(gruposLimpos);
 
-// --- RENDERIZADOR DE LINHA (PROVENTOS) ---
     const rowRenderer = (p) => {
         const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
         const total = p.totalCalculado; 
-        
+
         // Cálculo do Valor Unitário (para exibir abaixo do total)
         const valorUnitario = total / (qtd || 1); 
 
@@ -1860,10 +1826,10 @@ function renderizarHistoricoProventos() {
 
 let tagHtml = '';
         const rawType = (p.type || '').toUpperCase();
-        
+
         // Define apenas o TEXTO da etiqueta baseado no tipo
         let label = 'OUTROS';
-        
+
         if (rawType.includes('JCP')) {
             label = 'JCP';
         } else if (rawType.includes('TRIB')) {
@@ -1878,7 +1844,7 @@ let tagHtml = '';
         return `
             <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black" style="background-color: black !important;">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    
+
                     <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${iconGraph}
                     </div>
@@ -1897,7 +1863,7 @@ let tagHtml = '';
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
                     <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
-                    
+
                     <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(valorUnitario)}</span>
                 </div>
             </div>
@@ -1910,7 +1876,7 @@ let tagHtml = '';
         const viewTransacoes = document.getElementById('view-transacoes');
         const viewProventos = document.getElementById('view-proventos');
         const statusEl = document.getElementById('historico-status');
-        
+
         // NOVO: Elemento da linha deslizante
         const tabIndicator = document.getElementById('tab-indicator');
 
@@ -1918,14 +1884,14 @@ let tagHtml = '';
             // Atualiza botões
             btnHistTransacoes.classList.add('active');
             btnHistProventos.classList.remove('active');
-            
+
             // Move a linha para a ESQUERDA (remove a classe que joga p/ direita)
             if(tabIndicator) tabIndicator.classList.remove('indicator-right');
-            
+
             // Troca views
             viewTransacoes.classList.remove('hidden');
             viewProventos.classList.add('hidden');
-            
+
             if(statusEl) statusEl.classList.add('hidden');
             renderizarHistorico();
         });
@@ -1941,7 +1907,7 @@ let tagHtml = '';
             // Troca views
             viewTransacoes.classList.add('hidden');
             viewProventos.classList.remove('hidden');
-            
+
             if(statusEl) statusEl.classList.add('hidden');
             renderizarHistoricoProventos();
         });
@@ -1955,7 +1921,7 @@ let tagHtml = '';
             renderizarHistorico();
         });
     }
-	
+
 	// 2.1 Busca nos Proventos (Faltava este bloco)
     const provSearchInput = document.getElementById('proventos-search-input');
     if (provSearchInput) {
@@ -1983,7 +1949,7 @@ let tagHtml = '';
         filterItems.forEach(item => {
             item.addEventListener('click', () => {
                 const value = item.dataset.value; // 'all', 'buy', 'sell'
-                
+
                 // Atualiza visual (Check icon)
                 filterItems.forEach(i => {
                     i.classList.remove('selected');
@@ -2018,13 +1984,11 @@ let tagHtml = '';
         });
     }
 
-// --- FUNÇÃO AUXILIAR: Agrupar notícias por dia ---
-// --- FUNÇÃO AUXILIAR: Agrupar notícias (Robusta contra Invalid Date) ---
 function agruparNoticiasPorData(articles) {
     const grupos = {};
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
-    
+
     const ontem = new Date(hoje);
     ontem.setDate(ontem.getDate() - 1);
 
@@ -2058,11 +2022,9 @@ function agruparNoticiasPorData(articles) {
     return grupos;
 }
 
-// --- RENDERIZAR NOTÍCIAS (VISUAL IDÊNTICO AO HISTÓRICO) ---
-// --- RENDERIZAR NOTÍCIAS (AJUSTES FINAIS: TAMANHO, BORDAS E COR) ---
 function renderizarNoticias(articles) { 
     fiiNewsSkeleton.classList.add('hidden');
-    
+
     const newSignature = JSON.stringify(articles);
     if (newSignature === lastNewsSignature && fiiNewsList.children.length > 0) {
         return;
@@ -2077,10 +2039,10 @@ function renderizarNoticias(articles) {
         fiiNewsMensagem.classList.remove('hidden');
         return;
     }
-    
+
     const sortedArticles = [...articles].sort((a, b) => new Date(b.publicationDate) - new Date(a.publicationDate));
     const grupos = agruparNoticiasPorData(sortedArticles);
-    
+
     const fragment = document.createDocumentFragment();
     let isGlobalFirstItem = true;
 
@@ -2102,7 +2064,7 @@ function renderizarNoticias(articles) {
             try { horaPub = new Date(article.publicationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' }); } catch(e) { horaPub = '--:--'; }
             const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
             const drawerId = `news-drawer-${safeLabel}-${index}`;
-            
+
             // Tickers
             const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g; 
             const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
@@ -2114,8 +2076,7 @@ function renderizarNoticias(articles) {
             }
 
             const item = document.createElement('div');
-            
-            // --- ESTILOS ALTERADOS AQUI (DE ROXO PARA AZUL) ---
+
             let itemWrapperClass = 'group relative transition-all news-card-interactive ';
             let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
             let badgeDestaque = '';
@@ -2147,7 +2108,7 @@ function renderizarNoticias(articles) {
                              onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                         />
                     </div>
-                    
+
                     <div class="flex-1 min-w-0 pointer-events-none">
                         ${badgeDestaque}
                         <div class="flex items-center gap-2 mb-1.5">
@@ -2155,11 +2116,11 @@ function renderizarNoticias(articles) {
                             <span class="text-[10px] text-neutral-600">•</span>
                             <span class="text-[10px] text-neutral-500">${horaPub}</span>
                         </div>
-                        
+
                         <h4 class="${titleClass}">
                             ${article.title || 'Título indisponível'}
                         </h4>
-                        
+
                         <div class="pointer-events-auto mt-2">
                             ${tickersHtml ? `<div class="flex flex-wrap">${tickersHtml}</div>` : ''}
                         </div>
@@ -2171,7 +2132,7 @@ function renderizarNoticias(articles) {
                         </svg>
                     </div>
                 </div>
-                
+
                 <div id="${drawerId}" class="card-drawer">
                     <div class="drawer-content px-3 pb-5 pl-14">
                         <div class="text-sm text-neutral-400 leading-relaxed border-l-2 border-neutral-700 pl-4">
@@ -2190,7 +2151,7 @@ function renderizarNoticias(articles) {
         });
         fragment.appendChild(listaGrupo);
     });
-    
+
     fiiNewsList.appendChild(fragment);
 }
 
@@ -2198,7 +2159,6 @@ function renderizarGraficoAlocacao(isRetry = false) {
     const canvas = document.getElementById('alocacao-chart');
     if (!canvas) return;
 
-    // --- 1. REMOÇÃO VISUAL DAS BORDAS ---
     const cardContainer = canvas.closest('.border'); 
     if (cardContainer) {
         cardContainer.classList.remove('border', 'border-[#2C2C2E]');
@@ -2206,9 +2166,8 @@ function renderizarGraficoAlocacao(isRetry = false) {
         cardContainer.style.boxShadow = 'none';
     }
 
-    // --- 2. DETECÇÃO DE PREÇOS (AUTORRECUPERAÇÃO) ---
     const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
-    
+
     if (!window.alocacaoRetryCount) window.alocacaoRetryCount = 0;
 
     if (!temPrecos && window.alocacaoRetryCount < 5) {
@@ -2221,7 +2180,6 @@ function renderizarGraficoAlocacao(isRetry = false) {
         if (window.alocacaoRetryTimer) clearTimeout(window.alocacaoRetryTimer);
     }
 
-    // --- 3. MAPA DE PREÇOS ROBUSTO ---
     const mapPrecos = new Map();
     if (temPrecos) {
         precosAtuais.forEach(p => {
@@ -2233,7 +2191,6 @@ function renderizarGraficoAlocacao(isRetry = false) {
         });
     }
 
-    // --- 4. CÁLCULO DOS TOTAIS ---
     let totalGeral = 0;
     const dadosAtivos = [];
 
@@ -2265,12 +2222,11 @@ function renderizarGraficoAlocacao(isRetry = false) {
     // Ordenar do maior para o menor valor
     dadosAtivos.sort((a, b) => b.value - a.value);
 
-    // --- 5. CORES ---
     const paletaCores = [
         '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B', 
         '#EC4899', '#6366F1', '#EF4444', '#14B8A6'
     ];
-    
+
     dadosAtivos.forEach((d, i) => {
         d.color = paletaCores[i % paletaCores.length];
     });
@@ -2279,7 +2235,6 @@ function renderizarGraficoAlocacao(isRetry = false) {
     const sortedValues = dadosAtivos.map(d => d.value);
     const sortedColors = dadosAtivos.map(d => d.color);
 
-    // --- 6. ATUALIZA TEXTO CENTRAL (TOTAL) ---
     const elTotalCenter = document.getElementById('alocacao-total-center');
     if(elTotalCenter) {
         elTotalCenter.textContent = totalGeral.toLocaleString('pt-BR', { 
@@ -2295,7 +2250,6 @@ function renderizarGraficoAlocacao(isRetry = false) {
         return;
     }
 
-    // --- 7. RENDERIZAÇÃO DO GRÁFICO ---
     if (alocacaoChartInstance) {
         alocacaoChartInstance.destroy();
     }
@@ -2346,7 +2300,6 @@ function renderizarGraficoAlocacao(isRetry = false) {
         }
     });
 
-    // --- 8. ATUALIZA A LEGENDA ABAIXO (LAYOUT AJUSTADO) ---
     const legendContainer = document.getElementById('alocacao-legend-container');
     if (legendContainer) {
         legendContainer.innerHTML = ''; 
@@ -2358,12 +2311,11 @@ function renderizarGraficoAlocacao(isRetry = false) {
             const div = document.createElement('div');
             // Container flex para separar Esquerda e Direita
             div.className = 'flex items-center justify-between p-3 bg-[#151515] rounded-2xl mb-2';
-            
-            // --- AQUI ESTÁ A MUDANÇA: Adicionado 'gap-1' na div flex-col ---
+
             div.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-1.5 h-8 rounded-full" style="background-color: ${item.color}"></div>
-                    
+
                     <div class="flex flex-col gap-1"> <span class="text-sm font-bold text-white tracking-tight leading-none">${item.label}</span>
                         <span class="text-xs text-gray-500 font-medium">${percent}%</span>
                     </div>
@@ -2378,7 +2330,6 @@ function renderizarGraficoAlocacao(isRetry = false) {
     }
 }
 
-// --- EM app.js: Adicione esta função auxiliar (pode ser antes da renderizarGraficoHistorico) ---
 
 function exibirDetalhesProventos(anoMes, labelAmigavel) {
     // 1. Filtrar e Agrupar
@@ -2389,7 +2340,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
         if (!p.paymentDate || !p.paymentDate.startsWith(anoMes)) return;
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
-        
+
         if (qtd > 0) {
             const total = p.value * qtd;
             if (!agrupado[p.symbol]) agrupado[p.symbol] = 0;
@@ -2402,7 +2353,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
 
     // 2. HTML da Lista (SEM BORDAS NOS ITENS)
     let html = `<div class="w-full text-left space-y-2 max-h-[50vh] overflow-y-auto custom-scroll pr-1 mt-2">`;
-    
+
     if (lista.length === 0) {
         html += `<p class="text-center text-gray-500 text-sm py-4">Sem dados detalhados.</p>`;
     } else {
@@ -2420,7 +2371,7 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
             `;
         });
     }
-    
+
     html += `</div>
         <div class="mt-4 pt-3 border-t border-[#2C2C2E] flex justify-between items-center">
             <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total do Mês</span>
@@ -2435,29 +2386,25 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     const btnCancel = document.getElementById('custom-modal-cancel');
     const btnOk = document.getElementById('custom-modal-ok');
 
-    // --- REMOVE BORDA DO MODAL TEMPORARIAMENTE ---
     if(modalContent) {
         modalContent.style.border = 'none';
         modalContent.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.9)'; // Sombra mais forte para compensar
     }
-    // ---------------------------------------------
 
     title.textContent = `Proventos de ${labelAmigavel}`;
     msg.innerHTML = html; 
-    
+
     btnCancel.style.display = 'none';
     btnOk.textContent = 'Fechar';
-    
+
     btnOk.onclick = () => {
         modal.classList.remove('visible');
         setTimeout(() => {
-            // --- RESTAURA BORDA ORIGINAL AO FECHAR ---
             if(modalContent) {
                 modalContent.style.border = ''; // Volta ao padrão do CSS/HTML
                 modalContent.style.boxShadow = ''; 
             }
-            // -----------------------------------------
-            
+
             btnCancel.style.display = 'block';
             btnOk.textContent = 'Confirmar';
             msg.innerHTML = ''; 
@@ -2468,12 +2415,10 @@ function exibirDetalhesProventos(anoMes, labelAmigavel) {
     modal.classList.add('visible');
 }
 
-
 function renderizarGraficoHistorico(dadosExternos = null) {
     const canvas = document.getElementById('historico-proventos-chart');
     if (!canvas) return;
 
-    // --- PROCESSAMENTO DE DADOS ---
     let labelsFiltrados, dataRecebidoFiltrados, dataAReceberFiltrados, keysFiltrados;
 
     if (dadosExternos && dadosExternos.labels) {
@@ -2481,7 +2426,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
         dataRecebidoFiltrados = dadosExternos.data; 
         dataAReceberFiltrados = new Array(labelsFiltrados.length).fill(0); 
     }
-    
+
     // Dados Locais (Padrão)
     const grupos = {};
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -2491,7 +2436,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
         const key = p.paymentDate.substring(0, 7); // YYYY-MM
         const dataRef = p.dataCom || p.paymentDate;
         const qtd = getQuantidadeNaData(p.symbol, dataRef);
-        
+
         if (qtd > 0) {
             if (!grupos[key]) grupos[key] = { recebido: 0, aReceber: 0 };
             const [ano, mes, dia] = p.paymentDate.split('-');
@@ -2514,7 +2459,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
         const dateObj = new Date(parseInt(anoFull), parseInt(mesNum) - 1, 1);
         const nomeMes = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const anoCurto = anoFull.slice(-2);
-        
+
         labelsRaw.push(`${nomeMes}/${anoCurto}`);
         dataR.push(grupos[mesIso].recebido);
         dataA.push(grupos[mesIso].aReceber);
@@ -2531,7 +2476,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
     }
 
     const ctx = canvas.getContext('2d');
-    
+
     // Cores das Barras
     const colorRecebido = '#8B5CF6'; 
     const colorAReceber = '#333333'; 
@@ -2586,20 +2531,20 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             animation: { duration: 600 },
             layout: { padding: { top: 10, bottom: 0 } },
             interaction: { mode: 'index', axis: 'x', intersect: false }, // <-- MODO INDEX PARA A LINHA VERTICAL FUNCIONAR
-            
+
             onClick: (e, elements) => {
                 if (!elements || elements.length === 0) return;
-                
+
                 const index = elements[0].index;
                 const labelAmigavel = labelsFiltrados[index]; 
                 const rawKey = keysFiltrados[index]; 
-                
+
                 renderizarListaProventosMes(rawKey, labelAmigavel);
             },
 
             plugins: {
                 legend: { display: false }, 
-                
+
                 tooltip: { 
                     enabled: true,
                     backgroundColor: 'rgba(20, 20, 20, 0.95)',
@@ -2612,7 +2557,7 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                     boxWidth: 6,
                     boxHeight: 6,
                     usePointStyle: true,
-                    
+
                     titleFont: {
                         family: "'Inter', sans-serif",
                         size: 11,
@@ -2631,17 +2576,17 @@ function renderizarGraficoHistorico(dadosExternos = null) {
                         label: function(context) {
                             let label = context.dataset.label || '';
                             if (label) label += ': ';
-                            
+
                             // Lógica inteligente: Porcentagem para a Linha, Dinheiro para as Barras
                             if (context.dataset.type === 'line') {
                                 const currentIndex = context.dataIndex;
                                 if (currentIndex === 0) return label + '---'; 
-                                
+
                                 const atual = context.raw;
                                 const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
-                                
+
                                 if (anterior === 0) return label + (atual > 0 ? '+100%' : '0%');
-                                
+
                                 const percent = ((atual - anterior) / anterior) * 100;
                                 const signal = percent > 0 ? '+' : '';
                                 return label + signal + percent.toFixed(1) + '%';
@@ -2670,17 +2615,17 @@ function renderizarGraficoHistorico(dadosExternos = null) {
             }
         }
     });
-    
+
     if (keysFiltrados.length > 0) {
         const lastIdx = keysFiltrados.length - 1;
         renderizarListaProventosMes(keysFiltrados[lastIdx], labelsFiltrados[lastIdx]);
     }
 }
-    
+
 function renderizarListaProventosMes(anoMes, labelAmigavel) {
     const container = document.getElementById('proventos-lista-container');
     const labelMes = document.getElementById('proventos-mes-selecionado');
-    
+
     if (!container) return;
     if (labelMes) labelMes.textContent = labelAmigavel;
 
@@ -2732,11 +2677,10 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
 
         const badgeHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${foiRecebido ? 'RECEBIDO' : 'A RECEBER'}</span>`;
 
-        // --- CORRIGIDO: Sem linhas divisórias (border-b removido) ---
         const cardHTML = `
             <div class="flex items-center justify-between py-3 px-2 relative group w-full bg-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
-                    
+
                     <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${iconGraph}
                     </div>
@@ -2770,7 +2714,7 @@ function renderizarListaProventosMes(anoMes, labelAmigavel) {
     `;
     container.insertAdjacentHTML('beforeend', totalHTML);
 }
-    
+
 function openPatrimonioModal() {
     if(!patrimonioPageModal) return;
 
@@ -2779,7 +2723,7 @@ function openPatrimonioModal() {
     patrimonioPageContent.style.transform = ''; 
     patrimonioPageContent.classList.remove('closing');
     document.body.style.overflow = 'hidden';
-    
+
     // 2. Atualiza textos do Header do modal
     if(modalPatrimonioValor && totalCarteiraValor) {
         modalPatrimonioValor.textContent = totalCarteiraValor.textContent;
@@ -2809,20 +2753,20 @@ function openPatrimonioModal() {
 
 function closePatrimonioModal() {
         if(!patrimonioPageContent) return;
-        
+
         // 1. Remove qualquer transformação manual feita pelo dedo (reset)
         patrimonioPageContent.style.transform = '';
-        
+
         // 2. Adiciona a classe que faz a animação de descer (definida no CSS)
         patrimonioPageContent.classList.add('closing');
-        
+
         // 3. Remove a visibilidade do fundo escuro
         patrimonioPageModal.classList.remove('visible');
-        
+
         // 4. Libera o scroll da página principal
         document.body.style.overflow = '';
     }
-	
+
 function openProventosModal() {
     if(!proventosPageModal) return;
 
@@ -2831,7 +2775,7 @@ function openProventosModal() {
     proventosPageContent.style.transform = ''; 
     proventosPageContent.classList.remove('closing');
     document.body.style.overflow = 'hidden';
-    
+
     // 2. Renderiza ou atualiza o gráfico
     requestAnimationFrame(() => {
         setTimeout(() => {
@@ -2849,16 +2793,16 @@ function openProventosModal() {
 
 function closeProventosModal() {
     if(!proventosPageContent) return;
-    
+
     // 1. Remove qualquer transformação manual feita pelo dedo (reset)
     proventosPageContent.style.transform = '';
-    
+
     // 2. Adiciona a classe que faz a animação de descer (definida no CSS)
     proventosPageContent.classList.add('closing');
-    
+
     // 3. Remove a visibilidade do fundo escuro
     proventosPageModal.classList.remove('visible');
-    
+
     // 4. Libera o scroll da página principal
     document.body.style.overflow = '';
 }
@@ -2886,7 +2830,7 @@ function openAlocacaoModal() {
 
 function closeAlocacaoModal() {
     if(!alocacaoPageContent) return;
-    
+
     alocacaoPageContent.style.transform = '';
     alocacaoPageContent.classList.add('closing');
     alocacaoPageModal.classList.remove('visible');
@@ -2897,9 +2841,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     const canvas = document.getElementById('patrimonio-chart');
     if (!canvas) return;
 
-    // --- 1. DETECÇÃO DE PREÇOS (AUTORRECUPERAÇÃO) ---
     const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
-    
+
     if (!window.patrimonioRetryCount) window.patrimonioRetryCount = 0;
 
     if (!temPrecos && window.patrimonioRetryCount < 5) {
@@ -2912,7 +2855,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         if (window.patrimonioRetryTimer) clearTimeout(window.patrimonioRetryTimer);
     }
 
-    // --- 2. MAPA DE PREÇOS ROBUSTO ---
     const mapPrecos = new Map();
     if (temPrecos) {
         precosAtuais.forEach(p => {
@@ -2924,7 +2866,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // --- 3. CÁLCULO DOS TOTAIS ---
     let totalAtualLive = 0;
     let custoTotalLive = 0;
 
@@ -2943,7 +2884,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    // --- 4. ATUALIZA CARDS SUPERIORES ---
     const elLive = document.getElementById('modal-patrimonio-live');
     if (elLive) {
         elLive.textContent = totalAtualLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -2955,7 +2895,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         elCusto.textContent = custoTotalLive.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // --- 5. PREPARAÇÃO DO GRÁFICO (DADOS HISTÓRICOS) ---
     const hoje = new Date();
     hoje.setHours(23, 59, 59, 999);
     let dataCorte;
@@ -2985,7 +2924,6 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // --- 8. AGRUPAMENTO MENSAL ---
     if (['6M', '1Y'].includes(currentPatrimonioRange)) {
         const grupos = {};
         dadosOrdenados.forEach(p => {
@@ -3006,11 +2944,10 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         return;
     }
 
-    // --- 9. GERAÇÃO DE DADOS DO CHART ---
     const labels = [];
     const dataValor = [];
     const dataCusto = [];
-    
+
     const txOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
     let custoAcumulado = 0;
     let txIndex = 0;
@@ -3055,10 +2992,9 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         }
     }
 
-    // --- 11. RENDERIZAÇÃO ---
     const ctx = canvas.getContext('2d');
     const isLight = document.body.classList.contains('light-mode');
-    
+
     const colorLinePatrimonio = '#c084fc'; 
     const colorLineInvestido = isLight ? '#9ca3af' : '#525252'; 
     const colorBadgeBg = isLight ? '#f3f4f6' : '#1f2937';
@@ -3077,7 +3013,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 const activePoint = chart.tooltip._active[0];
                 const x = activePoint.element.x; 
                 const y = chart.tooltip._eventPosition.y; 
-                
+
                 const topY = chart.scales.y.top;
                 const bottomY = chart.scales.y.bottom;
                 const leftX = chart.scales.x.left;
@@ -3108,10 +3044,10 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 const dateWidth = ctx.measureText(labelText).width + 12;
                 const dateHeight = 20;
                 let dateBadgeX = x - (dateWidth / 2);
-                
+
                 if (dateBadgeX < leftX) dateBadgeX = leftX;
                 if (dateBadgeX + dateWidth > rightX) dateBadgeX = rightX - dateWidth;
-                
+
                 // Força o badge para dentro da área visível inferior
                 const dateBadgeY = bottomY - dateHeight - 2; 
 
@@ -3130,10 +3066,10 @@ function renderizarGraficoPatrimonio(isRetry = false) {
                 const priceText = yValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 const priceWidth = ctx.measureText(priceText).width + 12;
                 const priceHeight = 20;
-                
+
                 const priceBadgeX = rightX - priceWidth; 
                 let priceBadgeY = y - (priceHeight / 2);
-                
+
                 if (priceBadgeY < topY) priceBadgeY = topY;
                 if (priceBadgeY + priceHeight > bottomY) priceBadgeY = bottomY - priceHeight;
 
@@ -3247,16 +3183,14 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     lastPatrimonioCalcSignature = currentSignature;
 }
 
-// No seu arquivo app.js, substitua a função inteira:
 
 function renderizarTimelinePagamentos() {
     const container = document.getElementById('timeline-pagamentos-container');
     const lista = document.getElementById('timeline-lista');
-    
+
     // Configura container para Grid
     lista.className = 'payment-static-list'; 
-    
-    // --- CORREÇÃO 1: ESPAÇAMENTO ---
+
     // Usamos paddingTop para evitar colapso de margem. 32px garante o "descanso".
     container.style.marginTop = '0px'; 
     container.style.paddingTop = '32px'; 
@@ -3273,10 +3207,10 @@ function renderizarTimelinePagamentos() {
     // 1. Filtra (Futuros ou Hoje + Ativo na Carteira) e Ordena
     const pagamentosReais = proventosAtuais.filter(p => {
         if (!p.paymentDate) return false;
-        
+
         const parts = p.paymentDate.split('-');
         const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-        
+
         // Ignora passados
         if (dataPag < hoje) return false;
 
@@ -3292,7 +3226,7 @@ function renderizarTimelinePagamentos() {
 
     lista.innerHTML = '';
     const totalItems = pagamentosReais.length;
-    
+
     // Regra: Se tem até 3, mostra 3. Se tem mais, mostra 2 + botão.
     let itemsToRender = [];
     let showMoreButton = false;
@@ -3313,11 +3247,11 @@ function renderizarTimelinePagamentos() {
     itemsToRender.forEach(prov => {
         const parts = prov.paymentDate.split('-');
         const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-        
+
         const dia = parts[2];
         const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
         const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
-        
+
         // Verifica se é hoje
         const diffTime = Math.abs(dataObj - hoje);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
@@ -3333,24 +3267,23 @@ function renderizarTimelinePagamentos() {
 
         const item = document.createElement('div');
         item.className = `agenda-card ${classeHoje}`; 
-        
+
         // Clique no card abre detalhes do ativo
         item.onclick = () => {
              window.abrirDetalhesAtivo?.(prov.symbol);
         };
-        
+
         const valorFormatado = _fmtBRL.format(totalReceber);
 
-        // --- CORREÇÃO 2: REMOVIDO O STYLE INLINE ---
         // Removemos style="color:..." para que o CSS (style.css) controle as cores (Verde se for hoje, Amarelo padrão)
         item.innerHTML = `
             <div class="agenda-header">${textoHeader}</div>
-            
+
             <div class="agenda-body">
                 <span class="agenda-day">${dia}</span>
                 <span class="agenda-weekday">${diaSemana}</span>
             </div>
-            
+
             <div class="agenda-footer">
                 <span class="agenda-ticker">${prov.symbol}</span>
                 <span class="agenda-value">+${valorFormatado}</span>
@@ -3364,11 +3297,11 @@ function renderizarTimelinePagamentos() {
         const remaining = totalItems - 2;
         const moreBtn = document.createElement('div');
         moreBtn.className = 'agenda-card more-card';
-        
+
         moreBtn.onclick = () => {
             openPagamentosModal(pagamentosReais);
         };
-        
+
         moreBtn.innerHTML = `
             <div class="agenda-body">
                 <span class="more-count">+${remaining}</span>
@@ -3385,7 +3318,7 @@ function renderizarTimelinePagamentos() {
 function renderizarDashboardSkeletons(show) {
     const skeletons = [skeletonTotalValor, skeletonTotalCusto, skeletonTotalPL, skeletonTotalProventos, skeletonTotalCaixa];
     const dataElements = [totalCarteiraValor, totalCarteiraCusto, totalCarteiraPL, totalProventosEl, totalCaixaValor];
-    
+
     if (show) {
         skeletons.forEach(el => { if(el) el.classList.remove('hidden'); });
         dataElements.forEach(el => { if(el) el.classList.add('hidden'); });
@@ -3394,7 +3327,7 @@ function renderizarDashboardSkeletons(show) {
         dataElements.forEach(el => { if(el) el.classList.remove('hidden'); });
     }
 }
-    
+
 function renderizarCarteiraSkeletons(show) {
         // Se a lista estiver vazia (primeiro load), usamos o skeleton genérico
         if (listaCarteira.children.length === 0 && show) {
@@ -3407,7 +3340,7 @@ function renderizarCarteiraSkeletons(show) {
         listaCarteira.classList.remove('hidden');      // Garante que a lista real apareça
 
         const cards = listaCarteira.querySelectorAll('.wallet-card');
-        
+
         cards.forEach(card => {
             // Selecionamos apenas os elementos que vão mudar de valor
             const camposDinamicos = card.querySelectorAll(`
@@ -3431,7 +3364,7 @@ function renderizarCarteiraSkeletons(show) {
             });
         });
     }
-    
+
 // Cache de memoização para getQuantidadeNaData.
 // Chave: `${symbol}_${dataLimiteStr}`. Evita O(N*M) iterações em loops de proventos.
 // Deve ser zerado sempre que o array de transações sofrer qualquer mutação.
@@ -3481,7 +3414,7 @@ async function renderizarCarteira() {
         }
         proventosMap.get(p.symbol).push(p);
     });
-    
+
     // Ordena a carteira alfabeticamente
     const carteiraOrdenada = [...carteiraCalculada].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
@@ -3493,7 +3426,7 @@ async function renderizarCarteira() {
     carteiraOrdenada.forEach(ativo => {
         const dadoPreco = precosMap.get(ativo.symbol);
         const precoAtual = dadoPreco ? (dadoPreco.regularMarketPrice ?? 0) : 0;
-        
+
         totalValorCarteira += (precoAtual * ativo.quantity);
         totalCustoCarteira += (ativo.precoMedio * ativo.quantity);
     });
@@ -3503,7 +3436,7 @@ async function renderizarCarteira() {
         listaCarteira.innerHTML = ''; 
         carteiraStatus.classList.remove('hidden');
         renderizarDashboardSkeletons(false);
-        
+
         // Zera Dashboard
         if(totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(0);
         if(totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
@@ -3512,15 +3445,11 @@ async function renderizarCarteira() {
             totalCarteiraPL.textContent = `${formatBRL(0)} (---%)`;
             totalCarteiraPL.className = `text-lg font-semibold text-gray-500`;
         }
-        
+
         dashboardMensagem.textContent = 'A sua carteira está vazia. Adicione ativos na aba "Carteira" para começar.';
         dashboardLoading.classList.add('hidden');
         dashboardStatus.classList.remove('hidden');
-        
-        // --- LAZY LOAD: COMENTADO PARA NÃO INICIAR AUTOMATICAMENTE ---
-        // renderizarGraficoAlocacao([]);
-        // renderizarGraficoHistorico({ labels: [], data: [] });
-        // renderizarGraficoPatrimonio();
+
 
         await salvarSnapshotPatrimonio(saldoCaixa);
         return; 
@@ -3553,7 +3482,7 @@ async function renderizarCarteira() {
     // PASS 2: Renderizar ou Atualizar cada Card
     carteiraOrdenada.forEach((ativo, index) => { 
         const dadoPreco = precosMap.get(ativo.symbol);
-        
+
         // 1. Pega TODOS os proventos (passados e futuros) desse ativo
         const listaTodosProventos = proventosMap.get(ativo.symbol) || [];
 
@@ -3570,7 +3499,7 @@ async function renderizarCarteira() {
         // Dados de Mercado
         let precoAtual = 0, variacao = 0;
         let precoFormatado = 'N/A', variacaoFormatada = '0.00%', corVariacao = 'text-gray-500';
-        
+
         if (dadoPreco) {
             precoAtual = dadoPreco.regularMarketPrice ?? 0;
             variacao = dadoPreco.regularMarketChangePercent ?? 0;
@@ -3581,7 +3510,7 @@ async function renderizarCarteira() {
             precoFormatado = '...';
             corVariacao = 'text-yellow-500';
         }
-        
+
         // Cálculos Financeiros
         const totalPosicao = precoAtual * ativo.quantity;
         const custoTotal = ativo.precoMedio * ativo.quantity;
@@ -3620,7 +3549,7 @@ async function renderizarCarteira() {
         // DOM: Cria ou Atualiza
         // OTIMIZAÇÃO: acesso O(1) via Map em vez de querySelector O(n) dentro do loop
         let card = existingCards.get(ativo.symbol);
-        
+
         if (card) {
             atualizarCardElemento(card, ativo, dadosRender);
         } else {
@@ -3628,13 +3557,13 @@ async function renderizarCarteira() {
             card.classList.add('card-stagger');
             const delay = Math.min(index * 50, 500); 
             card.style.animationDelay = `${delay}ms`;
-            
+
             card.addEventListener('animationend', () => {
                 card.classList.remove('card-stagger');
                 card.style.animationDelay = '';
                 card.style.opacity = '1';
             }, { once: true });
-            
+
             listaCarteira.appendChild(card);
         }
     });
@@ -3644,31 +3573,28 @@ async function renderizarCarteira() {
         const patrimonioTotalAtivos = totalValorCarteira;
         const totalLucroPrejuizo = totalValorCarteira - totalCustoCarteira;
         const totalLucroPrejuizoPercent = (totalCustoCarteira === 0) ? 0 : (totalLucroPrejuizo / totalCustoCarteira) * 100;
-        
+
         let corPLTotal = 'text-gray-500';
         if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
         else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
-        
+
         renderizarDashboardSkeletons(false);
-        
+
         if(totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
         if(totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
         if(totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
-        
+
         if(totalCarteiraPL) {
             totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
             totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`; 
         }
-        
+
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
         renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
         await salvarSnapshotPatrimonio(patrimonioRealParaSnapshot);
     }
-    
-    // --- LAZY LOAD: COMENTADO PARA NÃO INICIAR AUTOMATICAMENTE ---
-    // renderizarGraficoAlocacao(dadosGrafico);
-    // renderizarGraficoPatrimonio();
-    
+
+
     if (carteiraSearchInput && carteiraSearchInput.value) {
         const term = carteiraSearchInput.value.trim().toUpperCase();
         const cards = listaCarteira.querySelectorAll('.wallet-card'); 
@@ -3687,7 +3613,7 @@ async function renderizarCarteira() {
         let totalEstimado = 0;
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
-        
+
         proventosAtuais.forEach(provento => {
             if (provento && typeof provento.value === 'number' && provento.value > 0) {
                  const parts = provento.paymentDate.split('-');
@@ -3696,7 +3622,7 @@ async function renderizarCarteira() {
                  if (dataPagamento > hoje) {
                      const dataReferencia = provento.dataCom || provento.paymentDate;
                      const qtdElegivel = getQuantidadeNaData(provento.symbol, dataReferencia);
-                     
+
                      if (qtdElegivel > 0) {
                          totalEstimado += (qtdElegivel * provento.value);
                      }
@@ -3708,7 +3634,7 @@ async function renderizarCarteira() {
 
     async function handleAtualizarNoticias(force = false) {
         const cacheKey = 'noticias_json_v5_filtered';
-        
+
         if (!force) {
             const cache = await getCache(cacheKey);
             if (cache) {
@@ -3717,7 +3643,7 @@ async function renderizarCarteira() {
                 return;
             }
         }
-        
+
         fiiNewsSkeleton.classList.remove('hidden');
         fiiNewsList.innerHTML = '';
         fiiNewsMensagem.classList.add('hidden');
@@ -3743,7 +3669,7 @@ async function renderizarCarteira() {
 
     async function fetchAndCacheNoticiasBFF_NetworkOnly(cacheKey) {
         await vestoDB.delete('apiCache', cacheKey);
-        
+
         try {
             const url = `/api/news?t=${Date.now()}`;
             const response = await fetchBFF(url, {
@@ -3751,7 +3677,7 @@ async function renderizarCarteira() {
                 headers: { 'Content-Type': 'application/json' }
             });
             const articles = response; 
-            
+
             if (articles?.length > 0) {
                 await setCache(cacheKey, articles, CACHE_NOTICIAS);
             }
@@ -3761,12 +3687,12 @@ async function renderizarCarteira() {
             throw error;
         }
     }
-    
+
     async function fetchBFF(url, options = {}) {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000); 
-            
+
             const response = await fetch(url, { ...options, signal: controller.signal });
             clearTimeout(timeoutId); 
 
@@ -3783,10 +3709,10 @@ async function renderizarCarteira() {
             throw error;
         }
     }
-    
+
     async function buscarPrecosCarteira(force = false) { 
         if (carteiraCalculada.length === 0) return [];
-        
+
         const mercadoAberto = isB3Open();
         const duracaoCachePreco = mercadoAberto ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO;
 
@@ -3795,7 +3721,7 @@ async function renderizarCarteira() {
             if (force) {
                 await vestoDB.delete('apiCache', cacheKey);
             }
-            
+
             if (!force) {
                 const precoCache = await getCache(cacheKey);
                 if (precoCache) return precoCache;
@@ -3834,11 +3760,11 @@ async function renderizarCarteira() {
             .map(provento => {
                 const ativoCarteira = carteiraCalculada.find(a => a.symbol === provento.symbol);
                 if (!ativoCarteira) return null;
-                
+
                 if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
                     const parts = provento.paymentDate.split('-');
                     const dataPagamento = new Date(parts[0], parts[1] - 1, parts[2]); 
-                    
+
                     if (!isNaN(dataPagamento) && dataPagamento >= dataLimitePassado) {
                         return provento;
                     }
@@ -3848,7 +3774,6 @@ async function renderizarCarteira() {
             .filter(p => p !== null);
     }
 
-// --- NOVA FUNÇÃO AUXILIAR: Calcula quantos meses buscar ---
     function calcularLimiteMeses(symbol) {
         // Encontra a primeira transação (compra ou venda) deste ativo
         const txsDoAtivo = transacoes
@@ -3864,12 +3789,11 @@ async function renderizarCarteira() {
         // Cálculo da diferença em meses
         const anosDiff = hoje.getFullYear() - dataPrimeiraCompra.getFullYear();
         const mesesDiff = (anosDiff * 12) + (hoje.getMonth() - dataPrimeiraCompra.getMonth());
-        
+
         // Retorna a quantidade exata + 2 meses de margem (com mínimo de 3)
         return Math.max(3, mesesDiff + 2);
     }
 
-// EM app.js - Substitua a função buscarProventosFuturos por esta versão corrigida:
 
 async function buscarProventosFuturos(force = false) {
     const ativosParaBuscar = carteiraCalculada.map(a => a.symbol); 
@@ -3884,7 +3808,7 @@ async function buscarProventosFuturos(force = false) {
         if (force) {
             await vestoDB.delete('apiCache', cacheKey);
         }
-        
+
         const proventoCache = await getCache(cacheKey);
         // CORREÇÃO: Verifica se é Array (versão nova) ou Objeto (versão antiga bugada)
         if (proventoCache && !force) {
@@ -3898,7 +3822,7 @@ async function buscarProventosFuturos(force = false) {
             listaParaAPI.push({ ticker: symbol, limit: limiteCalculado });
         }
     }));
-    
+
     // 2. Busca na API
     if (listaParaAPI.length > 0) {
         try {
@@ -3906,13 +3830,13 @@ async function buscarProventosFuturos(force = false) {
             const dateRegex = /^\d{4}-\d{2}-\d{2}$/; 
 
             if (novosProventos && Array.isArray(novosProventos)) {
-                
+
                 // --- NOVA LÓGICA DE CACHE: Agrupar por Ticker ---
                 const proventosPorTicker = {};
-                
+
                 // Filtra inválidos e agrupa
                 const proventosValidos = novosProventos.filter(p => p && p.symbol && dateRegex.test(p.paymentDate));
-                
+
                 proventosValidos.forEach(p => {
                     if (!proventosPorTicker[p.symbol]) {
                         proventosPorTicker[p.symbol] = [];
@@ -3928,13 +3852,12 @@ async function buscarProventosFuturos(force = false) {
                     proventosPool.push(...lista);
                 }));
 
-                // --- PROCESSAMENTO DE IDs (Mantido e Ajustado) ---
                 const idsNesteLote = new Set();
 
                 for (const provento of proventosValidos) {
                     const safeType = provento.type || 'REND';
                     const safeValue = (provento.value || 0).toFixed(4);
-                    
+
                     // Gera ID base
                     let idUnico = `${provento.symbol}_${provento.paymentDate}_${safeType}_${safeValue}`;
 
@@ -3948,7 +3871,7 @@ async function buscarProventosFuturos(force = false) {
 
                     // Verifica se já temos esse ID salvo na memória global
                     const existe = proventosConhecidos.some(p => p.id === idUnico);
-                    
+
                     if (!existe) {
                         const novoProvento = { 
                             ...provento, 
@@ -3956,7 +3879,7 @@ async function buscarProventosFuturos(force = false) {
                             id: idUnico,
                             type: safeType 
                         };
-                        
+
                         await supabaseDB.addProventoConhecido(novoProvento);
                         proventosConhecidos.push(novoProvento);
                     }
@@ -3966,10 +3889,10 @@ async function buscarProventosFuturos(force = false) {
             console.error("Erro Scraper:", error);
         }
     }
-    
+
     return processarProventosScraper(proventosPool); 
 }
-	
+
 	async function callScraperProximoProventoAPI(ticker) {
         const body = { mode: 'proximo_provento', payload: { ticker } };
         const response = await fetchBFF('/api/scraper', {
@@ -3979,7 +3902,7 @@ async function buscarProventosFuturos(force = false) {
         });
         return response.json; 
     }
-	
+
 	async function callScraperFundamentosAPI(ticker) {
         const body = { 
             mode: 'fundamentos', 
@@ -3996,15 +3919,15 @@ async function buscarProventosFuturos(force = false) {
 async function buscarHistoricoProventosAgregado(force = false) {
         // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
         const ativosCarteira = carteiraCalculada.map(a => a.symbol);
-        
+
         if (ativosCarteira.length === 0) return { labels: [], data: [] };
 
         const cacheKey = `cache_grafico_historico_${currentUserId}`;
-        
+
         if (force) {
             await vestoDB.delete('apiCache', cacheKey);
         }
-        
+
         let rawDividends = await getCache(cacheKey);
 
         if (!rawDividends) {
@@ -4026,11 +3949,11 @@ async function buscarHistoricoProventosAgregado(force = false) {
         rawDividends.forEach(item => {
             const dataVisualizacao = item.paymentDate || item.dataCom;
             const dataDireito = item.dataCom || item.paymentDate;
-            
+
             if (dataVisualizacao) {
                 const [ano, mes] = dataVisualizacao.split('-'); 
                 const chaveMes = `${mes}/${ano.substring(2)}`; 
-                
+
                 const qtdNaData = getQuantidadeNaData(item.symbol, dataDireito);
 
                 if (qtdNaData > 0) {
@@ -4050,13 +3973,11 @@ async function buscarHistoricoProventosAgregado(force = false) {
 
         return { labels, data };
     }
-    
-// --- FUNÇÃO AUXILIAR: GERENCIAR NOTIFICAÇÕES EXCLUÍDAS ---
+
 function isNotificationDismissed(id) {
     return dismissedNotifsSet.has(id);
 }
 
-// --- FUNÇÃO DE NOTIFICAÇÕES (REMODELADA: CLEAN & PREMIUM) ---
 function verificarNotificacoesFinanceiras() {
     const list = document.getElementById('notifications-list');
     const btnClear = document.getElementById('btn-clear-notifications');
@@ -4072,12 +3993,11 @@ function verificarNotificacoesFinanceiras() {
     // Usa o Set em RAM — sem I/O de localStorage dentro desta função
     const dismissed = dismissedNotifsSet;
 
-    // --- Datas e Helpers ---
     const hoje = new Date();
     const offset = hoje.getTimezoneOffset() * 60000;
     const hojeLocal = new Date(hoje.getTime() - offset).toISOString().split('T')[0];
     const hojeDateObj = new Date(hojeLocal + 'T00:00:00'); 
-    
+
     const fmtDia = (dataStr) => {
         if (!dataStr) return '?';
         const parts = dataStr.split('-');
@@ -4089,7 +4009,7 @@ function verificarNotificacoesFinanceiras() {
         const div = document.createElement('div');
         div.className = `notif-item notif-type-${type} notif-animate-enter group cursor-default`;
         div.setAttribute('data-notif-id', id);
-        
+
         let iconColorClass = 'text-gray-400'; 
         if (type === 'payment') iconColorClass = 'text-green-500';
         if (type === 'datacom') iconColorClass = 'text-yellow-500';
@@ -4116,7 +4036,7 @@ function verificarNotificacoesFinanceiras() {
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
             </button>
         `;
-        
+
         if (linkUrl) {
             div.addEventListener('click', (e) => {
                 if(!e.target.closest('button') && !e.target.closest('a')) { window.open(linkUrl, '_blank'); }
@@ -4140,7 +4060,7 @@ function verificarNotificacoesFinanceiras() {
 
         const props = getProps(p);
         const qtd = getQuantidadeNaData(p.symbol, props.dataCom || props.paymentDate);
-        
+
         if (qtd > 0) {
             count++;
             const msg = `Recebeu <strong class="text-white">${formatBRL(p.value * qtd)}</strong> de <strong class="text-white">${p.symbol}</strong> (${qtd} cotas).`;
@@ -4184,9 +4104,9 @@ function verificarNotificacoesFinanceiras() {
 
     // 4. NOTÍCIAS DE MERCADO (CORRIGIDO: USA carteiraCalculada)
     if (window.noticiasCache && window.noticiasCache.length > 0 && carteiraCalculada.length > 0) {
-        
+
         const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
-        
+
         window.noticiasCache.slice(0, 30).forEach(noticia => {
             const tickerEncontrado = meusTickers.find(ticker => {
                 return noticia.title.toUpperCase().includes(ticker); 
@@ -4205,7 +4125,7 @@ function verificarNotificacoesFinanceiras() {
 
                 const msg = `Notícia sobre <strong class="text-white">${tickerEncontrado}</strong> saiu no mercado.${dataPub}<br><span class="text-gray-400 italic">"${noticia.title.slice(0, 50)}..."</span>`;
                 const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>`;
-                
+
                 list.appendChild(createCard(safeId, 'news', 'Radar de Notícias', msg, icon, noticia.link));
             }
         });
@@ -4213,7 +4133,7 @@ function verificarNotificacoesFinanceiras() {
 
     checkEmptyState();
 }
-	
+
 // OTIMIZAÇÃO: Debounce genérico — agrupa chamadas que chegam em sequência
 // e executa apenas a última após `delay` ms de silêncio.
 function debounce(fn, delay) {
@@ -4238,24 +4158,23 @@ async function atualizarTodosDados(force = false) {
         // 2. Feedback Visual (Mostra os esqueletos de carregamento)
         renderizarDashboardSkeletons(true);
         renderizarCarteiraSkeletons(true);
-        
+
         // Opcional: Esconder status antigos enquanto carrega
         dashboardStatus.classList.add('hidden'); 
     }
-    
-    // --- CÁLCULOS LOCAIS (RÁPIDOS) ---
+
     // Fazemos isso primeiro para mostrar algo imediatamente (mesmo que velho)
     calcularCarteira();
     await processarDividendosPagos(); 
     renderizarHistorico();
     renderizarGraficoPatrimonio(); 
-    
+
     // Mostra loading se tiver carteira e não for um refresh forçado (que já tratou acima)
     if (carteiraCalculada.length > 0 && !force) {
         dashboardStatus.classList.remove('hidden');
         dashboardLoading.classList.remove('hidden');
     }
-    
+
     // Animação do ícone de refresh
     const refreshIcon = refreshButton.querySelector('svg'); 
     if (force) {
@@ -4270,7 +4189,7 @@ async function atualizarTodosDados(force = false) {
             renderizarProventos();
         }
     }
-    
+
     // Se a carteira estiver vazia, reseta tudo e para por aqui
     if (carteiraCalculada.length === 0) {
             precosAtuais = []; 
@@ -4282,7 +4201,6 @@ async function atualizarTodosDados(force = false) {
             return;
     }
 
-    // --- BUSCA DE DADOS EXTERNOS (PARALELO) ---
     // Iniciamos todas as requisições ao mesmo tempo para ganhar tempo
     const promessaPrecos = buscarPrecosCarteira(force); 
     const promessaProventos = buscarProventosFuturos(force);
@@ -4309,11 +4227,9 @@ async function atualizarTodosDados(force = false) {
     promessaProventos.then(async proventosFuturos => {
         // Atualiza a lista com o que veio da API
         proventosAtuais = processarProventosScraper(proventosConhecidos);
-        
-        // --- CORREÇÃO IMPORTANTE AQUI ---
+
         // Força o recálculo do saldo "Recebidos" agora que temos dados novos da nuvem
         await processarDividendosPagos();
-        // --------------------------------
 
         renderizarProventos(); // Atualiza o widget de proventos
 
@@ -4339,15 +4255,14 @@ async function atualizarTodosDados(force = false) {
                 totalProventosEl.textContent = "Erro";
         }
     });
-    
+
     promessaHistorico.then(({ labels, data }) => {
         renderizarGraficoHistorico({ labels, data }); // Atualiza o gráfico de barras
     }).catch(err => {
         console.error("Erro ao buscar histórico agregado (BFF):", err);
         renderizarGraficoHistorico({ labels: [], data: [] }); 
     });
-    
-    // --- FINALIZAÇÃO ---
+
     try {
         // Espera tudo terminar (sucesso ou falha) para limpar o estado de loading
         await Promise.allSettled([promessaPrecos, promessaProventos, promessaHistorico]); 
@@ -4355,7 +4270,7 @@ async function atualizarTodosDados(force = false) {
         refreshIcon.classList.remove('spin-animation');
         dashboardStatus.classList.add('hidden');
         dashboardLoading.classList.add('hidden');
-        
+
         // Garante que os skeletons sumam no final de tudo
         renderizarDashboardSkeletons(false);
         renderizarCarteiraSkeletons(false);
@@ -4382,7 +4297,7 @@ async function atualizarTodosDados(force = false) {
                 await supabaseDB.addWatchlist(newItem);
                 watchlist.push(newItem);
             }
-            
+
             atualizarIconeFavorito(symbol); 
             renderizarWatchlist(); 
         } catch (e) {
@@ -4410,9 +4325,9 @@ async function handleCompartilharAtivo() {
 
         const baseUrl = window.location.origin + window.location.pathname;
         const deepLink = `${baseUrl}?ativo=${currentDetalhesSymbol}`;
-        
+
         const textoBase = `Confira ${currentDetalhesSymbol} no Vesto!\nPreço: ${precoTexto}\nDY (12m): ${dyTexto}\nP/VP: ${pvpTexto}`;
-        
+
         const textoCompleto = `${textoBase}\n\nVer detalhes: ${deepLink}`;
 
         if (navigator.share) {
@@ -4442,7 +4357,7 @@ async function handleCompartilharAtivo() {
             showToast('Erro ao copiar link.');
         });
     }
-    
+
 async function handleSalvarTransacao() {
         let ticker = tickerInput.value.trim().toUpperCase();
         let novaQuantidade = parseInt(quantityInput.value, 10);
@@ -4469,7 +4384,7 @@ async function handleSalvarTransacao() {
             }, 2000);
             return;
         }
-        
+
         addButton.innerHTML = `<span class="loader-sm"></span>`;
         addButton.disabled = true;
 
@@ -4505,7 +4420,7 @@ async function handleSalvarTransacao() {
                 }
             } 
         }
-        
+
         const dataISO = new Date(dataTransacao + 'T12:00:00').toISOString();
 
         if (transacaoID) {
@@ -4516,16 +4431,16 @@ async function handleSalvarTransacao() {
                 quantity: novaQuantidade,
                 price: novoPreco
             };
-            
+
             await supabaseDB.updateTransacao(transacaoID, transacaoAtualizada);
             invalidarCacheQtdNaData();
-            
+
             const index = transacoes.findIndex(t => t.id === transacaoID);
             if (index > -1) {
                 transacoes[index] = { ...transacoes[index], ...transacaoAtualizada };
             }
             showToast("Transação atualizada!", 'success');
-            
+
         } else {
             const novaTransacao = {
                 id: 'tx_' + Date.now(),
@@ -4535,11 +4450,11 @@ async function handleSalvarTransacao() {
                 quantity: novaQuantidade,
                 price: novoPreco
             };
-            
+
             await supabaseDB.addTransacao(novaTransacao);
             transacoes.push(novaTransacao);
             invalidarCacheQtdNaData();
-            
+
             // Mensagem personalizada para compra ou venda
             const msg = tipoOperacao === 'sell' ? "Venda registrada!" : "Compra registrada!";
             showToast(msg, 'success');
@@ -4548,11 +4463,11 @@ async function handleSalvarTransacao() {
         addButton.innerHTML = `Adicionar`;
         addButton.disabled = false;
         hideAddModal();
-        
+
         await removerCacheAtivo(ticker); 
         const ativoExistente = carteiraCalculada.find(a => a.symbol === ticker);
         const forceUpdate = (!ativoExistente && isFII(ticker));
-        
+
         await atualizarTodosDados(forceUpdate);
     }
 
@@ -4563,40 +4478,40 @@ async function handleSalvarTransacao() {
             async () => { 
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
                 invalidarCacheQtdNaData();
-                
+
                 await supabaseDB.deleteTransacoesDoAtivo(symbol);
                 await removerCacheAtivo(symbol); 
                 await removerProventosConhecidos(symbol);
-                
+
                 await supabaseDB.deleteWatchlist(symbol);
                 watchlist = watchlist.filter(item => item.symbol !== symbol);
                 renderizarWatchlist();
-                
+
                 saldoCaixa = 0;
                 await salvarCaixa();
-                
+
                 mesesProcessados = [];
                 await salvarHistoricoProcessado();
-                
+
                 await atualizarTodosDados(true); 
             }
         );
     }
-    
+
 function handleAbrirModalEdicao(id) {
     const tx = transacoes.find(t => t.id === id);
     if (!tx) { showToast("Erro: Transação não encontrada."); return; }
-    
+
     transacaoEmEdicao = tx;
     addModalTitle.textContent = tx.type === 'sell' ? 'Editar Venda' : 'Editar Compra';
-    
+
     transacaoIdInput.value = tx.id;
     tickerInput.value = tx.symbol;
     tickerInput.disabled = true;
     dateInput.value = formatDateToInput(tx.date);
     quantityInput.value = tx.quantity;
     precoMedioInput.value = tx.price;
-    
+
     // Atualiza Total Inicial
     const totalPreview = document.getElementById('total-transacao-preview');
     if(totalPreview) totalPreview.textContent = formatBRL(tx.quantity * tx.price);
@@ -4611,7 +4526,7 @@ function handleAbrirModalEdicao(id) {
     addButton.textContent = 'Atualizar';
     showAddModal();
 }
-    
+
     function handleExcluirTransacao(id, symbol) {
         const tx = transacoes.find(t => t.id === id);
         if (!tx) {
@@ -4620,7 +4535,7 @@ function handleAbrirModalEdicao(id) {
         }
 
         const msg = `Excluir esta compra?\n\nAtivo: ${tx.symbol}\nData: ${formatDate(tx.date)}\nQtd: ${tx.quantity}\nPreço: ${formatBRL(tx.price)}`;
-        
+
         showModal(
             'Excluir Transação', 
             msg, 
@@ -4628,9 +4543,9 @@ function handleAbrirModalEdicao(id) {
                 await supabaseDB.deleteTransacao(id);
                 transacoes = transacoes.filter(t => t.id !== id);
                 invalidarCacheQtdNaData();
-                
+
                 await removerCacheAtivo(symbol);
-                
+
                 const outrasTransacoes = transacoes.some(t => t.symbol === symbol);
 
                 saldoCaixa = 0;
@@ -4640,7 +4555,7 @@ function handleAbrirModalEdicao(id) {
 
                 if (!outrasTransacoes) {
                     await removerProventosConhecidos(symbol);
-                    
+
                     const isFavorite = watchlist.some(item => item.symbol === symbol);
                     if (isFavorite) {
                         setTimeout(() => {
@@ -4652,20 +4567,20 @@ function handleAbrirModalEdicao(id) {
                         }, 300); 
                     }
                 }
-                
+
                 await atualizarTodosDados(true); 
                 showToast("Transação excluída.", 'success');
             }
         );
     }
-    
+
     async function handleAlterarSenha(e) {
         e.preventDefault();
 
         const currentPassword = currentPasswordInput.value;
         const newPassword = changeNewPasswordInput.value;
         const confirmPassword = changeConfirmPasswordInput.value;
-        
+
         if (newPassword.length < 6) {
             showToast("A nova senha deve ter no mínimo 6 caracteres.");
             return;
@@ -4675,10 +4590,10 @@ function handleAbrirModalEdicao(id) {
             showToast("As senhas não coincidem.");
             return;
         }
-        
+
         changePasswordSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
         changePasswordSubmitBtn.disabled = true;
-        
+
         try {
             const session = await supabaseDB.initialize();
             if (!session || !session.user || !session.user.email) {
@@ -4687,13 +4602,13 @@ function handleAbrirModalEdicao(id) {
             const userEmail = session.user.email;
 
             const signInError = await supabaseDB.signIn(userEmail, currentPassword);
-            
+
             if (signInError) {
                 showToast("Senha atual incorreta.");
             } else {
                 await supabaseDB.updateUserPassword(newPassword);
                 showToast("Senha alterada com sucesso!", 'success');
-                
+
                 setTimeout(() => {
                     changePasswordModal.classList.remove('visible');
                     changePasswordForm.reset();
@@ -4727,23 +4642,21 @@ function handleAbrirModalEdicao(id) {
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
-        
+
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
         detalhesFavoritoBtn.dataset.symbol = '';
-        
+
         currentDetalhesSymbol = null;
         currentDetalhesMeses = 3; 
         currentDetalhesHistoricoJSON = null; 
-        
+
         periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.meses === '3'); 
         });
     }
 
-// ======================================================
 //  LÓGICA DO GRÁFICO DE COTAÇÃO (VISUAL MELHORADO & SEM CACHE PERSISTENTE)
-// ======================================================
 
 let cotacaoChartInstance = null;
 // Token de cancelamento: incrementado em limparDetalhes para invalidar fetches em voo
@@ -4769,7 +4682,7 @@ async function fetchCotacaoHistorica(symbol) {
     const symbolAlvo = symbol;
 
     let container = document.getElementById('detalhes-cotacao-container');
-    
+
     if (!container) {
         const detalhesPreco = document.getElementById('detalhes-preco');
         if (detalhesPreco && detalhesPreco.parentNode) {
@@ -4784,9 +4697,9 @@ container = document.createElement('div');
     container.innerHTML = `
         <div class="flex flex-col mb-2 px-1">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Preço</h4>
-            
+
 <div class="grid grid-cols-3 gap-2 mb-4">
-                
+
                 <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Abertura</span>
                     <span id="stat-open" class="text-base font-bold text-white leading-none">--</span>
@@ -4816,7 +4729,7 @@ container = document.createElement('div');
                 ${gerarBotaoFiltro('Tudo', symbol)}
             </div>
         </div>
-        
+
         <div class="relative h-72 w-full bg-[#151515] rounded-xl p-2 shadow-sm" id="chart-area-wrapper">
              <div class="flex flex-col items-center justify-center h-full animate-pulse">
                 <span class="text-[10px] text-gray-600 tracking-wider">Carregando...</span>
@@ -4842,7 +4755,7 @@ container = document.createElement('div');
 
 window.gerarBotaoFiltro = function(label, symbol, isActive = false) {
     const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
-    
+
     return `<button id="btn-${label}" onclick="window.mudarPeriodoGrafico('${label}', '${symbol}')" 
             class="relative z-10 chart-filter-btn flex-1 px-1 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-colors duration-300 select-none text-center ${textClass}" 
             data-range="${label}">
@@ -4855,7 +4768,7 @@ async function carregarDadosGrafico(range, symbol) {
     const cacheKey = `${symbol}_${range}`;
     // FIX: Captura o token atual — se mudar antes da resposta, o modal foi fechado
     const fetchId = currentChartFetchId;
-    
+
     try {
         let data = window.tempChartCache[cacheKey];
 
@@ -4871,7 +4784,7 @@ async function carregarDadosGrafico(range, symbol) {
 
             // FIX: Se o modal foi fechado durante o fetch, abandona silenciosamente
             if (fetchId !== currentChartFetchId) return;
-            
+
             if (response && response.points && response.points.length > 0) {
                 data = response.points;
                 window.tempChartCache[cacheKey] = data; // Salva no cache específico
@@ -4882,7 +4795,7 @@ async function carregarDadosGrafico(range, symbol) {
 
         // FIX: Verificação final antes de renderizar (pode já estar em cache mas modal fechou)
         if (fetchId !== currentChartFetchId) return;
-        
+
         renderPriceChart(data, range);
 
     } catch (e) {
@@ -4907,7 +4820,7 @@ window.mudarPeriodoGrafico = function(range, symbol) {
 
     const activeBtn = document.getElementById(`btn-${range}`);
     const slider = document.getElementById('cotacao-slider');
-    
+
     if (activeBtn) {
         // 2. Acende o texto do botão clicado
         activeBtn.classList.remove('text-gray-500', 'hover:text-gray-300');
@@ -4936,13 +4849,12 @@ function renderPriceChart(dataPoints, range) {
     wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
     const ctx = document.getElementById('canvas-cotacao').getContext('2d');
 
-    // --- DADOS ---
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
     const startPrice = values[0];
     const endPrice = values[values.length - 1];
     const isPositive = endPrice >= startPrice;
-    
+
     // Cores
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
@@ -4956,7 +4868,6 @@ function renderPriceChart(dataPoints, range) {
 
     const isIntraday = (range === '1D' || range === '5D');
 
-    // --- FUNÇÃO AUXILIAR: ATUALIZAR HEADER HTML ---
     const updateHeaderStats = (currentPrice) => {
         const elOpen = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
@@ -4975,7 +4886,7 @@ function renderPriceChart(dataPoints, range) {
         const diff = currentPrice - startPrice;
         const percent = (diff / startPrice) * 100;
         const sign = diff >= 0 ? '+' : '';
-        
+
         elVar.innerText = `${sign}${percent.toFixed(2)}%`;
         elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
     };
@@ -4989,16 +4900,14 @@ function renderPriceChart(dataPoints, range) {
         return { x: elements[0].element.x, y: eventPosition.y };
     };
 
-    // =================================================================
     // PLUGIN A: LINHA DE PREÇO ATUAL (Badge Fixo)
-    // =================================================================
     const lastPricePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
             const ctx = chart.ctx;
             const meta = chart.getDatasetMeta(0);
             if (!meta.data || meta.data.length === 0) return;
-            
+
             const lastPoint = meta.data[meta.data.length - 1];
             const y = lastPoint.y; 
             const rightEdge = chart.chartArea.right; 
@@ -5036,9 +4945,7 @@ function renderPriceChart(dataPoints, range) {
         }
     };
 
-    // =================================================================
     // PLUGIN B: MIRA LIVRE + ATUALIZAÇÃO DO HEADER
-    // =================================================================
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
@@ -5057,7 +4964,7 @@ function renderPriceChart(dataPoints, range) {
             const ctx = chart.ctx;
             const x = event.x; 
             const y = event.y; 
-            
+
             const topY = chart.scales.y.top;
             const bottomY = chart.scales.y.bottom;
             const leftX = chart.scales.x.left;
@@ -5065,17 +4972,15 @@ function renderPriceChart(dataPoints, range) {
 
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
 
-            // --- ATUALIZA O HEADER COM O PREÇO FOCADO ---
             // Pega o valor real do ponto mais próximo (activePoint) para precisão no header
             const activePoint = chart.tooltip._active[0];
             const focusedPrice = dataPoints[activePoint.index].price;
-            
+
             if (chart.lastHeaderValue !== focusedPrice) {
                 updateHeaderStats(focusedPrice);
                 chart.lastHeaderValue = focusedPrice;
                 chart.lastHeaderUpdate = 'active';
             }
-            // ---------------------------------------------
 
             ctx.save();
             ctx.lineWidth = 1;
@@ -5091,7 +4996,7 @@ function renderPriceChart(dataPoints, range) {
             const xIndex = chart.scales.x.getValueForPixel(x);
             const validIndex = Math.max(0, Math.min(xIndex, dataPoints.length - 1));
             const rawDate = new Date(dataPoints[validIndex].date);
-            
+
             let dateText = "";
             if (isIntraday) {
                  dateText = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + 
@@ -5112,7 +5017,7 @@ function renderPriceChart(dataPoints, range) {
             ctx.beginPath();
             ctx.roundRect(dateBadgeX, dateBadgeY, dateWidth, dateHeight, 3);
             ctx.fill();
-            
+
             ctx.fillStyle = colorBadgeText;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -5220,28 +5125,27 @@ function renderPriceChart(dataPoints, range) {
         plugins: [lastPricePlugin, activeCrosshairPlugin]
     });
 }
-    
+
 async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
     detalhesPreco.innerHTML = '';
     detalhesAiProvento.innerHTML = ''; 
     detalhesHistoricoContainer.classList.remove('hidden'); 
-    
-    // --- 1. ÍCONE E CABEÇALHO ---
+
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
     const ehFii = isFII(symbol);
     const ehAcao = !ehFii;
-    
+
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
-    
+
     const iconHtml = !ehFii 
         ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
            <span class="hidden w-full h-full flex items-center justify-center text-base font-bold text-white tracking-wider absolute inset-0 z-0 ${bgIcone}">${sigla}</span>`
         : `<span class="text-base font-bold text-white tracking-wider">${sigla}</span>`;
-    
+
     if (iconContainer) {
         iconContainer.innerHTML = `
             <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
@@ -5249,14 +5153,14 @@ async function handleMostrarDetalhes(symbol) {
             </div>
         `;
     }
-    
+
     detalhesTituloTexto.textContent = symbol;
     detalhesNomeLongo.textContent = 'Carregando...';
-    
+
     currentDetalhesSymbol = symbol;
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
-    
+
     const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
     btnsPeriodo.forEach(btn => {
         const isActive = btn.dataset.meses === '3';
@@ -5264,12 +5168,11 @@ async function handleMostrarDetalhes(symbol) {
             isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888] hover:text-white'
         }`;
     });
-    
-    // --- 2. BUSCA DE DADOS ---
+
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
     let precoData = await getCache(cacheKeyPreco);
-    
+
     if (!precoData) {
         try {
             const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
@@ -5287,7 +5190,7 @@ async function handleMostrarDetalhes(symbol) {
 
     fetchHistoricoScraper(symbol); 
     fetchCotacaoHistorica(symbol);
-    
+
     try {
         const [fundData, provData] = await Promise.all([
             callScraperFundamentosAPI(symbol),
@@ -5296,10 +5199,9 @@ async function handleMostrarDetalhes(symbol) {
         fundamentos = fundData || {};
         nextProventoData = provData;
     } catch (e) { console.error("Erro dados extras", e); }
-    
+
     detalhesLoading.classList.add('hidden');
 
-    // --- 3. CONSTRUÇÃO DO HTML ---
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
         const varPercent = precoData.regularMarketChangePercent || 0;
@@ -5321,9 +5223,8 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-'
         };
 
-        // --- CÁLCULO DE VALUATION (AÇÕES) ---
         let valuationHtml = '';
-        
+
         if (ehAcao) {
             const parseVal = (s) => parseFloat(s?.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
             const lpa = parseVal(dados.lpa);
@@ -5333,13 +5234,13 @@ async function handleMostrarDetalhes(symbol) {
 
             if ((lpa > 0 && vpa > 0) || dyVal > 0) {
                 valuationHtml += `<h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation</h4><div class="grid grid-cols-1 gap-2 mb-4">`;
-                
+
                 // 1. Graham
                 if (lpa > 0 && vpa > 0) {
                     const vi = Math.sqrt(22.5 * lpa * vpa);
                     const margemSeguranca = ((vi - preco) / preco) * 100;
                     const corGraham = margemSeguranca > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
-                    
+
                     valuationHtml += `
                         <div class="bg-[#151515] rounded-xl p-3 flex justify-between items-center shadow-sm">
                             <div>
@@ -5393,21 +5294,21 @@ async function handleMostrarDetalhes(symbol) {
                     <span class="text-sm font-bold text-[#444]">-</span>
                 </div>`;
             }
-            
+
             const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
             const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
-            
+
             // Fundo escuro SEM bordas. Apenas o brilho suave no futuro.
             const bgClass = isFuturo ? "bg-[#151515] shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515]";
             const textClass = isFuturo ? "text-green-400" : "text-gray-300";
             const valueClass = isFuturo ? "text-green-400" : "text-white";
-            
+
             return `
             <div class="flex-1 p-3 rounded-xl ${bgClass} flex flex-col justify-between shadow-sm relative overflow-hidden">
                 ${isFuturo ? '<div class="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full"></div>' : ''}
                 <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-1.5 relative z-10">${titulo}</span>
                 <span class="text-xl font-bold ${valueClass} mb-3 leading-none tracking-tight relative z-10">${formatBRL(provento.value)}</span>
-                
+
                 <div class="flex justify-between items-end mt-auto relative z-10 border-t border-white/5 pt-2">
                     <div class="flex flex-col">
                         <span class="text-[8px] text-gray-500 font-bold tracking-wider uppercase leading-none mb-1">Data Com</span>
@@ -5503,7 +5404,7 @@ async function handleMostrarDetalhes(symbol) {
 
         // CABEÇALHO DE PREÇO POLIDO (Badges com bordas mantidas como pedido)
         const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
-        
+
         detalhesPreco.innerHTML = `
             <div class="col-span-12 w-full flex flex-col">
                 <div class="text-center pb-8 pt-2">
@@ -5526,8 +5427,7 @@ async function handleMostrarDetalhes(symbol) {
 } else {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
     }
-    
-    // --- NOVO: CHAMADA DOS IMÓVEIS ---
+
     if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
         window.renderizarListaImoveis(fundamentos.imoveis);
     } else {
@@ -5537,7 +5437,7 @@ async function handleMostrarDetalhes(symbol) {
 
     atualizarIconeFavorito(symbol);
 }
-    
+
     async function fetchHistoricoScraper(symbol) {
         // Guarda o simbolo alvo: se mudar (modal fechou/abriu outro ativo), cancela
         const symbolAlvo = symbol;
@@ -5548,7 +5448,7 @@ async function handleMostrarDetalhes(symbol) {
                 <div class="h-4 bg-gray-800 rounded-md w-1/2"></div>
             </div>
         `;
-        
+
         try {
             const cacheKey = `hist_ia_${symbol}_12`;
             let scraperResultJSON = await getCache(cacheKey);
@@ -5558,7 +5458,7 @@ async function handleMostrarDetalhes(symbol) {
 
             if (!scraperResultJSON) {
                 scraperResultJSON = await callScraperHistoricoAPI(symbol); 
-                
+
                 // CANCELAMENTO: verifica de novo apos a chamada de rede (pode demorar segundos)
                 if (currentDetalhesSymbol !== symbolAlvo) return;
 
@@ -5573,7 +5473,7 @@ async function handleMostrarDetalhes(symbol) {
             if (currentDetalhesSymbol !== symbolAlvo) return;
 
             currentDetalhesHistoricoJSON = scraperResultJSON;
-            
+
             renderHistoricoIADetalhes(3);
 
         } catch (e) {
@@ -5584,7 +5484,7 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
     }
-	
+
 	// Plugin para desenhar a Linha Vertical (Crosshair)
 const crosshairPlugin = {
     id: 'crosshair',
@@ -5605,7 +5505,7 @@ const crosshairPlugin = {
         }
     }
 };
-    
+
 function renderHistoricoIADetalhes(mesesIgnore) {
     if (!currentDetalhesHistoricoJSON) return;
 
@@ -5619,10 +5519,10 @@ function renderHistoricoIADetalhes(mesesIgnore) {
     }
 
     const containerBotoes = document.getElementById('periodo-selector-group');
-    
+
     if (containerBotoes) {
         containerBotoes.className = "flex flex-col mb-2 px-1";
-        
+
         // SÓ CRIA O HTML DOS BOTÕES SE AINDA NÃO EXISTIREM (Para não quebrar a animação)
         if (!document.getElementById('proventos-slider')) {
             const getBtnClass = (filterKey) => {
@@ -5646,7 +5546,6 @@ function renderHistoricoIADetalhes(mesesIgnore) {
             containerBotoes.innerHTML = html;
         }
 
-        // --- ATUALIZA A ÁREA DE DATA PERSONALIZADA (Sem piscar os botões) ---
         const customContainer = document.getElementById('custom-date-container');
         if (customContainer) {
             if (currentProventosFilter === 'custom') {
@@ -5666,7 +5565,7 @@ function renderHistoricoIADetalhes(mesesIgnore) {
                 customContainer.innerHTML = '';
             }
         }
-        
+
         // Sincroniza a posição do Slider sempre (Animação)
         setTimeout(() => {
             const activeBtn = document.getElementById(`btn-prov-${currentProventosFilter}`);
@@ -5674,7 +5573,7 @@ function renderHistoricoIADetalhes(mesesIgnore) {
             if (activeBtn && slider) {
                 slider.style.width = `${activeBtn.offsetWidth}px`;
                 slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
-                
+
                 // Força as cores corretas
                 document.querySelectorAll('.proventos-filter-btn').forEach(btn => {
                     btn.classList.remove('text-white');
@@ -5709,7 +5608,7 @@ window.mudarFiltroProventos = function(modo) {
     currentProventosFilter = modo;
     renderHistoricoIADetalhes(); // Re-renderiza para atualizar classes dos botões e o gráfico
 };
-	
+
 function renderizarGraficoProventosDetalhes(rawData) {
     const canvas = document.getElementById('detalhes-proventos-chart');
     if (!canvas) return;
@@ -5723,7 +5622,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
     let filteredData = rawData.filter(d => d.paymentDate); 
     const hoje = new Date();
 
-    // --- LÓGICA DE FILTROS ---
     if (currentProventosFilter === '12m') {
         const dataLimite = new Date();
         dataLimite.setMonth(hoje.getMonth() - 11);
@@ -5767,7 +5665,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
 
     filteredData.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
 
-    // --- AGRUPAMENTO ---
     const grouped = {};
     const allMonths = [];
 
@@ -5785,21 +5682,20 @@ function renderizarGraficoProventosDetalhes(rawData) {
         const rawType = (item.rawType || item.type || '').toUpperCase();
         if (rawType.includes('TRIB')) type = 'TRIB';
         else if (rawType.includes('JCP') || rawType.includes('JURO')) type = 'JCP';
-        
+
         const val = parseFloat(item.value || 0);
         grouped[sortKey][type] += val;
         grouped[sortKey].rawTotal += val;
     });
 
     const uniqueMonths = [...new Set(allMonths)].sort();
-    
+
     const labels = uniqueMonths.map(k => grouped[k].label);
     const dataJCP = uniqueMonths.map(k => grouped[k].JCP);
     const dataTRIB = uniqueMonths.map(k => grouped[k].TRIB);
     const dataDIV = uniqueMonths.map(k => grouped[k].DIV);
     const customInfo = uniqueMonths.map(k => grouped[k]);
 
-    // --- CONFIGURAÇÃO DO GRÁFICO ---
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
         plugins: [crosshairPlugin], 
@@ -5871,7 +5767,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     boxHeight: 6,
                     usePointStyle: true,
                     position: 'nearest', 
-                    
+
                     callbacks: {
                         title: function(context) {
                             const info = context[0].dataset.customInfo[context[0].dataIndex];
@@ -5891,7 +5787,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
         }
     });
 }
-    
+
 // Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
 
@@ -5899,13 +5795,11 @@ function mudarAba(tabId) {
         const index = tabOrder.indexOf(tabId);
         if (index === -1) return;
 
-        // --- MOVIMENTO DO SLIDER ---
         const slider = document.getElementById('tabs-slider');
         if (slider) {
             slider.style.transform = `translateX(-${index * 100}%)`;
         }
 
-        // --- ATUALIZAÇÃO DE ESTADO DAS ABAS ---
         tabContents.forEach(content => {
             if (content.id === tabId) {
                 content.classList.add('active');
@@ -5923,24 +5817,22 @@ function mudarAba(tabId) {
             }
         });
 
-        // --- ATUALIZAÇÃO DOS ÍCONES DA NAV ---
         tabButtons.forEach(button => {
             button.classList.toggle('active', button.dataset.tab === tabId);
         });
-        
-        // --- LÓGICA DO BOTÃO ADICIONAR (COM ANIMAÇÃO) ---
+
         if (showAddModalBtn) {
             if (tabId === 'tab-carteira') {
                 // Pequeno delay para esperar o slider começar a mover
                 setTimeout(() => {
                     showAddModalBtn.classList.remove('hidden');
-                    
+
                     // 1. Remove a classe de animação (reset)
                     showAddModalBtn.classList.remove('fab-animate');
-                    
+
                     // 2. Força um 'Reflow' (reinicia o ciclo de renderização do CSS)
                     void showAddModalBtn.offsetWidth;
-                    
+
                     // 3. Adiciona a classe novamente para tocar a animação
                     showAddModalBtn.classList.add('fab-animate');
                 }, 150); 
@@ -5950,27 +5842,27 @@ function mudarAba(tabId) {
             }
         }
     }
-    
+
     refreshButton.addEventListener('click', async () => {
         await atualizarTodosDados(true); 
     });
-    
+
     refreshNoticiasButton.addEventListener('click', async () => {
         await handleAtualizarNoticias(true); 
     });
-    
+
     showAddModalBtn.addEventListener('click', showAddModal);
     emptyStateAddBtn.addEventListener('click', showAddModal);
     addAtivoCancelBtn.addEventListener('click', hideAddModal);
     addAtivoModal.addEventListener('click', (e) => {
         if (e.target === addAtivoModal) { hideAddModal(); } 
     });
-    
+
     addAtivoForm.addEventListener('submit', (e) => {
         e.preventDefault();
         handleSalvarTransacao();
     });
-    
+
 listaHistorico.addEventListener('click', (e) => {
         // 1. Verifica se clicou no botão de EXCLUIR
         const deleteBtn = e.target.closest('[data-action="delete"]');
@@ -5989,14 +5881,14 @@ listaHistorico.addEventListener('click', (e) => {
             handleAbrirModalEdicao(id);
         }
     });
-    
+
 const tabDashboard = document.getElementById('tab-dashboard');
 
     if (tabDashboard) {
         tabDashboard.addEventListener('click', (e) => {
             // 1. Procura qualquer elemento com o atributo 'data-toggle-drawer' dentro do Dashboard
             const toggleCard = e.target.closest('[data-toggle-drawer]');
-            
+
             if (toggleCard) {
                 // Se clicou dentro do conteúdo expandido (ex: listas ou gráficos), NÃO fecha
                 if (e.target.closest('.drawer-content')) return;
@@ -6004,7 +5896,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
                 const drawerId = toggleCard.dataset.toggleDrawer;
                 const drawer = document.getElementById(drawerId);
                 const icon = toggleCard.querySelector('.card-arrow-icon');
-                
+
                 // Abre/Fecha com a animação
                 drawer?.classList.toggle('open');
                 icon?.classList.toggle('open');
@@ -6017,7 +5909,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
                 const drawerId = targetBtn.dataset.targetDrawer;
                 const drawer = document.getElementById(drawerId);
                 const icon = targetBtn.querySelector('.card-arrow-icon');
-                
+
                 drawer?.classList.toggle('open');
                 icon?.classList.toggle('open');
             }
@@ -6040,7 +5932,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
     customModal.addEventListener('click', (e) => {
         if (e.target === customModal) { hideModal(); } 
     });
-    
+
     detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
     detalhesPageModal.addEventListener('click', (e) => {
         if (e.target === detalhesPageModal) { hideDetalhesModal(); } 
@@ -6054,7 +5946,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
             detalhesPageContent.style.transition = 'none'; 
         }
     }, { passive: true }); 
-    
+
     detalhesPageContent.addEventListener('touchmove', (e) => {
         if (!isDraggingDetalhes) return;
         touchMoveY = e.touches[0].clientY;
@@ -6064,13 +5956,13 @@ const tabDashboard = document.getElementById('tab-dashboard');
             detalhesPageContent.style.transform = `translateY(${diff}px)`;
         }
     }, { passive: false }); 
-    
+
     detalhesPageContent.addEventListener('touchend', (e) => {
         if (!isDraggingDetalhes) return;
         isDraggingDetalhes = false;
         const diff = touchMoveY - touchStartY;
         detalhesPageContent.style.transition = 'transform 0.4s ease-in-out';
-        
+
         if (diff > 100) { 
             hideDetalhesModal(); 
         } else {
@@ -6080,7 +5972,6 @@ const tabDashboard = document.getElementById('tab-dashboard');
         touchMoveY = 0;
     });
 
-// --- LISTENER DE NOTÍCIAS (CORRIGIDO PARA O NOVO LAYOUT) ---
     fiiNewsList.addEventListener('click', (e) => {
         // 1. Verifica se clicou numa TAG de ticker
         const tickerTag = e.target.closest('.news-ticker-tag');
@@ -6102,14 +5993,14 @@ const tabDashboard = document.getElementById('tab-dashboard');
         // 3. Verifica se clicou no CARD da notícia (para abrir o drawer)
         // Agora procura por 'data-action="toggle-news"' OU a classe antiga 'news-card-interactive'
         const card = e.target.closest('[data-action="toggle-news"]') || e.target.closest('.news-card-interactive');
-        
+
         if (card) {
             const targetId = card.dataset.target; // Pega o ID do drawer (ex: news-drawer-HOJE-0)
-            
+
             // Como mudamos o ID para ser dinâmico, usamos getElementById
             const drawer = document.getElementById(targetId);
             const icon = card.querySelector('.card-arrow-icon');
-            
+
             if (drawer) {
                 drawer.classList.toggle('open');
                 if (icon) icon.classList.toggle('open');
@@ -6118,18 +6009,18 @@ const tabDashboard = document.getElementById('tab-dashboard');
             }
         }
     });
-    
+
     detalhesFavoritoBtn.addEventListener('click', handleToggleFavorito);
-	
+
 	if (detalhesShareBtn) {
         detalhesShareBtn.addEventListener('click', handleCompartilharAtivo);
     }
-    
+
     if (carteiraSearchInput) {
         carteiraSearchInput.addEventListener('input', (e) => {
             const term = e.target.value.trim().toUpperCase();
             const cards = listaCarteira.querySelectorAll('.wallet-card');
-            
+
             cards.forEach(card => {
                 const symbol = card.dataset.symbol;
                 if (symbol && symbol.includes(term)) {
@@ -6143,7 +6034,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
         carteiraSearchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
                 const term = carteiraSearchInput.value.trim().toUpperCase();
-                
+
                 if (!term) return;
 
                 saveSearchHistory(term);
@@ -6157,7 +6048,7 @@ const tabDashboard = document.getElementById('tab-dashboard');
             }
         });
     }
-    
+
 periodoSelectorGroup.addEventListener('click', (e) => {
     const target = e.target.closest('.periodo-selector-btn');
     if (!target) return;
@@ -6166,7 +6057,7 @@ periodoSelectorGroup.addEventListener('click', (e) => {
     if (meses === currentDetalhesMeses) return;
 
     currentDetalhesMeses = meses;
-    
+
     periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
         const isTarget = btn === target;
         // Mesma lógica neutra
@@ -6213,7 +6104,7 @@ periodoSelectorGroup.addEventListener('click', (e) => {
 
     if (togglePrivacyBtn) {
         updatePrivacyUI();
-        
+
         togglePrivacyBtn.addEventListener('click', () => {
             const current = localStorage.getItem('vesto_privacy_mode') === 'true';
             localStorage.setItem('vesto_privacy_mode', !current);
@@ -6221,7 +6112,6 @@ periodoSelectorGroup.addEventListener('click', (e) => {
         });
     }
 
-// --- EM app.js (Substitua toda a parte do exportCsvBtn) ---
 
 if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', async () => { // Note o 'async' aqui
@@ -6232,7 +6122,7 @@ if (exportCsvBtn) {
 
             const labelEl = exportCsvBtn.querySelector('.settings-label');
             const textoOriginal = labelEl.textContent;
-            
+
             // Feedback Visual 1: Carregando a Lib
             labelEl.textContent = "Carregando lib...";
             exportCsvBtn.disabled = true;
@@ -6288,11 +6178,10 @@ if (exportCsvBtn) {
             }
         });
     }
-	
-	
+
 const importExcelBtn = document.getElementById('import-excel-btn');
     const importExcelInput = document.getElementById('import-excel-input');
-    
+
     if (importExcelBtn && importExcelInput) {
         importExcelBtn.addEventListener('click', () => {
             importExcelInput.click();
@@ -6304,7 +6193,7 @@ const importExcelBtn = document.getElementById('import-excel-btn');
 
             const labelEl = importExcelBtn.querySelector('.settings-label');
             const textoOriginal = labelEl.textContent;
-            
+
             // Trava o botão
             importExcelBtn.disabled = true;
 
@@ -6321,7 +6210,7 @@ const importExcelBtn = document.getElementById('import-excel-btn');
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'dd/mm/yyyy' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                
+
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
                 if (jsonData.length === 0) throw new Error("O arquivo está vazio.");
@@ -6341,7 +6230,7 @@ const importExcelBtn = document.getElementById('import-excel-btn');
                         try {
                             let ticker = tickerRaw.toString().trim().toUpperCase();
                             if (ticker.endsWith('F')) ticker = ticker.slice(0, -1); 
-                            
+
                             let type = 'buy';
                             const typeStr = typeRaw ? typeRaw.toString().toLowerCase() : 'compra';
                             if (typeStr.includes('vend') || typeStr.includes('sell')) type = 'sell';
@@ -6424,7 +6313,7 @@ if (clearCacheBtn) {
                 "Limpar Cache e Reparar?", 
                 "Isso apagará dados temporários (preços, notícias) e baixará a versão mais recente do app. Suas configurações (Tema, Biometria) serão mantidas.", 
                 async () => {
-             
+
                     try {
 
                         try {
@@ -6477,7 +6366,7 @@ if (clearCacheBtn) {
             }, 200);
         });
     }
-    
+
     if (changePasswordForm) {
         changePasswordForm.addEventListener('submit', handleAlterarSenha);
     }
@@ -6510,7 +6399,7 @@ if (clearCacheBtn) {
         });
         return response.json; 
     }
-    
+
     async function callScraperProventosCarteiraAPI(fiiList) {
         const body = { mode: 'proventos_carteira', payload: { fiiList } };
         const response = await fetchBFF('/api/scraper', {
@@ -6520,7 +6409,7 @@ if (clearCacheBtn) {
         });
         return response.json; 
     }
-    
+
     async function callScraperHistoricoPortfolioAPI(fiiList) {
          const body = { mode: 'historico_portfolio', payload: { fiiList } };
          const response = await fetchBFF('/api/scraper', {
@@ -6541,7 +6430,7 @@ if (clearCacheBtn) {
             authLoading.classList.add('hidden');
         }
     }
-    
+
     function showLoginError(message) {
         loginError.textContent = message;
         loginError.classList.remove('hidden');
@@ -6581,14 +6470,14 @@ async function carregarDadosIniciais() {
         } catch (_) {
             dismissedNotifsSet = new Set();
         }
-        
+
         // Renderiza a watchlist (leve)
         renderizarWatchlist(); 
-        
+
         // Inicia cálculos pesados e chamadas externas
         atualizarTodosDados(false); 
         handleAtualizarNoticias(false); 
-        
+
         setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
 
     } catch (e) {
@@ -6596,9 +6485,8 @@ async function carregarDadosIniciais() {
         showToast("Falha ao carregar dados da nuvem.");
     }
 }
-	
-	// --- LÓGICA DE NOTIFICAÇÕES PUSH ---
-    
+
+
     // SUA CHAVE PÚBLICA (Preenchida com a que você enviou)
     const VAPID_PUBLIC_KEY = 'BHsn3oIOqeyV80WVlU7yw7528e9EPrJ3KI7mgaX_aMcAtrE0qrfRFuYbT1RL46X34tkxXB_MLCStRrmIYVh6tVY'; 
 
@@ -6639,11 +6527,11 @@ async function carregarDadosIniciais() {
             if(toggleNotifBtn) toggleNotifBtn.disabled = true; // Navegador não suporta
             return;
         }
-        
+
         // Se já tem permissão e SW ativo, marca o botão como ligado
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
-        
+
         if (sub && Notification.permission === 'granted') {
             atualizarUINotificacao(true);
             // Garante que o servidor tenha a chave atualizada
@@ -6658,7 +6546,7 @@ async function carregarDadosIniciais() {
 
         try {
             const registration = await navigator.serviceWorker.ready;
-            
+
             // Pede permissão
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
@@ -6684,16 +6572,16 @@ async function carregarDadosIniciais() {
             atualizarUINotificacao(false);
         }
     }
-	
+
 	async function desativarNotificacoesPush() {
         try {
             const reg = await navigator.serviceWorker.ready;
             const sub = await reg.pushManager.getSubscription();
-            
+
             if (sub) {
                 // 1. Remove do Banco de Dados
                 await supabaseDB.removerPushSubscription(sub);
-                
+
                 // 2. Cancela a inscrição no navegador
                 await sub.unsubscribe();
             }
@@ -6706,14 +6594,13 @@ async function carregarDadosIniciais() {
             showToast("Erro ao desativar notificações.");
         }
     }
-	
-	// --- LÓGICA DO MODAL DE TRANSAÇÃO (Cole aqui) ---
+
 function setupTransactionModalLogic() {
         const btnCompra = document.getElementById('btn-opt-compra');
         const btnVenda = document.getElementById('btn-opt-venda');
         const toggleBg = document.getElementById('transacao-toggle-bg');
         const inputOperacao = document.getElementById('tipo-operacao-input');
-        
+
         const inputQtd = document.getElementById('quantity-input');
         const inputPreco = document.getElementById('preco-medio-input');
         const totalPreview = document.getElementById('total-transacao-preview');
@@ -6724,7 +6611,7 @@ function setupTransactionModalLogic() {
                 inputOperacao.value = 'buy';
                 toggleBg.classList.remove('translate-x-full', 'bg-red-600', 'shadow-[0_0_10px_rgba(220,38,38,0.4)]');
                 toggleBg.classList.add('bg-green-600', 'shadow-[0_0_10px_rgba(22,163,74,0.4)]');
-                
+
                 btnCompra.classList.replace('text-gray-500', 'text-white');
                 btnVenda.classList.replace('text-white', 'text-gray-500');
             });
@@ -6733,7 +6620,7 @@ function setupTransactionModalLogic() {
                 inputOperacao.value = 'sell';
                 toggleBg.classList.remove('bg-green-600', 'shadow-[0_0_10px_rgba(22,163,74,0.4)]');
                 toggleBg.classList.add('translate-x-full', 'bg-red-600', 'shadow-[0_0_10px_rgba(220,38,38,0.4)]');
-                
+
                 btnVenda.classList.replace('text-gray-500', 'text-white');
                 btnCompra.classList.replace('text-white', 'text-gray-500');
             });
@@ -6752,7 +6639,7 @@ function setupTransactionModalLogic() {
             inputPreco.addEventListener('input', calcularTotal);
         }
     }
-    
+
 async function init() {
         try {
             await vestoDB.init();
@@ -6761,7 +6648,7 @@ async function init() {
             showToast("Erro crítico: Banco de dados local não pôde ser carregado."); 
             return; 
         }
-        
+
         // Listeners de Formulários (Recuperação e Login)
         if (showRecoverBtn) {
             showRecoverBtn.addEventListener('click', () => {
@@ -6772,7 +6659,7 @@ async function init() {
                 recoverMessage.classList.add('hidden');
             });
         }
-        
+
         if (backToLoginBtn) {
             backToLoginBtn.addEventListener('click', () => {
                 recoverForm.classList.add('hidden');
@@ -6802,13 +6689,13 @@ async function init() {
                 recoverSubmitBtn.disabled = false;
             });
         }
-        
+
         // Verificação de Nova Senha via URL
         if (window.location.hash && window.location.hash.includes('type=recovery')) {
              newPasswordModal.classList.add('visible');
              document.querySelector('#new-password-modal .modal-content').classList.remove('modal-out');
         }
-        
+
         if (newPasswordForm) {
             newPasswordForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -6846,7 +6733,7 @@ async function init() {
             showLoginError("Erro ao conectar com o servidor. Tente novamente.");
             return; 
         }
-        
+
         // Listeners de Login/Cadastro
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -6857,7 +6744,7 @@ async function init() {
             const email = loginEmailInput.value;
             const password = loginPasswordInput.value;
             const error = await supabaseDB.signIn(email, password);
-            
+
             if (error) {
                 showLoginError(error);
             } else {
@@ -6873,7 +6760,7 @@ async function init() {
 
             signupError.classList.add('hidden');
             signupSuccess.classList.add('hidden'); 
-            
+
             if (password !== confirmPassword) {
                 showSignupError("As senhas não coincidem.");
                 return;
@@ -6882,12 +6769,12 @@ async function init() {
                 showSignupError("A senha deve ter no mínimo 6 caracteres.");
                 return;
             }
-            
+
             signupSubmitBtn.innerHTML = '<span class="loader-sm"></span>';
             signupSubmitBtn.disabled = true;
 
             const result = await supabaseDB.signUp(email, password);
-            
+
             if (result === 'success') {
                 signupEmailInput.classList.add('hidden');
                 signupPasswordInput.parentElement.classList.add('hidden');
@@ -6909,7 +6796,7 @@ async function init() {
             loginError.classList.add('hidden');
             signupError.classList.add('hidden'); 
             signupSuccess.classList.add('hidden'); 
-            
+
             signupEmailInput.classList.remove('hidden');
             signupPasswordInput.parentElement.classList.remove('hidden');
             signupConfirmPasswordInput.parentElement.classList.remove('hidden');
@@ -6922,7 +6809,7 @@ async function init() {
             loginForm.classList.remove('hidden');
             signupError.classList.add('hidden');
         });
-        
+
         passwordToggleButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const targetId = button.dataset.target;
@@ -6943,23 +6830,19 @@ async function init() {
         });
 
         // LÓGICA DE SESSÃO E ROTEAMENTO
-// LÓGICA DE SESSÃO E ROTEAMENTO
-// LÓGICA DE SESSÃO E ROTEAMENTO
         if (session) {
             await verificarStatusPush();
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');    
             appWrapper.classList.remove('hidden'); 
-            
-            // --- NOVO: Preencher o email na tela de Ajustes ---
+
             const userEmailDisplay = document.getElementById('user-email-display');
             if (userEmailDisplay && session.user.email) {
                 userEmailDisplay.textContent = session.user.email;
             }
-            // -------------------------------------------------
-            
+
             await verificarStatusBiometria();
-            
+
             // 1. Captura parâmetros da URL (Atalhos e Compartilhamento)
             const urlParams = new URLSearchParams(window.location.search);
             const tabParam = urlParams.get('tab');
@@ -6973,7 +6856,6 @@ async function init() {
                 mudarAba('tab-dashboard'); 
             }
 
-            // --- BLOQUEIO DE SWIPE NO CARROSSEL (FIX DEFINITIVO) ---
             const carouselWrapper = document.getElementById('carousel-wrapper');
             if (carouselWrapper) {
                 // Impede que o evento de toque suba para o documento (onde está o listener do swipe de abas)
@@ -6988,7 +6870,7 @@ async function init() {
             if (ativoShared) {
                 const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.replaceState({path: newUrl}, '', newUrl);
-                
+
                 setTimeout(() => {
                     let symbolClean = ativoShared.toUpperCase().replace('.SA', '').trim();
                     if (symbolClean) {
@@ -6996,16 +6878,13 @@ async function init() {
                     }
                 }, 800);
             }
-            
+
         } else {
-            // --- CORREÇÃO: Se não há sessão, remove o loading e mostra o login ---
             showAuthLoading(false);
             loginForm.classList.remove('hidden');
         }
     }
-	
-	
-    
+
     const STORAGE_KEY_SEARCH = 'vesto_search_history';
     const MAX_HISTORY_ITEMS = 5;
 
@@ -7013,7 +6892,7 @@ async function init() {
     suggestionsContainer.id = 'search-suggestions';
 
     suggestionsContainer.className = 'absolute top-full left-0 w-full bg-[#1C1C1E] border border-[#2C2C2E] rounded-2xl mt-2 z-[60] hidden overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)]';
-    
+
     if (carteiraSearchInput && carteiraSearchInput.parentNode) {
 
         const parentStyle = window.getComputedStyle(carteiraSearchInput.parentNode);
@@ -7036,14 +6915,14 @@ function getSearchHistory() {
 function saveSearchHistory(term) {
         if (!term || term.length < 3) return;
         term = term.toUpperCase().trim();
-        
+
         let history = getSearchHistory();
         history = history.filter(item => item !== term);
         history.unshift(term); 
         if (history.length > MAX_HISTORY_ITEMS) history.pop(); 
-        
+
         localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
-        
+
         renderSuggestions();
     }
 
@@ -7051,7 +6930,7 @@ function saveSearchHistory(term) {
         let history = getSearchHistory();
         history = history.filter(item => item !== term);
         localStorage.setItem(STORAGE_KEY_SEARCH, JSON.stringify(history));
-        
+
         if (history.length === 0) {
             suggestionsContainer.classList.add('hidden');
         } else {
@@ -7060,7 +6939,6 @@ function saveSearchHistory(term) {
         carteiraSearchInput.focus();
     }
 
-// --- LÓGICA DE SUGESTÕES DE PESQUISA ---
     function renderSuggestions() {
         const history = getSearchHistory();
         suggestionsContainer.innerHTML = '';
@@ -7075,7 +6953,7 @@ function saveSearchHistory(term) {
         history.forEach(term => {
             const li = document.createElement('li');
             li.className = 'flex justify-between items-center bg-[#1C1C1E] active:bg-gray-800 hover:bg-gray-800 transition-colors cursor-pointer border-b border-[#2C2C2E] last:border-0 group';
-            
+
             const contentDiv = document.createElement('div');
             contentDiv.className = 'flex items-center gap-3 flex-1 p-4';
             contentDiv.innerHTML = `
@@ -7084,7 +6962,7 @@ function saveSearchHistory(term) {
                 </svg>
                 <span class="text-sm text-gray-200 font-medium">${term}</span>
             `;
-            
+
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'p-4 text-gray-600 hover:text-red-400 active:text-red-400 transition-colors border-l border-[#2C2C2E]';
             deleteBtn.title = "Remover do histórico";
@@ -7151,9 +7029,7 @@ function saveSearchHistory(term) {
         });
     }
 
-// ======================================================
 // SWIPE GLOBAL DE NAVEGAÇÃO ENTRE ABAS (CORRIGIDO)
-// ======================================================
 
 let swipeStartX = 0;
 let swipeStartY = 0;
@@ -7165,7 +7041,7 @@ document.addEventListener('touchstart', (e) => {
         document.querySelector('#ai-modal.visible')) {
         return;
     }
-    
+
     // 2. TRAVA DE SEGURANÇA: Bloqueia o início do swipe em áreas de scroll horizontal ou gráficos
     // Usamos apenas classes genéricas que já existem no seu HTML
     if (e.target.closest('.overflow-x-auto') || 
@@ -7198,7 +7074,7 @@ document.addEventListener('touchend', (e) => {
 
     const swipeEndX = e.changedTouches[0].screenX;
     const swipeEndY = e.changedTouches[0].screenY;
-    
+
     const diffX = swipeEndX - swipeStartX;
     const diffY = swipeEndY - swipeStartY;
 
@@ -7229,14 +7105,13 @@ document.addEventListener('touchend', (e) => {
         }
     }
 }, { passive: true });
-	
-// --- LÓGICA DE EVENTOS DAS NOTIFICAÇÕES (SUBSTITUIR ESTE BLOCO) ---
+
 
     // 1. Abrir/Fechar ao clicar no Sininho
     if (btnNotifications) {
         btnNotifications.addEventListener('click', () => {
             notificationsDrawer.classList.toggle('open');
-            
+
             if (notificationsDrawer.classList.contains('open')) {
                 notificationBadge.classList.add('hidden');
                 btnNotifications.classList.remove('bell-ringing');
@@ -7261,7 +7136,7 @@ document.addEventListener('touchend', (e) => {
             notificationsDrawer.classList.remove('open');
         }
     });
-	
+
 if (toggleNotifBtn) {
         toggleNotifBtn.addEventListener('click', () => {
             // Verifica se visualmente está ligado (bg-purple-600)
@@ -7283,14 +7158,12 @@ if (toggleNotifBtn) {
         });
     }
 	window.mudarAba = mudarAba;
-	
+
 	window.confirmarExclusao = handleRemoverAtivo;
     window.abrirDetalhesAtivo = showDetalhesModal;
 	setupTransactionModalLogic();
-	
-	// ======================================================
+
 //  LÓGICA DE CÁLCULO DE DY DA CARTEIRA (NOVO RECURSO)
-// ======================================================
 
 /**
  * Calcula o Dividend Yield (DY) Teórico da carteira atual.
@@ -7300,12 +7173,12 @@ if (toggleNotifBtn) {
 async function calcularDyCarteiraTeorico() {
     // 1. Verifica se a carteira já foi calculada e tem ativos
     if (!carteiraCalculada || carteiraCalculada.length === 0) return 0;
-    
+
     // 2. Calcula o valor total financeiro da carteira hoje (Cotação Atual * Qtd)
     // Usamos 'precosAtuais' que já deve estar populado no app
     const mapPrecos = new Map(precosAtuais.map(p => [p.symbol, p.regularMarketPrice]));
     let valorTotalCarteira = 0;
-    
+
     carteiraCalculada.forEach(ativo => {
         const preco = mapPrecos.get(ativo.symbol) || 0;
         valorTotalCarteira += (preco * ativo.quantity);
@@ -7325,7 +7198,7 @@ async function calcularDyCarteiraTeorico() {
         try {
             // Chama sua função existente que busca histórico no backend/scraper
             rawDividends = await callScraperHistoricoPortfolioAPI(ativosCarteira);
-            
+
             // Salva no cache se der certo
             if (rawDividends && rawDividends.length > 0) {
                 await setCache(cacheKey, rawDividends, CACHE_IA_HISTORICO); // CACHE_IA_HISTORICO deve ser uma const existente
@@ -7342,9 +7215,9 @@ async function calcularDyCarteiraTeorico() {
     const hoje = new Date();
     const umAnoAtras = new Date();
     umAnoAtras.setFullYear(hoje.getFullYear() - 1);
-    
+
     let totalDividendos12m = 0;
-    
+
     // Mapa rápido de quantidades: { 'MXRF11': 100, ... }
     const mapQtd = new Map(carteiraCalculada.map(a => [a.symbol, a.quantity]));
 
@@ -7355,12 +7228,12 @@ async function calcularDyCarteiraTeorico() {
         if (!dataRefStr) return;
 
         const dataRef = new Date(dataRefStr);
-        
+
         // Verifica se o pagamento está dentro dos últimos 12 meses
         if (dataRef >= umAnoAtras && dataRef <= hoje) {
             // Pega a quantidade que o usuário tem HOJE desse ativo
             const qtdAtual = mapQtd.get(div.symbol) || 0;
-            
+
             // Simula: Se eu tivesse essa quantidade na época, quanto teria recebido?
             if (qtdAtual > 0) {
                 totalDividendos12m += (Number(div.value) * qtdAtual);
@@ -7370,7 +7243,7 @@ async function calcularDyCarteiraTeorico() {
 
     // 6. Retorna o objeto com % e Valor Absoluto
     const dyPercent = (totalDividendos12m / valorTotalCarteira) * 100;
-    
+
     return { 
         dyPercent: dyPercent, 
         totalDiv12m: totalDividendos12m 
@@ -7384,17 +7257,16 @@ window.mostrarDyCarteira = async function() {
 
     try {
         const dados = await calcularDyCarteiraTeorico();
-        
+
         const dyVal = dados.dyPercent || 0;
         const totalVal = dados.totalDiv12m || 0;
         const dyFmt = dyVal.toFixed(2) + '%';
         const valFmt = formatBRL(totalVal);
-        
-        // --- CORES DINÂMICAS ---
+
         let corTitulo = '';
         let textoAvaliacao = '';
         let corTextoBadge = '';
-        
+
         if (dyVal < 6) {
             corTitulo = 'text-red-500';
             textoAvaliacao = 'Baixo';
@@ -7409,13 +7281,12 @@ window.mostrarDyCarteira = async function() {
             corTextoBadge = '#22c55e';
         }
 
-        // --- HTML ---
         const mensagemHtml = `
             <div class="flex flex-col items-center w-full pt-1">
                 <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">
                     Dividend Yield (12m)
                 </span>
-                
+
                 <div class="text-5xl font-bold ${corTitulo} tracking-tighter leading-none mb-5 drop-shadow-sm">
                     ${dyFmt}
                 </div>
@@ -7433,7 +7304,6 @@ window.mostrarDyCarteira = async function() {
             </div>
         `;
 
-        // --- ABERTURA DO MODAL ---
         const modal = document.getElementById('custom-modal');
         const modalTitle = document.getElementById('custom-modal-title');
         const modalMessage = document.getElementById('custom-modal-message');
@@ -7442,8 +7312,7 @@ window.mostrarDyCarteira = async function() {
         const btnCancel = document.getElementById('custom-modal-cancel');
 
         if(modalTitle) modalTitle.textContent = 'Performance';
-        
-        // --- ESTILIZAÇÃO DO MODAL ---
+
         // 1. Fundo #09090b (Cor exata do drawer de notificações)
         // 2. Borda removida (border: none)
         if(modalContent) {
@@ -7459,14 +7328,14 @@ window.mostrarDyCarteira = async function() {
         }
 
         if(btnCancel) btnCancel.style.display = 'none'; 
-        
+
         if(btnOk) {
             const oldText = btnOk.innerText;
             const oldOnClick = btnOk.onclick;
             const oldClasses = btnOk.className;
-            
+
             btnOk.innerText = 'Fechar';
-            
+
             // Botão cinza escuro para combinar com o tema "stealth"
             btnOk.className = 'py-2 px-6 bg-[#1C1C1E] border border-[#27272a] text-white text-xs font-bold rounded-full shadow-sm active:scale-95 transition-transform hover:bg-[#27272a]';
 
@@ -7475,8 +7344,7 @@ window.mostrarDyCarteira = async function() {
                 setTimeout(() => {
                     modal.classList.remove('visible');
                     modalContent.classList.remove('modal-out');
-                    
-                    // --- LIMPEZA DE ESTILOS ---
+
                     // Restaura os estilos originais para não afetar outros modais
                     if(modalContent) {
                         modalContent.style.backgroundColor = '';
@@ -7488,7 +7356,7 @@ window.mostrarDyCarteira = async function() {
                     btnOk.innerText = oldText;
                     btnOk.onclick = oldOnClick;
                     btnOk.className = oldClasses;
-                    
+
                     if(modalMessage) modalMessage.innerHTML = '';
                 }, 200);
             };
@@ -7505,7 +7373,6 @@ window.mostrarDyCarteira = async function() {
     }
 };
 
-// Adicione no app.js
 async function openIpcaModal() {
     if(!ipcaPageModal) return;
 
@@ -7559,13 +7426,13 @@ async function buscarDadosIpca(force = false) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'ipca', payload: {} })
         });
-        
+
         const data = await res.json();
-        
+
         if (data && data.json) {
             // Salva no Cache por 24 horas
             await setCache(CACHE_KEY, data.json, CACHE_DURATION);
-            
+
             // Atualiza Interface e Variável Global
             ipcaCacheData = data.json;
             atualizarInterfaceIpca(data.json);
@@ -7583,14 +7450,13 @@ async function buscarDadosIpca(force = false) {
     }
 }
 
-// --- FUNÇÃO AUXILIAR PARA ATUALIZAR O WIDGET E O MODAL ---
 function atualizarInterfaceIpca(dados) {
     if (!dados) return;
 
     // 1. Atualiza Widget do Dashboard
     const elValor12m = document.getElementById('ipca-valor-12m');
     const elBadgeMes = document.getElementById('ipca-mes-badge');
-    
+
     if(elValor12m) {
         // Animação simples de transição
         elValor12m.style.opacity = '0';
@@ -7599,19 +7465,19 @@ function atualizarInterfaceIpca(dados) {
             elValor12m.style.opacity = '1';
         }, 150);
     }
-    
+
     // Pega o último mês disponível para o Badge
     if(dados.historico && dados.historico.length > 0) {
         const ultimo = dados.historico[dados.historico.length - 1]; // O array vem cronológico (Jan->Dez)
         // Se vier invertido do scraper, ajustamos:
         // No seu scraper atual: reverse() foi usado, então o último item é o mês mais recente.
-        
+
         if(elBadgeMes) {
             // Ex: "Último: 0,56% (Jan)"
             let mesCurto = ultimo.mes.split('/')[0]; 
             // Se vier nome completo "Janeiro", corta para "Jan"
             if(mesCurto.length > 3) mesCurto = mesCurto.substring(0,3);
-            
+
             elBadgeMes.textContent = `Último: ${ultimo.valor}% (${mesCurto})`;
         }
     }
@@ -7623,10 +7489,9 @@ function atualizarInterfaceIpca(dados) {
 function renderizarGraficoIpca(dados) {
     const canvas = document.getElementById('ipca-chart');
     const listaContainer = document.getElementById('ipca-lista-container');
-    
+
     if (!dados || !dados.historico) return;
 
-    // --- 1. PREPARAÇÃO DOS DADOS DE PATRIMÔNIO (Map: YYYY-MM -> Valor) ---
     const mapPatrimonio = {};
     if (typeof patrimonio !== 'undefined' && Array.isArray(patrimonio)) {
         patrimonio.forEach(p => {
@@ -7637,67 +7502,64 @@ function renderizarGraficoIpca(dados) {
         });
     }
 
-    // --- 2. PREPARAÇÃO DOS DADOS DE PROVENTOS (Map: YYYY-MM -> Total Recebido) ---
     const mapProventos = {};
     if (typeof proventosConhecidos !== 'undefined' && Array.isArray(proventosConhecidos)) {
         proventosConhecidos.forEach(p => {
             // Verifica data válida
             if (!p.paymentDate) return;
             const key = p.paymentDate.substring(0, 7); // YYYY-MM
-            
+
             // Calcula o total recebido neste pagamento (Valor * Qtd na data)
             // Usa a função global getQuantidadeNaData se disponível
             const qtd = (typeof getQuantidadeNaData === 'function') 
                 ? getQuantidadeNaData(p.symbol, p.paymentDate) 
                 : 0;
-                
+
             if (qtd > 0) {
                 const total = p.value * qtd;
                 mapProventos[key] = (mapProventos[key] || 0) + total;
             }
         });
     }
-    
+
     // Helper para datas
     const getYearMonthKey = (mesStr) => {
         if (!mesStr) return null;
         const parts = mesStr.includes('/') ? mesStr.split('/') : [mesStr];
         if (parts.length < 2) return null;
-        
+
         let m = parts[0].toLowerCase().trim();
         let y = parts[1].trim();
-        
+
         const monthMap = {
             'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04', 'mai': '05', 'jun': '06',
             'jul': '07', 'ago': '08', 'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
             'janeiro': '01', 'fevereiro': '02', 'março': '03', 'abril': '04', 'maio': '05', 'junho': '06',
             'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
         };
-        
+
         if (!isNaN(m)) return `${y}-${m.padStart(2, '0')}`;
         if (monthMap[m]) return `${y}-${monthMap[m]}`;
         return null;
     };
 
-    // --- 3. RENDERIZAR A LISTA ---
     if(listaContainer) {
         listaContainer.innerHTML = '';
-        
+
         [...dados.historico].reverse().forEach(item => {
             const valor = item.valor; // Inflação do mês
             const ymKey = getYearMonthKey(item.mes);
-            
-            // --- CÁLCULO DA EROSÃO DO PATRIMÔNIO ---
+
             let erosaoPatHtml = '';
             if (ymKey && mapPatrimonio[ymKey]) {
                 const saldoMes = mapPatrimonio[ymKey];
                 const impactoReais = saldoMes * (valor / 100);
-                
+
                 const isPerda = impactoReais > 0; 
                 const sinal = isPerda ? '-' : '+';
                 const corErosao = isPerda ? 'text-red-400' : 'text-green-400';
                 const valorErosaoFmt = Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                
+
                 erosaoPatHtml = `
                     <div class="flex items-center gap-2 justify-end mt-0.5">
                         <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Patrimônio</span>
@@ -7713,17 +7575,16 @@ function renderizarGraficoIpca(dados) {
                 `;
             }
 
-            // --- CÁLCULO DA EROSÃO DOS PROVENTOS (NOVO) ---
             let erosaoDivHtml = '';
             if (ymKey && mapProventos[ymKey]) {
                 const proventosMes = mapProventos[ymKey];
                 const impactoDiv = proventosMes * (valor / 100);
-                
+
                 const isPerdaDiv = impactoDiv > 0;
                 const sinalDiv = isPerdaDiv ? '-' : '+';
                 const corErosaoDiv = isPerdaDiv ? 'text-red-400' : 'text-green-400';
                 const valorErosaoDivFmt = Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                
+
                 erosaoDivHtml = `
                     <div class="flex items-center gap-2 justify-end mt-0.5">
                         <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Proventos</span>
@@ -7743,7 +7604,7 @@ function renderizarGraficoIpca(dados) {
             // Cores do Badge de IPCA
             let corTexto = 'text-white';
             let barraCor = 'bg-orange-500';
-            
+
             if (valor >= 0.5) {
                 corTexto = 'text-red-400';
                 barraCor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
@@ -7754,7 +7615,7 @@ function renderizarGraficoIpca(dados) {
                 corTexto = 'text-orange-400';
                 barraCor = 'bg-orange-500';
             }
-            
+
             let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
 
             const html = `
@@ -7765,24 +7626,23 @@ function renderizarGraficoIpca(dados) {
                         <span class="text-[10px] text-gray-500 font-medium">${ano}</span>
                     </div>
                 </div>
-                
+
                 <div class="flex flex-col items-end">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="text-[10px] text-gray-500 font-medium uppercase">IPCA</span>
                         <span class="text-sm font-bold ${corTexto}">${valor.toFixed(2)}%</span>
                     </div>
-                    
+
                     ${erosaoPatHtml}
 
                     ${erosaoDivHtml}
                 </div>
             </div>`;
-            
+
             listaContainer.insertAdjacentHTML('beforeend', html);
         });
     }
 
-    // --- 4. GRÁFICO (Mantém igual) ---
     if (!canvas) return;
     if (ipcaChartInstance) ipcaChartInstance.destroy();
 
@@ -7829,7 +7689,6 @@ function renderizarGraficoIpca(dados) {
     });
 }
 
-// --- LISTENERS DO MODAL DE PATRIMÔNIO ---
 
     if (btnOpenPatrimonio) {
         btnOpenPatrimonio.addEventListener('click', openPatrimonioModal);
@@ -7846,8 +7705,6 @@ function renderizarGraficoIpca(dados) {
         });
     }
 
-    // --- LÓGICA DE SWIPE DOWN (ARRASTAR PARA FECHAR) - IDENTICA AO DETALHES ---
-// --- LÓGICA DE SWIPE DOWN (PATRIMÔNIO) ---
     if (patrimonioPageContent) {
         const scrollContainer = patrimonioPageContent.querySelector('.overflow-y-auto');
 
@@ -7867,7 +7724,7 @@ function renderizarGraficoIpca(dados) {
             if (!isDraggingPatrimonio) return;
             touchMovePatrimonioY = e.touches[0].clientY;
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
-            
+
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault(); 
                 patrimonioPageContent.style.transform = `translateY(${diff}px)`;
@@ -7878,9 +7735,9 @@ function renderizarGraficoIpca(dados) {
             if (!isDraggingPatrimonio) return;
             isDraggingPatrimonio = false;
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
-            
+
             patrimonioPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            
+
             if (diff > 120) {
                 closePatrimonioModal();
             } else {
@@ -7890,8 +7747,7 @@ function renderizarGraficoIpca(dados) {
             touchMovePatrimonioY = 0;
         });
     }
-	
-	// --- LISTENERS DO MODAL DE PROVENTOS ---
+
 
 if (btnOpenProventos) {
     btnOpenProventos.addEventListener('click', openProventosModal);
@@ -7907,8 +7763,6 @@ if (proventosPageModal) {
     });
 }
 
-// Swipe Down para fechar (Proventos)
-// --- LÓGICA DE SWIPE DOWN (PROVENTOS) ---
     if (proventosPageContent) {
         const scrollContainerProv = proventosPageContent.querySelector('.overflow-y-auto');
 
@@ -7928,7 +7782,7 @@ if (proventosPageModal) {
             if (!isDraggingProventos) return;
             touchMoveProventosY = e.touches[0].clientY;
             const diff = touchMoveProventosY - touchStartProventosY;
-            
+
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault(); 
                 proventosPageContent.style.transform = `translateY(${diff}px)`;
@@ -7938,11 +7792,11 @@ if (proventosPageModal) {
         proventosPageContent.addEventListener('touchend', (e) => {
             if (!isDraggingProventos) return;
             isDraggingProventos = false;
-            
+
             const diff = touchMoveProventosY - touchStartProventosY;
-            
+
             proventosPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            
+
             if (diff > 120) {
                 closeProventosModal();
             } else {
@@ -7953,7 +7807,6 @@ if (proventosPageModal) {
         });
     }
 
-// --- LISTENERS DO MODAL DE ALOCAÇÃO ---
 
 if (btnOpenAlocacao) {
     btnOpenAlocacao.addEventListener('click', openAlocacaoModal);
@@ -7969,8 +7822,6 @@ if (alocacaoPageModal) {
     });
 }
 
-// Swipe Down Logic (Alocação)
-// --- LÓGICA DE SWIPE DOWN (ALOCAÇÃO) ---
     if (alocacaoPageContent) {
         const scrollContainerAloc = alocacaoPageContent.querySelector('.overflow-y-auto');
 
@@ -7990,7 +7841,7 @@ if (alocacaoPageModal) {
             if (!isDraggingAlocacao) return;
             touchMoveAlocacaoY = e.touches[0].clientY;
             const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
-            
+
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault(); 
                 alocacaoPageContent.style.transform = `translateY(${diff}px)`;
@@ -8000,11 +7851,11 @@ if (alocacaoPageModal) {
         alocacaoPageContent.addEventListener('touchend', (e) => {
             if (!isDraggingAlocacao) return;
             isDraggingAlocacao = false;
-            
+
             const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
-            
+
             alocacaoPageContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            
+
             if (diff > 120) {
                 closeAlocacaoModal();
             } else {
@@ -8014,8 +7865,7 @@ if (alocacaoPageModal) {
             touchMoveAlocacaoY = 0;
         });
     }
-	
-	// --- LISTENERS IPCA ---
+
 
 if (btnOpenIpca) {
     btnOpenIpca.addEventListener('click', openIpcaModal);
@@ -8025,7 +7875,6 @@ if (ipcaVoltarBtn) {
     ipcaVoltarBtn.addEventListener('click', closeIpcaModal);
 }
 
-// Swipe Down Logic IPCA
 if (ipcaPageContent) {
     const scrollContainerIpca = ipcaPageContent.querySelector('.overflow-y-auto');
 
@@ -8072,7 +7921,7 @@ const dots = document.querySelectorAll('.carousel-dot');
 if (carousel) {
     carousel.addEventListener('scroll', () => {
         const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
-        
+
         dots.forEach((dot, i) => {
             if (i === index) {
                 dot.classList.add('active', 'bg-purple-600');
@@ -8113,9 +7962,8 @@ function initCarouselSwipeBridge() {
             // *** O SEGREDO ESTÁ AQUI ***
             // Impede que o 'tab-dashboard' perceba esse gesto, evitando o pulo duplo
             e.stopPropagation(); 
-            
-            console.log("Fim do carrossel -> Indo para Carteira");
-            
+
+
             // Força a ida APENAS para a aba Carteira
             const btnCarteira = document.querySelector('button[data-tab="tab-carteira"]');
             if (btnCarteira) btnCarteira.click();
@@ -8123,7 +7971,6 @@ function initCarouselSwipeBridge() {
     });
 }
 
-// Inicializa
 document.addEventListener('DOMContentLoaded', initCarouselSwipeBridge);
 // Caso o DOM já tenha carregado (recarregamento via SPA/Módulo)
 initCarouselSwipeBridge();
@@ -8138,7 +7985,7 @@ function openPagamentosModal(todosPagamentos) {
 
     if (listaEl && todosPagamentos) {
         listaEl.innerHTML = '';
-        
+
         // 1. Cálculos
         let totalGeral = 0;
         const dadosCalculados = todosPagamentos.map(p => {
@@ -8184,17 +8031,17 @@ function openPagamentosModal(todosPagamentos) {
                 const dia = prov.dataObj.getDate().toString().padStart(2, '0');
                 const sem = prov.dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
                 const isJCP = prov.type && prov.type.toUpperCase().includes('JCP');
-                
+
                 // Cores de texto
                 const corTextoValor = isJCP ? 'text-[#fbbf24]' : 'text-[#4ade80]'; // Amarelo (JCP) ou Verde (DIV)
                 const tipoTexto = isJCP ? 'JCP' : 'Dividendos';
                 const barraLateral = isJCP ? 'bg-amber-500' : 'bg-[#4ade80]';
 
                 const card = document.createElement('div');
-                
+
                 // Design Clean: Fundo escuro suave, sem borda externa, cantos arredondados
                 card.className = "relative flex items-center bg-[#141414] rounded-xl overflow-hidden mb-1";
-                
+
                 card.innerHTML = `
                     <div class="absolute left-0 top-0 bottom-0 w-1 ${barraLateral}"></div>
 
@@ -8244,8 +8091,6 @@ window.closePagamentosModal = function() {
 };
 
 
-// --- LÓGICA DE SWIPE DOWN PARA PAGAMENTOS (CORRIGIDO) ---
-    
     const modalPagamentosRef = document.getElementById('pagamentos-page-modal');
     const contentPagamentosRef = document.getElementById('tab-pagamentos-content');
     const btnVoltarPagamentos = document.getElementById('pagamentos-voltar-btn');
@@ -8281,10 +8126,10 @@ window.closePagamentosModal = function() {
 
         contentPagamentosRef.addEventListener('touchmove', (e) => {
             if (!isDraggingPagamentos) return;
-            
+
             touchMovePagamentosY = e.touches[0].clientY;
             const diff = touchMovePagamentosY - touchStartPagamentosY;
-            
+
             // Só move se for para baixo
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault(); 
@@ -8295,7 +8140,7 @@ window.closePagamentosModal = function() {
         contentPagamentosRef.addEventListener('touchend', (e) => {
             if (!isDraggingPagamentos) return;
             isDraggingPagamentos = false;
-            
+
             const diff = touchMovePagamentosY - touchStartPagamentosY;
             const contentEl = contentPagamentosRef;
             const modalEl = modalPagamentosRef;
@@ -8304,11 +8149,10 @@ window.closePagamentosModal = function() {
             contentEl.style.transition = 'transform 0.3s ease-out';
 
             if (diff > 100) {
-                // --- AÇÃO DE FECHAR ---
-                
+
                 // 1. Desliza o painel para baixo (Visual)
                 contentEl.style.transform = 'translateY(100%)';
-                
+
                 // 2. Desvanece o fundo escuro SIMULTANEAMENTE (Igual ao Detalhes)
                 modalEl.style.transition = 'opacity 0.3s ease-out';
                 modalEl.style.opacity = '0';
@@ -8329,23 +8173,21 @@ window.closePagamentosModal = function() {
                     contentEl.style.transition = '';
                     modalEl.style.transition = '';
                     modalEl.style.opacity = '';
-                    
+
                 }, 300); // Tempo da animação CSS
 
             } else {
-                // --- CANCELA E VOLTA (BOUNCE BACK) ---
                 contentEl.style.transform = 'translateY(0)';
                 setTimeout(() => {
                     contentEl.style.transition = '';
                     contentEl.style.transform = '';
                 }, 300);
             }
-            
+
             touchStartPagamentosY = 0;
             touchMovePagamentosY = 0;
         });
     }
-	
 
 const objetivosModal = document.getElementById('objetivos-page-modal');
 const objetivosContent = document.getElementById('tab-objetivos-content');
@@ -8353,7 +8195,6 @@ const objetivosVoltarBtn = document.getElementById('objetivos-voltar-btn');
 const objetivosLista = document.getElementById('objetivos-lista');
 const objetivosTotalAtivos = document.getElementById('objetivos-total-ativos');
 
-// Variáveis de controle de arrastar (Swipe Down)
 let isDraggingObjetivos = false;
 let touchStartObjetivosY = 0;
 let touchMoveObjetivosY = 0;
@@ -8365,12 +8206,12 @@ async function openObjetivosModal() {
     objetivosModal.style.pointerEvents = 'auto';
     objetivosModal.style.opacity = '1';
     objetivosModal.classList.add('visible');
-    
+
     // 2. Faz o modal deslizar para cima
     setTimeout(() => {
         objetivosContent.style.transform = 'translateY(0)';
     }, 50); // Pequeno delay para o navegador renderizar a animação
-    
+
     document.body.style.overflow = 'hidden';
 
     renderizarObjetivos();
@@ -8378,15 +8219,15 @@ async function openObjetivosModal() {
 
 function closeObjetivosModal() {
     if (!objetivosContent) return;
-    
+
     // 1. Faz o modal deslizar para baixo
     objetivosContent.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
     objetivosContent.style.transform = 'translateY(100%)';
-    
+
     // 2. Tira o fundo escuro (fade out)
     objetivosModal.style.opacity = '0';
     objetivosModal.style.pointerEvents = 'none';
-    
+
     // 3. Aguarda a animação terminar para limpar
     setTimeout(() => {
         objetivosModal.classList.remove('visible');
@@ -8394,14 +8235,13 @@ function closeObjetivosModal() {
     }, 50);
 }
 
-
 // Lógica Principal de Renderização (VERSÃO SUPER OTIMIZADA)
 async function renderizarObjetivos() {
     if (!objetivosLista) return;
-    
+
     // Captura o elemento do novo total global
     const objetivosTotalInvestir = document.getElementById('objetivos-total-investir');
-    
+
     // Como agora é instantâneo, mal vamos ver esse loader, mas é bom manter por segurança
     objetivosLista.innerHTML = '<div class="text-center py-10"><span class="loader-sm"></span><p class="text-xs text-gray-500 mt-2">Analisando carteira...</p></div>';
 
@@ -8435,7 +8275,7 @@ async function renderizarObjetivos() {
 
         // BUSCA INSTANTÂNEA: Olha direto para os proventos que já vieram do StatusInvest na inicialização
         const historicoDoFii = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
-        
+
         if (historicoDoFii.length > 0) {
             // Ordena e pega o último valor pago
             historicoDoFii.sort((a,b) => new Date(b.paymentDate) - new Date(a.paymentDate));
@@ -8447,10 +8287,10 @@ async function renderizarObjetivos() {
             const magicNumber = Math.ceil(precoAtual / ultimoRendimento);
             const cotasAtuais = ativo.quantity;
             const progresso = Math.min(100, (cotasAtuais / magicNumber) * 100);
-            
+
             const cotasFaltantes = Math.max(0, magicNumber - cotasAtuais);
             const investimentoNecessario = cotasFaltantes * precoAtual;
-            
+
             // SOMA AO TOTAL GLOBAL
             somaTotalInvestir += investimentoNecessario;
 
@@ -8512,20 +8352,18 @@ async function renderizarObjetivos() {
             </div>`;
         }
     }
-    
+
     objetivosLista.innerHTML = htmlFinal;
-    
+
     // Atualiza o valor total formatado no DOM da tela
     if (objetivosTotalInvestir) {
         objetivosTotalInvestir.textContent = formatBRL(somaTotalInvestir);
     }
 }
 
-// Listeners
 if (objetivosVoltarBtn) objetivosVoltarBtn.addEventListener('click', closeObjetivosModal);
 if (objetivosModal) objetivosModal.addEventListener('click', (e) => { if(e.target === objetivosModal) closeObjetivosModal(); });
 
-// Swipe Down Logic (Objetivos)
 if (objetivosContent) {
     const scrollContainerObj = objetivosContent.querySelector('.overflow-y-auto');
 
@@ -8553,7 +8391,7 @@ if (objetivosContent) {
         isDraggingObjetivos = false;
         const diff = touchMoveObjetivosY - touchStartObjetivosY;
         objetivosContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        
+
         if (diff > 120) {
             closeObjetivosModal();
         } else {
@@ -8563,12 +8401,9 @@ if (objetivosContent) {
     });
 }
 
-// Torna global
 window.openObjetivosModal = openObjetivosModal;
 
-// ======================================================
     //  MÓDULO CALCULADORA (BOLA DE NEVE)
-    // ======================================================
 
     const calcModal = document.getElementById('calculadora-page-modal');
     const calcContent = document.getElementById('tab-calculadora-content');
@@ -8590,12 +8425,12 @@ window.openObjetivosModal = openObjetivosModal;
     // Função de Animação de Abertura (Com GPU)
 window.openCalculadoraModal = function() {
         if (!calcModal || !calcContent) return;
-        
+
         calcModal.classList.add('visible');
         calcContent.style.transform = ''; 
         calcContent.classList.remove('closing');
         document.body.style.overflow = 'hidden';
-        
+
         // Atrasar o cálculo para não engasgar a animação CSS (Mantido por performance)
         setTimeout(() => {
             calcularJuros(); 
@@ -8605,13 +8440,13 @@ window.openCalculadoraModal = function() {
     // Função de Animação de Fechamento (Com GPU)
 function closeCalculadoraModal() {
         if (!calcModal || !calcContent) return;
-        
+
         calcContent.style.transform = '';
         calcContent.classList.add('closing');
         calcModal.classList.remove('visible');
         document.body.style.overflow = '';
     }
-	
+
     function calcularJuros() {
         const vInicial = parseFloat(document.getElementById('calc-inicial').value) || 0;
         const aMensal = parseFloat(document.getElementById('calc-mensal').value) || 0;
@@ -8627,7 +8462,6 @@ function closeCalculadoraModal() {
         let totalInvestido = vInicial + (aMensal * meses);
         let totalAculumado = 0;
 
-        // --- SOLUÇÃO: FÓRMULA MATEMÁTICA DIRETA ---
         // Elimina o For Loop. Calcula tudo em 1 único passo.
         if (taxaMensal > 0) {
             const fatorJuros = Math.pow(1 + taxaMensal, meses);
@@ -8659,7 +8493,7 @@ function closeCalculadoraModal() {
     // Event Listeners
     if (btnCalcular) btnCalcular.addEventListener('click', calcularJuros);
     if (calcVoltarBtn) calcVoltarBtn.addEventListener('click', closeCalculadoraModal);
-    
+
     // Auto-cálculo ao mudar as caixas de seleção
     document.getElementById('calc-taxa-tipo')?.addEventListener('change', calcularJuros);
     document.getElementById('calc-tempo-tipo')?.addEventListener('change', calcularJuros);
@@ -8669,7 +8503,6 @@ function closeCalculadoraModal() {
         if(e.target === calcModal) closeCalculadoraModal(); 
     });
 
-    // Swipe Down Logic (Com GPU)
 if (calcContent) {
         const scrollAreaCalc = calcContent.querySelector('.overflow-y-auto');
 
@@ -8686,7 +8519,7 @@ if (calcContent) {
             if (!isDraggingCalc) return;
             touchMoveCalcY = e.touches[0].clientY;
             const diff = touchMoveCalcY - touchStartCalcY;
-            
+
             if (diff > 0) {
                 if (e.cancelable) e.preventDefault(); 
                 calcContent.style.transform = `translateY(${diff}px)`; 
@@ -8696,10 +8529,10 @@ if (calcContent) {
         calcContent.addEventListener('touchend', (e) => {
             if (!isDraggingCalc) return;
             isDraggingCalc = false;
-            
+
             const diff = touchMoveCalcY - touchStartCalcY;
             calcContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            
+
             if (diff > 120) {
                 closeCalculadoraModal();
             } else {
@@ -8710,15 +8543,15 @@ if (calcContent) {
             touchMoveCalcY = 0;
         });
     }
-	
+
 window.renderizarListaImoveis = function(imoveis) {
     let container = document.getElementById('detalhes-imoveis-container');
-    
+
     if (!container) {
         container = document.createElement('div');
         container.id = 'detalhes-imoveis-container';
         container.className = "w-full"; 
-        
+
         const historicoContainer = document.getElementById('detalhes-historico-container');
         if (historicoContainer) {
             historicoContainer.parentNode.insertBefore(container, historicoContainer.nextSibling);
@@ -8801,10 +8634,10 @@ window.renderizarListaImoveis = function(imoveis) {
     container.innerHTML = `
         <div class="border-t border-[#2C2C2E] pt-8 mb-10 mt-8">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
-            
+
             <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
                 <div class="flex flex-col items-center">
-                    
+
                     <div class="relative w-44 h-44 flex-shrink-0 flex items-center justify-center -my-2">
                         <canvas id="imoveis-chart" class="relative z-10 w-full h-full"></canvas>
                         <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0 mt-1">
@@ -8812,7 +8645,7 @@ window.renderizarListaImoveis = function(imoveis) {
                             <span class="text-3xl font-bold text-white leading-none tracking-tighter">${totalImoveis}</span>
                         </div>
                     </div>
-                    
+
                     <div class="w-full mt-2 pt-4 border-t border-[#2C2C2E]">
                         <div class="grid grid-cols-2 gap-x-4 gap-y-3">
                             ${legendHtml}
@@ -8821,7 +8654,7 @@ window.renderizarListaImoveis = function(imoveis) {
 
                 </div>
             </div>
-            
+
             <div class="flex flex-col" id="lista-imoveis-wrapper">
                 <div class="grid grid-cols-2 gap-2">
                     ${htmlVisivel}
@@ -8837,7 +8670,7 @@ window.renderizarListaImoveis = function(imoveis) {
     // 5. Renderizar o Gráfico com Chart.js
     const canvas = document.getElementById('imoveis-chart');
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (window.imoveisChartInstance) window.imoveisChartInstance.destroy();
 
@@ -8876,10 +8709,9 @@ window.renderizarListaImoveis = function(imoveis) {
     });
 };
 
-// --- FUNÇÃO PARA ABRIR/FECHAR A LISTA DE IMÓVEIS (ATUALIZADA) ---
 window.toggleListaImoveis = function(btn) {
     const extras = document.getElementById('imoveis-extras');
-    
+
     if (extras.classList.contains('hidden')) {
         // Expandir (agora muda para 'grid' em vez de 'flex')
         extras.classList.remove('hidden');
@@ -8892,20 +8724,19 @@ window.toggleListaImoveis = function(btn) {
         // Recolher
         extras.classList.add('hidden');
         extras.classList.remove('grid');
-        
+
         const chartWrapper = document.getElementById('lista-imoveis-wrapper');
         if (chartWrapper) chartWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
         // Conta quantos elementos filhos existem no total
         const total = document.querySelectorAll('#lista-imoveis-wrapper .bg-\\[\\#151515\\]').length;
-        
+
         btn.innerHTML = `
             Ver todos os ${total} imóveis
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         `;
     }
 };
-	
+
     await init();
 });
-

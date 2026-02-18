@@ -5,10 +5,8 @@ import * as supabaseDB from './supabase.js';
 // --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
 window.dismissNotificationGlobal = function(id, btnElement) {
     const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
-    if (!dismissed.has(id)) {
-        dismissed.add(id);
-        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissed]));
-    }
+    dismissed.add(id);
+    localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissed]));
     
     // Animação de saída
     const card = btnElement.closest('.notif-item');
@@ -67,15 +65,14 @@ function limparTodasNotificacoes() {
     const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
 
     visibleCards.forEach((card, index) => {
-        // Efeito cascata na saída
+        // Salva ID e aplica efeito cascata na saída
+        const id = card.getAttribute('data-notif-id');
+        if (id) dismissed.add(id);
+
         setTimeout(() => {
             card.style.transform = 'translateX(20px)';
             card.style.opacity = '0';
         }, index * 50);
-
-        // Salva ID no localStorage
-        const id = card.getAttribute('data-notif-id');
-        if (id) dismissed.add(id);
     });
 
     localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissed]));
@@ -91,14 +88,14 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    console.log('Instalação disponível');
+    // beforeinstallprompt fired
 });
 
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
 function bufferToBase64(buffer) {
-    return btoa(Array.from(new Uint8Array(buffer), c => String.fromCharCode(c)).join(''));
+    return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
 
 function base64ToBuffer(base64) {
@@ -128,10 +125,7 @@ const formatDate = (dateString, includeTime = false) => {
 const formatDateToInput = (dateString) => {
     try {
         const date = new Date(dateString);
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        return date.toISOString().split('T')[0];
     } catch (e) {
         console.error("Erro ao formatar data para input:", e);
         return new Date().toISOString().split('T')[0];
@@ -139,7 +133,7 @@ const formatDateToInput = (dateString) => {
 };
 
 const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
-const isAcao = (symbol) => !!symbol && !isFII(symbol);
+const isAcao = (symbol) => !!(symbol && !isFII(symbol));
 
 
 function parseMesAno(mesAnoStr) { 
@@ -188,32 +182,29 @@ const DB_VERSION = 1;
 
 function toggleDrawer(symbol) {
     const drawer = document.getElementById(`drawer-${symbol}`);
+    if (!drawer) return;
     
     // Fecha outros drawers abertos (efeito sanfona)
     document.querySelectorAll('.card-drawer.open').forEach(d => {
-        if (d.id !== `drawer-${symbol}`) {
-            d.classList.remove('open');
-        }
+        if (d !== drawer) d.classList.remove('open');
     });
 
     // Alterna o atual
-    if (drawer) {
-        drawer.classList.toggle('open');
-    }
+    drawer.classList.toggle('open');
 }
 
 // --- FUNÇÃO DE LAZY LOADING (Carrega o Excel só quando precisa) ---
 function loadSheetJS() {
     return new Promise((resolve, reject) => {
         // Se a biblioteca já existe na janela, não baixa de novo
-        if (typeof XLSX !== 'undefined') {
+        if (window.XLSX) {
             return resolve();
         }
 
         const script = document.createElement('script');
         script.src = "https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js";
         script.onload = () => {
-            console.log("Biblioteca XLSX carregada com sucesso.");
+            // XLSX loaded
             resolve();
         };
         script.onerror = () => reject(new Error("Falha ao baixar a biblioteca Excel. Verifique sua conexão."));
@@ -298,49 +289,7 @@ function criarCardElemento(ativo, dados) {
     let proventosHtml = '';
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
     proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-
-    if (proventosParaExibir.length > 0) {
-        const totalReceberGeral = proventosParaExibir.reduce((acc, p) => acc + (p.value * ativo.quantity), 0);
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const linhasHtml = proventosParaExibir.map(p => {
-            const parts = p.paymentDate.split('-');
-            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-            const isPago = dataPag <= hoje;
-            const dataFormatada = formatDate(p.paymentDate).substring(0, 5); 
-            const valorTotalParcela = p.value * ativo.quantity;
-
-            return `
-                <div class="flex justify-between items-center py-2 border-b border-[#2C2C2E] last:border-0 text-xs">
-                    <div class="flex items-center gap-2">
-                        <div class="w-1.5 h-1.5 rounded-full ${isPago ? 'bg-green-500' : 'bg-yellow-500'}"></div>
-                        <span class="text-gray-400 font-medium">${dataFormatada}</span>
-                        <span class="text-[10px] px-1.5 rounded bg-[#222] text-gray-500 border border-[#333] uppercase">${p.type || 'DIV'}</span>
-                    </div>
-                    <span class="font-bold ${isPago ? 'text-green-500/70 line-through' : 'text-gray-200'}">
-                        ${formatBRL(valorTotalParcela)}
-                    </span>
-                </div>`;
-        }).join('');
-
-        proventosHtml = `
-        <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Provisão Futura</span>
-                <span class="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-0.5 rounded border border-green-900/20">
-                    Total: ${formatBRL(totalReceberGeral)}
-                </span>
-            </div>
-            <div class="bg-[#151515] rounded-lg border border-[#2C2C2E] px-3 max-h-[120px] overflow-y-auto custom-scroll">
-                ${linhasHtml}
-            </div>
-        </div>`;
-    } else {
-        proventosHtml = `
-             <div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
-                 <span class="text-[10px] text-gray-600 uppercase font-bold">Sem proventos anunciados</span>
-             </div>`;
-    }
+    proventosHtml = renderProventosHtml(proventosParaExibir, ativo.quantity);
 
     const card = document.createElement('div');
     
@@ -502,54 +451,8 @@ function atualizarCardElemento(card, ativo, dados) {
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
 
     if (containerProventos) {
-        if (proventosParaExibir.length > 0) {
-            proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
-
-            const totalReceberGeral = proventosParaExibir.reduce((acc, p) => {
-                const valorParcela = p.totalValue || (p.value * ativo.quantity);
-                return acc + valorParcela;
-            }, 0);
-
-            const hoje = new Date();
-            hoje.setHours(0, 0, 0, 0);
-            const linhasHtml = proventosParaExibir.map(p => {
-                const parts = p.paymentDate.split('-');
-                const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-                const isPago = dataPag <= hoje;
-                const dataFormatada = formatDate(p.paymentDate).substring(0, 5); 
-                const valorParcela = p.totalValue || (p.value * ativo.quantity);
-
-                return `
-                    <div class="flex justify-between items-center py-2 border-b border-[#2C2C2E] last:border-0 text-xs">
-                        <div class="flex items-center gap-2">
-                            <div class="w-1.5 h-1.5 rounded-full ${isPago ? 'bg-green-500' : 'bg-yellow-500'}"></div>
-                            <span class="text-gray-400 font-medium">${dataFormatada}</span>
-                            <span class="text-[10px] px-1.5 rounded bg-[#222] text-gray-500 border border-[#333] uppercase">${p.type || 'DIV'}</span>
-                        </div>
-                        <span class="font-bold ${isPago ? 'text-green-500/70 line-through' : 'text-gray-200'}">
-                            ${formatBRL(valorParcela)}
-                        </span>
-                    </div>`;
-            }).join('');
-
-            containerProventos.innerHTML = `
-            <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Provisão Futura</span>
-                    <span class="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-0.5 rounded border border-green-900/20">
-                        Total: ${formatBRL(totalReceberGeral)}
-                    </span>
-                </div>
-                <div class="bg-[#151515] rounded-lg border border-[#2C2C2E] px-3 max-h-[120px] overflow-y-auto custom-scroll">
-                    ${linhasHtml}
-                </div>
-            </div>`;
-        } else {
-            containerProventos.innerHTML = `
-             <div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
-                 <span class="text-[10px] text-gray-600 uppercase font-bold">Sem proventos anunciados</span>
-             </div>`;
-        }
+        proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+        containerProventos.innerHTML = renderProventosHtml(proventosParaExibir, ativo.quantity);
     }
 }
 
@@ -864,7 +767,7 @@ let ipcaCacheData = null;
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
+            // Install outcome: ${outcome}
             deferredPrompt = null;
             if (outcome === 'accepted') {
                 installSection.classList.add('hidden');
@@ -906,7 +809,7 @@ function updateThemeUI() {
 
     // 2. Função para forçar atualização profunda nas instâncias já criadas
     const updateChartColors = (chart) => {
-        if (!chart || !chart.options) return;
+        if (!chart?.options) return;
 
         const textColor = isLight ? '#374151' : '#9ca3af';
         const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(28, 28, 30, 0.95)';
@@ -962,10 +865,10 @@ function updateThemeUI() {
     };
 
     // 3. Aplica a correção em todos os gráficos ativos
-    if (typeof alocacaoChartInstance !== 'undefined') updateChartColors(alocacaoChartInstance);
-    if (typeof patrimonioChartInstance !== 'undefined') updateChartColors(patrimonioChartInstance);
-    if (typeof historicoChartInstance !== 'undefined') updateChartColors(historicoChartInstance);
-    if (typeof detalhesChartInstance !== 'undefined') updateChartColors(detalhesChartInstance);
+    updateChartColors(alocacaoChartInstance);
+    updateChartColors(patrimonioChartInstance);
+    updateChartColors(historicoChartInstance);
+    updateChartColors(detalhesChartInstance);
 }
 
     updateThemeUI();
@@ -975,11 +878,6 @@ function updateThemeUI() {
             const current = localStorage.getItem('vesto_theme') === 'light';
             localStorage.setItem('vesto_theme', current ? 'dark' : 'light');
             updateThemeUI();
-            
-            if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) alocacaoChartInstance.update();
-            if (typeof patrimonioChartInstance !== 'undefined' && patrimonioChartInstance) patrimonioChartInstance.update();
-            if (typeof historicoChartInstance !== 'undefined' && historicoChartInstance) historicoChartInstance.update();
-            if (typeof detalhesChartInstance !== 'undefined' && detalhesChartInstance) detalhesChartInstance.update();
         });
     }
 
@@ -1335,23 +1233,14 @@ function hideAddModal() {
     async function carregarPatrimonio() {
          let allPatrimonio = await supabaseDB.getPatrimonio();
          allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
-         
-         if (allPatrimonio.length > 365) {
-            patrimonio = allPatrimonio.slice(allPatrimonio.length - 365);
-         } else {
-            patrimonio = allPatrimonio;
-         }
+         patrimonio = allPatrimonio.length > 365 ? allPatrimonio.slice(-365) : allPatrimonio;
     }
     
 async function salvarSnapshotPatrimonio(totalValor) {
     if (totalValor <= 0 && patrimonio.length === 0) return; 
     
-    // Pega a data local do usuário (Brasil) em vez de UTC
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const today = `${year}-${month}-${day}`; // Formato YYYY-MM-DD
+    // Pega a data local do usuário em formato YYYY-MM-DD
+    const today = new Date().toLocaleDateString('en-CA'); // en-CA produz YYYY-MM-DD
     
     const snapshot = { date: today, value: totalValor };
     
@@ -1587,10 +1476,9 @@ function agruparPorMes(itens, dateField) {
         
         // Ajuste de fuso horário simples para garantir o mês correto
         const dataObj = new Date(item[dateField]);
-        // Formata como "Dezembro 2025"
+        // Formata como "Dezembro 2025" com primeira letra maiúscula
         const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        // Capitaliza a primeira letra
-        const chave = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
+        const chave = mesAno[0].toUpperCase() + mesAno.slice(1);
         
         if (!grupos[chave]) grupos[chave] = [];
         grupos[chave].push(item);
@@ -2261,7 +2149,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
     }
 
     // --- 2. DETECÇÃO DE PREÇOS (AUTORRECUPERAÇÃO) ---
-    const temPrecos = typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais) && precosAtuais.length > 0;
+    const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
     
     if (!window.alocacaoRetryCount) window.alocacaoRetryCount = 0;
 
@@ -2291,7 +2179,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
     let totalGeral = 0;
     const dadosAtivos = [];
 
-    if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
+    if (Array.isArray(carteiraCalculada)) {
         carteiraCalculada.forEach(ativo => {
             const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
             const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
@@ -2342,7 +2230,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
     }
 
     if (dadosAtivos.length === 0) {
-        if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) {
+        if (alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
             alocacaoChartInstance = null;
         }
@@ -2350,7 +2238,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
     }
 
     // --- 7. RENDERIZAÇÃO DO GRÁFICO ---
-    if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) {
+    if (alocacaoChartInstance) {
         alocacaoChartInstance.destroy();
     }
 
@@ -2952,7 +2840,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     if (!canvas) return;
 
     // --- 1. DETECÇÃO DE PREÇOS (AUTORRECUPERAÇÃO) ---
-    const temPrecos = typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais) && precosAtuais.length > 0;
+    const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
     
     if (!window.patrimonioRetryCount) window.patrimonioRetryCount = 0;
 
@@ -2982,7 +2870,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     let totalAtualLive = 0;
     let custoTotalLive = 0;
 
-    if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
+    if (Array.isArray(carteiraCalculada)) {
         carteiraCalculada.forEach(ativo => {
             const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
             const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
@@ -3295,8 +3183,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
-    const txCount = (typeof transacoes !== 'undefined') ? transacoes.length : 0;
+    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+    const txCount = transacoes.length;
     const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
     lastPatrimonioCalcSignature = currentSignature;
 }
@@ -3385,7 +3273,7 @@ function renderizarTimelinePagamentos() {
         
         // Clique no card abre detalhes do ativo
         item.onclick = () => {
-             if(typeof abrirDetalhesAtivo === 'function') abrirDetalhesAtivo(prov.symbol);
+             window.abrirDetalhesAtivo?.(prov.symbol);
         };
         
         const valorFormatado = totalReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -3783,7 +3671,7 @@ async function renderizarCarteira() {
             });
             const articles = response; 
             
-            if (articles && Array.isArray(articles) && articles.length > 0) {
+            if (articles?.length > 0) {
                 await setCache(cacheKey, articles, CACHE_NOTICIAS);
             }
             return articles;

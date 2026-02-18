@@ -4,9 +4,16 @@ import * as supabaseDB from './supabase.js';
 
 // --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
 window.dismissNotificationGlobal = function(id, btnElement) {
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
-    dismissed.add(id);
-    localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissed]));
+    // Usa o Set em RAM — localStorage só é escrito aqui, nunca relido
+    if (typeof dismissedNotifsSet !== 'undefined') {
+        dismissedNotifsSet.add(id);
+        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissedNotifsSet]));
+    } else {
+        // Fallback: edge case se chamado antes do init
+        const d = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
+        d.add(id);
+        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...d]));
+    }
     
     // Animação de saída
     const card = btnElement.closest('.notif-item');
@@ -62,7 +69,10 @@ function limparTodasNotificacoes() {
     const visibleCards = list.querySelectorAll('.notif-item');
     if (visibleCards.length === 0) return;
 
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
+    // Usa o Set em RAM — sem leitura de localStorage durante o loop
+    const dismissed = (typeof dismissedNotifsSet !== 'undefined')
+        ? dismissedNotifsSet
+        : new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
 
     visibleCards.forEach((card, index) => {
         // Salva ID e aplica efeito cascata na saída
@@ -484,6 +494,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let saldoCaixa = 0;
     let proventosConhecidos = [];
     let watchlist = []; 
+    // Set em memória para notificações dispensadas — populado uma única vez
+    // em carregarDadosIniciais. Leituras usam RAM; escrita só ocorre no dismiss.
+    let dismissedNotifsSet = new Set();
     let alocacaoChartInstance = null;
     let historicoChartInstance = null;
     let patrimonioChartInstance = null; 
@@ -3419,30 +3432,39 @@ function renderizarCarteiraSkeletons(show) {
         });
     }
     
-function getQuantidadeNaData(symbol, dataLimiteStr) {
-        if (!dataLimiteStr) return 0;
-        
-        // Define o limite como o final do dia da "Data Com"
-        const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
+// Cache de memoização para getQuantidadeNaData.
+// Chave: `${symbol}_${dataLimiteStr}`. Evita O(N*M) iterações em loops de proventos.
+// Deve ser zerado sempre que o array de transações sofrer qualquer mutação.
+let _cacheQtdNaData = {};
 
-        return transacoes.reduce((total, t) => {
-            // Verifica se é o mesmo ativo
-            if (t.symbol === symbol) {
-                const dataTransacao = new Date(t.date);
-                
-                // Só considera transações feitas ATÉ a data limite (Data Com)
-                if (dataTransacao <= dataLimite) {
-                    if (t.type === 'buy') {
-                        return total + t.quantity;
-                    } else if (t.type === 'sell') {
-                        // CORREÇÃO: Subtrai a quantidade se for venda
-                        return total - t.quantity;
-                    }
-                }
-            }
-            return total;
-        }, 0);
+function invalidarCacheQtdNaData() {
+    _cacheQtdNaData = {};
+}
+
+function getQuantidadeNaData(symbol, dataLimiteStr) {
+    if (!dataLimiteStr) return 0;
+
+    const chave = `${symbol}_${dataLimiteStr}`;
+    if (Object.prototype.hasOwnProperty.call(_cacheQtdNaData, chave)) {
+        return _cacheQtdNaData[chave];
     }
+
+    const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
+
+    const resultado = transacoes.reduce((total, t) => {
+        if (t.symbol === symbol) {
+            const dataTransacao = new Date(t.date);
+            if (dataTransacao <= dataLimite) {
+                if (t.type === 'buy')  return total + t.quantity;
+                if (t.type === 'sell') return total - t.quantity;
+            }
+        }
+        return total;
+    }, 0);
+
+    _cacheQtdNaData[chave] = resultado;
+    return resultado;
+}
 
 async function renderizarCarteira() {
     // Esconde os skeletons de carregamento
@@ -4031,8 +4053,7 @@ async function buscarHistoricoProventosAgregado(force = false) {
     
 // --- FUNÇÃO AUXILIAR: GERENCIAR NOTIFICAÇÕES EXCLUÍDAS ---
 function isNotificationDismissed(id) {
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
-    return dismissed.has(id);
+    return dismissedNotifsSet.has(id);
 }
 
 // --- FUNÇÃO DE NOTIFICAÇÕES (REMODELADA: CLEAN & PREMIUM) ---
@@ -4048,7 +4069,8 @@ function verificarNotificacoesFinanceiras() {
 
     list.innerHTML = '';
     let count = 0;
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
+    // Usa o Set em RAM — sem I/O de localStorage dentro desta função
+    const dismissed = dismissedNotifsSet;
 
     // --- Datas e Helpers ---
     const hoje = new Date();
@@ -4496,6 +4518,7 @@ async function handleSalvarTransacao() {
             };
             
             await supabaseDB.updateTransacao(transacaoID, transacaoAtualizada);
+            invalidarCacheQtdNaData();
             
             const index = transacoes.findIndex(t => t.id === transacaoID);
             if (index > -1) {
@@ -4515,6 +4538,7 @@ async function handleSalvarTransacao() {
             
             await supabaseDB.addTransacao(novaTransacao);
             transacoes.push(novaTransacao);
+            invalidarCacheQtdNaData();
             
             // Mensagem personalizada para compra ou venda
             const msg = tipoOperacao === 'sell' ? "Venda registrada!" : "Compra registrada!";
@@ -4538,6 +4562,7 @@ async function handleSalvarTransacao() {
             `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
             async () => { 
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
+                invalidarCacheQtdNaData();
                 
                 await supabaseDB.deleteTransacoesDoAtivo(symbol);
                 await removerCacheAtivo(symbol); 
@@ -4602,6 +4627,7 @@ function handleAbrirModalEdicao(id) {
             async () => { 
                 await supabaseDB.deleteTransacao(id);
                 transacoes = transacoes.filter(t => t.id !== id);
+                invalidarCacheQtdNaData();
                 
                 await removerCacheAtivo(symbol);
                 
@@ -6358,6 +6384,7 @@ const importExcelBtn = document.getElementById('import-excel-btn');
 
                                 await supabaseDB.addTransacao(novaTransacao);
                                 transacoes.push(novaTransacao);
+                                invalidarCacheQtdNaData();
                                 importadosCount++;
                             }
                         } catch (err) {
@@ -6546,6 +6573,14 @@ async function carregarDadosIniciais() {
             carregarHistoricoProcessado(),
             carregarWatchlist()
         ]);
+
+        // Leitura única do localStorage — a partir daqui todo acesso usa o Set em RAM
+        try {
+            const raw = localStorage.getItem('vesto_dismissed_notifs');
+            dismissedNotifsSet = new Set(raw ? JSON.parse(raw) : []);
+        } catch (_) {
+            dismissedNotifsSet = new Set();
+        }
         
         // Renderiza a watchlist (leve)
         renderizarWatchlist(); 

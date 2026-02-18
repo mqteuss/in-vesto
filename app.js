@@ -1216,6 +1216,7 @@ function hideAddModal() {
 }
     
     function showDetalhesModal(symbol) {
+        detalhesModalOpen = true;
         detalhesPageContent.style.transform = ''; 
         detalhesPageContent.classList.remove('closing'); 
         detalhesPageModal.classList.add('visible'); 
@@ -1225,6 +1226,7 @@ function hideAddModal() {
     }
     
     function hideDetalhesModal() {
+        detalhesModalOpen = false;
         detalhesPageContent.style.transform = ''; 
         detalhesPageContent.classList.add('closing'); 
         detalhesPageModal.classList.remove('visible'); 
@@ -4632,6 +4634,11 @@ function handleAbrirModalEdicao(id) {
             cotacaoChartInstance = null;
         }
 
+        // Remover o container de cotação do DOM (é irmão de detalhesPreco,
+        // não filho — não é removido pelo innerHTML = '')
+        const cotacaoContainer = document.getElementById('detalhes-cotacao-container');
+        if (cotacaoContainer) cotacaoContainer.remove();
+
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
@@ -4659,6 +4666,8 @@ function handleAbrirModalEdicao(id) {
 // ======================================================
 
 let cotacaoChartInstance = null;
+// Flag para cancelar renders assíncronos após o modal fechar
+let detalhesModalOpen = false;
 // Cache agora usa chave composta: "PETR4_1D", "VALE3_5A"
 window.tempChartCache = {}; 
 
@@ -4771,6 +4780,9 @@ async function carregarDadosGrafico(range, symbol) {
 
             // Busca API
             const response = await callScraperCotacaoHistoricaAPI(symbol, range);
+
+            // Modal fechou enquanto aguardávamos a resposta — abandonar
+            if (!detalhesModalOpen) return;
             
             if (response && response.points && response.points.length > 0) {
                 data = response.points;
@@ -4784,6 +4796,7 @@ async function carregarDadosGrafico(range, symbol) {
 
     } catch (e) {
         console.error("Erro gráfico:", e);
+        if (!detalhesModalOpen) return;
         const wrapper = document.getElementById('chart-area-wrapper');
         if(wrapper) wrapper.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full text-gray-500">
@@ -4820,6 +4833,7 @@ window.mudarPeriodoGrafico = function(range, symbol) {
 };
 
 function renderPriceChart(dataPoints, range) {
+    if (!detalhesModalOpen) return;
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 

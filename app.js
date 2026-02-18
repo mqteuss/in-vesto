@@ -1228,6 +1228,7 @@ function hideAddModal() {
         // Chart.js disparava no canvas ainda vivo no DOM → crash.
         currentChartFetchId++; // Cancela qualquer fetch em voo imediatamente
 
+        // ✅ CORREÇÃO: Destruir todas as instâncias ANTES de remover containers do DOM.
         if (cotacaoChartInstance) {
             cotacaoChartInstance.destroy();
             cotacaoChartInstance = null;
@@ -1236,6 +1237,19 @@ function hideAddModal() {
             detalhesChartInstance.destroy();
             detalhesChartInstance = null;
         }
+        if (window.imoveisChartInstance) {
+            window.imoveisChartInstance.destroy();
+            window.imoveisChartInstance = null;
+        }
+
+        // ✅ Zerar dimensões do canvas impede que observers residuais encontrem
+        //    um contexto 2D válido após a remoção do elemento.
+        const canvasCotacao = document.getElementById('canvas-cotacao');
+        if (canvasCotacao) {
+            canvasCotacao.width = 0;
+            canvasCotacao.height = 0;
+        }
+
         const cotacaoContainerImmediate = document.getElementById('detalhes-cotacao-container');
         if (cotacaoContainerImmediate) cotacaoContainerImmediate.remove();
         window.tempChartCache = {};
@@ -4845,12 +4859,14 @@ function renderPriceChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
-    wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
-    const ctx = document.getElementById('canvas-cotacao').getContext('2d');
-
+    // ✅ CORREÇÃO: Destruir ANTES de limpar o DOM para evitar ResizeObserver zumbi.
     if (cotacaoChartInstance) {
         cotacaoChartInstance.destroy();
+        cotacaoChartInstance = null;
     }
+
+    wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
+    const ctx = document.getElementById('canvas-cotacao').getContext('2d');
 
     // --- DADOS ---
     const labels = dataPoints.map(p => p.date);
@@ -5825,9 +5841,17 @@ function mudarAba(tabId) {
         tabContents.forEach(content => {
             if (content.id === tabId) {
                 content.classList.add('active');
-                content.scrollTop = content.scrollTop; 
+                content.scrollTop = content.scrollTop;
+                // ✅ CORREÇÃO: Remove isolamento da aba ativa.
+                content.style.contentVisibility = 'visible';
+                content.style.willChange = 'auto';
             } else {
                 content.classList.remove('active');
+                // ✅ CORREÇÃO: Isola layout das abas inativas para evitar que
+                //    a aba Mercado (pesada) contamine o recálculo de layout
+                //    das demais durante a transição.
+                content.style.contentVisibility = 'auto';
+                content.style.containIntrinsicSize = '0 600px';
             }
         });
 

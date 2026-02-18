@@ -3578,8 +3578,8 @@ async function renderizarCarteira() {
         if (totalLucroPrejuizo > 0.01) corPLTotal = 'text-green-500';
         else if (totalLucroPrejuizo < -0.01) corPLTotal = 'text-red-500';
 
-        renderizarDashboardSkeletons(false);
-
+        // Grava os valores antes de revelar os elementos, garantindo que
+        // o browser nunca pinte os campos ainda zerados (R$ 0,00).
         if(totalCarteiraValor) totalCarteiraValor.textContent = formatBRL(patrimonioTotalAtivos);
         if(totalCaixaValor) totalCaixaValor.textContent = formatBRL(saldoCaixa);
         if(totalCarteiraCusto) totalCarteiraCusto.textContent = formatBRL(totalCustoCarteira);
@@ -3588,6 +3588,9 @@ async function renderizarCarteira() {
             totalCarteiraPL.innerHTML = `${formatBRL(totalLucroPrejuizo)} <span class="text-xs opacity-60 ml-1">(${totalLucroPrejuizoPercent.toFixed(2)}%)</span>`;
             totalCarteiraPL.className = `text-sm font-semibold ${corPLTotal === 'text-green-500' ? 'text-green-400' : 'text-red-400'}`; 
         }
+
+        // Remove os skeletons somente após os valores já estarem no DOM.
+        renderizarDashboardSkeletons(false);
 
         const patrimonioRealParaSnapshot = patrimonioTotalAtivos + saldoCaixa; 
         renderizarTimelinePagamentos(); // Mantido pois é a timeline visual no dashboard, não o gráfico pesado
@@ -4271,9 +4274,15 @@ async function atualizarTodosDados(force = false) {
         dashboardStatus.classList.add('hidden');
         dashboardLoading.classList.add('hidden');
 
-        // Garante que os skeletons sumam no final de tudo
-        renderizarDashboardSkeletons(false);
-        renderizarCarteiraSkeletons(false);
+        // Quando force=true (refresh manual), os skeletons foram ativados aqui dentro,
+        // então é seguro desativá-los — os cards já têm valores anteriores no DOM.
+        // Quando force=false (carga inicial), NÃO desativamos aqui: renderizarCarteira()
+        // já chama renderizarDashboardSkeletons(false) APÓS gravar os valores nos
+        // elementos, evitando o flash de "R$ 0,00" causado pelo debounce de 100 ms.
+        if (force) {
+            renderizarDashboardSkeletons(false);
+            renderizarCarteiraSkeletons(false);
+        }
 
         // Atualiza as notificações
         if (typeof verificarNotificacoesFinanceiras === 'function') {

@@ -6453,6 +6453,10 @@ if (clearCacheBtn) {
 
 async function carregarDadosIniciais() {
     try {
+        // Exibe skeletons imediatamente para evitar flash de valores zerados
+        renderizarDashboardSkeletons(true);
+        renderizarCarteiraSkeletons(true);
+
         // Dispara todas as requisições ao mesmo tempo
         await Promise.all([
             carregarTransacoes(),
@@ -6481,6 +6485,10 @@ async function carregarDadosIniciais() {
         setInterval(() => atualizarTodosDados(false), REFRESH_INTERVAL); 
 
     } catch (e) {
+        // Garante que os skeletons sejam removidos mesmo em caso de erro,
+        // evitando que o app fique travado no estado de carregamento
+        renderizarDashboardSkeletons(false);
+        renderizarCarteiraSkeletons(false);
         console.error("Erro ao carregar dados iniciais:", e);
         showToast("Falha ao carregar dados da nuvem.");
     }

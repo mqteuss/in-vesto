@@ -13,7 +13,6 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <link href="./style-tailwind.css" rel="stylesheet">
@@ -22,18 +21,6 @@
 <body class="antialiased">
 
     <div id="biometric-lock-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 hidden">
-
-    <svg xmlns="http://www.w3.org/2000/svg" class="hidden" aria-hidden="true">
-        <defs>
-            <symbol id="icon-eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" />
-                <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            </symbol>
-            <symbol id="icon-eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-            </symbol>
-        </defs>
-    </svg>
         <div class="relative mb-8 group cursor-pointer" id="btn-desbloquear">
             <div class="absolute inset-0 bg-purple-500/20 rounded-full blur-xl group-hover:bg-purple-500/30 transition-all duration-500"></div>
             <div class="relative bg-gray-800 p-6 rounded-full border border-purple-500/30 shadow-2xl group-active:scale-95 transition-transform duration-200">
@@ -69,7 +56,7 @@
 <div id="auth-container" class="fixed inset-0 z-50 w-full h-[100dvh] bg-black flex flex-col items-center justify-center p-6 overflow-hidden transition-all duration-300">
         
         <div class="absolute top-24 left-0 w-full flex justify-center z-20 pointer-events-none">
-            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-40 h-auto drop-shadow-2xl transition-all duration-300" fetchpriority="high">
+            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-40 h-auto drop-shadow-2xl transition-all duration-300">
         </div>
 
         <div class="w-full max-w-sm flex flex-col justify-center h-full relative z-10 pt-10">
@@ -93,8 +80,8 @@
                 class="peer floating-input w-full bg-[#151515] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 pr-10 transition-colors duration-300">
             <label for="login-password" class="floating-label text-gray-400">Senha</label>
             <button type="button" class="password-toggle absolute right-3 top-0 bottom-0 flex items-center text-gray-500 hover:text-white transition-colors" data-target="login-password">
-                <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-                <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+                <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
             </button>
         </div>
     </div>
@@ -769,7 +756,7 @@
 </div>
 
 <div class="text-center pb-6">
-     <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto" class="h-6 mx-auto" loading="lazy">
+     <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto" class="h-6 mx-auto">
      <p class="text-[10px] text-gray-700 mt-2 font-mono">v2.0.1</p>
 </div>
 
@@ -1405,8 +1392,8 @@
     <div class="relative">
         <input type="password" id="new-password-input" placeholder="Nova senha (mín. 6 caracteres)" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
          <button type="button" class="password-toggle" data-target="new-password-input">
-            <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-            <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+            <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+            <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
         </button>
     </div>
     <button type="submit" id="new-password-btn" class="btn-purple w-full mt-4">Salvar Nova Senha</button>
@@ -1431,24 +1418,24 @@
     <div class="relative">
         <input type="password" id="current-password-input" placeholder="Senha Atual" autocomplete="current-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
         <button type="button" class="password-toggle" data-target="current-password-input">
-           <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-           <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+           <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+           <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
        </button>
     </div>
 
     <div class="relative">
         <input type="password" id="change-new-password-input" placeholder="Nova Senha (mín. 6 caracteres)" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
         <button type="button" class="password-toggle" data-target="change-new-password-input">
-           <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-           <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+           <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+           <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
        </button>
     </div>
 
     <div class="relative">
         <input type="password" id="change-confirm-password-input" placeholder="Confirme a Nova Senha" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
         <button type="button" class="password-toggle" data-target="change-confirm-password-input">
-           <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-           <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+           <svg class="eye-icon-open w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+           <svg class="eye-icon-closed w-5 h-5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
        </button>
     </div>
 
@@ -1480,7 +1467,7 @@
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js" type="module"></script>
     <script src="app.js" type="module"></script>
 

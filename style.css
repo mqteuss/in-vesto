@@ -26,14 +26,12 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
 
 /* Utils de Scroll */
 .hide-scrollbar::-webkit-scrollbar,
-.scrollable-content::-webkit-scrollbar,
 #detalhes-conteudo-scroll::-webkit-scrollbar,
 .custom-scroll::-webkit-scrollbar {
     display: none;
 }
 
 .hide-scrollbar,
-.scrollable-content,
 #detalhes-conteudo-scroll,
 .custom-scroll {
     scrollbar-width: none;
@@ -182,11 +180,6 @@ body.light-mode .history-header-sticky {
 }
 body.light-mode .history-header-sticky h3,
 body.light-mode .sticky.top-0 h3 { color: #374151 !important; }
-body.light-mode .bg-neutral-900 {
-    background-color: #e4e4e7 !important; /* Badges cinzas */
-    color: #374151 !important;
-    border: none !important;
-}
 body.light-mode .history-month-badge {
     background-color: #e4e4e7 !important;
     color: #4b5563 !important;
@@ -202,9 +195,7 @@ body.light-mode .text-\[\#e5e5e5\],
 body.light-mode .news-card-summary { color: #1f2937 !important; }
 
 body.light-mode .text-gray-400,
-body.light-mode .text-gray-500,
-body.light-mode .text-neutral-400,
-body.light-mode .text-neutral-500 { color: #6b7280 !important; }
+body.light-mode .text-gray-500 { color: #6b7280 !important; }
 
 /* Bottom Nav */
 body.light-mode .bottom-nav {
@@ -362,9 +353,6 @@ body.light-mode .btn-cancel:hover {
     color: #111827 !important;
     border-color: #d1d5db !important;
 }
-
-.accent-text { color: #c084fc; }
-.hover-accent-text:hover { color: #7c3aed; }
 
 /* Shimmer & Skeleton */
 .skeleton-text {
@@ -631,21 +619,21 @@ input:-webkit-autofill:active {
 }
 
 .premium-value-lg {
-    /* Ajustado para 3.25rem (Grande, mas cabe na tela) */
-    font-size: 3.15rem; 
+    font-size: 3.15rem;
     line-height: 1;
-    font-weight: 800; 
-    letter-spacing: -0.04em;
-    
-    /* Mantendo o efeito metálico bonito */
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     background: linear-gradient(180deg, #ffffff 20%, #94a3b8 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    
     margin: 4px 0 0 0;
     padding: 0;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
 }
 
 .premium-content {
@@ -986,7 +974,6 @@ input:-webkit-autofill:active {
 /* =========================================
    ANIMAÇÕES & HELPERS
    ========================================= */
-.money-value, input[type="number"] { font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
 .hidden { display: none !important; }
 
 /* Privacidade */
@@ -1037,11 +1024,6 @@ body.privacy-mode [data-field="pl-valor"] {
     
     /* Transições suaves */
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease;
-}
-#show-add-modal-btn:active {
-    transform: scale(0.85) !important; /* Encolhe de forma visível */
-    background-color: #a1a1aa !important; /* Fica cinza mais escuro no toque */
-    box-shadow: none; /* Sombra some para dar efeito de "pressionado" */
 }
 
 /* Outros botões */
@@ -1133,20 +1115,18 @@ body.light-mode .virtual-header-row {
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-h1, h2, h3, h4, h5, h6, 
-.app-page-title, 
-.premium-value-lg,
-.agenda-day {
+h1, h2, h3, h4, h5, h6,
+.app-page-title,
+{
     font-family: 'Plus Jakarta Sans', sans-serif;
     letter-spacing: -0.03em; /* Deixa as letras um pouco mais juntas, bem moderno */
 }
 
-/* MELHORIA PARA NÚMEROS FINANCEIROS */
-.money-value, 
+/* NÚMEROS FINANCEIROS: alinhamento tabular */
+.money-value,
 input[type="number"],
-#total-carteira-valor,
-.premium-value-lg {
-    font-feature-settings: "tnum"; /* Força números tabulares (mesma largura) */
+#total-carteira-valor {
+    font-feature-settings: "tnum";
     font-variant-numeric: tabular-nums;
 }
 
@@ -1243,9 +1223,11 @@ body.light-mode .details-highlight-card { background-color: #ffffff; box-shadow:
     will-change: transform, opacity; /* Removido box-shadow */
 }
 
-/* Estado de clique no botão (Feedback tátil sutil) */
+/* Estado de clique no botão */
 #show-add-modal-btn:active {
     transform: scale(0.92) !important;
+    background-color: #a1a1aa !important;
+    box-shadow: none;
     transition: transform 0.1s ease-out;
 }
 
@@ -1267,15 +1249,6 @@ body.light-mode .details-highlight-card { background-color: #ffffff; box-shadow:
     background-color: transparent !important;
     transform: none !important;
     transition: none !important;
-}
-
-/* Botão Principal */
-.inter-btn {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    letter-spacing: -0.02em;
-    border-radius: 16px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
 }
 
 /* =========================================
@@ -1319,12 +1292,6 @@ body.light-mode .details-highlight-card { background-color: #ffffff; box-shadow:
 /* Cor do Label quando focado (Branco) */
 .floating-input:focus ~ .floating-label {
     color: #ffffff; 
-}
-
-/* Ajuste no botão de ver senha */
-.password-toggle {
-    height: 100%;
-    padding-right: 1rem;
 }
 
 /* =========================================
@@ -1467,6 +1434,8 @@ body.light-mode .floating-input:-webkit-autofill {
     font-weight: 800;
     color: #f4f4f5;
     line-height: 1;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.03em;
 }
 
 .agenda-weekday {
@@ -1573,9 +1542,4 @@ body.light-mode .floating-input:-webkit-autofill {
 .btn-purple .loader-sm::before,
 .btn-purple .loader-sm::after {
     background: #ffffff !important;
-}
-
-.seu-modal-content {
-    will-change: transform;
-    /* Evita que ele tente redesenhar o conteúdo interno durante o movimento */
 }

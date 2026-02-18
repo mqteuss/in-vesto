@@ -95,7 +95,12 @@ Chart.defaults.color = '#9ca3af';
 Chart.defaults.borderColor = '#374151'; 
 
 function bufferToBase64(buffer) {
-    return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
 }
 
 function base64ToBuffer(base64) {
@@ -1089,16 +1094,19 @@ function updateThemeUI() {
     
     async function removerCacheAtivo(symbol) {
         try {
-            await vestoDB.delete('apiCache', `preco_${symbol}`);
-            await vestoDB.delete('apiCache', `provento_ia_${symbol}`);
-            await vestoDB.delete('apiCache', `detalhe_preco_${symbol}`);
-            await vestoDB.delete('apiCache', `hist_ia_${symbol}_12`); 
-            
+            const deletes = [
+                vestoDB.delete('apiCache', `preco_${symbol}`),
+                vestoDB.delete('apiCache', `provento_ia_${symbol}`),
+                vestoDB.delete('apiCache', `detalhe_preco_${symbol}`),
+                vestoDB.delete('apiCache', `hist_ia_${symbol}_12`),
+            ];
+
             if (isFII(symbol)) {
-                 const userKey = currentUserId ? `_${currentUserId}` : '';
-                 await vestoDB.delete('apiCache', `cache_grafico_historico${userKey}`);
+                const userKey = currentUserId ? `_${currentUserId}` : '';
+                deletes.push(vestoDB.delete('apiCache', `cache_grafico_historico${userKey}`));
             }
 
+            await Promise.all(deletes);
         } catch (e) {
             console.error("Erro ao remover cache do ativo:", e);
         }
@@ -1466,18 +1474,16 @@ function calcularCarteira() {
     lastTransacoesSignature = currentSignature;
 }
 
-// Substitua a função inteira em app.js
-
 // --- FUNÇÃO AUXILIAR PARA AGRUPAR POR MÊS ---
 function agruparPorMes(itens, dateField) {
     const grupos = {};
+    // Reutiliza uma única instância de DateTimeFormat para todos os itens (muito mais rápido que toLocaleDateString por item)
+    const fmt = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
     itens.forEach(item => {
         if (!item[dateField]) return;
         
-        // Ajuste de fuso horário simples para garantir o mês correto
         const dataObj = new Date(item[dateField]);
-        // Formata como "Dezembro 2025" com primeira letra maiúscula
-        const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        const mesAno = fmt.format(dataObj);
         const chave = mesAno[0].toUpperCase() + mesAno.slice(1);
         
         if (!grupos[chave]) grupos[chave] = [];
@@ -2735,18 +2741,16 @@ function openPatrimonioModal() {
     if(modalCustoValor && totalCarteiraCusto) {
         modalCustoValor.textContent = totalCarteiraCusto.textContent;
     }
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            if (patrimonioChartInstance) {
-                // Força o Chart.js a reler o tamanho do container pai
-                patrimonioChartInstance.resize();
-                patrimonioChartInstance.update('none'); // Update sem animação para ser rápido
-            } else {
-                // Se o gráfico ainda não existia (primeira vez), cria ele
-                renderizarGraficoPatrimonio();
-            }
-        }, 50); // 50ms é suficiente
-    });
+    setTimeout(() => {
+        if (patrimonioChartInstance) {
+            // Força o Chart.js a reler o tamanho do container pai
+            patrimonioChartInstance.resize();
+            patrimonioChartInstance.update('none'); // Update sem animação para ser rápido
+        } else {
+            // Se o gráfico ainda não existia (primeira vez), cria ele
+            renderizarGraficoPatrimonio();
+        }
+    }, 50); // 50ms é suficiente
 }
 
 function closePatrimonioModal() {
@@ -2775,18 +2779,16 @@ function openProventosModal() {
     document.body.style.overflow = 'hidden';
     
     // 2. Renderiza ou atualiza o gráfico
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            if (historicoChartInstance) {
-                // Força o Chart.js a reler o tamanho do container pai
-                historicoChartInstance.resize();
-                historicoChartInstance.update('none'); // Update sem animação para ser rápido
-            } else {
-                // Se o gráfico ainda não existia (primeira vez), cria ele
-                renderizarGraficoHistorico();
-            }
-        }, 50); // 50ms é suficiente
-    });
+    setTimeout(() => {
+        if (historicoChartInstance) {
+            // Força o Chart.js a reler o tamanho do container pai
+            historicoChartInstance.resize();
+            historicoChartInstance.update('none'); // Update sem animação para ser rápido
+        } else {
+            // Se o gráfico ainda não existia (primeira vez), cria ele
+            renderizarGraficoHistorico();
+        }
+    }, 50); // 50ms é suficiente
 }
 
 function closeProventosModal() {
@@ -2814,16 +2816,14 @@ function openAlocacaoModal() {
     document.body.style.overflow = 'hidden';
 
     // Redimensiona o gráfico de Rosca
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            if (alocacaoChartInstance) {
-                alocacaoChartInstance.resize();
-                alocacaoChartInstance.update('none');
-            } else {
-                renderizarGraficoAlocacao(); 
-            }
-        }, 50);
-    });
+    setTimeout(() => {
+        if (alocacaoChartInstance) {
+            alocacaoChartInstance.resize();
+            alocacaoChartInstance.update('none');
+        } else {
+            renderizarGraficoAlocacao(); 
+        }
+    }, 50);
 }
 
 function closeAlocacaoModal() {
@@ -3368,13 +3368,27 @@ function renderizarCarteiraSkeletons(show) {
         });
     }
     
+// Cache de memoização para getQuantidadeNaData — invalida automaticamente quando transacoes muda
+const _qtdNaDataCache = new Map();
+let _qtdNaDataSig = '';
+
 function getQuantidadeNaData(symbol, dataLimiteStr) {
         if (!dataLimiteStr) return 0;
-        
+
+        // Verifica se o array de transações mudou desde o último cálculo
+        const sig = transacoes.length + '|' + (transacoes[transacoes.length - 1]?.id ?? '');
+        if (sig !== _qtdNaDataSig) {
+            _qtdNaDataCache.clear();
+            _qtdNaDataSig = sig;
+        }
+
+        const cacheKey = symbol + '|' + dataLimiteStr;
+        if (_qtdNaDataCache.has(cacheKey)) return _qtdNaDataCache.get(cacheKey);
+
         // Define o limite como o final do dia da "Data Com"
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
 
-        return transacoes.reduce((total, t) => {
+        const result = transacoes.reduce((total, t) => {
             // Verifica se é o mesmo ativo
             if (t.symbol === symbol) {
                 const dataTransacao = new Date(t.date);
@@ -3384,13 +3398,15 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
                     if (t.type === 'buy') {
                         return total + t.quantity;
                     } else if (t.type === 'sell') {
-                        // CORREÇÃO: Subtrai a quantidade se for venda
                         return total - t.quantity;
                     }
                 }
             }
             return total;
         }, 0);
+
+        _qtdNaDataCache.set(cacheKey, result);
+        return result;
     }
 
 async function renderizarCarteira() {
@@ -7143,7 +7159,7 @@ async function calcularDyCarteiraTeorico() {
     
     // 2. Calcula o valor total financeiro da carteira hoje (Cotação Atual * Qtd)
     // Usamos 'precosAtuais' que já deve estar populado no app
-    const mapPrecos = new Map(precosAtuais.map(p => [p.symbol, p.regularMarketPrice]));
+    const mapPrecos = new Map(precosAtuais.map(p => [p.symbol, p.regularMarketPrice ?? 0]));
     let valorTotalCarteira = 0;
     
     carteiraCalculada.forEach(ativo => {
@@ -7981,10 +7997,11 @@ function openPagamentosModal(todosPagamentos) {
         
         // 1. Cálculos
         let totalGeral = 0;
+        const carteiraMap = new Map(carteiraCalculada.map(a => [a.symbol, a]));
         const dadosCalculados = todosPagamentos.map(p => {
             const parts = p.paymentDate.split('-');
             const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
-            const ativo = carteiraCalculada.find(c => c.symbol === p.symbol);
+            const ativo = carteiraMap.get(p.symbol);
             const qtd = ativo ? ativo.quantity : 0;
             const valorTotal = p.value * qtd;
             totalGeral += valorTotal;

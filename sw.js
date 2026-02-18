@@ -4,6 +4,7 @@
 // ---------------------------------------------------------
 const CACHE_VERSION = 'v16';
 const CACHE_NAME    = `vesto-cache-${CACHE_VERSION}`;
+const DEFAULT_URL   = '/?tab=tab-carteira';
 
 // ---------------------------------------------------------
 // LOGGER — identifica logs do SW em produção
@@ -35,12 +36,12 @@ const LOCAL_FILES = [
     '/icons/icon-512x512.png',
 ];
 
-// Versões fixadas com hash/versão exata para evitar que atualizações
-// do CDN invalidem o cache silenciosamente.
+// URLs idênticas às usadas no HTML — obrigatório para que o cache seja aproveitado.
+// Versões com hash fixo (chart.js) evitam invalidações silenciosas do CDN.
 const EXTERNAL_FILES = [
     'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
-    'https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js',
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js',
+    'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
     // Google Fonts: cacheado como CSS opaque. As fontes em si são
     // buscadas separadamente pelo browser — sem garantia de offline.
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap',
@@ -70,11 +71,11 @@ self.addEventListener('install', event => {
 
     event.waitUntil(
         caches.open(CACHE_NAME).then(async cache => {
-            // Arquivos locais: individualmente para não abortar tudo por um 404
-            await Promise.all(LOCAL_FILES.map(url => cacheFile(cache, url)));
-
-            // Arquivos externos: mode no-cors para evitar erros de CORS
-            await Promise.all(EXTERNAL_FILES.map(url => cacheFile(cache, url, { mode: 'no-cors' })));
+            // Busca local e externos em paralelo — reduz tempo de instalação
+            await Promise.all([
+                ...LOCAL_FILES.map(url => cacheFile(cache, url)),
+                ...EXTERNAL_FILES.map(url => cacheFile(cache, url, { mode: 'no-cors' })),
+            ]);
 
             log.info('Cache populado.');
 
@@ -230,7 +231,7 @@ self.addEventListener('push', event => {
         badge:   data.badge || '/public/sininhov2.png',
         vibrate: [100, 50, 100],
         data: {
-            url:           data.url || '/?tab=tab-carteira',
+            url:           data.url || DEFAULT_URL,
             dateOfArrival: Date.now(),
         },
         actions: [
@@ -253,10 +254,10 @@ self.addEventListener('notificationclick', event => {
     // Trata a action "dismiss" explicitamente — apenas fecha
     if (event.action === 'dismiss') return;
 
-    const targetUrl = event.notification.data?.url || '/?tab=tab-carteira';
+    const targetUrl = event.notification.data?.url || DEFAULT_URL;
 
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
             // Procura aba já aberta no mesmo origin
             for (const client of clientList) {
                 if (client.url.startsWith(self.location.origin) && 'focus' in client) {
@@ -264,10 +265,8 @@ self.addEventListener('notificationclick', event => {
                     return client.focus().then(c => c.navigate(targetUrl));
                 }
             }
-            // Nenhuma aba aberta: abre nova janela
-            if (clients.openWindow) {
-                return clients.openWindow(targetUrl);
-            }
+            // Nenhuma aba aberta com o origin: abre nova janela
+            return self.clients.openWindow(targetUrl);
         })
     );
 });

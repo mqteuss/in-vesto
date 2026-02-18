@@ -102,8 +102,13 @@ function base64ToBuffer(base64) {
     return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 }
 
-const formatBRL = (value) => value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'N/A';
-const formatNumber = (value) => value?.toLocaleString('pt-BR') ?? 'N/A';
+// OTIMIZAÇÃO: Intl.NumberFormat instanciado UMA vez e reutilizado.
+// Evita criar um novo objeto de formatação a cada chamada (até 10x mais rápido em loops).
+const _fmtBRL     = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const _fmtNumber  = new Intl.NumberFormat('pt-BR');
+
+const formatBRL     = (value) => value != null ? _fmtBRL.format(value) : 'N/A';
+const formatNumber  = (value) => value != null ? _fmtNumber.format(value) : 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
 const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';
@@ -1464,8 +1469,9 @@ function calcularCarteira() {
     }
 
     const ativosMap = new Map();
-    // Ordenamos por data para garantir que o cálculo do Preço Médio siga a ordem real das operações
-    const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
+    // OTIMIZAÇÃO: Comparação direta de strings ISO (YYYY-MM-DD) com localeCompare.
+    // Elimina a criação de milhares de objetos Date descartáveis no Garbage Collector.
+    const transacoesOrdenadas = [...transacoes].sort((a, b) => a.date.localeCompare(b.date));
 
     for (const t of transacoesOrdenadas) {
         const symbol = t.symbol;
@@ -1715,7 +1721,8 @@ function renderizarHistorico() {
     
     historicoStatus.classList.add('hidden');
     
-    dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // OTIMIZAÇÃO: localeCompare em strings ISO é equivalente e não cria objetos Date.
+    dadosFiltrados.sort((a, b) => b.date.localeCompare(a.date)); // desc: b antes de a
     const grupos = agruparPorMes(dadosFiltrados, 'date');
     
     // Flatten (calcula automaticamente price * quantity)
@@ -3263,7 +3270,7 @@ function renderizarTimelinePagamentos() {
         // Verifica carteira
         const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
         return ativoNaCarteira && ativoNaCarteira.quantity > 0;
-    }).sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+    }).sort((a, b) => a.paymentDate.localeCompare(b.paymentDate)); // OTIMIZAÇÃO: string ISO, sem new Date()
 
     if (pagamentosReais.length === 0) {
         container.classList.add('hidden');
@@ -3283,6 +3290,11 @@ function renderizarTimelinePagamentos() {
         itemsToRender = pagamentosReais.slice(0, 2);
         showMoreButton = true;
     }
+
+    // OTIMIZAÇÃO: DocumentFragment acumula todos os nós em memória.
+    // O navegador só recalcula o layout UMA vez no appendChild final,
+    // em vez de fazer um reflow por card (elimina layout thrashing).
+    const fragment = document.createDocumentFragment();
 
     // Renderiza os Cards Normais
     itemsToRender.forEach(prov => {
@@ -3314,7 +3326,7 @@ function renderizarTimelinePagamentos() {
              window.abrirDetalhesAtivo?.(prov.symbol);
         };
         
-        const valorFormatado = totalReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const valorFormatado = _fmtBRL.format(totalReceber);
 
         // --- CORREÇÃO 2: REMOVIDO O STYLE INLINE ---
         // Removemos style="color:..." para que o CSS (style.css) controle as cores (Verde se for hoje, Amarelo padrão)
@@ -3331,7 +3343,7 @@ function renderizarTimelinePagamentos() {
                 <span class="agenda-value">+${valorFormatado}</span>
             </div>
         `;
-        lista.appendChild(item);
+        fragment.appendChild(item); // → memória, sem tocar no DOM real
     });
 
     // Renderiza o Botão "Ver Todos" (+X)
@@ -3350,9 +3362,10 @@ function renderizarTimelinePagamentos() {
                 <span class="more-label">VER TODOS</span>
             </div>
         `;
-        lista.appendChild(moreBtn);
+        fragment.appendChild(moreBtn); // → também vai para o fragment
     }
 
+    lista.appendChild(fragment); // único reflow — insere tudo de uma vez no DOM real
     container.classList.remove('hidden');
 }
 

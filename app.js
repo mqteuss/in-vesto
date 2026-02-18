@@ -4,9 +4,17 @@ import * as supabaseDB from './supabase.js';
 
 // --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
 window.dismissNotificationGlobal = function(id, btnElement) {
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
-    dismissed.add(id);
-    localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissed]));
+    // OTIMIZAÇÃO: usa o Set em memória (RAM) — localStorage só é escrito aqui,
+    // nunca lido de volta. dismissedNotifsSet é a fonte de verdade em runtime.
+    if (typeof dismissedNotifsSet !== 'undefined') {
+        dismissedNotifsSet.add(id);
+        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissedNotifsSet]));
+    } else {
+        // Fallback para quando a função é chamada antes do init (edge case)
+        const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
+        dismissed.add(id);
+        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissed]));
+    }
     
     // Animação de saída
     const card = btnElement.closest('.notif-item');
@@ -62,7 +70,11 @@ function limparTodasNotificacoes() {
     const visibleCards = list.querySelectorAll('.notif-item');
     if (visibleCards.length === 0) return;
 
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
+    // OTIMIZAÇÃO: lê e escreve apenas no Set em memória durante o loop;
+    // uma única escrita no localStorage ao final.
+    const dismissed = (typeof dismissedNotifsSet !== 'undefined')
+        ? dismissedNotifsSet
+        : new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
 
     visibleCards.forEach((card, index) => {
         // Salva ID e aplica efeito cascata na saída
@@ -74,7 +86,6 @@ function limparTodasNotificacoes() {
             card.style.opacity = '0';
         }, index * 50);
     });
-
     localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissed]));
 
     setTimeout(() => {
@@ -484,6 +495,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     let saldoCaixa = 0;
     let proventosConhecidos = [];
     let watchlist = []; 
+
+    // OTIMIZAÇÃO: Set em memória RAM para notificações dispensadas.
+    // Evita chamar localStorage.getItem (I/O bloqueante) dentro de loops.
+    // Populado uma única vez em carregarDadosIniciais e escrito apenas no dismiss.
+    let dismissedNotifsSet = new Set();
     let alocacaoChartInstance = null;
     let historicoChartInstance = null;
     let patrimonioChartInstance = null; 
@@ -3419,30 +3435,44 @@ function renderizarCarteiraSkeletons(show) {
         });
     }
     
-function getQuantidadeNaData(symbol, dataLimiteStr) {
-        if (!dataLimiteStr) return 0;
-        
-        // Define o limite como o final do dia da "Data Com"
-        const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
+// OTIMIZAÇÃO: Cache de memoização para getQuantidadeNaData.
+// Evita O(N*M) iterações quando a função é chamada em loops de proventos.
+// O cache é invalidado sempre que o array de transações sofre qualquer mutação.
+let _cacheQtdNaData = {};
 
-        return transacoes.reduce((total, t) => {
-            // Verifica se é o mesmo ativo
-            if (t.symbol === symbol) {
-                const dataTransacao = new Date(t.date);
-                
-                // Só considera transações feitas ATÉ a data limite (Data Com)
-                if (dataTransacao <= dataLimite) {
-                    if (t.type === 'buy') {
-                        return total + t.quantity;
-                    } else if (t.type === 'sell') {
-                        // CORREÇÃO: Subtrai a quantidade se for venda
-                        return total - t.quantity;
-                    }
-                }
-            }
-            return total;
-        }, 0);
+function invalidarCacheQtdNaData() {
+    _cacheQtdNaData = {};
+}
+
+function getQuantidadeNaData(symbol, dataLimiteStr) {
+    if (!dataLimiteStr) return 0;
+
+    // Chave única: combina símbolo + data-limite
+    const chave = `${symbol}_${dataLimiteStr}`;
+
+    // Retorno instantâneo se já calculado antes (O(1) em vez de O(N))
+    if (Object.prototype.hasOwnProperty.call(_cacheQtdNaData, chave)) {
+        return _cacheQtdNaData[chave];
     }
+
+    // Define o limite como o final do dia da "Data Com"
+    const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
+
+    const resultado = transacoes.reduce((total, t) => {
+        if (t.symbol === symbol) {
+            const dataTransacao = new Date(t.date);
+            if (dataTransacao <= dataLimite) {
+                if (t.type === 'buy')  return total + t.quantity;
+                if (t.type === 'sell') return total - t.quantity;
+            }
+        }
+        return total;
+    }, 0);
+
+    // Armazena no cache para chamadas futuras com os mesmos argumentos
+    _cacheQtdNaData[chave] = resultado;
+    return resultado;
+}
 
 async function renderizarCarteira() {
     // Esconde os skeletons de carregamento
@@ -4031,8 +4061,8 @@ async function buscarHistoricoProventosAgregado(force = false) {
     
 // --- FUNÇÃO AUXILIAR: GERENCIAR NOTIFICAÇÕES EXCLUÍDAS ---
 function isNotificationDismissed(id) {
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
-    return dismissed.has(id);
+    // OTIMIZAÇÃO: consulta o Set em memória — sem I/O de localStorage
+    return dismissedNotifsSet.has(id);
 }
 
 // --- FUNÇÃO DE NOTIFICAÇÕES (REMODELADA: CLEAN & PREMIUM) ---
@@ -4048,7 +4078,8 @@ function verificarNotificacoesFinanceiras() {
 
     list.innerHTML = '';
     let count = 0;
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
+    // OTIMIZAÇÃO: usa Set em memória — sem chamada a localStorage dentro da função
+    const dismissed = dismissedNotifsSet;
 
     // --- Datas e Helpers ---
     const hoje = new Date();
@@ -4199,6 +4230,32 @@ function debounce(fn, delay) {
     return function(...args) {
         clearTimeout(timer);
         timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+// OTIMIZAÇÃO: requestAnimationFrame para handlers de swipe (touchmove).
+// Garante que a atualização de style.transform ocorra apenas no próximo
+// ciclo de pintura do navegador, eliminando reflows excessivos em telas
+// de alta frequência (90 Hz / 120 Hz) e reduzindo o consumo de CPU.
+//
+// Uso:
+//   const handler = createSwipeHandler(el, isDraggingGetter, diffGetter);
+//   el.addEventListener('touchmove', handler, { passive: false });
+function createSwipeHandler(elementRef, isDraggingFn, diffFn, preventDefaultFn) {
+    let isTicking = false;
+    return function(e) {
+        if (!isDraggingFn()) return;
+        const diff = diffFn(e);
+        if (diff <= 0) return;
+        if (preventDefaultFn) preventDefaultFn(e);
+
+        if (!isTicking) {
+            isTicking = true;
+            requestAnimationFrame(() => {
+                elementRef.style.transform = `translateY(${diff}px)`;
+                isTicking = false;
+            });
+        }
     };
 }
 
@@ -4496,6 +4553,7 @@ async function handleSalvarTransacao() {
             };
             
             await supabaseDB.updateTransacao(transacaoID, transacaoAtualizada);
+            invalidarCacheQtdNaData(); // cache inválido: transação editada
             
             const index = transacoes.findIndex(t => t.id === transacaoID);
             if (index > -1) {
@@ -4515,6 +4573,7 @@ async function handleSalvarTransacao() {
             
             await supabaseDB.addTransacao(novaTransacao);
             transacoes.push(novaTransacao);
+            invalidarCacheQtdNaData(); // cache inválido: nova transação adicionada
             
             // Mensagem personalizada para compra ou venda
             const msg = tipoOperacao === 'sell' ? "Venda registrada!" : "Compra registrada!";
@@ -4538,6 +4597,7 @@ async function handleSalvarTransacao() {
             `Tem certeza? Isso removerá ${symbol} e TODO o seu histórico de compras deste ativo.`, 
             async () => { 
                 transacoes = transacoes.filter(t => t.symbol !== symbol);
+                invalidarCacheQtdNaData(); // cache inválido: ativo removido
                 
                 await supabaseDB.deleteTransacoesDoAtivo(symbol);
                 await removerCacheAtivo(symbol); 
@@ -4602,6 +4662,7 @@ function handleAbrirModalEdicao(id) {
             async () => { 
                 await supabaseDB.deleteTransacao(id);
                 transacoes = transacoes.filter(t => t.id !== id);
+                invalidarCacheQtdNaData(); // cache inválido: transação deletada
                 
                 await removerCacheAtivo(symbol);
                 
@@ -6033,9 +6094,12 @@ const tabDashboard = document.getElementById('tab-dashboard');
         if (!isDraggingDetalhes) return;
         touchMoveY = e.touches[0].clientY;
         const diff = touchMoveY - touchStartY;
-        if (diff > 0) { 
-            e.preventDefault(); 
-            detalhesPageContent.style.transform = `translateY(${diff}px)`;
+        if (diff > 0) {
+            e.preventDefault();
+            // OTIMIZAÇÃO: requestAnimationFrame — DOM só atualiza no próximo frame
+            requestAnimationFrame(() => {
+                detalhesPageContent.style.transform = `translateY(${diff}px)`;
+            });
         }
     }, { passive: false }); 
     
@@ -6358,6 +6422,7 @@ const importExcelBtn = document.getElementById('import-excel-btn');
 
                                 await supabaseDB.addTransacao(novaTransacao);
                                 transacoes.push(novaTransacao);
+                                invalidarCacheQtdNaData(); // cache inválido: importação de transação
                                 importadosCount++;
                             }
                         } catch (err) {
@@ -6546,6 +6611,15 @@ async function carregarDadosIniciais() {
             carregarHistoricoProcessado(),
             carregarWatchlist()
         ]);
+
+        // OTIMIZAÇÃO: Leitura única do localStorage para notificações dispensadas.
+        // A partir daqui, todo código de leitura usa dismissedNotifsSet (RAM).
+        try {
+            const raw = localStorage.getItem('vesto_dismissed_notifs');
+            dismissedNotifsSet = new Set(raw ? JSON.parse(raw) : []);
+        } catch (e) {
+            dismissedNotifsSet = new Set();
+        }
         
         // Renderiza a watchlist (leve)
         renderizarWatchlist(); 
@@ -7834,8 +7908,11 @@ function renderizarGraficoIpca(dados) {
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
             
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
-                patrimonioPageContent.style.transform = `translateY(${diff}px)`;
+                if (e.cancelable) e.preventDefault();
+                // OTIMIZAÇÃO: requestAnimationFrame
+                requestAnimationFrame(() => {
+                    patrimonioPageContent.style.transform = `translateY(${diff}px)`;
+                });
             }
         }, { passive: false });
 
@@ -7895,8 +7972,11 @@ if (proventosPageModal) {
             const diff = touchMoveProventosY - touchStartProventosY;
             
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
-                proventosPageContent.style.transform = `translateY(${diff}px)`;
+                if (e.cancelable) e.preventDefault();
+                // OTIMIZAÇÃO: requestAnimationFrame
+                requestAnimationFrame(() => {
+                    proventosPageContent.style.transform = `translateY(${diff}px)`;
+                });
             }
         }, { passive: false });
 
@@ -7957,8 +8037,11 @@ if (alocacaoPageModal) {
             const diff = touchMoveAlocacaoY - touchStartAlocacaoY;
             
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
-                alocacaoPageContent.style.transform = `translateY(${diff}px)`;
+                if (e.cancelable) e.preventDefault();
+                // OTIMIZAÇÃO: requestAnimationFrame
+                requestAnimationFrame(() => {
+                    alocacaoPageContent.style.transform = `translateY(${diff}px)`;
+                });
             }
         }, { passive: false });
 
@@ -8009,8 +8092,11 @@ if (ipcaPageContent) {
         touchMoveIpcaY = e.touches[0].clientY;
         const diff = touchMoveIpcaY - touchStartIpcaY;
         if (diff > 0) {
-            if (e.cancelable) e.preventDefault(); 
-            ipcaPageContent.style.transform = `translateY(${diff}px)`;
+            if (e.cancelable) e.preventDefault();
+            // OTIMIZAÇÃO: requestAnimationFrame
+            requestAnimationFrame(() => {
+                ipcaPageContent.style.transform = `translateY(${diff}px)`;
+            });
         }
     }, { passive: false });
 
@@ -8252,8 +8338,11 @@ window.closePagamentosModal = function() {
             
             // Só move se for para baixo
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
-                contentPagamentosRef.style.transform = `translateY(${diff}px)`;
+                if (e.cancelable) e.preventDefault();
+                // OTIMIZAÇÃO: requestAnimationFrame
+                requestAnimationFrame(() => {
+                    contentPagamentosRef.style.transform = `translateY(${diff}px)`;
+                });
             }
         }, { passive: false });
 
@@ -8508,8 +8597,11 @@ if (objetivosContent) {
         touchMoveObjetivosY = e.touches[0].clientY;
         const diff = touchMoveObjetivosY - touchStartObjetivosY;
         if (diff > 0) {
-            if (e.cancelable) e.preventDefault(); 
-            objetivosContent.style.transform = `translateY(${diff}px)`;
+            if (e.cancelable) e.preventDefault();
+            // OTIMIZAÇÃO: requestAnimationFrame
+            requestAnimationFrame(() => {
+                objetivosContent.style.transform = `translateY(${diff}px)`;
+            });
         }
     }, { passive: false });
 
@@ -8653,8 +8745,11 @@ if (calcContent) {
             const diff = touchMoveCalcY - touchStartCalcY;
             
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
-                calcContent.style.transform = `translateY(${diff}px)`; 
+                if (e.cancelable) e.preventDefault();
+                // OTIMIZAÇÃO: requestAnimationFrame
+                requestAnimationFrame(() => {
+                    calcContent.style.transform = `translateY(${diff}px)`;
+                });
             }
         }, { passive: false });
 

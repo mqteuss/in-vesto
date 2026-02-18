@@ -8738,30 +8738,5 @@ window.toggleListaImoveis = function(btn) {
     }
 };
 
-	// --- CORREÇÃO: REATIVAR BIOMETRIA AO VOLTAR PARA O APP ---
-document.addEventListener('visibilitychange', () => {
-    // Se o app ficou visível novamente (usuário abriu)
-    if (document.visibilityState === 'visible') {
-        
-        // Verifica se a biometria está ativada no localStorage
-        const isBioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
-        
-        // Se estiver ativada e a tela de bloqueio estiver visível
-        const lockScreen = document.getElementById('biometric-lock-screen');
-        if (isBioEnabled && lockScreen && !lockScreen.classList.contains('hidden')) {
-            
-            // Força a chamada da autenticação novamente
-            console.log("App visível: Re-solicitando biometria...");
-            
-            // Pequeno delay para garantir que a UI renderizou antes de pedir o FaceID/TouchID
-            setTimeout(() => {
-                if (typeof autenticarBiometria === 'function') {
-                    autenticarBiometria();
-                }
-            }, 300);
-        }
-    }
-});
-
     await init();
 });

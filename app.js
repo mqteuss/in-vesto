@@ -1,21 +1,14 @@
 
 
-// --- UTILITÁRIO: Debounce — evita chamadas excessivas em inputs de busca ---
-function debounce(fn, wait = 200) {
-    let timer;
-    return function(...args) {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn.apply(this, args), wait);
-    };
-}
-
 import * as supabaseDB from './supabase.js';
 
 // --- FUNÇÃO GLOBAL DE EXCLUSÃO DE NOTIFICAÇÃO ---
 window.dismissNotificationGlobal = function(id, btnElement) {
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
-    dismissed.add(id);
-    localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissed]));
+    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
+    if (!dismissed.includes(id)) {
+        dismissed.push(id);
+        localStorage.setItem('vesto_dismissed_notifs', JSON.stringify(dismissed));
+    }
     
     // Animação de saída
     const card = btnElement.closest('.notif-item');
@@ -68,23 +61,25 @@ function limparTodasNotificacoes() {
     const list = document.getElementById('notifications-list');
     if (!list) return;
 
+    // Pega todos os IDs visíveis
     const visibleCards = list.querySelectorAll('.notif-item');
-    if (visibleCards.length === 0) return;
-
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
+    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
 
     visibleCards.forEach((card, index) => {
-        // Salva ID e aplica efeito cascata na saída
-        const id = card.getAttribute('data-notif-id');
-        if (id) dismissed.add(id);
-
+        // Efeito cascata na saída
         setTimeout(() => {
             card.style.transform = 'translateX(20px)';
             card.style.opacity = '0';
         }, index * 50);
+
+        // Salva ID no localStorage
+        const id = card.getAttribute('data-notif-id');
+        if (id && !dismissed.includes(id)) {
+            dismissed.push(id);
+        }
     });
 
-    localStorage.setItem('vesto_dismissed_notifs', JSON.stringify([...dismissed]));
+    localStorage.setItem('vesto_dismissed_notifs', JSON.stringify(dismissed));
 
     setTimeout(() => {
         list.innerHTML = '';
@@ -97,20 +92,14 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    // beforeinstallprompt fired
+    console.log('Instalação disponível');
 });
 
 Chart.defaults.color = '#9ca3af'; 
 Chart.defaults.borderColor = '#374151'; 
 
 function bufferToBase64(buffer) {
-    // Avoid spread operator on large Uint8Arrays which can overflow the call stack
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
+    return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
 
 function base64ToBuffer(base64) {
@@ -140,7 +129,10 @@ const formatDate = (dateString, includeTime = false) => {
 const formatDateToInput = (dateString) => {
     try {
         const date = new Date(dateString);
-        return date.toISOString().split('T')[0];
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
     } catch (e) {
         console.error("Erro ao formatar data para input:", e);
         return new Date().toISOString().split('T')[0];
@@ -148,7 +140,10 @@ const formatDateToInput = (dateString) => {
 };
 
 const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
-const isAcao = (symbol) => !!(symbol && !isFII(symbol));
+const isAcao = (symbol) => {
+    if (!symbol) return false;
+    return !isFII(symbol);
+};
 
 
 function parseMesAno(mesAnoStr) { 
@@ -197,81 +192,37 @@ const DB_VERSION = 1;
 
 function toggleDrawer(symbol) {
     const drawer = document.getElementById(`drawer-${symbol}`);
-    if (!drawer) return;
     
     // Fecha outros drawers abertos (efeito sanfona)
     document.querySelectorAll('.card-drawer.open').forEach(d => {
-        if (d !== drawer) d.classList.remove('open');
+        if (d.id !== `drawer-${symbol}`) {
+            d.classList.remove('open');
+        }
     });
 
     // Alterna o atual
-    drawer.classList.toggle('open');
+    if (drawer) {
+        drawer.classList.toggle('open');
+    }
 }
 
 // --- FUNÇÃO DE LAZY LOADING (Carrega o Excel só quando precisa) ---
 function loadSheetJS() {
     return new Promise((resolve, reject) => {
         // Se a biblioteca já existe na janela, não baixa de novo
-        if (window.XLSX) {
+        if (typeof XLSX !== 'undefined') {
             return resolve();
         }
 
         const script = document.createElement('script');
         script.src = "https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js";
         script.onload = () => {
-            // XLSX loaded
+            console.log("Biblioteca XLSX carregada com sucesso.");
             resolve();
         };
         script.onerror = () => reject(new Error("Falha ao baixar a biblioteca Excel. Verifique sua conexão."));
         document.body.appendChild(script);
     });
-}
-
-// --- HELPER: Renderiza HTML de proventos (reutilizado em criarCardElemento e atualizarCardElemento) ---
-function renderProventosHtml(proventosParaExibir, quantidade) {
-    if (!proventosParaExibir || proventosParaExibir.length === 0) {
-        return `<div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
-            <span class="text-[10px] text-gray-600 uppercase font-bold">Sem proventos anunciados</span>
-        </div>`;
-    }
-
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-
-    const totalReceberGeral = proventosParaExibir.reduce((acc, p) => {
-        return acc + (p.totalValue || (p.value * quantidade));
-    }, 0);
-
-    const linhasHtml = proventosParaExibir.map(p => {
-        const parts = p.paymentDate.split('-');
-        const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
-        const isPago = dataPag <= hoje;
-        const dataFormatada = formatDate(p.paymentDate).substring(0, 5);
-        const valorParcela = p.totalValue || (p.value * quantidade);
-
-        return `<div class="flex justify-between items-center py-2 border-b border-[#2C2C2E] last:border-0 text-xs">
-            <div class="flex items-center gap-2">
-                <div class="w-1.5 h-1.5 rounded-full ${isPago ? 'bg-green-500' : 'bg-yellow-500'}"></div>
-                <span class="text-gray-400 font-medium">${dataFormatada}</span>
-                <span class="text-[10px] px-1.5 rounded bg-[#222] text-gray-500 border border-[#333] uppercase">${p.type || 'DIV'}</span>
-            </div>
-            <span class="font-bold ${isPago ? 'text-green-500/70 line-through' : 'text-gray-200'}">
-                ${formatBRL(valorParcela)}
-            </span>
-        </div>`;
-    }).join('');
-
-    return `<div class="mt-4 pt-3 border-t border-[#2C2C2E]">
-        <div class="flex justify-between items-center mb-2">
-            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Provisão Futura</span>
-            <span class="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-0.5 rounded border border-green-900/20">
-                Total: ${formatBRL(totalReceberGeral)}
-            </span>
-        </div>
-        <div class="bg-[#151515] rounded-lg border border-[#2C2C2E] px-3 max-h-[120px] overflow-y-auto custom-scroll">
-            ${linhasHtml}
-        </div>
-    </div>`;
 }
 
 function criarCardElemento(ativo, dados) {
@@ -303,8 +254,49 @@ function criarCardElemento(ativo, dados) {
     // HTML Proventos
     let proventosHtml = '';
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
-    proventosParaExibir.sort((a, b) => a.paymentDate < b.paymentDate ? -1 : a.paymentDate > b.paymentDate ? 1 : 0);
-    proventosHtml = renderProventosHtml(proventosParaExibir, ativo.quantity);
+    proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+
+    if (proventosParaExibir.length > 0) {
+        const totalReceberGeral = proventosParaExibir.reduce((acc, p) => acc + (p.value * ativo.quantity), 0);
+        const linhasHtml = proventosParaExibir.map(p => {
+            const parts = p.paymentDate.split('-');
+            const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            const isPago = dataPag <= hoje;
+            const dataFormatada = formatDate(p.paymentDate).substring(0, 5); 
+            const valorTotalParcela = p.value * ativo.quantity;
+
+            return `
+                <div class="flex justify-between items-center py-2 border-b border-[#2C2C2E] last:border-0 text-xs">
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full ${isPago ? 'bg-green-500' : 'bg-yellow-500'}"></div>
+                        <span class="text-gray-400 font-medium">${dataFormatada}</span>
+                        <span class="text-[10px] px-1.5 rounded bg-[#222] text-gray-500 border border-[#333] uppercase">${p.type || 'DIV'}</span>
+                    </div>
+                    <span class="font-bold ${isPago ? 'text-green-500/70 line-through' : 'text-gray-200'}">
+                        ${formatBRL(valorTotalParcela)}
+                    </span>
+                </div>`;
+        }).join('');
+
+        proventosHtml = `
+        <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Provisão Futura</span>
+                <span class="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-0.5 rounded border border-green-900/20">
+                    Total: ${formatBRL(totalReceberGeral)}
+                </span>
+            </div>
+            <div class="bg-[#151515] rounded-lg border border-[#2C2C2E] px-3 max-h-[120px] overflow-y-auto custom-scroll">
+                ${linhasHtml}
+            </div>
+        </div>`;
+    } else {
+        proventosHtml = `
+             <div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
+                 <span class="text-[10px] text-gray-600 uppercase font-bold">Sem proventos anunciados</span>
+             </div>`;
+    }
 
     const card = document.createElement('div');
     
@@ -466,8 +458,53 @@ function atualizarCardElemento(card, ativo, dados) {
     let proventosParaExibir = (listaProventos && listaProventos.length > 0) ? listaProventos : (dadoProvento ? [dadoProvento] : []);
 
     if (containerProventos) {
-        proventosParaExibir.sort((a, b) => a.paymentDate < b.paymentDate ? -1 : a.paymentDate > b.paymentDate ? 1 : 0);
-        containerProventos.innerHTML = renderProventosHtml(proventosParaExibir, ativo.quantity);
+        if (proventosParaExibir.length > 0) {
+            proventosParaExibir.sort((a, b) => new Date(a.paymentDate) - new Date(b.paymentDate));
+
+            const totalReceberGeral = proventosParaExibir.reduce((acc, p) => {
+                const valorParcela = p.totalValue || (p.value * ativo.quantity);
+                return acc + valorParcela;
+            }, 0);
+
+            const linhasHtml = proventosParaExibir.map(p => {
+                const parts = p.paymentDate.split('-');
+                const dataPag = new Date(parts[0], parts[1] - 1, parts[2]);
+                const hoje = new Date(); hoje.setHours(0,0,0,0);
+                const isPago = dataPag <= hoje;
+                const dataFormatada = formatDate(p.paymentDate).substring(0, 5); 
+                const valorParcela = p.totalValue || (p.value * ativo.quantity);
+
+                return `
+                    <div class="flex justify-between items-center py-2 border-b border-[#2C2C2E] last:border-0 text-xs">
+                        <div class="flex items-center gap-2">
+                            <div class="w-1.5 h-1.5 rounded-full ${isPago ? 'bg-green-500' : 'bg-yellow-500'}"></div>
+                            <span class="text-gray-400 font-medium">${dataFormatada}</span>
+                            <span class="text-[10px] px-1.5 rounded bg-[#222] text-gray-500 border border-[#333] uppercase">${p.type || 'DIV'}</span>
+                        </div>
+                        <span class="font-bold ${isPago ? 'text-green-500/70 line-through' : 'text-gray-200'}">
+                            ${formatBRL(valorParcela)}
+                        </span>
+                    </div>`;
+            }).join('');
+
+            containerProventos.innerHTML = `
+            <div class="mt-4 pt-3 border-t border-[#2C2C2E]">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Provisão Futura</span>
+                    <span class="text-xs font-bold text-green-400 bg-green-900/10 px-2 py-0.5 rounded border border-green-900/20">
+                        Total: ${formatBRL(totalReceberGeral)}
+                    </span>
+                </div>
+                <div class="bg-[#151515] rounded-lg border border-[#2C2C2E] px-3 max-h-[120px] overflow-y-auto custom-scroll">
+                    ${linhasHtml}
+                </div>
+            </div>`;
+        } else {
+            containerProventos.innerHTML = `
+             <div class="mt-4 pt-3 border-t border-[#2C2C2E] text-center">
+                 <span class="text-[10px] text-gray-600 uppercase font-bold">Sem proventos anunciados</span>
+             </div>`;
+        }
     }
 }
 
@@ -782,7 +819,7 @@ let ipcaCacheData = null;
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            // Install outcome: ${outcome}
+            console.log(`User response to the install prompt: ${outcome}`);
             deferredPrompt = null;
             if (outcome === 'accepted') {
                 installSection.classList.add('hidden');
@@ -824,7 +861,7 @@ function updateThemeUI() {
 
     // 2. Função para forçar atualização profunda nas instâncias já criadas
     const updateChartColors = (chart) => {
-        if (!chart?.options) return;
+        if (!chart || !chart.options) return;
 
         const textColor = isLight ? '#374151' : '#9ca3af';
         const tooltipBg = isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(28, 28, 30, 0.95)';
@@ -880,10 +917,10 @@ function updateThemeUI() {
     };
 
     // 3. Aplica a correção em todos os gráficos ativos
-    updateChartColors(alocacaoChartInstance);
-    updateChartColors(patrimonioChartInstance);
-    updateChartColors(historicoChartInstance);
-    updateChartColors(detalhesChartInstance);
+    if (typeof alocacaoChartInstance !== 'undefined') updateChartColors(alocacaoChartInstance);
+    if (typeof patrimonioChartInstance !== 'undefined') updateChartColors(patrimonioChartInstance);
+    if (typeof historicoChartInstance !== 'undefined') updateChartColors(historicoChartInstance);
+    if (typeof detalhesChartInstance !== 'undefined') updateChartColors(detalhesChartInstance);
 }
 
     updateThemeUI();
@@ -893,6 +930,11 @@ function updateThemeUI() {
             const current = localStorage.getItem('vesto_theme') === 'light';
             localStorage.setItem('vesto_theme', current ? 'dark' : 'light');
             updateThemeUI();
+            
+            if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) alocacaoChartInstance.update();
+            if (typeof patrimonioChartInstance !== 'undefined' && patrimonioChartInstance) patrimonioChartInstance.update();
+            if (typeof historicoChartInstance !== 'undefined' && historicoChartInstance) historicoChartInstance.update();
+            if (typeof detalhesChartInstance !== 'undefined' && detalhesChartInstance) detalhesChartInstance.update();
         });
     }
 
@@ -1156,14 +1198,16 @@ function updateThemeUI() {
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const PALETA_CORES = [
-    '#c084fc', '#7c3aed', '#a855f7', '#8b5cf6',
-    '#6d28d9', '#5b21b6', '#3b82f6', '#22c55e',
-    '#f97316', '#ef4444'
-];
-function gerarCores(num) {
-    return Array.from({ length: num }, (_, i) => PALETA_CORES[i % PALETA_CORES.length]);
-}
+    function gerarCores(num) {
+        const PALETA_CORES = [
+            '#c084fc', '#7c3aed', '#a855f7', '#8b5cf6',
+            '#6d28d9', '#5b21b6', '#3b82f6', '#22c55e',
+            '#f97316', '#ef4444'
+        ];
+        let cores = [];
+        for (let i = 0; i < num; i++) { cores.push(PALETA_CORES[i % PALETA_CORES.length]); }
+        return cores;
+    }
     
     function showModal(title, message, onConfirm) {
         customModalTitle.textContent = title;
@@ -1248,14 +1292,23 @@ function hideAddModal() {
     async function carregarPatrimonio() {
          let allPatrimonio = await supabaseDB.getPatrimonio();
          allPatrimonio.sort((a, b) => new Date(a.date) - new Date(b.date));
-         patrimonio = allPatrimonio.length > 365 ? allPatrimonio.slice(-365) : allPatrimonio;
+         
+         if (allPatrimonio.length > 365) {
+            patrimonio = allPatrimonio.slice(allPatrimonio.length - 365);
+         } else {
+            patrimonio = allPatrimonio;
+         }
     }
     
 async function salvarSnapshotPatrimonio(totalValor) {
     if (totalValor <= 0 && patrimonio.length === 0) return; 
     
-    // Pega a data local do usuário em formato YYYY-MM-DD
-    const today = new Date().toLocaleDateString('en-CA'); // en-CA produz YYYY-MM-DD
+    // Pega a data local do usuário (Brasil) em vez de UTC
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`; // Formato YYYY-MM-DD
     
     const snapshot = { date: today, value: totalValor };
     
@@ -1442,8 +1495,7 @@ function calcularCarteira() {
 
     const ativosMap = new Map();
     // Ordenamos por data para garantir que o cálculo do Preço Médio siga a ordem real das operações
-    // Datas ISO (YYYY-MM-DD) são lexicograficamente ordenáveis sem criar objetos Date
-    const transacoesOrdenadas = [...transacoes].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const transacoesOrdenadas = [...transacoes].sort((a, b) => new Date(a.date) - new Date(b.date));
 
     for (const t of transacoesOrdenadas) {
         const symbol = t.symbol;
@@ -1480,8 +1532,6 @@ function calcularCarteira() {
 
     // 3. Salva a nova assinatura para o próximo ciclo de atualização
     lastTransacoesSignature = currentSignature;
-    // Invalida o cache de quantidade para que chamadas futuras reflitam as novas transações
-    invalidarCacheQtd();
 }
 
 // Substitua a função inteira em app.js
@@ -1492,20 +1542,12 @@ function agruparPorMes(itens, dateField) {
     itens.forEach(item => {
         if (!item[dateField]) return;
         
-        // Parsing seguro de timezone: trata strings YYYY-MM-DD como data local,
-        // evitando conversão UTC que pode mudar o mês em fusos negativos (ex: GMT-3).
-        const ds = item[dateField];
-        let dataObj;
-        if (/^\d{4}-\d{2}-\d{2}$/.test(ds)) {
-            const [y, m, d] = ds.split('-').map(Number);
-            dataObj = new Date(y, m - 1, d);
-        } else {
-            dataObj = new Date(ds);
-        }
-
-        // Formata como "Dezembro 2025" com primeira letra maiúscula
+        // Ajuste de fuso horário simples para garantir o mês correto
+        const dataObj = new Date(item[dateField]);
+        // Formata como "Dezembro 2025"
         const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        const chave = mesAno[0].toUpperCase() + mesAno.slice(1);
+        // Capitaliza a primeira letra
+        const chave = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
         
         if (!grupos[chave]) grupos[chave] = [];
         grupos[chave].push(item);
@@ -1640,10 +1682,10 @@ init() {
 // Helper Simplificado e Robusto
 function flattenHistoricoData(grupos) {
     const flatList = [];
-    for (const [mes, itens] of Object.entries(grupos)) {
+    Object.keys(grupos).forEach(mes => {
         
         // SOMA DO CABEÇALHO
-        const totalMes = itens.reduce((acc, item) => {
+        const totalMes = grupos[mes].reduce((acc, item) => {
             if (item.totalCalculado !== undefined) {
                 return acc + Number(item.totalCalculado);
             }
@@ -1664,10 +1706,10 @@ function flattenHistoricoData(grupos) {
         flatList.push({ type: 'header', month: mes, total: totalMes, htmlContent: headerHtml });
 
         // Items
-        for (const item of itens) {
+        grupos[mes].forEach(item => {
             flatList.push({ type: 'row', data: item });
-        }
-    }
+        });
+    });
     return flatList;
 }
 
@@ -1679,16 +1721,21 @@ function renderizarHistorico() {
 
     if (!listaHistorico) return;
 
-    const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
-
     if (historicoVirtualizer) {
-        if (currentSignature === lastHistoricoListSignature) return;
-        historicoVirtualizer.destroy();
-        historicoVirtualizer = null;
+        const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+        const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
+        
+        if (currentSignature !== lastHistoricoListSignature) {
+            historicoVirtualizer.destroy();
+            historicoVirtualizer = null;
+            lastHistoricoListSignature = currentSignature;
+        } else {
+            return; 
+        }
+    } else {
+        const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+        lastHistoricoListSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
     }
-
-    lastHistoricoListSignature = currentSignature;
     
     let dadosFiltrados = transacoes.filter(t => {
         const matchType = histFilterType === 'all' || t.type === histFilterType;
@@ -1704,22 +1751,23 @@ function renderizarHistorico() {
     
     historicoStatus.classList.add('hidden');
     
-    dadosFiltrados.sort((a, b) => b.date < a.date ? -1 : b.date > a.date ? 1 : 0);
+    dadosFiltrados.sort((a, b) => new Date(b.date) - new Date(a.date));
     const grupos = agruparPorMes(dadosFiltrados, 'date');
     
     // Flatten (calcula automaticamente price * quantity)
     const flatItems = flattenHistoricoData(grupos);
 
 // --- RENDERIZADOR DE LINHA (TRANSAÇÕES) ---
-    // SVGs pré-computados como constantes para não recriar strings a cada render
-    const _SVG_ARROW_DOWN_GREEN = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
-    const _SVG_ARROW_UP_RED    = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
     const rowRenderer = (t) => {
         const isVenda = t.type === 'sell';
         const totalTransacao = t.quantity * t.price;
         const dia = new Date(t.date).getDate().toString().padStart(2, '0');
         
-        const mainIconHtml = isVenda ? _SVG_ARROW_UP_RED : _SVG_ARROW_DOWN_GREEN;
+        // Ícones
+        const arrowDownGreen = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>`;
+        const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
+        
+        const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
         const iconBg = 'bg-[#1C1C1E]'; 
         const cardBg = 'bg-black'; 
 
@@ -1783,7 +1831,7 @@ function renderizarHistoricoProventos() {
 
         const buscaValida = termoBusca === '' || p.symbol.includes(termoBusca);
         return buscaValida;
-    }).sort((a, b) => b.paymentDate < a.paymentDate ? -1 : b.paymentDate > a.paymentDate ? 1 : 0);
+    }).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     if (proventosIniciais.length === 0) {
         listaHistoricoProventos.innerHTML = `
@@ -1815,7 +1863,6 @@ function renderizarHistoricoProventos() {
     const flatItems = flattenHistoricoData(gruposLimpos);
 
 // --- RENDERIZADOR DE LINHA (PROVENTOS) ---
-    const _SVG_ICON_GRAPH = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
     const rowRenderer = (p) => {
         const qtd = p.qtdCalculada; 
         const dia = p.paymentDate.split('-')[2]; 
@@ -1825,7 +1872,7 @@ function renderizarHistoricoProventos() {
         const valorUnitario = total / (qtd || 1); 
 
         const bgIcone = 'bg-[#1C1C1E]';
-        const iconGraph = _SVG_ICON_GRAPH;
+        const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
 
 let tagHtml = '';
         const rawType = (p.type || '').toUpperCase();
@@ -1919,21 +1966,21 @@ let tagHtml = '';
     // 2. Busca no Histórico
     const histSearchInput = document.getElementById('historico-search-input');
     if (histSearchInput) {
-        histSearchInput.addEventListener('input', debounce((e) => {
+        histSearchInput.addEventListener('input', (e) => {
             histSearchTerm = e.target.value.trim().toUpperCase();
             renderizarHistorico();
-        }, 200));
+        });
     }
 	
 	// 2.1 Busca nos Proventos (Faltava este bloco)
     const provSearchInput = document.getElementById('proventos-search-input');
     if (provSearchInput) {
-        provSearchInput.addEventListener('input', debounce((e) => {
+        provSearchInput.addEventListener('input', (e) => {
             // Atualiza a variável global definida no início do arquivo
             provSearchTerm = e.target.value.trim().toUpperCase();
             // Chama a renderização novamente para aplicar o filtro
             renderizarHistoricoProventos();
-        }, 200));
+        });
     }
 
     // 3. NOVO: Lógica do Menu de Filtro (Funil) - Substitui os Chips antigos
@@ -2176,7 +2223,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
     }
 
     // --- 2. DETECÇÃO DE PREÇOS (AUTORRECUPERAÇÃO) ---
-    const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
+    const temPrecos = typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais) && precosAtuais.length > 0;
     
     if (!window.alocacaoRetryCount) window.alocacaoRetryCount = 0;
 
@@ -2206,7 +2253,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
     let totalGeral = 0;
     const dadosAtivos = [];
 
-    if (Array.isArray(carteiraCalculada)) {
+    if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
         carteiraCalculada.forEach(ativo => {
             const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
             const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
@@ -2257,7 +2304,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
     }
 
     if (dadosAtivos.length === 0) {
-        if (alocacaoChartInstance) {
+        if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) {
             alocacaoChartInstance.destroy();
             alocacaoChartInstance = null;
         }
@@ -2265,7 +2312,7 @@ function renderizarGraficoAlocacao(isRetry = false) {
     }
 
     // --- 7. RENDERIZAÇÃO DO GRÁFICO ---
-    if (alocacaoChartInstance) {
+    if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) {
         alocacaoChartInstance.destroy();
     }
 
@@ -2867,7 +2914,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     if (!canvas) return;
 
     // --- 1. DETECÇÃO DE PREÇOS (AUTORRECUPERAÇÃO) ---
-    const temPrecos = Array.isArray(precosAtuais) && precosAtuais.length > 0;
+    const temPrecos = typeof precosAtuais !== 'undefined' && Array.isArray(precosAtuais) && precosAtuais.length > 0;
     
     if (!window.patrimonioRetryCount) window.patrimonioRetryCount = 0;
 
@@ -2897,7 +2944,7 @@ function renderizarGraficoPatrimonio(isRetry = false) {
     let totalAtualLive = 0;
     let custoTotalLive = 0;
 
-    if (Array.isArray(carteiraCalculada)) {
+    if (typeof carteiraCalculada !== 'undefined' && Array.isArray(carteiraCalculada)) {
         carteiraCalculada.forEach(ativo => {
             const ticker = (ativo.symbol || ativo.ticker).toUpperCase().trim();
             const qtd = parseFloat(ativo.quantity || ativo.quantidade || 0);
@@ -3210,8 +3257,8 @@ function renderizarGraficoPatrimonio(isRetry = false) {
         });
     }
 
-    const lastTxId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-    const txCount = transacoes.length;
+    const lastTxId = (typeof transacoes !== 'undefined' && transacoes.length > 0) ? transacoes[transacoes.length - 1].id : 'none';
+    const txCount = (typeof transacoes !== 'undefined') ? transacoes.length : 0;
     const currentSignature = `${currentPatrimonioRange}-${txCount}-${lastTxId}-${totalAtualLive.toFixed(2)}`;
     lastPatrimonioCalcSignature = currentSignature;
 }
@@ -3300,7 +3347,7 @@ function renderizarTimelinePagamentos() {
         
         // Clique no card abre detalhes do ativo
         item.onclick = () => {
-             window.abrirDetalhesAtivo?.(prov.symbol);
+             if(typeof abrirDetalhesAtivo === 'function') abrirDetalhesAtivo(prov.symbol);
         };
         
         const valorFormatado = totalReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -3395,20 +3442,13 @@ function renderizarCarteiraSkeletons(show) {
         });
     }
     
-// Cache de memoização para getQuantidadeNaData; deve ser limpo sempre que `transacoes` mudar.
-const _qtdCache = new Map();
-function invalidarCacheQtd() { _qtdCache.clear(); }
-
 function getQuantidadeNaData(symbol, dataLimiteStr) {
         if (!dataLimiteStr) return 0;
-
-        const cacheKey = `${symbol}|${dataLimiteStr}`;
-        if (_qtdCache.has(cacheKey)) return _qtdCache.get(cacheKey);
         
         // Define o limite como o final do dia da "Data Com"
         const dataLimite = new Date(dataLimiteStr + 'T23:59:59');
 
-        const result = transacoes.reduce((total, t) => {
+        return transacoes.reduce((total, t) => {
             // Verifica se é o mesmo ativo
             if (t.symbol === symbol) {
                 const dataTransacao = new Date(t.date);
@@ -3425,9 +3465,6 @@ function getQuantidadeNaData(symbol, dataLimiteStr) {
             }
             return total;
         }, 0);
-
-        _qtdCache.set(cacheKey, result);
-        return result;
     }
 
 async function renderizarCarteira() {
@@ -3708,7 +3745,7 @@ async function renderizarCarteira() {
             });
             const articles = response; 
             
-            if (articles?.length > 0) {
+            if (articles && Array.isArray(articles) && articles.length > 0) {
                 await setCache(cacheKey, articles, CACHE_NOTICIAS);
             }
             return articles;
@@ -3785,12 +3822,11 @@ async function renderizarCarteira() {
         dataLimitePassado.setHours(0, 0, 0, 0);
 
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        // Pré-computa um Set de symbols para lookup O(1) em vez de Array.find O(n)
-        const symbolsNaCarteira = new Set(carteiraCalculada.map(a => a.symbol));
 
         return proventosScraper
             .map(provento => {
-                if (!symbolsNaCarteira.has(provento.symbol)) return null;
+                const ativoCarteira = carteiraCalculada.find(a => a.symbol === provento.symbol);
+                if (!ativoCarteira) return null;
                 
                 if (provento.paymentDate && typeof provento.value === 'number' && provento.value > 0 && dateRegex.test(provento.paymentDate)) {
                     const parts = provento.paymentDate.split('-');
@@ -4010,8 +4046,8 @@ async function buscarHistoricoProventosAgregado(force = false) {
     
 // --- FUNÇÃO AUXILIAR: GERENCIAR NOTIFICAÇÕES EXCLUÍDAS ---
 function isNotificationDismissed(id) {
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
-    return dismissed.has(id);
+    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
+    return dismissed.includes(id);
 }
 
 // --- FUNÇÃO DE NOTIFICAÇÕES (REMODELADA: CLEAN & PREMIUM) ---
@@ -4027,7 +4063,7 @@ function verificarNotificacoesFinanceiras() {
 
     list.innerHTML = '';
     let count = 0;
-    const dismissed = new Set(JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]'));
+    const dismissed = JSON.parse(localStorage.getItem('vesto_dismissed_notifs') || '[]');
 
     // --- Datas e Helpers ---
     const hoje = new Date();
@@ -4093,7 +4129,7 @@ function verificarNotificacoesFinanceiras() {
     const pagamentosHoje = proventosConhecidos.filter(p => getProps(p).paymentDate === hojeLocal);
     pagamentosHoje.forEach(p => {
         const notifId = `pay_${p.id || p.symbol + p.paymentDate}`;
-        if (dismissed.has(notifId)) return;
+        if (dismissed.includes(notifId)) return;
 
         const props = getProps(p);
         const qtd = getQuantidadeNaData(p.symbol, props.dataCom || props.paymentDate);
@@ -4110,7 +4146,7 @@ function verificarNotificacoesFinanceiras() {
     const dataComHoje = proventosConhecidos.filter(p => getProps(p).dataCom === hojeLocal);
     dataComHoje.forEach(p => {
         const notifId = `com_${p.id || p.symbol + 'com'}`;
-        if (dismissed.has(notifId)) return;
+        if (dismissed.includes(notifId)) return;
 
         const props = getProps(p);
         count++;
@@ -4131,7 +4167,7 @@ function verificarNotificacoesFinanceiras() {
 
     novosAnuncios.forEach(p => {
         const notifId = `news_${p.id || p.symbol + 'news'}`;
-        if (dismissed.has(notifId)) return;
+        if (dismissed.includes(notifId)) return;
         const props = getProps(p);
         count++;
         const msg = `<strong class="text-white">${p.symbol}</strong> anunciou <strong class="text-white">${formatBRL(p.value)}</strong>.<br>Com: ${fmtDia(props.dataCom)} • Pag: ${fmtDia(props.paymentDate)}`;
@@ -4143,20 +4179,15 @@ function verificarNotificacoesFinanceiras() {
     if (window.noticiasCache && window.noticiasCache.length > 0 && carteiraCalculada.length > 0) {
         
         const meusTickers = [...new Set(carteiraCalculada.map(item => item.symbol.toUpperCase()))];
-        // Pré-computa regex para busca eficiente nos títulos das notícias
-        const tickersRegex = new RegExp(meusTickers.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'));
         
         window.noticiasCache.slice(0, 30).forEach(noticia => {
-            const tituloUpper = noticia.title.toUpperCase();
-            // Verifica rapidamente se algum ticker existe no título
-            const matchGlobal = tickersRegex.test(tituloUpper);
-            if (!matchGlobal) return;
-            // Encontra qual ticker específico aparece no título
-            const tickerEncontrado = meusTickers.find(ticker => tituloUpper.includes(ticker));
+            const tickerEncontrado = meusTickers.find(ticker => {
+                return noticia.title.toUpperCase().includes(ticker); 
+            });
 
             if (tickerEncontrado) {
                 const safeId = 'news_mkt_' + noticia.title.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
-                if (dismissed.has(safeId)) return;
+                if (dismissed.includes(safeId)) return;
 
                 count++;
                 let dataPub = '';

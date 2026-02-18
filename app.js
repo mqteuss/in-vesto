@@ -1240,6 +1240,10 @@ function hideAddModal() {
         if (cotacaoContainerImmediate) cotacaoContainerImmediate.remove();
         window.tempChartCache = {};
 
+        // Cancela fetchHistoricoScraper: zera currentDetalhesSymbol imediatamente
+        // (fetchHistoricoScraper verifica isso apos cada await antes de renderizar)
+        currentDetalhesSymbol = null;
+
         // Limpeza visual (reset de textos, icones, estado) continua apos a animacao
         setTimeout(() => {
             limparDetalhes(); 
@@ -4679,6 +4683,9 @@ async function callScraperCotacaoHistoricaAPI(ticker, range) {
 }
 
 async function fetchCotacaoHistorica(symbol) {
+    // Guarda simbolo alvo — se modal fechar antes da resposta, cancela
+    const symbolAlvo = symbol;
+
     let container = document.getElementById('detalhes-cotacao-container');
     
     if (!container) {
@@ -4744,6 +4751,9 @@ container = document.createElement('div');
             slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
         }
     }, 50);
+
+    // CANCELAMENTO: se modal fechou antes do DOM ser montado, nao carrega
+    if (currentDetalhesSymbol !== symbolAlvo) return;
 
     await carregarDadosGrafico('1D', symbol);
 }
@@ -5445,6 +5455,9 @@ async function handleMostrarDetalhes(symbol) {
 }
     
     async function fetchHistoricoScraper(symbol) {
+        // Guarda o simbolo alvo: se mudar (modal fechou/abriu outro ativo), cancela
+        const symbolAlvo = symbol;
+
         detalhesAiProvento.innerHTML = `
             <div id="historico-periodo-loading" class="space-y-3 animate-shimmer-parent pt-2 h-48">
                 <div class="h-4 bg-gray-800 rounded-md w-3/4"></div>
@@ -5456,9 +5469,15 @@ async function handleMostrarDetalhes(symbol) {
             const cacheKey = `hist_ia_${symbol}_12`;
             let scraperResultJSON = await getCache(cacheKey);
 
+            // CANCELAMENTO: Modal foi fechado se currentDetalhesSymbol mudou
+            if (currentDetalhesSymbol !== symbolAlvo) return;
+
             if (!scraperResultJSON) {
                 scraperResultJSON = await callScraperHistoricoAPI(symbol); 
                 
+                // CANCELAMENTO: verifica de novo apos a chamada de rede (pode demorar segundos)
+                if (currentDetalhesSymbol !== symbolAlvo) return;
+
                 if (scraperResultJSON && Array.isArray(scraperResultJSON)) {
                     await setCache(cacheKey, scraperResultJSON, CACHE_IA_HISTORICO);
                 } else {
@@ -5466,11 +5485,15 @@ async function handleMostrarDetalhes(symbol) {
                 }
             }
 
+            // CANCELAMENTO: ultima verificacao antes de renderizar
+            if (currentDetalhesSymbol !== symbolAlvo) return;
+
             currentDetalhesHistoricoJSON = scraperResultJSON;
             
             renderHistoricoIADetalhes(3);
 
         } catch (e) {
+            if (currentDetalhesSymbol !== symbolAlvo) return; // nao mostra erro se modal fechou
             showToast("Erro na consulta de dados."); 
             detalhesAiProvento.innerHTML = `
                 <div class="p-4 text-center text-red-400 text-sm">Erro ao carregar gráfico</div>

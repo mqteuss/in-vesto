@@ -72,14 +72,15 @@
     </div>
 
     <script>
+        // ── Inicialização síncrona (roda no carregamento da página) ──────────
         try {
-            const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
+            const bioEnabled   = localStorage.getItem('vesto_bio_enabled') === 'true';
             const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
 
             if (bioEnabled && !justLoggedOut) {
                 document.getElementById('biometric-lock-screen').classList.remove('hidden');
             }
-            
+
             const isLight = localStorage.getItem('vesto_theme') === 'light';
             if (isLight) {
                 document.body.classList.add('light-mode');
@@ -87,25 +88,37 @@
             }
         } catch (e) { console.error('Erro ao verificar configs iniciais', e); }
 
-        // Reativa o bloqueio biométrico quando o usuário sai e volta ao app.
-        // O inline script inicial só roda no carregamento da página — o
-        // visibilitychange é o único evento confiável para capturar retorno
-        // de background (troca de app, minimizar, bloqueio de tela, etc.).
-        document.addEventListener('visibilitychange', () => {
-            // Só age quando o app fica visível novamente
-            if (document.visibilityState !== 'visible') return;
-
+        // ── Função centralizada de bloqueio ──────────────────────────────────
+        // Chamada por múltiplos eventos; não trava se o app ainda não
+        // está autenticado (app-wrapper hidden = tela de login visível).
+        function _tentarTravarBio() {
             try {
-                // Condições para travar: bio ativa + não é pós-logout + app autenticado
-                const bioOn      = localStorage.getItem('vesto_bio_enabled') === 'true';
-                const loggedOut  = sessionStorage.getItem('vesto_just_logged_out') === 'true';
-                const appVisible = !document.getElementById('app-wrapper').classList.contains('hidden');
+                if (localStorage.getItem('vesto_bio_enabled') !== 'true') return;
+                if (sessionStorage.getItem('vesto_just_logged_out') === 'true') return;
+
+                const appWrapper = document.getElementById('app-wrapper');
                 const lockScreen = document.getElementById('biometric-lock-screen');
 
-                if (bioOn && !loggedOut && appVisible && lockScreen.classList.contains('hidden')) {
-                    lockScreen.classList.remove('hidden');
-                }
-            } catch (e) { console.error('Erro no visibilitychange biométrico', e); }
+                // Só trava se o usuário já está dentro do app
+                if (!appWrapper || appWrapper.classList.contains('hidden')) return;
+                if (!lockScreen.classList.contains('hidden')) return; // já travado
+
+                lockScreen.classList.remove('hidden');
+            } catch (e) { console.error('Erro ao travar bio', e); }
+        }
+
+        // ── Evento 1: visibilitychange ───────────────────────────────────────
+        // Cobre: minimize/maximize, troca de aba, bloqueio de tela no Android.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') _tentarTravarBio();
+        });
+
+        // ── Evento 2: pageshow (persisted) ───────────────────────────────────
+        // Cobre: restauração do bfcache — quando o browser "congela" a página
+        // ao fechar o app e restaura o estado sem recarregar.
+        // É o único evento confiável para "fechar e abrir" PWA no iOS/Android.
+        window.addEventListener('pageshow', (e) => {
+            if (e.persisted) _tentarTravarBio();
         });
     </script>
 

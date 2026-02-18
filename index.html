@@ -10,10 +10,12 @@
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#000000">
+    <meta name="description" content="Vesto - Gestão inteligente de proventos e investimentos.">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <link href="./style-tailwind.css" rel="stylesheet">
@@ -21,19 +23,31 @@
 </head>
 <body class="antialiased">
 
-    <div id="biometric-lock-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 hidden">
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <defs>
+    <symbol id="ico-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z"/>
+      <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+    </symbol>
+    <symbol id="ico-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"/>
+    </symbol>
+    <symbol id="ico-chevron-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 5l7 7-7 7"/>
+    </symbol>
+    <symbol id="ico-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 18L18 6M6 6l12 12"/>
+    </symbol>
+    <symbol id="ico-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 13l4 4L19 7"/>
+    </symbol>
+    <symbol id="ico-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 2v6h-6"/><path d="M3 22v-6h6"/><path d="M21 13a9 9 0 0 1-9 9H3"/><path d="M3 11a9 9 0 0 1 9-9h9"/>
+    </symbol>
+  </defs>
+</svg>
 
-    <svg xmlns="http://www.w3.org/2000/svg" class="hidden" aria-hidden="true">
-        <defs>
-            <symbol id="icon-eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.01 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.01-9.963-7.178Z" />
-                <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            </symbol>
-            <symbol id="icon-eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-            </symbol>
-        </defs>
-    </svg>
+    <div id="biometric-lock-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 hidden">
         <div class="relative mb-8 group cursor-pointer" id="btn-desbloquear">
             <div class="absolute inset-0 bg-purple-500/20 rounded-full blur-xl group-hover:bg-purple-500/30 transition-all duration-500"></div>
             <div class="relative bg-gray-800 p-6 rounded-full border border-purple-500/30 shadow-2xl group-active:scale-95 transition-transform duration-200">
@@ -69,7 +83,7 @@
 <div id="auth-container" class="fixed inset-0 z-50 w-full h-[100dvh] bg-black flex flex-col items-center justify-center p-6 overflow-hidden transition-all duration-300">
         
         <div class="absolute top-24 left-0 w-full flex justify-center z-20 pointer-events-none">
-            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-40 h-auto drop-shadow-2xl transition-all duration-300" fetchpriority="high">
+            <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto Logo" class="w-40 h-auto drop-shadow-2xl transition-all duration-300">
         </div>
 
         <div class="w-full max-w-sm flex flex-col justify-center h-full relative z-10 pt-10">
@@ -93,8 +107,8 @@
                 class="peer floating-input w-full bg-[#151515] text-white border border-transparent rounded-xl focus:outline-none focus:border-white focus:ring-0 pr-10 transition-colors duration-300">
             <label for="login-password" class="floating-label text-gray-400">Senha</label>
             <button type="button" class="password-toggle absolute right-3 top-0 bottom-0 flex items-center text-gray-500 hover:text-white transition-colors" data-target="login-password">
-                <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-                <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+                <svg class="eye-icon-open w-5 h-5"><use href="#ico-eye"/></svg>
+                <svg class="eye-icon-closed w-5 h-5 hidden"><use href="#ico-eye-off"/></svg>
             </button>
         </div>
     </div>
@@ -297,7 +311,7 @@
                         <span class="text-[10px] text-gray-500 font-medium leading-tight">Histórico Patrimonial</span>
                     </div>
                 </div>
-                <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                <svg class="w-5 h-5 text-gray-600"><use href="#ico-chevron-r"/></svg>
             </div>
         </div>
 
@@ -314,7 +328,7 @@
                         <span class="text-[10px] text-gray-500 font-medium leading-tight">Histórico de Pagamentos</span>
                     </div>
                 </div>
-                <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                <svg class="w-5 h-5 text-gray-600"><use href="#ico-chevron-r"/></svg>
             </div>
         </div>
 
@@ -332,7 +346,7 @@
                         <span class="text-[10px] text-gray-500 font-medium leading-tight">Diversificação da Carteira</span>
                     </div>
                 </div>
-                <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                <svg class="w-5 h-5 text-gray-600"><use href="#ico-chevron-r"/></svg>
             </div>
         </div>
 
@@ -349,7 +363,7 @@
                         <span class="text-[10px] text-gray-500 font-medium leading-tight">Rentabilidade Real</span>
                     </div>
                 </div>
-                <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                <svg class="w-5 h-5 text-gray-600"><use href="#ico-chevron-r"/></svg>
             </div>
         </div>
 
@@ -366,7 +380,7 @@
                         <span class="text-[10px] text-gray-500 font-medium leading-tight">Magic Number (FIIs)</span>
                     </div>
                 </div>
-                <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                <svg class="w-5 h-5 text-gray-600"><use href="#ico-chevron-r"/></svg>
             </div>
         </div>
 
@@ -424,9 +438,7 @@
     
     <div class="flex items-center gap-2">
         <button id="refresh-button" class="p-2 text-gray-500 hover:text-white rounded-full transition-all duration-200 hover:bg-gray-800" title="Atualizar dados">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                <path d="M21 2v6h-6"></path><path d="M3 22v-6h6"></path><path d="M21 13a9 9 0 0 1-9 9H3"></path><path d="M3 11a9 9 0 0 1 9-9h9"></path>
-            </svg>
+            <svg class="w-5 h-5"><use href="#ico-refresh"/></svg>
         </button>
     </div>
 </div>
@@ -542,15 +554,15 @@
                 <div id="history-filter-menu" class="filter-dropdown-menu">
                     <button class="filter-dropdown-item selected" data-value="all">
                         Todos 
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-100 check-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        <svg class="h-4 w-4 opacity-100 check-icon"><use href="#ico-check"/></svg>
                     </button>
                     <button class="filter-dropdown-item" data-value="buy">
                         Compras
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-0 check-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        <svg class="h-4 w-4 opacity-0 check-icon"><use href="#ico-check"/></svg>
                     </button>
                     <button class="filter-dropdown-item" data-value="sell">
                         Vendas
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-0 check-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        <svg class="h-4 w-4 opacity-0 check-icon"><use href="#ico-check"/></svg>
                     </button>
                 </div>
 
@@ -614,7 +626,7 @@
                         <p class="settings-sub">Juros compostos</p>
                     </div>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                <svg class="h-4 w-4 text-gray-500"><use href="#ico-chevron-r"/></svg>
             </button>
         </div>
 
@@ -685,7 +697,7 @@
                     </div>
                     <span class="settings-label">Alterar Senha</span>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                <svg class="h-4 w-4 text-gray-500"><use href="#ico-chevron-r"/></svg>
             </button>
         </div>
 
@@ -700,7 +712,7 @@
                         </div>
                         <span class="settings-label">Instalar App</span>
                     </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                    <svg class="h-4 w-4 text-gray-500"><use href="#ico-chevron-r"/></svg>
                 </button>
             </section>
 
@@ -716,9 +728,7 @@
                         <p class="settings-sub">Carregar backup</p>
                     </div>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
+                <svg class="h-4 w-4 text-gray-500"><use href="#ico-chevron-r"/></svg>
             </button>
             
             <input type="file" id="import-excel-input" accept=".xlsx, .xls, .csv" class="hidden" />
@@ -735,7 +745,7 @@
                         <p class="settings-sub">Gerar backup</p>
                     </div>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <svg class="h-4 w-4 text-gray-500"><use href="#ico-chevron-r"/></svg>
             </button>
 
             <button id="clear-cache-btn" class="settings-item w-full">
@@ -769,7 +779,7 @@
 </div>
 
 <div class="text-center pb-6">
-     <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto" class="h-6 mx-auto" loading="lazy">
+     <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto" class="h-6 mx-auto">
      <p class="text-[10px] text-gray-700 mt-2 font-mono">v2.0.1</p>
 </div>
 
@@ -951,7 +961,7 @@
                 </button>
 
                 <button id="detalhes-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <svg class="h-6 w-6"><use href="#ico-x"/></svg>
                 </button>
             </div>
         </div>
@@ -1001,7 +1011,7 @@
             </div>
             
             <button id="patrimonio-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg class="h-6 w-6"><use href="#ico-x"/></svg>
             </button>
         </div>
     </div> 
@@ -1068,7 +1078,7 @@
             </div>
             
             <button id="proventos-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg class="h-6 w-6"><use href="#ico-x"/></svg>
             </button>
         </div>
     </div>
@@ -1114,7 +1124,7 @@
             </div>
             
             <button id="alocacao-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg class="h-6 w-6"><use href="#ico-x"/></svg>
             </button>
         </div>
     </div>
@@ -1165,7 +1175,7 @@
             </div>
             
             <button id="ipca-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg class="h-6 w-6"><use href="#ico-x"/></svg>
             </button>
         </div>
     </div>
@@ -1261,7 +1271,7 @@
                 </div>
                 
                 <button id="objetivos-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <svg class="h-6 w-6"><use href="#ico-x"/></svg>
                 </button>
             </div>
         </div>
@@ -1313,7 +1323,7 @@
                     </div>
                 </div>
                 <button id="calculadora-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <svg class="h-6 w-6"><use href="#ico-x"/></svg>
                 </button>
             </div>
         </div>
@@ -1405,8 +1415,8 @@
     <div class="relative">
         <input type="password" id="new-password-input" placeholder="Nova senha (mín. 6 caracteres)" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
          <button type="button" class="password-toggle" data-target="new-password-input">
-            <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-            <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+            <svg class="eye-icon-open w-5 h-5"><use href="#ico-eye"/></svg>
+            <svg class="eye-icon-closed w-5 h-5 hidden"><use href="#ico-eye-off"/></svg>
         </button>
     </div>
     <button type="submit" id="new-password-btn" class="btn-purple w-full mt-4">Salvar Nova Senha</button>
@@ -1419,9 +1429,7 @@
                 <div class="flex justify-between items-center mb-4">
                      <h3 class="text-xl font-semibold text-white">Alterar Senha</h3>
                      <button id="close-change-password-btn" class="text-gray-500 hover:text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <svg class="h-6 w-6"><use href="#ico-x"/></svg>
                      </button>
                 </div>
                 
@@ -1431,24 +1439,24 @@
     <div class="relative">
         <input type="password" id="current-password-input" placeholder="Senha Atual" autocomplete="current-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
         <button type="button" class="password-toggle" data-target="current-password-input">
-           <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-           <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+           <svg class="eye-icon-open w-5 h-5"><use href="#ico-eye"/></svg>
+           <svg class="eye-icon-closed w-5 h-5 hidden"><use href="#ico-eye-off"/></svg>
        </button>
     </div>
 
     <div class="relative">
         <input type="password" id="change-new-password-input" placeholder="Nova Senha (mín. 6 caracteres)" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
         <button type="button" class="password-toggle" data-target="change-new-password-input">
-           <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-           <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+           <svg class="eye-icon-open w-5 h-5"><use href="#ico-eye"/></svg>
+           <svg class="eye-icon-closed w-5 h-5 hidden"><use href="#ico-eye-off"/></svg>
        </button>
     </div>
 
     <div class="relative">
         <input type="password" id="change-confirm-password-input" placeholder="Confirme a Nova Senha" autocomplete="new-password" required class="w-full p-3 bg-gray-900 border border-gray-800 rounded-full focus:outline-none focus:border-purple-400 text-white pr-10">
         <button type="button" class="password-toggle" data-target="change-confirm-password-input">
-           <svg class="eye-icon-open w-5 h-5" aria-hidden="true"><use href="#icon-eye-open"/></svg>
-           <svg class="eye-icon-closed w-5 h-5 hidden" aria-hidden="true"><use href="#icon-eye-closed"/></svg>
+           <svg class="eye-icon-open w-5 h-5"><use href="#ico-eye"/></svg>
+           <svg class="eye-icon-closed w-5 h-5 hidden"><use href="#ico-eye-off"/></svg>
        </button>
     </div>
 
@@ -1465,7 +1473,7 @@
             </div>
         </div>
 		
-		<div id="update-notification" class="hidden fixed top-6 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-4 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-3 cursor-pointer transition-all duration-300 opacity-0 hover:bg-purple-500 hover:scale-105" onclick="window.location.reload()">
+		<div id="update-notification" class="hidden fixed top-6 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-4 py-3 rounded-full shadow-2xl z-[100] flex items-center gap-3 cursor-pointer transition-all duration-300 opacity-0 hover:bg-purple-500 hover:scale-105" onclick="window.location.reload()">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
     </svg>

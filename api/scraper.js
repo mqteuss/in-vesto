@@ -275,54 +275,107 @@ async function scrapeFundamentos(ticker) {
             sobreTexto = $('meta[name="description"]').attr('content') || '';
         }
 
+        // SEU CÓDIGO COMEÇA AQUI ==========================
         dados.sobre = sobreTexto.replace(/\s+/g, ' ').trim();
 
         dados.comparacao = []; 
         const tickersVistos = new Set();
 
-        $('#table-compare-fiis, #table-compare-segments').each((_, table) => {
-            let idxDy = 1, idxPvp = 2, idxPat = 3; 
-            $(table).find('thead th').each((idx, th) => {
-                const txt = $(th).text().toLowerCase();
-                if (txt.includes('dy') || txt.includes('dividend')) idxDy = idx;
-                if (txt.includes('p/vp')) idxPvp = idx;
-                if (txt.includes('patrim')) idxPat = idx;
-            });
-
-            $(table).find('tbody tr').each((i, el) => {
-                const cols = $(el).find('td');
-                if (cols.length >= 3) {
-                    const ticker = $(cols[0]).text().replace(/\s+/g, ' ').trim();
-                    if (ticker && !tickersVistos.has(ticker)) {
-                        let nome = $(cols[0]).find('a').attr('title') || '';
-                        const dy = $(cols[idxDy]).text().trim();
-                        const pvp = $(cols[idxPvp]).text().trim();
-                        const patrimonio = cols.length > idxPat ? $(cols[idxPat]).text().trim() : '-';
-                        
-                        dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio });
-                        tickersVistos.add(ticker);
-                    }
-                }
-            });
-        });
-
-        $('.card-related-fii').each((i, el) => {
-            const ticker = $(el).find('h2').text().trim();
-            if (ticker && !tickersVistos.has(ticker)) {
-                const nome = $(el).find('h3, span.name').first().text().trim();
-                let dy = '-', pvp = '-', patrimonio = '-';
+        // TENTATIVA 1: API Oculta (Mais confiável para extrair Segmento, Tipo e Patrimônio que o HTML omite)
+        const apiUrl = $('#table-compare-fiis').attr('data-url') || $('#table-compare-segments').attr('data-url');
+        if (apiUrl) {
+            try {
+                const fullUrl = apiUrl.startsWith('http') ? apiUrl : `https://investidor10.com.br${apiUrl}`;
+                const resApi = await client.get(fullUrl);
+                let arrayComparacao = resApi.data.data || resApi.data || [];
                 
-                $(el).find('.card-footer p, .card-footer div').each((j, p) => {
-                    const text = $(p).text();
-                    if (text.includes('DY:')) dy = text.replace('DY:', '').trim();
-                    if (text.includes('P/VP:')) pvp = text.replace('P/VP:', '').trim();
-                    if (text.includes('Patrimônio:')) patrimonio = text.replace('Patrimônio:', '').trim();
+                if (Array.isArray(arrayComparacao)) {
+                    arrayComparacao.forEach(item => {
+                        const tickerAPI = item.title ? item.title.trim() : (item.ticker ? item.ticker.trim() : '');
+                        if (tickerAPI && !tickersVistos.has(tickerAPI)) {
+                            let patrim = '-';
+                            if (item.net_worth !== null && item.net_worth !== undefined) {
+                                let v = parseFloat(item.net_worth);
+                                if (!isNaN(v)) {
+                                    if (v >= 1e9) patrim = `R$ ${(v / 1e9).toFixed(2).replace('.',',')} B`;
+                                    else if (v >= 1e6) patrim = `R$ ${(v / 1e6).toFixed(2).replace('.',',')} M`;
+                                    else patrim = `R$ ${v.toLocaleString('pt-BR')}`;
+                                }
+                            }
+                            let dy = '-';
+                            if (item.dividend_yield !== null && item.dividend_yield !== undefined) {
+                                dy = String(item.dividend_yield).replace('.', ',');
+                                if (!dy.includes('%')) dy += '%';
+                            }
+                            let pvp = '-';
+                            if (item.p_vp !== null && item.p_vp !== undefined) pvp = String(item.p_vp).replace('.', ',');
+
+                            dados.comparacao.push({
+                                ticker: tickerAPI, nome: item.company_name || item.name || '',
+                                dy: dy, pvp: pvp, patrimonio: patrim, tipo: item.type || '-', segmento: item.segment || '-'
+                            });
+                            tickersVistos.add(tickerAPI);
+                        }
+                    });
+                }
+            } catch (err) { /* Falhou API, segue pro HTML abaixo */ }
+        }
+
+        // TENTATIVA 2: SEU CÓDIGO HTML (Fallback se a API falhar)
+        if (dados.comparacao.length === 0) {
+            $('#table-compare-fiis, #table-compare-segments').each((_, table) => {
+                let idxDy = -1, idxPvp = -1, idxPat = -1, idxSeg = -1, idxTipo = -1;
+                
+                $(table).find('thead th').each((idx, th) => {
+                    const txt = $(th).text().toLowerCase();
+                    if (txt.includes('dy') || txt.includes('dividend')) idxDy = idx;
+                    if (txt.includes('p/vp')) idxPvp = idx;
+                    if (txt.includes('patrim')) idxPat = idx;
+                    if (txt.includes('segmento')) idxSeg = idx;
+                    if (txt.includes('tipo')) idxTipo = idx;
                 });
 
-                dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio });
-                tickersVistos.add(ticker);
-            }
-        });
+                $(table).find('tbody tr').each((i, el) => {
+                    const cols = $(el).find('td');
+                    if (cols.length >= 3) {
+                        const ticker = $(cols[0]).text().replace(/\s+/g, ' ').trim();
+                        if (ticker && !tickersVistos.has(ticker)) {
+                            let nome = $(cols[0]).find('a').attr('title') || '';
+                            
+                            const dy = idxDy !== -1 && cols.length > idxDy ? $(cols[idxDy]).text().trim() : '-';
+                            const pvp = idxPvp !== -1 && cols.length > idxPvp ? $(cols[idxPvp]).text().trim() : '-';
+                            const patrimonio = idxPat !== -1 && cols.length > idxPat ? $(cols[idxPat]).text().trim() : '-';
+                            const segmento = idxSeg !== -1 && cols.length > idxSeg ? $(cols[idxSeg]).text().trim() : '-';
+                            const tipo = idxTipo !== -1 && cols.length > idxTipo ? $(cols[idxTipo]).text().trim() : '-';
+                            
+                            dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio, segmento, tipo });
+                            tickersVistos.add(ticker);
+                        }
+                    }
+                });
+            });
+
+            // Método B: Cards Relacionados (Fallback)
+            $('.card-related-fii').each((i, el) => {
+                const ticker = $(el).find('h2').text().trim();
+                if (ticker && !tickersVistos.has(ticker)) {
+                    const nome = $(el).find('h3, span.name').first().text().trim();
+                    let dy = '-', pvp = '-', patrimonio = '-', segmento = '-', tipo = '-';
+                    
+                    $(el).find('.card-footer p, .card-footer div').each((j, p) => {
+                        const text = $(p).text();
+                        if (text.includes('DY:')) dy = text.replace('DY:', '').trim();
+                        if (text.includes('P/VP:')) pvp = text.replace('P/VP:', '').trim();
+                        if (text.includes('Patrimônio:')) patrimonio = text.replace('Patrimônio:', '').trim();
+                        if (text.includes('Segmento:')) segmento = text.replace('Segmento:', '').trim();
+                        if (text.includes('Tipo:')) tipo = text.replace('Tipo:', '').trim();
+                    });
+
+                    dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio, segmento, tipo });
+                    tickersVistos.add(ticker);
+                }
+            });
+        }
 
         return dados;
     } catch (error) {

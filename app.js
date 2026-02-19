@@ -29,6 +29,12 @@ let currentProventosFilter = '12m';
 let customRangeStart = ''; // Formato: 'YYYY-MM'
 let customRangeEnd = '';   // Formato: 'YYYY-MM'
 
+// Estado de filtro da tabela de Análise Profunda de FIIs
+let analiseFilterTipo = 'todos';
+let analiseFilterSegmento = 'todos';
+// Dados brutos da última análise profunda carregada (para re-filtrar sem re-request)
+let analiseRawData = null;
+
 const CHART_COLORS = {
     JCP:  { bg: '#fbbf24', border: '#d97706' }, 
     TRIB: { bg: '#fb7185', border: '#e11d48' }, 
@@ -3943,6 +3949,24 @@ async function buscarProventosFuturos(force = false) {
         return result;
     }
 
+    // Busca Análise Profunda de FII (Sobre + Comparação) — cache 4h
+    async function callScraperAnaliseProfundaFiiAPI(ticker) {
+        const cacheKey = `analise_profunda_${ticker.toUpperCase()}`;
+        const cached = await getCache(cacheKey);
+        if (cached) return cached;
+
+        const response = await fetchBFF('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'analise_profunda_fii', payload: { ticker } })
+        });
+        const result = response.json;
+        if (result && !result.error) {
+            await setCache(cacheKey, result, CACHE_FUNDAMENTOS_ABERTO);
+        }
+        return result;
+    }
+
 async function buscarHistoricoProventosAgregado(force = false) {
         // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
         const ativosCarteira = carteiraCalculada.map(a => a.symbol);
@@ -4675,6 +4699,13 @@ function handleAbrirModalEdicao(id) {
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
+
+        // Limpa a seção de Análise Profunda
+        const analiseContainer = document.getElementById('detalhes-analise-container');
+        if (analiseContainer) analiseContainer.innerHTML = '';
+        analiseRawData = null;
+        analiseFilterTipo = 'todos';
+        analiseFilterSegmento = 'todos';
 
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
@@ -6005,6 +6036,8 @@ async function handleMostrarDetalhes(symbol) {
     // Disparo de gráficos sem bloquear o fluxo principal
     fetchHistoricoScraper(symbol); 
     fetchCotacaoHistorica(symbol);
+    // Dispara Análise Profunda somente para FIIs (lazy, sem bloquear)
+    if (ehFii) fetchAnaliseProfundaFii(symbol);
 
     // ─── FASE 1: Renderiza o modal assim que o PREÇO chegar ─────────────────────
     // (pode ser instantâneo se vier do cache)
@@ -6691,6 +6724,194 @@ function renderizarGraficoProventosDetalhes(rawData) {
 
 // Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
+
+// ─── ANÁLISE PROFUNDA DE FIIs ──────────────────────────────────────────────────
+
+async function fetchAnaliseProfundaFii(symbol) {
+    // Só executa para FIIs
+    if (!isFII(symbol)) return;
+
+    const symbolAlvo = symbol;
+
+    // Garante container
+    let container = document.getElementById('detalhes-analise-container');
+    if (!container) return;
+
+    // Skeleton de loading
+    container.innerHTML = `
+        <div class="border-t border-[#2C2C2E] pt-8 mt-6 mb-10 space-y-3 animate-pulse">
+            <div class="h-3 bg-[#1C1C1E] rounded w-32 mb-4"></div>
+            <div class="h-16 bg-[#151515] rounded-xl"></div>
+            <div class="h-3 bg-[#1C1C1E] rounded w-40 mt-6 mb-4"></div>
+            <div class="h-32 bg-[#151515] rounded-xl"></div>
+        </div>`;
+
+    try {
+        const dados = await callScraperAnaliseProfundaFiiAPI(symbol);
+
+        // Cancela se o modal já foi trocado
+        if (currentDetalhesSymbol !== symbolAlvo) return;
+
+        if (!dados || dados.error) {
+            container.innerHTML = `<p class="text-center text-xs text-gray-600 py-6">Análise comparativa indisponível no momento.</p>`;
+            return;
+        }
+
+        // Guarda dados brutos para re-filtrar sem nova requisição
+        analiseRawData = dados;
+        analiseFilterTipo = 'todos';
+        analiseFilterSegmento = 'todos';
+
+        renderAnaliseProfundaFii(symbol, dados);
+
+    } catch (e) {
+        if (currentDetalhesSymbol !== symbolAlvo) return;
+        console.error('Erro fetchAnaliseProfundaFii:', e);
+        container.innerHTML = `<p class="text-center text-xs text-gray-600 py-6">Erro ao carregar análise profunda.</p>`;
+    }
+}
+
+function renderAnaliseProfundaFii(symbol, dados) {
+    const container = document.getElementById('detalhes-analise-container');
+    if (!container) return;
+
+    // ── 1. SOBRE A: {TICKER} ──────────────────────────────────────────────
+    const sobreHtml = `
+        <div class="border-t border-[#2C2C2E] pt-8 mt-6">
+            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">
+                Sobre a: <span class="text-white">${symbol}</span>
+            </h4>
+            <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-8">
+                <p class="text-xs text-gray-400 leading-relaxed">${dados.sobre || 'Descrição não disponível.'}</p>
+            </div>
+        </div>`;
+
+    // ── 2. COMPARANDO COM OUTROS FIIs ─────────────────────────────────────
+    const fiis = dados.comparacao_fiis || [];
+    let comparacaoHtml = '';
+
+    if (fiis.length === 0) {
+        comparacaoHtml = `<p class="text-xs text-gray-600 text-center py-4">Nenhum FII comparável encontrado.</p>`;
+    } else {
+        // Extrai valores únicos para os filtros (ignorando vazios/nulos)
+        const tiposUnicos   = [...new Set(fiis.map(f => f.tipo).filter(Boolean))].sort();
+        const segsUnicos    = [...new Set(fiis.map(f => f.segmento).filter(Boolean))].sort();
+
+        // Aplica filtros corretos: AND entre tipo E segmento
+        const filtrados = fiis.filter(f => {
+            const tipoOk = analiseFilterTipo === 'todos'
+                || (f.tipo || '').trim().toLowerCase() === analiseFilterTipo.toLowerCase();
+            const segOk  = analiseFilterSegmento === 'todos'
+                || (f.segmento || '').trim().toLowerCase() === analiseFilterSegmento.toLowerCase();
+            return tipoOk && segOk;
+        });
+
+        // Ordena por DY descendente (maior yield primeiro)
+        filtrados.sort((a, b) => {
+            const dyA = parseFloat((a.dividend_yield || '0').toString().replace(',', '.')) || 0;
+            const dyB = parseFloat((b.dividend_yield || '0').toString().replace(',', '.')) || 0;
+            return dyB - dyA;
+        });
+
+        // Botões de filtro — helper
+        const btnFiltro = (grupo, valor, label) => {
+            const ativo = (grupo === 'tipo' ? analiseFilterTipo : analiseFilterSegmento) === valor;
+            const cls = ativo
+                ? 'analise-filter-btn bg-purple-600 text-white font-bold text-[10px] py-1 px-3 rounded-full whitespace-nowrap transition-colors cursor-pointer'
+                : 'analise-filter-btn bg-[#1C1C1E] text-gray-400 hover:text-white font-bold text-[10px] py-1 px-3 rounded-full whitespace-nowrap transition-colors cursor-pointer border border-[#2C2C2E]';
+            return `<button class="${cls}" onclick="window.filtrarComparacaoFii('${grupo}','${valor.replace(/'/g, "\\'")}')">${label}</button>`;
+        };
+
+        // Barra de filtros: Tipo
+        const filtrotipoHtml = tiposUnicos.length > 0 ? `
+            <div class="mb-2">
+                <span class="text-[9px] font-bold text-gray-600 uppercase tracking-widest mr-2">Tipo</span>
+                <div class="inline-flex flex-wrap gap-1.5">
+                    ${btnFiltro('tipo', 'todos', 'Todos')}
+                    ${tiposUnicos.map(t => btnFiltro('tipo', t, t)).join('')}
+                </div>
+            </div>` : '';
+
+        // Barra de filtros: Segmento
+        const filtroSegHtml = segsUnicos.length > 0 ? `
+            <div class="mb-3">
+                <span class="text-[9px] font-bold text-gray-600 uppercase tracking-widest mr-2">Segmento</span>
+                <div class="inline-flex flex-wrap gap-1.5">
+                    ${btnFiltro('segmento', 'todos', 'Todos')}
+                    ${segsUnicos.map(s => btnFiltro('segmento', s, s)).join('')}
+                </div>
+            </div>` : '';
+
+        // Linhas da tabela
+        const linhas = filtrados.map(f => {
+            const dy  = f.dividend_yield != null ? f.dividend_yield : '-';
+            const pvp = f.p_vp          != null ? f.p_vp          : '-';
+            const pat = f.valor_patrimonial != null
+                ? `R$ ${Number(f.valor_patrimonial).toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })}`
+                : '-';
+            const isCurrentTicker = (f.ticker || '').toUpperCase() === symbol.toUpperCase();
+            const rowCls = isCurrentTicker ? 'bg-purple-900/10' : '';
+            return `
+                <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer ${rowCls}"
+                    onclick="window.abrirDetalhesAtivo && window.abrirDetalhesAtivo('${f.ticker}')">
+                    <td class="py-2.5 pl-3 pr-2 font-bold text-white text-[11px] whitespace-nowrap">
+                        ${isCurrentTicker ? `<span class="inline-block w-1 h-1 rounded-full bg-purple-400 mr-1 align-middle"></span>` : ''}
+                        ${f.ticker || '-'}
+                    </td>
+                    <td class="py-2.5 px-2 text-green-400 font-bold text-[11px] text-right whitespace-nowrap">${dy}%</td>
+                    <td class="py-2.5 px-2 text-gray-300 text-[11px] text-right whitespace-nowrap">${pvp}</td>
+                    <td class="py-2.5 px-2 text-gray-400 text-[10px] text-right whitespace-nowrap">${pat}</td>
+                    <td class="py-2.5 px-2 text-gray-500 text-[10px] whitespace-nowrap hidden sm:table-cell">${f.tipo || '-'}</td>
+                    <td class="py-2.5 pl-2 pr-3 text-gray-500 text-[10px] whitespace-nowrap hidden sm:table-cell">${f.segmento || '-'}</td>
+                </tr>`;
+        }).join('');
+
+        const emptyMsg = filtrados.length === 0
+            ? `<tr><td colspan="6" class="text-center text-xs text-gray-600 py-6">Nenhum FII encontrado com os filtros selecionados.</td></tr>`
+            : '';
+
+        comparacaoHtml = `
+            ${filtrotipoHtml}
+            ${filtroSegHtml}
+            <div class="overflow-auto max-h-80 rounded-xl border border-[#2C2C2E] shadow-sm custom-scroll">
+                <table class="w-full text-xs border-collapse">
+                    <thead class="sticky top-0 z-10 bg-[#0f0f0f]">
+                        <tr class="border-b border-[#2C2C2E]">
+                            <th class="py-2.5 pl-3 pr-2 text-left text-[9px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Ticker</th>
+                            <th class="py-2.5 px-2 text-right text-[9px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">DY</th>
+                            <th class="py-2.5 px-2 text-right text-[9px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">P/VP</th>
+                            <th class="py-2.5 px-2 text-right text-[9px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">Patrimônio</th>
+                            <th class="py-2.5 px-2 text-left text-[9px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap hidden sm:table-cell">Tipo</th>
+                            <th class="py-2.5 pl-2 pr-3 text-left text-[9px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap hidden sm:table-cell">Segmento</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#1F1F1F]">
+                        ${linhas}
+                        ${emptyMsg}
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-[9px] text-gray-700 mt-2 text-right">${filtrados.length} de ${fiis.length} FIIs exibidos • Ordenado por DY</p>`;
+    }
+
+    container.innerHTML = `
+        ${sobreHtml}
+        <div class="mb-10">
+            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Comparando com outros FIIs</h4>
+            ${comparacaoHtml}
+        </div>`;
+}
+
+// Chamado pelos botões de filtro da tabela de comparação
+window.filtrarComparacaoFii = function(grupo, valor) {
+    if (grupo === 'tipo')      analiseFilterTipo = valor;
+    if (grupo === 'segmento')  analiseFilterSegmento = valor;
+    if (analiseRawData && currentDetalhesSymbol) {
+        renderAnaliseProfundaFii(currentDetalhesSymbol, analiseRawData);
+    }
+};
+
+
 
 function mudarAba(tabId) {
         const index = tabOrder.indexOf(tabId);

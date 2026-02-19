@@ -6496,6 +6496,15 @@ async function carregarAnaliseProfundaFII(ticker) {
         const paresAll = dados.comparacao_fiis || [];
 
         if (paresAll.length > 0 && compareTbody) {
+            // CORREÇÃO DO VAZAMENTO NO SCROLL: Injeta o fundo sólido e sticky no cabeçalho (TH) dinamicamente
+            const theadTr = compareTbody.closest('table')?.querySelector('thead tr');
+            if (theadTr) {
+                const thTicker = theadTr.querySelector('th');
+                if (thTicker) {
+                    thTicker.className = "py-2 pl-3 pr-4 sticky left-0 z-20 bg-[#1c1c1e] border-r border-[#2c2c2e] text-left text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]";
+                }
+            }
+
             const fmtNum = (v, decimals = 2) => {
                 if (v == null || v === '') return '-';
                 const n = parseFloat(String(v).replace(',', '.'));
@@ -6511,49 +6520,47 @@ async function carregarAnaliseProfundaFII(ticker) {
                 return 'R$ ' + n.toFixed(2).replace('.', ',');
             };
 
-            // Dados do próprio FII para referência nos filtros
-            const selfPar = paresAll.find(p => (p.ticker || '').toUpperCase() === ticker.toUpperCase());
-            const selfTipo = selfPar?.tipo || null;
-            const selfSeg  = selfPar?.segmento || null;
+            // Dados do próprio FII com .trim() para evitar bugs de espaçamento
+            const selfPar = paresAll.find(p => (p.ticker || '').trim().toUpperCase() === ticker.toUpperCase());
+            const selfTipo = selfPar?.tipo?.trim() || null;
+            const selfSeg  = selfPar?.segmento?.trim() || null;
 
             const renderPares = (filtro) => {
                 let lista = paresAll;
+
+                // Nova Lógica de Filtro: Removemos a trava que quebrava a exibição
                 if (filtro === 'tipo_seg') {
-                    const filtered = paresAll.filter(p => {
-                        const isSelf = (p.ticker || '').toUpperCase() === ticker.toUpperCase();
-                        if (isSelf) return true;
-                        // Fallback: se não há tipo nem segmento, mostra todos
+                    lista = paresAll.filter(p => {
+                        if ((p.ticker || '').trim().toUpperCase() === ticker.toUpperCase()) return true;
                         if (!selfTipo && !selfSeg) return true;
-                        return selfTipo && selfSeg && p.tipo === selfTipo && p.segmento === selfSeg;
+                        return p.tipo?.trim() === selfTipo && p.segmento?.trim() === selfSeg;
                     });
-                    lista = filtered.length > 1 ? filtered : paresAll;
                 } else if (filtro === 'tipo') {
-                    const filtered = paresAll.filter(p => {
-                        const isSelf = (p.ticker || '').toUpperCase() === ticker.toUpperCase();
-                        if (isSelf) return true;
-                        if (!selfTipo) return true; // fallback
-                        return p.tipo === selfTipo;
+                    lista = paresAll.filter(p => {
+                        if ((p.ticker || '').trim().toUpperCase() === ticker.toUpperCase()) return true;
+                        if (!selfTipo) return true;
+                        return p.tipo?.trim() === selfTipo;
                     });
-                    lista = filtered.length > 1 ? filtered : paresAll;
                 } else if (filtro === 'seg') {
-                    const filtered = paresAll.filter(p => {
-                        const isSelf = (p.ticker || '').toUpperCase() === ticker.toUpperCase();
-                        if (isSelf) return true;
-                        if (!selfSeg) return true; // fallback
-                        return p.segmento === selfSeg;
+                    lista = paresAll.filter(p => {
+                        if ((p.ticker || '').trim().toUpperCase() === ticker.toUpperCase()) return true;
+                        if (!selfSeg) return true;
+                        return p.segmento?.trim() === selfSeg;
                     });
-                    lista = filtered.length > 1 ? filtered : paresAll;
                 }
-                if (lista.length === 0) lista = paresAll; // safety fallback final
+
+                if (lista.length === 0) lista = paresAll;
 
                 compareTbody.innerHTML = lista.map(par => {
                     const pvpN    = parseFloat(String(par.p_vp ?? '').replace(',', '.')) || 0;
                     const pvpDisp = fmtNum(par.p_vp);
-                    const pvpCor  = pvpN === 0    ? 'text-gray-400'
-                                  : pvpN < 1.0   ? 'text-gray-200'
-                                  : 'text-gray-400';
 
-                    const isSelf = (par.ticker || '').toUpperCase() === ticker.toUpperCase();
+                    // Adiciona um feedback visual se o P/VP estiver muito descontado (< 1.0)
+                    const pvpCor  = pvpN === 0    ? 'text-gray-400'
+                                  : pvpN < 1.0   ? 'text-green-400'
+                                  : 'text-gray-200';
+
+                    const isSelf = (par.ticker || '').trim().toUpperCase() === ticker.toUpperCase();
                     const rowBg  = isSelf ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]';
 
                     return `<tr class="border-b border-[#1f1f1f] transition-colors ${rowBg}">
@@ -6584,10 +6591,6 @@ async function carregarAnaliseProfundaFII(ticker) {
                     { key: 'seg',      label: 'Segmento' },
                     { key: 'todos',    label: 'Todos' },
                 ];
-                const BTN_ACTIVE   = 'fii-par-btn';
-                const BTN_INACTIVE = 'fii-par-btn';
-                const applyActive   = (el) => { el.style.background = 'rgba(255,255,255,0.07)'; el.style.borderColor = 'rgba(255,255,255,0.12)'; el.style.color = '#e5e7eb'; };
-                const applyInactive = (el) => { el.style.background = 'transparent'; el.style.borderColor = 'transparent'; el.style.color = '#6b7280'; };
 
                 filterWrap.innerHTML = FILTERS.map((f, i) =>
                     `<button data-filter="${f.key}" class="fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all whitespace-nowrap cursor-pointer ${i === 0 ? 'bg-white/[0.07] border-white/[0.12] text-gray-200' : 'bg-transparent border-transparent text-gray-500'}">${f.label}</button>`

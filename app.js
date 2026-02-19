@@ -6298,7 +6298,7 @@ async function handleMostrarDetalhes(symbol) {
         }
 
         // =========================================================
-        // NOVA LÓGICA: SOBRE O ATIVO (Texto)
+        // LÓGICA: SOBRE O ATIVO (Texto)
         // =========================================================
         let sobreHtml = '';
         if (dados.sobre && dados.sobre.length > 10) {
@@ -6313,38 +6313,100 @@ async function handleMostrarDetalhes(symbol) {
         }
 
         // =========================================================
-        // NOVA LÓGICA: COMPARAÇÃO (Tabela em lista)
+        // LÓGICA: COMPARAÇÃO (Tabela Horizontal com Destaques)
         // =========================================================
         let comparacaoHtml = '';
         if (dados.comparacao && dados.comparacao.length > 0) {
-            let itensComparacao = dados.comparacao.map(item => `
-                <div class="flex justify-between items-center py-2.5 border-b border-[#1F1F1F] last:border-0 cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
-                            <span class="text-[9px] font-bold text-white tracking-wider">${item.ticker.substring(0,2)}</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
-                            <span class="text-[9px] text-gray-500 font-medium truncate max-w-[120px]" title="${item.nome}">${item.nome}</span>
-                        </div>
-                    </div>
-                    <div class="flex items-end gap-4 text-right">
-                        <div class="flex flex-col">
-                            <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">DY</span>
-                            <span class="text-[11px] text-green-400 font-bold leading-none">${item.dy}</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">P/VP</span>
-                            <span class="text-[11px] text-white font-bold leading-none">${item.pvp}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+            
+            const parseNumberStr = (str) => {
+                if (!str || str === '-' || str === 'N/A') return null;
+                let s = str.toUpperCase().replace(/\s/g, '');
+                let mult = 1;
+                if (s.includes('B')) mult = 1000000000;
+                else if (s.includes('M')) mult = 1000000;
+                else if (s.includes('K')) mult = 1000;
+                
+                let numStr = s.replace(/[^0-9,-]/g, '').replace(',', '.');
+                let val = parseFloat(numStr);
+                return isNaN(val) ? null : val * mult;
+            };
+
+            let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
+            let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0); 
+            let validPat = dados.comparacao.map(i => parseNumberStr(i.patrimonio)).filter(v => v !== null);
+
+            let maxDy = validDy.length ? Math.max(...validDy) : null;
+            let minPvp = validPvp.length ? Math.min(...validPvp) : null;
+            let maxPat = validPat.length ? Math.max(...validPat) : null;
+
+            let tbody = dados.comparacao.map(item => {
+                let vDy = parseNumberStr(item.dy);
+                let vPvp = parseNumberStr(item.pvp);
+                let vPat = parseNumberStr(item.patrimonio);
+
+                let isBestDy = vDy !== null && vDy === maxDy;
+                let isBestPvp = vPvp !== null && vPvp === minPvp;
+                let isBestPat = vPat !== null && vPat === maxPat;
+
+                let dyBadge = isBestDy 
+                    ? `<span class="bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded text-[11px] font-bold" title="Maior Dividend Yield">${item.dy}</span>` 
+                    : `<span class="text-xs text-gray-300 font-medium">${item.dy}</span>`;
+
+                let pvpBadge = isBestPvp 
+                    ? `<span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded text-[11px] font-bold" title="Menor P/VP">${item.pvp}</span>` 
+                    : `<span class="text-xs text-gray-300 font-medium">${item.pvp}</span>`;
+
+                let valPat = item.patrimonio && item.patrimonio !== '-' && item.patrimonio !== 'N/A' ? item.patrimonio : '-';
+                let patBadge = isBestPat 
+                    ? `<span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded text-[11px] font-bold" title="Maior Valor Patrimonial">${valPat}</span>` 
+                    : `<span class="text-xs text-gray-300 font-medium">${valPat}</span>`;
+
+                return `
+                    <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                        <td class="p-3 whitespace-nowrap">
+                            <div class="flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
+                                    <span class="text-[8px] font-bold text-white tracking-wider">${item.ticker.substring(0,2)}</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-3 whitespace-nowrap text-right">${dyBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-right">${pvpBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-right">${patBadge}</td>
+                    </tr>
+                `;
+            }).join('');
 
             comparacaoHtml = `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-6 mb-2 pl-1">Comparar Ativos</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${itensComparacao}
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-6 mb-2 pl-1 flex items-center gap-1.5">
+                    Comparando Ativos
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                </h4>
+                <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 relative">
+                    <style>
+                        .table-scrollbar::-webkit-scrollbar { height: 6px; }
+                        .table-scrollbar::-webkit-scrollbar-track { background: transparent; margin: 0 10px; }
+                        .table-scrollbar::-webkit-scrollbar-thumb { background: #2A2A2C; border-radius: 10px; }
+                        .table-scrollbar::-webkit-scrollbar-thumb:hover { background: #3F3F42; }
+                    </style>
+                    <div class="overflow-x-auto table-scrollbar rounded-xl">
+                        <table class="w-full text-left border-collapse min-w-[340px]">
+                            <thead>
+                                <tr>
+                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap">Ativo</th>
+                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
+                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
+                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Patrimônio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tbody}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `;
         }
@@ -6388,10 +6450,6 @@ async function handleMostrarDetalhes(symbol) {
         }
 
     }).catch(e => console.error("Erro ao preencher fundamentos:", e));
-
-    // Favorito (não depende de dados externos)
-    atualizarIconeFavorito(symbol);
-}
 
 
     async function fetchHistoricoScraper(symbol) {

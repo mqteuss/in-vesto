@@ -80,15 +80,12 @@ function cleanDoubledString(str) {
 async function scrapeFundamentos(ticker) {
     try {
         let html;
-        // Dispara FII e Ação em paralelo — usa a que responder primeiro com sucesso
-        // Economiza ~1-2s no caso de ações (elimina o round-trip de fallback sequencial)
         const urlFii  = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         const urlAcao = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
 
         const fetchHtml = async (url) => {
             const res = await client.get(url);
             if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
-            // Rejeita páginas inválidas (404 customizado, ticker não encontrado)
             if (!res.data.includes('cotacao') && !res.data.includes('Cotação')) throw new Error('Página inválida');
             return res.data;
         };
@@ -96,30 +93,24 @@ async function scrapeFundamentos(ticker) {
         try {
             html = await Promise.any([fetchHtml(urlFii), fetchHtml(urlAcao)]);
         } catch (e) {
-            // Promise.any só rejeita quando TODAS falham (AggregateError)
             throw new Error('Ativo não encontrado no Investidor10');
         }
 
         const $ = cheerio.load(html);
 
-let dados = {
-            // Campos Comuns
+        let dados = {
             dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
             val_mercado: 'N/A', liquidez: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
-
-            // FIIs
             segmento: 'N/A', tipo_fundo: 'N/A', mandato: 'N/A', vacancia: 'N/A',
             patrimonio_liquido: 'N/A', cnpj: 'N/A',
             num_cotistas: 'N/A', tipo_gestao: 'N/A', prazo_duracao: 'N/A',
             taxa_adm: 'N/A', cotas_emitidas: 'N/A', publico_alvo: 'N/A',
-
-            // Ações (Novos Campos)
             margem_liquida: 'N/A', margem_bruta: 'N/A', margem_ebit: 'N/A',
             divida_liquida_ebitda: 'N/A', divida_liquida_pl: 'N/A', ev_ebitda: 'N/A',
             payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A',
-
-            // --- NOVO: ARRAY DE IMÓVEIS ---
-            imoveis: [] 
+            imoveis: [],
+            sobre: '',
+            comparacao: []
         };
 
         let cotacao_atual = 0;
@@ -136,7 +127,6 @@ let dados = {
 
             if (!valor) return;
 
-            // --- DATA-INDICATOR (Prioridade) ---
             if (indicatorAttr) {
                 const ind = indicatorAttr.toUpperCase();
                 if (ind === 'DIVIDA_LIQUIDA_EBITDA') { dados.divida_liquida_ebitda = valor; return; }
@@ -147,8 +137,6 @@ let dados = {
                 if (ind === 'MARGEM_LIQUIDA') { dados.margem_liquida = valor; return; }
             }
 
-            // --- FALLBACK POR TEXTO ---
-            // Geral
             if (dados.dy === 'N/A' && (titulo === 'dy' || titulo.includes('dividend yield') || titulo.includes('dy ('))) dados.dy = valor;
             if (dados.pvp === 'N/A' && titulo.includes('p/vp')) dados.pvp = valor;
             if (dados.liquidez === 'N/A' && titulo.includes('liquidez')) dados.liquidez = valor;
@@ -156,7 +144,6 @@ let dados = {
             if (dados.variacao_12m === 'N/A' && titulo.includes('variacao') && titulo.includes('12m')) dados.variacao_12m = valor;
             if (dados.ultimo_rendimento === 'N/A' && titulo.includes('ultimo rendimento')) dados.ultimo_rendimento = valor;
 
-            // FIIs
             if (dados.segmento === 'N/A' && titulo.includes('segmento')) dados.segmento = valor;
             if (dados.vacancia === 'N/A' && titulo.includes('vacancia')) dados.vacancia = valor;
             if (dados.cnpj === 'N/A' && titulo.includes('cnpj')) dados.cnpj = valor;
@@ -169,18 +156,15 @@ let dados = {
             if (dados.cotas_emitidas === 'N/A' && titulo.includes('cotas')) dados.cotas_emitidas = valor;
             if (dados.publico_alvo === 'N/A' && titulo.includes('publico') && titulo.includes('alvo')) dados.publico_alvo = valor;
 
-            // Ações
             if (dados.pl === 'N/A' && (titulo === 'p/l' || titulo.includes('p/l'))) dados.pl = valor;
             if (dados.roe === 'N/A' && titulo.replace(/\./g, '') === 'roe') dados.roe = valor;
             if (dados.lpa === 'N/A' && titulo.replace(/\./g, '') === 'lpa') dados.lpa = valor;
 
-            // Margens & Payout
             if (titulo.includes('margem liquida')) dados.margem_liquida = valor;
             if (titulo.includes('margem bruta')) dados.margem_bruta = valor;
             if (titulo.includes('margem ebit')) dados.margem_ebit = valor;
             if (titulo.includes('payout')) dados.payout = valor;
 
-            // EV e Dívidas
             if (titulo.includes('ev/ebitda')) dados.ev_ebitda = valor;
             const tClean = titulo.replace(/[\s\/\.\-]/g, ''); 
             if (dados.divida_liquida_ebitda === 'N/A') {
@@ -188,11 +172,9 @@ let dados = {
             }
             if (tClean.includes('div') && tClean.includes('liq') && tClean.includes('patrim')) dados.divida_liquida_pl = valor;
 
-            // CAGR
             if (titulo.includes('cagr') && titulo.includes('receita')) dados.cagr_receita_5a = valor;
             if (titulo.includes('cagr') && titulo.includes('lucro')) dados.cagr_lucros_5a = valor;
 
-            // VPA/Patrimônio
             if (dados.vp_cota === 'N/A') {
                 if (titulo === 'vpa' || titulo.replace(/\./g, '') === 'vpa' || titulo.includes('vp por cota')) dados.vp_cota = valor;
             }
@@ -212,7 +194,6 @@ let dados = {
             }
         };
 
-        // --- EXECUÇÃO ---
         $('._card').each((i, el) => {
             const titulo = $(el).find('._card-header').text().trim();
             const valor = $(el).find('._card-body').text().trim();
@@ -256,7 +237,6 @@ let dados = {
             }
         }
 
-// --- BUSCA DE IMÓVEIS (FIIs) ---
         $('#properties-section .card-propertie').each((i, el) => {
             const nome = $(el).find('h3').text().trim();
             let estado = '';
@@ -268,6 +248,79 @@ let dados = {
             });
             if (nome) {
                 dados.imoveis.push({ nome, estado, abl });
+            }
+        });
+
+        let sobreTexto = '';
+        $('#about-section p, .profile-description p, #description p, .text-description p').each((i, el) => {
+            sobreTexto += $(el).text().trim() + ' ';
+        });
+
+        if (!sobreTexto.trim()) {
+            $('script[type="application/ld+json"]').each((i, el) => {
+                try {
+                    const html = $(el).html();
+                    if (html) {
+                        const json = JSON.parse(html);
+                        const items = json['@graph'] ? json['@graph'] : [json];
+                        items.forEach(item => {
+                            if (item.articleBody) sobreTexto = item.articleBody;
+                        });
+                    }
+                } catch (e) { }
+            });
+        }
+
+        if (!sobreTexto.trim()) {
+            sobreTexto = $('meta[name="description"]').attr('content') || '';
+        }
+
+        dados.sobre = sobreTexto.replace(/\s+/g, ' ').trim();
+
+        dados.comparacao = []; 
+        const tickersVistos = new Set();
+
+        $('#table-compare-fiis, #table-compare-segments').each((_, table) => {
+            let idxDy = 1, idxPvp = 2, idxPat = 3; 
+            $(table).find('thead th').each((idx, th) => {
+                const txt = $(th).text().toLowerCase();
+                if (txt.includes('dy') || txt.includes('dividend')) idxDy = idx;
+                if (txt.includes('p/vp')) idxPvp = idx;
+                if (txt.includes('patrim')) idxPat = idx;
+            });
+
+            $(table).find('tbody tr').each((i, el) => {
+                const cols = $(el).find('td');
+                if (cols.length >= 3) {
+                    const ticker = $(cols[0]).text().replace(/\s+/g, ' ').trim();
+                    if (ticker && !tickersVistos.has(ticker)) {
+                        let nome = $(cols[0]).find('a').attr('title') || '';
+                        const dy = $(cols[idxDy]).text().trim();
+                        const pvp = $(cols[idxPvp]).text().trim();
+                        const patrimonio = cols.length > idxPat ? $(cols[idxPat]).text().trim() : '-';
+                        
+                        dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio });
+                        tickersVistos.add(ticker);
+                    }
+                }
+            });
+        });
+
+        $('.card-related-fii').each((i, el) => {
+            const ticker = $(el).find('h2').text().trim();
+            if (ticker && !tickersVistos.has(ticker)) {
+                const nome = $(el).find('h3, span.name').first().text().trim();
+                let dy = '-', pvp = '-', patrimonio = '-';
+                
+                $(el).find('.card-footer p, .card-footer div').each((j, p) => {
+                    const text = $(p).text();
+                    if (text.includes('DY:')) dy = text.replace('DY:', '').trim();
+                    if (text.includes('P/VP:')) pvp = text.replace('P/VP:', '').trim();
+                    if (text.includes('Patrimônio:')) patrimonio = text.replace('Patrimônio:', '').trim();
+                });
+
+                dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio });
+                tickersVistos.add(ticker);
             }
         });
 
@@ -286,10 +339,8 @@ async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
         let type = 'acao';
-        // FIIs brasileiros: terminam em 11 ou 11B
         if (/\d{2}B?$/.test(t) && t.endsWith('11') || t.endsWith('11B')) type = 'fii';
 
-        // parseDateJSON hoistado fora do .map() — evita recriar a função a cada iteração
         const parseDateJSON = (dStr) => {
             if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
             const parts = dStr.split('/');
@@ -309,7 +360,6 @@ async function scrapeAsset(ticker) {
 
         const earnings = data.assetEarningsModels || [];
 
-        // Se retornou vazio e tentamos como 'acao', pode ser um FII com ticker atípico — tenta de novo
         if (earnings.length === 0 && type === 'acao') {
             const urlFii = `https://statusinvest.com.br/fii/companytickerprovents?ticker=${t}&chartProventsType=2`;
             const { data: dataFii } = await client.get(urlFii, {
@@ -361,13 +411,11 @@ async function scrapeIpca() {
         let acumulado12m = '0,00';
         let acumuladoAno = '0,00';
 
-        // Selector direto pelos headers conhecidos — evita ler .text() de todas as tabelas
         let $table = $('table').filter((i, el) => {
             const firstRow = $(el).find('thead tr th').first().text().toLowerCase();
             return firstRow.includes('acumulado') || firstRow.includes('varia');
         }).first();
 
-        // Fallback para busca por conteúdo se o selector direto não encontrar
         if (!$table.length) {
             $('table').each((i, el) => {
                 if ($table.length) return false;
@@ -422,11 +470,10 @@ async function scrapeIpca() {
 // PARTE 4: COTAÇÃO HISTÓRICA (COM FALLBACK YAHOO FINANCE)
 // ---------------------------------------------------------
 
-// --- HELPER: Mapeamento de Ranges do Yahoo ---
 function getYahooParams(range) {
     switch (range) {
-        case '1D': return { range: '1d', interval: '5m' };   // Intraday
-        case '5D': return { range: '5d', interval: '15m' };  // Intraday
+        case '1D': return { range: '1d', interval: '5m' };   
+        case '5D': return { range: '5d', interval: '15m' };  
         case '1M': return { range: '1mo', interval: '1d' };
         case '6M': return { range: '6mo', interval: '1d' };
         case 'YTD': return { range: 'ytd', interval: '1d' };
@@ -445,7 +492,6 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
         const symbol = ticker.toUpperCase().endsWith('.SA') ? ticker.toUpperCase() : `${ticker.toUpperCase()}.SA`;
         const { range, interval } = getYahooParams(rangeFilter);
 
-        // Tenta query1 primeiro; se falhar (rate-limit ou instabilidade), cai para query2
         const buildUrl = (host) => 
             `https://${host}.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}&includePrePost=false`;
 
@@ -471,13 +517,12 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
         const highs  = quote.high;
         const lows   = quote.low;
 
-        // Formata com OHLC completo
         const points = timestamps.map((t, i) => {
             if (prices[i] === null || prices[i] === undefined) return null;
             return {
                 date:      new Date(t * 1000).toISOString(),
                 timestamp: t * 1000,
-                price:     prices[i],          // close
+                price:     prices[i],
                 open:      opens[i]  ?? prices[i],
                 high:      highs[i]  ?? prices[i],
                 low:       lows[i]   ?? prices[i]
@@ -492,12 +537,8 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
     }
 }
 
-// Atualize a função principal do scraper para receber o range
 async function scrapeCotacaoHistory(ticker, range = '1A') {
     const cleanTicker = ticker.toLowerCase().trim();
-
-    // Para gráficos dinâmicos com filtros variados, o Yahoo Finance é mais estável e suporta intraday
-    // Vamos priorizar o Yahoo para essa funcionalidade específica
     const data = await fetchYahooFinance(cleanTicker, range);
 
     if (!data || data.length === 0) {
@@ -507,7 +548,7 @@ async function scrapeCotacaoHistory(ticker, range = '1A') {
     return {
         ticker: cleanTicker.toUpperCase(),
         range: range,
-        points: data // Retorna array único focado no range pedido
+        points: data 
     };
 }
 
@@ -532,20 +573,17 @@ module.exports = async function handler(req, res) {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
 
-        // --- MODO 1: IPCA ---
         if (mode === 'ipca') {
             const dados = await scrapeIpca();
             return res.status(200).json({ json: dados });
         }
 
-        // --- MODO 2: FUNDAMENTOS ---
         if (mode === 'fundamentos') {
             if (!payload.ticker) return res.json({ json: {} });
             const dados = await scrapeFundamentos(payload.ticker);
             return res.status(200).json({ json: dados });
         }
 
-        // --- MODO 3: PROVENTOS (LOTE OU INDIVIDUAL) ---
         if (mode === 'proventos_carteira' || mode === 'historico_portfolio') {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 5);
@@ -567,17 +605,13 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-if (mode === 'historico_12m') {
+        if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
-
-            // Pega todo o histórico cru (sem limite de 18 meses e sem agrupar ainda)
             const history = await scrapeAsset(payload.ticker);
-
-            // Retorna o array completo. O agrupamento será feito no app.js para permitir filtros dinâmicos
             return res.status(200).json({ json: history });
         }
 
-if (mode === 'proximo_provento') {
+        if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);
 
@@ -587,7 +621,6 @@ if (mode === 'proximo_provento') {
             let ultimoPago = null;
             let proximo = null;
 
-            // O history já vem ordenado do mais recente para o mais antigo
             for (const p of history) {
                 if (!p.paymentDate) continue;
                 const parts = p.paymentDate.split('-');
@@ -599,11 +632,9 @@ if (mode === 'proximo_provento') {
                     if (!ultimoPago) ultimoPago = p;
                 }
 
-                // Se já achou os dois, pode parar o loop
                 if (ultimoPago && proximo) break;
             }
 
-            // Fallback: se não achou 'ultimoPago' mas tem dados, pega o primeiro possível
             if (!ultimoPago && history.length > 0 && !proximo) {
                 ultimoPago = history[0];
             }
@@ -611,13 +642,11 @@ if (mode === 'proximo_provento') {
             return res.status(200).json({ json: { ultimoPago, proximo } });
         }
 
-        // --- MODO 4: COTAÇÃO HISTÓRICA (NOVO) ---
-// Exemplo dentro do seu router/handler da API:
-if (mode === 'cotacao_historica') {
-    const range = payload.range || '1D'; // Default muda conforme sua preferência
-    const dados = await scrapeCotacaoHistory(payload.ticker, range);
-    return res.status(200).json({ json: dados });
-}
+        if (mode === 'cotacao_historica') {
+            const range = payload.range || '1D';
+            const dados = await scrapeCotacaoHistory(payload.ticker, range);
+            return res.status(200).json({ json: dados });
+        }
 
         return res.status(400).json({ error: "Modo desconhecido" });
     } catch (error) {

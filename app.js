@@ -6596,6 +6596,8 @@ async function carregarAnaliseProfundaFII(ticker) {
         }
     }
 }
+
+    async function fetchHistoricoScraper(symbol) {
         // Guarda o simbolo alvo: se mudar (modal fechou/abriu outro ativo), cancela
         const symbolAlvo = symbol;
 

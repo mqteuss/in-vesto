@@ -6406,10 +6406,14 @@ function _resetAnaliseTabSkeletons() {
     showEl('fii-dy-skeleton');    hideEl('fii-dy-grid'); hideEl('fii-dy-vazio');
     // Pares
     showEl('fii-compare-skeleton'); hideEl('fii-compare-wrap'); hideEl('fii-compare-vazio');
+    const filterWrapReset = document.getElementById('fii-compare-filter');
+    if (filterWrapReset) { filterWrapReset.classList.add('hidden'); filterWrapReset.innerHTML = ''; }
     // Histórico
     showEl('fii-hist-skeleton'); hideEl('fii-hist-wrap'); hideEl('fii-hist-vazio'); hideEl('fii-hist-filter');
     // Índices
     showEl('fii-indices-skeleton'); hideEl('fii-indices-chart-wrap'); hideEl('fii-indices-vazio'); hideEl('fii-indices-card');
+    const idxFilterReset = document.getElementById('fii-indices-filter');
+    if (idxFilterReset) { idxFilterReset.classList.add('hidden'); idxFilterReset.innerHTML = ''; }
 
     // Limpa conteúdos
     ['fii-compare-table','fii-hist-table','fii-dy-grid','fii-indices-legend'].forEach(id => {
@@ -6489,8 +6493,9 @@ async function carregarAnaliseProfundaFII(ticker) {
         // ── ③ COMPARAÇÃO COM PARES ───────────────────────────────────────────────
         hide('fii-compare-skeleton');
         const compareTbody = get('fii-compare-table');
-        const pares = dados.comparacao_fiis || [];
-        if (pares.length > 0 && compareTbody) {
+        const paresAll = dados.comparacao_fiis || [];
+
+        if (paresAll.length > 0 && compareTbody) {
             const fmtNum = (v, decimals = 2) => {
                 if (v == null || v === '') return '-';
                 const n = parseFloat(String(v).replace(',', '.'));
@@ -6506,39 +6511,92 @@ async function carregarAnaliseProfundaFII(ticker) {
                 return 'R$ ' + n.toFixed(2).replace('.', ',');
             };
 
-            compareTbody.innerHTML = pares.map(par => {
-                const pvpN   = parseFloat(String(par.p_vp ?? '').replace(',', '.')) || 0;
-                const pvpDisp = fmtNum(par.p_vp);
-                // Cor baseada apenas no valor — sem badge de texto agressivo
-                const pvpCor  = pvpN === 0    ? 'text-gray-400'
-                              : pvpN < 0.9   ? 'text-green-400'   // muito descontado
-                              : pvpN < 1.0   ? 'text-emerald-400' // levemente descontado
-                              : pvpN <= 1.05 ? 'text-yellow-400'  // próximo de 1
-                              : 'text-red-400';                    // acima do PL
+            // Dados do próprio FII para referência nos filtros
+            const selfPar = paresAll.find(p => (p.ticker || '').toUpperCase() === ticker.toUpperCase());
+            const selfTipo = selfPar?.tipo || null;
+            const selfSeg  = selfPar?.segmento || null;
 
-                // Ponto colorido discreto no canto
-                const pvpDot  = pvpN === 0 ? '' : `<span class="inline-block w-1.5 h-1.5 rounded-full ml-1 align-middle ${pvpN < 1 ? 'bg-green-400' : 'bg-red-400'}"></span>`;
+            const renderPares = (filtro) => {
+                let lista = paresAll;
+                if (filtro === 'tipo_seg') {
+                    lista = paresAll.filter(p => {
+                        const isSelf = (p.ticker || '').toUpperCase() === ticker.toUpperCase();
+                        if (isSelf) return true;
+                        return selfTipo && selfSeg && p.tipo === selfTipo && p.segmento === selfSeg;
+                    });
+                } else if (filtro === 'tipo') {
+                    lista = paresAll.filter(p => {
+                        const isSelf = (p.ticker || '').toUpperCase() === ticker.toUpperCase();
+                        if (isSelf) return true;
+                        return selfTipo && p.tipo === selfTipo;
+                    });
+                } else if (filtro === 'seg') {
+                    lista = paresAll.filter(p => {
+                        const isSelf = (p.ticker || '').toUpperCase() === ticker.toUpperCase();
+                        if (isSelf) return true;
+                        return selfSeg && p.segmento === selfSeg;
+                    });
+                }
+                if (lista.length === 0) lista = paresAll; // fallback
 
-                const isSelf  = (par.ticker || '').toUpperCase() === ticker.toUpperCase();
-                const rowBg   = isSelf ? 'bg-purple-500/10' : 'hover:bg-white/5';
-                const selfBorder = isSelf ? 'border-l-2 border-purple-500' : '';
+                compareTbody.innerHTML = lista.map(par => {
+                    const pvpN    = parseFloat(String(par.p_vp ?? '').replace(',', '.')) || 0;
+                    const pvpDisp = fmtNum(par.p_vp);
+                    const pvpCor  = pvpN === 0    ? 'text-gray-400'
+                                  : pvpN < 1.0   ? 'text-gray-200'
+                                  : 'text-gray-400';
 
-                return `<tr class="transition-colors ${rowBg} ${selfBorder}">
-                    <td class="py-2.5 pr-3 sticky left-0 ${isSelf ? 'bg-purple-950/60' : 'bg-[#1c1c1e]'} whitespace-nowrap">
-                        <span class="font-bold text-white text-xs">${par.ticker || '-'}</span>
-                        ${isSelf ? '<span class="text-[8px] text-purple-400 font-bold ml-1">•VOC</span>' : ''}
-                    </td>
-                    <td class="py-2.5 px-2 text-right font-bold text-green-400 whitespace-nowrap">${fmtPct(par.dividend_yield)}</td>
-                    <td class="py-2.5 px-2 text-right whitespace-nowrap">
-                        <span class="font-bold ${pvpCor}">${pvpDisp}</span>${pvpDot}
-                    </td>
-                    <td class="py-2.5 px-2 text-right text-gray-400 whitespace-nowrap">${fmtMonet(par.valor_patrimonial)}</td>
-                    <td class="py-2.5 px-2 text-center whitespace-nowrap">
-                        <span class="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">${par.tipo || '-'}</span>
-                    </td>
-                    <td class="py-2.5 pl-2 text-gray-500 text-[10px] whitespace-nowrap">${par.segmento || '-'}</td>
-                </tr>`;
-            }).join('');
+                    const isSelf = (par.ticker || '').toUpperCase() === ticker.toUpperCase();
+                    const rowBg  = isSelf ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]';
+
+                    return `<tr class="border-b border-[#1f1f1f] transition-colors ${rowBg}">
+                        <td class="py-2.5 pr-4 sticky left-0 z-10 ${isSelf ? 'bg-[#1e1c2a]' : 'bg-[#1c1c1e]'} whitespace-nowrap">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-white text-xs tracking-tight">${par.ticker || '-'}</span>
+                                ${isSelf ? '<span class="text-[8px] text-gray-500 font-medium">você</span>' : ''}
+                            </div>
+                        </td>
+                        <td class="py-2.5 px-3 text-right font-semibold text-gray-200 text-xs whitespace-nowrap">${fmtPct(par.dividend_yield)}</td>
+                        <td class="py-2.5 px-3 text-right font-semibold text-xs whitespace-nowrap">
+                            <span class="${pvpCor}">${pvpDisp}</span>
+                        </td>
+                        <td class="py-2.5 px-3 text-right text-gray-400 text-xs whitespace-nowrap">${fmtMonet(par.valor_patrimonial)}</td>
+                        <td class="py-2.5 px-3 text-center text-[10px] text-gray-400 whitespace-nowrap">${par.tipo || '-'}</td>
+                        <td class="py-2.5 pl-3 text-gray-500 text-[10px] whitespace-nowrap">${par.segmento || '-'}</td>
+                    </tr>`;
+                }).join('');
+            };
+
+            // Filtros
+            const filterWrap = get('fii-compare-filter');
+            if (filterWrap) {
+                filterWrap.classList.remove('hidden');
+                const FILTERS = [
+                    { key: 'tipo_seg', label: 'Tipo + Seg.' },
+                    { key: 'tipo',     label: 'Tipo' },
+                    { key: 'seg',      label: 'Segmento' },
+                    { key: 'todos',    label: 'Todos' },
+                ];
+                filterWrap.innerHTML = FILTERS.map(f =>
+                    `<button data-filter="${f.key}" class="fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all whitespace-nowrap
+                        ${f.key === 'tipo_seg'
+                            ? 'bg-white/[0.07] border-white/10 text-gray-200'
+                            : 'bg-transparent border-transparent text-gray-500 hover:text-gray-300'}"
+                    >${f.label}</button>`
+                ).join('');
+
+                filterWrap.querySelectorAll('.fii-par-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        filterWrap.querySelectorAll('.fii-par-btn').forEach(b => {
+                            b.className = 'fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all whitespace-nowrap bg-transparent border-transparent text-gray-500 hover:text-gray-300';
+                        });
+                        btn.className = 'fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all whitespace-nowrap bg-white/[0.07] border-white/10 text-gray-200';
+                        renderPares(btn.dataset.filter);
+                    });
+                });
+            }
+
+            renderPares('tipo_seg');
             show('fii-compare-wrap');
         } else {
             show('fii-compare-vazio');
@@ -6606,52 +6664,98 @@ async function carregarAnaliseProfundaFII(ticker) {
         const indicesData = dados.comparacao_indices;
 
         if (indicesData && indicesData.series && indicesData.series.length > 0) {
-            // Monta os labels do eixo X
-            // Prefere os labels extraídos do script; se não, usa as datas da série mais longa
+            // Mapa de normalização de nomes
+            const NOME_MAP = {
+                'ifix':   'IFIX',
+                'cdi':    'CDI',
+                'ibov':   'IBOV',
+                'smll':   'SMLL',
+                'ivvb11': 'IVVB11',
+                'idiv':   'IDIV',
+                'ipca':   'IPCA',
+            };
+            const normalizarNome = (nome, tk) => {
+                const lower = (nome || '').toLowerCase().trim();
+                if (lower === tk.toLowerCase() || lower.includes(tk.toLowerCase())) return tk.toUpperCase();
+                for (const [key, val] of Object.entries(NOME_MAP)) {
+                    if (lower.includes(key)) return val;
+                }
+                return nome;
+            };
+
+            // Paleta limpa e profissional
+            const COR_INDICES = {
+                'IFIX':              '#a78bfa',
+                'CDI':               '#94a3b8',
+                'IBOV':              '#60a5fa',
+                'SMLL':              '#34d399',
+                'IVVB11':            '#f59e0b',
+                'IDIV':              '#fb7185',
+                'IPCA':              '#6ee7b7',
+                [ticker.toUpperCase()]: '#ffffff',
+            };
+            const defaultColors = ['#a78bfa','#60a5fa','#34d399','#f59e0b','#94a3b8','#fb7185','#6ee7b7','#e2e8f0'];
+
+            // Normaliza séries
+            const seriesNorm = indicesData.series.map((serie, idx) => ({
+                ...serie,
+                nome: normalizarNome(serie.nome, ticker),
+                cor:  COR_INDICES[normalizarNome(serie.nome, ticker)] || defaultColors[idx % defaultColors.length]
+            }));
+
             let labels = indicesData.labels || [];
             if (!labels.length) {
-                const longest = indicesData.series.reduce((a, s) => s.dados.length > a.dados.length ? s : a, { dados: [] });
+                const longest = seriesNorm.reduce((a, s) => s.dados.length > a.dados.length ? s : a, { dados: [] });
                 labels = longest.dados.map(d => d.data || '');
             }
-            // Formata labels como "Jan/24" se vierem como "2024-01" ou "01/2024"
+
+            const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
             const fmtLabel = (l) => {
-                const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
                 const m1 = String(l).match(/^(\d{4})-(\d{2})/);
                 if (m1) return meses[parseInt(m1[2]) - 1] + '/' + m1[1].slice(2);
                 const m2 = String(l).match(/^(\d{2})\/(\d{4})/);
                 if (m2) return meses[parseInt(m2[1]) - 1] + '/' + m2[2].slice(2);
                 return l;
             };
-            const fmtLabels = labels.map(fmtLabel);
 
-            // Monta os datasets do Chart.js
-            const datasets = indicesData.series.map(serie => ({
-                label:           serie.nome,
-                data:            serie.dados.map(d => d.rentabilidade),
-                borderColor:     serie.cor,
-                backgroundColor: serie.cor + '18',
-                borderWidth:     2,
-                pointRadius:     0,
-                pointHoverRadius: 4,
-                tension:         0.3,
-                fill:            false
+            const buildDatasets = (labelsSlice, dataStart) => seriesNorm.map(serie => ({
+                label:            serie.nome,
+                data:             serie.dados.slice(dataStart, dataStart + labelsSlice.length).map(d => d.rentabilidade),
+                borderColor:      serie.cor,
+                backgroundColor:  serie.cor + '15',
+                borderWidth:      serie.nome === ticker.toUpperCase() ? 2.5 : 1.5,
+                pointRadius:      0,
+                pointHoverRadius: 5,
+                pointHoverBorderWidth: 2,
+                pointHoverBackgroundColor: serie.cor,
+                pointHoverBorderColor: '#0f0f0f',
+                tension:          0.3,
+                fill:             false
             }));
 
             // Legenda customizada
             const legendDiv = get('fii-indices-legend');
             if (legendDiv) {
-                legendDiv.innerHTML = indicesData.series.map(s =>
-                    `<div class="flex items-center gap-1">
-                        <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${s.cor}"></span>
-                        <span class="text-[9px] font-bold text-gray-400">${s.nome}</span>
+                legendDiv.innerHTML = seriesNorm.map(s =>
+                    `<div class="flex items-center gap-1.5">
+                        <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background:${s.cor}"></span>
+                        <span class="text-[10px] font-medium text-gray-400">${s.nome}</span>
                     </div>`
                 ).join('');
             }
 
-            // Renderiza chart
-            const canvas = get('fii-indices-chart');
-            if (canvas) {
+            // Render / re-render do chart
+            const renderIndicesChart = (anosMax) => {
+                const mesesMax = anosMax * 12;
+                const dataStart = Math.max(0, labels.length - mesesMax);
+                const labelsSlice = labels.slice(dataStart);
+                const fmtLabels = labelsSlice.map(fmtLabel);
+                const datasets = buildDatasets(labelsSlice, dataStart);
+
+                const canvas = get('fii-indices-chart');
+                if (!canvas) return;
                 if (window._fiiIndicesChart) { try { window._fiiIndicesChart.destroy(); } catch (_) {} }
+
                 window._fiiIndicesChart = new Chart(canvas, {
                     type: 'line',
                     data: { labels: fmtLabels, datasets },
@@ -6660,33 +6764,75 @@ async function carregarAnaliseProfundaFII(ticker) {
                         maintainAspectRatio: false,
                         interaction:         { mode: 'index', intersect: false },
                         plugins: {
-                            legend:  { display: false },
+                            legend: { display: false },
                             tooltip: {
-                                backgroundColor: '#1c1c1e',
-                                borderColor:     '#333',
+                                enabled:         true,
+                                backgroundColor: 'rgba(15,15,15,0.97)',
+                                borderColor:     '#2c2c2e',
                                 borderWidth:     1,
-                                titleColor:      '#888',
-                                bodyColor:       '#fff',
-                                titleFont:       { size: 10 },
-                                bodyFont:        { size: 11, weight: 'bold' },
+                                padding:         { top: 10, bottom: 10, left: 14, right: 14 },
+                                titleColor:      '#6b7280',
+                                titleFont:       { size: 10, weight: '500' },
+                                titleMarginBottom: 8,
+                                bodySpacing:     5,
                                 callbacks: {
-                                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2).replace('.', ',')}%`
+                                    title: (items) => items[0]?.label || '',
+                                    label: (ctx) => {
+                                        const v = ctx.parsed.y;
+                                        const sign = v >= 0 ? '+' : '';
+                                        return `  ${ctx.dataset.label}   ${sign}${v.toFixed(2).replace('.', ',')}%`;
+                                    },
+                                    labelColor: (ctx) => ({
+                                        borderColor: 'transparent',
+                                        backgroundColor: ctx.dataset.borderColor,
+                                        borderRadius: 3,
+                                        width: 8,
+                                        height: 8,
+                                    })
                                 }
                             }
                         },
                         scales: {
                             x: {
-                                ticks:   { color: '#555', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 },
-                                grid:    { color: '#222' },
-                                border:  { color: '#333' }
+                                ticks:   { color: '#4b5563', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 },
+                                grid:    { color: 'rgba(255,255,255,0.03)' },
+                                border:  { color: '#1f1f1f' }
                             },
                             y: {
-                                ticks:   { color: '#555', font: { size: 9 }, callback: (v) => v.toFixed(0) + '%' },
-                                grid:    { color: '#222' },
-                                border:  { color: '#333' }
+                                ticks:   { color: '#4b5563', font: { size: 9 }, callback: (v) => v.toFixed(0) + '%' },
+                                grid:    { color: 'rgba(255,255,255,0.03)' },
+                                border:  { color: '#1f1f1f' }
                             }
                         }
                     }
+                });
+            };
+
+            renderIndicesChart(5); // padrão: 5 anos
+
+            // Filtro 2A / 5A
+            const idxFilterWrap = get('fii-indices-filter');
+            if (idxFilterWrap) {
+                idxFilterWrap.classList.remove('hidden');
+                idxFilterWrap.innerHTML = [
+                    { key: 2, label: '2A' },
+                    { key: 5, label: '5A' },
+                ].map((f, i) =>
+                    `<button data-anos="${f.key}" class="fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all
+                        ${i === 1
+                            ? 'bg-white/[0.07] border-white/10 text-gray-200'
+                            : 'bg-transparent border-transparent text-gray-500 hover:text-gray-300'}"
+                    >${f.label}</button>`
+                ).join('');
+
+                idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(b => {
+                            b.className = 'fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all bg-transparent border-transparent text-gray-500 hover:text-gray-300';
+                        });
+                        btn.className = 'fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all bg-white/[0.07] border-white/10 text-gray-200';
+                        renderIndicesChart(parseInt(btn.dataset.anos));
+                    });
                 });
             }
 

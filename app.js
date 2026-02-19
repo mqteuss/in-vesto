@@ -6474,18 +6474,24 @@ async function carregarAnaliseProfundaFII(ticker) {
         }
 
         // ── 2. DY POR PERÍODO ─────────────────────────────────────────────────
+        // Backend retorna: dados.dividend_yield → [{periodo, percentual, valor}]
         hide('fii-dy-skeleton');
         const dyGrid = get('fii-dy-grid');
-        if (dados.dy_periodos && dados.dy_periodos.length > 0 && dyGrid) {
-            // Garante os 4 períodos padrão, preenchendo com '-' se faltar
+        if (dados.dividend_yield && dados.dividend_yield.length > 0 && dyGrid) {
+            // Normaliza labels: "YIELD (1M)" → "1M", etc.
             const periodosEsperados = ['1M', '3M', '6M', '12M'];
             const dyMap = {};
-            dados.dy_periodos.forEach(d => { dyMap[d.periodo] = d; });
+            dados.dividend_yield.forEach(d => {
+                // Extrai "1M", "3M", "6M" ou "12M" do campo periodo
+                const match = (d.periodo || '').toUpperCase().match(/(\d+M)/);
+                const chave = match ? match[1] : d.periodo;
+                dyMap[chave] = d;
+            });
 
             dyGrid.innerHTML = periodosEsperados.map(p => {
                 const item = dyMap[p];
-                const pct  = item ? item.pct : '-';
-                const rs   = item ? (item.rs || '') : '';
+                const pct  = item ? (item.percentual || '-') : '-';
+                const rs   = item ? (item.valor || '') : '';
                 return `
                     <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center text-center shadow-sm">
                         <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">${p}</span>
@@ -6500,36 +6506,44 @@ async function carregarAnaliseProfundaFII(ticker) {
         }
 
         // ── 3. COMPARAÇÃO COM PARES ──────────────────────────────────────────
+        // Backend retorna: dados.comparacao_fiis → [{ticker, dividend_yield, p_vp, valor_patrimonial, tipo, segmento}]
         hide('fii-compare-skeleton');
         const compareTbody = get('fii-compare-table');
-        if (dados.comparacao_fii && dados.comparacao_fii.length > 0 && compareTbody) {
-            compareTbody.innerHTML = dados.comparacao_fii.map(par => {
-                const pvpNum = parseFloat(String(par.pvp).replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+        if (dados.comparacao_fiis && dados.comparacao_fiis.length > 0 && compareTbody) {
+            compareTbody.innerHTML = dados.comparacao_fiis.map(par => {
+                // p_vp pode vir como número ou string "1,05"
+                const pvpRaw = par.p_vp != null ? String(par.p_vp) : '';
+                const pvpNum = parseFloat(pvpRaw.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+                const pvpDisplay = pvpNum > 0 ? pvpNum.toFixed(2).replace('.', ',') : (pvpRaw || '-');
                 const pvpCor = pvpNum === 0 ? 'text-gray-400'
-                    : pvpNum < 1.0 ? 'text-green-400'   // descontado
-                    : pvpNum <= 1.1 ? 'text-yellow-400'  // neutro
-                    : 'text-red-400';                     // caro
+                    : pvpNum < 1.0 ? 'text-green-400'
+                    : pvpNum <= 1.1 ? 'text-yellow-400'
+                    : 'text-red-400';
 
-                const pvpTag = pvpNum !== 0
+                const pvpTag = pvpNum > 0
                     ? `<span class="text-[9px] font-bold ml-1 ${pvpNum < 1 ? 'text-green-500' : 'text-red-500'}">${pvpNum < 1 ? '▼ DSCT' : '▲ CARO'}</span>`
                     : '';
 
+                // dividend_yield pode ser número (ex: 12.5) ou string ("12,50%")
+                const dyRaw = par.dividend_yield != null ? String(par.dividend_yield) : '-';
+                const dyDisplay = dyRaw !== '-' && !dyRaw.includes('%')
+                    ? parseFloat(dyRaw.replace(',', '.')).toFixed(2).replace('.', ',') + '%'
+                    : dyRaw;
+
                 // Destaque se for o próprio ticker
-                const isSelf = par.ticker.toUpperCase() === ticker.toUpperCase();
-                const rowClass = isSelf
-                    ? 'bg-purple-500/10 border-l-2 border-purple-500'
-                    : '';
+                const isSelf = (par.ticker || '').toUpperCase() === ticker.toUpperCase();
+                const rowClass = isSelf ? 'bg-purple-500/10 border-l-2 border-purple-500' : '';
 
                 return `
                     <tr class="${rowClass}">
                         <td class="py-2.5 pl-1">
-                            <span class="font-bold text-white">${par.ticker}</span>
+                            <span class="font-bold text-white">${par.ticker || '-'}</span>
                             ${isSelf ? '<span class="text-[8px] text-purple-400 font-bold ml-1">VOCÊ</span>' : ''}
-                            ${par.nome ? `<span class="block text-[10px] text-gray-600 mt-0.5 truncate max-w-[100px]">${par.nome}</span>` : ''}
+                            ${par.segmento ? `<span class="block text-[10px] text-gray-600 mt-0.5 truncate max-w-[120px]">${par.segmento}</span>` : ''}
                         </td>
-                        <td class="py-2.5 text-right font-bold text-green-400">${par.dy || '-'}</td>
+                        <td class="py-2.5 text-right font-bold text-green-400">${dyDisplay}</td>
                         <td class="py-2.5 text-right pr-1">
-                            <span class="font-bold ${pvpCor}">${par.pvp || '-'}</span>${pvpTag}
+                            <span class="font-bold ${pvpCor}">${pvpDisplay}</span>${pvpTag}
                         </td>
                     </tr>`;
             }).join('');
@@ -6540,23 +6554,32 @@ async function carregarAnaliseProfundaFII(ticker) {
         }
 
         // ── 4. HISTÓRICO DE INDICADORES ──────────────────────────────────────
+        // Backend retorna: dados.historico_indicadores → [{tipo, data_com, pagamento, valor}]
         hide('fii-hist-skeleton');
         const histTbody = get('fii-hist-table');
         if (dados.historico_indicadores && dados.historico_indicadores.length > 0 && histTbody) {
-            histTbody.innerHTML = dados.historico_indicadores.map(item => {
-                const pvpNum = parseFloat(String(item.pvp).replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
-                const pvpCor = pvpNum === 0 ? 'text-gray-400'
-                    : pvpNum < 1 ? 'text-green-400'
-                    : pvpNum <= 1.1 ? 'text-yellow-400'
-                    : 'text-red-400';
+            // Atualiza os <th> da tabela para refletir a nova estrutura
+            const histWrap = document.getElementById('fii-hist-wrap');
+            if (histWrap) {
+                const thead = histWrap.querySelector('thead tr');
+                if (thead) {
+                    thead.innerHTML = `
+                        <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 pl-1">Tipo</th>
+                        <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right">Data Com</th>
+                        <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right">Pagamento</th>
+                        <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right pr-1">Valor</th>`;
+                }
+            }
 
-                return `
-                    <tr>
-                        <td class="py-2.5 pl-1 font-bold text-white">${item.ano}</td>
-                        <td class="py-2.5 text-right font-bold text-green-400">${item.dy || '-'}</td>
-                        <td class="py-2.5 text-right pr-1 font-bold ${pvpCor}">${item.pvp || '-'}</td>
-                    </tr>`;
-            }).join('');
+            histTbody.innerHTML = dados.historico_indicadores.map(item => `
+                <tr>
+                    <td class="py-2.5 pl-1">
+                        <span class="text-[10px] font-bold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase">${item.tipo || '-'}</span>
+                    </td>
+                    <td class="py-2.5 text-right text-gray-400 text-[11px]">${item.data_com || '-'}</td>
+                    <td class="py-2.5 text-right text-gray-400 text-[11px]">${item.pagamento || '-'}</td>
+                    <td class="py-2.5 text-right pr-1 font-bold text-green-400">${item.valor || '-'}</td>
+                </tr>`).join('');
 
             show('fii-hist-wrap');
         } else {
@@ -6564,18 +6587,30 @@ async function carregarAnaliseProfundaFII(ticker) {
         }
 
         // ── 5. COMPARAÇÃO COM ÍNDICES ─────────────────────────────────────────
+        // Backend retorna: dados.comparacao_indices → [{nome, dados:[{data, rentabilidade}]}]
+        // Exibimos a rentabilidade acumulada do último ponto da série
         if (dados.comparacao_indices && dados.comparacao_indices.length > 0) {
             const indicesGrid = get('fii-indices-grid');
             const indicesCard = get('fii-indices-card');
             if (indicesGrid && indicesCard) {
                 indicesGrid.innerHTML = dados.comparacao_indices.map(idx => {
-                    const valorStr = String(idx.valor);
-                    const isPositivo = valorStr.includes('+') || (!valorStr.includes('-') && parseFloat(valorStr.replace(/[^0-9,.]/g, '')) > 0);
-                    const cor = isPositivo ? 'text-green-400' : 'text-red-400';
+                    // Pega o último dado da série (rentabilidade mais recente)
+                    const serie = Array.isArray(idx.dados) ? idx.dados : [];
+                    const ultimoPonto = serie.length > 0 ? serie[serie.length - 1] : null;
+                    const rentNum = ultimoPonto ? parseFloat(ultimoPonto.rentabilidade) : null;
+                    const rentDisplay = rentNum != null
+                        ? (rentNum >= 0 ? '+' : '') + rentNum.toFixed(2).replace('.', ',') + '%'
+                        : '-';
+                    const cor = rentNum == null ? 'text-gray-400'
+                        : rentNum >= 0 ? 'text-green-400'
+                        : 'text-red-400';
+                    const dataLabel = ultimoPonto ? ` (${ultimoPonto.data || ''})` : '';
+
                     return `
                         <div class="bg-[#151515] rounded-xl p-3 flex flex-col shadow-sm">
                             <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 truncate">${idx.nome}</span>
-                            <span class="text-sm font-bold ${cor}">${idx.valor}</span>
+                            <span class="text-sm font-bold ${cor}">${rentDisplay}</span>
+                            <span class="text-[9px] text-gray-600 mt-0.5">acum.${dataLabel}</span>
                         </div>`;
                 }).join('');
                 indicesCard.classList.remove('hidden');

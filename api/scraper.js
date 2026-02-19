@@ -512,61 +512,6 @@ async function scrapeCotacaoHistory(ticker, range = '1A') {
 }
 
 // ---------------------------------------------------------
-// PARTE 5: ANÁLISE PROFUNDA DE FIIs (ENXUTA)
-// ---------------------------------------------------------
-
-async function scrapeAnaliseProfundaFii(ticker) {
-    try {
-        const url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
-        const { data: html } = await client.get(url);
-        const $ = cheerio.load(html);
-        const dados = {};
-
-        // 1. SOBRE O FII
-        let sobre = '';
-        $('script[type="application/ld+json"]').each((i, el) => {
-            const jsonText = $(el).html();
-            if (jsonText.includes('"@type": "Article"')) {
-                try {
-                    const jsonObj = JSON.parse(jsonText);
-                    if (jsonObj.articleBody) sobre = jsonObj.articleBody.trim();
-                } catch(e) {}
-            }
-        });
-        if (!sobre) sobre = $('#about-section p').text().trim() || $('.about-company').text().trim() || 'Descrição não disponível.';
-        dados.sobre = sobre;
-
-        // 2. COMPARANDO COM OUTROS FIIS
-        dados.comparacao_fiis = [];
-        const compareUrl = $('#table-compare-fiis').attr('data-url');
-        if (compareUrl) {
-            try {
-                const resCompare = await client.get(compareUrl, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-                });
-                if (resCompare.data && resCompare.data.data) {
-                    dados.comparacao_fiis = resCompare.data.data.map(fii => ({
-                        ticker: cheerio.load(fii.title).text().trim(),
-                        dividend_yield: fii.dividend_yield,
-                        p_vp: fii.p_vp,
-                        valor_patrimonial: fii.net_worth,
-                        tipo: fii.type,
-                        segmento: fii.segment
-                    }));
-                }
-            } catch (e) {
-                console.error(`Erro ao buscar pares de ${ticker}:`, e.message);
-            }
-        }
-
-        return dados;
-    } catch (error) {
-        console.error("Erro na Análise Profunda:", error.message);
-        return { error: "Falha ao extrair dados profundos.", detalhe: error.message };
-    }
-}
-
-// ---------------------------------------------------------
 // HANDLER (API MAIN)
 // ---------------------------------------------------------
 
@@ -673,13 +618,6 @@ if (mode === 'cotacao_historica') {
     const dados = await scrapeCotacaoHistory(payload.ticker, range);
     return res.status(200).json({ json: dados });
 }
-
-        // --- MODO 6: ANÁLISE PROFUNDA DE FII ---
-        if (mode === 'analise_profunda_fii') {
-            if (!payload.ticker) return res.json({ json: { sobre: '', comparacao_fiis: [] } });
-            const dados = await scrapeAnaliseProfundaFii(payload.ticker);
-            return res.status(200).json({ json: dados });
-        }
 
         return res.status(400).json({ error: "Modo desconhecido" });
     } catch (error) {

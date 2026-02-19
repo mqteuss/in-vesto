@@ -645,6 +645,69 @@
             </div>
         </div>
 
+        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-2">Ferramentas</h3>
+        <div class="settings-group mb-6">
+            <button id="btn-calc-juros" class="settings-item w-full">
+                <div class="flex items-center">
+                    <div class="settings-icon-box icon-box-green">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="settings-label">Juros Compostos</span>
+                        <p class="settings-sub">Simule seus investimentos</p>
+                    </div>
+                </div>
+                <svg id="calc-arrow" class="h-4 w-4 text-gray-500 transition-transform duration-300"><use href="#ico-chevron-r"/></svg>
+            </button>
+
+            <!-- Drawer da Calculadora -->
+            <div id="calc-drawer" style="max-height: 0; overflow: hidden; transition: max-height 0.4s ease;">
+                <div class="px-4 pb-5 pt-2 border-t border-[#2C2C2E]">
+                    <!-- Grid de inputs -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Valor Inicial (R$)</label>
+                            <input id="calc-principal" type="number" inputmode="decimal" placeholder="0,00" min="0"
+                                class="w-full bg-[#151515] text-white text-sm font-semibold rounded-xl px-3 py-2.5 border border-[#2C2C2E] focus:outline-none focus:border-green-500/60 transition-colors placeholder-gray-700">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Aporte Mensal (R$)</label>
+                            <input id="calc-aporte" type="number" inputmode="decimal" placeholder="0,00" min="0"
+                                class="w-full bg-[#151515] text-white text-sm font-semibold rounded-xl px-3 py-2.5 border border-[#2C2C2E] focus:outline-none focus:border-green-500/60 transition-colors placeholder-gray-700">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Taxa Anual (%)</label>
+                            <input id="calc-taxa" type="number" inputmode="decimal" placeholder="0,00" min="0" step="0.01"
+                                class="w-full bg-[#151515] text-white text-sm font-semibold rounded-xl px-3 py-2.5 border border-[#2C2C2E] focus:outline-none focus:border-green-500/60 transition-colors placeholder-gray-700">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Período (Anos)</label>
+                            <input id="calc-anos" type="number" inputmode="numeric" placeholder="0" min="1" max="100"
+                                class="w-full bg-[#151515] text-white text-sm font-semibold rounded-xl px-3 py-2.5 border border-[#2C2C2E] focus:outline-none focus:border-green-500/60 transition-colors placeholder-gray-700">
+                        </div>
+                    </div>
+
+                    <!-- Card de Resultado -->
+                    <div class="bg-[#1c1c1e] rounded-2xl p-4 border border-[#2C2C2E]">
+                        <div class="flex justify-between items-center mb-3 pb-3 border-b border-[#2C2C2E]">
+                            <span class="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Total Investido</span>
+                            <span id="calc-result-investido" class="text-sm font-bold text-white">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-4 pb-3 border-b border-[#2C2C2E]">
+                            <span class="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Total em Juros</span>
+                            <span id="calc-result-juros" class="text-sm font-bold text-green-400">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Valor Final</span>
+                            <span id="calc-result-final" class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-2">Segurança</h3>
         <div class="settings-group">
             

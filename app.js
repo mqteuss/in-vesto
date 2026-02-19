@@ -8616,3 +8616,58 @@ window.toggleListaImoveis = function(btn) {
 
     await init();
 });
+
+// ─── Calculadora de Juros Compostos ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const btnCalc      = document.getElementById('btn-calc-juros');
+    const drawer       = document.getElementById('calc-drawer');
+    const arrow        = document.getElementById('calc-arrow');
+    const inPrincipal  = document.getElementById('calc-principal');
+    const inAporte     = document.getElementById('calc-aporte');
+    const inTaxa       = document.getElementById('calc-taxa');
+    const inAnos       = document.getElementById('calc-anos');
+    const outInvestido = document.getElementById('calc-result-investido');
+    const outJuros     = document.getElementById('calc-result-juros');
+    const outFinal     = document.getElementById('calc-result-final');
+
+    if (!btnCalc || !drawer) return;
+
+    const _fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    const fmt = (v) => _fmtBRL.format(v);
+
+    let isOpen = false;
+
+    btnCalc.addEventListener('click', () => {
+        isOpen = !isOpen;
+        drawer.style.maxHeight = isOpen ? (drawer.scrollHeight + 500) + 'px' : '0';
+        arrow.style.transform  = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    });
+
+    function calcular() {
+        const P        = parseFloat(inPrincipal.value) || 0;
+        const PMT      = parseFloat(inAporte.value)    || 0;
+        const taxaAnual = parseFloat(inTaxa.value)     || 0;
+        const anos     = parseFloat(inAnos.value)      || 0;
+        const n        = anos * 12;
+        const totalInvestido = P + PMT * n;
+
+        let montante;
+        if (n <= 0) {
+            montante = P;
+        } else if (taxaAnual === 0) {
+            montante = totalInvestido;
+        } else {
+            const tm = Math.pow(1 + taxaAnual / 100, 1 / 12) - 1;
+            montante = P * Math.pow(1 + tm, n) + PMT * ((Math.pow(1 + tm, n) - 1) / tm);
+        }
+
+        const totalJuros = Math.max(0, montante - totalInvestido);
+        outInvestido.textContent = fmt(totalInvestido);
+        outJuros.textContent     = fmt(totalJuros);
+        outFinal.textContent     = fmt(montante);
+
+        if (isOpen) drawer.style.maxHeight = (drawer.scrollHeight + 500) + 'px';
+    }
+
+    [inPrincipal, inAporte, inTaxa, inAnos].forEach(el => el.addEventListener('input', calcular));
+});

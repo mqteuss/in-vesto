@@ -102,7 +102,7 @@ async function scrapeFundamentos(ticker) {
 
         const $ = cheerio.load(html);
 
-        let dados = {
+let dados = {
             // Campos Comuns
             dy: 'N/A', pvp: 'N/A', pl: 'N/A', roe: 'N/A', lpa: 'N/A', vp_cota: 'N/A',
             val_mercado: 'N/A', liquidez: 'N/A', variacao_12m: 'N/A', ultimo_rendimento: 'N/A',
@@ -119,11 +119,7 @@ async function scrapeFundamentos(ticker) {
             payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A',
 
             // --- NOVO: ARRAY DE IMÓVEIS ---
-            imoveis: [],
-
-            // --- NOVOS CAMPOS: SOBRE E COMPARAÇÃO ---
-            sobre: '',
-            comparacao: []
+            imoveis: [] 
         };
 
         let cotacao_atual = 0;
@@ -260,7 +256,7 @@ async function scrapeFundamentos(ticker) {
             }
         }
 
-        // --- BUSCA DE IMÓVEIS (FIIs) ---
+// --- BUSCA DE IMÓVEIS (FIIs) ---
         $('#properties-section .card-propertie').each((i, el) => {
             const nome = $(el).find('h3').text().trim();
             let estado = '';
@@ -272,89 +268,6 @@ async function scrapeFundamentos(ticker) {
             });
             if (nome) {
                 dados.imoveis.push({ nome, estado, abl });
-            }
-        });
-
-        // =========================================================
-        // 1. SOBRE O ATIVO (Lógica Reforçada)
-        // =========================================================
-        let sobreTexto = '';
-        
-        // Tentativa A: Texto visível na tela (vários seletores possíveis)
-        $('#about-section p, .profile-description p, #description p, .text-description p').each((i, el) => {
-            sobreTexto += $(el).text().trim() + ' ';
-        });
-
-        // Tentativa B: Dados Estruturados (JSON-LD) - Onde o texto real costuma estar no HTML estático
-        if (!sobreTexto.trim()) {
-            $('script[type="application/ld+json"]').each((i, el) => {
-                try {
-                    const html = $(el).html();
-                    if (html) {
-                        const json = JSON.parse(html);
-                        // O JSON pode ser um objeto direto ou ter um @graph
-                        const items = json['@graph'] ? json['@graph'] : [json];
-                        
-                        items.forEach(item => {
-                            if (item.articleBody) {
-                                sobreTexto = item.articleBody;
-                            }
-                        });
-                    }
-                } catch (e) { }
-            });
-        }
-
-        // Tentativa C: Meta Descrição (Último recurso)
-        if (!sobreTexto.trim()) {
-            sobreTexto = $('meta[name="description"]').attr('content') || '';
-        }
-
-        dados.sobre = sobreTexto.replace(/\s+/g, ' ').trim();
-
-        // =========================================================
-        // 2. COMPARAÇÃO COM OUTROS FIIS (Lógica Híbrida)
-        // =========================================================
-        dados.comparacao = []; // Garante que o array existe
-        const tickersVistos = new Set(); // Para evitar duplicatas
-
-        // Método A: Tabela Clássica (Se existir)
-        $('#table-compare-fiis tbody tr, #table-compare-segments tbody tr').each((i, el) => {
-            const cols = $(el).find('td');
-            if (cols.length >= 3) {
-                const ticker = $(cols[0]).text().replace(/\s+/g, ' ').trim();
-                if (ticker && !tickersVistos.has(ticker)) {
-                    let nome = $(cols[0]).find('a').attr('title') || '';
-                    const dy = $(cols[1]).text().trim();
-                    const pvp = $(cols[2]).text().trim();
-                    
-                    dados.comparacao.push({ ticker, nome, dy, pvp });
-                    tickersVistos.add(ticker);
-                }
-            }
-        });
-
-        // Método B: Cards Relacionados (Encontrado no seu arquivo HTML)
-        // O site às vezes entrega a comparação como cards com a classe .card-related-fii
-        $('.card-related-fii').each((i, el) => {
-            const ticker = $(el).find('h2').text().trim();
-            
-            if (ticker && !tickersVistos.has(ticker)) {
-                // Tenta pegar o nome no h3 ou span
-                const nome = $(el).find('h3, span.name').first().text().trim();
-                
-                // Extrai DY e P/VP buscando nos parágrafos do footer do card
-                let dy = '-';
-                let pvp = '-';
-                
-                $(el).find('.card-footer p, .card-footer div').each((j, p) => {
-                    const text = $(p).text();
-                    if (text.includes('DY:')) dy = text.replace('DY:', '').replace(/\s/g, '');
-                    if (text.includes('P/VP:')) pvp = text.replace('P/VP:', '').replace(/\s/g, '');
-                });
-
-                dados.comparacao.push({ ticker, nome, dy, pvp });
-                tickersVistos.add(ticker);
             }
         });
 
@@ -654,7 +567,7 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
 
-        if (mode === 'historico_12m') {
+if (mode === 'historico_12m') {
             if (!payload.ticker) return res.json({ json: [] });
 
             // Pega todo o histórico cru (sem limite de 18 meses e sem agrupar ainda)
@@ -664,7 +577,7 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ json: history });
         }
 
-        if (mode === 'proximo_provento') {
+if (mode === 'proximo_provento') {
             if (!payload.ticker) return res.json({ json: null });
             const history = await scrapeAsset(payload.ticker);
 
@@ -699,11 +612,12 @@ module.exports = async function handler(req, res) {
         }
 
         // --- MODO 4: COTAÇÃO HISTÓRICA (NOVO) ---
-        if (mode === 'cotacao_historica') {
-            const range = payload.range || '1D'; // Default muda conforme sua preferência
-            const dados = await scrapeCotacaoHistory(payload.ticker, range);
-            return res.status(200).json({ json: dados });
-        }
+// Exemplo dentro do seu router/handler da API:
+if (mode === 'cotacao_historica') {
+    const range = payload.range || '1D'; // Default muda conforme sua preferência
+    const dados = await scrapeCotacaoHistory(payload.ticker, range);
+    return res.status(200).json({ json: dados });
+}
 
         return res.status(400).json({ error: "Modo desconhecido" });
     } catch (error) {

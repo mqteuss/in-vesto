@@ -8420,145 +8420,204 @@ if (objetivosContent) {
 
 window.openObjetivosModal = openObjetivosModal;
 
-    //  MÓDULO CALCULADORA (BOLA DE NEVE)
+    // ─────────────────────────────────────────────────────────────────────────
+    //  MÓDULO CALCULADORA (BOLA DE NEVE) — refatorado para alta performance
+    // ─────────────────────────────────────────────────────────────────────────
 
-    const calcModal = document.getElementById('calculadora-page-modal');
-    const calcContent = document.getElementById('tab-calculadora-content');
-    const calcVoltarBtn = document.getElementById('calculadora-voltar-btn');
-    const btnCalcular = document.getElementById('calc-btn-calcular');
+    /**
+     * Singleton com todas as referências DOM da calculadora.
+     * Resolvido uma única vez na inicialização; nunca mais percorre o DOM.
+     */
+    const CalculatorUI = (() => {
+        const $ = id => document.getElementById(id);
+        return {
+            // Modal / estrutura
+            modal:      $('calculadora-page-modal'),
+            content:    $('tab-calculadora-content'),
+            voltarBtn:  $('calculadora-voltar-btn'),
+            calcBtn:    $('calc-btn-calcular'),
+            // Inputs
+            inInicial:  $('calc-inicial'),
+            inMensal:   $('calc-mensal'),
+            inTaxa:     $('calc-taxa'),
+            inTaxaTipo: $('calc-taxa-tipo'),
+            inTempo:    $('calc-tempo'),
+            inTempoTipo:$('calc-tempo-tipo'),
+            // Outputs
+            outFinal:      $('calc-resultado-final'),
+            outInvestido:  $('calc-total-investido'),
+            outJuros:      $('calc-total-juros'),
+            barInvestido:  $('calc-barra-investido'),
+            barJuros:      $('calc-barra-juros'),
+        };
+    })();
 
-    // Elementos de Output
-    const outFinal = document.getElementById('calc-resultado-final');
-    const outInvestido = document.getElementById('calc-total-investido');
-    const outJuros = document.getElementById('calc-total-juros');
-    const barInvestido = document.getElementById('calc-barra-investido');
-    const barJuros = document.getElementById('calc-barra-juros');
+    /**
+     * Função pura de cálculo: recebe apenas números, devolve apenas números.
+     * Sem efeitos colaterais, sem acesso ao DOM — testável e reutilizável.
+     *
+     * @param {{ vInicial:number, aMensal:number, taxaBase:number,
+     *            taxaTipo:string, tempoBase:number, tempoTipo:string }} params
+     * @returns {{ total:number, investido:number, juros:number,
+     *             pctInvestido:number, pctJuros:number }}
+     */
+    function calculateCompoundInterest({ vInicial, aMensal, taxaBase, taxaTipo, tempoBase, tempoTipo }) {
+        // Normalização: tudo para meses e taxa mensal
+        const meses      = tempoTipo === 'anos' ? tempoBase * 12 : tempoBase;
+        const taxaMensal = taxaTipo  === 'anual'
+            ? Math.pow(1 + taxaBase / 100, 1 / 12) - 1
+            : taxaBase / 100;
 
-    // Variáveis de controlo do Swipe
-    let isDraggingCalc = false;
-    let touchStartCalcY = 0;
-    let touchMoveCalcY = 0;
+        const investido = vInicial + aMensal * meses;
 
-    // Função de Animação de Abertura (Com GPU)
-window.openCalculadoraModal = function() {
-        if (!calcModal || !calcContent) return;
+        let total = taxaMensal > 0
+            ? vInicial * Math.pow(1 + taxaMensal, meses)
+              + aMensal * (Math.pow(1 + taxaMensal, meses) - 1) / taxaMensal
+            : investido; // taxa zero → sem juros, apenas aportes
 
-        calcModal.classList.add('visible');
-        calcContent.style.transform = ''; 
-        calcContent.classList.remove('closing');
-        document.body.style.overflow = 'hidden';
+        // Proteção contra resultados negativos (inputs extremos)
+        if (total    < 0) total    = 0;
+        const juros  = Math.max(0, total - investido);
 
-        // Atrasar o cálculo para não engasgar a animação CSS (Mantido por performance)
-        setTimeout(() => {
-            calcularJuros(); 
-        }, 50);
+        const base          = total > 0 ? total : 1; // evita divisão por zero
+        const pctInvestido  = (investido / base) * 100;
+        const pctJuros      = (juros     / base) * 100;
+
+        return { total, investido, juros, pctInvestido, pctJuros };
     }
 
-    // Função de Animação de Fechamento (Com GPU)
-function closeCalculadoraModal() {
-        if (!calcModal || !calcContent) return;
+    /**
+     * Atualiza o DOM da calculadora com os dados já calculados.
+     * As mutações de layout (style.width das barras) são agendadas via
+     * requestAnimationFrame para ficarem em sincronia com o vsync (60 fps),
+     * eliminando jank causado por writes/reads de layout intercalados.
+     *
+     * @param {{ total:number, investido:number, juros:number,
+     *            pctInvestido:number, pctJuros:number }} data
+     */
+    function updateCalculatorUI({ total, investido, juros, pctInvestido, pctJuros }) {
+        // Textos: sem impacto de layout — podem ser escritos diretamente
+        if (CalculatorUI.outFinal)     CalculatorUI.outFinal.textContent     = formatBRL(total);
+        if (CalculatorUI.outInvestido) CalculatorUI.outInvestido.textContent = formatBRL(investido);
+        if (CalculatorUI.outJuros)     CalculatorUI.outJuros.textContent     = formatBRL(juros);
 
-        calcContent.style.transform = '';
-        calcContent.classList.add('closing');
-        calcModal.classList.remove('visible');
+        // Larguras das barras: agendadas no próximo frame para evitar layout thrashing
+        requestAnimationFrame(() => {
+            if (CalculatorUI.barInvestido) CalculatorUI.barInvestido.style.width = `${pctInvestido}%`;
+            if (CalculatorUI.barJuros)     CalculatorUI.barJuros.style.width     = `${pctJuros}%`;
+        });
+    }
+
+    /**
+     * Lê os valores do CalculatorUI singleton, calcula e renderiza.
+     * Leve o suficiente para rodar a cada keystroke sem travar.
+     */
+    function runCalculator() {
+        const data = calculateCompoundInterest({
+            vInicial:  parseFloat(CalculatorUI.inInicial?.value)   || 0,
+            aMensal:   parseFloat(CalculatorUI.inMensal?.value)    || 0,
+            taxaBase:  parseFloat(CalculatorUI.inTaxa?.value)      || 0,
+            taxaTipo:  CalculatorUI.inTaxaTipo?.value  ?? 'mensal',
+            tempoBase: parseFloat(CalculatorUI.inTempo?.value)     || 0,
+            tempoTipo: CalculatorUI.inTempoTipo?.value ?? 'anos',
+        });
+        updateCalculatorUI(data);
+    }
+
+    // ── Open / Close ─────────────────────────────────────────────────────────
+
+    window.openCalculadoraModal = function () {
+        const { modal, content } = CalculatorUI;
+        if (!modal || !content) return;
+
+        modal.classList.add('visible');
+        content.style.transform = '';
+        content.classList.remove('closing');
+        document.body.style.overflow = 'hidden';
+
+        // Pequeno atraso para não competir com a animação CSS de abertura
+        setTimeout(runCalculator, 50);
+    };
+
+    function closeCalculadoraModal() {
+        const { modal, content } = CalculatorUI;
+        if (!modal || !content) return;
+
+        content.style.transform = '';
+        content.classList.add('closing');
+        modal.classList.remove('visible');
         document.body.style.overflow = '';
     }
 
-    function calcularJuros() {
-        const vInicial = parseFloat(document.getElementById('calc-inicial').value) || 0;
-        const aMensal = parseFloat(document.getElementById('calc-mensal').value) || 0;
-        const taxaBase = parseFloat(document.getElementById('calc-taxa').value) || 0;
-        const taxaTipo = document.getElementById('calc-taxa-tipo').value;
-        const tempoBase = parseFloat(document.getElementById('calc-tempo').value) || 0;
-        const tempoTipo = document.getElementById('calc-tempo-tipo').value;
+    // ── Event Listeners ───────────────────────────────────────────────────────
 
-        // Normalização: Tudo para MESES e taxa MENSAL
-        let meses = tempoTipo === 'anos' ? tempoBase * 12 : tempoBase;
-        let taxaMensal = taxaTipo === 'anual' ? (Math.pow(1 + (taxaBase / 100), 1 / 12) - 1) : (taxaBase / 100);
+    // Botão "Calcular" (mantido para usuários que preferem confirmar manualmente)
+    CalculatorUI.calcBtn?.addEventListener('click', runCalculator);
 
-        let totalInvestido = vInicial + (aMensal * meses);
-        let totalAculumado = 0;
+    // Fechar ao clicar no botão Voltar
+    CalculatorUI.voltarBtn?.addEventListener('click', closeCalculadoraModal);
 
-        // Elimina o For Loop. Calcula tudo em 1 único passo.
-        if (taxaMensal > 0) {
-            const fatorJuros = Math.pow(1 + taxaMensal, meses);
-            totalAculumado = (vInicial * fatorJuros) + (aMensal * ((fatorJuros - 1) / taxaMensal));
-        } else {
-            totalAculumado = totalInvestido; // Se a taxa for 0, é apenas o dinheiro guardado
-        }
-
-        let totalJuros = totalAculumado - totalInvestido;
-
-        // Proteção contra números negativos
-        if (totalAculumado < 0) totalAculumado = 0;
-        if (totalJuros < 0) totalJuros = 0;
-
-        // Atualiza a Interface
-        outFinal.textContent = formatBRL(totalAculumado);
-        outInvestido.textContent = formatBRL(totalInvestido);
-        outJuros.textContent = formatBRL(totalJuros);
-
-        // Atualiza as Barras
-        const total = totalAculumado > 0 ? totalAculumado : 1; // Evita divisão por 0
-        const pctInvestido = (totalInvestido / total) * 100;
-        const pctJuros = (totalJuros / total) * 100;
-
-        barInvestido.style.width = `${pctInvestido}%`;
-        barJuros.style.width = `${pctJuros}%`;
-    }
-
-    // Event Listeners
-    if (btnCalcular) btnCalcular.addEventListener('click', calcularJuros);
-    if (calcVoltarBtn) calcVoltarBtn.addEventListener('click', closeCalculadoraModal);
-
-    // Auto-cálculo ao mudar as caixas de seleção
-    document.getElementById('calc-taxa-tipo')?.addEventListener('change', calcularJuros);
-    document.getElementById('calc-tempo-tipo')?.addEventListener('change', calcularJuros);
-
-    // Fechar ao tocar no fundo escuro fora do modal
-    if (calcModal) calcModal.addEventListener('click', (e) => { 
-        if(e.target === calcModal) closeCalculadoraModal(); 
+    // Fechar ao tocar no fundo escuro fora do painel
+    CalculatorUI.modal?.addEventListener('click', e => {
+        if (e.target === CalculatorUI.modal) closeCalculadoraModal();
     });
 
-if (calcContent) {
-        const scrollAreaCalc = calcContent.querySelector('.overflow-y-auto');
+    // Cálculo em tempo real a cada keystroke nos campos numéricos (`input`)
+    [CalculatorUI.inInicial, CalculatorUI.inMensal, CalculatorUI.inTaxa, CalculatorUI.inTempo]
+        .forEach(el => el?.addEventListener('input', runCalculator));
 
-        calcContent.addEventListener('touchstart', (e) => {
+    // Selects disparam `change` (sem digitação) — mantém UX esperada
+    CalculatorUI.inTaxaTipo?.addEventListener('change',  runCalculator);
+    CalculatorUI.inTempoTipo?.addEventListener('change', runCalculator);
+
+    // ── Touch / Swipe para fechar ─────────────────────────────────────────────
+
+    if (CalculatorUI.content) {
+        const scrollAreaCalc = CalculatorUI.content.querySelector('.overflow-y-auto');
+        let isDraggingCalc   = false;
+        let touchStartCalcY  = 0;
+        let touchMoveCalcY   = 0;
+
+        // passive:true → não bloqueia o scroll nativo do browser
+        CalculatorUI.content.addEventListener('touchstart', e => {
             if (scrollAreaCalc && scrollAreaCalc.scrollTop === 0) {
                 touchStartCalcY = e.touches[0].clientY;
-                touchMoveCalcY = touchStartCalcY;
-                isDraggingCalc = true;
-                calcContent.style.transition = 'none'; 
+                touchMoveCalcY  = touchStartCalcY;
+                isDraggingCalc  = true;
+                CalculatorUI.content.style.transition = 'none';
             }
         }, { passive: true });
 
-        calcContent.addEventListener('touchmove', (e) => {
+        // passive:false obrigatório aqui pois chamamos e.preventDefault()
+        // para impedir o scroll da página enquanto o drag está ativo.
+        CalculatorUI.content.addEventListener('touchmove', e => {
             if (!isDraggingCalc) return;
             touchMoveCalcY = e.touches[0].clientY;
             const diff = touchMoveCalcY - touchStartCalcY;
 
             if (diff > 0) {
-                if (e.cancelable) e.preventDefault(); 
-                calcContent.style.transform = `translateY(${diff}px)`; 
+                if (e.cancelable) e.preventDefault();
+                CalculatorUI.content.style.transform = `translateY(${diff}px)`;
             }
         }, { passive: false });
 
-        calcContent.addEventListener('touchend', (e) => {
+        // passive:true → sem necessidade de preventDefault no touchend
+        CalculatorUI.content.addEventListener('touchend', () => {
             if (!isDraggingCalc) return;
             isDraggingCalc = false;
 
             const diff = touchMoveCalcY - touchStartCalcY;
-            calcContent.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            CalculatorUI.content.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
 
             if (diff > 120) {
                 closeCalculadoraModal();
             } else {
-                // RESET PADRÃO
-                calcContent.style.transform = '';
+                CalculatorUI.content.style.transform = '';
             }
-            touchStartCalcY = 0; 
-            touchMoveCalcY = 0;
-        });
+
+            touchStartCalcY = 0;
+            touchMoveCalcY  = 0;
+        }, { passive: true });
     }
 
 window.renderizarListaImoveis = function(imoveis) {

@@ -29,9 +29,6 @@ let currentProventosFilter = '12m';
 let customRangeStart = ''; // Formato: 'YYYY-MM'
 let customRangeEnd = '';   // Formato: 'YYYY-MM'
 
-// Dados brutos da última análise profunda carregada
-let analiseRawData = null;
-
 const CHART_COLORS = {
     JCP:  { bg: '#fbbf24', border: '#d97706' }, 
     TRIB: { bg: '#fb7185', border: '#e11d48' }, 
@@ -3946,24 +3943,6 @@ async function buscarProventosFuturos(force = false) {
         return result;
     }
 
-    // Busca Análise Profunda de FII (Sobre + Comparação) — cache 4h
-    async function callScraperAnaliseProfundaFiiAPI(ticker) {
-        const cacheKey = `analise_profunda_${ticker.toUpperCase()}`;
-        const cached = await getCache(cacheKey);
-        if (cached) return cached;
-
-        const response = await fetchBFF('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: 'analise_profunda_fii', payload: { ticker } })
-        });
-        const result = response.json;
-        if (result && !result.error) {
-            await setCache(cacheKey, result, CACHE_FUNDAMENTOS_ABERTO);
-        }
-        return result;
-    }
-
 async function buscarHistoricoProventosAgregado(force = false) {
         // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
         const ativosCarteira = carteiraCalculada.map(a => a.symbol);
@@ -4696,33 +4675,6 @@ function handleAbrirModalEdicao(id) {
         detalhesPreco.innerHTML = '';
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
-
-        // Limpa a seção de Análise Profunda
-        const analiseContainer = document.getElementById('detalhes-analise-container');
-        if (analiseContainer) analiseContainer.innerHTML = '';
-        const comparacaoContainer = document.getElementById('detalhes-comparacao-container');
-        if (comparacaoContainer) comparacaoContainer.innerHTML = '';
-        analiseRawData = null;
-
-        // Reseta tabs para Visão Geral
-        const tabNav = document.getElementById('detalhes-tab-nav');
-        if (tabNav) {
-            tabNav.classList.add('hidden');
-            const tabBtnComp = document.getElementById('detalhes-tab-btn-comparacao');
-            if (tabBtnComp) tabBtnComp.classList.add('hidden');
-            document.querySelectorAll('.detalhes-tab-pane').forEach(p => p.classList.add('hidden'));
-            const geralPane = document.getElementById('detalhes-tab-geral');
-            if (geralPane) geralPane.classList.remove('hidden');
-            document.querySelectorAll('.detalhes-tab-btn').forEach(b => {
-                b.classList.remove('active', 'bg-[#2C2C2E]', 'text-white');
-                b.classList.add('text-gray-500');
-            });
-            const firstBtn = tabNav.querySelector('.detalhes-tab-btn[data-target="detalhes-tab-geral"]');
-            if (firstBtn) {
-                firstBtn.classList.add('active', 'bg-[#2C2C2E]', 'text-white');
-                firstBtn.classList.remove('text-gray-500');
-            }
-        }
 
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
@@ -6000,16 +5952,6 @@ async function handleMostrarDetalhes(symbol) {
     const ehFii = isFII(symbol);
     const ehAcao = !ehFii;
 
-    // Mostra tab nav e configura abas
-    const tabNav = document.getElementById('detalhes-tab-nav');
-    if (tabNav) {
-        tabNav.classList.remove('hidden');
-        const tabBtnComp = document.getElementById('detalhes-tab-btn-comparacao');
-        if (tabBtnComp) {
-            tabBtnComp.classList.toggle('hidden', !ehFii);
-        }
-    }
-
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
 
@@ -6063,8 +6005,6 @@ async function handleMostrarDetalhes(symbol) {
     // Disparo de gráficos sem bloquear o fluxo principal
     fetchHistoricoScraper(symbol); 
     fetchCotacaoHistorica(symbol);
-    // Dispara Análise Profunda somente para FIIs (lazy, sem bloquear)
-    if (ehFii) fetchAnaliseProfundaFii(symbol);
 
     // ─── FASE 1: Renderiza o modal assim que o PREÇO chegar ─────────────────────
     // (pode ser instantâneo se vier do cache)
@@ -6752,141 +6692,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
 // Ordem exata das telas (deve bater com a ordem das divs no HTML)
     const tabOrder = ['tab-dashboard', 'tab-carteira', 'tab-noticias', 'tab-historico', 'tab-config'];
 
-// ─── ANÁLISE PROFUNDA DE FIIs ──────────────────────────────────────────────────
-
-async function fetchAnaliseProfundaFii(symbol) {
-    // Só executa para FIIs
-    if (!isFII(symbol)) return;
-
-    const symbolAlvo = symbol;
-
-    // Skeleton de loading no container "Sobre" (Visão Geral)
-    const analiseContainer = document.getElementById('detalhes-analise-container');
-    if (analiseContainer) {
-        analiseContainer.innerHTML = `
-            <div class="border-t border-[#2C2C2E] pt-8 mt-6 mb-4 space-y-3 animate-pulse">
-                <div class="h-3 bg-[#1C1C1E] rounded w-32 mb-4"></div>
-                <div class="h-24 bg-[#151515] rounded-xl"></div>
-            </div>`;
-    }
-
-    // Skeleton de loading no container "Comparação"
-    const comparacaoContainer = document.getElementById('detalhes-comparacao-container');
-    if (comparacaoContainer) {
-        comparacaoContainer.innerHTML = `
-            <div class="grid grid-cols-2 gap-2 animate-pulse">
-                <div class="bg-[#151515] rounded-xl h-32"></div>
-                <div class="bg-[#151515] rounded-xl h-32"></div>
-                <div class="bg-[#151515] rounded-xl h-32"></div>
-                <div class="bg-[#151515] rounded-xl h-32"></div>
-            </div>`;
-    }
-
-    try {
-        const dados = await callScraperAnaliseProfundaFiiAPI(symbol);
-
-        // Cancela se o modal já foi trocado
-        if (currentDetalhesSymbol !== symbolAlvo) return;
-
-        if (!dados || dados.error) {
-            if (analiseContainer) analiseContainer.innerHTML = `<p class="text-center text-xs text-gray-600 py-6">Análise comparativa indisponível no momento.</p>`;
-            if (comparacaoContainer) comparacaoContainer.innerHTML = '';
-            return;
-        }
-
-        // Guarda dados brutos para eventuais re-renders
-        analiseRawData = dados;
-
-        renderAnaliseProfundaFii(symbol, dados);
-
-    } catch (e) {
-        if (currentDetalhesSymbol !== symbolAlvo) return;
-        console.error('Erro fetchAnaliseProfundaFii:', e);
-        if (analiseContainer) analiseContainer.innerHTML = `<p class="text-center text-xs text-gray-600 py-6">Erro ao carregar análise profunda.</p>`;
-        if (comparacaoContainer) comparacaoContainer.innerHTML = '';
-    }
-}
-
-function renderAnaliseProfundaFii(symbol, dados) {
-    // ── 1. SOBRE O FII ── renderiza no container da tab "Visão Geral"
-    const analiseContainer = document.getElementById('detalhes-analise-container');
-    if (analiseContainer) {
-        analiseContainer.innerHTML = `
-            <div class="border-t border-[#2C2C2E] pt-8 mt-6">
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">
-                    Sobre a: <span class="text-white">${symbol}</span>
-                </h4>
-                <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
-                    <p class="text-xs text-gray-400 leading-relaxed">${dados.sobre || 'Descrição não disponível.'}</p>
-                </div>
-            </div>`;
-    }
-
-    // ── 2. COMPARAÇÃO ── renderiza no container da tab "Comparação"
-    const comparacaoContainer = document.getElementById('detalhes-comparacao-container');
-    if (!comparacaoContainer) return;
-
-    const fiis = dados.comparacao_fiis || [];
-
-    if (fiis.length === 0) {
-        comparacaoContainer.innerHTML = `<p class="text-xs text-gray-600 text-center py-8">Nenhum FII comparável encontrado.</p>`;
-        return;
-    }
-
-    // Ordena por DY descendente
-    const sorted = [...fiis].sort((a, b) => {
-        const dyA = parseFloat((a.dividend_yield || '0').toString().replace(',', '.')) || 0;
-        const dyB = parseFloat((b.dividend_yield || '0').toString().replace(',', '.')) || 0;
-        return dyB - dyA;
-    });
-
-    const gerarCardFii = (f) => {
-        const isCurrentTicker = (f.ticker || '').toUpperCase() === symbol.toUpperCase();
-        const dy  = f.dividend_yield != null ? f.dividend_yield : '-';
-        const pvp = f.p_vp != null ? f.p_vp : '-';
-        const pat = f.valor_patrimonial != null
-            ? `R$ ${Number(f.valor_patrimonial).toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })}`
-            : '-';
-        const ringCls = isCurrentTicker ? 'ring-1 ring-purple-500/60' : '';
-        const bgCls   = isCurrentTicker ? 'bg-purple-900/10' : 'bg-[#151515]';
-
-        return `
-            <div class="${bgCls} ${ringCls} rounded-xl p-3 shadow-sm flex flex-col relative overflow-hidden cursor-pointer active:scale-[0.97] transition-transform"
-                 onclick="window.abrirDetalhesAtivo && window.abrirDetalhesAtivo('${f.ticker}')">
-                ${isCurrentTicker ? `<span class="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-purple-400 flex-shrink-0"></span>` : ''}
-                <span class="text-[12px] font-bold text-white tracking-tight leading-none mb-2 pr-3 truncate">${f.ticker || '-'}</span>
-                <span class="text-[22px] font-extrabold text-green-400 leading-none">${dy}%</span>
-                <span class="text-[7px] text-gray-500 font-bold uppercase tracking-widest mb-3 leading-none">DY</span>
-                <div class="flex justify-between items-start border-t border-white/5 pt-2 mt-auto gap-1">
-                    <div class="flex flex-col min-w-0">
-                        <span class="text-[7px] text-gray-500 font-bold tracking-widest uppercase leading-none mb-0.5">P/VP</span>
-                        <span class="text-[10px] text-gray-300 font-bold leading-none">${pvp}</span>
-                    </div>
-                    <div class="flex flex-col text-right min-w-0 flex-1">
-                        <span class="text-[7px] text-gray-500 font-bold tracking-widest uppercase leading-none mb-0.5">Patrim.</span>
-                        <span class="text-[9px] text-gray-300 font-bold leading-none truncate">${pat}</span>
-                    </div>
-                </div>
-                ${(f.tipo || f.segmento) ? `
-                <div class="mt-1.5 pt-1.5 border-t border-white/5">
-                    <span class="text-[8px] text-gray-600 leading-none block truncate">${[f.tipo, f.segmento].filter(Boolean).join(' · ')}</span>
-                </div>` : ''}
-            </div>`;
-    };
-
-    comparacaoContainer.innerHTML = `
-        <div class="grid grid-cols-2 gap-2">
-            ${sorted.map(gerarCardFii).join('')}
-        </div>
-        <p class="text-[9px] text-gray-700 mt-3 text-right pb-10">${fiis.length} FIIs • Ordenado por DY</p>`;
-}
-
-
-
-
-
-
-
 function mudarAba(tabId) {
         const index = tabOrder.indexOf(tabId);
         if (index === -1) return;
@@ -7030,35 +6835,6 @@ const tabDashboard = document.getElementById('tab-dashboard');
     });
 
     detalhesVoltarBtn.addEventListener('click', hideDetalhesModal);
-
-    // ── Navegação por tabs do modal de detalhes ───────────────────────────────
-    const detalhesTabNav = document.getElementById('detalhes-tab-nav');
-    if (detalhesTabNav) {
-        detalhesTabNav.addEventListener('click', (e) => {
-            const btn = e.target.closest('.detalhes-tab-btn');
-            if (!btn) return;
-            const targetId = btn.dataset.target;
-            if (!targetId) return;
-
-            // Desativa todos os botões
-            detalhesTabNav.querySelectorAll('.detalhes-tab-btn').forEach(b => {
-                b.classList.remove('active', 'bg-[#2C2C2E]', 'text-white');
-                b.classList.add('text-gray-500');
-            });
-
-            // Oculta todos os panes
-            document.querySelectorAll('.detalhes-tab-pane').forEach(p => p.classList.add('hidden'));
-
-            // Ativa o botão e o pane corretos
-            btn.classList.add('active', 'bg-[#2C2C2E]', 'text-white');
-            btn.classList.remove('text-gray-500');
-            const pane = document.getElementById(targetId);
-            if (pane) pane.classList.remove('hidden');
-
-            // Scroll do conteúdo para o topo ao trocar de tab
-            if (detalhesConteudoScroll) detalhesConteudoScroll.scrollTop = 0;
-        });
-    }
     detalhesPageModal.addEventListener('click', (e) => {
         if (e.target === detalhesPageModal) { hideDetalhesModal(); } 
     });

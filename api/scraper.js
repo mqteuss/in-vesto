@@ -120,9 +120,6 @@ let dados = {
 
             // --- NOVO: ARRAY DE IMÓVEIS ---
             imoveis: [] 
-			// --- NOVOS CAMPOS ---
-            sobre: '',
-            comparacao: []
         };
 
         let cotacao_atual = 0;
@@ -271,49 +268,6 @@ let dados = {
             });
             if (nome) {
                 dados.imoveis.push({ nome, estado, abl });
-            }
-        });
-		
-		// =========================================================
-        // NOVA LÓGICA: SOBRE O ATIVO
-        // =========================================================
-        let sobreTexto = '';
-        $('#about-section p, .profile-description p, #description p').each((i, el) => {
-            sobreTexto += $(el).text().trim() + ' ';
-        });
-        
-        // Fallback: O Investidor10 costuma guardar o texto exato do "Sobre" no Schema JSON-LD
-        if (!sobreTexto.trim()) {
-            $('script[type="application/ld+json"]').each((i, el) => {
-                try {
-                    const json = JSON.parse($(el).html());
-                    // Verifica se encontrou o "articleBody" que contém o texto da descrição
-                    if (json.articleBody) sobreTexto = json.articleBody;
-                } catch (e) {}
-            });
-        }
-        dados.sobre = sobreTexto.replace(/\s+/g, ' ').trim(); // Limpa quebras de linha e múltiplos espaços
-
-        // =========================================================
-        // NOVA LÓGICA: COMPARANDO COM OUTROS FIIS / AÇÕES
-        // =========================================================
-        // Usa seletores de tabela tanto para fundos quanto para ações
-        $('#table-compare-fiis tbody tr, #table-compare-segments tbody tr').each((i, el) => {
-            const cols = $(el).find('td');
-            // Garante que a linha tem as colunas básicas
-            if (cols.length >= 3) {
-                const colTicker = $(cols[0]);
-                const ticker = colTicker.text().replace(/\s+/g, ' ').trim();
-                
-                // Extrai nome (se houver), DY e P/VP
-                let nome = colTicker.find('a').attr('title') || colTicker.attr('title') || '';
-                const dy = $(cols[1]).text().replace(/\s+/g, ' ').trim();
-                const pvp = $(cols[2]).text().replace(/\s+/g, ' ').trim();
-                
-                // Evita pegar linhas vazias de placeholders
-                if (ticker && ticker !== '-' && !ticker.toLowerCase().includes('nenhum')) {
-                    dados.comparacao.push({ ticker, nome, dy, pvp });
-                }
             }
         });
 

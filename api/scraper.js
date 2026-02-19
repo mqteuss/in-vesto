@@ -80,14 +80,25 @@ function cleanDoubledString(str) {
 async function scrapeFundamentos(ticker) {
     try {
         let html;
+        // Dispara as duas URLs em paralelo — usa a que responder primeiro com sucesso
+        // Economiza até ~1-2s quando o tipo não está em cache (evita o fallback sequencial)
+        const urlFii  = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
+        const urlAcao = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
+
+        const fetchHtml = async (url) => {
+            const res = await client.get(url);
+            // Rejeita a resposta se for uma página de erro/não encontrado do Investidor10
+            if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
+            // Verifica se é uma página de ativo válido (tem conteúdo de cotação)
+            if (!res.data.includes('cotacao') && !res.data.includes('Cotação')) throw new Error('Página inválida');
+            return res.data;
+        };
+
         try {
-            // Tenta FIIs primeiro
-            const res = await client.get(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`);
-            html = res.data;
+            html = await Promise.any([fetchHtml(urlFii), fetchHtml(urlAcao)]);
         } catch (e) {
-            // Se falhar, tenta Ações
-            const res = await client.get(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`);
-            html = res.data;
+            // Promise.any só rejeita quando TODAS falham (AggregateError)
+            throw new Error('Ativo não encontrado no Investidor10');
         }
 
         const $ = cheerio.load(html);

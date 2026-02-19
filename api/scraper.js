@@ -516,244 +516,110 @@ async function scrapeCotacaoHistory(ticker, range = '1A') {
 // ---------------------------------------------------------
 
 async function scrapeAnaliseProfundaFii(ticker) {
-    const resultado = {
-        sobre: null,
-        dy_periodos: [],
-        comparacao_fii: [],
-        historico_indicadores: [],
-        comparacao_indices: []
-    };
+    // NOTA: Esta função retorna as seguintes chaves para o frontend:
+    //   sobre           → string
+    //   dividend_yield  → [{periodo, percentual, valor}]
+    //   comparacao_fiis → [{ticker, dividend_yield, p_vp, valor_patrimonial, tipo, segmento}]
+    //   historico_indicadores → [{tipo, data_com, pagamento, valor}]
+    //   comparacao_indices    → [{nome, dados:[{data, rentabilidade}]}]
 
     try {
         const url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         const { data: html } = await client.get(url);
         const $ = cheerio.load(html);
+        const dados = {};
 
-        // ── 1. SOBRE ──────────────────────────────────────────────────────────────
-        try {
-            let sobreTexto = null;
-
-            // Tenta JSON-LD com @type Article (mais confiável)
-            $('script[type="application/ld+json"]').each((_, el) => {
-                if (sobreTexto) return false; // já achou
+        // 1. SOBRE O FII
+        let sobre = '';
+        $('script[type="application/ld+json"]').each((i, el) => {
+            const jsonText = $(el).html();
+            if (jsonText.includes('"@type": "Article"')) {
                 try {
-                    const json = JSON.parse($(el).html());
-                    const articles = Array.isArray(json) ? json : [json];
-                    for (const obj of articles) {
-                        if (obj['@type'] === 'Article' && obj.articleBody) {
-                            sobreTexto = obj.articleBody.trim();
-                            break;
-                        }
-                    }
-                } catch (_) {}
-            });
-
-            // Fallback: parágrafo do about-section
-            if (!sobreTexto) {
-                sobreTexto = $('#about-section p').first().text().trim() ||
-                             $('[id*="about"] p').first().text().trim() ||
-                             $('[class*="description"] p').first().text().trim();
+                    const jsonObj = JSON.parse(jsonText);
+                    if (jsonObj.articleBody) sobre = jsonObj.articleBody.trim();
+                } catch(e) {}
             }
+        });
+        if (!sobre) sobre = $('#about-section p').text().trim() || $('.about-company').text().trim() || 'Descrição não disponível.';
+        dados.sobre = sobre;
 
-            resultado.sobre = sobreTexto || null;
-        } catch (e) {
-            console.error(`[analise_fii] Erro ao extrair "Sobre": ${e.message}`);
-        }
-
-        // ── 2. DIVIDEND YIELD POR PERÍODO ────────────────────────────────────────
-        try {
-            // Mapa de labels conhecidos para normalização
-            const labelMap = { '1m': '1M', '3m': '3M', '6m': '6M', '12m': '12M' };
-
-            // Seletores possíveis no Investidor10
-            const selectorCandidatos = [
-                '.content--info--item',
-                '[class*="info-item"]',
-                '[class*="card-info"]'
-            ];
-
-            for (const sel of selectorCandidatos) {
-                if (resultado.dy_periodos.length > 0) break;
-
-                $(sel).each((_, el) => {
-                    try {
-                        const tituloEl = $(el).find('[class*="title"],[class*="name"],span').first();
-                        const tituloRaw = tituloEl.text().trim().toUpperCase();
-
-                        if (!tituloRaw.includes('YIELD') && !tituloRaw.includes('DY')) return;
-
-                        // Ex: "YIELD (1M)", "DY 12M"
-                        const matchPeriodo = tituloRaw.match(/(\d+M)/);
-                        const periodo = matchPeriodo ? labelMap[matchPeriodo[1].toLowerCase()] || matchPeriodo[1] : null;
-                        if (!periodo) return;
-
-                        // Busca valor em %
-                        const valores = $(el).find('[class*="amount"],[class*="value"],b,strong');
-                        let valorPct = null;
-                        let valorRS = null;
-
-                        valores.each((_, v) => {
-                            const txt = $(v).text().trim();
-                            if (txt.includes('%') && !valorPct) valorPct = txt;
-                            else if (txt.includes('R$') && !valorRS) valorRS = txt;
-                            else if (!valorPct && txt.match(/^[\d,\.]+$/)) valorPct = txt + '%';
-                        });
-
-                        // Se só veio um valor, divide o texto interno
-                        if (!valorPct) {
-                            const fullText = $(el).text();
-                            const pctMatch = fullText.match(/([\d,\.]+\s*%)/);
-                            if (pctMatch) valorPct = pctMatch[1].trim();
-                            const rsMatch = fullText.match(/(R\$\s*[\d,\.]+)/);
-                            if (rsMatch) valorRS = rsMatch[1].trim();
-                        }
-
-                        if (valorPct) {
-                            resultado.dy_periodos.push({ periodo, pct: valorPct, rs: valorRS });
-                        }
-                    } catch (_) {}
-                });
+        // 2. DIVIDEND YIELD (1M, 3M, 6M, 12M)
+        dados.dividend_yield = [];
+        $('.content--info--item').each((i, el) => {
+            const title   = $(el).find('.content--info--item--title').text().trim();
+            const percent = $(el).find('.content--info--item--value').not('.amount').text().trim();
+            const amount  = $(el).find('.content--info--item--value.amount').text().trim();
+            if (title.toUpperCase().includes('YIELD')) {
+                dados.dividend_yield.push({ periodo: title, percentual: percent, valor: amount });
             }
+        });
 
-            // Ordena por período
-            const ordem = ['1M', '3M', '6M', '12M'];
-            resultado.dy_periodos.sort((a, b) => ordem.indexOf(a.periodo) - ordem.indexOf(b.periodo));
-        } catch (e) {
-            console.error(`[analise_fii] Erro ao extrair DY períodos: ${e.message}`);
-        }
-
-        // ── 3. COMPARAÇÃO COM PARES (SEGMENTO) ──────────────────────────────────
-        try {
-            const ativoId = $('input[name="id"]').val() || $('input[name="ativo_id"]').val();
-
-            if (ativoId) {
-                const apiUrl = `https://investidor10.com.br/api/fii/comparador/table/${ativoId}/segment_type/`;
-                const { data: comparData } = await client.get(apiUrl, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json, text/javascript, */*',
-                        'Referer': url
-                    },
-                    timeout: 7000
+        // 3. COMPARANDO COM OUTROS FIIS (Pares do mesmo segmento)
+        dados.comparacao_fiis = [];
+        const compareUrl = $('#table-compare-fiis').attr('data-url');
+        if (compareUrl) {
+            try {
+                const resCompare = await client.get(compareUrl, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
                 });
-
-                // A API pode retornar HTML ou JSON dependendo da versão
-                if (typeof comparData === 'string') {
-                    // HTML: parse a tabela
-                    const $c = cheerio.load(comparData);
-                    $c('tr').each((i, row) => {
-                        if (i === 0) return; // pula header
-                        const cols = $c(row).find('td');
-                        if (cols.length < 2) return;
-                        const tickerPar = $c(cols[0]).text().trim();
-                        const dyPar = $c(cols[1]).text().trim();
-                        const pvpPar = cols.length >= 3 ? $c(cols[2]).text().trim() : null;
-                        const nomePar = cols.length >= 4 ? $c(cols[3]).text().trim() : null;
-                        if (tickerPar) resultado.comparacao_fii.push({ ticker: tickerPar, dy: dyPar, pvp: pvpPar, nome: nomePar });
-                    });
-                } else if (Array.isArray(comparData)) {
-                    for (const item of comparData) {
-                        resultado.comparacao_fii.push({
-                            ticker: item.ticker || item.symbol || item.code || '-',
-                            dy:     item.dy || item.dividend_yield || '-',
-                            pvp:    item.pvp || item.p_vp || '-',
-                            nome:   item.nome || item.name || null
-                        });
-                    }
-                } else if (comparData && typeof comparData === 'object') {
-                    // Pode ser { data: [...] }
-                    const arr = comparData.data || comparData.items || comparData.fiis || Object.values(comparData);
-                    if (Array.isArray(arr)) {
-                        for (const item of arr) {
-                            resultado.comparacao_fii.push({
-                                ticker: item.ticker || item.symbol || item.code || '-',
-                                dy:     item.dy || item.dividend_yield || '-',
-                                pvp:    item.pvp || item.p_vp || '-',
-                                nome:   item.nome || item.name || null
-                            });
-                        }
-                    }
+                if (resCompare.data && resCompare.data.data) {
+                    dados.comparacao_fiis = resCompare.data.data.map(fii => ({
+                        ticker:            cheerio.load(fii.title).text().trim(),
+                        dividend_yield:    fii.dividend_yield,
+                        p_vp:              fii.p_vp,
+                        valor_patrimonial: fii.net_worth,
+                        tipo:              fii.type,
+                        segmento:          fii.segment
+                    }));
                 }
+            } catch (e) {
+                console.error(`[analise_fii] Erro ao buscar pares de ${ticker}:`, e.message);
             }
-        } catch (e) {
-            console.error(`[analise_fii] Erro ao buscar comparação de pares: ${e.message}`);
         }
 
-        // ── 4. HISTÓRICO DE INDICADORES FUNDAMENTALISTAS ─────────────────────────
-        try {
-            const seletoresTabelaHist = [
-                '#indicators-history table tbody tr',
-                '#historical-indicators table tbody tr',
-                '[id*="indicator"] table tbody tr',
-                '[id*="historico"] table tbody tr'
-            ];
-
-            for (const sel of seletoresTabelaHist) {
-                if (resultado.historico_indicadores.length > 0) break;
-
-                $(sel).each((_, row) => {
-                    const cols = $(row).find('td');
-                    if (cols.length < 2) return;
-
-                    const ano  = $(cols[0]).text().trim();
-                    const dy   = $(cols[1]).text().trim();
-                    const pvp  = cols.length >= 3 ? $(cols[2]).text().trim() : null;
-
-                    if (ano && ano.match(/\d{4}/)) {
-                        resultado.historico_indicadores.push({ ano, dy, pvp });
-                    }
+        // 4. HISTÓRICO DE INDICADORES / DIVIDENDOS (Últimos 10 pagamentos)
+        dados.historico_indicadores = [];
+        $('#table-dividends-history tbody tr').slice(0, 10).each((i, el) => {
+            const cols = $(el).find('td');
+            if (cols.length >= 4) {
+                dados.historico_indicadores.push({
+                    tipo:      $(cols[0]).text().trim(),
+                    data_com:  $(cols[1]).text().trim(),
+                    pagamento: $(cols[2]).text().trim(),
+                    valor:     $(cols[3]).text().replace(/<[^>]+>/g, '').trim()
                 });
             }
-        } catch (e) {
-            console.error(`[analise_fii] Erro ao extrair histórico de indicadores: ${e.message}`);
-        }
+        });
 
-        // ── 5. COMPARAÇÃO COM ÍNDICES ─────────────────────────────────────────────
-        try {
-            // Investidor10 costuma ter uma seção de performance vs índices
-            const seletoresIndices = [
-                '[class*="performance-index"]',
-                '[id*="comparison-index"]',
-                '[id*="vs-index"]',
-                '[class*="vs-indice"]'
-            ];
-
-            for (const sel of seletoresIndices) {
-                if (resultado.comparacao_indices.length > 0) break;
-
-                $(sel).each((_, el) => {
-                    const nome = $(el).find('[class*="name"],[class*="title"],span').first().text().trim();
-                    const valorEl = $(el).find('[class*="value"],[class*="percent"],b').last();
-                    const valor = valorEl.text().trim();
-                    if (nome && valor) resultado.comparacao_indices.push({ nome, valor });
-                });
-            }
-
-            // Fallback: tenta tabela de comparação genérica com "IFIX", "CDI", "IPCA"
-            if (resultado.comparacao_indices.length === 0) {
-                $('table').each((_, tbl) => {
-                    const headerTxt = $(tbl).find('thead').text().toUpperCase();
-                    if (!headerTxt.includes('IFIX') && !headerTxt.includes('CDI') && !headerTxt.includes('INDICE')) return;
-
-                    $(tbl).find('tbody tr').each((i, row) => {
-                        if (i > 8) return false; // limita
-                        const cols = $(row).find('td');
-                        if (cols.length < 2) return;
-                        const nome  = $(cols[0]).text().trim();
-                        const valor = $(cols[1]).text().trim();
-                        if (nome && valor) resultado.comparacao_indices.push({ nome, valor });
+        // 5. COMPARAÇÃO DE {ticker} COM ÍNDICES (IFIX, CDI) via ECharts
+        dados.comparacao_indices = [];
+        const scriptTag = $('script').filter((_, el) => $(el).html().includes('profitabilities')).first().html();
+        if (scriptTag) {
+            try {
+                const match = scriptTag.match(/chart2:\s*\{\s*'dates':.*?,\s*'profitabilities':\s*JSON\.parse\(`(.*?)`\)/s);
+                if (match && match[1]) {
+                    const chartData = JSON.parse(match[1]);
+                    dados.comparacao_indices = chartData.map(assetArray => {
+                        const nome = assetArray[0] ? assetArray[0].type : 'Indefinido';
+                        return {
+                            nome:  nome === 'Index' ? 'IFIX/IBOV' : nome,
+                            dados: assetArray.map(item => ({
+                                data:          item.date,
+                                rentabilidade: item.profitability
+                            }))
+                        };
                     });
-                });
+                }
+            } catch (e) {
+                console.error('[analise_fii] Erro ao extrair gráficos ECharts:', e.message);
             }
-        } catch (e) {
-            console.error(`[analise_fii] Erro ao extrair comparação com índices: ${e.message}`);
         }
 
-    } catch (e) {
-        console.error(`[analise_fii] Erro geral para ${ticker}: ${e.message}`);
+        return dados;
+    } catch (error) {
+        console.error('[analise_fii] Erro na Análise Profunda:', error.message);
+        return { error: 'Falha ao extrair dados profundos.', detalhe: error.message };
     }
-
-    return resultado;
 }
 
 // ---------------------------------------------------------

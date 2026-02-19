@@ -6577,20 +6577,19 @@ async function carregarAnaliseProfundaFII(ticker) {
                     { key: 'seg',      label: 'Segmento' },
                     { key: 'todos',    label: 'Todos' },
                 ];
+                const BTN_ACTIVE   = 'fii-par-btn';
+                const BTN_INACTIVE = 'fii-par-btn';
+                const applyActive   = (el) => { el.style.background = 'rgba(255,255,255,0.07)'; el.style.borderColor = 'rgba(255,255,255,0.12)'; el.style.color = '#e5e7eb'; };
+                const applyInactive = (el) => { el.style.background = 'transparent'; el.style.borderColor = 'transparent'; el.style.color = '#6b7280'; };
+
                 filterWrap.innerHTML = FILTERS.map(f =>
-                    `<button data-filter="${f.key}" class="fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all whitespace-nowrap
-                        ${f.key === 'tipo_seg'
-                            ? 'bg-white/[0.07] border-white/10 text-gray-200'
-                            : 'bg-transparent border-transparent text-gray-500 hover:text-gray-300'}"
-                    >${f.label}</button>`
+                    `<button data-filter="${f.key}" class="fii-par-btn" style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid transparent;transition:all .2s;white-space:nowrap;cursor:pointer;${f.key === 'tipo_seg' ? 'background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#e5e7eb;' : 'background:transparent;color:#6b7280;'}">${f.label}</button>`
                 ).join('');
 
                 filterWrap.querySelectorAll('.fii-par-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
-                        filterWrap.querySelectorAll('.fii-par-btn').forEach(b => {
-                            b.className = 'fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all whitespace-nowrap bg-transparent border-transparent text-gray-500 hover:text-gray-300';
-                        });
-                        btn.className = 'fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all whitespace-nowrap bg-white/[0.07] border-white/10 text-gray-200';
+                        filterWrap.querySelectorAll('.fii-par-btn').forEach(b => applyInactive(b));
+                        applyActive(btn);
                         renderPares(btn.dataset.filter);
                     });
                 });
@@ -6814,23 +6813,20 @@ async function carregarAnaliseProfundaFII(ticker) {
             const idxFilterWrap = get('fii-indices-filter');
             if (idxFilterWrap) {
                 idxFilterWrap.classList.remove('hidden');
+                const applyIdxActive   = (el) => { el.style.background = 'rgba(255,255,255,0.07)'; el.style.borderColor = 'rgba(255,255,255,0.12)'; el.style.color = '#e5e7eb'; };
+                const applyIdxInactive = (el) => { el.style.background = 'transparent'; el.style.borderColor = 'transparent'; el.style.color = '#6b7280'; };
+
                 idxFilterWrap.innerHTML = [
                     { key: 2, label: '2A' },
                     { key: 5, label: '5A' },
                 ].map((f, i) =>
-                    `<button data-anos="${f.key}" class="fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all
-                        ${i === 1
-                            ? 'bg-white/[0.07] border-white/10 text-gray-200'
-                            : 'bg-transparent border-transparent text-gray-500 hover:text-gray-300'}"
-                    >${f.label}</button>`
+                    `<button data-anos="${f.key}" class="fii-idx-btn" style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid transparent;transition:all .2s;cursor:pointer;${i === 1 ? 'background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#e5e7eb;' : 'background:transparent;color:#6b7280;'}">${f.label}</button>`
                 ).join('');
 
                 idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
-                        idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(b => {
-                            b.className = 'fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all bg-transparent border-transparent text-gray-500 hover:text-gray-300';
-                        });
-                        btn.className = 'fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all bg-white/[0.07] border-white/10 text-gray-200';
+                        idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(b => applyIdxInactive(b));
+                        applyIdxActive(btn);
                         renderIndicesChart(parseInt(btn.dataset.anos));
                     });
                 });

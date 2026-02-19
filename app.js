@@ -182,12 +182,6 @@ const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12;
 const CACHE_NOTICIAS = 1000 * 60 * 15; 
 const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
-// Fundamentos mudam pouco durante o dia — cache de 4h no mercado aberto, 24h no fechado
-const CACHE_FUNDAMENTOS_ABERTO  = 1000 * 60 * 60 * 4;
-const CACHE_FUNDAMENTOS_FECHADO = 1000 * 60 * 60 * 24;
-// Próximo provento — 30min no mercado aberto, 4h no fechado
-const CACHE_PROXIMO_PROVENTO_ABERTO  = 1000 * 60 * 30;
-const CACHE_PROXIMO_PROVENTO_FECHADO = 1000 * 60 * 60 * 4;
 
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
@@ -732,24 +726,6 @@ let ipcaCacheData = null;
 	const detalhesShareBtn = document.getElementById('detalhes-share-btn');
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled');  
-
-    // ─── Função de tabs do modal de detalhes ────────────────────────────────────
-    function ativarDetalhesTab(targetId) {
-        document.querySelectorAll('.detalhes-tab-pane').forEach(pane => pane.classList.add('hidden'));
-        document.querySelectorAll('.detalhes-tab-btn').forEach(btn => {
-            const isActive = btn.dataset.target === targetId;
-            btn.classList.toggle('active', isActive);
-            btn.classList.toggle('text-white', isActive);
-            btn.classList.toggle('bg-[#2C2C2E]', isActive);
-            btn.classList.toggle('text-gray-500', !isActive);
-        });
-        const target = document.getElementById(targetId);
-        if (target) target.classList.remove('hidden');
-    }
-
-    document.querySelectorAll('.detalhes-tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => ativarDetalhesTab(btn.dataset.target));
-    });
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
@@ -3921,29 +3897,16 @@ async function buscarProventosFuturos(force = false) {
 }
 
 	async function callScraperProximoProventoAPI(ticker) {
-        const cacheKey = `proximo_provento_${ticker.toUpperCase()}`;
-        const cached = await getCache(cacheKey);
-        if (cached) return cached;
-
         const body = { mode: 'proximo_provento', payload: { ticker } };
         const response = await fetchBFF('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = response.json;
-        if (result) {
-            const ttl = isB3Open() ? CACHE_PROXIMO_PROVENTO_ABERTO : CACHE_PROXIMO_PROVENTO_FECHADO;
-            await setCache(cacheKey, result, ttl);
-        }
-        return result;
+        return response.json; 
     }
 
 	async function callScraperFundamentosAPI(ticker) {
-        const cacheKey = `fundamentos_${ticker.toUpperCase()}`;
-        const cached = await getCache(cacheKey);
-        if (cached) return cached;
-
         const body = { 
             mode: 'fundamentos', 
             payload: { ticker } 
@@ -3953,12 +3916,7 @@ async function buscarProventosFuturos(force = false) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = response.json;
-        if (result) {
-            const ttl = isB3Open() ? CACHE_FUNDAMENTOS_ABERTO : CACHE_FUNDAMENTOS_FECHADO;
-            await setCache(cacheKey, result, ttl);
-        }
-        return result;
+        return response.json;
     }
 
 async function buscarHistoricoProventosAgregado(force = false) {
@@ -4691,14 +4649,8 @@ function handleAbrirModalEdicao(id) {
         detalhesTituloTexto.textContent = 'Detalhes'; 
         detalhesNomeLongo.textContent = ''; 
         detalhesPreco.innerHTML = '';
+        detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
-
-        // Esconder tab nav e limpar tab de fundamentos
-        const detalhesTabNav = document.getElementById('detalhes-tab-nav');
-        if (detalhesTabNav) detalhesTabNav.classList.add('hidden');
-        const elListasReset = document.getElementById('detalhes-listas-fundamentos');
-        if (elListasReset) elListasReset.innerHTML = '';
-        ativarDetalhesTab('detalhes-tab-geral');
 
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
@@ -5968,12 +5920,8 @@ async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
     detalhesPreco.innerHTML = '';
-    detalhesAiProvento.innerHTML = '';
-
-    // Mostrar tab nav e resetar para a primeira tab
-    const detalhesTabNav = document.getElementById('detalhes-tab-nav');
-    if (detalhesTabNav) detalhesTabNav.classList.remove('hidden');
-    ativarDetalhesTab('detalhes-tab-geral');
+    detalhesAiProvento.innerHTML = ''; 
+    detalhesHistoricoContainer.classList.remove('hidden'); 
 
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
@@ -6013,98 +5961,41 @@ async function handleMostrarDetalhes(symbol) {
 
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
+    let precoData = await getCache(cacheKeyPreco);
 
-    // ─── LANÇAR TODAS AS PROMISES EM PARALELO ────────────────────────────────────
-    // Não usar await aqui — lançar tudo ao mesmo tempo para que rodem concorrentemente
-    const promisePreco       = getCache(cacheKeyPreco).then(async cached => {
-        if (cached) return cached;
-        const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-        const result = data.results?.[0];
-        if (result && !result.error) {
-            await setCache(cacheKeyPreco, result, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
-            return result;
+    if (!precoData) {
+        try {
+            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+            precoData = data.results?.[0];
+            if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO); 
+            else throw new Error(precoData?.error || 'Ativo não encontrado');
+        } catch (e) { 
+            precoData = null; 
+            showToast("Erro ao buscar preço."); 
         }
-        throw new Error(result?.error || 'Ativo não encontrado');
-    });
+    }
 
-    const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(() => ({}));
-    const promiseProvento    = callScraperProximoProventoAPI(symbol).catch(() => null);
+    let fundamentos = {};
+    let nextProventoData = null;
 
-    // Disparo de gráficos sem bloquear o fluxo principal
     fetchHistoricoScraper(symbol); 
     fetchCotacaoHistorica(symbol);
 
-    // ─── FASE 1: Renderiza o modal assim que o PREÇO chegar ─────────────────────
-    // (pode ser instantâneo se vier do cache)
-    let precoData = null;
     try {
-        precoData = await promisePreco;
-    } catch (e) {
-        showToast("Erro ao buscar preço.");
-    }
-
-    // Guarda para saber se o modal ainda é desse símbolo
-    if (currentDetalhesSymbol !== symbol) return;
+        const [fundData, provData] = await Promise.all([
+            callScraperFundamentosAPI(symbol),
+            callScraperProximoProventoAPI(symbol)
+        ]);
+        fundamentos = fundData || {};
+        nextProventoData = provData;
+    } catch (e) { console.error("Erro dados extras", e); }
 
     detalhesLoading.classList.add('hidden');
 
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
-        const varPercent   = precoData.regularMarketChangePercent || 0;
-        const variacaoCor  = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
-        const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
-
-        // Skeleton para seções que ainda estão carregando (fundamentos)
-        const skeletonGrid = Array(6).fill(0).map(() => `
-            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm animate-pulse">
-                <div class="h-2 bg-[#2C2C2E] rounded w-16 mb-2"></div>
-                <div class="h-4 bg-[#2C2C2E] rounded w-10"></div>
-            </div>`).join('');
-
-        const skeletonListas = `
-            <div id="detalhes-fundamentos-placeholder" class="space-y-2 animate-pulse mb-6">
-                <div class="h-3 bg-[#1C1C1E] rounded w-24 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-28"></div>
-                <div class="h-3 bg-[#1C1C1E] rounded w-24 mt-4 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-20"></div>
-            </div>`;
-
-        detalhesPreco.innerHTML = `
-            <div class="col-span-12 w-full flex flex-col">
-                <div class="text-center pb-8 pt-2">
-                    <h2 class="text-5xl font-bold text-white tracking-tighter leading-none mb-4">${formatBRL(precoData.regularMarketPrice)}</h2>
-                    <div class="flex items-center justify-center gap-2">
-                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold ${variacaoCor} flex items-center gap-1 tracking-wider shadow-sm">
-                            ${variacaoIcone} ${formatPercent(varPercent)} Hoje
-                        </span>
-                        <span id="badge-variacao-12m" class="px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 bg-[#151515] border border-[#2C2C2E] uppercase tracking-widest shadow-sm">
-                            12M: <span class="opacity-40">...</span>
-                        </span>
-                    </div>
-                </div>
-                <div id="detalhes-provento-placeholder" class="mb-4"></div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-3 pl-1">Indicadores Rápidos</h4>
-                <div id="detalhes-grid-topo" class="grid grid-cols-3 gap-2 w-full mb-6">${skeletonGrid}</div>
-            </div>`;
-
-        // Injeta skeleton de fundamentos na tab de Fundamentos
-        const elListasInit = document.getElementById('detalhes-listas-fundamentos');
-        if (elListasInit) elListasInit.innerHTML = skeletonListas;
-    } else {
-        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
-    }
-
-    // ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
-    // Roda em background, sem bloquear mais nada
-    Promise.all([promiseFundamentos, promiseProvento]).then(([fundData, provData]) => {
-        // Garante que o modal ainda é desse símbolo
-        if (currentDetalhesSymbol !== symbol || !precoData) return;
-
-        const fundamentos    = fundData || {};
-        const nextProventoData = provData;
-
-        const varPercent   = precoData.regularMarketChangePercent || 0;
-        const variacaoCor  = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
+        const varPercent = precoData.regularMarketChangePercent || 0;
+        let variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
         const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
 
         const dados = { 
@@ -6122,13 +6013,6 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-'
         };
 
-        // Atualiza badge 12M
-        const badge12m = document.getElementById('badge-variacao-12m');
-        if (badge12m) {
-            const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
-            badge12m.innerHTML = `12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>`;
-        }
-
         let valuationHtml = '';
 
         if (ehAcao) {
@@ -6141,6 +6025,7 @@ async function handleMostrarDetalhes(symbol) {
             if ((lpa > 0 && vpa > 0) || dyVal > 0) {
                 valuationHtml += `<h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation</h4><div class="grid grid-cols-1 gap-2 mb-4">`;
 
+                // 1. Graham
                 if (lpa > 0 && vpa > 0) {
                     const vi = Math.sqrt(22.5 * lpa * vpa);
                     const margemSeguranca = ((vi - preco) / preco) * 100;
@@ -6162,10 +6047,11 @@ async function handleMostrarDetalhes(symbol) {
                     `;
                 }
 
+                // 2. Bazin
                 if (dyVal > 0) {
-                    const dividendosAnuais = precoData.regularMarketPrice * (dyVal / 100);
+                    const dividendosAnuais = preco * (dyVal / 100);
                     const bazinPrice = dividendosAnuais / 0.06;
-                    const upsideBazin = ((bazinPrice - precoData.regularMarketPrice) / precoData.regularMarketPrice) * 100;
+                    const upsideBazin = ((bazinPrice - preco) / preco) * 100;
                     const corBazin = upsideBazin > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
 
                     valuationHtml += `
@@ -6189,6 +6075,7 @@ async function handleMostrarDetalhes(symbol) {
 
         const pData = nextProventoData || {};
 
+        // Estilo Premium para os cards de Proventos (Sem bordas)
         const formatarCardProvento = (titulo, provento, isFuturo) => {
             if (!provento) {
                 return `
@@ -6201,15 +6088,17 @@ async function handleMostrarDetalhes(symbol) {
             const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
             const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
 
-            const bgClass   = isFuturo ? "bg-[#151515] shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515]";
+            // Fundo escuro SEM bordas. Apenas o brilho suave no futuro.
+            const bgClass = isFuturo ? "bg-[#151515] shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515]";
             const textClass = isFuturo ? "text-green-400" : "text-gray-300";
-            const valueClass= isFuturo ? "text-green-400" : "text-white";
+            const valueClass = isFuturo ? "text-green-400" : "text-white";
 
             return `
             <div class="flex-1 p-3 rounded-xl ${bgClass} flex flex-col justify-between shadow-sm relative overflow-hidden">
                 ${isFuturo ? '<div class="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full"></div>' : ''}
                 <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-1.5 relative z-10">${titulo}</span>
                 <span class="text-xl font-bold ${valueClass} mb-3 leading-none tracking-tight relative z-10">${formatBRL(provento.value)}</span>
+
                 <div class="flex justify-between items-end mt-auto relative z-10 border-t border-white/5 pt-2">
                     <div class="flex flex-col">
                         <span class="text-[8px] text-gray-500 font-bold tracking-wider uppercase leading-none mb-1">Data Com</span>
@@ -6223,89 +6112,67 @@ async function handleMostrarDetalhes(symbol) {
             </div>`;
         };
 
-        const proximoProventoHtml = (pData.ultimoPago || pData.proximo) ? `
+        let proximoProventoHtml = '';
+        if (pData.ultimoPago || pData.proximo) {
+            proximoProventoHtml = `
             <div class="mt-2 mb-6">
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Dividendos</h4>
                 <div class="flex gap-2 w-full">
                     ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
                     ${formatarCardProvento("Próximo a Receber", pData.proximo, true)}
                 </div>
-            </div>` : '';
+            </div>`;
+        }
 
-        // Grid topo e listas
-        const renderKpi = (label, value, cor = 'text-white') => `
+        // NOVO GRID DE DESTAQUES (Simétrico, SEM bordas)
+        const renderHighlight = (label, value) => `
             <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
-                <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center leading-tight">${label}</span>
-                <span class="text-sm font-bold ${cor} leading-none">${value}</span>
-            </div>`;
+                <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">${label}</span>
+                <span class="text-lg font-bold text-white leading-none">${value}</span>
+            </div>
+        `;
 
-        let gridTopo = '';
-        const renderRow = (label, value) => `
-            <div class="flex justify-between items-center py-2.5 border-b border-[#1F1F1F] last:border-0">
-                <span class="text-xs text-gray-500 font-medium">${label}</span>
-                <span class="text-xs text-white font-bold text-right">${value}</span>
-            </div>`;
+        let gridTopo = ehAcao ? 
+            `${renderHighlight('P/L', dados.pl)}${renderHighlight('P/VP', dados.pvp)}${renderHighlight('DY (12m)', dados.dy)}` :
+            `${renderHighlight('DY (12m)', dados.dy)}${renderHighlight('P/VP', dados.pvp)}${renderHighlight('Cotistas', dados.num_cotistas)}`;
+
+        const renderRow = (l, v) => `<div class="flex justify-between items-center py-2.5 px-1 border-b border-[#2C2C2E] last:border-0"><span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">${l}</span><span class="text-[13px] font-bold text-gray-200">${v}</span></div>`;
 
         let listasHtml = '';
-
         if (ehAcao) {
-            gridTopo = [
-                renderKpi('P/L', dados.pl),
-                renderKpi('P/VP', dados.pvp),
-                renderKpi('DY', dados.dy),
-                renderKpi('ROE', dados.roe),
-                renderKpi('Marg. Liq.', dados.margem_liquida),
-                renderKpi('Dív./EBITDA', dados.divida_liquida_ebitda),
-            ].join('');
-
             listasHtml = `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Rentabilidade</h4>
+                ${valuationHtml}
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation Básico</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Marg. Líquida', dados.margem_liquida)}
-                    ${renderRow('Marg. Bruta', dados.margem_bruta)}
-                    ${renderRow('Marg. EBIT', dados.margem_ebit)}
+                    ${renderRow('P/L', dados.pl)}
+                    ${renderRow('P/VP', dados.pvp)}
+                    ${renderRow('EV / EBITDA', dados.ev_ebitda)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                </div>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Rentabilidade & Eficiência</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('ROE', dados.roe)}
-                    ${renderRow('LPA', dados.lpa)}
-                </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Endividamento</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Dív. Líq./EBITDA', dados.divida_liquida_ebitda)}
-                    ${renderRow('Díd. Líq./PL', dados.divida_liquida_pl)}
-                    ${renderRow('EV/EBITDA', dados.ev_ebitda)}
-                </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5A)</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('CAGR Receita', dados.cagr_receita)}
-                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
+                    ${renderRow('Margem Bruta', dados.margem_bruta)}
+                    ${renderRow('Margem EBIT', dados.margem_ebit)}
+                    ${renderRow('Margem Líquida', dados.margem_liquida)}
                     ${renderRow('Payout', dados.payout)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Mercado</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5 Anos)</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${renderRow('Liquidez', dados.liquidez)}
-                    ${renderRow('VP por Ação', dados.vp_cota)}
+                    ${renderRow('CAGR Receitas', dados.cagr_receita)}
+                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
                 </div>
-                ${valuationHtml}`;
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Saúde Financeira</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
+                    ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                </div>`;
         } else {
-            gridTopo = [
-                renderKpi('DY', dados.dy),
-                renderKpi('P/VP', dados.pvp),
-                renderKpi('Liquidez', dados.liquidez),
-                renderKpi('Vacância', dados.vacancia),
-                renderKpi('VP/Cota', dados.vp_cota),
-                renderKpi('12M', dados.variacao_12m),
-            ].join('');
-
             listasHtml = `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Indicadores</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Métricas Principais</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('DY', dados.dy)}
-                    ${renderRow('P/VP', dados.pvp)}
-                    ${renderRow('Vacância', dados.vacancia)}
-                    ${renderRow('Último Rend.', dados.ultimo_rendimento)}
-                </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Patrimônio</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
@@ -6325,50 +6192,41 @@ async function handleMostrarDetalhes(symbol) {
                 </div>`;
         }
 
-        // Atualiza os placeholders no DOM com animação suave
-        const elGrid = document.getElementById('detalhes-grid-topo');
-        if (elGrid) {
-            elGrid.style.opacity = '0';
-            elGrid.innerHTML = gridTopo;
-            requestAnimationFrame(() => {
-                elGrid.style.transition = 'opacity 0.3s ease';
-                elGrid.style.opacity = '1';
-            });
-        }
+        // CABEÇALHO DE PREÇO POLIDO (Badges com bordas mantidas como pedido)
+        const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
 
-        const elListas = document.getElementById('detalhes-listas-fundamentos');
-        if (elListas) {
-            elListas.style.opacity = '0';
-            elListas.innerHTML = listasHtml;
-            requestAnimationFrame(() => {
-                elListas.style.transition = 'opacity 0.3s ease';
-                elListas.style.opacity = '1';
-            });
-        }
+        detalhesPreco.innerHTML = `
+            <div class="col-span-12 w-full flex flex-col">
+                <div class="text-center pb-8 pt-2">
+                    <h2 class="text-5xl font-bold text-white tracking-tighter leading-none mb-4">${formatBRL(precoData.regularMarketPrice)}</h2>
+                    <div class="flex items-center justify-center gap-2">
+                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold ${variacaoCor} flex items-center gap-1 tracking-wider shadow-sm">
+                            ${variacaoIcone} ${formatPercent(varPercent)} Hoje
+                        </span>
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 bg-[#151515] border border-[#2C2C2E] uppercase tracking-widest shadow-sm">
+                            12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>
+                        </span>
+                    </div>
+                </div>
+                ${proximoProventoHtml}
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-3 pl-1">Indicadores Rápidos</h4>
+                <div class="grid grid-cols-3 gap-2 w-full mb-6">${gridTopo}</div>
+                ${listasHtml}
+            </div>`;
 
-        const elProvento = document.getElementById('detalhes-provento-placeholder');
-        if (elProvento && proximoProventoHtml) {
-            elProvento.style.opacity = '0';
-            elProvento.innerHTML = proximoProventoHtml;
-            requestAnimationFrame(() => {
-                elProvento.style.transition = 'opacity 0.3s ease';
-                elProvento.style.opacity = '1';
-            });
-        }
+} else {
+        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
+    }
 
-        if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
-            window.renderizarListaImoveis(fundamentos.imoveis);
-        } else {
-            const containerImoveis = document.getElementById('detalhes-imoveis-container');
-            if (containerImoveis) containerImoveis.innerHTML = '';
-        }
+    if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
+        window.renderizarListaImoveis(fundamentos.imoveis);
+    } else {
+        const containerImoveis = document.getElementById('detalhes-imoveis-container');
+        if (containerImoveis) containerImoveis.innerHTML = '';
+    }
 
-    }).catch(e => console.error("Erro ao preencher fundamentos:", e));
-
-    // Favorito (não depende de dados externos)
     atualizarIconeFavorito(symbol);
 }
-
 
     async function fetchHistoricoScraper(symbol) {
         // Guarda o simbolo alvo: se mudar (modal fechou/abriu outro ativo), cancela

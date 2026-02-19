@@ -512,6 +512,251 @@ async function scrapeCotacaoHistory(ticker, range = '1A') {
 }
 
 // ---------------------------------------------------------
+// PARTE 5: ANÁLISE PROFUNDA DE FIIs -> INVESTIDOR10
+// ---------------------------------------------------------
+
+async function scrapeAnaliseProfundaFii(ticker) {
+    const resultado = {
+        sobre: null,
+        dy_periodos: [],
+        comparacao_fii: [],
+        historico_indicadores: [],
+        comparacao_indices: []
+    };
+
+    try {
+        const url = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
+        const { data: html } = await client.get(url);
+        const $ = cheerio.load(html);
+
+        // ── 1. SOBRE ──────────────────────────────────────────────────────────────
+        try {
+            let sobreTexto = null;
+
+            // Tenta JSON-LD com @type Article (mais confiável)
+            $('script[type="application/ld+json"]').each((_, el) => {
+                if (sobreTexto) return false; // já achou
+                try {
+                    const json = JSON.parse($(el).html());
+                    const articles = Array.isArray(json) ? json : [json];
+                    for (const obj of articles) {
+                        if (obj['@type'] === 'Article' && obj.articleBody) {
+                            sobreTexto = obj.articleBody.trim();
+                            break;
+                        }
+                    }
+                } catch (_) {}
+            });
+
+            // Fallback: parágrafo do about-section
+            if (!sobreTexto) {
+                sobreTexto = $('#about-section p').first().text().trim() ||
+                             $('[id*="about"] p').first().text().trim() ||
+                             $('[class*="description"] p').first().text().trim();
+            }
+
+            resultado.sobre = sobreTexto || null;
+        } catch (e) {
+            console.error(`[analise_fii] Erro ao extrair "Sobre": ${e.message}`);
+        }
+
+        // ── 2. DIVIDEND YIELD POR PERÍODO ────────────────────────────────────────
+        try {
+            // Mapa de labels conhecidos para normalização
+            const labelMap = { '1m': '1M', '3m': '3M', '6m': '6M', '12m': '12M' };
+
+            // Seletores possíveis no Investidor10
+            const selectorCandidatos = [
+                '.content--info--item',
+                '[class*="info-item"]',
+                '[class*="card-info"]'
+            ];
+
+            for (const sel of selectorCandidatos) {
+                if (resultado.dy_periodos.length > 0) break;
+
+                $(sel).each((_, el) => {
+                    try {
+                        const tituloEl = $(el).find('[class*="title"],[class*="name"],span').first();
+                        const tituloRaw = tituloEl.text().trim().toUpperCase();
+
+                        if (!tituloRaw.includes('YIELD') && !tituloRaw.includes('DY')) return;
+
+                        // Ex: "YIELD (1M)", "DY 12M"
+                        const matchPeriodo = tituloRaw.match(/(\d+M)/);
+                        const periodo = matchPeriodo ? labelMap[matchPeriodo[1].toLowerCase()] || matchPeriodo[1] : null;
+                        if (!periodo) return;
+
+                        // Busca valor em %
+                        const valores = $(el).find('[class*="amount"],[class*="value"],b,strong');
+                        let valorPct = null;
+                        let valorRS = null;
+
+                        valores.each((_, v) => {
+                            const txt = $(v).text().trim();
+                            if (txt.includes('%') && !valorPct) valorPct = txt;
+                            else if (txt.includes('R$') && !valorRS) valorRS = txt;
+                            else if (!valorPct && txt.match(/^[\d,\.]+$/)) valorPct = txt + '%';
+                        });
+
+                        // Se só veio um valor, divide o texto interno
+                        if (!valorPct) {
+                            const fullText = $(el).text();
+                            const pctMatch = fullText.match(/([\d,\.]+\s*%)/);
+                            if (pctMatch) valorPct = pctMatch[1].trim();
+                            const rsMatch = fullText.match(/(R\$\s*[\d,\.]+)/);
+                            if (rsMatch) valorRS = rsMatch[1].trim();
+                        }
+
+                        if (valorPct) {
+                            resultado.dy_periodos.push({ periodo, pct: valorPct, rs: valorRS });
+                        }
+                    } catch (_) {}
+                });
+            }
+
+            // Ordena por período
+            const ordem = ['1M', '3M', '6M', '12M'];
+            resultado.dy_periodos.sort((a, b) => ordem.indexOf(a.periodo) - ordem.indexOf(b.periodo));
+        } catch (e) {
+            console.error(`[analise_fii] Erro ao extrair DY períodos: ${e.message}`);
+        }
+
+        // ── 3. COMPARAÇÃO COM PARES (SEGMENTO) ──────────────────────────────────
+        try {
+            const ativoId = $('input[name="id"]').val() || $('input[name="ativo_id"]').val();
+
+            if (ativoId) {
+                const apiUrl = `https://investidor10.com.br/api/fii/comparador/table/${ativoId}/segment_type/`;
+                const { data: comparData } = await client.get(apiUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json, text/javascript, */*',
+                        'Referer': url
+                    },
+                    timeout: 7000
+                });
+
+                // A API pode retornar HTML ou JSON dependendo da versão
+                if (typeof comparData === 'string') {
+                    // HTML: parse a tabela
+                    const $c = cheerio.load(comparData);
+                    $c('tr').each((i, row) => {
+                        if (i === 0) return; // pula header
+                        const cols = $c(row).find('td');
+                        if (cols.length < 2) return;
+                        const tickerPar = $c(cols[0]).text().trim();
+                        const dyPar = $c(cols[1]).text().trim();
+                        const pvpPar = cols.length >= 3 ? $c(cols[2]).text().trim() : null;
+                        const nomePar = cols.length >= 4 ? $c(cols[3]).text().trim() : null;
+                        if (tickerPar) resultado.comparacao_fii.push({ ticker: tickerPar, dy: dyPar, pvp: pvpPar, nome: nomePar });
+                    });
+                } else if (Array.isArray(comparData)) {
+                    for (const item of comparData) {
+                        resultado.comparacao_fii.push({
+                            ticker: item.ticker || item.symbol || item.code || '-',
+                            dy:     item.dy || item.dividend_yield || '-',
+                            pvp:    item.pvp || item.p_vp || '-',
+                            nome:   item.nome || item.name || null
+                        });
+                    }
+                } else if (comparData && typeof comparData === 'object') {
+                    // Pode ser { data: [...] }
+                    const arr = comparData.data || comparData.items || comparData.fiis || Object.values(comparData);
+                    if (Array.isArray(arr)) {
+                        for (const item of arr) {
+                            resultado.comparacao_fii.push({
+                                ticker: item.ticker || item.symbol || item.code || '-',
+                                dy:     item.dy || item.dividend_yield || '-',
+                                pvp:    item.pvp || item.p_vp || '-',
+                                nome:   item.nome || item.name || null
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`[analise_fii] Erro ao buscar comparação de pares: ${e.message}`);
+        }
+
+        // ── 4. HISTÓRICO DE INDICADORES FUNDAMENTALISTAS ─────────────────────────
+        try {
+            const seletoresTabelaHist = [
+                '#indicators-history table tbody tr',
+                '#historical-indicators table tbody tr',
+                '[id*="indicator"] table tbody tr',
+                '[id*="historico"] table tbody tr'
+            ];
+
+            for (const sel of seletoresTabelaHist) {
+                if (resultado.historico_indicadores.length > 0) break;
+
+                $(sel).each((_, row) => {
+                    const cols = $(row).find('td');
+                    if (cols.length < 2) return;
+
+                    const ano  = $(cols[0]).text().trim();
+                    const dy   = $(cols[1]).text().trim();
+                    const pvp  = cols.length >= 3 ? $(cols[2]).text().trim() : null;
+
+                    if (ano && ano.match(/\d{4}/)) {
+                        resultado.historico_indicadores.push({ ano, dy, pvp });
+                    }
+                });
+            }
+        } catch (e) {
+            console.error(`[analise_fii] Erro ao extrair histórico de indicadores: ${e.message}`);
+        }
+
+        // ── 5. COMPARAÇÃO COM ÍNDICES ─────────────────────────────────────────────
+        try {
+            // Investidor10 costuma ter uma seção de performance vs índices
+            const seletoresIndices = [
+                '[class*="performance-index"]',
+                '[id*="comparison-index"]',
+                '[id*="vs-index"]',
+                '[class*="vs-indice"]'
+            ];
+
+            for (const sel of seletoresIndices) {
+                if (resultado.comparacao_indices.length > 0) break;
+
+                $(sel).each((_, el) => {
+                    const nome = $(el).find('[class*="name"],[class*="title"],span').first().text().trim();
+                    const valorEl = $(el).find('[class*="value"],[class*="percent"],b').last();
+                    const valor = valorEl.text().trim();
+                    if (nome && valor) resultado.comparacao_indices.push({ nome, valor });
+                });
+            }
+
+            // Fallback: tenta tabela de comparação genérica com "IFIX", "CDI", "IPCA"
+            if (resultado.comparacao_indices.length === 0) {
+                $('table').each((_, tbl) => {
+                    const headerTxt = $(tbl).find('thead').text().toUpperCase();
+                    if (!headerTxt.includes('IFIX') && !headerTxt.includes('CDI') && !headerTxt.includes('INDICE')) return;
+
+                    $(tbl).find('tbody tr').each((i, row) => {
+                        if (i > 8) return false; // limita
+                        const cols = $(row).find('td');
+                        if (cols.length < 2) return;
+                        const nome  = $(cols[0]).text().trim();
+                        const valor = $(cols[1]).text().trim();
+                        if (nome && valor) resultado.comparacao_indices.push({ nome, valor });
+                    });
+                });
+            }
+        } catch (e) {
+            console.error(`[analise_fii] Erro ao extrair comparação com índices: ${e.message}`);
+        }
+
+    } catch (e) {
+        console.error(`[analise_fii] Erro geral para ${ticker}: ${e.message}`);
+    }
+
+    return resultado;
+}
+
+// ---------------------------------------------------------
 // HANDLER (API MAIN)
 // ---------------------------------------------------------
 
@@ -618,6 +863,13 @@ if (mode === 'cotacao_historica') {
     const dados = await scrapeCotacaoHistory(payload.ticker, range);
     return res.status(200).json({ json: dados });
 }
+
+        // --- MODO: ANÁLISE PROFUNDA DE FII ---
+        if (mode === 'analise_profunda_fii') {
+            if (!payload || !payload.ticker) return res.status(400).json({ error: "Ticker não informado" });
+            const dados = await scrapeAnaliseProfundaFii(payload.ticker);
+            return res.status(200).json({ json: dados });
+        }
 
         return res.status(400).json({ error: "Modo desconhecido" });
     } catch (error) {

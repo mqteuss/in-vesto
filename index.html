@@ -1062,92 +1062,111 @@
         <!-- Tab 4: Análise Profunda (FIIs) -->
         <div id="detalhes-tab-analise" class="detalhes-tab-pane hidden p-4 pb-24 space-y-4">
 
-            <!-- SOBRE -->
+            <!-- ① SOBRE -->
             <div class="bg-[#1c1c1e] rounded-xl p-4">
                 <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Sobre o Fundo</h4>
-                <!-- Skeleton -->
                 <div id="fii-sobre-skeleton" class="space-y-2 animate-pulse">
                     <div class="h-3 bg-[#2c2c2e] rounded w-full"></div>
                     <div class="h-3 bg-[#2c2c2e] rounded w-5/6"></div>
                     <div class="h-3 bg-[#2c2c2e] rounded w-4/6"></div>
                 </div>
-                <!-- Conteúdo real -->
                 <div id="fii-sobre" class="hidden">
                     <p id="fii-sobre-texto" class="text-gray-400 text-sm leading-relaxed"></p>
                     <button id="fii-sobre-ler-mais" class="hidden mt-2 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors">Ler mais ↓</button>
                 </div>
             </div>
 
-            <!-- DY POR PERÍODO -->
+            <!-- ② DY POR PERÍODO -->
             <div class="bg-[#1c1c1e] rounded-xl p-4">
                 <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Dividend Yield por Período</h4>
-                <!-- Skeleton -->
                 <div id="fii-dy-skeleton" class="grid grid-cols-4 gap-2 animate-pulse">
                     <div class="bg-[#2c2c2e] rounded-xl h-16"></div>
                     <div class="bg-[#2c2c2e] rounded-xl h-16"></div>
                     <div class="bg-[#2c2c2e] rounded-xl h-16"></div>
                     <div class="bg-[#2c2c2e] rounded-xl h-16"></div>
                 </div>
-                <!-- Conteúdo real -->
                 <div id="fii-dy-grid" class="hidden grid grid-cols-4 gap-2"></div>
                 <p id="fii-dy-vazio" class="hidden text-gray-600 text-xs text-center py-2">Dados de DY não disponíveis.</p>
             </div>
 
-            <!-- COMPARAÇÃO COM PARES DO SEGMENTO -->
+            <!-- ③ COMPARAÇÃO COM PARES DO SEGMENTO -->
             <div class="bg-[#1c1c1e] rounded-xl p-4">
                 <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Comparando com Pares do Segmento</h4>
-                <!-- Skeleton -->
                 <div id="fii-compare-skeleton" class="space-y-2 animate-pulse">
                     <div class="h-8 bg-[#2c2c2e] rounded-lg"></div>
                     <div class="h-8 bg-[#2c2c2e] rounded-lg"></div>
                     <div class="h-8 bg-[#2c2c2e] rounded-lg"></div>
                 </div>
-                <!-- Tabela real -->
-                <div id="fii-compare-wrap" class="hidden overflow-x-auto -mx-1">
-                    <table class="w-full text-xs">
-                        <thead>
-                            <tr class="text-left">
-                                <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 pl-1">Ticker</th>
-                                <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right">DY</th>
-                                <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right pr-1">P/VP</th>
-                            </tr>
-                        </thead>
-                        <tbody id="fii-compare-table" class="divide-y divide-[#2c2c2e]"></tbody>
-                    </table>
+                <!-- Tabela com scroll lateral e 6 colunas -->
+                <div id="fii-compare-wrap" class="hidden -mx-4">
+                    <div class="overflow-x-auto px-4 pb-1">
+                        <table class="text-xs" style="min-width:520px">
+                            <thead>
+                                <tr class="text-left border-b border-[#2c2c2e]">
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pr-3 sticky left-0 bg-[#1c1c1e]">Ticker</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right whitespace-nowrap">DY</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right whitespace-nowrap">P/VP</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right whitespace-nowrap">Val. Patr.</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-center whitespace-nowrap">Tipo</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pl-2 text-left whitespace-nowrap">Segmento</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fii-compare-table" class="divide-y divide-[#222]"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <p id="fii-compare-vazio" class="hidden text-gray-600 text-xs text-center py-2">Comparação não disponível.</p>
             </div>
 
-            <!-- HISTÓRICO DE INDICADORES -->
+            <!-- ④ HISTÓRICO DE INDICADORES FUNDAMENTALISTAS -->
             <div class="bg-[#1c1c1e] rounded-xl p-4">
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Histórico de Indicadores</h4>
-                <!-- Skeleton -->
+                <!-- Header com filtros de período -->
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Histórico de Indicadores</h4>
+                    <div id="fii-hist-filter" class="hidden flex gap-1">
+                        <button class="fii-hist-btn active text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-600 text-white transition-all" data-anos="5">5A</button>
+                        <button class="fii-hist-btn text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#2c2c2e] text-gray-400 transition-all" data-anos="10">10A</button>
+                    </div>
+                </div>
                 <div id="fii-hist-skeleton" class="space-y-2 animate-pulse">
                     <div class="h-7 bg-[#2c2c2e] rounded-lg"></div>
                     <div class="h-7 bg-[#2c2c2e] rounded-lg"></div>
                     <div class="h-7 bg-[#2c2c2e] rounded-lg"></div>
+                    <div class="h-7 bg-[#2c2c2e] rounded-lg"></div>
                 </div>
-                <!-- Tabela real -->
-                <div id="fii-hist-wrap" class="hidden overflow-x-auto -mx-1">
-                    <table class="w-full text-xs">
-                        <thead>
-                            <tr class="text-left">
-                                <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 pl-1">Tipo</th>
-                                <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right">Data Com</th>
-                                <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right">Pagamento</th>
-                                <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right pr-1">Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody id="fii-hist-table" class="divide-y divide-[#2c2c2e]"></tbody>
-                    </table>
+                <!-- Tabela com scroll lateral -->
+                <div id="fii-hist-wrap" class="hidden -mx-4">
+                    <div class="overflow-x-auto px-4 pb-1">
+                        <table class="text-xs" style="min-width:320px">
+                            <thead>
+                                <tr class="text-left border-b border-[#2c2c2e]">
+                                    <th id="fii-hist-th-ano"  class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pr-4 sticky left-0 bg-[#1c1c1e]">Ano</th>
+                                    <th id="fii-hist-th-dy"   class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right">DY</th>
+                                    <th id="fii-hist-th-pvp"  class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right">P/VP</th>
+                                    <th id="fii-hist-th-rend" class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right whitespace-nowrap">Rendimento</th>
+                                    <th id="fii-hist-th-var"  class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pl-2 text-right">Variação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fii-hist-table" class="divide-y divide-[#222]"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <p id="fii-hist-vazio" class="hidden text-gray-600 text-xs text-center py-2">Histórico não disponível.</p>
             </div>
 
-            <!-- COMPARAÇÃO COM ÍNDICES -->
-            <div id="fii-indices-card" class="bg-[#1c1c1e] rounded-xl p-4 hidden">
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Comparação com Índices</h4>
-                <div id="fii-indices-grid" class="grid grid-cols-2 gap-2"></div>
+            <!-- ⑤ COMPARAÇÃO COM ÍNDICES — GRÁFICO DE LINHA -->
+            <div id="fii-indices-card" class="bg-[#1c1c1e] rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Comparação com Índices</h4>
+                    <div id="fii-indices-legend" class="flex flex-wrap gap-x-3 gap-y-1 justify-end"></div>
+                </div>
+                <!-- Skeleton -->
+                <div id="fii-indices-skeleton" class="animate-pulse h-44 bg-[#2c2c2e] rounded-xl"></div>
+                <!-- Canvas do gráfico -->
+                <div id="fii-indices-chart-wrap" class="hidden relative" style="height:180px">
+                    <canvas id="fii-indices-chart"></canvas>
+                </div>
+                <p id="fii-indices-vazio" class="hidden text-gray-600 text-xs text-center py-2">Dados de comparação não disponíveis.</p>
             </div>
 
         </div>

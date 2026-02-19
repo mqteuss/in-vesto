@@ -6397,36 +6397,37 @@ async function handleMostrarDetalhes(symbol) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _resetAnaliseTabSkeletons() {
-    // Restaura skeletons e oculta conteúdo real para a próxima abertura
     const showEl = (id) => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); };
     const hideEl = (id) => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); };
 
-    showEl('fii-sobre-skeleton');   hideEl('fii-sobre');
-    showEl('fii-dy-skeleton');      hideEl('fii-dy-grid');      hideEl('fii-dy-vazio');
+    // Sobre
+    showEl('fii-sobre-skeleton'); hideEl('fii-sobre');
+    // DY
+    showEl('fii-dy-skeleton');    hideEl('fii-dy-grid'); hideEl('fii-dy-vazio');
+    // Pares
     showEl('fii-compare-skeleton'); hideEl('fii-compare-wrap'); hideEl('fii-compare-vazio');
-    showEl('fii-hist-skeleton');    hideEl('fii-hist-wrap');    hideEl('fii-hist-vazio');
-    hideEl('fii-indices-card');
+    // Histórico
+    showEl('fii-hist-skeleton'); hideEl('fii-hist-wrap'); hideEl('fii-hist-vazio'); hideEl('fii-hist-filter');
+    // Índices
+    showEl('fii-indices-skeleton'); hideEl('fii-indices-chart-wrap'); hideEl('fii-indices-vazio'); hideEl('fii-indices-card');
 
-    const compareTbody = document.getElementById('fii-compare-table');
-    const histTbody    = document.getElementById('fii-hist-table');
-    const dyGrid       = document.getElementById('fii-dy-grid');
-    const indicesGrid  = document.getElementById('fii-indices-grid');
-    if (compareTbody) compareTbody.innerHTML = '';
-    if (histTbody)    histTbody.innerHTML    = '';
-    if (dyGrid)       dyGrid.innerHTML       = '';
-    if (indicesGrid)  indicesGrid.innerHTML  = '';
+    // Limpa conteúdos
+    ['fii-compare-table','fii-hist-table','fii-dy-grid','fii-indices-legend'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.innerHTML = '';
+    });
+
+    // Destrói chart anterior para não acumular instâncias
+    if (window._fiiIndicesChart) {
+        try { window._fiiIndicesChart.destroy(); } catch (_) {}
+        window._fiiIndicesChart = null;
+    }
 }
 
 async function carregarAnaliseProfundaFII(ticker) {
     const LIMITE_SOBRE = 300;
-
-    // ── Helpers de DOM ──────────────────────────────────────────────────────
-    const show  = (id) => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); };
-    const hide  = (id) => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); };
-    const get   = (id) => document.getElementById(id);
-
-    // Mantém os skeletons enquanto carrega (já são exibidos por padrão no HTML)
-    // Nenhuma ação necessária aqui — os skeletons já estão visíveis.
+    const show = (id) => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); };
+    const hide = (id) => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); };
+    const get  = (id) => document.getElementById(id);
 
     try {
         const res = await fetch('/api/scraper', {
@@ -6436,199 +6437,273 @@ async function carregarAnaliseProfundaFII(ticker) {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const { json: dados } = await res.json();
-
-        // Garante que ainda é o mesmo ativo sendo exibido
         if (typeof currentDetalhesSymbol !== 'undefined' && currentDetalhesSymbol !== ticker) return;
 
-        // ── 1. SOBRE ──────────────────────────────────────────────────────────
+        // ── ① SOBRE ─────────────────────────────────────────────────────────────
         hide('fii-sobre-skeleton');
-        if (dados.sobre) {
-            const textoCompleto = dados.sobre;
-            const textoResumido = textoCompleto.length > LIMITE_SOBRE
-                ? textoCompleto.substring(0, LIMITE_SOBRE).trim() + '…'
-                : textoCompleto;
-
-            const elTexto = get('fii-sobre-texto');
+        if (dados.sobre && dados.sobre !== 'Descrição não disponível.') {
+            const full    = dados.sobre;
+            const short   = full.length > LIMITE_SOBRE ? full.substring(0, LIMITE_SOBRE).trim() + '…' : full;
+            const elTxt   = get('fii-sobre-texto');
             const elBtn   = get('fii-sobre-ler-mais');
-
-            if (elTexto) elTexto.textContent = textoResumido;
-
-            if (textoCompleto.length > LIMITE_SOBRE && elBtn) {
+            if (elTxt) elTxt.textContent = short;
+            if (full.length > LIMITE_SOBRE && elBtn) {
                 elBtn.classList.remove('hidden');
-                let expandido = false;
+                let exp = false;
                 elBtn.onclick = () => {
-                    expandido = !expandido;
-                    elTexto.textContent = expandido ? textoCompleto : textoResumido;
-                    elBtn.textContent   = expandido ? 'Ler menos ↑' : 'Ler mais ↓';
+                    exp = !exp;
+                    elTxt.textContent = exp ? full : short;
+                    elBtn.textContent = exp ? 'Ler menos ↑' : 'Ler mais ↓';
                 };
             }
-
             show('fii-sobre');
         } else {
-            // Mostra mensagem de fallback discreto
-            const elFii = get('fii-sobre');
-            if (elFii) {
-                elFii.innerHTML = '<p class="text-gray-600 text-xs">Descrição não disponível.</p>';
-                elFii.classList.remove('hidden');
-            }
+            const el = get('fii-sobre');
+            if (el) { el.innerHTML = '<p class="text-gray-600 text-xs">Descrição não disponível.</p>'; el.classList.remove('hidden'); }
         }
 
-        // ── 2. DY POR PERÍODO ─────────────────────────────────────────────────
-        // Backend retorna: dados.dividend_yield → [{periodo, percentual, valor}]
+        // ── ② DY POR PERÍODO ────────────────────────────────────────────────────
         hide('fii-dy-skeleton');
         const dyGrid = get('fii-dy-grid');
-        if (dados.dividend_yield && dados.dividend_yield.length > 0 && dyGrid) {
-            // Normaliza labels: "YIELD (1M)" → "1M", etc.
+        const dyList = dados.dividend_yield || [];
+        if (dyList.length > 0 && dyGrid) {
             const periodosEsperados = ['1M', '3M', '6M', '12M'];
             const dyMap = {};
-            dados.dividend_yield.forEach(d => {
-                // Extrai "1M", "3M", "6M" ou "12M" do campo periodo
-                const match = (d.periodo || '').toUpperCase().match(/(\d+M)/);
-                const chave = match ? match[1] : d.periodo;
-                dyMap[chave] = d;
-            });
+            dyList.forEach(d => { if (d._chave) dyMap[d._chave] = d; });
 
             dyGrid.innerHTML = periodosEsperados.map(p => {
                 const item = dyMap[p];
                 const pct  = item ? (item.percentual || '-') : '-';
                 const rs   = item ? (item.valor || '') : '';
-                return `
-                    <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center text-center shadow-sm">
-                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">${p}</span>
-                        <span class="text-base font-bold text-green-400">${pct}</span>
-                        ${rs ? `<span class="text-[10px] text-gray-600 mt-0.5">${rs}</span>` : ''}
-                    </div>`;
+                return `<div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center text-center shadow-sm">
+                    <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">${p}</span>
+                    <span class="text-base font-bold text-green-400">${pct}</span>
+                    ${rs ? `<span class="text-[10px] text-gray-600 mt-0.5">${rs}</span>` : ''}
+                </div>`;
             }).join('');
-
             show('fii-dy-grid');
         } else {
             show('fii-dy-vazio');
         }
 
-        // ── 3. COMPARAÇÃO COM PARES ──────────────────────────────────────────
-        // Backend retorna: dados.comparacao_fiis → [{ticker, dividend_yield, p_vp, valor_patrimonial, tipo, segmento}]
+        // ── ③ COMPARAÇÃO COM PARES ───────────────────────────────────────────────
         hide('fii-compare-skeleton');
         const compareTbody = get('fii-compare-table');
-        if (dados.comparacao_fiis && dados.comparacao_fiis.length > 0 && compareTbody) {
-            compareTbody.innerHTML = dados.comparacao_fiis.map(par => {
-                // p_vp pode vir como número ou string "1,05"
-                const pvpRaw = par.p_vp != null ? String(par.p_vp) : '';
-                const pvpNum = parseFloat(pvpRaw.replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
-                const pvpDisplay = pvpNum > 0 ? pvpNum.toFixed(2).replace('.', ',') : (pvpRaw || '-');
-                const pvpCor = pvpNum === 0 ? 'text-gray-400'
-                    : pvpNum < 1.0 ? 'text-green-400'
-                    : pvpNum <= 1.1 ? 'text-yellow-400'
-                    : 'text-red-400';
+        const pares = dados.comparacao_fiis || [];
+        if (pares.length > 0 && compareTbody) {
+            const fmtNum = (v, decimals = 2) => {
+                if (v == null || v === '') return '-';
+                const n = parseFloat(String(v).replace(',', '.'));
+                return isNaN(n) ? String(v) : n.toFixed(decimals).replace('.', ',');
+            };
+            const fmtPct  = (v) => { const s = fmtNum(v); return s === '-' ? '-' : s + '%'; };
+            const fmtMonet = (v) => {
+                if (v == null || v === '') return '-';
+                const n = parseFloat(String(v).replace(',', '.'));
+                if (isNaN(n)) return String(v);
+                if (n >= 1e9) return 'R$ ' + (n / 1e9).toFixed(2).replace('.', ',') + 'B';
+                if (n >= 1e6) return 'R$ ' + (n / 1e6).toFixed(2).replace('.', ',') + 'M';
+                return 'R$ ' + n.toFixed(2).replace('.', ',');
+            };
 
-                const pvpTag = pvpNum > 0
-                    ? `<span class="text-[9px] font-bold ml-1 ${pvpNum < 1 ? 'text-green-500' : 'text-red-500'}">${pvpNum < 1 ? '▼ DSCT' : '▲ CARO'}</span>`
-                    : '';
+            compareTbody.innerHTML = pares.map(par => {
+                const pvpN   = parseFloat(String(par.p_vp ?? '').replace(',', '.')) || 0;
+                const pvpDisp = fmtNum(par.p_vp);
+                // Cor baseada apenas no valor — sem badge de texto agressivo
+                const pvpCor  = pvpN === 0    ? 'text-gray-400'
+                              : pvpN < 0.9   ? 'text-green-400'   // muito descontado
+                              : pvpN < 1.0   ? 'text-emerald-400' // levemente descontado
+                              : pvpN <= 1.05 ? 'text-yellow-400'  // próximo de 1
+                              : 'text-red-400';                    // acima do PL
 
-                // dividend_yield pode ser número (ex: 12.5) ou string ("12,50%")
-                const dyRaw = par.dividend_yield != null ? String(par.dividend_yield) : '-';
-                const dyDisplay = dyRaw !== '-' && !dyRaw.includes('%')
-                    ? parseFloat(dyRaw.replace(',', '.')).toFixed(2).replace('.', ',') + '%'
-                    : dyRaw;
+                // Ponto colorido discreto no canto
+                const pvpDot  = pvpN === 0 ? '' : `<span class="inline-block w-1.5 h-1.5 rounded-full ml-1 align-middle ${pvpN < 1 ? 'bg-green-400' : 'bg-red-400'}"></span>`;
 
-                // Destaque se for o próprio ticker
-                const isSelf = (par.ticker || '').toUpperCase() === ticker.toUpperCase();
-                const rowClass = isSelf ? 'bg-purple-500/10 border-l-2 border-purple-500' : '';
+                const isSelf  = (par.ticker || '').toUpperCase() === ticker.toUpperCase();
+                const rowBg   = isSelf ? 'bg-purple-500/10' : 'hover:bg-white/5';
+                const selfBorder = isSelf ? 'border-l-2 border-purple-500' : '';
 
-                return `
-                    <tr class="${rowClass}">
-                        <td class="py-2.5 pl-1">
-                            <span class="font-bold text-white">${par.ticker || '-'}</span>
-                            ${isSelf ? '<span class="text-[8px] text-purple-400 font-bold ml-1">VOCÊ</span>' : ''}
-                            ${par.segmento ? `<span class="block text-[10px] text-gray-600 mt-0.5 truncate max-w-[120px]">${par.segmento}</span>` : ''}
-                        </td>
-                        <td class="py-2.5 text-right font-bold text-green-400">${dyDisplay}</td>
-                        <td class="py-2.5 text-right pr-1">
-                            <span class="font-bold ${pvpCor}">${pvpDisplay}</span>${pvpTag}
-                        </td>
-                    </tr>`;
+                return `<tr class="transition-colors ${rowBg} ${selfBorder}">
+                    <td class="py-2.5 pr-3 sticky left-0 ${isSelf ? 'bg-purple-950/60' : 'bg-[#1c1c1e]'} whitespace-nowrap">
+                        <span class="font-bold text-white text-xs">${par.ticker || '-'}</span>
+                        ${isSelf ? '<span class="text-[8px] text-purple-400 font-bold ml-1">•VOC</span>' : ''}
+                    </td>
+                    <td class="py-2.5 px-2 text-right font-bold text-green-400 whitespace-nowrap">${fmtPct(par.dividend_yield)}</td>
+                    <td class="py-2.5 px-2 text-right whitespace-nowrap">
+                        <span class="font-bold ${pvpCor}">${pvpDisp}</span>${pvpDot}
+                    </td>
+                    <td class="py-2.5 px-2 text-right text-gray-400 whitespace-nowrap">${fmtMonet(par.valor_patrimonial)}</td>
+                    <td class="py-2.5 px-2 text-center whitespace-nowrap">
+                        <span class="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">${par.tipo || '-'}</span>
+                    </td>
+                    <td class="py-2.5 pl-2 text-gray-500 text-[10px] whitespace-nowrap">${par.segmento || '-'}</td>
+                </tr>`;
             }).join('');
-
             show('fii-compare-wrap');
         } else {
             show('fii-compare-vazio');
         }
 
-        // ── 4. HISTÓRICO DE INDICADORES ──────────────────────────────────────
-        // Backend retorna: dados.historico_indicadores → [{tipo, data_com, pagamento, valor}]
+        // ── ④ HISTÓRICO DE INDICADORES FUNDAMENTALISTAS ─────────────────────────
         hide('fii-hist-skeleton');
-        const histTbody = get('fii-hist-table');
-        if (dados.historico_indicadores && dados.historico_indicadores.length > 0 && histTbody) {
-            // Atualiza os <th> da tabela para refletir a nova estrutura
-            const histWrap = document.getElementById('fii-hist-wrap');
-            if (histWrap) {
-                const thead = histWrap.querySelector('thead tr');
-                if (thead) {
-                    thead.innerHTML = `
-                        <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 pl-1">Tipo</th>
-                        <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right">Data Com</th>
-                        <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right">Pagamento</th>
-                        <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider pb-2 text-right pr-1">Valor</th>`;
-                }
-            }
+        const histAll = dados.historico_indicadores || [];
+        if (histAll.length > 0) {
+            // Todos os dados ficam em memória; filtro 5A/10A aplica-se localmente
+            const renderHistorico = (anosMax) => {
+                const rows = histAll.slice(0, anosMax);
+                const histTbody = get('fii-hist-table');
+                if (!histTbody) return;
 
-            histTbody.innerHTML = dados.historico_indicadores.map(item => `
-                <tr>
-                    <td class="py-2.5 pl-1">
-                        <span class="text-[10px] font-bold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase">${item.tipo || '-'}</span>
-                    </td>
-                    <td class="py-2.5 text-right text-gray-400 text-[11px]">${item.data_com || '-'}</td>
-                    <td class="py-2.5 text-right text-gray-400 text-[11px]">${item.pagamento || '-'}</td>
-                    <td class="py-2.5 text-right pr-1 font-bold text-green-400">${item.valor || '-'}</td>
-                </tr>`).join('');
+                // Verifica quais colunas têm dados
+                const temRend = rows.some(r => r.rendimento && r.rendimento !== '-');
+                const temVar  = rows.some(r => r.variacao  && r.variacao  !== '-');
 
+                // Oculta/mostra th's opcionais
+                const thRend = get('fii-hist-th-rend');
+                const thVar  = get('fii-hist-th-var');
+                if (thRend) thRend.classList.toggle('hidden', !temRend);
+                if (thVar)  thVar.classList.toggle('hidden', !temVar);
+
+                histTbody.innerHTML = rows.map(item => {
+                    const pvpN  = parseFloat(String(item.pvp ?? '').replace('%','').replace(',','.')) || 0;
+                    const pvpCor = pvpN === 0 ? 'text-gray-400' : pvpN < 1 ? 'text-green-400' : pvpN <= 1.1 ? 'text-yellow-400' : 'text-red-400';
+                    const dyVal = item.dy || '-';
+                    const dyColor = dyVal !== '-' ? 'text-green-400' : 'text-gray-500';
+
+                    return `<tr class="hover:bg-white/5 transition-colors">
+                        <td class="py-2.5 pr-4 sticky left-0 bg-[#1c1c1e] font-bold text-white">${item.ano}</td>
+                        <td class="py-2.5 px-2 text-right font-bold ${dyColor}">${dyVal}</td>
+                        <td class="py-2.5 px-2 text-right font-bold ${pvpCor}">${item.pvp || '-'}</td>
+                        ${temRend ? `<td class="py-2.5 px-2 text-right text-gray-400">${item.rendimento || '-'}</td>` : ''}
+                        ${temVar  ? `<td class="py-2.5 pl-2 text-right text-gray-400">${item.variacao  || '-'}</td>` : ''}
+                    </tr>`;
+                }).join('');
+            };
+
+            renderHistorico(5); // Padrão: 5 anos
             show('fii-hist-wrap');
+
+            // Botões de filtro 5A/10A
+            const filterDiv = get('fii-hist-filter');
+            if (filterDiv && histAll.length > 5) {
+                filterDiv.classList.remove('hidden');
+                filterDiv.querySelectorAll('.fii-hist-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        filterDiv.querySelectorAll('.fii-hist-btn').forEach(b => {
+                            b.className = 'fii-hist-btn text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#2c2c2e] text-gray-400 transition-all';
+                        });
+                        btn.className = 'fii-hist-btn text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-600 text-white transition-all';
+                        renderHistorico(parseInt(btn.dataset.anos));
+                    };
+                });
+            }
         } else {
             show('fii-hist-vazio');
         }
 
-        // ── 5. COMPARAÇÃO COM ÍNDICES ─────────────────────────────────────────
-        // Backend retorna: dados.comparacao_indices → [{nome, dados:[{data, rentabilidade}]}]
-        // Exibimos a rentabilidade acumulada do último ponto da série
-        if (dados.comparacao_indices && dados.comparacao_indices.length > 0) {
-            const indicesGrid = get('fii-indices-grid');
-            const indicesCard = get('fii-indices-card');
-            if (indicesGrid && indicesCard) {
-                indicesGrid.innerHTML = dados.comparacao_indices.map(idx => {
-                    // Pega o último dado da série (rentabilidade mais recente)
-                    const serie = Array.isArray(idx.dados) ? idx.dados : [];
-                    const ultimoPonto = serie.length > 0 ? serie[serie.length - 1] : null;
-                    const rentNum = ultimoPonto ? parseFloat(ultimoPonto.rentabilidade) : null;
-                    const rentDisplay = rentNum != null
-                        ? (rentNum >= 0 ? '+' : '') + rentNum.toFixed(2).replace('.', ',') + '%'
-                        : '-';
-                    const cor = rentNum == null ? 'text-gray-400'
-                        : rentNum >= 0 ? 'text-green-400'
-                        : 'text-red-400';
-                    const dataLabel = ultimoPonto ? ` (${ultimoPonto.data || ''})` : '';
+        // ── ⑤ COMPARAÇÃO COM ÍNDICES — GRÁFICO DE LINHA ─────────────────────────
+        hide('fii-indices-skeleton');
+        const indicesData = dados.comparacao_indices;
 
-                    return `
-                        <div class="bg-[#151515] rounded-xl p-3 flex flex-col shadow-sm">
-                            <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 truncate">${idx.nome}</span>
-                            <span class="text-sm font-bold ${cor}">${rentDisplay}</span>
-                            <span class="text-[9px] text-gray-600 mt-0.5">acum.${dataLabel}</span>
-                        </div>`;
-                }).join('');
-                indicesCard.classList.remove('hidden');
+        if (indicesData && indicesData.series && indicesData.series.length > 0) {
+            // Monta os labels do eixo X
+            // Prefere os labels extraídos do script; se não, usa as datas da série mais longa
+            let labels = indicesData.labels || [];
+            if (!labels.length) {
+                const longest = indicesData.series.reduce((a, s) => s.dados.length > a.dados.length ? s : a, { dados: [] });
+                labels = longest.dados.map(d => d.data || '');
             }
+            // Formata labels como "Jan/24" se vierem como "2024-01" ou "01/2024"
+            const fmtLabel = (l) => {
+                const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+                const m1 = String(l).match(/^(\d{4})-(\d{2})/);
+                if (m1) return meses[parseInt(m1[2]) - 1] + '/' + m1[1].slice(2);
+                const m2 = String(l).match(/^(\d{2})\/(\d{4})/);
+                if (m2) return meses[parseInt(m2[1]) - 1] + '/' + m2[2].slice(2);
+                return l;
+            };
+            const fmtLabels = labels.map(fmtLabel);
+
+            // Monta os datasets do Chart.js
+            const datasets = indicesData.series.map(serie => ({
+                label:           serie.nome,
+                data:            serie.dados.map(d => d.rentabilidade),
+                borderColor:     serie.cor,
+                backgroundColor: serie.cor + '18',
+                borderWidth:     2,
+                pointRadius:     0,
+                pointHoverRadius: 4,
+                tension:         0.3,
+                fill:            false
+            }));
+
+            // Legenda customizada
+            const legendDiv = get('fii-indices-legend');
+            if (legendDiv) {
+                legendDiv.innerHTML = indicesData.series.map(s =>
+                    `<div class="flex items-center gap-1">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${s.cor}"></span>
+                        <span class="text-[9px] font-bold text-gray-400">${s.nome}</span>
+                    </div>`
+                ).join('');
+            }
+
+            // Renderiza chart
+            const canvas = get('fii-indices-chart');
+            if (canvas) {
+                if (window._fiiIndicesChart) { try { window._fiiIndicesChart.destroy(); } catch (_) {} }
+                window._fiiIndicesChart = new Chart(canvas, {
+                    type: 'line',
+                    data: { labels: fmtLabels, datasets },
+                    options: {
+                        responsive:          true,
+                        maintainAspectRatio: false,
+                        interaction:         { mode: 'index', intersect: false },
+                        plugins: {
+                            legend:  { display: false },
+                            tooltip: {
+                                backgroundColor: '#1c1c1e',
+                                borderColor:     '#333',
+                                borderWidth:     1,
+                                titleColor:      '#888',
+                                bodyColor:       '#fff',
+                                titleFont:       { size: 10 },
+                                bodyFont:        { size: 11, weight: 'bold' },
+                                callbacks: {
+                                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2).replace('.', ',')}%`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks:   { color: '#555', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 },
+                                grid:    { color: '#222' },
+                                border:  { color: '#333' }
+                            },
+                            y: {
+                                ticks:   { color: '#555', font: { size: 9 }, callback: (v) => v.toFixed(0) + '%' },
+                                grid:    { color: '#222' },
+                                border:  { color: '#333' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            show('fii-indices-chart-wrap');
+            show('fii-indices-card');
+        } else {
+            show('fii-indices-vazio');
+            show('fii-indices-card');
         }
 
     } catch (e) {
         console.error('[AnaliseFII] Erro:', e.message);
-
-        // Remove skeletons em caso de erro e exibe mensagem discreta
-        ['fii-sobre-skeleton','fii-dy-skeleton','fii-compare-skeleton','fii-hist-skeleton'].forEach(hide);
-        ['fii-dy-vazio','fii-compare-vazio','fii-hist-vazio'].forEach(show);
-
-        const elSobre = get('fii-sobre');
-        if (elSobre) {
-            elSobre.innerHTML = '<p class="text-gray-600 text-xs">Não foi possível carregar a análise.</p>';
-            elSobre.classList.remove('hidden');
-        }
+        ['fii-sobre-skeleton','fii-dy-skeleton','fii-compare-skeleton','fii-hist-skeleton','fii-indices-skeleton'].forEach(hide);
+        ['fii-dy-vazio','fii-compare-vazio','fii-hist-vazio','fii-indices-vazio'].forEach(show);
+        const el = get('fii-sobre');
+        if (el) { el.innerHTML = '<p class="text-red-500/70 text-xs">Não foi possível carregar a análise.</p>'; el.classList.remove('hidden'); }
+        show('fii-indices-card');
     }
 }
 

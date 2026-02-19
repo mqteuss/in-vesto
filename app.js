@@ -6063,7 +6063,7 @@ async function handleMostrarDetalhes(symbol) {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
     }
 
-    // ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
+// ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
     // Roda em background, sem bloquear mais nada
     Promise.all([promiseFundamentos, promiseProvento]).then(([fundData, provData]) => {
         // Garante que o modal ainda é desse símbolo
@@ -6088,7 +6088,10 @@ async function handleMostrarDetalhes(symbol) {
             ultimo_rendimento: fundamentos.ultimo_rendimento || '-', patrimonio_liquido: fundamentos.patrimonio_liquido || '-', 
             cnpj: fundamentos.cnpj || '-', num_cotistas: fundamentos.num_cotistas || '-', tipo_gestao: fundamentos.tipo_gestao || '-',
             taxa_adm: fundamentos.taxa_adm || '-', mandato: fundamentos.mandato || '-', publico_alvo: fundamentos.publico_alvo || '-',
-            cotas_emitidas: fundamentos.cotas_emitidas || '-'
+            cotas_emitidas: fundamentos.cotas_emitidas || '-',
+            // NOVOS CAMPOS:
+            sobre: fundamentos.sobre || '',
+            comparacao: fundamentos.comparacao || []
         };
 
         // Atualiza badge 12M
@@ -6294,6 +6297,58 @@ async function handleMostrarDetalhes(symbol) {
                 </div>`;
         }
 
+        // =========================================================
+        // NOVA LÓGICA: SOBRE O ATIVO (Texto)
+        // =========================================================
+        let sobreHtml = '';
+        if (dados.sobre && dados.sobre.length > 10) {
+            sobreHtml = `
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-6 mb-2 pl-1">Sobre o Ativo</h4>
+                <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
+                    <p class="text-xs text-gray-400 leading-relaxed text-justify">
+                        ${dados.sobre}
+                    </p>
+                </div>
+            `;
+        }
+
+        // =========================================================
+        // NOVA LÓGICA: COMPARAÇÃO (Tabela em lista)
+        // =========================================================
+        let comparacaoHtml = '';
+        if (dados.comparacao && dados.comparacao.length > 0) {
+            let itensComparacao = dados.comparacao.map(item => `
+                <div class="flex justify-between items-center py-2.5 border-b border-[#1F1F1F] last:border-0 cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
+                            <span class="text-[9px] font-bold text-white tracking-wider">${item.ticker.substring(0,2)}</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
+                            <span class="text-[9px] text-gray-500 font-medium truncate max-w-[120px]" title="${item.nome}">${item.nome}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-end gap-4 text-right">
+                        <div class="flex flex-col">
+                            <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">DY</span>
+                            <span class="text-[11px] text-green-400 font-bold leading-none">${item.dy}</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest leading-none mb-1">P/VP</span>
+                            <span class="text-[11px] text-white font-bold leading-none">${item.pvp}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            comparacaoHtml = `
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-6 mb-2 pl-1">Comparar Ativos</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${itensComparacao}
+                </div>
+            `;
+        }
+
         // Atualiza os placeholders no DOM com animação suave
         const elGrid = document.getElementById('detalhes-grid-topo');
         if (elGrid) {
@@ -6308,7 +6363,7 @@ async function handleMostrarDetalhes(symbol) {
         const elListas = document.getElementById('detalhes-listas-fundamentos');
         if (elListas) {
             elListas.style.opacity = '0';
-            elListas.innerHTML = listasHtml;
+            elListas.innerHTML = listasHtml + sobreHtml + comparacaoHtml;
             requestAnimationFrame(() => {
                 elListas.style.transition = 'opacity 0.3s ease';
                 elListas.style.opacity = '1';

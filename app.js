@@ -6550,7 +6550,7 @@ async function carregarAnaliseProfundaFII(ticker) {
                     const rowBg  = isSelf ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]';
 
                     return `<tr class="border-b border-[#1f1f1f] transition-colors ${rowBg}">
-                        <td class="py-2.5 pr-4 sticky left-0 z-10 ${isSelf ? 'bg-[#1e1c2a]' : 'bg-[#1c1c1e]'} whitespace-nowrap">
+                        <td class="py-2.5 pr-4 sticky left-0 z-10 whitespace-nowrap" style="background:${isSelf ? '#1a1825' : '#1c1c1e'}">
                             <div class="flex items-center gap-1.5">
                                 <span class="font-bold text-white text-xs tracking-tight">${par.ticker || '-'}</span>
                                 ${isSelf ? '<span class="text-[8px] text-gray-500 font-medium">você</span>' : ''}
@@ -6629,7 +6629,7 @@ async function carregarAnaliseProfundaFII(ticker) {
                     const dyColor = dyVal !== '-' ? 'text-green-400' : 'text-gray-500';
 
                     return `<tr class="hover:bg-white/5 transition-colors">
-                        <td class="py-2.5 pr-4 sticky left-0 bg-[#1c1c1e] font-bold text-white">${item.ano}</td>
+                        <td class="py-2.5 pr-4 sticky left-0 z-10 font-bold text-white" style="background:#1c1c1e">${item.ano}</td>
                         <td class="py-2.5 px-2 text-right font-bold ${dyColor}">${dyVal}</td>
                         <td class="py-2.5 px-2 text-right font-bold ${pvpCor}">${item.pvp || '-'}</td>
                         ${temRend ? `<td class="py-2.5 px-2 text-right text-gray-400">${item.rendimento || '-'}</td>` : ''}

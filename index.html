@@ -1019,7 +1019,7 @@
         <p id="detalhes-mensagem" class="text-center text-[#666666] py-8 px-4">Carregando...</p>
 
         <!-- Navegação por Tabs -->
-        <div id="detalhes-tab-nav" class="hidden px-4 pt-3 pb-2 sticky top-0 z-10 bg-[#0a0a0a]">
+        <div id="detalhes-tab-nav" class="hidden px-4 pt-3 pb-2 sticky top-0 z-20" style="background:#0a0a0a">
             <div class="flex gap-1 p-1 bg-[#151515] rounded-xl border border-[#2C2C2E]">
                 <button class="detalhes-tab-btn active flex-1 py-2 rounded-lg text-xs font-bold text-white bg-[#2C2C2E] transition-all" data-target="detalhes-tab-geral">Visão Geral</button>
                 <button class="detalhes-tab-btn flex-1 py-2 rounded-lg text-xs font-bold text-gray-500 transition-all" data-target="detalhes-tab-fundamentos">Fundamentos</button>
@@ -1091,7 +1091,11 @@
 
             <!-- ③ COMPARAÇÃO COM PARES DO SEGMENTO -->
             <div class="bg-[#1c1c1e] rounded-xl p-4">
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Comparando com Pares do Segmento</h4>
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Comparando com Pares</h4>
+                </div>
+                <!-- Filtros de pares -->
+                <div id="fii-compare-filter" class="hidden flex gap-1.5 mb-3 flex-wrap"></div>
                 <div id="fii-compare-skeleton" class="space-y-2 animate-pulse">
                     <div class="h-8 bg-[#2c2c2e] rounded-lg"></div>
                     <div class="h-8 bg-[#2c2c2e] rounded-lg"></div>
@@ -1103,12 +1107,12 @@
                         <table class="text-xs" style="min-width:520px">
                             <thead>
                                 <tr class="text-left border-b border-[#2c2c2e]">
-                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pr-3 sticky left-0 bg-[#1c1c1e]">Ticker</th>
-                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right whitespace-nowrap">DY</th>
-                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right whitespace-nowrap">P/VP</th>
-                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right whitespace-nowrap">Val. Patr.</th>
-                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-center whitespace-nowrap">Tipo</th>
-                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pl-2 text-left whitespace-nowrap">Segmento</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pr-4 sticky left-0 z-10" style="background:#1c1c1e">Ticker</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-3 text-right whitespace-nowrap">DY</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-3 text-right whitespace-nowrap">P/VP</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-3 text-right whitespace-nowrap">Val. Patr.</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-3 text-center whitespace-nowrap">Tipo</th>
+                                    <th class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pl-3 text-left whitespace-nowrap">Segmento</th>
                                 </tr>
                             </thead>
                             <tbody id="fii-compare-table" class="divide-y divide-[#222]"></tbody>
@@ -1140,7 +1144,7 @@
                         <table class="text-xs" style="min-width:320px">
                             <thead>
                                 <tr class="text-left border-b border-[#2c2c2e]">
-                                    <th id="fii-hist-th-ano"  class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pr-4 sticky left-0 bg-[#1c1c1e]">Ano</th>
+                                    <th id="fii-hist-th-ano"  class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 pr-4 sticky left-0 z-10" style="background:#1c1c1e">Ano</th>
                                     <th id="fii-hist-th-dy"   class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right">DY</th>
                                     <th id="fii-hist-th-pvp"  class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right">P/VP</th>
                                     <th id="fii-hist-th-rend" class="text-[10px] font-bold text-gray-600 uppercase tracking-wider py-2 px-2 text-right whitespace-nowrap">Rendimento</th>
@@ -1156,14 +1160,17 @@
 
             <!-- ⑤ COMPARAÇÃO COM ÍNDICES — GRÁFICO DE LINHA -->
             <div id="fii-indices-card" class="bg-[#1c1c1e] rounded-xl p-4">
-                <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center justify-between mb-2">
                     <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Comparação com Índices</h4>
-                    <div id="fii-indices-legend" class="flex flex-wrap gap-x-3 gap-y-1 justify-end"></div>
+                    <!-- Filtro 2A / 5A -->
+                    <div id="fii-indices-filter" class="hidden flex gap-1.5"></div>
                 </div>
+                <!-- Legenda -->
+                <div id="fii-indices-legend" class="flex flex-wrap gap-x-3 gap-y-1.5 mb-3"></div>
                 <!-- Skeleton -->
                 <div id="fii-indices-skeleton" class="animate-pulse h-44 bg-[#2c2c2e] rounded-xl"></div>
                 <!-- Canvas do gráfico -->
-                <div id="fii-indices-chart-wrap" class="hidden relative" style="height:180px">
+                <div id="fii-indices-chart-wrap" class="hidden relative" style="height:200px">
                     <canvas id="fii-indices-chart"></canvas>
                 </div>
                 <p id="fii-indices-vazio" class="hidden text-gray-600 text-xs text-center py-2">Dados de comparação não disponíveis.</p>

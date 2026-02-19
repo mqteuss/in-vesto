@@ -8421,204 +8421,219 @@ if (objetivosContent) {
 window.openObjetivosModal = openObjetivosModal;
 
     // ─────────────────────────────────────────────────────────────────────────
-    //  MÓDULO CALCULADORA (BOLA DE NEVE) — refatorado para alta performance
+    //  MÓDULO CALCULADORA (BOLA DE NEVE) — CalculatorController
+    //
+    //  Princípios de performance aplicados:
+    //  • Todos os nós DOM resolvidos UMA única vez na inicialização (singleton).
+    //  • Matemática isolada em função pura, sem acesso ao DOM.
+    //  • Dirty-flag + requestAnimationFrame: inputs disparam apenas um flag;
+    //    o DOM é escrito no próximo vsync — teclas rápidas não acumulam writes.
+    //  • Touch/Swipe: leitura de scrollTop feita ANTES do drag (touchstart);
+    //    translateY aplicado dentro de rAF para evitar layout thrashing;
+    //    touchstart e touchend são passive:true; touchmove é passive:false
+    //    somente porque precisa chamar preventDefault para impedir o scroll
+    //    nativo enquanto o painel está sendo arrastado para baixo.
+    //  • formatBRL reutiliza o Intl.NumberFormat global (_fmtBRL) já
+    //    instanciado no topo do arquivo — nenhum objeto novo por keystroke.
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Singleton com todas as referências DOM da calculadora.
-     * Resolvido uma única vez na inicialização; nunca mais percorre o DOM.
-     */
-    const CalculatorUI = (() => {
-        const $ = id => document.getElementById(id);
-        return {
-            // Modal / estrutura
-            modal:      $('calculadora-page-modal'),
-            content:    $('tab-calculadora-content'),
-            voltarBtn:  $('calculadora-voltar-btn'),
-            calcBtn:    $('calc-btn-calcular'),
-            // Inputs
-            inInicial:  $('calc-inicial'),
-            inMensal:   $('calc-mensal'),
-            inTaxa:     $('calc-taxa'),
-            inTaxaTipo: $('calc-taxa-tipo'),
-            inTempo:    $('calc-tempo'),
-            inTempoTipo:$('calc-tempo-tipo'),
-            // Outputs
-            outFinal:      $('calc-resultado-final'),
-            outInvestido:  $('calc-total-investido'),
-            outJuros:      $('calc-total-juros'),
-            barInvestido:  $('calc-barra-investido'),
-            barJuros:      $('calc-barra-juros'),
+    const CalculatorController = (() => {
+        // ── 1. Cache de seletores (resolvido uma única vez) ──────────────────
+        const el = id => document.getElementById(id);
+
+        const ui = {
+            modal:       el('calculadora-page-modal'),
+            content:     el('tab-calculadora-content'),
+            voltarBtn:   el('calculadora-voltar-btn'),
+            calcBtn:     el('calc-btn-calcular'),
+            // inputs
+            inInicial:   el('calc-inicial'),
+            inMensal:    el('calc-mensal'),
+            inTaxa:      el('calc-taxa'),
+            inTaxaTipo:  el('calc-taxa-tipo'),
+            inTempo:     el('calc-tempo'),
+            inTempoTipo: el('calc-tempo-tipo'),
+            // outputs
+            outFinal:    el('calc-resultado-final'),
+            outInvestido:el('calc-total-investido'),
+            outJuros:    el('calc-total-juros'),
+            barInvestido:el('calc-barra-investido'),
+            barJuros:    el('calc-barra-juros'),
         };
+
+        // ── 2. Matemática isolada (sem DOM) ───────────────────────────────────
+        //
+        // Recebe apenas números primitivos; retorna apenas números primitivos.
+        // Pode ser testada fora do browser sem qualquer mock.
+        function compoundInterest(vInicial, aMensal, taxaBase, taxaTipo, tempoBase, tempoTipo) {
+            const meses      = tempoTipo === 'anos' ? tempoBase * 12 : tempoBase;
+            const taxaMensal = taxaTipo  === 'anual'
+                ? Math.pow(1 + taxaBase / 100, 1 / 12) - 1
+                : taxaBase / 100;
+
+            const investido = vInicial + aMensal * meses;
+
+            let total = taxaMensal > 0
+                ? vInicial * Math.pow(1 + taxaMensal, meses)
+                  + aMensal * (Math.pow(1 + taxaMensal, meses) - 1) / taxaMensal
+                : investido;
+
+            if (total < 0) total = 0;
+            const juros        = Math.max(0, total - investido);
+            const base         = total > 0 ? total : 1;     // evita divisão por zero
+            const pctInvestido = investido / base * 100;
+            const pctJuros     = juros     / base * 100;
+
+            return { total, investido, juros, pctInvestido, pctJuros };
+        }
+
+        // ── 3. Dirty-flag + rAF ───────────────────────────────────────────────
+        //
+        // Cada evento de input apenas marca "_dirty = true" e agenda um único
+        // frame. Se o usuário digitar 10 caracteres em um frame (< 16 ms),
+        // o DOM recebe apenas 1 write — em vez de 10.
+        let _dirty = false;
+        let _rafCalcId = null;
+
+        function _scheduleRender() {
+            if (_rafCalcId) return;              // já há um frame agendado
+            _rafCalcId = requestAnimationFrame(_commitRender);
+        }
+
+        function _commitRender() {
+            _rafCalcId = null;
+            if (!_dirty) return;
+            _dirty = false;
+
+            const result = compoundInterest(
+                parseFloat(ui.inInicial?.value)   || 0,
+                parseFloat(ui.inMensal?.value)    || 0,
+                parseFloat(ui.inTaxa?.value)      || 0,
+                ui.inTaxaTipo?.value  ?? 'mensal',
+                parseFloat(ui.inTempo?.value)     || 0,
+                ui.inTempoTipo?.value ?? 'anos'
+            );
+
+            // Textos — sem impacto de layout, escritos diretamente
+            if (ui.outFinal)     ui.outFinal.textContent     = formatBRL(result.total);
+            if (ui.outInvestido) ui.outInvestido.textContent = formatBRL(result.investido);
+            if (ui.outJuros)     ui.outJuros.textContent     = formatBRL(result.juros);
+
+            // Larguras das barras — já estamos dentro do rAF, escrita é segura
+            if (ui.barInvestido) ui.barInvestido.style.width = `${result.pctInvestido}%`;
+            if (ui.barJuros)     ui.barJuros.style.width     = `${result.pctJuros}%`;
+        }
+
+        function _markDirtyAndSchedule() {
+            _dirty = true;
+            _scheduleRender();
+        }
+
+        // ── 4. Open / Close ───────────────────────────────────────────────────
+        function open() {
+            if (!ui.modal || !ui.content) return;
+            ui.modal.classList.add('visible');
+            ui.content.style.transform = '';
+            ui.content.classList.remove('closing');
+            document.body.style.overflow = 'hidden';
+            // Aguarda a animação CSS de abertura antes do primeiro cálculo
+            setTimeout(_markDirtyAndSchedule, 50);
+        }
+
+        function close() {
+            if (!ui.modal || !ui.content) return;
+            ui.content.style.transform = '';
+            ui.content.classList.add('closing');
+            ui.modal.classList.remove('visible');
+            document.body.style.overflow = '';
+        }
+
+        // ── 5. Touch / Swipe ─────────────────────────────────────────────────
+        //
+        // Estratégia de layout thrashing:
+        //  • touchstart (passive): lê scrollTop UMA vez e armazena em variável.
+        //  • touchmove  (passive:false): armazena apenas o clientY (leitura
+        //    barata), marca um flag e agenda rAF. Nenhuma escrita de style aqui.
+        //  • rAF (_applyDrag): faz a única escrita de style.transform por frame.
+        //  • touchend   (passive): decide fechar ou resetar; nenhum read de layout.
+        if (ui.content) {
+            const scrollArea  = ui.content.querySelector('.overflow-y-auto');
+            let dragging      = false;
+            let startY        = 0;
+            let lastY         = 0;
+            let scrollAtStart = 0;   // scrollTop lido UMA vez no touchstart
+            let _rafDragId    = null;
+
+            function _applyDrag() {
+                _rafDragId = null;
+                if (!dragging) return;
+                const diff = lastY - startY;
+                if (diff > 0) ui.content.style.transform = `translateY(${diff}px)`;
+            }
+
+            ui.content.addEventListener('touchstart', e => {
+                // Lê scrollTop aqui (fora do loop de movimento) para evitar
+                // forçar um layout a cada touchmove.
+                scrollAtStart = scrollArea ? scrollArea.scrollTop : 0;
+                if (scrollAtStart === 0) {
+                    startY   = e.touches[0].clientY;
+                    lastY    = startY;
+                    dragging = true;
+                    ui.content.style.transition = 'none';
+                }
+            }, { passive: true });
+
+            ui.content.addEventListener('touchmove', e => {
+                if (!dragging) return;
+                lastY = e.touches[0].clientY;
+                const diff = lastY - startY;
+                // Previne scroll nativo apenas quando estamos arrastando para baixo.
+                // passive:false é obrigatório aqui para que preventDefault funcione.
+                if (diff > 0 && e.cancelable) e.preventDefault();
+                // Não escreve style.transform aqui — delega ao próximo frame.
+                if (!_rafDragId) _rafDragId = requestAnimationFrame(_applyDrag);
+            }, { passive: false });
+
+            ui.content.addEventListener('touchend', () => {
+                if (!dragging) return;
+                dragging = false;
+                if (_rafDragId) { cancelAnimationFrame(_rafDragId); _rafDragId = null; }
+
+                const diff = lastY - startY;
+                ui.content.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+
+                if (diff > 120) {
+                    close();
+                } else {
+                    ui.content.style.transform = '';
+                }
+                startY = 0;
+                lastY  = 0;
+            }, { passive: true });
+        }
+
+        // ── 6. Event Listeners ────────────────────────────────────────────────
+        // Inputs numéricos: `input` dispara em cada keystroke
+        [ui.inInicial, ui.inMensal, ui.inTaxa, ui.inTempo]
+            .forEach(el => el?.addEventListener('input', _markDirtyAndSchedule));
+
+        // Selects: `change` é o evento correto (sem digitação)
+        ui.inTaxaTipo?.addEventListener('change',  _markDirtyAndSchedule);
+        ui.inTempoTipo?.addEventListener('change', _markDirtyAndSchedule);
+
+        // Botão "Calcular" (ação manual do usuário)
+        ui.calcBtn?.addEventListener('click', _markDirtyAndSchedule);
+
+        // Botão Voltar e backdrop
+        ui.voltarBtn?.addEventListener('click', close);
+        ui.modal?.addEventListener('click', e => { if (e.target === ui.modal) close(); });
+
+        // Expõe apenas o necessário para o escopo global
+        return { open, close };
     })();
 
-    /**
-     * Função pura de cálculo: recebe apenas números, devolve apenas números.
-     * Sem efeitos colaterais, sem acesso ao DOM — testável e reutilizável.
-     *
-     * @param {{ vInicial:number, aMensal:number, taxaBase:number,
-     *            taxaTipo:string, tempoBase:number, tempoTipo:string }} params
-     * @returns {{ total:number, investido:number, juros:number,
-     *             pctInvestido:number, pctJuros:number }}
-     */
-    function calculateCompoundInterest({ vInicial, aMensal, taxaBase, taxaTipo, tempoBase, tempoTipo }) {
-        // Normalização: tudo para meses e taxa mensal
-        const meses      = tempoTipo === 'anos' ? tempoBase * 12 : tempoBase;
-        const taxaMensal = taxaTipo  === 'anual'
-            ? Math.pow(1 + taxaBase / 100, 1 / 12) - 1
-            : taxaBase / 100;
-
-        const investido = vInicial + aMensal * meses;
-
-        let total = taxaMensal > 0
-            ? vInicial * Math.pow(1 + taxaMensal, meses)
-              + aMensal * (Math.pow(1 + taxaMensal, meses) - 1) / taxaMensal
-            : investido; // taxa zero → sem juros, apenas aportes
-
-        // Proteção contra resultados negativos (inputs extremos)
-        if (total    < 0) total    = 0;
-        const juros  = Math.max(0, total - investido);
-
-        const base          = total > 0 ? total : 1; // evita divisão por zero
-        const pctInvestido  = (investido / base) * 100;
-        const pctJuros      = (juros     / base) * 100;
-
-        return { total, investido, juros, pctInvestido, pctJuros };
-    }
-
-    /**
-     * Atualiza o DOM da calculadora com os dados já calculados.
-     * As mutações de layout (style.width das barras) são agendadas via
-     * requestAnimationFrame para ficarem em sincronia com o vsync (60 fps),
-     * eliminando jank causado por writes/reads de layout intercalados.
-     *
-     * @param {{ total:number, investido:number, juros:number,
-     *            pctInvestido:number, pctJuros:number }} data
-     */
-    function updateCalculatorUI({ total, investido, juros, pctInvestido, pctJuros }) {
-        // Textos: sem impacto de layout — podem ser escritos diretamente
-        if (CalculatorUI.outFinal)     CalculatorUI.outFinal.textContent     = formatBRL(total);
-        if (CalculatorUI.outInvestido) CalculatorUI.outInvestido.textContent = formatBRL(investido);
-        if (CalculatorUI.outJuros)     CalculatorUI.outJuros.textContent     = formatBRL(juros);
-
-        // Larguras das barras: agendadas no próximo frame para evitar layout thrashing
-        requestAnimationFrame(() => {
-            if (CalculatorUI.barInvestido) CalculatorUI.barInvestido.style.width = `${pctInvestido}%`;
-            if (CalculatorUI.barJuros)     CalculatorUI.barJuros.style.width     = `${pctJuros}%`;
-        });
-    }
-
-    /**
-     * Lê os valores do CalculatorUI singleton, calcula e renderiza.
-     * Leve o suficiente para rodar a cada keystroke sem travar.
-     */
-    function runCalculator() {
-        const data = calculateCompoundInterest({
-            vInicial:  parseFloat(CalculatorUI.inInicial?.value)   || 0,
-            aMensal:   parseFloat(CalculatorUI.inMensal?.value)    || 0,
-            taxaBase:  parseFloat(CalculatorUI.inTaxa?.value)      || 0,
-            taxaTipo:  CalculatorUI.inTaxaTipo?.value  ?? 'mensal',
-            tempoBase: parseFloat(CalculatorUI.inTempo?.value)     || 0,
-            tempoTipo: CalculatorUI.inTempoTipo?.value ?? 'anos',
-        });
-        updateCalculatorUI(data);
-    }
-
-    // ── Open / Close ─────────────────────────────────────────────────────────
-
-    window.openCalculadoraModal = function () {
-        const { modal, content } = CalculatorUI;
-        if (!modal || !content) return;
-
-        modal.classList.add('visible');
-        content.style.transform = '';
-        content.classList.remove('closing');
-        document.body.style.overflow = 'hidden';
-
-        // Pequeno atraso para não competir com a animação CSS de abertura
-        setTimeout(runCalculator, 50);
-    };
-
-    function closeCalculadoraModal() {
-        const { modal, content } = CalculatorUI;
-        if (!modal || !content) return;
-
-        content.style.transform = '';
-        content.classList.add('closing');
-        modal.classList.remove('visible');
-        document.body.style.overflow = '';
-    }
-
-    // ── Event Listeners ───────────────────────────────────────────────────────
-
-    // Botão "Calcular" (mantido para usuários que preferem confirmar manualmente)
-    CalculatorUI.calcBtn?.addEventListener('click', runCalculator);
-
-    // Fechar ao clicar no botão Voltar
-    CalculatorUI.voltarBtn?.addEventListener('click', closeCalculadoraModal);
-
-    // Fechar ao tocar no fundo escuro fora do painel
-    CalculatorUI.modal?.addEventListener('click', e => {
-        if (e.target === CalculatorUI.modal) closeCalculadoraModal();
-    });
-
-    // Cálculo em tempo real a cada keystroke nos campos numéricos (`input`)
-    [CalculatorUI.inInicial, CalculatorUI.inMensal, CalculatorUI.inTaxa, CalculatorUI.inTempo]
-        .forEach(el => el?.addEventListener('input', runCalculator));
-
-    // Selects disparam `change` (sem digitação) — mantém UX esperada
-    CalculatorUI.inTaxaTipo?.addEventListener('change',  runCalculator);
-    CalculatorUI.inTempoTipo?.addEventListener('change', runCalculator);
-
-    // ── Touch / Swipe para fechar ─────────────────────────────────────────────
-
-    if (CalculatorUI.content) {
-        const scrollAreaCalc = CalculatorUI.content.querySelector('.overflow-y-auto');
-        let isDraggingCalc   = false;
-        let touchStartCalcY  = 0;
-        let touchMoveCalcY   = 0;
-
-        // passive:true → não bloqueia o scroll nativo do browser
-        CalculatorUI.content.addEventListener('touchstart', e => {
-            if (scrollAreaCalc && scrollAreaCalc.scrollTop === 0) {
-                touchStartCalcY = e.touches[0].clientY;
-                touchMoveCalcY  = touchStartCalcY;
-                isDraggingCalc  = true;
-                CalculatorUI.content.style.transition = 'none';
-            }
-        }, { passive: true });
-
-        // passive:false obrigatório aqui pois chamamos e.preventDefault()
-        // para impedir o scroll da página enquanto o drag está ativo.
-        CalculatorUI.content.addEventListener('touchmove', e => {
-            if (!isDraggingCalc) return;
-            touchMoveCalcY = e.touches[0].clientY;
-            const diff = touchMoveCalcY - touchStartCalcY;
-
-            if (diff > 0) {
-                if (e.cancelable) e.preventDefault();
-                CalculatorUI.content.style.transform = `translateY(${diff}px)`;
-            }
-        }, { passive: false });
-
-        // passive:true → sem necessidade de preventDefault no touchend
-        CalculatorUI.content.addEventListener('touchend', () => {
-            if (!isDraggingCalc) return;
-            isDraggingCalc = false;
-
-            const diff = touchMoveCalcY - touchStartCalcY;
-            CalculatorUI.content.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-
-            if (diff > 120) {
-                closeCalculadoraModal();
-            } else {
-                CalculatorUI.content.style.transform = '';
-            }
-
-            touchStartCalcY = 0;
-            touchMoveCalcY  = 0;
-        }, { passive: true });
-    }
+    window.openCalculadoraModal = CalculatorController.open;
+    window.closeCalculadoraModal = CalculatorController.close;
 
 window.renderizarListaImoveis = function(imoveis) {
     let container = document.getElementById('detalhes-imoveis-container');

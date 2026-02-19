@@ -732,6 +732,24 @@ let ipcaCacheData = null;
 	const detalhesShareBtn = document.getElementById('detalhes-share-btn');
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled');  
+
+    // ─── Função de tabs do modal de detalhes ────────────────────────────────────
+    function ativarDetalhesTab(targetId) {
+        document.querySelectorAll('.detalhes-tab-pane').forEach(pane => pane.classList.add('hidden'));
+        document.querySelectorAll('.detalhes-tab-btn').forEach(btn => {
+            const isActive = btn.dataset.target === targetId;
+            btn.classList.toggle('active', isActive);
+            btn.classList.toggle('text-white', isActive);
+            btn.classList.toggle('bg-[#2C2C2E]', isActive);
+            btn.classList.toggle('text-gray-500', !isActive);
+        });
+        const target = document.getElementById(targetId);
+        if (target) target.classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.detalhes-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => ativarDetalhesTab(btn.dataset.target));
+    });
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
@@ -4673,8 +4691,14 @@ function handleAbrirModalEdicao(id) {
         detalhesTituloTexto.textContent = 'Detalhes'; 
         detalhesNomeLongo.textContent = ''; 
         detalhesPreco.innerHTML = '';
-        detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
+
+        // Esconder tab nav e limpar tab de fundamentos
+        const detalhesTabNav = document.getElementById('detalhes-tab-nav');
+        if (detalhesTabNav) detalhesTabNav.classList.add('hidden');
+        const elListasReset = document.getElementById('detalhes-listas-fundamentos');
+        if (elListasReset) elListasReset.innerHTML = '';
+        ativarDetalhesTab('detalhes-tab-geral');
 
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
@@ -5944,8 +5968,12 @@ async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
     detalhesPreco.innerHTML = '';
-    detalhesAiProvento.innerHTML = ''; 
-    detalhesHistoricoContainer.classList.remove('hidden'); 
+    detalhesAiProvento.innerHTML = '';
+
+    // Mostrar tab nav e resetar para a primeira tab
+    const detalhesTabNav = document.getElementById('detalhes-tab-nav');
+    if (detalhesTabNav) detalhesTabNav.classList.remove('hidden');
+    ativarDetalhesTab('detalhes-tab-geral');
 
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
@@ -6057,8 +6085,11 @@ async function handleMostrarDetalhes(symbol) {
                 <div id="detalhes-provento-placeholder" class="mb-4"></div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-3 pl-1">Indicadores Rápidos</h4>
                 <div id="detalhes-grid-topo" class="grid grid-cols-3 gap-2 w-full mb-6">${skeletonGrid}</div>
-                <div id="detalhes-listas-fundamentos">${skeletonListas}</div>
             </div>`;
+
+        // Injeta skeleton de fundamentos na tab de Fundamentos
+        const elListasInit = document.getElementById('detalhes-listas-fundamentos');
+        if (elListasInit) elListasInit.innerHTML = skeletonListas;
     } else {
         detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
     }

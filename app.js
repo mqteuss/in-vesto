@@ -6294,6 +6294,53 @@ async function handleMostrarDetalhes(symbol) {
                 </div>`;
         }
 
+        // ─── SOBRE O ATIVO ───────────────────────────────────────────────────────
+        if (fundamentos.sobre && fundamentos.sobre.trim().length > 20) {
+            listasHtml += `
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Sobre</h4>
+                <div class="bg-[#151515] rounded-xl p-4 shadow-sm mb-4">
+                    <p class="text-xs text-gray-400 leading-relaxed">${fundamentos.sobre}</p>
+                </div>`;
+        }
+
+        // ─── COMPARANDO COM OUTROS FIIS ─────────────────────────────────────────
+        if (fundamentos.comparacao && fundamentos.comparacao.length > 0) {
+            const headerRow = `<tr>
+                <th class="text-left text-[9px] font-bold text-gray-500 uppercase tracking-widest py-2 px-3 whitespace-nowrap">Ticker</th>
+                <th class="text-right text-[9px] font-bold text-gray-500 uppercase tracking-widest py-2 px-3 whitespace-nowrap">DY</th>
+                <th class="text-right text-[9px] font-bold text-gray-500 uppercase tracking-widest py-2 px-3 whitespace-nowrap">P/VP</th>
+            </tr>`;
+
+            const bodyRows = fundamentos.comparacao.map(item => {
+                const isCurrentTicker = item.ticker.replace(/\s/g,'').toUpperCase() === symbol.toUpperCase();
+                const rowBg = isCurrentTicker ? 'bg-purple-500/10' : '';
+                const tickerColor = isCurrentTicker ? 'text-purple-400 font-extrabold' : 'text-white font-bold';
+                return `<tr class="border-b border-[#1F1F1F] last:border-0 ${rowBg}">
+                    <td class="py-2.5 px-3 whitespace-nowrap">
+                        <span class="text-xs ${tickerColor}">${item.ticker}</span>
+                        ${item.nome ? `<span class="block text-[9px] text-gray-600 font-medium truncate max-w-[120px]">${item.nome}</span>` : ''}
+                    </td>
+                    <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                        <span class="text-xs text-green-400 font-bold">${item.dy || '-'}</span>
+                    </td>
+                    <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                        <span class="text-xs text-white font-bold">${item.pvp || '-'}</span>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            listasHtml += `
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Comparando com Outros FIIs</h4>
+                <div class="mb-4 rounded-xl overflow-hidden bg-[#151515] shadow-sm">
+                    <div class="overflow-x-auto" style="-webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: #2C2C2E transparent;">
+                        <table class="w-full min-w-[260px]">
+                            <thead class="border-b border-[#1F1F1F]">${headerRow}</thead>
+                            <tbody>${bodyRows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
         // Atualiza os placeholders no DOM com animação suave
         const elGrid = document.getElementById('detalhes-grid-topo');
         if (elGrid) {

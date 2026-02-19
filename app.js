@@ -182,12 +182,6 @@ const CACHE_PRECO_MERCADO_FECHADO = 1000 * 60 * 60 * 12;
 const CACHE_NOTICIAS = 1000 * 60 * 15; 
 const CACHE_IA_HISTORICO = 1000 * 60 * 60 * 24; 
 const CACHE_PROVENTOS = 1000 * 60 * 60 * 12; 
-// Fundamentos mudam pouco durante o dia — cache de 4h no mercado aberto, 24h no fechado
-const CACHE_FUNDAMENTOS_ABERTO  = 1000 * 60 * 60 * 4;
-const CACHE_FUNDAMENTOS_FECHADO = 1000 * 60 * 60 * 24;
-// Próximo provento — 30min no mercado aberto, 4h no fechado
-const CACHE_PROXIMO_PROVENTO_ABERTO  = 1000 * 60 * 30;
-const CACHE_PROXIMO_PROVENTO_FECHADO = 1000 * 60 * 60 * 4;
 
 const DB_NAME = 'vestoCacheDB';
 const DB_VERSION = 1; 
@@ -732,24 +726,6 @@ let ipcaCacheData = null;
 	const detalhesShareBtn = document.getElementById('detalhes-share-btn');
     const detalhesFavoritoIconEmpty = document.getElementById('detalhes-favorito-icon-empty'); 
     const detalhesFavoritoIconFilled = document.getElementById('detalhes-favorito-icon-filled');  
-
-    // ─── Função de tabs do modal de detalhes ────────────────────────────────────
-    function ativarDetalhesTab(targetId) {
-        document.querySelectorAll('.detalhes-tab-pane').forEach(pane => pane.classList.add('hidden'));
-        document.querySelectorAll('.detalhes-tab-btn').forEach(btn => {
-            const isActive = btn.dataset.target === targetId;
-            btn.classList.toggle('active', isActive);
-            btn.classList.toggle('text-white', isActive);
-            btn.classList.toggle('bg-[#2C2C2E]', isActive);
-            btn.classList.toggle('text-gray-500', !isActive);
-        });
-        const target = document.getElementById(targetId);
-        if (target) target.classList.remove('hidden');
-    }
-
-    document.querySelectorAll('.detalhes-tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => ativarDetalhesTab(btn.dataset.target));
-    });
     const biometricLockScreen = document.getElementById('biometric-lock-screen');
     const btnDesbloquear = document.getElementById('btn-desbloquear');
     const btnSairLock = document.getElementById('btn-sair-lock');
@@ -3921,29 +3897,16 @@ async function buscarProventosFuturos(force = false) {
 }
 
 	async function callScraperProximoProventoAPI(ticker) {
-        const cacheKey = `proximo_provento_${ticker.toUpperCase()}`;
-        const cached = await getCache(cacheKey);
-        if (cached) return cached;
-
         const body = { mode: 'proximo_provento', payload: { ticker } };
         const response = await fetchBFF('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = response.json;
-        if (result) {
-            const ttl = isB3Open() ? CACHE_PROXIMO_PROVENTO_ABERTO : CACHE_PROXIMO_PROVENTO_FECHADO;
-            await setCache(cacheKey, result, ttl);
-        }
-        return result;
+        return response.json; 
     }
 
 	async function callScraperFundamentosAPI(ticker) {
-        const cacheKey = `fundamentos_${ticker.toUpperCase()}`;
-        const cached = await getCache(cacheKey);
-        if (cached) return cached;
-
         const body = { 
             mode: 'fundamentos', 
             payload: { ticker } 
@@ -3953,12 +3916,7 @@ async function buscarProventosFuturos(force = false) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = response.json;
-        if (result) {
-            const ttl = isB3Open() ? CACHE_FUNDAMENTOS_ABERTO : CACHE_FUNDAMENTOS_FECHADO;
-            await setCache(cacheKey, result, ttl);
-        }
-        return result;
+        return response.json;
     }
 
 async function buscarHistoricoProventosAgregado(force = false) {
@@ -4691,19 +4649,8 @@ function handleAbrirModalEdicao(id) {
         detalhesTituloTexto.textContent = 'Detalhes'; 
         detalhesNomeLongo.textContent = ''; 
         detalhesPreco.innerHTML = '';
+        detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
-
-        // Esconder tab nav e limpar tab de fundamentos
-        const detalhesTabNav = document.getElementById('detalhes-tab-nav');
-        if (detalhesTabNav) detalhesTabNav.classList.add('hidden');
-        const elListasReset = document.getElementById('detalhes-listas-fundamentos');
-        if (elListasReset) elListasReset.innerHTML = '';
-        ativarDetalhesTab('detalhes-tab-geral');
-
-        // Ocultar aba de Análise e restaurar skeletons para próxima abertura
-        const btnTabAnaliseReset = document.getElementById('btn-tab-analise');
-        if (btnTabAnaliseReset) btnTabAnaliseReset.classList.add('hidden');
-        _resetAnaliseTabSkeletons();
 
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
@@ -5265,10 +5212,12 @@ function renderCandlestickChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
+    // Destrói chart.js anterior se existir
     if (cotacaoChartInstance) { cotacaoChartInstance.destroy(); cotacaoChartInstance = null; }
+    // Remove eventos do candle anterior
     if (candlestickEventCleanup) { candlestickEventCleanup(); candlestickEventCleanup = null; }
 
-    wrapper.innerHTML = '<canvas id="canvas-cotacao" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none;"></canvas>';
+    wrapper.innerHTML = '<canvas id="canvas-cotacao" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>';
     const canvas = document.getElementById('canvas-cotacao');
     const dpr    = window.devicePixelRatio || 1;
     const rect   = wrapper.getBoundingClientRect();
@@ -5283,19 +5232,13 @@ function renderCandlestickChart(dataPoints, range) {
 
     const W = rect.width;
     const H = rect.height;
-
-    // Layout
-    const NAV_H   = 28;   // altura do navegador inferior
-    const NAV_GAP = 6;    // espaço entre gráfico e nav
-    const PAD = { top: 10, right: 52, bottom: 22 + NAV_GAP + NAV_H, left: 4 };
-    const chartW  = W - PAD.left - PAD.right;
-    const chartH  = H - PAD.top  - PAD.bottom;
-    const NAV_Y   = H - NAV_H - 2;           // topo do navegador
-    const NAV_X   = PAD.left;
-    const NAV_W   = chartW;
+    const PAD = { top: 10, right: 52, bottom: 26, left: 4 };
+    const chartW = W - PAD.left - PAD.right;
+    const chartH = H - PAD.top  - PAD.bottom;
 
     const isIntraday = range === '1D' || range === '5D';
 
+    // Filtra candles com dados OHLC; fallback: usa price como OHLC
     const candles = dataPoints.map(p => ({
         date:  p.date,
         open:  p.open  ?? p.price,
@@ -5303,170 +5246,61 @@ function renderCandlestickChart(dataPoints, range) {
         low:   p.low   ?? p.price,
         close: p.price
     }));
-    const N = candles.length;
 
-    // ─── ESTADO DE VISTA (zoom/pan) ────────────────────────────────────────────
-    // viewStart / viewEnd: índices dos candles visíveis no gráfico principal
-    const MIN_VISIBLE = Math.max(5, Math.round(N * 0.02));
-    const MAX_VISIBLE = N;
+    // Preço início/fim para o header
+    const startPrice = candles[0].close;
+    const endPrice   = candles[candles.length - 1].close;
 
-    // Zoom inicial: para ranges grandes, começa mostrando os últimos ~80 candles
-    const DEFAULT_VISIBLE = { '1D': N, '5D': N, '1M': N, '6M': N, 'YTD': N, '1A': N, '5A': 80, 'Tudo': 80 };
-    let visibleCount = Math.min(N, DEFAULT_VISIBLE[range] ?? N);
-    let viewStart    = Math.max(0, N - visibleCount);
-    let viewEnd      = N - 1;
-
-    // Preço de referência global (para variação % no header)
-    const refPrice = candles[0].close;
-    const endPrice = candles[N - 1].close;
-
-    // ─── HEADER STATS ──────────────────────────────────────────────────────────
+    // Inicializa estatísticas com valores finais
     const updateHeaderStats = (open, close) => {
         const elOpen  = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
         const elVar   = document.getElementById('stat-var');
         if (!elOpen || !elClose || !elVar) return;
-        elOpen.innerText  = open.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-        elClose.innerText = close.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+        elOpen.innerText  = open.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elClose.innerText = close.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         elClose.style.color = close >= open ? '#00C805' : '#FF3B30';
-        const diff    = close - refPrice;
-        const percent = (diff / refPrice) * 100;
+        const diff    = close - startPrice;
+        const percent = (diff / startPrice) * 100;
         const sign    = diff >= 0 ? '+' : '';
         elVar.innerText = `${sign}${percent.toFixed(2)}%`;
         elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
     };
-    updateHeaderStats(candles[viewStart].open, endPrice);
+    updateHeaderStats(candles[0].open, endPrice);
 
-    // ─── ESCALAS DINÂMICAS (apenas para candles visíveis) ──────────────────────
-    function getVisibleScale() {
-        const visible = candles.slice(viewStart, viewEnd + 1);
-        const vHigh = Math.max(...visible.map(c => c.high));
-        const vLow  = Math.min(...visible.map(c => c.low));
-        const vRange = vHigh - vLow || vHigh * 0.02;
-        const pad   = vRange * 0.1;
-        return { minP: vLow - pad, maxP: vHigh + pad };
-    }
+    // Escala de preços
+    const allHigh = Math.max(...candles.map(c => c.high));
+    const allLow  = Math.min(...candles.map(c => c.low));
+    const pRange  = allHigh - allLow || allHigh * 0.02;
+    const padP    = pRange * 0.08;
+    const minP    = allLow  - padP;
+    const maxP    = allHigh + padP;
 
-    function toX(globalIdx) {
-        const visCount = viewEnd - viewStart + 1;
-        const localIdx = globalIdx - viewStart;
-        return PAD.left + (localIdx + 0.5) * (chartW / visCount);
-    }
+    const toX = (i) => PAD.left + (i + 0.5) * (chartW / candles.length);
+    const toY = (p) => PAD.top  + chartH - ((p - minP) / (maxP - minP)) * chartH;
 
-    function toY(p, minP, maxP) {
-        return PAD.top + chartH - ((p - minP) / (maxP - minP)) * chartH;
-    }
+    const bodyMinH   = 1;
+    const candleW    = Math.max(2, Math.min(12, (chartW / candles.length) * 0.65));
 
-    // Converte posição X do canvas → índice global do candle
-    function xToGlobalIdx(pixX) {
-        const visCount = viewEnd - viewStart + 1;
-        const localIdx = Math.round((pixX - PAD.left) / (chartW / visCount) - 0.5);
-        return Math.max(viewStart, Math.min(viewEnd, viewStart + localIdx));
-    }
-
-    // Converte índice global → posição X no navegador
-    function globalIdxToNavX(idx) {
-        return NAV_X + (idx / (N - 1)) * NAV_W;
-    }
-
-    // ─── ESTADO HOVER ──────────────────────────────────────────────────────────
-    let hoverIdx = null;
-    let rafId    = null;
-
-    function requestDraw() {
-        if (rafId) cancelAnimationFrame(rafId);
-        rafId = requestAnimationFrame(draw);
-    }
-
-    // ─── DRAW PRINCIPAL ────────────────────────────────────────────────────────
-    function draw() {
-        rafId = null;
+    function draw(hoverIdx = null) {
         ctx.clearRect(0, 0, W, H);
 
-        const { minP, maxP } = getVisibleScale();
-        const visCount  = viewEnd - viewStart + 1;
-        const slotW     = chartW / visCount;
-        const candleW   = Math.max(1, Math.min(14, slotW * 0.65));
-        const visCandles = candles.slice(viewStart, viewEnd + 1);
+        // Candles
+        candles.forEach((c, i) => {
+            const x      = toX(i);
+            const openY  = toY(c.open);
+            const closeY = toY(c.close);
+            const highY  = toY(c.high);
+            const lowY   = toY(c.low);
 
-        // ── Linhas de grade Y (preço) ──
-        const priceRange = maxP - minP;
-        const rawStep    = priceRange / 4;
-        const mag        = Math.pow(10, Math.floor(Math.log10(rawStep)));
-        const niceStep   = Math.ceil(rawStep / mag) * mag;
-        const gridStart  = Math.ceil(minP / niceStep) * niceStep;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(PAD.left, PAD.top, chartW, chartH);
-        ctx.clip();
-
-        for (let p = gridStart; p <= maxP; p += niceStep) {
-            const gy = toY(p, minP, maxP);
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-            ctx.lineWidth   = 1;
-            ctx.moveTo(PAD.left, gy);
-            ctx.lineTo(W - PAD.right, gy);
-            ctx.stroke();
-
-            // Label preço
-            ctx.fillStyle    = 'rgba(150,150,150,0.7)';
-            ctx.font         = '8px sans-serif';
-            ctx.textAlign    = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(
-                p.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                W - PAD.right + 3, gy
-            );
-        }
-        ctx.restore();
-
-        // ── Labels datas no eixo X ──
-        const maxLabels = Math.floor(chartW / 55);
-        const labelStep = Math.max(1, Math.floor(visCount / maxLabels));
-        ctx.save();
-        ctx.font = '8px sans-serif';
-        ctx.fillStyle = 'rgba(150,150,150,0.7)';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        visCandles.forEach((c, li) => {
-            if (li % labelStep !== 0) return;
-            const gx  = toX(viewStart + li);
-            const raw = new Date(c.date);
-            let label;
-            if (isIntraday) {
-                label = raw.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            } else if (visCount <= 60) {
-                label = raw.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-            } else {
-                label = raw.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-            }
-            ctx.fillText(label, gx, PAD.top + chartH + 3);
-        });
-        ctx.restore();
-
-        // ── Candles ──
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(PAD.left, PAD.top, chartW, chartH);
-        ctx.clip();
-
-        visCandles.forEach((c, li) => {
-            const gi     = viewStart + li;
-            const x      = toX(gi);
-            const openY  = toY(c.open,  minP, maxP);
-            const closeY = toY(c.close, minP, maxP);
-            const highY  = toY(c.high,  minP, maxP);
-            const lowY   = toY(c.low,   minP, maxP);
             const isGreen  = c.close >= c.open;
             const baseColor = isGreen ? '#00C805' : '#FF3B30';
-            const fillColor = isGreen ? 'rgba(0,200,5,0.22)' : 'rgba(255,59,48,0.22)';
-            const highlighted = hoverIdx === gi;
+            const fillColor = isGreen ? 'rgba(0,200,5,0.25)' : 'rgba(255,59,48,0.25)';
+            const highlighted = hoverIdx !== null && i === hoverIdx;
 
-            ctx.globalAlpha = (hoverIdx !== null && !highlighted) ? 0.4 : 1;
+            ctx.globalAlpha = (hoverIdx !== null && !highlighted) ? 0.45 : 1;
 
-            // Pavio
+            // Pavio (wick)
             ctx.beginPath();
             ctx.moveTo(x, highY);
             ctx.lineTo(x, lowY);
@@ -5476,8 +5310,9 @@ function renderCandlestickChart(dataPoints, range) {
 
             // Corpo
             const bodyTop = Math.min(openY, closeY);
-            const bodyH   = Math.max(1, Math.abs(openY - closeY));
-            const bW      = highlighted ? candleW * 1.25 : candleW;
+            const bodyH   = Math.max(bodyMinH, Math.abs(openY - closeY));
+            const bW      = highlighted ? candleW * 1.2 : candleW;
+
             ctx.fillStyle   = fillColor;
             ctx.strokeStyle = baseColor;
             ctx.lineWidth   = highlighted ? 1.5 : 1;
@@ -5486,70 +5321,57 @@ function renderCandlestickChart(dataPoints, range) {
         });
 
         ctx.globalAlpha = 1;
-        ctx.restore();
 
-        // ── Linha do último preço visível (tracejada) ──
-        const lastVisClose = candles[viewEnd].close;
-        const firstVisClose= candles[viewStart].close;
-        const lastColor = lastVisClose >= firstVisClose ? '#00C805' : '#FF3B30';
-        const lastY     = toY(lastVisClose, minP, maxP);
+        // Linha do último preço (tracejada)
+        const lastY = toY(endPrice);
+        const lastColor = endPrice >= startPrice ? '#00C805' : '#FF3B30';
+        ctx.beginPath();
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = lastColor;
+        ctx.lineWidth   = 1;
+        ctx.moveTo(PAD.left, lastY);
+        ctx.lineTo(W - PAD.right, lastY);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-        if (lastY >= PAD.top && lastY <= PAD.top + chartH) {
-            ctx.beginPath();
-            ctx.setLineDash([2, 3]);
-            ctx.strokeStyle = lastColor;
-            ctx.lineWidth   = 1;
-            ctx.moveTo(PAD.left, lastY);
-            ctx.lineTo(W - PAD.right, lastY);
-            ctx.stroke();
-            ctx.setLineDash([]);
+        // Badge do último preço
+        const badgeText  = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        ctx.font = 'bold 9px sans-serif';
+        const tw      = ctx.measureText(badgeText).width;
+        const bPadX   = 4;
+        const bH      = 16;
+        const bW2     = tw + bPadX * 2;
+        const bX      = W - PAD.right;
+        let bY        = lastY - bH / 2;
+        if (bY < PAD.top) bY = PAD.top;
+        if (bY + bH > PAD.top + chartH) bY = PAD.top + chartH - bH;
 
-            // Badge preço
-            const badgeTxt = lastVisClose.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 9px sans-serif';
-            const tw   = ctx.measureText(badgeTxt).width;
-            const bPX  = 4;
-            const bH   = 16;
-            const bW2  = tw + bPX * 2;
-            const bX   = W - PAD.right;
-            let   bY   = lastY - bH / 2;
-            if (bY < PAD.top) bY = PAD.top;
-            if (bY + bH > PAD.top + chartH) bY = PAD.top + chartH - bH;
-            ctx.fillStyle = lastColor;
-            ctx.beginPath(); ctx.roundRect(bX, bY, bW2, bH, 3); ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-            ctx.fillText(badgeTxt, bX + bPX, bY + bH / 2 + 1);
-        }
+        ctx.fillStyle = lastColor;
+        ctx.beginPath();
+        ctx.roundRect(bX, bY, bW2, bH, 3);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign    = 'left';
+        ctx.fillText(badgeText, bX + bPadX, bY + bH / 2 + 1);
 
-        // ── Crosshair + Tooltip hover ──
-        if (hoverIdx !== null && hoverIdx >= viewStart && hoverIdx <= viewEnd) {
-            const x   = toX(hoverIdx);
-            const c   = candles[hoverIdx];
-            const cY  = toY(c.close, minP, maxP);
+        // Crosshair se hover
+        if (hoverIdx !== null) {
+            const x = toX(hoverIdx);
+            const c = candles[hoverIdx];
 
             // Linha vertical
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(PAD.left, PAD.top, chartW, chartH);
-            ctx.clip();
             ctx.beginPath();
             ctx.setLineDash([4, 4]);
-            ctx.strokeStyle = 'rgba(163,163,163,0.45)';
+            ctx.strokeStyle = 'rgba(163,163,163,0.5)';
             ctx.lineWidth   = 1;
             ctx.moveTo(x, PAD.top);
             ctx.lineTo(x, PAD.top + chartH);
             ctx.stroke();
-            // Linha horizontal
-            ctx.beginPath();
-            ctx.moveTo(PAD.left, cY);
-            ctx.lineTo(W - PAD.right, cY);
-            ctx.stroke();
             ctx.setLineDash([]);
-            ctx.restore();
 
-            // Badge data (eixo X)
-            const rawDate = new Date(c.date);
+            // Badge data
+            const rawDate  = new Date(c.date);
             let dateText;
             if (isIntraday) {
                 dateText = rawDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })
@@ -5558,414 +5380,80 @@ function renderCandlestickChart(dataPoints, range) {
                 dateText = rawDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
             }
             ctx.font = 'bold 9px sans-serif';
-            const dW  = ctx.measureText(dateText).width + 12;
-            const dH  = 16;
-            let dX    = x - dW / 2;
-            if (dX < PAD.left) dX = PAD.left;
+            const dW   = ctx.measureText(dateText).width + 12;
+            const dH   = 16;
+            let dX     = x - dW / 2;
+            if (dX < PAD.left)           dX = PAD.left;
             if (dX + dW > W - PAD.right) dX = W - PAD.right - dW;
-            const dY = PAD.top + chartH + 3;
+            const dY = PAD.top + chartH + 2;
+
             ctx.fillStyle = '#404040';
             ctx.beginPath(); ctx.roundRect(dX, dY, dW, dH, 3); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillStyle    = '#fff';
+            ctx.textAlign    = 'center';
+            ctx.textBaseline = 'middle';
             ctx.fillText(dateText, dX + dW / 2, dY + dH / 2 + 1);
-
-            // Badge preço (eixo Y)
-            const priceTxt = c.close.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            ctx.font = 'bold 9px sans-serif';
-            const pW = ctx.measureText(priceTxt).width + 8;
-            const pH = 16;
-            const pX = W - PAD.right;
-            let   pY = cY - pH / 2;
-            if (pY < PAD.top) pY = PAD.top;
-            if (pY + pH > PAD.top + chartH) pY = PAD.top + chartH - pH;
-            ctx.fillStyle = '#404040';
-            ctx.beginPath(); ctx.roundRect(pX, pY, pW, pH, 3); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-            ctx.fillText(priceTxt, pX + 4, pY + pH / 2 + 1);
 
             // Tooltip OHLC
             const tipLines = [
-                { label: 'O', val: c.open,  color: '#9CA3AF' },
-                { label: 'H', val: c.high,  color: '#00C805' },
-                { label: 'L', val: c.low,   color: '#FF3B30' },
-                { label: 'C', val: c.close, color: '#fff'    }
+                `O: ${c.open.toLocaleString('pt-BR',  { style:'currency', currency:'BRL' })}`,
+                `H: ${c.high.toLocaleString('pt-BR',  { style:'currency', currency:'BRL' })}`,
+                `L: ${c.low.toLocaleString('pt-BR',   { style:'currency', currency:'BRL' })}`,
+                `C: ${c.close.toLocaleString('pt-BR', { style:'currency', currency:'BRL' })}`
             ];
             ctx.font = '10px sans-serif';
-            const fmtBRL = v => v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-            const lines  = tipLines.map(t => `${t.label}: ${fmtBRL(t.val)}`);
-            const maxTW  = Math.max(...lines.map(l => ctx.measureText(l).width));
+            const maxTW  = Math.max(...tipLines.map(l => ctx.measureText(l).width));
             const tipW   = maxTW + 16;
-            const tipH   = lines.length * 16 + 8;
-            let tipX     = x + 12;
+            const tipH   = tipLines.length * 16 + 8;
+            let tipX     = x + 10;
             const tipY   = PAD.top + 4;
-            if (tipX + tipW > W - PAD.right) tipX = x - tipW - 12;
-            ctx.fillStyle = 'rgba(20,20,22,0.93)';
+            if (tipX + tipW > W - PAD.right) tipX = x - tipW - 10;
+
+            ctx.fillStyle = 'rgba(28,28,30,0.92)';
             ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.fill();
             ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.stroke();
-            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-            lines.forEach((line, li) => {
-                ctx.fillStyle = tipLines[li].color;
+
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            tipLines.forEach((line, li) => {
+                ctx.fillStyle = li === 0 ? '#9CA3AF' : (li === 1 ? '#00C805' : (li === 2 ? '#FF3B30' : '#fff'));
                 ctx.fillText(line, tipX + 8, tipY + 4 + li * 16);
             });
         }
-
-        // ── NAVEGADOR (barra inferior) ──
-        drawNavigator(minP, maxP);
     }
 
-    // ─── NAVEGADOR ─────────────────────────────────────────────────────────────
-    function drawNavigator(mainMinP, mainMaxP) {
-        const nY = NAV_Y;
-        const nH = NAV_H;
+    draw();
 
-        // Fundo do nav
-        ctx.fillStyle = 'rgba(255,255,255,0.04)';
-        ctx.beginPath(); ctx.roundRect(NAV_X, nY, NAV_W, nH, 4); ctx.fill();
-
-        // Linha sparkline (close de todos os candles)
-        const navHigh = Math.max(...candles.map(c => c.high));
-        const navLow  = Math.min(...candles.map(c => c.low));
-        const navRange = navHigh - navLow || 1;
-        const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
-        const toNavY = (p) => nY + nH - 4 - ((p - navLow) / navRange) * (nH - 8);
-
-        ctx.save();
-        ctx.beginPath(); ctx.rect(NAV_X, nY, NAV_W, nH); ctx.clip();
-
-        ctx.beginPath();
-        candles.forEach((c, i) => {
-            const nx = toNavX(i);
-            const ny = toNavY(c.close);
-            i === 0 ? ctx.moveTo(nx, ny) : ctx.lineTo(nx, ny);
-        });
-        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-        ctx.lineWidth   = 1;
-        ctx.stroke();
-        ctx.restore();
-
-        // Janela de seleção
-        const selX1 = toNavX(viewStart);
-        const selX2 = toNavX(viewEnd);
-        const selW  = selX2 - selX1;
-
-        // Sombra fora da seleção
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(NAV_X,        nY, selX1 - NAV_X,       nH);
-        ctx.fillRect(selX2,        nY, NAV_X + NAV_W - selX2, nH);
-
-        // Borda da seleção
-        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-        ctx.lineWidth   = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(selX1, nY + 1, selW, nH - 2, 3);
-        ctx.stroke();
-
-        // Alças laterais (handles)
-        for (const hX of [selX1, selX2]) {
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.beginPath();
-            ctx.roundRect(hX - 2, nY + nH / 2 - 7, 4, 14, 2);
-            ctx.fill();
-        }
-
-        // Dica double-tap/click
-        if (N > (DEFAULT_VISIBLE[range] ?? N)) {
-            ctx.fillStyle = 'rgba(120,120,120,0.5)';
-            ctx.font      = '7px sans-serif';
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'bottom';
-            ctx.fillText('2× reset', NAV_X + NAV_W - 2, nY + nH - 1);
-        }
-    }
-
-    requestDraw();
-
-    // ─── ZOOM / PAN ────────────────────────────────────────────────────────────
-    function clampView() {
-        viewStart = Math.max(0, viewStart);
-        viewEnd   = Math.min(N - 1, viewEnd);
-        const count = viewEnd - viewStart + 1;
-        if (count < MIN_VISIBLE) {
-            // Expande simetricamente
-            const diff = MIN_VISIBLE - count;
-            viewStart = Math.max(0, viewStart - Math.ceil(diff / 2));
-            viewEnd   = Math.min(N - 1, viewStart + MIN_VISIBLE - 1);
-        }
-        if (count > MAX_VISIBLE) {
-            viewStart = 0; viewEnd = N - 1;
-        }
-    }
-
-    function zoomAroundFrac(frac, factor) {
-        // frac: 0..1 posição dentro da área visível onde o zoom acontece
-        const count = viewEnd - viewStart + 1;
-        const pivot = viewStart + frac * count;
-        const newCount = Math.max(MIN_VISIBLE, Math.min(MAX_VISIBLE, Math.round(count * factor)));
-        viewStart = Math.round(pivot - frac * newCount);
-        viewEnd   = viewStart + newCount - 1;
-        clampView();
-    }
-
-    // ── Mouse wheel (zoom) ──
-    const onWheel = (e) => {
-        e.preventDefault();
-        const r    = canvas.getBoundingClientRect();
-        const relX = e.clientX - r.left - PAD.left;
-        const frac = Math.max(0, Math.min(1, relX / chartW));
-        const factor = e.deltaY > 0 ? 1.15 : 0.87;   // scroll down = zoom out, up = zoom in
-        zoomAroundFrac(frac, factor);
-        requestDraw();
-    };
-
-    // ── Drag to pan (mouse) ──
-    let isDragging  = false;
-    let dragStartX  = 0;
-    let dragStartVS = 0;
-    let dragStartVE = 0;
-    let isDraggingNav    = false;
-    let dragNavHandle    = null; // 'left' | 'right' | 'body'
-    let dragNavStartX    = 0;
-    let dragNavStartVS   = 0;
-    let dragNavStartVE   = 0;
-
-    const HANDLE_HIT = 10; // px de tolerância para os handles do nav
-
-    function inNavArea(y) { return y >= NAV_Y && y <= NAV_Y + NAV_H; }
-
-    const onMouseDown = (e) => {
-        const r = canvas.getBoundingClientRect();
-        const x = e.clientX - r.left;
-        const y = e.clientY - r.top;
-
-        if (inNavArea(y)) {
-            // Clique no navegador
-            const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
-            const selX1  = toNavX(viewStart);
-            const selX2  = toNavX(viewEnd);
-
-            isDraggingNav = true;
-            dragNavStartX  = x;
-            dragNavStartVS = viewStart;
-            dragNavStartVE = viewEnd;
-            canvas.style.cursor = 'ew-resize';
-
-            if (Math.abs(x - selX1) <= HANDLE_HIT)       dragNavHandle = 'left';
-            else if (Math.abs(x - selX2) <= HANDLE_HIT)  dragNavHandle = 'right';
-            else if (x >= selX1 && x <= selX2)            dragNavHandle = 'body';
-            else {
-                // Clique fora → teleporta janela para aqui
-                const clickIdx = Math.round((x - NAV_X) / NAV_W * (N - 1));
-                const half     = Math.floor((dragNavStartVE - dragNavStartVS) / 2);
-                viewStart = Math.max(0, clickIdx - half);
-                viewEnd   = Math.min(N - 1, viewStart + (dragNavStartVE - dragNavStartVS));
-                clampView();
-                requestDraw();
-                isDraggingNav = false;
-            }
-        } else if (x >= PAD.left && x <= W - PAD.right && y >= PAD.top && y <= PAD.top + chartH) {
-            // Clique no gráfico → drag pan
-            isDragging   = true;
-            dragStartX   = x;
-            dragStartVS  = viewStart;
-            dragStartVE  = viewEnd;
-            canvas.style.cursor = 'grabbing';
-        }
-    };
-
-    const onMouseMove = (e) => {
+    // Eventos de interação (mouse + touch)
+    const getIdx = (clientX) => {
         const r   = canvas.getBoundingClientRect();
-        const x   = e.clientX - r.left;
-        const y   = e.clientY - r.top;
-
-        if (isDraggingNav) {
-            const dx      = x - dragNavStartX;
-            const idxPerPx = (N - 1) / NAV_W;
-            const dIdx    = Math.round(dx * idxPerPx);
-
-            if (dragNavHandle === 'body') {
-                const span = dragNavStartVE - dragNavStartVS;
-                viewStart  = Math.max(0, Math.min(N - 1 - span, dragNavStartVS + dIdx));
-                viewEnd    = viewStart + span;
-            } else if (dragNavHandle === 'left') {
-                viewStart = Math.max(0, Math.min(dragNavStartVE - MIN_VISIBLE, dragNavStartVS + dIdx));
-            } else if (dragNavHandle === 'right') {
-                viewEnd = Math.min(N - 1, Math.max(dragNavStartVS + MIN_VISIBLE - 1, dragNavStartVE + dIdx));
-            }
-            clampView();
-            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-            requestDraw();
-            return;
-        }
-
-        if (isDragging) {
-            const slotW    = chartW / (dragStartVE - dragStartVS + 1);
-            const dCandles = Math.round((dragStartX - x) / slotW);
-            const count    = dragStartVE - dragStartVS;
-            viewStart = Math.max(0, Math.min(N - 1 - count, dragStartVS + dCandles));
-            viewEnd   = viewStart + count;
-            clampView();
-            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-            requestDraw();
-            return;
-        }
-
-        // Hover crosshair
-        if (x >= PAD.left && x <= W - PAD.right && y >= PAD.top && y <= PAD.top + chartH) {
-            canvas.style.cursor = 'crosshair';
-            const newHover = xToGlobalIdx(x);
-            if (newHover !== hoverIdx) {
-                hoverIdx = newHover;
-                updateHeaderStats(candles[hoverIdx].open, candles[hoverIdx].close);
-                requestDraw();
-            }
-        } else {
-            if (hoverIdx !== null) {
-                hoverIdx = null;
-                updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-                requestDraw();
-            }
-            if (!isDragging && !isDraggingNav) {
-                const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
-                const s1 = toNavX(viewStart);
-                const s2 = toNavX(viewEnd);
-                if (inNavArea(y)) {
-                    if (Math.abs(x - s1) <= HANDLE_HIT || Math.abs(x - s2) <= HANDLE_HIT)
-                        canvas.style.cursor = 'ew-resize';
-                    else if (x >= s1 && x <= s2)
-                        canvas.style.cursor = 'grab';
-                    else
-                        canvas.style.cursor = 'pointer';
-                } else {
-                    canvas.style.cursor = 'default';
-                }
-            }
-        }
+        const relX = (clientX - r.left);
+        const idx  = Math.round(relX / W * candles.length - 0.5);
+        return Math.max(0, Math.min(candles.length - 1, idx));
     };
 
-    const onMouseUp = () => {
-        isDragging    = false;
-        isDraggingNav = false;
-        dragNavHandle = null;
-        canvas.style.cursor = 'crosshair';
+    const onMove = (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const idx = getIdx(clientX);
+        draw(idx);
+        updateHeaderStats(candles[idx].open, candles[idx].close);
+    };
+    const onLeave = () => {
+        draw(null);
+        updateHeaderStats(candles[0].open, endPrice);
     };
 
-    const onMouseLeave = () => {
-        if (hoverIdx !== null) {
-            hoverIdx = null;
-            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-            requestDraw();
-        }
-        isDragging    = false;
-        isDraggingNav = false;
-    };
+    canvas.addEventListener('mousemove',  onMove);
+    canvas.addEventListener('mouseleave', onLeave);
+    canvas.addEventListener('touchmove',  onMove, { passive: true });
+    canvas.addEventListener('touchend',   onLeave);
 
-    // ── Double-click → reset zoom ──
-    let lastClick = 0;
-    const onDblClick = () => {
-        const now = Date.now();
-        if (now - lastClick < 350) {
-            viewStart = Math.max(0, N - (DEFAULT_VISIBLE[range] ?? N));
-            viewEnd   = N - 1;
-            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-            requestDraw();
-        }
-        lastClick = now;
-    };
-
-    // ── Touch: pan + pinch-zoom ──
-    let lastTouchDist    = null;
-    let lastTouchCenterX = null;
-    let touchStartVS     = 0;
-    let touchStartVE     = 0;
-
-    const getTouchDist = (e) => {
-        if (e.touches.length < 2) return null;
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-    };
-    const getTouchCenterX = (e) => {
-        if (e.touches.length < 2)
-            return e.touches[0].clientX;
-        return (e.touches[0].clientX + e.touches[1].clientX) / 2;
-    };
-
-    const onTouchStart = (e) => {
-        lastTouchDist    = getTouchDist(e);
-        lastTouchCenterX = getTouchCenterX(e);
-        touchStartVS     = viewStart;
-        touchStartVE     = viewEnd;
-        dragStartX       = e.touches[0].clientX;
-        dragStartVS      = viewStart;
-        dragStartVE      = viewEnd;
-        isDragging       = true;
-    };
-
-    const onTouchMove = (e) => {
-        e.preventDefault();
-        const r        = canvas.getBoundingClientRect();
-        const curDist  = getTouchDist(e);
-        const curCX    = getTouchCenterX(e);
-
-        if (e.touches.length >= 2 && lastTouchDist && curDist) {
-            // Pinch zoom
-            const factor = lastTouchDist / curDist;
-            const frac   = Math.max(0, Math.min(1, (curCX - r.left - PAD.left) / chartW));
-            zoomAroundFrac(frac, factor);
-            lastTouchDist    = curDist;
-            lastTouchCenterX = curCX;
-        } else if (e.touches.length === 1 && isDragging) {
-            // Pan
-            const x        = e.touches[0].clientX;
-            const slotW    = chartW / (dragStartVE - dragStartVS + 1);
-            const dCandles = Math.round((dragStartX - x) / slotW);
-            const count    = dragStartVE - dragStartVS;
-            viewStart = Math.max(0, Math.min(N - 1 - count, dragStartVS + dCandles));
-            viewEnd   = viewStart + count;
-            clampView();
-        }
-
-        hoverIdx = null;
-        updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
-        requestDraw();
-    };
-
-    const onTouchEnd = () => {
-        isDragging    = false;
-        lastTouchDist = null;
-        dragStartVS   = viewStart;
-        dragStartVE   = viewEnd;
-        dragStartX    = 0;
-    };
-
-    // ─── REGISTRO DE EVENTOS ────────────────────────────────────────────────────
-    canvas.addEventListener('wheel',      onWheel,      { passive: false });
-    canvas.addEventListener('mousedown',  onMouseDown);
-    canvas.addEventListener('mousemove',  onMouseMove);
-    canvas.addEventListener('mouseup',    onMouseUp);
-    canvas.addEventListener('mouseleave', onMouseLeave);
-    canvas.addEventListener('click',      onDblClick);
-    canvas.addEventListener('touchstart', onTouchStart, { passive: true });
-    canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
-    canvas.addEventListener('touchend',   onTouchEnd);
-
-    // Também ouve mouseup no document para soltar drag fora do canvas
-    const onDocMouseUp = () => { isDragging = false; isDraggingNav = false; };
-    document.addEventListener('mouseup', onDocMouseUp);
-
+    // Salva cleanup para quando trocar de tipo/período
     candlestickEventCleanup = () => {
-        if (rafId) cancelAnimationFrame(rafId);
-        canvas.removeEventListener('wheel',      onWheel);
-        canvas.removeEventListener('mousedown',  onMouseDown);
-        canvas.removeEventListener('mousemove',  onMouseMove);
-        canvas.removeEventListener('mouseup',    onMouseUp);
-        canvas.removeEventListener('mouseleave', onMouseLeave);
-        canvas.removeEventListener('click',      onDblClick);
-        canvas.removeEventListener('touchstart', onTouchStart);
-        canvas.removeEventListener('touchmove',  onTouchMove);
-        canvas.removeEventListener('touchend',   onTouchEnd);
-        document.removeEventListener('mouseup',  onDocMouseUp);
+        canvas.removeEventListener('mousemove',  onMove);
+        canvas.removeEventListener('mouseleave', onLeave);
+        canvas.removeEventListener('touchmove',  onMove);
+        canvas.removeEventListener('touchend',   onLeave);
     };
 }
 
@@ -5973,12 +5461,8 @@ async function handleMostrarDetalhes(symbol) {
     detalhesMensagem.classList.add('hidden');
     detalhesLoading.classList.remove('hidden');
     detalhesPreco.innerHTML = '';
-    detalhesAiProvento.innerHTML = '';
-
-    // Mostrar tab nav e resetar para a primeira tab
-    const detalhesTabNav = document.getElementById('detalhes-tab-nav');
-    if (detalhesTabNav) detalhesTabNav.classList.remove('hidden');
-    ativarDetalhesTab('detalhes-tab-geral');
+    detalhesAiProvento.innerHTML = ''; 
+    detalhesHistoricoContainer.classList.remove('hidden'); 
 
     const iconContainer = document.getElementById('detalhes-icone-container');
     const sigla = symbol.substring(0, 2);
@@ -6018,98 +5502,41 @@ async function handleMostrarDetalhes(symbol) {
 
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
+    let precoData = await getCache(cacheKeyPreco);
 
-    // ─── LANÇAR TODAS AS PROMISES EM PARALELO ────────────────────────────────────
-    // Não usar await aqui — lançar tudo ao mesmo tempo para que rodem concorrentemente
-    const promisePreco       = getCache(cacheKeyPreco).then(async cached => {
-        if (cached) return cached;
-        const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
-        const result = data.results?.[0];
-        if (result && !result.error) {
-            await setCache(cacheKeyPreco, result, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO);
-            return result;
+    if (!precoData) {
+        try {
+            const data = await fetchBFF(`/api/brapi?path=/quote/${tickerParaApi}?range=1d&interval=1d`);
+            precoData = data.results?.[0];
+            if (precoData && !precoData.error) await setCache(cacheKeyPreco, precoData, isB3Open() ? CACHE_PRECO_MERCADO_ABERTO : CACHE_PRECO_MERCADO_FECHADO); 
+            else throw new Error(precoData?.error || 'Ativo não encontrado');
+        } catch (e) { 
+            precoData = null; 
+            showToast("Erro ao buscar preço."); 
         }
-        throw new Error(result?.error || 'Ativo não encontrado');
-    });
+    }
 
-    const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(() => ({}));
-    const promiseProvento    = callScraperProximoProventoAPI(symbol).catch(() => null);
+    let fundamentos = {};
+    let nextProventoData = null;
 
-    // Disparo de gráficos sem bloquear o fluxo principal
     fetchHistoricoScraper(symbol); 
     fetchCotacaoHistorica(symbol);
 
-    // ─── FASE 1: Renderiza o modal assim que o PREÇO chegar ─────────────────────
-    // (pode ser instantâneo se vier do cache)
-    let precoData = null;
     try {
-        precoData = await promisePreco;
-    } catch (e) {
-        showToast("Erro ao buscar preço.");
-    }
-
-    // Guarda para saber se o modal ainda é desse símbolo
-    if (currentDetalhesSymbol !== symbol) return;
+        const [fundData, provData] = await Promise.all([
+            callScraperFundamentosAPI(symbol),
+            callScraperProximoProventoAPI(symbol)
+        ]);
+        fundamentos = fundData || {};
+        nextProventoData = provData;
+    } catch (e) { console.error("Erro dados extras", e); }
 
     detalhesLoading.classList.add('hidden');
 
     if (precoData) {
         detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
-        const varPercent   = precoData.regularMarketChangePercent || 0;
-        const variacaoCor  = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
-        const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
-
-        // Skeleton para seções que ainda estão carregando (fundamentos)
-        const skeletonGrid = Array(6).fill(0).map(() => `
-            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm animate-pulse">
-                <div class="h-2 bg-[#2C2C2E] rounded w-16 mb-2"></div>
-                <div class="h-4 bg-[#2C2C2E] rounded w-10"></div>
-            </div>`).join('');
-
-        const skeletonListas = `
-            <div id="detalhes-fundamentos-placeholder" class="space-y-2 animate-pulse mb-6">
-                <div class="h-3 bg-[#1C1C1E] rounded w-24 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-28"></div>
-                <div class="h-3 bg-[#1C1C1E] rounded w-24 mt-4 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-20"></div>
-            </div>`;
-
-        detalhesPreco.innerHTML = `
-            <div class="col-span-12 w-full flex flex-col">
-                <div class="text-center pb-8 pt-2">
-                    <h2 class="text-5xl font-bold text-white tracking-tighter leading-none mb-4">${formatBRL(precoData.regularMarketPrice)}</h2>
-                    <div class="flex items-center justify-center gap-2">
-                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold ${variacaoCor} flex items-center gap-1 tracking-wider shadow-sm">
-                            ${variacaoIcone} ${formatPercent(varPercent)} Hoje
-                        </span>
-                        <span id="badge-variacao-12m" class="px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 bg-[#151515] border border-[#2C2C2E] uppercase tracking-widest shadow-sm">
-                            12M: <span class="opacity-40">...</span>
-                        </span>
-                    </div>
-                </div>
-                <div id="detalhes-provento-placeholder" class="mb-4"></div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-3 pl-1">Indicadores Rápidos</h4>
-                <div id="detalhes-grid-topo" class="grid grid-cols-3 gap-2 w-full mb-6">${skeletonGrid}</div>
-            </div>`;
-
-        // Injeta skeleton de fundamentos na tab de Fundamentos
-        const elListasInit = document.getElementById('detalhes-listas-fundamentos');
-        if (elListasInit) elListasInit.innerHTML = skeletonListas;
-    } else {
-        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
-    }
-
-    // ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
-    // Roda em background, sem bloquear mais nada
-    Promise.all([promiseFundamentos, promiseProvento]).then(([fundData, provData]) => {
-        // Garante que o modal ainda é desse símbolo
-        if (currentDetalhesSymbol !== symbol || !precoData) return;
-
-        const fundamentos    = fundData || {};
-        const nextProventoData = provData;
-
-        const varPercent   = precoData.regularMarketChangePercent || 0;
-        const variacaoCor  = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
+        const varPercent = precoData.regularMarketChangePercent || 0;
+        let variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
         const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
 
         const dados = { 
@@ -6127,13 +5554,6 @@ async function handleMostrarDetalhes(symbol) {
             cotas_emitidas: fundamentos.cotas_emitidas || '-'
         };
 
-        // Atualiza badge 12M
-        const badge12m = document.getElementById('badge-variacao-12m');
-        if (badge12m) {
-            const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
-            badge12m.innerHTML = `12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>`;
-        }
-
         let valuationHtml = '';
 
         if (ehAcao) {
@@ -6146,6 +5566,7 @@ async function handleMostrarDetalhes(symbol) {
             if ((lpa > 0 && vpa > 0) || dyVal > 0) {
                 valuationHtml += `<h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation</h4><div class="grid grid-cols-1 gap-2 mb-4">`;
 
+                // 1. Graham
                 if (lpa > 0 && vpa > 0) {
                     const vi = Math.sqrt(22.5 * lpa * vpa);
                     const margemSeguranca = ((vi - preco) / preco) * 100;
@@ -6167,10 +5588,11 @@ async function handleMostrarDetalhes(symbol) {
                     `;
                 }
 
+                // 2. Bazin
                 if (dyVal > 0) {
-                    const dividendosAnuais = precoData.regularMarketPrice * (dyVal / 100);
+                    const dividendosAnuais = preco * (dyVal / 100);
                     const bazinPrice = dividendosAnuais / 0.06;
-                    const upsideBazin = ((bazinPrice - precoData.regularMarketPrice) / precoData.regularMarketPrice) * 100;
+                    const upsideBazin = ((bazinPrice - preco) / preco) * 100;
                     const corBazin = upsideBazin > 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10';
 
                     valuationHtml += `
@@ -6194,6 +5616,7 @@ async function handleMostrarDetalhes(symbol) {
 
         const pData = nextProventoData || {};
 
+        // Estilo Premium para os cards de Proventos (Sem bordas)
         const formatarCardProvento = (titulo, provento, isFuturo) => {
             if (!provento) {
                 return `
@@ -6206,15 +5629,17 @@ async function handleMostrarDetalhes(symbol) {
             const dataPagFmt = provento.paymentDate ? formatDate(provento.paymentDate) : '-';
             const dataComFmt = provento.dataCom ? formatDate(provento.dataCom) : '-';
 
-            const bgClass   = isFuturo ? "bg-[#151515] shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515]";
+            // Fundo escuro SEM bordas. Apenas o brilho suave no futuro.
+            const bgClass = isFuturo ? "bg-[#151515] shadow-[0_0_12px_rgba(34,197,94,0.04)]" : "bg-[#151515]";
             const textClass = isFuturo ? "text-green-400" : "text-gray-300";
-            const valueClass= isFuturo ? "text-green-400" : "text-white";
+            const valueClass = isFuturo ? "text-green-400" : "text-white";
 
             return `
             <div class="flex-1 p-3 rounded-xl ${bgClass} flex flex-col justify-between shadow-sm relative overflow-hidden">
                 ${isFuturo ? '<div class="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full"></div>' : ''}
                 <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-1.5 relative z-10">${titulo}</span>
                 <span class="text-xl font-bold ${valueClass} mb-3 leading-none tracking-tight relative z-10">${formatBRL(provento.value)}</span>
+
                 <div class="flex justify-between items-end mt-auto relative z-10 border-t border-white/5 pt-2">
                     <div class="flex flex-col">
                         <span class="text-[8px] text-gray-500 font-bold tracking-wider uppercase leading-none mb-1">Data Com</span>
@@ -6228,89 +5653,67 @@ async function handleMostrarDetalhes(symbol) {
             </div>`;
         };
 
-        const proximoProventoHtml = (pData.ultimoPago || pData.proximo) ? `
+        let proximoProventoHtml = '';
+        if (pData.ultimoPago || pData.proximo) {
+            proximoProventoHtml = `
             <div class="mt-2 mb-6">
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Dividendos</h4>
                 <div class="flex gap-2 w-full">
                     ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
                     ${formatarCardProvento("Próximo a Receber", pData.proximo, true)}
                 </div>
-            </div>` : '';
+            </div>`;
+        }
 
-        // Grid topo e listas
-        const renderKpi = (label, value, cor = 'text-white') => `
+        // NOVO GRID DE DESTAQUES (Simétrico, SEM bordas)
+        const renderHighlight = (label, value) => `
             <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
-                <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center leading-tight">${label}</span>
-                <span class="text-sm font-bold ${cor} leading-none">${value}</span>
-            </div>`;
+                <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">${label}</span>
+                <span class="text-lg font-bold text-white leading-none">${value}</span>
+            </div>
+        `;
 
-        let gridTopo = '';
-        const renderRow = (label, value) => `
-            <div class="flex justify-between items-center py-2.5 border-b border-[#1F1F1F] last:border-0">
-                <span class="text-xs text-gray-500 font-medium">${label}</span>
-                <span class="text-xs text-white font-bold text-right">${value}</span>
-            </div>`;
+        let gridTopo = ehAcao ? 
+            `${renderHighlight('P/L', dados.pl)}${renderHighlight('P/VP', dados.pvp)}${renderHighlight('DY (12m)', dados.dy)}` :
+            `${renderHighlight('DY (12m)', dados.dy)}${renderHighlight('P/VP', dados.pvp)}${renderHighlight('Cotistas', dados.num_cotistas)}`;
+
+        const renderRow = (l, v) => `<div class="flex justify-between items-center py-2.5 px-1 border-b border-[#2C2C2E] last:border-0"><span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">${l}</span><span class="text-[13px] font-bold text-gray-200">${v}</span></div>`;
 
         let listasHtml = '';
-
         if (ehAcao) {
-            gridTopo = [
-                renderKpi('P/L', dados.pl),
-                renderKpi('P/VP', dados.pvp),
-                renderKpi('DY', dados.dy),
-                renderKpi('ROE', dados.roe),
-                renderKpi('Marg. Liq.', dados.margem_liquida),
-                renderKpi('Dív./EBITDA', dados.divida_liquida_ebitda),
-            ].join('');
-
             listasHtml = `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Rentabilidade</h4>
+                ${valuationHtml}
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Valuation Básico</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Marg. Líquida', dados.margem_liquida)}
-                    ${renderRow('Marg. Bruta', dados.margem_bruta)}
-                    ${renderRow('Marg. EBIT', dados.margem_ebit)}
+                    ${renderRow('P/L', dados.pl)}
+                    ${renderRow('P/VP', dados.pvp)}
+                    ${renderRow('EV / EBITDA', dados.ev_ebitda)}
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                </div>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Rentabilidade & Eficiência</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('ROE', dados.roe)}
-                    ${renderRow('LPA', dados.lpa)}
-                </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Endividamento</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Dív. Líq./EBITDA', dados.divida_liquida_ebitda)}
-                    ${renderRow('Díd. Líq./PL', dados.divida_liquida_pl)}
-                    ${renderRow('EV/EBITDA', dados.ev_ebitda)}
-                </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5A)</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('CAGR Receita', dados.cagr_receita)}
-                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
+                    ${renderRow('Margem Bruta', dados.margem_bruta)}
+                    ${renderRow('Margem EBIT', dados.margem_ebit)}
+                    ${renderRow('Margem Líquida', dados.margem_liquida)}
                     ${renderRow('Payout', dados.payout)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Mercado</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5 Anos)</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${renderRow('Liquidez', dados.liquidez)}
-                    ${renderRow('VP por Ação', dados.vp_cota)}
+                    ${renderRow('CAGR Receitas', dados.cagr_receita)}
+                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
                 </div>
-                ${valuationHtml}`;
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Saúde Financeira</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${renderRow('Dív. Líq / PL', dados.divida_liquida_pl)}
+                    ${renderRow('Dív. Líq / EBITDA', dados.divida_liquida_ebitda)}
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
+                </div>`;
         } else {
-            gridTopo = [
-                renderKpi('DY', dados.dy),
-                renderKpi('P/VP', dados.pvp),
-                renderKpi('Liquidez', dados.liquidez),
-                renderKpi('Vacância', dados.vacancia),
-                renderKpi('VP/Cota', dados.vp_cota),
-                renderKpi('12M', dados.variacao_12m),
-            ].join('');
-
             listasHtml = `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Indicadores</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Métricas Principais</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('DY', dados.dy)}
-                    ${renderRow('P/VP', dados.pvp)}
-                    ${renderRow('Vacância', dados.vacancia)}
-                    ${renderRow('Último Rend.', dados.ultimo_rendimento)}
-                </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Patrimônio</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${renderRow('Liquidez Diária', dados.liquidez)}
                     ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
@@ -6330,521 +5733,40 @@ async function handleMostrarDetalhes(symbol) {
                 </div>`;
         }
 
-        // Atualiza os placeholders no DOM com animação suave
-        const elGrid = document.getElementById('detalhes-grid-topo');
-        if (elGrid) {
-            elGrid.style.opacity = '0';
-            elGrid.innerHTML = gridTopo;
-            requestAnimationFrame(() => {
-                elGrid.style.transition = 'opacity 0.3s ease';
-                elGrid.style.opacity = '1';
-            });
-        }
+        // CABEÇALHO DE PREÇO POLIDO (Badges com bordas mantidas como pedido)
+        const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
 
-        const elListas = document.getElementById('detalhes-listas-fundamentos');
-        if (elListas) {
-            elListas.style.opacity = '0';
-            elListas.innerHTML = listasHtml;
-            requestAnimationFrame(() => {
-                elListas.style.transition = 'opacity 0.3s ease';
-                elListas.style.opacity = '1';
-            });
-        }
+        detalhesPreco.innerHTML = `
+            <div class="col-span-12 w-full flex flex-col">
+                <div class="text-center pb-8 pt-2">
+                    <h2 class="text-5xl font-bold text-white tracking-tighter leading-none mb-4">${formatBRL(precoData.regularMarketPrice)}</h2>
+                    <div class="flex items-center justify-center gap-2">
+                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold ${variacaoCor} flex items-center gap-1 tracking-wider shadow-sm">
+                            ${variacaoIcone} ${formatPercent(varPercent)} Hoje
+                        </span>
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 bg-[#151515] border border-[#2C2C2E] uppercase tracking-widest shadow-sm">
+                            12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>
+                        </span>
+                    </div>
+                </div>
+                ${proximoProventoHtml}
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-3 pl-1">Indicadores Rápidos</h4>
+                <div class="grid grid-cols-3 gap-2 w-full mb-6">${gridTopo}</div>
+                ${listasHtml}
+            </div>`;
 
-        const elProvento = document.getElementById('detalhes-provento-placeholder');
-        if (elProvento && proximoProventoHtml) {
-            elProvento.style.opacity = '0';
-            elProvento.innerHTML = proximoProventoHtml;
-            requestAnimationFrame(() => {
-                elProvento.style.transition = 'opacity 0.3s ease';
-                elProvento.style.opacity = '1';
-            });
-        }
+} else {
+        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
+    }
 
-        if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
-            window.renderizarListaImoveis(fundamentos.imoveis);
-        } else {
-            const containerImoveis = document.getElementById('detalhes-imoveis-container');
-            if (containerImoveis) containerImoveis.innerHTML = '';
-        }
+    if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
+        window.renderizarListaImoveis(fundamentos.imoveis);
+    } else {
+        const containerImoveis = document.getElementById('detalhes-imoveis-container');
+        if (containerImoveis) containerImoveis.innerHTML = '';
+    }
 
-        // ── Disparar análise profunda se for FII ─────────────────────────────────
-        if (ehFii) {
-            carregarAnaliseProfundaFII(symbol);
-        }
-
-    }).catch(e => console.error("Erro ao preencher fundamentos:", e));
-
-    // Favorito (não depende de dados externos)
     atualizarIconeFavorito(symbol);
-
-    // ── Exibe/oculta aba Análise conforme o tipo de ativo ────────────────────
-    const btnTabAnalise = document.getElementById('btn-tab-analise');
-    if (btnTabAnalise) {
-        if (ehFii) {
-            btnTabAnalise.classList.remove('hidden');
-        } else {
-            btnTabAnalise.classList.add('hidden');
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ANÁLISE PROFUNDA DE FIIs
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// ANÁLISE PROFUNDA DE FIIs
-// ─────────────────────────────────────────────────────────────────────────────
-
-function _resetAnaliseTabSkeletons() {
-    const showEl = (id) => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); };
-    const hideEl = (id) => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); };
-
-    // Sobre
-    showEl('fii-sobre-skeleton'); hideEl('fii-sobre');
-    // DY
-    showEl('fii-dy-skeleton');    hideEl('fii-dy-grid'); hideEl('fii-dy-vazio');
-    // Pares
-    showEl('fii-compare-skeleton'); hideEl('fii-compare-wrap'); hideEl('fii-compare-vazio');
-    const filterWrapReset = document.getElementById('fii-compare-filter');
-    if (filterWrapReset) { filterWrapReset.classList.add('hidden'); filterWrapReset.innerHTML = ''; }
-    // Histórico
-    showEl('fii-hist-skeleton'); hideEl('fii-hist-wrap'); hideEl('fii-hist-vazio'); hideEl('fii-hist-filter');
-    // Índices
-    showEl('fii-indices-skeleton'); hideEl('fii-indices-chart-wrap'); hideEl('fii-indices-vazio'); hideEl('fii-indices-card');
-    const idxFilterReset = document.getElementById('fii-indices-filter');
-    if (idxFilterReset) { idxFilterReset.classList.add('hidden'); idxFilterReset.innerHTML = ''; }
-
-    // Limpa conteúdos
-    ['fii-compare-table','fii-hist-table','fii-dy-grid','fii-indices-legend'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.innerHTML = '';
-    });
-
-    // Destrói chart anterior para não acumular instâncias
-    if (window._fiiIndicesChart) {
-        try { window._fiiIndicesChart.destroy(); } catch (_) {}
-        window._fiiIndicesChart = null;
-    }
-}
-
-async function carregarAnaliseProfundaFII(ticker) {
-    const LIMITE_SOBRE = 300;
-    const show = (id) => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); };
-    const hide = (id) => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); };
-    const get  = (id) => document.getElementById(id);
-
-    try {
-        const res = await fetch('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: 'analise_profunda_fii', payload: { ticker } })
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const { json: dados } = await res.json();
-        if (typeof currentDetalhesSymbol !== 'undefined' && currentDetalhesSymbol !== ticker) return;
-
-        // ── ① SOBRE ─────────────────────────────────────────────────────────────
-        hide('fii-sobre-skeleton');
-        if (dados.sobre && dados.sobre !== 'Descrição não disponível.') {
-            const full    = dados.sobre;
-            const short   = full.length > LIMITE_SOBRE ? full.substring(0, LIMITE_SOBRE).trim() + '…' : full;
-            const elTxt   = get('fii-sobre-texto');
-            const elBtn   = get('fii-sobre-ler-mais');
-            if (elTxt) elTxt.textContent = short;
-            if (full.length > LIMITE_SOBRE && elBtn) {
-                elBtn.classList.remove('hidden');
-                let exp = false;
-                elBtn.onclick = () => {
-                    exp = !exp;
-                    elTxt.textContent = exp ? full : short;
-                    elBtn.textContent = exp ? 'Ler menos ↑' : 'Ler mais ↓';
-                };
-            }
-            show('fii-sobre');
-        } else {
-            const el = get('fii-sobre');
-            if (el) { el.innerHTML = '<p class="text-gray-600 text-xs">Descrição não disponível.</p>'; el.classList.remove('hidden'); }
-        }
-
-        // ── ② DY POR PERÍODO ────────────────────────────────────────────────────
-        hide('fii-dy-skeleton');
-        const dyGrid = get('fii-dy-grid');
-        const dyList = dados.dividend_yield || [];
-        if (dyList.length > 0 && dyGrid) {
-            const periodosEsperados = ['1M', '3M', '6M', '12M'];
-            const dyMap = {};
-            dyList.forEach(d => { if (d._chave) dyMap[d._chave] = d; });
-
-            dyGrid.innerHTML = periodosEsperados.map(p => {
-                const item = dyMap[p];
-                const pct  = item ? (item.percentual || '-') : '-';
-                const rs   = item ? (item.valor || '') : '';
-                return `<div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center text-center shadow-sm">
-                    <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">${p}</span>
-                    <span class="text-base font-bold text-green-400">${pct}</span>
-                    ${rs ? `<span class="text-[10px] text-gray-600 mt-0.5">${rs}</span>` : ''}
-                </div>`;
-            }).join('');
-            show('fii-dy-grid');
-        } else {
-            show('fii-dy-vazio');
-        }
-
-        // ── ③ COMPARAÇÃO COM PARES ───────────────────────────────────────────────
-        hide('fii-compare-skeleton');
-        const compareTbody = get('fii-compare-table');
-        const paresAll = dados.comparacao_fiis || [];
-
-        if (paresAll.length > 0 && compareTbody) {
-            // CORREÇÃO DO VAZAMENTO NO SCROLL: Injeta o fundo sólido e sticky no cabeçalho (TH) dinamicamente
-            const theadTr = compareTbody.closest('table')?.querySelector('thead tr');
-            if (theadTr) {
-                const thTicker = theadTr.querySelector('th');
-                if (thTicker) {
-                    thTicker.className = "py-2 pl-3 pr-4 sticky left-0 z-20 bg-[#1c1c1e] border-r border-[#2c2c2e] text-left text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]";
-                }
-            }
-
-            const fmtNum = (v, decimals = 2) => {
-                if (v == null || v === '') return '-';
-                const n = parseFloat(String(v).replace(',', '.'));
-                return isNaN(n) ? String(v) : n.toFixed(decimals).replace('.', ',');
-            };
-            const fmtPct  = (v) => { const s = fmtNum(v); return s === '-' ? '-' : s + '%'; };
-            const fmtMonet = (v) => {
-                if (v == null || v === '') return '-';
-                const n = parseFloat(String(v).replace(',', '.'));
-                if (isNaN(n)) return String(v);
-                if (n >= 1e9) return 'R$ ' + (n / 1e9).toFixed(2).replace('.', ',') + 'B';
-                if (n >= 1e6) return 'R$ ' + (n / 1e6).toFixed(2).replace('.', ',') + 'M';
-                return 'R$ ' + n.toFixed(2).replace('.', ',');
-            };
-
-            // Dados do próprio FII com .trim() para evitar bugs de espaçamento
-            const selfPar = paresAll.find(p => (p.ticker || '').trim().toUpperCase() === ticker.toUpperCase());
-            const selfTipo = selfPar?.tipo?.trim() || null;
-            const selfSeg  = selfPar?.segmento?.trim() || null;
-
-            const renderPares = (filtro) => {
-                let lista = paresAll;
-
-                // Nova Lógica de Filtro: Removemos a trava que quebrava a exibição
-                if (filtro === 'tipo_seg') {
-                    lista = paresAll.filter(p => {
-                        if ((p.ticker || '').trim().toUpperCase() === ticker.toUpperCase()) return true;
-                        if (!selfTipo && !selfSeg) return true;
-                        return p.tipo?.trim() === selfTipo && p.segmento?.trim() === selfSeg;
-                    });
-                } else if (filtro === 'tipo') {
-                    lista = paresAll.filter(p => {
-                        if ((p.ticker || '').trim().toUpperCase() === ticker.toUpperCase()) return true;
-                        if (!selfTipo) return true;
-                        return p.tipo?.trim() === selfTipo;
-                    });
-                } else if (filtro === 'seg') {
-                    lista = paresAll.filter(p => {
-                        if ((p.ticker || '').trim().toUpperCase() === ticker.toUpperCase()) return true;
-                        if (!selfSeg) return true;
-                        return p.segmento?.trim() === selfSeg;
-                    });
-                }
-
-                if (lista.length === 0) lista = paresAll;
-
-                compareTbody.innerHTML = lista.map(par => {
-                    const pvpN    = parseFloat(String(par.p_vp ?? '').replace(',', '.')) || 0;
-                    const pvpDisp = fmtNum(par.p_vp);
-
-                    // Adiciona um feedback visual se o P/VP estiver muito descontado (< 1.0)
-                    const pvpCor  = pvpN === 0    ? 'text-gray-400'
-                                  : pvpN < 1.0   ? 'text-green-400'
-                                  : 'text-gray-200';
-
-                    const isSelf = (par.ticker || '').trim().toUpperCase() === ticker.toUpperCase();
-                    const rowBg  = isSelf ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]';
-
-                    return `<tr class="border-b border-[#1f1f1f] transition-colors ${rowBg}">
-                        <td class="py-2.5 pr-4 pl-3 sticky left-0 z-20 whitespace-nowrap bg-[#1c1c1e] border-r border-[#2c2c2e] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]" style="${isSelf ? 'background:#1a1825!important' : ''}">
-                            <div class="flex items-center gap-1.5">
-                                <span class="font-bold text-white text-xs tracking-tight">${par.ticker || '-'}</span>
-                                ${isSelf ? '<span class="text-[8px] text-gray-500 font-medium">você</span>' : ''}
-                            </div>
-                        </td>
-                        <td class="py-2.5 px-3 text-right font-semibold text-gray-200 text-xs whitespace-nowrap">${fmtPct(par.dividend_yield)}</td>
-                        <td class="py-2.5 px-3 text-right font-semibold text-xs whitespace-nowrap">
-                            <span class="${pvpCor}">${pvpDisp}</span>
-                        </td>
-                        <td class="py-2.5 px-3 text-right text-gray-400 text-xs whitespace-nowrap">${fmtMonet(par.valor_patrimonial)}</td>
-                        <td class="py-2.5 px-3 text-center text-[10px] text-gray-400 whitespace-nowrap">${par.tipo || '-'}</td>
-                        <td class="py-2.5 pl-3 text-gray-500 text-[10px] whitespace-nowrap">${par.segmento || '-'}</td>
-                    </tr>`;
-                }).join('');
-            };
-
-            // Filtros
-            const filterWrap = get('fii-compare-filter');
-            if (filterWrap) {
-                filterWrap.classList.remove('hidden');
-                const FILTERS = [
-                    { key: 'tipo_seg', label: 'Tipo + Seg.' },
-                    { key: 'tipo',     label: 'Tipo' },
-                    { key: 'seg',      label: 'Segmento' },
-                    { key: 'todos',    label: 'Todos' },
-                ];
-
-                filterWrap.innerHTML = FILTERS.map((f, i) =>
-                    `<button data-filter="${f.key}" class="fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all whitespace-nowrap cursor-pointer ${i === 0 ? 'bg-white/[0.07] border-white/[0.12] text-gray-200' : 'bg-transparent border-transparent text-gray-500'}">${f.label}</button>`
-                ).join('');
-
-                filterWrap.querySelectorAll('.fii-par-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        filterWrap.querySelectorAll('.fii-par-btn').forEach(b => {
-                            b.className = 'fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border border-transparent bg-transparent text-gray-500 transition-all whitespace-nowrap cursor-pointer';
-                        });
-                        btn.className = 'fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border border-white/[0.12] bg-white/[0.07] text-gray-200 transition-all whitespace-nowrap cursor-pointer';
-                        renderPares(btn.dataset.filter);
-                    });
-                });
-            }
-
-            renderPares('tipo_seg');
-            show('fii-compare-wrap');
-        } else {
-            show('fii-compare-vazio');
-        }
-
-        // ── ④ ÚLTIMOS DIVIDENDOS ─────────────────────────────────────────────────
-        hide('fii-hist-skeleton');
-        const histAll = dados.historico_indicadores || [];
-        if (histAll.length > 0) {
-            const histTbody = get('fii-hist-table');
-            if (histTbody) {
-                // Atualiza cabeçalhos da tabela dinamicamente via data-attributes opcionais
-                const thTipo = get('fii-hist-th-tipo');
-                const thDataCom = get('fii-hist-th-data-com');
-                const thPag = get('fii-hist-th-pag');
-                const thVal = get('fii-hist-th-val');
-                if (thTipo)    thTipo.textContent    = 'Tipo';
-                if (thDataCom) thDataCom.textContent = 'Data Com';
-                if (thPag)     thPag.textContent     = 'Pagamento';
-                if (thVal)     thVal.textContent     = 'Valor';
-
-                histTbody.innerHTML = histAll.map(item => {
-                    const valorNum = parseFloat(String(item.valor || '0').replace(',', '.')) || 0;
-                    const valorCor = valorNum > 0 ? 'text-green-400' : 'text-gray-400';
-                    return `<tr class="hover:bg-white/5 transition-colors">
-                        <td class="py-2.5 pr-4 pl-3 sticky left-0 z-10 bg-[#1c1c1e] border-r border-[#2c2c2e]">
-                            <span class="text-[10px] font-bold text-gray-300 uppercase tracking-wide">${item.tipo || '-'}</span>
-                        </td>
-                        <td class="py-2.5 px-3 text-center text-gray-400 text-xs whitespace-nowrap">${item.data_com || '-'}</td>
-                        <td class="py-2.5 px-3 text-center text-gray-400 text-xs whitespace-nowrap">${item.pagamento || '-'}</td>
-                        <td class="py-2.5 pl-3 pr-4 text-right font-bold text-xs whitespace-nowrap ${valorCor}">${item.valor || '-'}</td>
-                    </tr>`;
-                }).join('');
-            }
-
-            // Oculta botões de filtro 5A/10A (não aplicável para lista de dividendos)
-            const filterDiv = get('fii-hist-filter');
-            if (filterDiv) filterDiv.classList.add('hidden');
-
-            show('fii-hist-wrap');
-        } else {
-            show('fii-hist-vazio');
-        }
-
-        // ── ⑤ COMPARAÇÃO COM ÍNDICES — GRÁFICO DE LINHA ─────────────────────────
-        hide('fii-indices-skeleton');
-        const indicesData = dados.comparacao_indices;
-
-        if (indicesData && indicesData.series && indicesData.series.length > 0) {
-            // Mapa de normalização de nomes
-            const NOME_MAP = {
-                'ifix':   'IFIX',
-                'cdi':    'CDI',
-                'ibov':   'IBOV',
-                'smll':   'SMLL',
-                'ivvb11': 'IVVB11',
-                'idiv':   'IDIV',
-                'ipca':   'IPCA',
-            };
-            const normalizarNome = (nome, tk) => {
-                const lower = (nome || '').toLowerCase().trim();
-                if (lower === tk.toLowerCase() || lower.includes(tk.toLowerCase())) return tk.toUpperCase();
-                for (const [key, val] of Object.entries(NOME_MAP)) {
-                    if (lower.includes(key)) return val;
-                }
-                return nome;
-            };
-
-            // Paleta limpa e profissional
-            const COR_INDICES = {
-                'IFIX':              '#a78bfa',
-                'CDI':               '#94a3b8',
-                'IBOV':              '#60a5fa',
-                'SMLL':              '#34d399',
-                'IVVB11':            '#f59e0b',
-                'IDIV':              '#fb7185',
-                'IPCA':              '#6ee7b7',
-                [ticker.toUpperCase()]: '#ffffff',
-            };
-            const defaultColors = ['#a78bfa','#60a5fa','#34d399','#f59e0b','#94a3b8','#fb7185','#6ee7b7','#e2e8f0'];
-
-            // Normaliza séries
-            const seriesNorm = indicesData.series.map((serie, idx) => ({
-                ...serie,
-                nome: normalizarNome(serie.nome, ticker),
-                cor:  COR_INDICES[normalizarNome(serie.nome, ticker)] || defaultColors[idx % defaultColors.length]
-            }));
-
-            let labels = indicesData.labels || [];
-            if (!labels.length) {
-                const longest = seriesNorm.reduce((a, s) => s.dados.length > a.dados.length ? s : a, { dados: [] });
-                labels = longest.dados.map(d => d.data || '');
-            }
-
-            const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-            const fmtLabel = (l) => {
-                const m1 = String(l).match(/^(\d{4})-(\d{2})/);
-                if (m1) return meses[parseInt(m1[2]) - 1] + '/' + m1[1].slice(2);
-                const m2 = String(l).match(/^(\d{2})\/(\d{4})/);
-                if (m2) return meses[parseInt(m2[1]) - 1] + '/' + m2[2].slice(2);
-                return l;
-            };
-
-            const buildDatasets = (labelsSlice, dataStart) => seriesNorm.map(serie => ({
-                label:            serie.nome,
-                data:             serie.dados.slice(dataStart, dataStart + labelsSlice.length).map(d => d.rentabilidade),
-                borderColor:      serie.cor,
-                backgroundColor:  serie.cor + '15',
-                borderWidth:      serie.nome === ticker.toUpperCase() ? 2.5 : 1.5,
-                pointRadius:      0,
-                pointHoverRadius: 5,
-                pointHoverBorderWidth: 2,
-                pointHoverBackgroundColor: serie.cor,
-                pointHoverBorderColor: '#0f0f0f',
-                tension:          0.3,
-                fill:             false
-            }));
-
-            // Legenda customizada
-            const legendDiv = get('fii-indices-legend');
-            if (legendDiv) {
-                legendDiv.innerHTML = seriesNorm.map(s =>
-                    `<div class="flex items-center gap-1.5">
-                        <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background:${s.cor}"></span>
-                        <span class="text-[10px] font-medium text-gray-400">${s.nome}</span>
-                    </div>`
-                ).join('');
-            }
-
-            // Render / re-render do chart
-            const renderIndicesChart = (anosMax) => {
-                const mesesMax = anosMax * 12;
-                const dataStart = Math.max(0, labels.length - mesesMax);
-                const labelsSlice = labels.slice(dataStart);
-                const fmtLabels = labelsSlice.map(fmtLabel);
-                const datasets = buildDatasets(labelsSlice, dataStart);
-
-                const canvas = get('fii-indices-chart');
-                if (!canvas) return;
-                if (window._fiiIndicesChart) { try { window._fiiIndicesChart.destroy(); } catch (_) {} }
-
-                window._fiiIndicesChart = new Chart(canvas, {
-                    type: 'line',
-                    data: { labels: fmtLabels, datasets },
-                    options: {
-                        responsive:          true,
-                        maintainAspectRatio: false,
-                        interaction:         { mode: 'index', intersect: false },
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                enabled:         true,
-                                backgroundColor: 'rgba(15,15,15,0.97)',
-                                borderColor:     '#2c2c2e',
-                                borderWidth:     1,
-                                padding:         { top: 10, bottom: 10, left: 14, right: 14 },
-                                titleColor:      '#6b7280',
-                                titleFont:       { size: 10, weight: '500' },
-                                titleMarginBottom: 8,
-                                bodySpacing:     5,
-                                callbacks: {
-                                    title: (items) => items[0]?.label || '',
-                                    label: (ctx) => {
-                                        const v = ctx.parsed.y;
-                                        const sign = v >= 0 ? '+' : '';
-                                        return `  ${ctx.dataset.label}   ${sign}${v.toFixed(2).replace('.', ',')}%`;
-                                    },
-                                    labelColor: (ctx) => ({
-                                        borderColor: 'transparent',
-                                        backgroundColor: ctx.dataset.borderColor,
-                                        borderRadius: 3,
-                                        width: 8,
-                                        height: 8,
-                                    })
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                ticks:   { color: '#4b5563', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 },
-                                grid:    { color: 'rgba(255,255,255,0.03)' },
-                                border:  { color: '#1f1f1f' }
-                            },
-                            y: {
-                                ticks:   { color: '#4b5563', font: { size: 9 }, callback: (v) => v.toFixed(0) + '%' },
-                                grid:    { color: 'rgba(255,255,255,0.03)' },
-                                border:  { color: '#1f1f1f' }
-                            }
-                        }
-                    }
-                });
-            };
-
-            renderIndicesChart(5); // padrão: 5 anos
-
-            // Filtro 2A / 5A — Tailwind, event listeners robustos com closure sobre renderIndicesChart
-            const idxFilterWrap = get('fii-indices-filter');
-            if (idxFilterWrap) {
-                idxFilterWrap.classList.remove('hidden');
-
-                const IDX_FILTERS = [
-                    { anos: 2, label: '2A' },
-                    { anos: 5, label: '5A' },
-                ];
-
-                idxFilterWrap.innerHTML = IDX_FILTERS.map((f, i) =>
-                    `<button data-anos="${f.anos}" class="fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all cursor-pointer ${i === 1 ? 'bg-purple-600 border-purple-600 text-white' : 'bg-[#2c2c2e] border-transparent text-gray-400'}">${f.label}</button>`
-                ).join('');
-
-                idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        // Atualiza estados dos botões com Tailwind
-                        idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(b => {
-                            b.className = 'fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border border-transparent bg-[#2c2c2e] text-gray-400 transition-all cursor-pointer';
-                        });
-                        btn.className = 'fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border border-purple-600 bg-purple-600 text-white transition-all cursor-pointer';
-                        // Recria o gráfico com os anos corretos (closure garante acesso à função)
-                        renderIndicesChart(parseInt(btn.dataset.anos, 10));
-                    });
-                });
-            }
-
-            show('fii-indices-chart-wrap');
-            show('fii-indices-card');
-        } else {
-            show('fii-indices-vazio');
-            show('fii-indices-card');
-        }
-
-    } catch (e) {
-        console.error('[AnaliseFII] Erro:', e.message);
-        ['fii-sobre-skeleton','fii-dy-skeleton','fii-compare-skeleton','fii-hist-skeleton','fii-indices-skeleton'].forEach(hide);
-        ['fii-dy-vazio','fii-compare-vazio','fii-hist-vazio','fii-indices-vazio'].forEach(show);
-        const el = get('fii-sobre');
-        if (el) { el.innerHTML = '<p class="text-red-500/70 text-xs">Não foi possível carregar a análise.</p>'; el.classList.remove('hidden'); }
-        show('fii-indices-card');
-    }
 }
 
     async function fetchHistoricoScraper(symbol) {

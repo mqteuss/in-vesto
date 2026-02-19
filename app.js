@@ -4700,6 +4700,11 @@ function handleAbrirModalEdicao(id) {
         if (elListasReset) elListasReset.innerHTML = '';
         ativarDetalhesTab('detalhes-tab-geral');
 
+        // Ocultar aba de Análise e restaurar skeletons para próxima abertura
+        const btnTabAnaliseReset = document.getElementById('btn-tab-analise');
+        if (btnTabAnaliseReset) btnTabAnaliseReset.classList.add('hidden');
+        _resetAnaliseTabSkeletons();
+
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
         detalhesFavoritoBtn.dataset.symbol = '';
@@ -6363,14 +6368,234 @@ async function handleMostrarDetalhes(symbol) {
             if (containerImoveis) containerImoveis.innerHTML = '';
         }
 
+        // ── Disparar análise profunda se for FII ─────────────────────────────────
+        if (ehFii) {
+            carregarAnaliseProfundaFII(symbol);
+        }
+
     }).catch(e => console.error("Erro ao preencher fundamentos:", e));
 
     // Favorito (não depende de dados externos)
     atualizarIconeFavorito(symbol);
+
+    // ── Exibe/oculta aba Análise conforme o tipo de ativo ────────────────────
+    const btnTabAnalise = document.getElementById('btn-tab-analise');
+    if (btnTabAnalise) {
+        if (ehFii) {
+            btnTabAnalise.classList.remove('hidden');
+        } else {
+            btnTabAnalise.classList.add('hidden');
+        }
+    }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ANÁLISE PROFUNDA DE FIIs
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ANÁLISE PROFUNDA DE FIIs
+// ─────────────────────────────────────────────────────────────────────────────
 
-    async function fetchHistoricoScraper(symbol) {
+function _resetAnaliseTabSkeletons() {
+    // Restaura skeletons e oculta conteúdo real para a próxima abertura
+    const showEl = (id) => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); };
+    const hideEl = (id) => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); };
+
+    showEl('fii-sobre-skeleton');   hideEl('fii-sobre');
+    showEl('fii-dy-skeleton');      hideEl('fii-dy-grid');      hideEl('fii-dy-vazio');
+    showEl('fii-compare-skeleton'); hideEl('fii-compare-wrap'); hideEl('fii-compare-vazio');
+    showEl('fii-hist-skeleton');    hideEl('fii-hist-wrap');    hideEl('fii-hist-vazio');
+    hideEl('fii-indices-card');
+
+    const compareTbody = document.getElementById('fii-compare-table');
+    const histTbody    = document.getElementById('fii-hist-table');
+    const dyGrid       = document.getElementById('fii-dy-grid');
+    const indicesGrid  = document.getElementById('fii-indices-grid');
+    if (compareTbody) compareTbody.innerHTML = '';
+    if (histTbody)    histTbody.innerHTML    = '';
+    if (dyGrid)       dyGrid.innerHTML       = '';
+    if (indicesGrid)  indicesGrid.innerHTML  = '';
+}
+
+async function carregarAnaliseProfundaFII(ticker) {
+    const LIMITE_SOBRE = 300;
+
+    // ── Helpers de DOM ──────────────────────────────────────────────────────
+    const show  = (id) => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); };
+    const hide  = (id) => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); };
+    const get   = (id) => document.getElementById(id);
+
+    // Mantém os skeletons enquanto carrega (já são exibidos por padrão no HTML)
+    // Nenhuma ação necessária aqui — os skeletons já estão visíveis.
+
+    try {
+        const res = await fetch('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'analise_profunda_fii', payload: { ticker } })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { json: dados } = await res.json();
+
+        // Garante que ainda é o mesmo ativo sendo exibido
+        if (typeof currentDetalhesSymbol !== 'undefined' && currentDetalhesSymbol !== ticker) return;
+
+        // ── 1. SOBRE ──────────────────────────────────────────────────────────
+        hide('fii-sobre-skeleton');
+        if (dados.sobre) {
+            const textoCompleto = dados.sobre;
+            const textoResumido = textoCompleto.length > LIMITE_SOBRE
+                ? textoCompleto.substring(0, LIMITE_SOBRE).trim() + '…'
+                : textoCompleto;
+
+            const elTexto = get('fii-sobre-texto');
+            const elBtn   = get('fii-sobre-ler-mais');
+
+            if (elTexto) elTexto.textContent = textoResumido;
+
+            if (textoCompleto.length > LIMITE_SOBRE && elBtn) {
+                elBtn.classList.remove('hidden');
+                let expandido = false;
+                elBtn.onclick = () => {
+                    expandido = !expandido;
+                    elTexto.textContent = expandido ? textoCompleto : textoResumido;
+                    elBtn.textContent   = expandido ? 'Ler menos ↑' : 'Ler mais ↓';
+                };
+            }
+
+            show('fii-sobre');
+        } else {
+            // Mostra mensagem de fallback discreto
+            const elFii = get('fii-sobre');
+            if (elFii) {
+                elFii.innerHTML = '<p class="text-gray-600 text-xs">Descrição não disponível.</p>';
+                elFii.classList.remove('hidden');
+            }
+        }
+
+        // ── 2. DY POR PERÍODO ─────────────────────────────────────────────────
+        hide('fii-dy-skeleton');
+        const dyGrid = get('fii-dy-grid');
+        if (dados.dy_periodos && dados.dy_periodos.length > 0 && dyGrid) {
+            // Garante os 4 períodos padrão, preenchendo com '-' se faltar
+            const periodosEsperados = ['1M', '3M', '6M', '12M'];
+            const dyMap = {};
+            dados.dy_periodos.forEach(d => { dyMap[d.periodo] = d; });
+
+            dyGrid.innerHTML = periodosEsperados.map(p => {
+                const item = dyMap[p];
+                const pct  = item ? item.pct : '-';
+                const rs   = item ? (item.rs || '') : '';
+                return `
+                    <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center text-center shadow-sm">
+                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">${p}</span>
+                        <span class="text-base font-bold text-green-400">${pct}</span>
+                        ${rs ? `<span class="text-[10px] text-gray-600 mt-0.5">${rs}</span>` : ''}
+                    </div>`;
+            }).join('');
+
+            show('fii-dy-grid');
+        } else {
+            show('fii-dy-vazio');
+        }
+
+        // ── 3. COMPARAÇÃO COM PARES ──────────────────────────────────────────
+        hide('fii-compare-skeleton');
+        const compareTbody = get('fii-compare-table');
+        if (dados.comparacao_fii && dados.comparacao_fii.length > 0 && compareTbody) {
+            compareTbody.innerHTML = dados.comparacao_fii.map(par => {
+                const pvpNum = parseFloat(String(par.pvp).replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+                const pvpCor = pvpNum === 0 ? 'text-gray-400'
+                    : pvpNum < 1.0 ? 'text-green-400'   // descontado
+                    : pvpNum <= 1.1 ? 'text-yellow-400'  // neutro
+                    : 'text-red-400';                     // caro
+
+                const pvpTag = pvpNum !== 0
+                    ? `<span class="text-[9px] font-bold ml-1 ${pvpNum < 1 ? 'text-green-500' : 'text-red-500'}">${pvpNum < 1 ? '▼ DSCT' : '▲ CARO'}</span>`
+                    : '';
+
+                // Destaque se for o próprio ticker
+                const isSelf = par.ticker.toUpperCase() === ticker.toUpperCase();
+                const rowClass = isSelf
+                    ? 'bg-purple-500/10 border-l-2 border-purple-500'
+                    : '';
+
+                return `
+                    <tr class="${rowClass}">
+                        <td class="py-2.5 pl-1">
+                            <span class="font-bold text-white">${par.ticker}</span>
+                            ${isSelf ? '<span class="text-[8px] text-purple-400 font-bold ml-1">VOCÊ</span>' : ''}
+                            ${par.nome ? `<span class="block text-[10px] text-gray-600 mt-0.5 truncate max-w-[100px]">${par.nome}</span>` : ''}
+                        </td>
+                        <td class="py-2.5 text-right font-bold text-green-400">${par.dy || '-'}</td>
+                        <td class="py-2.5 text-right pr-1">
+                            <span class="font-bold ${pvpCor}">${par.pvp || '-'}</span>${pvpTag}
+                        </td>
+                    </tr>`;
+            }).join('');
+
+            show('fii-compare-wrap');
+        } else {
+            show('fii-compare-vazio');
+        }
+
+        // ── 4. HISTÓRICO DE INDICADORES ──────────────────────────────────────
+        hide('fii-hist-skeleton');
+        const histTbody = get('fii-hist-table');
+        if (dados.historico_indicadores && dados.historico_indicadores.length > 0 && histTbody) {
+            histTbody.innerHTML = dados.historico_indicadores.map(item => {
+                const pvpNum = parseFloat(String(item.pvp).replace(/[^0-9,-]+/g, '').replace(',', '.')) || 0;
+                const pvpCor = pvpNum === 0 ? 'text-gray-400'
+                    : pvpNum < 1 ? 'text-green-400'
+                    : pvpNum <= 1.1 ? 'text-yellow-400'
+                    : 'text-red-400';
+
+                return `
+                    <tr>
+                        <td class="py-2.5 pl-1 font-bold text-white">${item.ano}</td>
+                        <td class="py-2.5 text-right font-bold text-green-400">${item.dy || '-'}</td>
+                        <td class="py-2.5 text-right pr-1 font-bold ${pvpCor}">${item.pvp || '-'}</td>
+                    </tr>`;
+            }).join('');
+
+            show('fii-hist-wrap');
+        } else {
+            show('fii-hist-vazio');
+        }
+
+        // ── 5. COMPARAÇÃO COM ÍNDICES ─────────────────────────────────────────
+        if (dados.comparacao_indices && dados.comparacao_indices.length > 0) {
+            const indicesGrid = get('fii-indices-grid');
+            const indicesCard = get('fii-indices-card');
+            if (indicesGrid && indicesCard) {
+                indicesGrid.innerHTML = dados.comparacao_indices.map(idx => {
+                    const valorStr = String(idx.valor);
+                    const isPositivo = valorStr.includes('+') || (!valorStr.includes('-') && parseFloat(valorStr.replace(/[^0-9,.]/g, '')) > 0);
+                    const cor = isPositivo ? 'text-green-400' : 'text-red-400';
+                    return `
+                        <div class="bg-[#151515] rounded-xl p-3 flex flex-col shadow-sm">
+                            <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 truncate">${idx.nome}</span>
+                            <span class="text-sm font-bold ${cor}">${idx.valor}</span>
+                        </div>`;
+                }).join('');
+                indicesCard.classList.remove('hidden');
+            }
+        }
+
+    } catch (e) {
+        console.error('[AnaliseFII] Erro:', e.message);
+
+        // Remove skeletons em caso de erro e exibe mensagem discreta
+        ['fii-sobre-skeleton','fii-dy-skeleton','fii-compare-skeleton','fii-hist-skeleton'].forEach(hide);
+        ['fii-dy-vazio','fii-compare-vazio','fii-hist-vazio'].forEach(show);
+
+        const elSobre = get('fii-sobre');
+        if (elSobre) {
+            elSobre.innerHTML = '<p class="text-gray-600 text-xs">Não foi possível carregar a análise.</p>';
+            elSobre.classList.remove('hidden');
+        }
+    }
+}
         // Guarda o simbolo alvo: se mudar (modal fechou/abriu outro ativo), cancela
         const symbolAlvo = symbol;
 

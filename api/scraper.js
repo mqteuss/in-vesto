@@ -550,24 +550,33 @@ async function scrapeAnaliseProfundaFii(ticker) {
         dados.sobre = sobre || null;
 
         // ─── 2. DIVIDEND YIELD POR PERÍODO (1M, 3M, 6M, 12M) ───────────────────
-        // Investidor10 usa vários patterns conforme a versão da página.
-        // Tentamos do mais específico para o mais genérico.
+        // Estratégia agressiva: varre cards e content-info-items à procura de YIELD/DY
         dados.dividend_yield = [];
 
-        const tryDyStrategy = () => {
-            // Strategy A: .content--info--item
+        $('.cards-fii ._card, .content--info--item').each((_, el) => {
+            const text = $(el).text().toUpperCase();
+            if (!text.includes('YIELD') && !text.includes('DY')) return;
+            const title   = $(el).find('._card-header, .content--info--item--title, h3, span').first().text().trim();
+            const percent = $(el).find('._card-body span, .value').first().text().trim();
+            if (title && percent && percent.includes('%')) {
+                dados.dividend_yield.push({ periodo: title, percentual: percent, valor: '' });
+            }
+        });
+
+        // Fallback B: .content--info--item genérico com header + valor
+        if (!dados.dividend_yield.length) {
             $('.content--info--item').each((_, el) => {
                 const title = $(el).find('[class*="title"]').first().text().trim()
                            || $(el).children('span,div').first().text().trim();
                 if (!title.toUpperCase().includes('YIELD') && !title.toUpperCase().includes('DY')) return;
-                const vals  = $(el).find('[class*="value"]');
+                const vals = $(el).find('[class*="value"]');
                 let pct = '', rs = '';
                 vals.each((_, v) => {
                     const t = $(v).text().trim();
                     if (t.includes('%') && !pct) pct = t;
                     else if (t.includes('R$') && !rs) rs = t;
                 });
-                if (!pct) { // tenta extrair do texto bruto do elemento
+                if (!pct) {
                     const raw = $(el).text();
                     const m = raw.match(/([\d,]+\s*%)/);
                     if (m) pct = m[1].trim();
@@ -576,42 +585,24 @@ async function scrapeAnaliseProfundaFii(ticker) {
                 }
                 if (pct) dados.dividend_yield.push({ periodo: title, percentual: pct, valor: rs });
             });
-            if (dados.dividend_yield.length) return;
+        }
 
-            // Strategy B: .cell com name contendo YIELD
+        // Fallback C: .cell com name contendo YIELD
+        if (!dados.dividend_yield.length) {
             $('.cell').each((_, el) => {
                 const name = $(el).find('.name,[class*="name"]').first().text().trim();
                 if (!name.toUpperCase().includes('YIELD') && !name.toUpperCase().includes('DY')) return;
-                const val  = $(el).find('.value,[class*="value"]').first().text().trim();
-                const amt  = $(el).find('.amount,[class*="amount"]').first().text().trim();
-                const pct  = val.includes('%') ? val : (val + (val ? '%' : ''));
-                if (val) dados.dividend_yield.push({ periodo: name, percentual: pct, valor: amt });
+                const val = $(el).find('.value,[class*="value"]').first().text().trim();
+                const amt = $(el).find('.amount,[class*="amount"]').first().text().trim();
+                if (val) dados.dividend_yield.push({ periodo: name, percentual: val, valor: amt });
             });
-            if (dados.dividend_yield.length) return;
+        }
 
-            // Strategy C: varredura geral — qualquer elemento com texto "YIELD" próximo de "%"
-            $('[class],[id]').each((_, el) => {
-                const txt = $(el).text().trim();
-                if (!txt.toUpperCase().includes('YIELD')) return;
-                if ($(el).children().length > 5) return; // evita containers grandes
-                const mPct = txt.match(/([\d,]+\s*%)/);
-                if (mPct) {
-                    const mPeriodo = txt.toUpperCase().match(/(\d+M)/);
-                    dados.dividend_yield.push({
-                        periodo: mPeriodo ? mPeriodo[1] : txt.substring(0, 20),
-                        percentual: mPct[1].trim(),
-                        valor: ''
-                    });
-                }
-            });
-        };
-        tryDyStrategy();
-
-        // Normaliza labels → "1M", "3M", "6M", "12M"
+        // Normaliza labels → "1M", "3M", "6M", "12M" e desduplicar
         dados.dividend_yield = dados.dividend_yield
             .map(d => {
-                const m = (d.periodo || '').toUpperCase().match(/(\d+M)/);
-                return { ...d, _chave: m ? m[1] : null };
+                const m = (d.periodo || '').toUpperCase().match(/(\d+\s*M)/);
+                return { ...d, _chave: m ? m[1].replace(/\s/g, '') : null };
             })
             .filter(d => d._chave)
             .reduce((acc, d) => {
@@ -648,75 +639,39 @@ async function scrapeAnaliseProfundaFii(ticker) {
             }
         }
 
-        // ─── 4. HISTÓRICO DE INDICADORES FUNDAMENTALISTAS (ANUAL – 5/10 anos) ──
-        // Esta secção usa a tabela de indicadores anuais (DY, P/VP, Rendimento, Variação)
-        // NÃO é o histórico de proventos — são os indicadores agregados por ano.
+        // ─── 4. HISTÓRICO DE DIVIDENDOS (últimos 15 pagamentos) ──────────────────
+        // Substitui os indicadores anuais: usa a tabela de histórico de dividendos do FII.
         dados.historico_indicadores = [];
 
-        const histSels = [
-            '#indicators-history tbody tr',
-            '#table-indicators tbody tr',
-            '#fii-indicators tbody tr',
-            'table[id*="indicator"] tbody tr',
-            'table[id*="historico"] tbody tr',
-        ];
-
-        // Tenta cada seletor; para quando encontrar dados
-        for (const sel of histSels) {
-            if (dados.historico_indicadores.length) break;
-            $(sel).each((_, row) => {
-                const cols = $(row).find('td');
-                if (cols.length < 2) return;
-                const ano = $(cols[0]).text().trim();
-                if (!ano.match(/^\d{4}$/)) return; // só linhas com ano de 4 dígitos
-                const entry = { ano };
-                // Mapeia colunas dinamicamente com base nos th do thead
-                const thList = [];
-                $(row).closest('table').find('thead th').each((_, th) => {
-                    thList.push($(th).text().trim().toUpperCase());
+        $('#table-dividends-history tbody tr').slice(0, 15).each((_, row) => {
+            const cols = $(row).find('td');
+            if (cols.length >= 4) {
+                dados.historico_indicadores.push({
+                    tipo:      $(cols[0]).text().trim(),
+                    data_com:  $(cols[1]).text().trim(),
+                    pagamento: $(cols[2]).text().trim(),
+                    valor:     $(cols[3]).text().trim()
                 });
-                cols.each((ci, td) => {
-                    const val = $(td).text().trim();
-                    const header = thList[ci] || `col${ci}`;
-                    if (header.includes('DY') || header.includes('YIELD'))           entry.dy       = val;
-                    else if (header.includes('P/VP') || header.includes('PVP'))      entry.pvp      = val;
-                    else if (header.includes('REND') || header.includes('PROVENT'))  entry.rendimento = val;
-                    else if (header.includes('VARI'))                                entry.variacao = val;
-                    else if (header.includes('LIQ'))                                 entry.liquidez = val;
-                    else if (ci > 0)                                                  entry[`col${ci}`] = val;
-                });
-                // Garante que tem pelo menos dy ou pvp
-                if (entry.dy || entry.pvp) dados.historico_indicadores.push(entry);
-            });
-        }
+            }
+        });
 
-        // Fallback: tenta tabela genérica com cabeçalho "Ano" + "DY"
+        // Fallback: se a tabela principal estava vazia, tenta seletores alternativos
         if (!dados.historico_indicadores.length) {
-            $('table').each((_, tbl) => {
-                if (dados.historico_indicadores.length) return false;
-                const headers = $(tbl).find('thead th').map((_, th) => $(th).text().trim().toUpperCase()).get();
-                const anoIdx  = headers.findIndex(h => h === 'ANO' || h.includes('EXERC'));
-                const dyIdx   = headers.findIndex(h => h.includes('DY') || h.includes('YIELD'));
-                if (anoIdx === -1 || dyIdx === -1) return;
-                const pvpIdx  = headers.findIndex(h => h.includes('P/VP') || h.includes('PVP'));
-                $(tbl).find('tbody tr').each((_, row) => {
-                    const cols = $(row).find('td');
-                    const ano  = $(cols[anoIdx])?.text().trim();
-                    if (!ano?.match(/^\d{4}$/)) return;
+            $('table[id*="dividend"] tbody tr, table[id*="provento"] tbody tr').slice(0, 15).each((_, row) => {
+                const cols = $(row).find('td');
+                if (cols.length >= 3) {
                     dados.historico_indicadores.push({
-                        ano,
-                        dy:  $(cols[dyIdx])?.text().trim()  || '-',
-                        pvp: pvpIdx >= 0 ? ($(cols[pvpIdx])?.text().trim() || '-') : '-'
+                        tipo:      $(cols[0]).text().trim(),
+                        data_com:  $(cols[1]).text().trim(),
+                        pagamento: cols.length >= 4 ? $(cols[2]).text().trim() : '-',
+                        valor:     $(cols[cols.length - 1]).text().trim()
                     });
-                });
+                }
             });
         }
-
-        // Ordena do mais recente para o mais antigo
-        dados.historico_indicadores.sort((a, b) => parseInt(b.ano) - parseInt(a.ano));
 
         // ─── 5. COMPARAÇÃO COM ÍNDICES (dados para gráfico Chart.js) ────────────
-        // Extrai do script ECharts a série de rentabilidade acumulada vs IFIX, CDI, etc.
+        // Parse robusto: suporta array-de-arrays e array-de-objetos do ECharts.
         dados.comparacao_indices = null;
 
         const COR_PALETTE = ['#a78bfa', '#4ade80', '#60a5fa', '#fbbf24', '#f87171', '#34d399'];
@@ -733,16 +688,14 @@ async function scrapeAnaliseProfundaFii(ticker) {
                     ? datesMatch[1].match(/['"]([^'"]+)['"]/g).map(s => s.replace(/['"]/g, ''))
                     : [];
 
-                // Extrai o JSON de rentabilidades (pode estar em JSON.parse(`...`) ou diretamente)
+                // Padrão 1: JSON.parse(`...`) com template literal
                 let chartData = null;
-
-                // Padrão 1: JSON.parse(`...`)
-                const m1 = src.match(/profitabilities['"]\s*:\s*JSON\.parse\(`([\s\S]*?)`\s*\)/);
-                if (m1) {
-                    try { chartData = JSON.parse(m1[1]); } catch (_) {}
+                const m1json = src.match(/profitabilities['"]\s*:\s*JSON\.parse\(`([\s\S]*?)`\s*\)/);
+                if (m1json) {
+                    try { chartData = JSON.parse(m1json[1]); } catch (_) {}
                 }
 
-                // Padrão 2: array literal
+                // Padrão 2: array literal direto
                 if (!chartData) {
                     const m2 = src.match(/profitabilities['"]\s*:\s*(\[[\s\S]*?\])\s*[,}]/);
                     if (m2) { try { chartData = JSON.parse(m2[1]); } catch (_) {} }
@@ -750,10 +703,16 @@ async function scrapeAnaliseProfundaFii(ticker) {
 
                 if (!chartData || !Array.isArray(chartData)) return;
 
-                const series = chartData.map((assetArr, idx) => {
-                    const nome = assetArr[0]?.type || assetArr[0]?.name || `Ativo ${idx + 1}`;
-                    const lower = nome.toLowerCase();
-                    // Ticker primeiro (mais específico), depois índices conhecidos, fallback = nome bruto
+                const series = chartData.map((asset, idx) => {
+                    // Suporta tanto array-de-arrays como array-de-objetos
+                    const isArr = Array.isArray(asset);
+                    let nomeRaw = isArr
+                        ? (asset[0]?.type || asset[0]?.name || `Ativo ${idx + 1}`)
+                        : (asset.name || asset.type || `Ativo ${idx + 1}`);
+                    const rawData = isArr ? asset : (asset.data || []);
+
+                    const lower = nomeRaw.toLowerCase();
+                    // Ticker primeiro (mais específico), depois índices conhecidos
                     const label = lower === ticker.toLowerCase() || lower.includes(ticker.toLowerCase()) ? ticker.toUpperCase()
                                 : lower.includes('ifix')  ? 'IFIX'
                                 : lower.includes('idiv')  ? 'IDIV'
@@ -762,13 +721,14 @@ async function scrapeAnaliseProfundaFii(ticker) {
                                 : lower.includes('ibov')  ? 'IBOV'
                                 : lower.includes('ipca')  ? 'IPCA'
                                 : lower.includes('cdi')   ? 'CDI'
-                                : nome.replace(/ index$/i, '').trim().toUpperCase();
+                                : nomeRaw.replace(/ index$/i, '').trim().toUpperCase();
+
                     return {
                         nome:  label,
                         cor:   COR_PALETTE[idx % COR_PALETTE.length],
-                        dados: assetArr.map(item => ({
+                        dados: rawData.map(item => ({
                             data:          item.date || '',
-                            rentabilidade: parseFloat(item.profitability) || 0
+                            rentabilidade: parseFloat(item.profitability ?? item.value ?? item?.[1]) || 0
                         }))
                     };
                 });

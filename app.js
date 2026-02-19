@@ -6178,24 +6178,27 @@ async function handleMostrarDetalhes(symbol) {
             <div class="flex-1 p-3 rounded-xl ${bgClass} flex flex-col justify-between shadow-sm relative overflow-hidden">
                 ${isFuturo ? '<div class="absolute top-0 right-0 w-8 h-8 bg-green-500/10 blur-xl rounded-full"></div>' : ''}
                 <span class="text-[9px] uppercase tracking-widest font-bold ${textClass} mb-1.5 relative z-10">${titulo}</span>
-                <span class="text-xl font-bold ${valueClass} mb-3 leading-none tracking-tight relative z-10">${formatBRL(provento.value)}</span>`;
+                <span class="text-xl font-bold ${valueClass} mb-3 leading-none tracking-tight relative z-10">${formatBRL(provento.value)}</span>
+                <div class="flex justify-between items-end mt-auto relative z-10 border-t border-white/5 pt-2">
+                    <div class="flex flex-col">
+                        <span class="text-[8px] text-gray-500 font-bold tracking-wider uppercase leading-none mb-1">Data Com</span>
+                        <span class="text-[10px] text-gray-300 font-bold leading-none">${dataComFmt}</span>
+                    </div>
+                    <div class="flex flex-col text-right">
+                        <span class="text-[8px] text-gray-500 font-bold tracking-wider uppercase leading-none mb-1">Pagamento</span>
+                        <span class="text-[10px] text-gray-300 font-bold leading-none">${dataPagFmt}</span>
+                    </div>
+                </div>
+            </div>`;
         };
 
-        // Reconstrói os blocos anteriores de proventos e fundamentos
-        // (reutiliza o mesmo HTML das versões originais de renderização)
         const proximoProventoHtml = (pData.ultimoPago || pData.proximo) ? `
-            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Proventos</h4>
-            <div class="flex gap-2 mb-6">
-                ${formatarCardProvento('Último Pago', pData.ultimoPago, false)}
-                    ${pData.ultimoPago ? `<div class="text-[8px] text-gray-600 mt-0.5">
-                        <div>Data Com: ${pData.ultimoPago.dataCom ? formatDate(pData.ultimoPago.dataCom) : '-'}</div>
-                        <div>Pagamento: ${pData.ultimoPago.paymentDate ? formatDate(pData.ultimoPago.paymentDate) : '-'}</div>
-                    </div></div>` : ''}
-                ${formatarCardProvento('Próximo', pData.proximo, true)}
-                    ${pData.proximo ? `<div class="text-[8px] text-gray-600 mt-0.5">
-                        <div>Data Com: ${pData.proximo.dataCom ? formatDate(pData.proximo.dataCom) : '-'}</div>
-                        <div>Pagamento: ${pData.proximo.paymentDate ? formatDate(pData.proximo.paymentDate) : '-'}</div>
-                    </div></div>` : ''}
+            <div class="mt-2 mb-6">
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Dividendos</h4>
+                <div class="flex gap-2 w-full">
+                    ${formatarCardProvento("Último Rendimento", pData.ultimoPago, false)}
+                    ${formatarCardProvento("Próximo a Receber", pData.proximo, true)}
+                </div>
             </div>` : '';
 
         // Grid topo e listas

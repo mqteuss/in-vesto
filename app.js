@@ -8420,51 +8420,65 @@ if (objetivosContent) {
 
 window.openObjetivosModal = openObjetivosModal;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    //  MÓDULO CALCULADORA (BOLA DE NEVE) — CalculatorController
+    // ─── MÓDULO CALCULADORA (BOLA DE NEVE) — Cache-Calculate-Render ────────────
     //
-    //  Princípios de performance aplicados:
-    //  • Todos os nós DOM resolvidos UMA única vez na inicialização (singleton).
-    //  • Matemática isolada em função pura, sem acesso ao DOM.
-    //  • Dirty-flag + requestAnimationFrame: inputs disparam apenas um flag;
-    //    o DOM é escrito no próximo vsync — teclas rápidas não acumulam writes.
-    //  • Touch/Swipe: leitura de scrollTop feita ANTES do drag (touchstart);
-    //    translateY aplicado dentro de rAF para evitar layout thrashing;
-    //    touchstart e touchend são passive:true; touchmove é passive:false
-    //    somente porque precisa chamar preventDefault para impedir o scroll
-    //    nativo enquanto o painel está sendo arrastado para baixo.
-    //  • formatBRL reutiliza o Intl.NumberFormat global (_fmtBRL) já
-    //    instanciado no topo do arquivo — nenhum objeto novo por keystroke.
-    // ─────────────────────────────────────────────────────────────────────────
+    //  Arquitectura de 3 camadas para 60fps em mobile:
+    //
+    //  CACHE   → getElementById apenas no init(). Nunca durante digitação/touch.
+    //  CALCULATE → compoundInterest() é função pura: números entram, números saem.
+    //              Não lê nem escreve no DOM.
+    //  RENDER  → Todo write de DOM (textContent, style.width, style.transform)
+    //             acontece dentro de requestAnimationFrame, sincronizado com vsync.
+    //
+    //  Correções específicas de performance mobile:
+    //  • Dirty-flag: eventos de input apenas marcam estado e agendam 1 rAF.
+    //    Se o usuário digitar 8 teclas em 12 ms → 1 write de DOM, não 8.
+    //  • Reflow intencional em openModal (void element.offsetWidth) força o
+    //    browser a computar layout COM o estado 'closing' ainda ativo, para que
+    //    a remoção dessa classe no frame seguinte produza a transição CSS correta
+    //    e o painel suba suavemente em vez de piscar/travar.
+    //  • Swipe: scrollTop lido UMA vez no touchstart (fora do loop hot).
+    //    touchmove só armazena lastY (read barata) e agenda rAF — zero writes
+    //    no handler. _applySwipe escreve style.transform no frame correto.
+    //  • passive:true em touchstart/touchend → não bloqueia o thread de scroll.
+    //  • passive:false APENAS em touchmove (obrigatório para preventDefault).
+    // ─────────────────────────────────────────────────────────────────────────────
 
     const CalculatorController = (() => {
-        // ── 1. Cache de seletores (resolvido uma única vez) ──────────────────
-        const el = id => document.getElementById(id);
 
-        const ui = {
-            modal:       el('calculadora-page-modal'),
-            content:     el('tab-calculadora-content'),
-            voltarBtn:   el('calculadora-voltar-btn'),
-            calcBtn:     el('calc-btn-calcular'),
-            // inputs
-            inInicial:   el('calc-inicial'),
-            inMensal:    el('calc-mensal'),
-            inTaxa:      el('calc-taxa'),
-            inTaxaTipo:  el('calc-taxa-tipo'),
-            inTempo:     el('calc-tempo'),
-            inTempoTipo: el('calc-tempo-tipo'),
-            // outputs
-            outFinal:    el('calc-resultado-final'),
-            outInvestido:el('calc-total-investido'),
-            outJuros:    el('calc-total-juros'),
-            barInvestido:el('calc-barra-investido'),
-            barJuros:    el('calc-barra-juros'),
-        };
+        // ── CAMADA 1: CACHE ───────────────────────────────────────────────────
+        // Resolvido uma única vez. Nunca acessado via getElementById novamente.
+        let dom = {};
 
-        // ── 2. Matemática isolada (sem DOM) ───────────────────────────────────
-        //
-        // Recebe apenas números primitivos; retorna apenas números primitivos.
-        // Pode ser testada fora do browser sem qualquer mock.
+        function init() {
+            const g = id => document.getElementById(id);
+            dom = {
+                modal:       g('calculadora-page-modal'),
+                content:     g('tab-calculadora-content'),
+                voltarBtn:   g('calculadora-voltar-btn'),
+                calcBtn:     g('calc-btn-calcular'),
+                // inputs
+                inInicial:   g('calc-inicial'),
+                inMensal:    g('calc-mensal'),
+                inTaxa:      g('calc-taxa'),
+                inTaxaTipo:  g('calc-taxa-tipo'),
+                inTempo:     g('calc-tempo'),
+                inTempoTipo: g('calc-tempo-tipo'),
+                // outputs
+                outFinal:    g('calc-resultado-final'),
+                outInvestido:g('calc-total-investido'),
+                outJuros:    g('calc-total-juros'),
+                barInvestido:g('calc-barra-investido'),
+                barJuros:    g('calc-barra-juros'),
+            };
+
+            _bindEvents();
+            _bindSwipe();
+        }
+
+        // ── CAMADA 2: CALCULATE (função pura) ────────────────────────────────
+        // Recebe apenas números. Retorna apenas números. Zero acesso ao DOM.
+        // Pode ser executada em Web Worker no futuro sem alteração.
         function compoundInterest(vInicial, aMensal, taxaBase, taxaTipo, tempoBase, tempoTipo) {
             const meses      = tempoTipo === 'anos' ? tempoBase * 12 : tempoBase;
             const taxaMensal = taxaTipo  === 'anual'
@@ -8479,161 +8493,169 @@ window.openObjetivosModal = openObjetivosModal;
                 : investido;
 
             if (total < 0) total = 0;
-            const juros        = Math.max(0, total - investido);
-            const base         = total > 0 ? total : 1;     // evita divisão por zero
-            const pctInvestido = investido / base * 100;
-            const pctJuros     = juros     / base * 100;
+            const juros = Math.max(0, total - investido);
+            const base  = total > 0 ? total : 1;  // guard divisão por zero
 
-            return { total, investido, juros, pctInvestido, pctJuros };
+            return {
+                total,
+                investido,
+                juros,
+                pctInvestido: investido / base * 100,
+                pctJuros:     juros     / base * 100,
+            };
         }
 
-        // ── 3. Dirty-flag + rAF ───────────────────────────────────────────────
-        //
-        // Cada evento de input apenas marca "_dirty = true" e agenda um único
-        // frame. Se o usuário digitar 10 caracteres em um frame (< 16 ms),
-        // o DOM recebe apenas 1 write — em vez de 10.
+        // ── CAMADA 3: RENDER (somente via rAF) ───────────────────────────────
+        // _dirty e _rafId garantem que múltiplos eventos de input
+        // numa mesma janela de 16ms resultam em exatamente 1 paint.
         let _dirty = false;
-        let _rafCalcId = null;
+        let _rafId  = null;
 
         function _scheduleRender() {
-            if (_rafCalcId) return;              // já há um frame agendado
-            _rafCalcId = requestAnimationFrame(_commitRender);
+            _dirty = true;
+            if (_rafId) return;          // já há um frame agendado — não duplicar
+            _rafId = requestAnimationFrame(_commitRender);
         }
 
         function _commitRender() {
-            _rafCalcId = null;
+            _rafId = null;
             if (!_dirty) return;
             _dirty = false;
 
+            // Leitura dos inputs: única vez por frame, aqui dentro do rAF
             const result = compoundInterest(
-                parseFloat(ui.inInicial?.value)   || 0,
-                parseFloat(ui.inMensal?.value)    || 0,
-                parseFloat(ui.inTaxa?.value)      || 0,
-                ui.inTaxaTipo?.value  ?? 'mensal',
-                parseFloat(ui.inTempo?.value)     || 0,
-                ui.inTempoTipo?.value ?? 'anos'
+                parseFloat(dom.inInicial?.value)   || 0,
+                parseFloat(dom.inMensal?.value)    || 0,
+                parseFloat(dom.inTaxa?.value)      || 0,
+                dom.inTaxaTipo?.value  ?? 'mensal',
+                parseFloat(dom.inTempo?.value)     || 0,
+                dom.inTempoTipo?.value ?? 'anos'
             );
 
-            // Textos — sem impacto de layout, escritos diretamente
-            if (ui.outFinal)     ui.outFinal.textContent     = formatBRL(result.total);
-            if (ui.outInvestido) ui.outInvestido.textContent = formatBRL(result.investido);
-            if (ui.outJuros)     ui.outJuros.textContent     = formatBRL(result.juros);
-
-            // Larguras das barras — já estamos dentro do rAF, escrita é segura
-            if (ui.barInvestido) ui.barInvestido.style.width = `${result.pctInvestido}%`;
-            if (ui.barJuros)     ui.barJuros.style.width     = `${result.pctJuros}%`;
+            // Writes de DOM — todos aqui, nenhum fora do rAF
+            if (dom.outFinal)     dom.outFinal.textContent     = formatBRL(result.total);
+            if (dom.outInvestido) dom.outInvestido.textContent = formatBRL(result.investido);
+            if (dom.outJuros)     dom.outJuros.textContent     = formatBRL(result.juros);
+            if (dom.barInvestido) dom.barInvestido.style.width = `${result.pctInvestido}%`;
+            if (dom.barJuros)     dom.barJuros.style.width     = `${result.pctJuros}%`;
         }
 
-        function _markDirtyAndSchedule() {
-            _dirty = true;
-            _scheduleRender();
-        }
+        // ── OPEN / CLOSE ──────────────────────────────────────────────────────
+        function openModal() {
+            if (!dom.modal || !dom.content) return;
 
-        // ── 4. Open / Close ───────────────────────────────────────────────────
-        function open() {
-            if (!ui.modal || !ui.content) return;
-            ui.modal.classList.add('visible');
-            ui.content.style.transform = '';
-            ui.content.classList.remove('closing');
+            // Remove a classe 'closing' que mantém o painel invisível/abaixo.
+            // O reflow forçado (void offsetWidth) garante que o browser processe
+            // o estado ANTERIOR (com 'closing') antes de iniciar a transição CSS,
+            // eliminando o "piscada" causado por transições que começam no mesmo frame
+            // em que o elemento se torna visível.
+            dom.content.classList.remove('closing');
+            dom.content.style.transform = '';
+            void dom.content.offsetWidth;              // ← reflow intencional
+
+            dom.modal.classList.add('visible');
             document.body.style.overflow = 'hidden';
-            // Aguarda a animação CSS de abertura antes do primeiro cálculo
-            setTimeout(_markDirtyAndSchedule, 50);
+
+            // Primeiro cálculo após a animação de abertura (50ms evita competição
+            // com a transição CSS e com o resize do viewport causado pelo teclado)
+            setTimeout(_scheduleRender, 50);
         }
 
-        function close() {
-            if (!ui.modal || !ui.content) return;
-            ui.content.style.transform = '';
-            ui.content.classList.add('closing');
-            ui.modal.classList.remove('visible');
+        function closeModal() {
+            if (!dom.modal || !dom.content) return;
+            dom.content.style.transform = '';
+            dom.content.classList.add('closing');
+            dom.modal.classList.remove('visible');
             document.body.style.overflow = '';
         }
 
-        // ── 5. Touch / Swipe ─────────────────────────────────────────────────
-        //
-        // Estratégia de layout thrashing:
-        //  • touchstart (passive): lê scrollTop UMA vez e armazena em variável.
-        //  • touchmove  (passive:false): armazena apenas o clientY (leitura
-        //    barata), marca um flag e agenda rAF. Nenhuma escrita de style aqui.
-        //  • rAF (_applyDrag): faz a única escrita de style.transform por frame.
-        //  • touchend   (passive): decide fechar ou resetar; nenhum read de layout.
-        if (ui.content) {
-            const scrollArea  = ui.content.querySelector('.overflow-y-auto');
-            let dragging      = false;
-            let startY        = 0;
-            let lastY         = 0;
-            let scrollAtStart = 0;   // scrollTop lido UMA vez no touchstart
-            let _rafDragId    = null;
+        // ── SWIPE-TO-CLOSE (sem layout thrashing) ────────────────────────────
+        // Protocolo por handler:
+        //   touchstart  (passive:true)  → lê scrollTop UMA vez; armazena startY.
+        //   touchmove   (passive:false) → armazena lastY (read barata); agenda rAF.
+        //                                 Nenhum write de style aqui.
+        //   _applySwipe (rAF)           → único write de style.transform por frame.
+        //   touchend    (passive:true)  → decide fechar ou resetar; sem read de layout.
+        function _bindSwipe() {
+            const panel = dom.content;
+            if (!panel) return;
 
-            function _applyDrag() {
-                _rafDragId = null;
+            const scrollArea = panel.querySelector('.overflow-y-auto');
+            let dragging     = false;
+            let startY       = 0;
+            let lastY        = 0;
+            let scrollTop0   = 0;   // scrollTop lido no touchstart — não no loop
+            let _swipeRafId  = null;
+
+            function _applySwipe() {
+                _swipeRafId = null;
                 if (!dragging) return;
                 const diff = lastY - startY;
-                if (diff > 0) ui.content.style.transform = `translateY(${diff}px)`;
+                if (diff > 0) panel.style.transform = `translateY(${diff}px)`;
             }
 
-            ui.content.addEventListener('touchstart', e => {
-                // Lê scrollTop aqui (fora do loop de movimento) para evitar
-                // forçar um layout a cada touchmove.
-                scrollAtStart = scrollArea ? scrollArea.scrollTop : 0;
-                if (scrollAtStart === 0) {
+            panel.addEventListener('touchstart', e => {
+                // Lê scrollTop AQUI (fora do loop hot) para evitar forçar
+                // recálculo de layout em cada evento de movimento.
+                scrollTop0 = scrollArea ? scrollArea.scrollTop : 0;
+                if (scrollTop0 === 0) {
                     startY   = e.touches[0].clientY;
                     lastY    = startY;
                     dragging = true;
-                    ui.content.style.transition = 'none';
+                    panel.style.transition = 'none';
                 }
             }, { passive: true });
 
-            ui.content.addEventListener('touchmove', e => {
+            panel.addEventListener('touchmove', e => {
                 if (!dragging) return;
-                lastY = e.touches[0].clientY;
+                lastY = e.touches[0].clientY;          // read barata, sem layout
                 const diff = lastY - startY;
-                // Previne scroll nativo apenas quando estamos arrastando para baixo.
-                // passive:false é obrigatório aqui para que preventDefault funcione.
-                if (diff > 0 && e.cancelable) e.preventDefault();
-                // Não escreve style.transform aqui — delega ao próximo frame.
-                if (!_rafDragId) _rafDragId = requestAnimationFrame(_applyDrag);
-            }, { passive: false });
+                if (diff > 0 && e.cancelable) e.preventDefault(); // bloqueia scroll nativo
+                if (!_swipeRafId) _swipeRafId = requestAnimationFrame(_applySwipe);
+            }, { passive: false });   // passive:false obrigatório para preventDefault
 
-            ui.content.addEventListener('touchend', () => {
+            panel.addEventListener('touchend', () => {
                 if (!dragging) return;
                 dragging = false;
-                if (_rafDragId) { cancelAnimationFrame(_rafDragId); _rafDragId = null; }
+                if (_swipeRafId) { cancelAnimationFrame(_swipeRafId); _swipeRafId = null; }
 
                 const diff = lastY - startY;
-                ui.content.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-
-                if (diff > 120) {
-                    close();
-                } else {
-                    ui.content.style.transform = '';
-                }
-                startY = 0;
-                lastY  = 0;
+                panel.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                if (diff > 120) { closeModal(); }
+                else            { panel.style.transform = ''; }
+                startY = 0; lastY = 0;
             }, { passive: true });
         }
 
-        // ── 6. Event Listeners ────────────────────────────────────────────────
-        // Inputs numéricos: `input` dispara em cada keystroke
-        [ui.inInicial, ui.inMensal, ui.inTaxa, ui.inTempo]
-            .forEach(el => el?.addEventListener('input', _markDirtyAndSchedule));
+        // ── EVENTOS DE INPUT / INTERAÇÃO ─────────────────────────────────────
+        function _bindEvents() {
+            // Inputs numéricos: `input` dispara a cada keystroke
+            // O handler apenas agenda um rAF — nunca toca no DOM diretamente.
+            [dom.inInicial, dom.inMensal, dom.inTaxa, dom.inTempo]
+                .forEach(el => el?.addEventListener('input', _scheduleRender, { passive: true }));
 
-        // Selects: `change` é o evento correto (sem digitação)
-        ui.inTaxaTipo?.addEventListener('change',  _markDirtyAndSchedule);
-        ui.inTempoTipo?.addEventListener('change', _markDirtyAndSchedule);
+            // Selects usam `change` (não há digitação)
+            dom.inTaxaTipo?.addEventListener('change',  _scheduleRender, { passive: true });
+            dom.inTempoTipo?.addEventListener('change', _scheduleRender, { passive: true });
 
-        // Botão "Calcular" (ação manual do usuário)
-        ui.calcBtn?.addEventListener('click', _markDirtyAndSchedule);
+            // Botão manual "Calcular"
+            dom.calcBtn?.addEventListener('click', _scheduleRender);
 
-        // Botão Voltar e backdrop
-        ui.voltarBtn?.addEventListener('click', close);
-        ui.modal?.addEventListener('click', e => { if (e.target === ui.modal) close(); });
+            // Fechar
+            dom.voltarBtn?.addEventListener('click', closeModal);
+            dom.modal?.addEventListener('click', e => { if (e.target === dom.modal) closeModal(); });
+        }
 
-        // Expõe apenas o necessário para o escopo global
-        return { open, close };
+        // Inicializa assim que o módulo é criado
+        init();
+
+        // Expõe apenas a API pública mínima
+        return { openModal, closeModal };
+
     })();
 
-    window.openCalculadoraModal = CalculatorController.open;
-    window.closeCalculadoraModal = CalculatorController.close;
+    window.openCalculadoraModal  = () => CalculatorController.openModal();
+    window.closeCalculadoraModal = () => CalculatorController.closeModal();
 
 window.renderizarListaImoveis = function(imoveis) {
     let container = document.getElementById('detalhes-imoveis-container');

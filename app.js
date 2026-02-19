@@ -6519,25 +6519,32 @@ async function carregarAnaliseProfundaFII(ticker) {
             const renderPares = (filtro) => {
                 let lista = paresAll;
                 if (filtro === 'tipo_seg') {
-                    lista = paresAll.filter(p => {
+                    const filtered = paresAll.filter(p => {
                         const isSelf = (p.ticker || '').toUpperCase() === ticker.toUpperCase();
                         if (isSelf) return true;
+                        // Fallback: se não há tipo nem segmento, mostra todos
+                        if (!selfTipo && !selfSeg) return true;
                         return selfTipo && selfSeg && p.tipo === selfTipo && p.segmento === selfSeg;
                     });
+                    lista = filtered.length > 1 ? filtered : paresAll;
                 } else if (filtro === 'tipo') {
-                    lista = paresAll.filter(p => {
+                    const filtered = paresAll.filter(p => {
                         const isSelf = (p.ticker || '').toUpperCase() === ticker.toUpperCase();
                         if (isSelf) return true;
-                        return selfTipo && p.tipo === selfTipo;
+                        if (!selfTipo) return true; // fallback
+                        return p.tipo === selfTipo;
                     });
+                    lista = filtered.length > 1 ? filtered : paresAll;
                 } else if (filtro === 'seg') {
-                    lista = paresAll.filter(p => {
+                    const filtered = paresAll.filter(p => {
                         const isSelf = (p.ticker || '').toUpperCase() === ticker.toUpperCase();
                         if (isSelf) return true;
-                        return selfSeg && p.segmento === selfSeg;
+                        if (!selfSeg) return true; // fallback
+                        return p.segmento === selfSeg;
                     });
+                    lista = filtered.length > 1 ? filtered : paresAll;
                 }
-                if (lista.length === 0) lista = paresAll; // fallback
+                if (lista.length === 0) lista = paresAll; // safety fallback final
 
                 compareTbody.innerHTML = lista.map(par => {
                     const pvpN    = parseFloat(String(par.p_vp ?? '').replace(',', '.')) || 0;
@@ -6550,7 +6557,7 @@ async function carregarAnaliseProfundaFII(ticker) {
                     const rowBg  = isSelf ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]';
 
                     return `<tr class="border-b border-[#1f1f1f] transition-colors ${rowBg}">
-                        <td class="py-2.5 pr-4 sticky left-0 z-10 whitespace-nowrap" style="background:${isSelf ? '#1a1825' : '#1c1c1e'}">
+                        <td class="py-2.5 pr-4 pl-3 sticky left-0 z-20 whitespace-nowrap bg-[#1c1c1e] border-r border-[#2c2c2e] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]" style="${isSelf ? 'background:#1a1825!important' : ''}">
                             <div class="flex items-center gap-1.5">
                                 <span class="font-bold text-white text-xs tracking-tight">${par.ticker || '-'}</span>
                                 ${isSelf ? '<span class="text-[8px] text-gray-500 font-medium">você</span>' : ''}
@@ -6582,14 +6589,16 @@ async function carregarAnaliseProfundaFII(ticker) {
                 const applyActive   = (el) => { el.style.background = 'rgba(255,255,255,0.07)'; el.style.borderColor = 'rgba(255,255,255,0.12)'; el.style.color = '#e5e7eb'; };
                 const applyInactive = (el) => { el.style.background = 'transparent'; el.style.borderColor = 'transparent'; el.style.color = '#6b7280'; };
 
-                filterWrap.innerHTML = FILTERS.map(f =>
-                    `<button data-filter="${f.key}" class="fii-par-btn" style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid transparent;transition:all .2s;white-space:nowrap;cursor:pointer;${f.key === 'tipo_seg' ? 'background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#e5e7eb;' : 'background:transparent;color:#6b7280;'}">${f.label}</button>`
+                filterWrap.innerHTML = FILTERS.map((f, i) =>
+                    `<button data-filter="${f.key}" class="fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all whitespace-nowrap cursor-pointer ${i === 0 ? 'bg-white/[0.07] border-white/[0.12] text-gray-200' : 'bg-transparent border-transparent text-gray-500'}">${f.label}</button>`
                 ).join('');
 
                 filterWrap.querySelectorAll('.fii-par-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
-                        filterWrap.querySelectorAll('.fii-par-btn').forEach(b => applyInactive(b));
-                        applyActive(btn);
+                        filterWrap.querySelectorAll('.fii-par-btn').forEach(b => {
+                            b.className = 'fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border border-transparent bg-transparent text-gray-500 transition-all whitespace-nowrap cursor-pointer';
+                        });
+                        btn.className = 'fii-par-btn text-[10px] font-semibold px-3 py-1 rounded-full border border-white/[0.12] bg-white/[0.07] text-gray-200 transition-all whitespace-nowrap cursor-pointer';
                         renderPares(btn.dataset.filter);
                     });
                 });
@@ -6601,59 +6610,41 @@ async function carregarAnaliseProfundaFII(ticker) {
             show('fii-compare-vazio');
         }
 
-        // ── ④ HISTÓRICO DE INDICADORES FUNDAMENTALISTAS ─────────────────────────
+        // ── ④ ÚLTIMOS DIVIDENDOS ─────────────────────────────────────────────────
         hide('fii-hist-skeleton');
         const histAll = dados.historico_indicadores || [];
         if (histAll.length > 0) {
-            // Todos os dados ficam em memória; filtro 5A/10A aplica-se localmente
-            const renderHistorico = (anosMax) => {
-                const rows = histAll.slice(0, anosMax);
-                const histTbody = get('fii-hist-table');
-                if (!histTbody) return;
+            const histTbody = get('fii-hist-table');
+            if (histTbody) {
+                // Atualiza cabeçalhos da tabela dinamicamente via data-attributes opcionais
+                const thTipo = get('fii-hist-th-tipo');
+                const thDataCom = get('fii-hist-th-data-com');
+                const thPag = get('fii-hist-th-pag');
+                const thVal = get('fii-hist-th-val');
+                if (thTipo)    thTipo.textContent    = 'Tipo';
+                if (thDataCom) thDataCom.textContent = 'Data Com';
+                if (thPag)     thPag.textContent     = 'Pagamento';
+                if (thVal)     thVal.textContent     = 'Valor';
 
-                // Verifica quais colunas têm dados
-                const temRend = rows.some(r => r.rendimento && r.rendimento !== '-');
-                const temVar  = rows.some(r => r.variacao  && r.variacao  !== '-');
-
-                // Oculta/mostra th's opcionais
-                const thRend = get('fii-hist-th-rend');
-                const thVar  = get('fii-hist-th-var');
-                if (thRend) thRend.classList.toggle('hidden', !temRend);
-                if (thVar)  thVar.classList.toggle('hidden', !temVar);
-
-                histTbody.innerHTML = rows.map(item => {
-                    const pvpN  = parseFloat(String(item.pvp ?? '').replace('%','').replace(',','.')) || 0;
-                    const pvpCor = pvpN === 0 ? 'text-gray-400' : pvpN < 1 ? 'text-green-400' : pvpN <= 1.1 ? 'text-yellow-400' : 'text-red-400';
-                    const dyVal = item.dy || '-';
-                    const dyColor = dyVal !== '-' ? 'text-green-400' : 'text-gray-500';
-
+                histTbody.innerHTML = histAll.map(item => {
+                    const valorNum = parseFloat(String(item.valor || '0').replace(',', '.')) || 0;
+                    const valorCor = valorNum > 0 ? 'text-green-400' : 'text-gray-400';
                     return `<tr class="hover:bg-white/5 transition-colors">
-                        <td class="py-2.5 pr-4 sticky left-0 z-10 font-bold text-white" style="background:#1c1c1e">${item.ano}</td>
-                        <td class="py-2.5 px-2 text-right font-bold ${dyColor}">${dyVal}</td>
-                        <td class="py-2.5 px-2 text-right font-bold ${pvpCor}">${item.pvp || '-'}</td>
-                        ${temRend ? `<td class="py-2.5 px-2 text-right text-gray-400">${item.rendimento || '-'}</td>` : ''}
-                        ${temVar  ? `<td class="py-2.5 pl-2 text-right text-gray-400">${item.variacao  || '-'}</td>` : ''}
+                        <td class="py-2.5 pr-4 pl-3 sticky left-0 z-10 bg-[#1c1c1e] border-r border-[#2c2c2e]">
+                            <span class="text-[10px] font-bold text-gray-300 uppercase tracking-wide">${item.tipo || '-'}</span>
+                        </td>
+                        <td class="py-2.5 px-3 text-center text-gray-400 text-xs whitespace-nowrap">${item.data_com || '-'}</td>
+                        <td class="py-2.5 px-3 text-center text-gray-400 text-xs whitespace-nowrap">${item.pagamento || '-'}</td>
+                        <td class="py-2.5 pl-3 pr-4 text-right font-bold text-xs whitespace-nowrap ${valorCor}">${item.valor || '-'}</td>
                     </tr>`;
                 }).join('');
-            };
-
-            renderHistorico(5); // Padrão: 5 anos
-            show('fii-hist-wrap');
-
-            // Botões de filtro 5A/10A
-            const filterDiv = get('fii-hist-filter');
-            if (filterDiv && histAll.length > 5) {
-                filterDiv.classList.remove('hidden');
-                filterDiv.querySelectorAll('.fii-hist-btn').forEach(btn => {
-                    btn.onclick = () => {
-                        filterDiv.querySelectorAll('.fii-hist-btn').forEach(b => {
-                            b.className = 'fii-hist-btn text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#2c2c2e] text-gray-400 transition-all';
-                        });
-                        btn.className = 'fii-hist-btn text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-600 text-white transition-all';
-                        renderHistorico(parseInt(btn.dataset.anos));
-                    };
-                });
             }
+
+            // Oculta botões de filtro 5A/10A (não aplicável para lista de dividendos)
+            const filterDiv = get('fii-hist-filter');
+            if (filterDiv) filterDiv.classList.add('hidden');
+
+            show('fii-hist-wrap');
         } else {
             show('fii-hist-vazio');
         }
@@ -6809,25 +6800,29 @@ async function carregarAnaliseProfundaFII(ticker) {
 
             renderIndicesChart(5); // padrão: 5 anos
 
-            // Filtro 2A / 5A
+            // Filtro 2A / 5A — Tailwind, event listeners robustos com closure sobre renderIndicesChart
             const idxFilterWrap = get('fii-indices-filter');
             if (idxFilterWrap) {
                 idxFilterWrap.classList.remove('hidden');
-                const applyIdxActive   = (el) => { el.style.background = 'rgba(255,255,255,0.07)'; el.style.borderColor = 'rgba(255,255,255,0.12)'; el.style.color = '#e5e7eb'; };
-                const applyIdxInactive = (el) => { el.style.background = 'transparent'; el.style.borderColor = 'transparent'; el.style.color = '#6b7280'; };
 
-                idxFilterWrap.innerHTML = [
-                    { key: 2, label: '2A' },
-                    { key: 5, label: '5A' },
-                ].map((f, i) =>
-                    `<button data-anos="${f.key}" class="fii-idx-btn" style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid transparent;transition:all .2s;cursor:pointer;${i === 1 ? 'background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#e5e7eb;' : 'background:transparent;color:#6b7280;'}">${f.label}</button>`
+                const IDX_FILTERS = [
+                    { anos: 2, label: '2A' },
+                    { anos: 5, label: '5A' },
+                ];
+
+                idxFilterWrap.innerHTML = IDX_FILTERS.map((f, i) =>
+                    `<button data-anos="${f.anos}" class="fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border transition-all cursor-pointer ${i === 1 ? 'bg-purple-600 border-purple-600 text-white' : 'bg-[#2c2c2e] border-transparent text-gray-400'}">${f.label}</button>`
                 ).join('');
 
                 idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
-                        idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(b => applyIdxInactive(b));
-                        applyIdxActive(btn);
-                        renderIndicesChart(parseInt(btn.dataset.anos));
+                        // Atualiza estados dos botões com Tailwind
+                        idxFilterWrap.querySelectorAll('.fii-idx-btn').forEach(b => {
+                            b.className = 'fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border border-transparent bg-[#2c2c2e] text-gray-400 transition-all cursor-pointer';
+                        });
+                        btn.className = 'fii-idx-btn text-[10px] font-semibold px-3 py-1 rounded-full border border-purple-600 bg-purple-600 text-white transition-all cursor-pointer';
+                        // Recria o gráfico com os anos corretos (closure garante acesso à função)
+                        renderIndicesChart(parseInt(btn.dataset.anos, 10));
                     });
                 });
             }

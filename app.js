@@ -5212,12 +5212,10 @@ function renderCandlestickChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
-    // Destrói chart.js anterior se existir
     if (cotacaoChartInstance) { cotacaoChartInstance.destroy(); cotacaoChartInstance = null; }
-    // Remove eventos do candle anterior
     if (candlestickEventCleanup) { candlestickEventCleanup(); candlestickEventCleanup = null; }
 
-    wrapper.innerHTML = '<canvas id="canvas-cotacao" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>';
+    wrapper.innerHTML = '<canvas id="canvas-cotacao" style="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none;"></canvas>';
     const canvas = document.getElementById('canvas-cotacao');
     const dpr    = window.devicePixelRatio || 1;
     const rect   = wrapper.getBoundingClientRect();
@@ -5232,13 +5230,19 @@ function renderCandlestickChart(dataPoints, range) {
 
     const W = rect.width;
     const H = rect.height;
-    const PAD = { top: 10, right: 52, bottom: 26, left: 4 };
-    const chartW = W - PAD.left - PAD.right;
-    const chartH = H - PAD.top  - PAD.bottom;
+
+    // Layout
+    const NAV_H   = 28;   // altura do navegador inferior
+    const NAV_GAP = 6;    // espaço entre gráfico e nav
+    const PAD = { top: 10, right: 52, bottom: 22 + NAV_GAP + NAV_H, left: 4 };
+    const chartW  = W - PAD.left - PAD.right;
+    const chartH  = H - PAD.top  - PAD.bottom;
+    const NAV_Y   = H - NAV_H - 2;           // topo do navegador
+    const NAV_X   = PAD.left;
+    const NAV_W   = chartW;
 
     const isIntraday = range === '1D' || range === '5D';
 
-    // Filtra candles com dados OHLC; fallback: usa price como OHLC
     const candles = dataPoints.map(p => ({
         date:  p.date,
         open:  p.open  ?? p.price,
@@ -5246,61 +5250,170 @@ function renderCandlestickChart(dataPoints, range) {
         low:   p.low   ?? p.price,
         close: p.price
     }));
+    const N = candles.length;
 
-    // Preço início/fim para o header
-    const startPrice = candles[0].close;
-    const endPrice   = candles[candles.length - 1].close;
+    // ─── ESTADO DE VISTA (zoom/pan) ────────────────────────────────────────────
+    // viewStart / viewEnd: índices dos candles visíveis no gráfico principal
+    const MIN_VISIBLE = Math.max(5, Math.round(N * 0.02));
+    const MAX_VISIBLE = N;
 
-    // Inicializa estatísticas com valores finais
+    // Zoom inicial: para ranges grandes, começa mostrando os últimos ~80 candles
+    const DEFAULT_VISIBLE = { '1D': N, '5D': N, '1M': N, '6M': N, 'YTD': N, '1A': N, '5A': 80, 'Tudo': 80 };
+    let visibleCount = Math.min(N, DEFAULT_VISIBLE[range] ?? N);
+    let viewStart    = Math.max(0, N - visibleCount);
+    let viewEnd      = N - 1;
+
+    // Preço de referência global (para variação % no header)
+    const refPrice = candles[0].close;
+    const endPrice = candles[N - 1].close;
+
+    // ─── HEADER STATS ──────────────────────────────────────────────────────────
     const updateHeaderStats = (open, close) => {
         const elOpen  = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
         const elVar   = document.getElementById('stat-var');
         if (!elOpen || !elClose || !elVar) return;
-        elOpen.innerText  = open.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elClose.innerText = close.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elOpen.innerText  = open.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+        elClose.innerText = close.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
         elClose.style.color = close >= open ? '#00C805' : '#FF3B30';
-        const diff    = close - startPrice;
-        const percent = (diff / startPrice) * 100;
+        const diff    = close - refPrice;
+        const percent = (diff / refPrice) * 100;
         const sign    = diff >= 0 ? '+' : '';
         elVar.innerText = `${sign}${percent.toFixed(2)}%`;
         elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
     };
-    updateHeaderStats(candles[0].open, endPrice);
+    updateHeaderStats(candles[viewStart].open, endPrice);
 
-    // Escala de preços
-    const allHigh = Math.max(...candles.map(c => c.high));
-    const allLow  = Math.min(...candles.map(c => c.low));
-    const pRange  = allHigh - allLow || allHigh * 0.02;
-    const padP    = pRange * 0.08;
-    const minP    = allLow  - padP;
-    const maxP    = allHigh + padP;
+    // ─── ESCALAS DINÂMICAS (apenas para candles visíveis) ──────────────────────
+    function getVisibleScale() {
+        const visible = candles.slice(viewStart, viewEnd + 1);
+        const vHigh = Math.max(...visible.map(c => c.high));
+        const vLow  = Math.min(...visible.map(c => c.low));
+        const vRange = vHigh - vLow || vHigh * 0.02;
+        const pad   = vRange * 0.1;
+        return { minP: vLow - pad, maxP: vHigh + pad };
+    }
 
-    const toX = (i) => PAD.left + (i + 0.5) * (chartW / candles.length);
-    const toY = (p) => PAD.top  + chartH - ((p - minP) / (maxP - minP)) * chartH;
+    function toX(globalIdx) {
+        const visCount = viewEnd - viewStart + 1;
+        const localIdx = globalIdx - viewStart;
+        return PAD.left + (localIdx + 0.5) * (chartW / visCount);
+    }
 
-    const bodyMinH   = 1;
-    const candleW    = Math.max(2, Math.min(12, (chartW / candles.length) * 0.65));
+    function toY(p, minP, maxP) {
+        return PAD.top + chartH - ((p - minP) / (maxP - minP)) * chartH;
+    }
 
-    function draw(hoverIdx = null) {
+    // Converte posição X do canvas → índice global do candle
+    function xToGlobalIdx(pixX) {
+        const visCount = viewEnd - viewStart + 1;
+        const localIdx = Math.round((pixX - PAD.left) / (chartW / visCount) - 0.5);
+        return Math.max(viewStart, Math.min(viewEnd, viewStart + localIdx));
+    }
+
+    // Converte índice global → posição X no navegador
+    function globalIdxToNavX(idx) {
+        return NAV_X + (idx / (N - 1)) * NAV_W;
+    }
+
+    // ─── ESTADO HOVER ──────────────────────────────────────────────────────────
+    let hoverIdx = null;
+    let rafId    = null;
+
+    function requestDraw() {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(draw);
+    }
+
+    // ─── DRAW PRINCIPAL ────────────────────────────────────────────────────────
+    function draw() {
+        rafId = null;
         ctx.clearRect(0, 0, W, H);
 
-        // Candles
-        candles.forEach((c, i) => {
-            const x      = toX(i);
-            const openY  = toY(c.open);
-            const closeY = toY(c.close);
-            const highY  = toY(c.high);
-            const lowY   = toY(c.low);
+        const { minP, maxP } = getVisibleScale();
+        const visCount  = viewEnd - viewStart + 1;
+        const slotW     = chartW / visCount;
+        const candleW   = Math.max(1, Math.min(14, slotW * 0.65));
+        const visCandles = candles.slice(viewStart, viewEnd + 1);
 
+        // ── Linhas de grade Y (preço) ──
+        const priceRange = maxP - minP;
+        const rawStep    = priceRange / 4;
+        const mag        = Math.pow(10, Math.floor(Math.log10(rawStep)));
+        const niceStep   = Math.ceil(rawStep / mag) * mag;
+        const gridStart  = Math.ceil(minP / niceStep) * niceStep;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, PAD.top, chartW, chartH);
+        ctx.clip();
+
+        for (let p = gridStart; p <= maxP; p += niceStep) {
+            const gy = toY(p, minP, maxP);
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.lineWidth   = 1;
+            ctx.moveTo(PAD.left, gy);
+            ctx.lineTo(W - PAD.right, gy);
+            ctx.stroke();
+
+            // Label preço
+            ctx.fillStyle    = 'rgba(150,150,150,0.7)';
+            ctx.font         = '8px sans-serif';
+            ctx.textAlign    = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(
+                p.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                W - PAD.right + 3, gy
+            );
+        }
+        ctx.restore();
+
+        // ── Labels datas no eixo X ──
+        const maxLabels = Math.floor(chartW / 55);
+        const labelStep = Math.max(1, Math.floor(visCount / maxLabels));
+        ctx.save();
+        ctx.font = '8px sans-serif';
+        ctx.fillStyle = 'rgba(150,150,150,0.7)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        visCandles.forEach((c, li) => {
+            if (li % labelStep !== 0) return;
+            const gx  = toX(viewStart + li);
+            const raw = new Date(c.date);
+            let label;
+            if (isIntraday) {
+                label = raw.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            } else if (visCount <= 60) {
+                label = raw.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            } else {
+                label = raw.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+            }
+            ctx.fillText(label, gx, PAD.top + chartH + 3);
+        });
+        ctx.restore();
+
+        // ── Candles ──
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, PAD.top, chartW, chartH);
+        ctx.clip();
+
+        visCandles.forEach((c, li) => {
+            const gi     = viewStart + li;
+            const x      = toX(gi);
+            const openY  = toY(c.open,  minP, maxP);
+            const closeY = toY(c.close, minP, maxP);
+            const highY  = toY(c.high,  minP, maxP);
+            const lowY   = toY(c.low,   minP, maxP);
             const isGreen  = c.close >= c.open;
             const baseColor = isGreen ? '#00C805' : '#FF3B30';
-            const fillColor = isGreen ? 'rgba(0,200,5,0.25)' : 'rgba(255,59,48,0.25)';
-            const highlighted = hoverIdx !== null && i === hoverIdx;
+            const fillColor = isGreen ? 'rgba(0,200,5,0.22)' : 'rgba(255,59,48,0.22)';
+            const highlighted = hoverIdx === gi;
 
-            ctx.globalAlpha = (hoverIdx !== null && !highlighted) ? 0.45 : 1;
+            ctx.globalAlpha = (hoverIdx !== null && !highlighted) ? 0.4 : 1;
 
-            // Pavio (wick)
+            // Pavio
             ctx.beginPath();
             ctx.moveTo(x, highY);
             ctx.lineTo(x, lowY);
@@ -5310,9 +5423,8 @@ function renderCandlestickChart(dataPoints, range) {
 
             // Corpo
             const bodyTop = Math.min(openY, closeY);
-            const bodyH   = Math.max(bodyMinH, Math.abs(openY - closeY));
-            const bW      = highlighted ? candleW * 1.2 : candleW;
-
+            const bodyH   = Math.max(1, Math.abs(openY - closeY));
+            const bW      = highlighted ? candleW * 1.25 : candleW;
             ctx.fillStyle   = fillColor;
             ctx.strokeStyle = baseColor;
             ctx.lineWidth   = highlighted ? 1.5 : 1;
@@ -5321,57 +5433,70 @@ function renderCandlestickChart(dataPoints, range) {
         });
 
         ctx.globalAlpha = 1;
+        ctx.restore();
 
-        // Linha do último preço (tracejada)
-        const lastY = toY(endPrice);
-        const lastColor = endPrice >= startPrice ? '#00C805' : '#FF3B30';
-        ctx.beginPath();
-        ctx.setLineDash([2, 3]);
-        ctx.strokeStyle = lastColor;
-        ctx.lineWidth   = 1;
-        ctx.moveTo(PAD.left, lastY);
-        ctx.lineTo(W - PAD.right, lastY);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        // ── Linha do último preço visível (tracejada) ──
+        const lastVisClose = candles[viewEnd].close;
+        const firstVisClose= candles[viewStart].close;
+        const lastColor = lastVisClose >= firstVisClose ? '#00C805' : '#FF3B30';
+        const lastY     = toY(lastVisClose, minP, maxP);
 
-        // Badge do último preço
-        const badgeText  = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        ctx.font = 'bold 9px sans-serif';
-        const tw      = ctx.measureText(badgeText).width;
-        const bPadX   = 4;
-        const bH      = 16;
-        const bW2     = tw + bPadX * 2;
-        const bX      = W - PAD.right;
-        let bY        = lastY - bH / 2;
-        if (bY < PAD.top) bY = PAD.top;
-        if (bY + bH > PAD.top + chartH) bY = PAD.top + chartH - bH;
+        if (lastY >= PAD.top && lastY <= PAD.top + chartH) {
+            ctx.beginPath();
+            ctx.setLineDash([2, 3]);
+            ctx.strokeStyle = lastColor;
+            ctx.lineWidth   = 1;
+            ctx.moveTo(PAD.left, lastY);
+            ctx.lineTo(W - PAD.right, lastY);
+            ctx.stroke();
+            ctx.setLineDash([]);
 
-        ctx.fillStyle = lastColor;
-        ctx.beginPath();
-        ctx.roundRect(bX, bY, bW2, bH, 3);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.textBaseline = 'middle';
-        ctx.textAlign    = 'left';
-        ctx.fillText(badgeText, bX + bPadX, bY + bH / 2 + 1);
+            // Badge preço
+            const badgeTxt = lastVisClose.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            ctx.font = 'bold 9px sans-serif';
+            const tw   = ctx.measureText(badgeTxt).width;
+            const bPX  = 4;
+            const bH   = 16;
+            const bW2  = tw + bPX * 2;
+            const bX   = W - PAD.right;
+            let   bY   = lastY - bH / 2;
+            if (bY < PAD.top) bY = PAD.top;
+            if (bY + bH > PAD.top + chartH) bY = PAD.top + chartH - bH;
+            ctx.fillStyle = lastColor;
+            ctx.beginPath(); ctx.roundRect(bX, bY, bW2, bH, 3); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+            ctx.fillText(badgeTxt, bX + bPX, bY + bH / 2 + 1);
+        }
 
-        // Crosshair se hover
-        if (hoverIdx !== null) {
-            const x = toX(hoverIdx);
-            const c = candles[hoverIdx];
+        // ── Crosshair + Tooltip hover ──
+        if (hoverIdx !== null && hoverIdx >= viewStart && hoverIdx <= viewEnd) {
+            const x   = toX(hoverIdx);
+            const c   = candles[hoverIdx];
+            const cY  = toY(c.close, minP, maxP);
 
             // Linha vertical
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(PAD.left, PAD.top, chartW, chartH);
+            ctx.clip();
             ctx.beginPath();
             ctx.setLineDash([4, 4]);
-            ctx.strokeStyle = 'rgba(163,163,163,0.5)';
+            ctx.strokeStyle = 'rgba(163,163,163,0.45)';
             ctx.lineWidth   = 1;
             ctx.moveTo(x, PAD.top);
             ctx.lineTo(x, PAD.top + chartH);
             ctx.stroke();
+            // Linha horizontal
+            ctx.beginPath();
+            ctx.moveTo(PAD.left, cY);
+            ctx.lineTo(W - PAD.right, cY);
+            ctx.stroke();
             ctx.setLineDash([]);
+            ctx.restore();
 
-            // Badge data
-            const rawDate  = new Date(c.date);
+            // Badge data (eixo X)
+            const rawDate = new Date(c.date);
             let dateText;
             if (isIntraday) {
                 dateText = rawDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })
@@ -5380,80 +5505,414 @@ function renderCandlestickChart(dataPoints, range) {
                 dateText = rawDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
             }
             ctx.font = 'bold 9px sans-serif';
-            const dW   = ctx.measureText(dateText).width + 12;
-            const dH   = 16;
-            let dX     = x - dW / 2;
-            if (dX < PAD.left)           dX = PAD.left;
+            const dW  = ctx.measureText(dateText).width + 12;
+            const dH  = 16;
+            let dX    = x - dW / 2;
+            if (dX < PAD.left) dX = PAD.left;
             if (dX + dW > W - PAD.right) dX = W - PAD.right - dW;
-            const dY = PAD.top + chartH + 2;
-
+            const dY = PAD.top + chartH + 3;
             ctx.fillStyle = '#404040';
             ctx.beginPath(); ctx.roundRect(dX, dY, dW, dH, 3); ctx.fill();
-            ctx.fillStyle    = '#fff';
-            ctx.textAlign    = 'center';
-            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(dateText, dX + dW / 2, dY + dH / 2 + 1);
+
+            // Badge preço (eixo Y)
+            const priceTxt = c.close.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            ctx.font = 'bold 9px sans-serif';
+            const pW = ctx.measureText(priceTxt).width + 8;
+            const pH = 16;
+            const pX = W - PAD.right;
+            let   pY = cY - pH / 2;
+            if (pY < PAD.top) pY = PAD.top;
+            if (pY + pH > PAD.top + chartH) pY = PAD.top + chartH - pH;
+            ctx.fillStyle = '#404040';
+            ctx.beginPath(); ctx.roundRect(pX, pY, pW, pH, 3); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+            ctx.fillText(priceTxt, pX + 4, pY + pH / 2 + 1);
 
             // Tooltip OHLC
             const tipLines = [
-                `O: ${c.open.toLocaleString('pt-BR',  { style:'currency', currency:'BRL' })}`,
-                `H: ${c.high.toLocaleString('pt-BR',  { style:'currency', currency:'BRL' })}`,
-                `L: ${c.low.toLocaleString('pt-BR',   { style:'currency', currency:'BRL' })}`,
-                `C: ${c.close.toLocaleString('pt-BR', { style:'currency', currency:'BRL' })}`
+                { label: 'O', val: c.open,  color: '#9CA3AF' },
+                { label: 'H', val: c.high,  color: '#00C805' },
+                { label: 'L', val: c.low,   color: '#FF3B30' },
+                { label: 'C', val: c.close, color: '#fff'    }
             ];
             ctx.font = '10px sans-serif';
-            const maxTW  = Math.max(...tipLines.map(l => ctx.measureText(l).width));
+            const fmtBRL = v => v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+            const lines  = tipLines.map(t => `${t.label}: ${fmtBRL(t.val)}`);
+            const maxTW  = Math.max(...lines.map(l => ctx.measureText(l).width));
             const tipW   = maxTW + 16;
-            const tipH   = tipLines.length * 16 + 8;
-            let tipX     = x + 10;
+            const tipH   = lines.length * 16 + 8;
+            let tipX     = x + 12;
             const tipY   = PAD.top + 4;
-            if (tipX + tipW > W - PAD.right) tipX = x - tipW - 10;
-
-            ctx.fillStyle = 'rgba(28,28,30,0.92)';
+            if (tipX + tipW > W - PAD.right) tipX = x - tipW - 12;
+            ctx.fillStyle = 'rgba(20,20,22,0.93)';
             ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.fill();
             ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.stroke();
-
-            ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-            tipLines.forEach((line, li) => {
-                ctx.fillStyle = li === 0 ? '#9CA3AF' : (li === 1 ? '#00C805' : (li === 2 ? '#FF3B30' : '#fff'));
+            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            lines.forEach((line, li) => {
+                ctx.fillStyle = tipLines[li].color;
                 ctx.fillText(line, tipX + 8, tipY + 4 + li * 16);
             });
         }
+
+        // ── NAVEGADOR (barra inferior) ──
+        drawNavigator(minP, maxP);
     }
 
-    draw();
+    // ─── NAVEGADOR ─────────────────────────────────────────────────────────────
+    function drawNavigator(mainMinP, mainMaxP) {
+        const nY = NAV_Y;
+        const nH = NAV_H;
 
-    // Eventos de interação (mouse + touch)
-    const getIdx = (clientX) => {
+        // Fundo do nav
+        ctx.fillStyle = 'rgba(255,255,255,0.04)';
+        ctx.beginPath(); ctx.roundRect(NAV_X, nY, NAV_W, nH, 4); ctx.fill();
+
+        // Linha sparkline (close de todos os candles)
+        const navHigh = Math.max(...candles.map(c => c.high));
+        const navLow  = Math.min(...candles.map(c => c.low));
+        const navRange = navHigh - navLow || 1;
+        const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
+        const toNavY = (p) => nY + nH - 4 - ((p - navLow) / navRange) * (nH - 8);
+
+        ctx.save();
+        ctx.beginPath(); ctx.rect(NAV_X, nY, NAV_W, nH); ctx.clip();
+
+        ctx.beginPath();
+        candles.forEach((c, i) => {
+            const nx = toNavX(i);
+            const ny = toNavY(c.close);
+            i === 0 ? ctx.moveTo(nx, ny) : ctx.lineTo(nx, ny);
+        });
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth   = 1;
+        ctx.stroke();
+        ctx.restore();
+
+        // Janela de seleção
+        const selX1 = toNavX(viewStart);
+        const selX2 = toNavX(viewEnd);
+        const selW  = selX2 - selX1;
+
+        // Sombra fora da seleção
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(NAV_X,        nY, selX1 - NAV_X,       nH);
+        ctx.fillRect(selX2,        nY, NAV_X + NAV_W - selX2, nH);
+
+        // Borda da seleção
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth   = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(selX1, nY + 1, selW, nH - 2, 3);
+        ctx.stroke();
+
+        // Alças laterais (handles)
+        for (const hX of [selX1, selX2]) {
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.beginPath();
+            ctx.roundRect(hX - 2, nY + nH / 2 - 7, 4, 14, 2);
+            ctx.fill();
+        }
+
+        // Dica double-tap/click
+        if (N > (DEFAULT_VISIBLE[range] ?? N)) {
+            ctx.fillStyle = 'rgba(120,120,120,0.5)';
+            ctx.font      = '7px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('2× reset', NAV_X + NAV_W - 2, nY + nH - 1);
+        }
+    }
+
+    requestDraw();
+
+    // ─── ZOOM / PAN ────────────────────────────────────────────────────────────
+    function clampView() {
+        viewStart = Math.max(0, viewStart);
+        viewEnd   = Math.min(N - 1, viewEnd);
+        const count = viewEnd - viewStart + 1;
+        if (count < MIN_VISIBLE) {
+            // Expande simetricamente
+            const diff = MIN_VISIBLE - count;
+            viewStart = Math.max(0, viewStart - Math.ceil(diff / 2));
+            viewEnd   = Math.min(N - 1, viewStart + MIN_VISIBLE - 1);
+        }
+        if (count > MAX_VISIBLE) {
+            viewStart = 0; viewEnd = N - 1;
+        }
+    }
+
+    function zoomAroundFrac(frac, factor) {
+        // frac: 0..1 posição dentro da área visível onde o zoom acontece
+        const count = viewEnd - viewStart + 1;
+        const pivot = viewStart + frac * count;
+        const newCount = Math.max(MIN_VISIBLE, Math.min(MAX_VISIBLE, Math.round(count * factor)));
+        viewStart = Math.round(pivot - frac * newCount);
+        viewEnd   = viewStart + newCount - 1;
+        clampView();
+    }
+
+    // ── Mouse wheel (zoom) ──
+    const onWheel = (e) => {
+        e.preventDefault();
+        const r    = canvas.getBoundingClientRect();
+        const relX = e.clientX - r.left - PAD.left;
+        const frac = Math.max(0, Math.min(1, relX / chartW));
+        const factor = e.deltaY > 0 ? 1.15 : 0.87;   // scroll down = zoom out, up = zoom in
+        zoomAroundFrac(frac, factor);
+        requestDraw();
+    };
+
+    // ── Drag to pan (mouse) ──
+    let isDragging  = false;
+    let dragStartX  = 0;
+    let dragStartVS = 0;
+    let dragStartVE = 0;
+    let isDraggingNav    = false;
+    let dragNavHandle    = null; // 'left' | 'right' | 'body'
+    let dragNavStartX    = 0;
+    let dragNavStartVS   = 0;
+    let dragNavStartVE   = 0;
+
+    const HANDLE_HIT = 10; // px de tolerância para os handles do nav
+
+    function inNavArea(y) { return y >= NAV_Y && y <= NAV_Y + NAV_H; }
+
+    const onMouseDown = (e) => {
+        const r = canvas.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        const y = e.clientY - r.top;
+
+        if (inNavArea(y)) {
+            // Clique no navegador
+            const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
+            const selX1  = toNavX(viewStart);
+            const selX2  = toNavX(viewEnd);
+
+            isDraggingNav = true;
+            dragNavStartX  = x;
+            dragNavStartVS = viewStart;
+            dragNavStartVE = viewEnd;
+            canvas.style.cursor = 'ew-resize';
+
+            if (Math.abs(x - selX1) <= HANDLE_HIT)       dragNavHandle = 'left';
+            else if (Math.abs(x - selX2) <= HANDLE_HIT)  dragNavHandle = 'right';
+            else if (x >= selX1 && x <= selX2)            dragNavHandle = 'body';
+            else {
+                // Clique fora → teleporta janela para aqui
+                const clickIdx = Math.round((x - NAV_X) / NAV_W * (N - 1));
+                const half     = Math.floor((dragNavStartVE - dragNavStartVS) / 2);
+                viewStart = Math.max(0, clickIdx - half);
+                viewEnd   = Math.min(N - 1, viewStart + (dragNavStartVE - dragNavStartVS));
+                clampView();
+                requestDraw();
+                isDraggingNav = false;
+            }
+        } else if (x >= PAD.left && x <= W - PAD.right && y >= PAD.top && y <= PAD.top + chartH) {
+            // Clique no gráfico → drag pan
+            isDragging   = true;
+            dragStartX   = x;
+            dragStartVS  = viewStart;
+            dragStartVE  = viewEnd;
+            canvas.style.cursor = 'grabbing';
+        }
+    };
+
+    const onMouseMove = (e) => {
         const r   = canvas.getBoundingClientRect();
-        const relX = (clientX - r.left);
-        const idx  = Math.round(relX / W * candles.length - 0.5);
-        return Math.max(0, Math.min(candles.length - 1, idx));
+        const x   = e.clientX - r.left;
+        const y   = e.clientY - r.top;
+
+        if (isDraggingNav) {
+            const dx      = x - dragNavStartX;
+            const idxPerPx = (N - 1) / NAV_W;
+            const dIdx    = Math.round(dx * idxPerPx);
+
+            if (dragNavHandle === 'body') {
+                const span = dragNavStartVE - dragNavStartVS;
+                viewStart  = Math.max(0, Math.min(N - 1 - span, dragNavStartVS + dIdx));
+                viewEnd    = viewStart + span;
+            } else if (dragNavHandle === 'left') {
+                viewStart = Math.max(0, Math.min(dragNavStartVE - MIN_VISIBLE, dragNavStartVS + dIdx));
+            } else if (dragNavHandle === 'right') {
+                viewEnd = Math.min(N - 1, Math.max(dragNavStartVS + MIN_VISIBLE - 1, dragNavStartVE + dIdx));
+            }
+            clampView();
+            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+            requestDraw();
+            return;
+        }
+
+        if (isDragging) {
+            const slotW    = chartW / (dragStartVE - dragStartVS + 1);
+            const dCandles = Math.round((dragStartX - x) / slotW);
+            const count    = dragStartVE - dragStartVS;
+            viewStart = Math.max(0, Math.min(N - 1 - count, dragStartVS + dCandles));
+            viewEnd   = viewStart + count;
+            clampView();
+            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+            requestDraw();
+            return;
+        }
+
+        // Hover crosshair
+        if (x >= PAD.left && x <= W - PAD.right && y >= PAD.top && y <= PAD.top + chartH) {
+            canvas.style.cursor = 'crosshair';
+            const newHover = xToGlobalIdx(x);
+            if (newHover !== hoverIdx) {
+                hoverIdx = newHover;
+                updateHeaderStats(candles[hoverIdx].open, candles[hoverIdx].close);
+                requestDraw();
+            }
+        } else {
+            if (hoverIdx !== null) {
+                hoverIdx = null;
+                updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+                requestDraw();
+            }
+            if (!isDragging && !isDraggingNav) {
+                const toNavX = (i) => NAV_X + (i / (N - 1)) * NAV_W;
+                const s1 = toNavX(viewStart);
+                const s2 = toNavX(viewEnd);
+                if (inNavArea(y)) {
+                    if (Math.abs(x - s1) <= HANDLE_HIT || Math.abs(x - s2) <= HANDLE_HIT)
+                        canvas.style.cursor = 'ew-resize';
+                    else if (x >= s1 && x <= s2)
+                        canvas.style.cursor = 'grab';
+                    else
+                        canvas.style.cursor = 'pointer';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+            }
+        }
     };
 
-    const onMove = (e) => {
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const idx = getIdx(clientX);
-        draw(idx);
-        updateHeaderStats(candles[idx].open, candles[idx].close);
-    };
-    const onLeave = () => {
-        draw(null);
-        updateHeaderStats(candles[0].open, endPrice);
+    const onMouseUp = () => {
+        isDragging    = false;
+        isDraggingNav = false;
+        dragNavHandle = null;
+        canvas.style.cursor = 'crosshair';
     };
 
-    canvas.addEventListener('mousemove',  onMove);
-    canvas.addEventListener('mouseleave', onLeave);
-    canvas.addEventListener('touchmove',  onMove, { passive: true });
-    canvas.addEventListener('touchend',   onLeave);
+    const onMouseLeave = () => {
+        if (hoverIdx !== null) {
+            hoverIdx = null;
+            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+            requestDraw();
+        }
+        isDragging    = false;
+        isDraggingNav = false;
+    };
 
-    // Salva cleanup para quando trocar de tipo/período
+    // ── Double-click → reset zoom ──
+    let lastClick = 0;
+    const onDblClick = () => {
+        const now = Date.now();
+        if (now - lastClick < 350) {
+            viewStart = Math.max(0, N - (DEFAULT_VISIBLE[range] ?? N));
+            viewEnd   = N - 1;
+            updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+            requestDraw();
+        }
+        lastClick = now;
+    };
+
+    // ── Touch: pan + pinch-zoom ──
+    let lastTouchDist    = null;
+    let lastTouchCenterX = null;
+    let touchStartVS     = 0;
+    let touchStartVE     = 0;
+
+    const getTouchDist = (e) => {
+        if (e.touches.length < 2) return null;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    };
+    const getTouchCenterX = (e) => {
+        if (e.touches.length < 2)
+            return e.touches[0].clientX;
+        return (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    };
+
+    const onTouchStart = (e) => {
+        lastTouchDist    = getTouchDist(e);
+        lastTouchCenterX = getTouchCenterX(e);
+        touchStartVS     = viewStart;
+        touchStartVE     = viewEnd;
+        dragStartX       = e.touches[0].clientX;
+        dragStartVS      = viewStart;
+        dragStartVE      = viewEnd;
+        isDragging       = true;
+    };
+
+    const onTouchMove = (e) => {
+        e.preventDefault();
+        const r        = canvas.getBoundingClientRect();
+        const curDist  = getTouchDist(e);
+        const curCX    = getTouchCenterX(e);
+
+        if (e.touches.length >= 2 && lastTouchDist && curDist) {
+            // Pinch zoom
+            const factor = lastTouchDist / curDist;
+            const frac   = Math.max(0, Math.min(1, (curCX - r.left - PAD.left) / chartW));
+            zoomAroundFrac(frac, factor);
+            lastTouchDist    = curDist;
+            lastTouchCenterX = curCX;
+        } else if (e.touches.length === 1 && isDragging) {
+            // Pan
+            const x        = e.touches[0].clientX;
+            const slotW    = chartW / (dragStartVE - dragStartVS + 1);
+            const dCandles = Math.round((dragStartX - x) / slotW);
+            const count    = dragStartVE - dragStartVS;
+            viewStart = Math.max(0, Math.min(N - 1 - count, dragStartVS + dCandles));
+            viewEnd   = viewStart + count;
+            clampView();
+        }
+
+        hoverIdx = null;
+        updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
+        requestDraw();
+    };
+
+    const onTouchEnd = () => {
+        isDragging    = false;
+        lastTouchDist = null;
+        dragStartVS   = viewStart;
+        dragStartVE   = viewEnd;
+        dragStartX    = 0;
+    };
+
+    // ─── REGISTRO DE EVENTOS ────────────────────────────────────────────────────
+    canvas.addEventListener('wheel',      onWheel,      { passive: false });
+    canvas.addEventListener('mousedown',  onMouseDown);
+    canvas.addEventListener('mousemove',  onMouseMove);
+    canvas.addEventListener('mouseup',    onMouseUp);
+    canvas.addEventListener('mouseleave', onMouseLeave);
+    canvas.addEventListener('click',      onDblClick);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: true });
+    canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+    canvas.addEventListener('touchend',   onTouchEnd);
+
+    // Também ouve mouseup no document para soltar drag fora do canvas
+    const onDocMouseUp = () => { isDragging = false; isDraggingNav = false; };
+    document.addEventListener('mouseup', onDocMouseUp);
+
     candlestickEventCleanup = () => {
-        canvas.removeEventListener('mousemove',  onMove);
-        canvas.removeEventListener('mouseleave', onLeave);
-        canvas.removeEventListener('touchmove',  onMove);
-        canvas.removeEventListener('touchend',   onLeave);
+        if (rafId) cancelAnimationFrame(rafId);
+        canvas.removeEventListener('wheel',      onWheel);
+        canvas.removeEventListener('mousedown',  onMouseDown);
+        canvas.removeEventListener('mousemove',  onMouseMove);
+        canvas.removeEventListener('mouseup',    onMouseUp);
+        canvas.removeEventListener('mouseleave', onMouseLeave);
+        canvas.removeEventListener('click',      onDblClick);
+        canvas.removeEventListener('touchstart', onTouchStart);
+        canvas.removeEventListener('touchmove',  onTouchMove);
+        canvas.removeEventListener('touchend',   onTouchEnd);
+        document.removeEventListener('mouseup',  onDocMouseUp);
     };
 }
 

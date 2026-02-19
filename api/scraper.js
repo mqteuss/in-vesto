@@ -752,10 +752,16 @@ async function scrapeAnaliseProfundaFii(ticker) {
 
                 const series = chartData.map((assetArr, idx) => {
                     const nome = assetArr[0]?.type || assetArr[0]?.name || `Ativo ${idx + 1}`;
-                    const label = nome.toLowerCase().includes('index') ? 'IFIX'
-                                : nome.toLowerCase().includes('cdi')   ? 'CDI'
-                                : nome.toLowerCase().includes('ibov')  ? 'IBOV'
-                                : nome === ticker.toUpperCase()        ? ticker.toUpperCase()
+                    const lower = nome.toLowerCase();
+                    const label = lower === ticker.toLowerCase() || lower.includes(ticker.toLowerCase()) ? ticker.toUpperCase()
+                                : lower.includes('ifix')        ? 'IFIX'
+                                : lower.includes('idiv')        ? 'IDIV'
+                                : lower.includes('smll')        ? 'SMLL'
+                                : lower.includes('ivvb')        ? 'IVVB11'
+                                : lower.includes('ibov')        ? 'IBOV'
+                                : lower.includes('ipca')        ? 'IPCA'
+                                : lower.includes('cdi')         ? 'CDI'
+                                : lower.includes('index')       ? 'IFIX'
                                 : nome;
                     return {
                         nome:  label,

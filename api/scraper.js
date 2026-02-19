@@ -80,16 +80,15 @@ function cleanDoubledString(str) {
 async function scrapeFundamentos(ticker) {
     try {
         let html;
-        // Dispara as duas URLs em paralelo — usa a que responder primeiro com sucesso
-        // Economiza até ~1-2s quando o tipo não está em cache (evita o fallback sequencial)
+        // Dispara FII e Ação em paralelo — usa a que responder primeiro com sucesso
+        // Economiza ~1-2s no caso de ações (elimina o round-trip de fallback sequencial)
         const urlFii  = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         const urlAcao = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
 
         const fetchHtml = async (url) => {
             const res = await client.get(url);
-            // Rejeita a resposta se for uma página de erro/não encontrado do Investidor10
             if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
-            // Verifica se é uma página de ativo válido (tem conteúdo de cotação)
+            // Rejeita páginas inválidas (404 customizado, ticker não encontrado)
             if (!res.data.includes('cotacao') && !res.data.includes('Cotação')) throw new Error('Página inválida');
             return res.data;
         };
@@ -279,107 +278,60 @@ let dados = {
     }
 }
 
-/// ---------------------------------------------------------
-// PARTE 2: PROVENTOS -> INVESTIDOR10 (ATUALIZADO PARA AÇÕES)
+// ---------------------------------------------------------
+// PARTE 2: PROVENTOS -> STATUSINVEST
 // ---------------------------------------------------------
 
 async function scrapeAsset(ticker) {
     try {
-        const t = ticker.toLowerCase().trim();
-        let html;
-        
-        // 1. Tenta buscar como FII primeiro
-        try {
-            const res = await client.get(`https://investidor10.com.br/fiis/${t}/`);
-            html = res.data;
-        } catch (e) {
-            // 2. Se falhar (erro 404), tenta como Ação
-            try {
-                const res2 = await client.get(`https://investidor10.com.br/acoes/${t}/`);
-                html = res2.data;
-            } catch (e2) {
-                // 3. Se ainda falhar, tenta como BDR
-                const res3 = await client.get(`https://investidor10.com.br/bdrs/${t}/`);
-                html = res3.data;
-            }
-        }
+        const t = ticker.toUpperCase();
+        let type = 'acao';
+        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
 
-        const $ = cheerio.load(html);
-        const dividendos = [];
+        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
-        // Localiza a tabela de histórico de dividendos
-        $('#table-dividends-history tbody tr').each((i, el) => {
-            const cols = $(el).find('td');
-            if (cols.length >= 4) {
-                // Extrai o tipo e normaliza para comparação (remove acentos e espaços extras)
-                const tipoOriginal = $(cols[0]).text().trim();
-                const tipoNormalizado = tipoOriginal
-                    .toUpperCase()
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, "");
-                
-                const dataComRaw = $(cols[1]).text().trim();
-                const pagamentoRaw = $(cols[2]).text().trim();
-                const valorText = $(cols[3]).text().trim();
-                
-                // Extrai apenas o valor numérico
-                const match = valorText.match(/[\d,\.]+/);
-                let value = 0;
-                if (match) {
-                    value = parseFloat(match[0].replace(/\./g, '').replace(',', '.')) || 0;
-                }
-
-                const parseDateBR = (dStr) => {
-                    if (!dStr || dStr === '-' || dStr.includes('N/D')) return null;
-                    const parts = dStr.split('/');
-                    return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : null;
-                };
-
-                const dataCom = parseDateBR(dataComRaw);
-                const paymentDate = parseDateBR(pagamentoRaw);
-
-                // --- CLASSIFICAÇÃO PRECISA ---
-                let labelTipo = 'REND'; // Padrão para FIIs
-
-                // Verifica Juros Sobre Capital Próprio usando "JURO" como raiz
-                if (tipoNormalizado.includes('JURO') || tipoNormalizado.includes('JSCP') || tipoNormalizado.includes('JCP')) {
-                    labelTipo = 'JCP';
-                } 
-                // Verifica Dividendos (DIV)
-                else if (tipoNormalizado.includes('DIVIDENDO')) {
-                    labelTipo = 'DIV';
-                } 
-                // Verifica Rendimentos Tributados
-                else if (tipoNormalizado.includes('TRIBUTADO')) {
-                    labelTipo = 'REND_TRIB';
-                }
-                // Amortizações ou Restituições
-                else if (tipoNormalizado.includes('AMORTIZA') || tipoNormalizado.includes('RESTITUI')) {
-                    labelTipo = 'AMORT';
-                }
-                
-                if (paymentDate && value > 0) {
-                    dividendos.push({
-                        dataCom: dataCom,
-                        paymentDate: paymentDate,
-                        value: value,
-                        type: labelTipo,
-                        rawType: tipoOriginal
-                    });
-                }
-            }
+        const { data } = await client.get(url, { 
+            headers: { 
+                'X-Requested-With': 'XMLHttpRequest',
+                'Referer': 'https://statusinvest.com.br/',
+                'User-Agent': 'Mozilla/5.0'
+            } 
         });
 
-        // Ordena por data de pagamento (mais recente primeiro)
-        return dividendos.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        const earnings = data.assetEarningsModels || [];
+
+        const dividendos = earnings.map(d => {
+            const parseDateJSON = (dStr) => {
+                if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
+                const parts = dStr.split('/');
+                if (parts.length !== 3) return null;
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            };
+            let labelTipo = 'REND'; 
+            if (d.et === 1) labelTipo = 'DIV';
+            if (d.et === 2) labelTipo = 'JCP';
+            if (d.etd) {
+                const texto = d.etd.toUpperCase();
+                if (texto.includes('JURO')) labelTipo = 'JCP';
+                else if (texto.includes('DIVID')) labelTipo = 'DIV';
+                else if (texto.includes('TRIBUTADO')) labelTipo = 'REND_TRIB';
+            }
+            return {
+                dataCom: parseDateJSON(d.ed),
+                paymentDate: parseDateJSON(d.pd),
+                value: d.v,
+                type: labelTipo,
+                rawType: d.et
+            };
+        });
+
+        return dividendos.filter(d => d.paymentDate !== null).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
     } catch (error) { 
-        console.error(`Erro Investidor10 Proventos ${ticker}:`, error.message);
+        console.error(`Erro StatusInvest API ${ticker}:`, error.message);
         return []; 
     }
 }
-
-
 
 // ---------------------------------------------------------
 // PARTE 3: IPCA -> INVESTIDOR10
@@ -480,22 +432,22 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
         if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
 
         const timestamps = result.timestamp;
-        const quote = result.indicators.quote[0];
-        const prices  = quote.close;
-        const opens   = quote.open;
-        const highs   = quote.high;
-        const lows    = quote.low;
+        const quote  = result.indicators.quote[0];
+        const prices = quote.close;
+        const opens  = quote.open;
+        const highs  = quote.high;
+        const lows   = quote.low;
 
         // Formata com OHLC completo
         const points = timestamps.map((t, i) => {
             if (prices[i] === null || prices[i] === undefined) return null;
             return {
-                date: new Date(t * 1000).toISOString(), // Data ISO para o frontend processar
+                date:      new Date(t * 1000).toISOString(),
                 timestamp: t * 1000,
-                price: prices[i],                                      // close
-                open:  opens[i]  ?? prices[i],
-                high:  highs[i]  ?? prices[i],
-                low:   lows[i]   ?? prices[i]
+                price:     prices[i],          // close
+                open:      opens[i]  ?? prices[i],
+                high:      highs[i]  ?? prices[i],
+                low:       lows[i]   ?? prices[i]
             };
         }).filter(p => p !== null);
 

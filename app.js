@@ -4672,6 +4672,10 @@ let cotacaoChartInstance = null;
 let currentChartFetchId = 0;
 // Cache agora usa chave composta: "PETR4_1D", "VALE3_5A"
 window.tempChartCache = {}; 
+// Tipo de gráfico de preço: 'line' | 'candlestick'
+let currentPriceChartType = 'line';
+// Listener de eventos do canvas de candlestick (para cleanup)
+let candlestickEventCleanup = null;
 
 async function callScraperCotacaoHistoricaAPI(ticker, range) {
     const body = { 
@@ -4726,16 +4730,42 @@ container = document.createElement('div');
 
             </div>
 
-            <div class="relative flex overflow-x-auto no-scrollbar gap-0.5 p-1 bg-[#151515] rounded-xl mb-4 w-full" id="chart-filters">
-                <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
-                ${gerarBotaoFiltro('1D', symbol, true)}
-                ${gerarBotaoFiltro('5D', symbol)}
-                ${gerarBotaoFiltro('1M', symbol)}
-                ${gerarBotaoFiltro('6M', symbol)}
-                ${gerarBotaoFiltro('YTD', symbol)}
-                ${gerarBotaoFiltro('1A', symbol)}
-                ${gerarBotaoFiltro('5A', symbol)}
-                ${gerarBotaoFiltro('Tudo', symbol)}
+            <div class="flex items-center justify-between gap-2 mb-3">
+                <div class="relative flex overflow-x-auto no-scrollbar gap-0.5 p-1 bg-[#151515] rounded-xl flex-1" id="chart-filters">
+                    <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
+                    ${gerarBotaoFiltro('1D', symbol, true)}
+                    ${gerarBotaoFiltro('5D', symbol)}
+                    ${gerarBotaoFiltro('1M', symbol)}
+                    ${gerarBotaoFiltro('6M', symbol)}
+                    ${gerarBotaoFiltro('YTD', symbol)}
+                    ${gerarBotaoFiltro('1A', symbol)}
+                    ${gerarBotaoFiltro('5A', symbol)}
+                    ${gerarBotaoFiltro('Tudo', symbol)}
+                </div>
+                <div class="flex gap-1 p-1 bg-[#151515] rounded-xl flex-shrink-0" id="chart-type-toggle">
+                    <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
+                        class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none bg-[#2C2C2E] text-white"
+                        title="Gráfico de Linha">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        </svg>
+                    </button>
+                    <button id="btn-type-candlestick" onclick="window.mudarTipoGrafico('candlestick', '${symbol}')"
+                        class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none text-gray-500 hover:text-gray-300"
+                        title="Gráfico de Velas (Candlestick)">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <line x1="2.5" y1="1" x2="2.5" y2="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <rect x="1" y="3" width="3" height="5" rx="0.5" fill="currentColor" opacity="0.9"/>
+                            <line x1="2.5" y1="8" x2="2.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <line x1="7" y1="2" x2="7" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <rect x="5.5" y="5" width="3" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                            <line x1="7" y1="9" x2="7" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <line x1="11.5" y1="1.5" x2="11.5" y2="4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <rect x="10" y="4" width="3" height="6" rx="0.5" fill="currentColor" opacity="0.9"/>
+                            <line x1="11.5" y1="10" x2="11.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -4755,6 +4785,9 @@ container = document.createElement('div');
             slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
         }
     }, 50);
+
+    // Reseta tipo de gráfico para 'line' ao abrir novo ativo
+    currentPriceChartType = 'line';
 
     // CANCELAMENTO: se modal fechou antes do DOM ser montado, nao carrega
     if (currentDetalhesSymbol !== symbolAlvo) return;
@@ -4819,6 +4852,33 @@ async function carregarDadosGrafico(range, symbol) {
     }
 }
 
+window.mudarTipoGrafico = function(tipo, symbol) {
+    currentPriceChartType = tipo;
+
+    const btnLine   = document.getElementById('btn-type-line');
+    const btnCandle = document.getElementById('btn-type-candlestick');
+    if (btnLine && btnCandle) {
+        const activeCls   = ['bg-[#2C2C2E]', 'text-white'];
+        const inactiveCls = ['text-gray-500', 'hover:text-gray-300'];
+        if (tipo === 'line') {
+            btnLine.classList.add(...activeCls);    btnLine.classList.remove(...inactiveCls);
+            btnCandle.classList.remove(...activeCls); btnCandle.classList.add(...inactiveCls);
+        } else {
+            btnCandle.classList.add(...activeCls);  btnCandle.classList.remove(...inactiveCls);
+            btnLine.classList.remove(...activeCls);   btnLine.classList.add(...inactiveCls);
+        }
+    }
+
+    // Re-renderiza com os dados já cacheados (sem nova chamada de API)
+    const activeRangeBtn = document.querySelector('#chart-filters .chart-filter-btn.text-white');
+    const range = activeRangeBtn?.dataset?.range || '1D';
+    const cacheKey = `${symbol}_${range}`;
+    const cached = window.tempChartCache[cacheKey];
+    if (cached) {
+        renderPriceChart(cached, range);
+    }
+};
+
 window.mudarPeriodoGrafico = function(range, symbol) {
     // 1. Volta todos os textos para cinza
     const botoes = document.querySelectorAll('#chart-filters button');
@@ -4846,6 +4906,14 @@ window.mudarPeriodoGrafico = function(range, symbol) {
 };
 
 function renderPriceChart(dataPoints, range) {
+    if (currentPriceChartType === 'candlestick') {
+        renderCandlestickChart(dataPoints, range);
+    } else {
+        renderLineChart(dataPoints, range);
+    }
+}
+
+function renderLineChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
@@ -4854,6 +4922,8 @@ function renderPriceChart(dataPoints, range) {
         cotacaoChartInstance.destroy();
         cotacaoChartInstance = null;
     }
+    // Limpa eventos do canvas candlestick se existir
+    if (candlestickEventCleanup) { candlestickEventCleanup(); candlestickEventCleanup = null; }
 
     wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
     const ctx = document.getElementById('canvas-cotacao').getContext('2d');
@@ -5133,6 +5203,258 @@ function renderPriceChart(dataPoints, range) {
         },
         plugins: [lastPricePlugin, activeCrosshairPlugin]
     });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  GRÁFICO DE VELAS (CANDLESTICK) — renderização manual no canvas
+// ─────────────────────────────────────────────────────────────────────────────
+function renderCandlestickChart(dataPoints, range) {
+    const wrapper = document.getElementById('chart-area-wrapper');
+    if (!wrapper) return;
+
+    // Destrói chart.js anterior se existir
+    if (cotacaoChartInstance) { cotacaoChartInstance.destroy(); cotacaoChartInstance = null; }
+    // Remove eventos do candle anterior
+    if (candlestickEventCleanup) { candlestickEventCleanup(); candlestickEventCleanup = null; }
+
+    wrapper.innerHTML = '<canvas id="canvas-cotacao" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>';
+    const canvas = document.getElementById('canvas-cotacao');
+    const dpr    = window.devicePixelRatio || 1;
+    const rect   = wrapper.getBoundingClientRect();
+
+    canvas.width  = rect.width  * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width  = rect.width  + 'px';
+    canvas.style.height = rect.height + 'px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const W = rect.width;
+    const H = rect.height;
+    const PAD = { top: 10, right: 52, bottom: 26, left: 4 };
+    const chartW = W - PAD.left - PAD.right;
+    const chartH = H - PAD.top  - PAD.bottom;
+
+    const isIntraday = range === '1D' || range === '5D';
+
+    // Filtra candles com dados OHLC; fallback: usa price como OHLC
+    const candles = dataPoints.map(p => ({
+        date:  p.date,
+        open:  p.open  ?? p.price,
+        high:  p.high  ?? p.price,
+        low:   p.low   ?? p.price,
+        close: p.price
+    }));
+
+    // Preço início/fim para o header
+    const startPrice = candles[0].close;
+    const endPrice   = candles[candles.length - 1].close;
+
+    // Inicializa estatísticas com valores finais
+    const updateHeaderStats = (open, close) => {
+        const elOpen  = document.getElementById('stat-open');
+        const elClose = document.getElementById('stat-close');
+        const elVar   = document.getElementById('stat-var');
+        if (!elOpen || !elClose || !elVar) return;
+        elOpen.innerText  = open.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elClose.innerText = close.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elClose.style.color = close >= open ? '#00C805' : '#FF3B30';
+        const diff    = close - startPrice;
+        const percent = (diff / startPrice) * 100;
+        const sign    = diff >= 0 ? '+' : '';
+        elVar.innerText = `${sign}${percent.toFixed(2)}%`;
+        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
+    };
+    updateHeaderStats(candles[0].open, endPrice);
+
+    // Escala de preços
+    const allHigh = Math.max(...candles.map(c => c.high));
+    const allLow  = Math.min(...candles.map(c => c.low));
+    const pRange  = allHigh - allLow || allHigh * 0.02;
+    const padP    = pRange * 0.08;
+    const minP    = allLow  - padP;
+    const maxP    = allHigh + padP;
+
+    const toX = (i) => PAD.left + (i + 0.5) * (chartW / candles.length);
+    const toY = (p) => PAD.top  + chartH - ((p - minP) / (maxP - minP)) * chartH;
+
+    const bodyMinH   = 1;
+    const candleW    = Math.max(2, Math.min(12, (chartW / candles.length) * 0.65));
+
+    function draw(hoverIdx = null) {
+        ctx.clearRect(0, 0, W, H);
+
+        // Candles
+        candles.forEach((c, i) => {
+            const x      = toX(i);
+            const openY  = toY(c.open);
+            const closeY = toY(c.close);
+            const highY  = toY(c.high);
+            const lowY   = toY(c.low);
+
+            const isGreen  = c.close >= c.open;
+            const baseColor = isGreen ? '#00C805' : '#FF3B30';
+            const fillColor = isGreen ? 'rgba(0,200,5,0.25)' : 'rgba(255,59,48,0.25)';
+            const highlighted = hoverIdx !== null && i === hoverIdx;
+
+            ctx.globalAlpha = (hoverIdx !== null && !highlighted) ? 0.45 : 1;
+
+            // Pavio (wick)
+            ctx.beginPath();
+            ctx.moveTo(x, highY);
+            ctx.lineTo(x, lowY);
+            ctx.strokeStyle = baseColor;
+            ctx.lineWidth   = highlighted ? 1.5 : 1;
+            ctx.stroke();
+
+            // Corpo
+            const bodyTop = Math.min(openY, closeY);
+            const bodyH   = Math.max(bodyMinH, Math.abs(openY - closeY));
+            const bW      = highlighted ? candleW * 1.2 : candleW;
+
+            ctx.fillStyle   = fillColor;
+            ctx.strokeStyle = baseColor;
+            ctx.lineWidth   = highlighted ? 1.5 : 1;
+            ctx.fillRect(  x - bW / 2, bodyTop, bW, bodyH);
+            ctx.strokeRect(x - bW / 2, bodyTop, bW, bodyH);
+        });
+
+        ctx.globalAlpha = 1;
+
+        // Linha do último preço (tracejada)
+        const lastY = toY(endPrice);
+        const lastColor = endPrice >= startPrice ? '#00C805' : '#FF3B30';
+        ctx.beginPath();
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = lastColor;
+        ctx.lineWidth   = 1;
+        ctx.moveTo(PAD.left, lastY);
+        ctx.lineTo(W - PAD.right, lastY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Badge do último preço
+        const badgeText  = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        ctx.font = 'bold 9px sans-serif';
+        const tw      = ctx.measureText(badgeText).width;
+        const bPadX   = 4;
+        const bH      = 16;
+        const bW2     = tw + bPadX * 2;
+        const bX      = W - PAD.right;
+        let bY        = lastY - bH / 2;
+        if (bY < PAD.top) bY = PAD.top;
+        if (bY + bH > PAD.top + chartH) bY = PAD.top + chartH - bH;
+
+        ctx.fillStyle = lastColor;
+        ctx.beginPath();
+        ctx.roundRect(bX, bY, bW2, bH, 3);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign    = 'left';
+        ctx.fillText(badgeText, bX + bPadX, bY + bH / 2 + 1);
+
+        // Crosshair se hover
+        if (hoverIdx !== null) {
+            const x = toX(hoverIdx);
+            const c = candles[hoverIdx];
+
+            // Linha vertical
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = 'rgba(163,163,163,0.5)';
+            ctx.lineWidth   = 1;
+            ctx.moveTo(x, PAD.top);
+            ctx.lineTo(x, PAD.top + chartH);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Badge data
+            const rawDate  = new Date(c.date);
+            let dateText;
+            if (isIntraday) {
+                dateText = rawDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' })
+                         + ' ' + rawDate.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+            } else {
+                dateText = rawDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+            }
+            ctx.font = 'bold 9px sans-serif';
+            const dW   = ctx.measureText(dateText).width + 12;
+            const dH   = 16;
+            let dX     = x - dW / 2;
+            if (dX < PAD.left)           dX = PAD.left;
+            if (dX + dW > W - PAD.right) dX = W - PAD.right - dW;
+            const dY = PAD.top + chartH + 2;
+
+            ctx.fillStyle = '#404040';
+            ctx.beginPath(); ctx.roundRect(dX, dY, dW, dH, 3); ctx.fill();
+            ctx.fillStyle    = '#fff';
+            ctx.textAlign    = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(dateText, dX + dW / 2, dY + dH / 2 + 1);
+
+            // Tooltip OHLC
+            const tipLines = [
+                `O: ${c.open.toLocaleString('pt-BR',  { style:'currency', currency:'BRL' })}`,
+                `H: ${c.high.toLocaleString('pt-BR',  { style:'currency', currency:'BRL' })}`,
+                `L: ${c.low.toLocaleString('pt-BR',   { style:'currency', currency:'BRL' })}`,
+                `C: ${c.close.toLocaleString('pt-BR', { style:'currency', currency:'BRL' })}`
+            ];
+            ctx.font = '10px sans-serif';
+            const maxTW  = Math.max(...tipLines.map(l => ctx.measureText(l).width));
+            const tipW   = maxTW + 16;
+            const tipH   = tipLines.length * 16 + 8;
+            let tipX     = x + 10;
+            const tipY   = PAD.top + 4;
+            if (tipX + tipW > W - PAD.right) tipX = x - tipW - 10;
+
+            ctx.fillStyle = 'rgba(28,28,30,0.92)';
+            ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.fill();
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.roundRect(tipX, tipY, tipW, tipH, 6); ctx.stroke();
+
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            tipLines.forEach((line, li) => {
+                ctx.fillStyle = li === 0 ? '#9CA3AF' : (li === 1 ? '#00C805' : (li === 2 ? '#FF3B30' : '#fff'));
+                ctx.fillText(line, tipX + 8, tipY + 4 + li * 16);
+            });
+        }
+    }
+
+    draw();
+
+    // Eventos de interação (mouse + touch)
+    const getIdx = (clientX) => {
+        const r   = canvas.getBoundingClientRect();
+        const relX = (clientX - r.left);
+        const idx  = Math.round(relX / W * candles.length - 0.5);
+        return Math.max(0, Math.min(candles.length - 1, idx));
+    };
+
+    const onMove = (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const idx = getIdx(clientX);
+        draw(idx);
+        updateHeaderStats(candles[idx].open, candles[idx].close);
+    };
+    const onLeave = () => {
+        draw(null);
+        updateHeaderStats(candles[0].open, endPrice);
+    };
+
+    canvas.addEventListener('mousemove',  onMove);
+    canvas.addEventListener('mouseleave', onLeave);
+    canvas.addEventListener('touchmove',  onMove, { passive: true });
+    canvas.addEventListener('touchend',   onLeave);
+
+    // Salva cleanup para quando trocar de tipo/período
+    candlestickEventCleanup = () => {
+        canvas.removeEventListener('mousemove',  onMove);
+        canvas.removeEventListener('mouseleave', onLeave);
+        canvas.removeEventListener('touchmove',  onMove);
+        canvas.removeEventListener('touchend',   onLeave);
+    };
 }
 
 async function handleMostrarDetalhes(symbol) {

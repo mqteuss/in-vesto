@@ -286,7 +286,16 @@ async function scrapeAsset(ticker) {
     try {
         const t = ticker.toUpperCase();
         let type = 'acao';
-        if (t.endsWith('11') || t.endsWith('11B')) type = 'fii'; 
+        // FIIs brasileiros: terminam em 11 ou 11B
+        if (/\d{2}B?$/.test(t) && t.endsWith('11') || t.endsWith('11B')) type = 'fii';
+
+        // parseDateJSON hoistado fora do .map() — evita recriar a função a cada iteração
+        const parseDateJSON = (dStr) => {
+            if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
+            const parts = dStr.split('/');
+            if (parts.length !== 3) return null;
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        };
 
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
@@ -300,13 +309,18 @@ async function scrapeAsset(ticker) {
 
         const earnings = data.assetEarningsModels || [];
 
+        // Se retornou vazio e tentamos como 'acao', pode ser um FII com ticker atípico — tenta de novo
+        if (earnings.length === 0 && type === 'acao') {
+            const urlFii = `https://statusinvest.com.br/fii/companytickerprovents?ticker=${t}&chartProventsType=2`;
+            const { data: dataFii } = await client.get(urlFii, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Referer': 'https://statusinvest.com.br/' }
+            }).catch(() => ({ data: {} }));
+            if ((dataFii.assetEarningsModels || []).length > 0) {
+                earnings.push(...dataFii.assetEarningsModels);
+            }
+        }
+
         const dividendos = earnings.map(d => {
-            const parseDateJSON = (dStr) => {
-                if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
-                const parts = dStr.split('/');
-                if (parts.length !== 3) return null;
-                return `${parts[2]}-${parts[1]}-${parts[0]}`;
-            };
             let labelTipo = 'REND'; 
             if (d.et === 1) labelTipo = 'DIV';
             if (d.et === 2) labelTipo = 'JCP';
@@ -317,11 +331,11 @@ async function scrapeAsset(ticker) {
                 else if (texto.includes('TRIBUTADO')) labelTipo = 'REND_TRIB';
             }
             return {
-                dataCom: parseDateJSON(d.ed),
+                dataCom:     parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
-                value: d.v,
-                type: labelTipo,
-                rawType: d.et
+                value:       d.v,
+                type:        labelTipo,
+                rawType:     d.et
             };
         });
 
@@ -347,14 +361,22 @@ async function scrapeIpca() {
         let acumulado12m = '0,00';
         let acumuladoAno = '0,00';
 
-        let $table = null;
-        $('table').each((i, el) => {
-            const headers = $(el).text().toLowerCase();
-            if (headers.includes('acumulado 12 meses') || headers.includes('variação em %')) {
-                $table = $(el);
-                return false; 
-            }
-        });
+        // Selector direto pelos headers conhecidos — evita ler .text() de todas as tabelas
+        let $table = $('table').filter((i, el) => {
+            const firstRow = $(el).find('thead tr th').first().text().toLowerCase();
+            return firstRow.includes('acumulado') || firstRow.includes('varia');
+        }).first();
+
+        // Fallback para busca por conteúdo se o selector direto não encontrar
+        if (!$table.length) {
+            $('table').each((i, el) => {
+                if ($table.length) return false;
+                const headers = $(el).find('thead').text().toLowerCase();
+                if (headers.includes('acumulado 12 meses') || headers.includes('variação em %')) {
+                    $table = $(el);
+                }
+            });
+        }
 
         if ($table) {
             $table.find('tbody tr').each((i, el) => {
@@ -423,10 +445,21 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
         const symbol = ticker.toUpperCase().endsWith('.SA') ? ticker.toUpperCase() : `${ticker.toUpperCase()}.SA`;
         const { range, interval } = getYahooParams(rangeFilter);
 
-        // URL Dinâmica baseada no filtro
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}&includePrePost=false`;
+        // Tenta query1 primeiro; se falhar (rate-limit ou instabilidade), cai para query2
+        const buildUrl = (host) => 
+            `https://${host}.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}&includePrePost=false`;
 
-        const { data } = await axios.get(url);
+        let data;
+        try {
+            ({ data } = await client.get(buildUrl('query1'), {
+                headers: { 'Accept': 'application/json' }
+            }));
+        } catch (e) {
+            ({ data } = await client.get(buildUrl('query2'), {
+                headers: { 'Accept': 'application/json' }
+            }));
+        }
+
         const result = data.chart.result[0];
 
         if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
@@ -517,7 +550,7 @@ module.exports = async function handler(req, res) {
             if (!payload.fiiList) return res.json({ json: [] });
             const batches = chunkArray(payload.fiiList, 5);
             let finalResults = [];
-            for (const batch of batches) {
+            for (const [batchIdx, batch] of batches.entries()) {
                 const promises = batch.map(async (item) => {
                     const ticker = typeof item === 'string' ? item : item.ticker;
                     const defaultLimit = mode === 'historico_portfolio' ? 14 : 12;
@@ -529,7 +562,7 @@ module.exports = async function handler(req, res) {
                 });
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-                if (batches.length > 1) await new Promise(r => setTimeout(r, 200)); 
+                if (batches.length > 1 && batchIdx < batches.length - 1) await new Promise(r => setTimeout(r, 200)); 
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }

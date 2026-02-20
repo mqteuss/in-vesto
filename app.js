@@ -704,7 +704,8 @@ let ipcaCacheData = null;
     const detalhesPreco = document.getElementById('detalhes-preco');
     const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
     const periodoSelectorGroup = document.getElementById('periodo-selector-group'); 
-    const detalhesAiProvento = document.getElementById('detalhes-ai-provento'); 
+    const detalhesAiProvento = document.getElementById('detalhes-ai-provento');
+    const detalhesTabPortfolioBtn = document.getElementById('tab-portfolio-btn');
     const listaHistorico = document.getElementById('lista-historico');
     const historicoStatus = document.getElementById('historico-status');
     const customModal = document.getElementById('custom-modal');
@@ -745,6 +746,27 @@ let ipcaCacheData = null;
             currentPatrimonioRange = e.target.dataset.range;
             renderizarGraficoPatrimonio();
         });
+    });
+
+    // ─── NAVEGAÇÃO POR TABS DO MODAL DE DETALHES ─────────────────────────────
+    function switchDetalhesTab(tabName) {
+        document.querySelectorAll('.detalhe-tab-panel').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('.detalhe-tab-btn').forEach(b => {
+            b.classList.remove('text-white', 'border-green-500');
+            b.classList.add('text-gray-500', 'border-transparent');
+        });
+        const panel = document.getElementById(`detalhe-tab-${tabName}`);
+        if (panel) panel.classList.remove('hidden');
+        const btn = document.querySelector(`.detalhe-tab-btn[data-tab="${tabName}"]`);
+        if (btn) {
+            btn.classList.remove('text-gray-500', 'border-transparent');
+            btn.classList.add('text-white', 'border-green-500');
+        }
+        if (detalhesConteudoScroll) detalhesConteudoScroll.scrollTop = 0;
+    }
+
+    document.querySelectorAll('.detalhe-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchDetalhesTab(btn.dataset.tab));
     });
 
     function verificarStatusInstalacao() {
@@ -4676,6 +4698,22 @@ function handleAbrirModalEdicao(id) {
         detalhesHistoricoContainer.classList.add('hidden');
         detalhesAiProvento.innerHTML = '';
 
+        // Limpa painéis das tabs
+        const elGrid = document.getElementById('detalhes-grid-topo');
+        if (elGrid) elGrid.innerHTML = '';
+        const elProvento = document.getElementById('detalhes-provento-placeholder');
+        if (elProvento) elProvento.innerHTML = '';
+        const elListas = document.getElementById('detalhes-listas-fundamentos');
+        if (elListas) elListas.innerHTML = '';
+        const elSobre = document.getElementById('detalhes-sobre-comparacao');
+        if (elSobre) elSobre.innerHTML = '';
+        const elImoveis = document.getElementById('detalhes-imoveis-container');
+        if (elImoveis) elImoveis.innerHTML = '';
+
+        // Reseta tab nav para Resumo
+        switchDetalhesTab('resumo');
+        if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.add('hidden');
+
         detalhesFavoritoIconEmpty.classList.remove('hidden');
         detalhesFavoritoIconFilled.classList.add('hidden');
         detalhesFavoritoBtn.dataset.symbol = '';
@@ -4721,13 +4759,13 @@ async function fetchCotacaoHistorica(symbol) {
     let container = document.getElementById('detalhes-cotacao-container');
 
     if (!container) {
-        const detalhesPreco = document.getElementById('detalhes-preco');
-        if (detalhesPreco && detalhesPreco.parentNode) {
-container = document.createElement('div');
+        // Injeta dentro da tab Resumo, antes do grid de KPIs
+        const gridTopo = document.getElementById('detalhes-grid-topo');
+        if (gridTopo && gridTopo.parentNode) {
+            container = document.createElement('div');
             container.id = 'detalhes-cotacao-container';
-            // Adicionada linha divisória sutil com espaçamento elegante
-            container.className = "mt-8 mb-6 pt-8 border-t border-[#2C2C2E]"; 
-            detalhesPreco.parentNode.insertBefore(container, detalhesPreco.nextSibling);
+            container.className = "mb-6";
+            gridTopo.parentNode.insertBefore(container, gridTopo);
         } else { return; }
     }
 
@@ -6026,41 +6064,50 @@ async function handleMostrarDetalhes(symbol) {
         const variacaoCor  = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
         const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');
 
-        // Skeleton para seções que ainda estão carregando (fundamentos)
+        // ── Preço + Variação no cabeçalho fixo ──
+        detalhesPreco.innerHTML = `
+            <div class="flex items-baseline gap-3 flex-wrap">
+                <h2 class="text-3xl font-bold text-white tracking-tighter leading-none">${formatBRL(precoData.regularMarketPrice)}</h2>
+                <span class="px-2 py-0.5 rounded-md text-[11px] font-bold ${variacaoCor} flex items-center gap-1 tracking-wide">
+                    ${variacaoIcone} ${formatPercent(varPercent)} Hoje
+                </span>
+                <span id="badge-variacao-12m" class="px-2 py-0.5 rounded-md text-[10px] font-bold text-gray-400 bg-[#151515] border border-[#2C2C2E] uppercase tracking-widest">
+                    12M: <span class="opacity-40">...</span>
+                </span>
+            </div>`;
+
+        detalhesMensagem.classList.add('hidden');
+
+        // ── Skeleton KPIs no tab Resumo ──
         const skeletonGrid = Array(6).fill(0).map(() => `
             <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm animate-pulse">
                 <div class="h-2 bg-[#2C2C2E] rounded w-16 mb-2"></div>
                 <div class="h-4 bg-[#2C2C2E] rounded w-10"></div>
             </div>`).join('');
 
-        const skeletonListas = `
-            <div id="detalhes-fundamentos-placeholder" class="space-y-2 animate-pulse mb-6">
+        const elGridNow = document.getElementById('detalhes-grid-topo');
+        if (elGridNow) elGridNow.innerHTML = skeletonGrid;
+
+        // ── Skeleton Fundamentos no tab Indicadores ──
+        const elListasNow = document.getElementById('detalhes-listas-fundamentos');
+        if (elListasNow) elListasNow.innerHTML = `
+            <div class="space-y-2 animate-pulse mb-6">
                 <div class="h-3 bg-[#1C1C1E] rounded w-24 mb-3"></div>
                 <div class="bg-[#151515] rounded-xl h-28"></div>
                 <div class="h-3 bg-[#1C1C1E] rounded w-24 mt-4 mb-3"></div>
                 <div class="bg-[#151515] rounded-xl h-20"></div>
             </div>`;
 
-        detalhesPreco.innerHTML = `
-            <div class="col-span-12 w-full flex flex-col">
-                <div class="text-center pb-8 pt-2">
-                    <h2 class="text-5xl font-bold text-white tracking-tighter leading-none mb-4">${formatBRL(precoData.regularMarketPrice)}</h2>
-                    <div class="flex items-center justify-center gap-2">
-                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold ${variacaoCor} flex items-center gap-1 tracking-wider shadow-sm">
-                            ${variacaoIcone} ${formatPercent(varPercent)} Hoje
-                        </span>
-                        <span id="badge-variacao-12m" class="px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 bg-[#151515] border border-[#2C2C2E] uppercase tracking-widest shadow-sm">
-                            12M: <span class="opacity-40">...</span>
-                        </span>
-                    </div>
-                </div>
-                <div id="detalhes-provento-placeholder" class="mb-4"></div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-3 pl-1">Indicadores Rápidos</h4>
-                <div id="detalhes-grid-topo" class="grid grid-cols-3 gap-2 w-full mb-6">${skeletonGrid}</div>
-                <div id="detalhes-listas-fundamentos">${skeletonListas}</div>
+        // ── Skeleton Análise ──
+        const elSobreNow = document.getElementById('detalhes-sobre-comparacao');
+        if (elSobreNow) elSobreNow.innerHTML = `
+            <div class="space-y-2 animate-pulse mb-6">
+                <div class="h-3 bg-[#1C1C1E] rounded w-32 mb-3"></div>
+                <div class="bg-[#151515] rounded-xl h-24"></div>
             </div>`;
+
     } else {
-        detalhesPreco.innerHTML = '<p class="text-center text-red-500 py-4 font-bold text-sm">Erro ao buscar preço.</p>';
+        detalhesPreco.innerHTML = '<p class="text-sm text-red-500 font-bold">Erro ao buscar preço.</p>';
     }
 
 // ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
@@ -6313,12 +6360,11 @@ async function handleMostrarDetalhes(symbol) {
         }
 
         // =========================================================
-        // NOVA LÓGICA: COMPARAÇÃO (Tabela Horizontal Vesto com 5 Colunas)
+        // LÓGICA: COMPARAÇÃO (Tabela Horizontal com Destaques)
         // =========================================================
         let comparacaoHtml = '';
         if (dados.comparacao && dados.comparacao.length > 0) {
             
-            // Função para converter strings formatadas em números para descobrir os "campeões"
             const parseNumberStr = (str) => {
                 if (!str || str === '-' || str === 'N/A') return null;
                 let s = str.toUpperCase().replace(/\s/g, '');
@@ -6332,12 +6378,10 @@ async function handleMostrarDetalhes(symbol) {
                 return isNaN(val) ? null : val * mult;
             };
 
-            // Mapeia os dados válidos
             let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
             let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0); 
             let validPat = dados.comparacao.map(i => parseNumberStr(i.patrimonio)).filter(v => v !== null);
 
-            // Encontra os extremos (Maior DY, Menor P/VP, Maior Patrimônio)
             let maxDy = validDy.length ? Math.max(...validDy) : null;
             let minPvp = validPvp.length ? Math.min(...validPvp) : null;
             let maxPat = validPat.length ? Math.max(...validPat) : null;
@@ -6351,7 +6395,6 @@ async function handleMostrarDetalhes(symbol) {
                 let isBestPvp = vPvp !== null && vPvp === minPvp;
                 let isBestPat = vPat !== null && vPat === maxPat;
 
-                // Montagem das Badges com Destaque
                 let dyBadge = isBestDy 
                     ? `<span class="bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded text-[11px] font-bold" title="Maior Dividend Yield">${item.dy}</span>` 
                     : `<span class="text-xs text-gray-300 font-medium">${item.dy}</span>`;
@@ -6365,28 +6408,21 @@ async function handleMostrarDetalhes(symbol) {
                     ? `<span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded text-[11px] font-bold" title="Maior Valor Patrimonial">${valPat}</span>` 
                     : `<span class="text-xs text-gray-300 font-medium">${valPat}</span>`;
 
-                let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
-                let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
-
                 return `
                     <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                        <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                        <td class="p-3 whitespace-nowrap">
                             <div class="flex items-center gap-3">
                                 <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
                                     <span class="text-[8px] font-bold text-white tracking-wider">${item.ticker.substring(0,2)}</span>
                                 </div>
-                                <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
+                                </div>
                             </div>
                         </td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[70px]">${dyBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[70px]">${pvpBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[100px]">${patBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-center min-w-[100px]">
-                            <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valTipo}</span>
-                        </td>
-                        <td class="p-3 whitespace-nowrap text-center min-w-[120px]">
-                            <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valSeg}</span>
-                        </td>
+                        <td class="p-3 whitespace-nowrap text-right">${dyBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-right">${pvpBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-right">${patBadge}</td>
                     </tr>
                 `;
             }).join('');
@@ -6396,23 +6432,21 @@ async function handleMostrarDetalhes(symbol) {
                     Comparando Ativos
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                 </h4>
-                <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 relative overflow-hidden">
+                <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 relative">
                     <style>
                         .table-scrollbar::-webkit-scrollbar { height: 6px; }
-                        .table-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                        .table-scrollbar::-webkit-scrollbar-track { background: transparent; margin: 0 10px; }
                         .table-scrollbar::-webkit-scrollbar-thumb { background: #2A2A2C; border-radius: 10px; }
                         .table-scrollbar::-webkit-scrollbar-thumb:hover { background: #3F3F42; }
                     </style>
-                    <div class="overflow-x-auto table-scrollbar">
-                        <table class="w-full text-left border-collapse min-w-[550px]">
+                    <div class="overflow-x-auto table-scrollbar rounded-xl">
+                        <table class="w-full text-left border-collapse min-w-[340px]">
                             <thead>
-                                <tr class="bg-[#18181A]">
-                                    <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">Ativo</th>
+                                <tr>
+                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap">Ativo</th>
                                     <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
                                     <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
                                     <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Patrimônio</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Tipo</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Segmento</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -6424,7 +6458,7 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // Atualiza os placeholders no DOM com animação suave
+        // ── Tab RESUMO: KPIs grid ──
         const elGrid = document.getElementById('detalhes-grid-topo');
         if (elGrid) {
             elGrid.style.opacity = '0';
@@ -6435,16 +6469,7 @@ async function handleMostrarDetalhes(symbol) {
             });
         }
 
-        const elListas = document.getElementById('detalhes-listas-fundamentos');
-        if (elListas) {
-            elListas.style.opacity = '0';
-            elListas.innerHTML = listasHtml + sobreHtml + comparacaoHtml;
-            requestAnimationFrame(() => {
-                elListas.style.transition = 'opacity 0.3s ease';
-                elListas.style.opacity = '1';
-            });
-        }
-
+        // ── Tab RESUMO: Cards de proventos ──
         const elProvento = document.getElementById('detalhes-provento-placeholder');
         if (elProvento && proximoProventoHtml) {
             elProvento.style.opacity = '0';
@@ -6455,11 +6480,43 @@ async function handleMostrarDetalhes(symbol) {
             });
         }
 
+        // ── Tab INDICADORES: Listas de fundamentos + Valuation ──
+        const elListas = document.getElementById('detalhes-listas-fundamentos');
+        if (elListas) {
+            elListas.style.opacity = '0';
+            elListas.innerHTML = listasHtml;
+            requestAnimationFrame(() => {
+                elListas.style.transition = 'opacity 0.3s ease';
+                elListas.style.opacity = '1';
+            });
+        }
+
+        // ── Tab ANÁLISE: Sobre o Ativo + Tabela de Comparação ──
+        const elSobre = document.getElementById('detalhes-sobre-comparacao');
+        if (elSobre) {
+            const analiseConteudo = sobreHtml + comparacaoHtml;
+            elSobre.style.opacity = '0';
+            elSobre.innerHTML = analiseConteudo || `
+                <div class="flex flex-col items-center justify-center py-16 text-center">
+                    <div class="w-12 h-12 bg-[#151515] rounded-full flex items-center justify-center mb-3 border border-[#2C2C2E]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                    </div>
+                    <p class="text-xs text-gray-600 font-medium">Sem dados de análise disponíveis.</p>
+                </div>`;
+            requestAnimationFrame(() => {
+                elSobre.style.transition = 'opacity 0.3s ease';
+                elSobre.style.opacity = '1';
+            });
+        }
+
+        // ── Tab PORTFÓLIO: Imóveis (apenas FIIs) ──
         if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
             window.renderizarListaImoveis(fundamentos.imoveis);
+            if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.remove('hidden');
         } else {
             const containerImoveis = document.getElementById('detalhes-imoveis-container');
             if (containerImoveis) containerImoveis.innerHTML = '';
+            if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.add('hidden');
         }
 
     }).catch(e => console.error("Erro ao preencher fundamentos:", e));
@@ -9442,17 +9499,12 @@ if (objetivosContent) {
 window.openObjetivosModal = openObjetivosModal;
 
 window.renderizarListaImoveis = function(imoveis) {
+    // O container agora é estático no HTML, dentro da tab Portfólio
     let container = document.getElementById('detalhes-imoveis-container');
 
     if (!container) {
-        container = document.createElement('div');
-        container.id = 'detalhes-imoveis-container';
-        container.className = "w-full"; 
-
-        const historicoContainer = document.getElementById('detalhes-historico-container');
-        if (historicoContainer) {
-            historicoContainer.parentNode.insertBefore(container, historicoContainer.nextSibling);
-        }
+        console.warn('renderizarListaImoveis: container não encontrado');
+        return;
     }
 
     if (!imoveis || !Array.isArray(imoveis) || imoveis.length === 0) {

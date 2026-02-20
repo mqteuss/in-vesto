@@ -6730,15 +6730,14 @@ window.mudarFiltroProventos = function(modo) {
 };
 
 function renderizarGraficoProventosDetalhes(rawData) {
-    const canvas = document.getElementById('detalhes-proventos-chart');
-    if (!canvas) return;
+    // Guarda os dados brutos na memória da janela para podermos re-renderizar ao clicar nos filtros
+    window.currentRawDataProventos = rawData; 
 
     if (detalhesChartInstance) {
         detalhesChartInstance.destroy();
         detalhesChartInstance = null;
     }
 
-    const ctx = canvas.getContext('2d');
     let filteredData = rawData.filter(d => d.paymentDate);
     const hoje = new Date();
 
@@ -6812,9 +6811,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const totals = uniqueMonths.map(k => grouped[k].rawTotal);
 
     const statsEl = document.getElementById('detalhes-historico-stats');
-    if (statsEl) {
-        statsEl.innerHTML = ''; 
-    }
+    if (statsEl) statsEl.innerHTML = ''; 
 
     if (uniqueMonths.length === 0) {
         detalhesAiProvento.innerHTML = `<p class="text-xs text-gray-600 text-center py-8">Sem dados no período.</p>`;
@@ -6832,14 +6829,48 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const customInfo = uniqueMonths.map(k => grouped[k]);
     const dataMedia = uniqueMonths.map(() => mediaGeral);
 
-    if (!document.getElementById('detalhes-proventos-chart')) {
+    // ==============================================================
+    // CRIA O CONTAINER COM OS FILTROS INTEGRADOS (Se não existir)
+    // ==============================================================
+    if (!document.getElementById('chart-wrapper-proventos')) {
         detalhesAiProvento.innerHTML = `
-            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:220px;">
-                <canvas id="detalhes-proventos-chart"></canvas>
+            <div id="chart-wrapper-proventos" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:220px;">
+                
+                <div class="absolute top-4 left-4 z-10 pointer-events-none flex items-center gap-1.5">
+                    <div class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]"></div>
+                    <span class="text-[9px] uppercase tracking-widest font-bold text-gray-400">Proventos</span>
+                </div>
+
+                <div class="absolute inset-0 pt-12 pb-2 px-1 z-10">
+                    <canvas id="detalhes-proventos-chart"></canvas>
+                </div>
             </div>`;
-        return; 
+        
+        // Adiciona Inteligência aos novos botões de filtro
+        document.querySelectorAll('.filtro-btn-prov').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                currentProventosFilter = e.target.getAttribute('data-filter');
+                renderizarGraficoProventosDetalhes(window.currentRawDataProventos); // Atualiza o gráfico na hora
+            });
+        });
     }
 
+    // Gerencia as cores: acende o botão selecionado e apaga os outros
+    document.querySelectorAll('.filtro-btn-prov').forEach(btn => {
+        if (btn.getAttribute('data-filter') === currentProventosFilter) {
+            btn.classList.add('bg-[#2A2A2C]', 'text-white', 'shadow-sm');
+            btn.classList.remove('text-gray-500', 'hover:text-gray-300');
+        } else {
+            btn.classList.remove('bg-[#2A2A2C]', 'text-white', 'shadow-sm');
+            btn.classList.add('text-gray-500', 'hover:text-gray-300');
+        }
+    });
+
+    const canvas = document.getElementById('detalhes-proventos-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Inicializa o Chart.js
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
         plugins: [crosshairPlugin],
@@ -6905,16 +6936,13 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 x: {
                     stacked: true,
                     grid: { display: false, drawBorder: false },
-                    ticks: { display: false }, // OCULTA OS MESES NA PARTE DE BAIXO
+                    ticks: { display: false },
                     border: { display: false },
                 },
                 y: {
                     stacked: true,
-                    grid: {
-                        color: 'rgba(255,255,255,0.04)',
-                        drawBorder: false,
-                    },
-                    ticks: { display: false }, // OCULTA OS VALORES NA LATERAL ESQUERDA
+                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                    ticks: { display: false },
                     border: { display: false },
                 }
             },
@@ -6952,13 +6980,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                         },
                         afterBody() {
                             const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-                            // Adiciona as informações no final do tooltip, sem porcentagem, simplificado
-                            return [
-                                '', 
-                                `Méd/M: ${fmt(mediaGeral)}`,
-                                `Melhor: ${fmt(melhorMes)}`
-                            ];
+                            return [ '', `Méd/M: ${fmt(mediaGeral)}`, `Melhor: ${fmt(melhorMes)}` ];
                         }
                     }
                 }

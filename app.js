@@ -4784,12 +4784,12 @@ async function fetchCotacaoHistorica(symbol) {
         <div class="flex flex-col mb-2 px-1">
             <div id="chart-wrapper-cotacao" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height: 340px;">
                 
-                <div class="absolute top-3 left-3 right-3 z-20 flex justify-between items-start pointer-events-none">
+                <div class="absolute top-3 left-3 right-3 z-30 flex justify-between items-center pointer-events-none">
                     
-                    <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center gap-3">
                         <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest drop-shadow-md">Histórico de Preço</span>
                         
-                        <div class="flex items-center gap-2 text-[11px] font-bold text-gray-500 bg-[#0f0f0f]/50 px-1 py-0.5 rounded backdrop-blur-sm">
+                        <div class="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 bg-[#0f0f0f]/60 px-2 py-0.5 rounded backdrop-blur-md">
                             <span>A: <span id="stat-open" class="text-white">--</span></span>
                             <span class="text-[#333] font-light">|</span>
                             <span>V: <span id="stat-var" class="text-white">--</span></span>
@@ -4800,16 +4800,16 @@ async function fetchCotacaoHistorica(symbol) {
                     
                     <div class="flex gap-1 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl flex-shrink-0 border border-white/5 shadow-lg pointer-events-auto" id="chart-type-toggle">
                         <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
-                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none bg-[#2C2C2E] text-white"
+                            class="chart-type-btn px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none bg-[#2C2C2E] text-white"
                             title="Gráfico de Linha">
-                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                             </svg>
                         </button>
                         <button id="btn-type-candlestick" onclick="window.mudarTipoGrafico('candlestick', '${symbol}')"
-                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none text-gray-500 hover:text-gray-300"
-                            title="Gráfico de Velas (Candlestick)">
-                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            class="chart-type-btn px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none text-gray-500 hover:text-gray-300"
+                            title="Gráfico de Velas">
+                            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <line x1="2.5" y1="1" x2="2.5" y2="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
                                 <rect x="1" y="3" width="3" height="5" rx="0.5" fill="currentColor" opacity="0.9"/>
                                 <line x1="2.5" y1="8" x2="2.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
@@ -4824,7 +4824,7 @@ async function fetchCotacaoHistorica(symbol) {
                     </div>
                 </div>
 
-                <div class="absolute bottom-2 left-2 right-2 z-20 pointer-events-auto">
+                <div class="absolute top-11 left-2 right-2 z-20 pointer-events-auto">
                     <div class="relative flex items-center gap-0.5 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full border border-white/5 shadow-lg" id="chart-filters">
                         <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                         ${window.gerarBotaoFiltro('1D', symbol, true)}
@@ -4838,7 +4838,7 @@ async function fetchCotacaoHistorica(symbol) {
                     </div>
                 </div>
 
-                <div class="absolute top-[60px] bottom-[56px] left-0 right-0 px-1 z-10" id="chart-area-wrapper">
+                <div class="absolute top-[90px] bottom-0 left-0 right-0 pb-2 px-1 z-10" id="chart-area-wrapper">
                      <div class="flex flex-col items-center justify-center h-full animate-pulse">
                         <span class="text-[10px] text-gray-600 tracking-wider">Carregando...</span>
                     </div>
@@ -5175,7 +5175,7 @@ function renderLineChart(dataPoints, range) {
             layout: { 
                 padding: { left: 0, right: 36, top: 10, bottom: 20 } 
             },
-            plugins: {
+plugins: {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
@@ -5204,26 +5204,8 @@ function renderLineChart(dataPoints, range) {
                             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
                         },
                         label: function(context) {
+                        
                             return `Fechamento: R$ ${context.parsed.y.toFixed(2).replace('.', ',')}`;
-                        },
-                        afterBody: function(context) {
-                            const idx = context[0].dataIndex;
-                            const point = dataPoints[idx];
-                            
-                            // Busca a abertura, usando o fechamento como fallback se API falhar
-                            const open = point.open || point.price;
-                            const close = point.price;
-                            
-                            if (!open) return [];
-
-                            const diff = close - open;
-                            const varPct = (diff / open) * 100;
-                            const sinal = diff >= 0 ? '+' : '';
-                            
-                            return [
-                                `Abertura: R$ ${open.toFixed(2).replace('.', ',')}`,
-                                `Variação: ${sinal}${varPct.toFixed(2).replace('.', ',')}%`
-                            ];
                         }
                     }
                 }
@@ -5243,9 +5225,6 @@ function renderLineChart(dataPoints, range) {
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  GRÁFICO DE VELAS (CANDLESTICK) — renderização manual no canvas
-// ─────────────────────────────────────────────────────────────────────────────
 function renderCandlestickChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;

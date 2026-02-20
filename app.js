@@ -4784,73 +4784,72 @@ async function fetchCotacaoHistorica(symbol) {
         <div class="flex flex-col mb-2 px-1">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Preço</h4>
 
-            <div class="grid grid-cols-3 gap-2 mb-4">
+<div class="grid grid-cols-3 gap-2 mb-4">
+
                 <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Abertura</span>
                     <span id="stat-open" class="text-base font-bold text-white leading-none">--</span>
                 </div>
+
                 <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Variação</span>
                     <span id="stat-var" class="text-base font-bold text-white leading-none">--</span>
                 </div>
+
                 <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Fechamento</span>
                     <span id="stat-close" class="text-base font-bold text-white leading-none">--</span>
                 </div>
+
             </div>
 
-            <div class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" id="chart-area-wrapper" style="height: 280px;">
-                
-                <div class="absolute top-2.5 left-2 right-2 flex justify-between items-start z-20 pointer-events-none gap-2">
-                    
-                    <div class="pointer-events-auto relative flex overflow-x-auto no-scrollbar gap-0.5 p-1 bg-[#151515]/80 backdrop-blur-md rounded-xl border border-white/5 shadow-lg flex-1" id="chart-filters">
-                        <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
-                        ${gerarBotaoFiltro('1D', symbol, true)}
-                        ${gerarBotaoFiltro('5D', symbol)}
-                        ${gerarBotaoFiltro('1M', symbol)}
-                        ${gerarBotaoFiltro('6M', symbol)}
-                        ${gerarBotaoFiltro('YTD', symbol)}
-                        ${gerarBotaoFiltro('1A', symbol)}
-                        ${gerarBotaoFiltro('5A', symbol)}
-                        ${gerarBotaoFiltro('Tudo', symbol)}
-                    </div>
-
-                    <div class="pointer-events-auto flex gap-1 p-1 bg-[#151515]/80 backdrop-blur-md rounded-xl border border-white/5 shadow-lg flex-shrink-0" id="chart-type-toggle">
-                        <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
-                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none bg-[#2C2C2E] text-white"
-                            title="Gráfico de Linha">
-                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                            </svg>
-                        </button>
-                        <button id="btn-type-candlestick" onclick="window.mudarTipoGrafico('candlestick', '${symbol}')"
-                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none text-gray-500 hover:text-gray-300"
-                            title="Gráfico de Velas (Candlestick)">
-                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <line x1="2.5" y1="1" x2="2.5" y2="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                                <rect x="1" y="3" width="3" height="5" rx="0.5" fill="currentColor" opacity="0.9"/>
-                                <line x1="2.5" y1="8" x2="2.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                                <line x1="7" y1="2" x2="7" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                                <rect x="5.5" y="5" width="3" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
-                                <line x1="7" y1="9" x2="7" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                                <line x1="11.5" y1="1.5" x2="11.5" y2="4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                                <rect x="10" y="4" width="3" height="6" rx="0.5" fill="currentColor" opacity="0.9"/>
-                                <line x1="11.5" y1="10" x2="11.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                            </svg>
-                        </button>
-                    </div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+                <div class="relative flex overflow-x-auto no-scrollbar gap-0.5 p-1 bg-[#151515] rounded-xl flex-1" id="chart-filters">
+                    <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
+                    ${gerarBotaoFiltro('1D', symbol, true)}
+                    ${gerarBotaoFiltro('5D', symbol)}
+                    ${gerarBotaoFiltro('1M', symbol)}
+                    ${gerarBotaoFiltro('6M', symbol)}
+                    ${gerarBotaoFiltro('YTD', symbol)}
+                    ${gerarBotaoFiltro('1A', symbol)}
+                    ${gerarBotaoFiltro('5A', symbol)}
+                    ${gerarBotaoFiltro('Tudo', symbol)}
                 </div>
-
-                <div class="absolute inset-0 pt-16 pb-2 px-1 z-10" id="chart-canvas-container">
-                     <div class="flex flex-col items-center justify-center h-full animate-pulse">
-                        <span class="text-[10px] text-gray-600 tracking-wider">Carregando...</span>
-                    </div>
+                <div class="flex gap-1 p-1 bg-[#151515] rounded-xl flex-shrink-0" id="chart-type-toggle">
+                    <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
+                        class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none bg-[#2C2C2E] text-white"
+                        title="Gráfico de Linha">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        </svg>
+                    </button>
+                    <button id="btn-type-candlestick" onclick="window.mudarTipoGrafico('candlestick', '${symbol}')"
+                        class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none text-gray-500 hover:text-gray-300"
+                        title="Gráfico de Velas (Candlestick)">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <line x1="2.5" y1="1" x2="2.5" y2="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <rect x="1" y="3" width="3" height="5" rx="0.5" fill="currentColor" opacity="0.9"/>
+                            <line x1="2.5" y1="8" x2="2.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <line x1="7" y1="2" x2="7" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <rect x="5.5" y="5" width="3" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                            <line x1="7" y1="9" x2="7" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <line x1="11.5" y1="1.5" x2="11.5" y2="4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <rect x="10" y="4" width="3" height="6" rx="0.5" fill="currentColor" opacity="0.9"/>
+                            <line x1="11.5" y1="10" x2="11.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                 </div>
+            </div>
+        </div>
+
+        <div class="relative h-72 w-full bg-[#151515] rounded-xl p-2 shadow-sm" id="chart-area-wrapper">
+             <div class="flex flex-col items-center justify-center h-full animate-pulse">
+                <span class="text-[10px] text-gray-600 tracking-wider">Carregando...</span>
             </div>
         </div>
     `;
 
-    // INICIA A POSIÇÃO DO SLIDER NO "1D"
+    // INICIA A POSIÇÃO DO SLIDER NO "1D" (Tempo de delay pequeno para o DOM renderizar o CSS)
     setTimeout(() => {
         const activeBtn = document.getElementById('btn-1D');
         const slider = document.getElementById('cotacao-slider');
@@ -4889,8 +4888,8 @@ async function carregarDadosGrafico(range, symbol) {
         let data = window.tempChartCache[cacheKey];
 
         if (!data) {
-            // UI Loading direcionado ao canvas
-            const wrapper = document.getElementById('chart-canvas-container');
+            // UI Loading state se necessário (opcional aqui pois já iniciou com skeleton)
+            const wrapper = document.getElementById('chart-area-wrapper');
             if(wrapper && !wrapper.querySelector('.animate-pulse')) {
                  wrapper.innerHTML = `<div class="flex flex-col items-center justify-center h-full animate-pulse"><span class="text-[10px] text-gray-600">CARREGANDO...</span></div>`;
             }
@@ -4909,7 +4908,7 @@ async function carregarDadosGrafico(range, symbol) {
             }
         }
 
-        // FIX: Verificação final antes de renderizar
+        // FIX: Verificação final antes de renderizar (pode já estar em cache mas modal fechou)
         if (fetchId !== currentChartFetchId) return;
 
         renderPriceChart(data, range);
@@ -4917,7 +4916,7 @@ async function carregarDadosGrafico(range, symbol) {
     } catch (e) {
         if (fetchId !== currentChartFetchId) return; // FIX: Ignora erros de fetches cancelados
         console.error("Erro gráfico:", e);
-        const wrapper = document.getElementById('chart-canvas-container');
+        const wrapper = document.getElementById('chart-area-wrapper');
         if(wrapper) wrapper.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full text-gray-500">
                 <span class="text-xs">Indisponível para ${range}</span>
@@ -4988,7 +4987,7 @@ function renderPriceChart(dataPoints, range) {
 }
 
 function renderLineChart(dataPoints, range) {
-    const wrapper = document.getElementById('chart-canvas-container'); // Aponta pro novo sub-container
+    const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
     // ✅ CORREÇÃO: Destruir ANTES de limpar o DOM para evitar ResizeObserver zumbi.
@@ -5283,7 +5282,7 @@ function renderLineChart(dataPoints, range) {
 //  GRÁFICO DE VELAS (CANDLESTICK) — renderização manual no canvas
 // ─────────────────────────────────────────────────────────────────────────────
 function renderCandlestickChart(dataPoints, range) {
-    const wrapper = document.getElementById('chart-canvas-container'); // Aponta pro novo sub-container
+    const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
     if (cotacaoChartInstance) { cotacaoChartInstance.destroy(); cotacaoChartInstance = null; }

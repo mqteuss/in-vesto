@@ -6399,7 +6399,7 @@ async function handleMostrarDetalhes(symbol) {
             let minPvp = validPvp.length ? Math.min(...validPvp) : null;
             let maxPat = validPat.length ? Math.max(...validPat) : null;
 
-            let tbody = dados.comparacao.map(item => {
+let tbody = dados.comparacao.map(item => {
                 let vDy = parseNumberStr(item.dy);
                 let vPvp = parseNumberStr(item.pvp);
                 let vPat = parseNumberStr(item.patrimonio);
@@ -6408,34 +6408,45 @@ async function handleMostrarDetalhes(symbol) {
                 let isBestPvp = vPvp !== null && vPvp === minPvp;
                 let isBestPat = vPat !== null && vPat === maxPat;
 
+                // Indicador minimalista (um pontinho verde sutil com um leve brilho)
+                const dot = `<span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500 ml-1.5 align-middle shadow-[0_0_5px_rgba(34,197,94,0.6)]"></span>`;
+
+                // Montagem Minimalista: Campeão = Branco + Dot | Restante = Cinza apagado
                 let dyBadge = isBestDy 
-                    ? `<span class="bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded text-[11px] font-bold" title="Maior Dividend Yield">${item.dy}</span>` 
-                    : `<span class="text-xs text-gray-300 font-medium">${item.dy}</span>`;
+                    ? `<span class="text-[11px] text-white font-bold tracking-wide cursor-default" title="Maior Dividend Yield">${item.dy}${dot}</span>` 
+                    : `<span class="text-[11px] text-[#666] font-medium">${item.dy}</span>`;
 
                 let pvpBadge = isBestPvp 
-                    ? `<span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded text-[11px] font-bold" title="Menor P/VP">${item.pvp}</span>` 
-                    : `<span class="text-xs text-gray-300 font-medium">${item.pvp}</span>`;
+                    ? `<span class="text-[11px] text-white font-bold tracking-wide cursor-default" title="Menor P/VP">${item.pvp}${dot}</span>` 
+                    : `<span class="text-[11px] text-[#666] font-medium">${item.pvp}</span>`;
 
                 let valPat = item.patrimonio && item.patrimonio !== '-' && item.patrimonio !== 'N/A' ? item.patrimonio : '-';
                 let patBadge = isBestPat 
-                    ? `<span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded text-[11px] font-bold" title="Maior Valor Patrimonial">${valPat}</span>` 
-                    : `<span class="text-xs text-gray-300 font-medium">${valPat}</span>`;
+                    ? `<span class="text-[11px] text-white font-bold tracking-wide cursor-default" title="Maior Valor Patrimonial">${valPat}${dot}</span>` 
+                    : `<span class="text-[11px] text-[#666] font-medium">${valPat}</span>`;
+
+                let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
+                let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
 
                 return `
                     <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                        <td class="p-3 whitespace-nowrap">
+                        <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
                             <div class="flex items-center gap-3">
                                 <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
                                     <span class="text-[8px] font-bold text-white tracking-wider">${item.ticker.substring(0,2)}</span>
                                 </div>
-                                <div class="flex flex-col">
-                                    <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
-                                </div>
+                                <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                             </div>
                         </td>
-                        <td class="p-3 whitespace-nowrap text-right">${dyBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right">${pvpBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right">${patBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-right min-w-[70px]">${dyBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-right min-w-[70px]">${pvpBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-right min-w-[100px]">${patBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-center min-w-[100px]">
+                            <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valTipo}</span>
+                        </td>
+                        <td class="p-3 whitespace-nowrap text-center min-w-[120px]">
+                            <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valSeg}</span>
+                        </td>
                     </tr>
                 `;
             }).join('');

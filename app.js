@@ -6316,7 +6316,8 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('VP por Ação', dados.vp_cota)}
                 </div>
                 ${valuationHtml}`;
-        } else {
+} else {
+            // É FII
             gridTopo = [
                 renderKpi('DY', dados.dy),
                 renderKpi('P/VP', dados.pvp),
@@ -6334,18 +6335,19 @@ async function handleMostrarDetalhes(symbol) {
                     ${renderRow('Vacância', dados.vacancia)}
                     ${renderRow('Último Rend.', dados.ultimo_rendimento)}
                 </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Patrimônio</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Patrimônio & Mercado</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Patrimônio Líq.', dados.patrimonio_liquido)}
                     ${renderRow('VP por Cota', dados.vp_cota)}
                     ${renderRow('Valor de Mercado', dados.val_mercado)}
+                    ${renderRow('Nº de Cotistas', dados.num_cotistas)}
+                    ${renderRow('Cotas Emitidas', dados.cotas_emitidas)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Sobre o Fundo</h4>
                 <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
                     ${renderRow('Segmento', dados.segmento)}
                     ${renderRow('Tipo', dados.tipo_fundo)}
                     ${renderRow('Público Alvo', dados.publico_alvo)}
-                    ${renderRow('Vacância', dados.vacancia)}
                     ${renderRow('Gestão', dados.tipo_gestao)}
                 </div>
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Taxas & Informações</h4>

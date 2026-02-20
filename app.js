@@ -6792,85 +6792,41 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const uniqueMonths = [...new Set(allMonths)].sort();
     const totals = uniqueMonths.map(k => grouped[k].rawTotal);
 
-    // ── Stats summary bar — limpar (exibidos no overlay do canvas) ──
+    // ── Limpa os stats visuais do lado de fora (Header) ──
     const statsEl = document.getElementById('detalhes-historico-stats');
-    if (statsEl) statsEl.innerHTML = '';
+    if (statsEl) {
+        statsEl.innerHTML = ''; // Limpa para liberar espaço no cabeçalho
+    }
 
     if (uniqueMonths.length === 0) {
         detalhesAiProvento.innerHTML = `<p class="text-xs text-gray-600 text-center py-8">Sem dados no período.</p>`;
         return;
     }
 
+    // Cálculos de Média e Melhor Mês (Para usar no Gráfico e no Tooltip)
+    const totalGeral = totals.reduce((s, v) => s + v, 0);
+    const mediaGeral = totals.length > 0 ? totalGeral / totals.length : 0;
+    const melhorMes = totals.length > 0 ? Math.max(...totals) : 0;
+
     const labels = uniqueMonths.map(k => grouped[k].label);
     const dataJCP = uniqueMonths.map(k => grouped[k].JCP);
     const dataTRIB = uniqueMonths.map(k => grouped[k].TRIB);
     const dataDIV = uniqueMonths.map(k => grouped[k].DIV);
     const customInfo = uniqueMonths.map(k => grouped[k]);
+    const dataMedia = uniqueMonths.map(() => mediaGeral);
 
-    // Linha de média (dataset invisível com média)
-    const media = totals.reduce((s, v) => s + v, 0) / totals.length;
-    const dataMedia = uniqueMonths.map(() => media);
-
-    // Garante que o canvas existe
+    // Garante que o canvas existe antes de criar o gráfico
     if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `
-            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:280px;">
+            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:220px;">
                 <canvas id="detalhes-proventos-chart"></canvas>
             </div>`;
-        return;
+        return; 
     }
-
-    // ── Formatador compacto: 2 casas sempre (ex: R$0,75 e não R$0,750) ──
-    const mediaVal = media;
-    const melhorVal = Math.max(...totals);
-    const fmtShort = (v) => {
-        if (v === 0) return 'R$0,00';
-        // Para valores muito pequenos (microprovento < R$0,01), usa 4 casas; senão, 2.
-        const dec = v > 0 && v < 0.01 ? 4 : 2;
-        return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: dec, maximumFractionDigits: dec });
-    };
-
-    // ── Plugin overlay: Méd/mês e Melhor no canto superior direito ──
-    // O layout.padding.right reserva espaço para que as barras não passem por baixo.
-    const OVERLAY_W = 82; // largura reservada no canvas (deve igualar ao padding.right abaixo)
-    const statsOverlayPlugin = {
-        id: 'statsOverlay',
-        afterDraw(chart) {
-            const { ctx, chartArea } = chart;
-            if (!chartArea) return;
-            ctx.save();
-
-            const lines = [
-                { label: 'MÉD/MÊS', value: fmtShort(mediaVal), color: 'rgba(200,200,200,0.5)' },
-                { label: 'MELHOR',  value: fmtShort(melhorVal), color: '#4ade80' },
-            ];
-
-            const padY = 12;
-            const padX = 8;
-            const lineH = 22;
-            let y = chartArea.top + padY;
-            const x = chartArea.right + padX; // começa após a área de dados
-
-            lines.forEach(({ label, value, color }) => {
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-                ctx.font = '700 7.5px Inter, sans-serif';
-                ctx.fillStyle = 'rgba(90,90,90,1)';
-                ctx.fillText(label, x, y);
-
-                ctx.font = '700 9.5px Inter, sans-serif';
-                ctx.fillStyle = color;
-                ctx.fillText(value, x, y + 10);
-                y += lineH;
-            });
-
-            ctx.restore();
-        }
-    };
 
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
-        plugins: [crosshairPlugin, statsOverlayPlugin],
+        plugins: [crosshairPlugin],
         data: {
             labels,
             datasets: [
@@ -6881,9 +6837,8 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderColor: 'rgba(251,191,36,0)',
                     borderWidth: 0,
                     stack: 'prov',
-                    customInfo,
-                    barPercentage: 0.65,
-                    categoryPercentage: 0.88,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.85,
                     borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
                     borderSkipped: false,
                 },
@@ -6893,21 +6848,19 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     backgroundColor: 'rgba(251,113,133,0.8)',
                     borderWidth: 0,
                     stack: 'prov',
-                    customInfo,
-                    barPercentage: 0.65,
-                    categoryPercentage: 0.88,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.85,
                     borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
                     borderSkipped: false,
                 },
                 {
-                    label: 'Div',
+                    label: 'Dividendo',
                     data: dataDIV,
                     backgroundColor: 'rgba(167,139,250,0.85)',
                     borderWidth: 0,
                     stack: 'prov',
-                    customInfo,
-                    barPercentage: 0.65,
-                    categoryPercentage: 0.88,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.85,
                     borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 2, bottomRight: 2 },
                     borderSkipped: false,
                 },
@@ -6930,23 +6883,37 @@ function renderizarGraficoProventosDetalhes(rawData) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: {
-                padding: { right: OVERLAY_W, top: 6, bottom: 4, left: 0 }
-            },
             interaction: { mode: 'index', intersect: false },
             animation: { duration: 400, easing: 'easeOutQuart' },
             scales: {
                 x: {
                     stacked: true,
                     grid: { display: false, drawBorder: false },
-                    ticks: { display: false },
+                    ticks: {
+                        color: '#555',
+                        font: { family: 'Inter', size: 9, weight: '600' },
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: labels.length > 12 ? 6 : labels.length,
+                    },
                     border: { display: false },
                 },
                 y: {
                     stacked: true,
-                    display: false,
-                    grid: { display: false },
-                    ticks: { display: false },
+                    grid: {
+                        color: 'rgba(255,255,255,0.04)',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        color: '#444',
+                        font: { family: 'Inter', size: 9 },
+                        maxTicksLimit: 4,
+                        callback: (v) => {
+                            if (v >= 1) return `R$${v.toFixed(2)}`;
+                            if (v >= 0.01) return `R$${v.toFixed(3)}`;
+                            return '';
+                        },
+                    },
                     border: { display: false },
                 }
             },
@@ -6956,12 +6923,10 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     enabled: true,
                     backgroundColor: 'rgba(8,8,8,0.96)',
                     titleColor: '#ffffff',
-                    bodyColor: '#aaa',
-                    footerColor: '#555',
-                    titleFont: { family: 'Inter', size: 13, weight: '700' },
+                    bodyColor: '#999',
+                    titleFont: { family: 'Inter', size: 11, weight: '700' },
                     bodyFont: { family: 'Inter', size: 10 },
-                    footerFont: { family: 'Inter', size: 9, style: 'normal' },
-                    borderColor: '#2a2a2a',
+                    borderColor: '#222',
                     borderWidth: 1,
                     padding: 10,
                     cornerRadius: 8,
@@ -6969,15 +6934,11 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     boxWidth: 6,
                     boxHeight: 6,
                     usePointStyle: true,
-callbacks: {
+                    callbacks: {
                         title(context) {
-                            // Correção: Puxa o dado direto da variável local usando o Index da coluna
                             const idx = context[0].dataIndex;
                             const info = customInfo[idx];
-                            
-                            // Fallback de segurança para não sumir o título
                             if (!info) return context[0].label || '';
-                            
                             const totalFmt = info.rawTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                             return `${info.label}  ·  ${totalFmt}`;
                         },
@@ -6989,17 +6950,22 @@ callbacks: {
                             return `${context.dataset.label}: ${valFmt}`;
                         },
                         afterBody(context) {
-                            // Correção: Aplica a mesma lógica de Index para o texto de "vs média"
                             const idx = context[0].dataIndex;
                             const info = customInfo[idx];
                             if (!info) return [];
                             
-                            const media = dataMedia[0];
-                            if (!media) return [];
-                            const diff = info.rawTotal - media;
-                            const pct = ((diff / media) * 100).toFixed(1);
+                            const diff = info.rawTotal - mediaGeral;
+                            const pct = mediaGeral > 0 ? ((diff / mediaGeral) * 100).toFixed(1) : 0;
                             const sinal = diff >= 0 ? '+' : '';
-                            return [`vs. média: ${sinal}${pct}%`];
+                            
+                            const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                            // Adiciona as informações no final do tooltip
+                            return [
+                                '', // Cria um pequeno respiro (linha em branco)
+                                `Média/mês: ${fmt(mediaGeral)} (${sinal}${pct}%)`,
+                                `Melhor mês: ${fmt(melhorMes)}`
+                            ];
                         }
                     }
                 }

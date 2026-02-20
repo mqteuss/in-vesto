@@ -4784,67 +4784,68 @@ async function fetchCotacaoHistorica(symbol) {
         <div class="flex flex-col mb-2 px-1">
             <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Preço</h4>
 
-<div class="grid grid-cols-3 gap-2 mb-4">
-
+            <div class="grid grid-cols-3 gap-2 mb-4">
                 <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Abertura</span>
                     <span id="stat-open" class="text-base font-bold text-white leading-none">--</span>
                 </div>
-
                 <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Variação</span>
                     <span id="stat-var" class="text-base font-bold text-white leading-none">--</span>
                 </div>
-
                 <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
                     <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Fechamento</span>
                     <span id="stat-close" class="text-base font-bold text-white leading-none">--</span>
                 </div>
-
             </div>
 
-            <div class="flex items-center justify-between gap-2 mb-3">
-                <div class="relative flex overflow-x-auto no-scrollbar gap-0.5 p-1 bg-[#151515] rounded-xl flex-1" id="chart-filters">
-                    <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
-                    ${gerarBotaoFiltro('1D', symbol, true)}
-                    ${gerarBotaoFiltro('5D', symbol)}
-                    ${gerarBotaoFiltro('1M', symbol)}
-                    ${gerarBotaoFiltro('6M', symbol)}
-                    ${gerarBotaoFiltro('YTD', symbol)}
-                    ${gerarBotaoFiltro('1A', symbol)}
-                    ${gerarBotaoFiltro('5A', symbol)}
-                    ${gerarBotaoFiltro('Tudo', symbol)}
+            <div id="chart-wrapper-cotacao" class="relative h-72 w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden">
+                
+                <div class="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2">
+                    
+                    <div class="relative flex items-center gap-0.5 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1 border border-white/5 shadow-lg" id="chart-filters">
+                        <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
+                        ${window.gerarBotaoFiltro('1D', symbol, true)}
+                        ${window.gerarBotaoFiltro('5D', symbol)}
+                        ${window.gerarBotaoFiltro('1M', symbol)}
+                        ${window.gerarBotaoFiltro('6M', symbol)}
+                        ${window.gerarBotaoFiltro('YTD', symbol)}
+                        ${window.gerarBotaoFiltro('1A', symbol)}
+                        ${window.gerarBotaoFiltro('5A', symbol)}
+                        ${window.gerarBotaoFiltro('Tudo', symbol)}
+                    </div>
+                    
+                    <div class="flex gap-1 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl flex-shrink-0 border border-white/5 shadow-lg" id="chart-type-toggle">
+                        <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
+                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none bg-[#2C2C2E] text-white"
+                            title="Gráfico de Linha">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            </svg>
+                        </button>
+                        <button id="btn-type-candlestick" onclick="window.mudarTipoGrafico('candlestick', '${symbol}')"
+                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none text-gray-500 hover:text-gray-300"
+                            title="Gráfico de Velas (Candlestick)">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <line x1="2.5" y1="1" x2="2.5" y2="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                                <rect x="1" y="3" width="3" height="5" rx="0.5" fill="currentColor" opacity="0.9"/>
+                                <line x1="2.5" y1="8" x2="2.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                                <line x1="7" y1="2" x2="7" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                                <rect x="5.5" y="5" width="3" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                                <line x1="7" y1="9" x2="7" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                                <line x1="11.5" y1="1.5" x2="11.5" y2="4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                                <rect x="10" y="4" width="3" height="6" rx="0.5" fill="currentColor" opacity="0.9"/>
+                                <line x1="11.5" y1="10" x2="11.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-                <div class="flex gap-1 p-1 bg-[#151515] rounded-xl flex-shrink-0" id="chart-type-toggle">
-                    <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
-                        class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none bg-[#2C2C2E] text-white"
-                        title="Gráfico de Linha">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                        </svg>
-                    </button>
-                    <button id="btn-type-candlestick" onclick="window.mudarTipoGrafico('candlestick', '${symbol}')"
-                        class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none text-gray-500 hover:text-gray-300"
-                        title="Gráfico de Velas (Candlestick)">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <line x1="2.5" y1="1" x2="2.5" y2="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                            <rect x="1" y="3" width="3" height="5" rx="0.5" fill="currentColor" opacity="0.9"/>
-                            <line x1="2.5" y1="8" x2="2.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                            <line x1="7" y1="2" x2="7" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                            <rect x="5.5" y="5" width="3" height="4" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
-                            <line x1="7" y1="9" x2="7" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                            <line x1="11.5" y1="1.5" x2="11.5" y2="4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                            <rect x="10" y="4" width="3" height="6" rx="0.5" fill="currentColor" opacity="0.9"/>
-                            <line x1="11.5" y1="10" x2="11.5" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
 
-        <div class="relative h-72 w-full bg-[#151515] rounded-xl p-2 shadow-sm" id="chart-area-wrapper">
-             <div class="flex flex-col items-center justify-center h-full animate-pulse">
-                <span class="text-[10px] text-gray-600 tracking-wider">Carregando...</span>
+                <div class="absolute top-[48px] bottom-0 left-0 right-0 pb-2 px-1 z-10" id="chart-area-wrapper">
+                     <div class="flex flex-col items-center justify-center h-full animate-pulse">
+                        <span class="text-[10px] text-gray-600 tracking-wider">Carregando...</span>
+                    </div>
+                </div>
             </div>
         </div>
     `;

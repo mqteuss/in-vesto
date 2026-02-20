@@ -6685,8 +6685,10 @@ function renderHistoricoIADetalhes(mesesIgnore) {
 
 if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `
-            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:280px;">
-                <canvas id="detalhes-proventos-chart"></canvas>
+            <div class="w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:280px;">
+                <div id="detalhes-proventos-scroll" class="overflow-x-auto h-full no-scrollbar" style="height:280px;">
+                    <canvas id="detalhes-proventos-chart" style="height:280px; display:block;"></canvas>
+                </div>
             </div>`;
     }
 
@@ -6814,51 +6816,80 @@ function renderizarGraficoProventosDetalhes(rawData) {
     // Garante que o canvas existe
     if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `
-            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:280px;">
-                <canvas id="detalhes-proventos-chart"></canvas>
+            <div class="w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:280px;">
+                <div id="detalhes-proventos-scroll" class="overflow-x-auto h-full no-scrollbar" style="height:280px;">
+                    <canvas id="detalhes-proventos-chart" style="height:280px; display:block;"></canvas>
+                </div>
             </div>`;
         return;
     }
 
-    // Plugin: Média/Melhor no canto superior direito do canvas
+    // ── Formatador compacto: 2 casas sempre (ex: R$0,75 e não R$0,750) ──
     const mediaVal = media;
     const melhorVal = Math.max(...totals);
-    const fmtShort = (v) => v < 1 ? `R$${v.toFixed(3)}` : `R$${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const fmtShort = (v) => {
+        if (v === 0) return 'R$0,00';
+        // Para valores muito pequenos (microprovento < R$0,01), usa 4 casas; senão, 2.
+        const dec = v > 0 && v < 0.01 ? 4 : 2;
+        return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: dec, maximumFractionDigits: dec });
+    };
 
+    // ── Plugin overlay: Méd/mês e Melhor no canto superior direito ──
+    // O layout.padding.right reserva espaço para que as barras não passem por baixo.
+    const OVERLAY_W = 82; // largura reservada no canvas (deve igualar ao padding.right abaixo)
     const statsOverlayPlugin = {
         id: 'statsOverlay',
         afterDraw(chart) {
-            const { ctx, chartArea } = chart;
+            const { ctx, chartArea, canvas: cv } = chart;
             if (!chartArea) return;
             ctx.save();
 
+            // Fundo semitransparente para separar do gráfico
+            const bgX = cv.width / (window.devicePixelRatio || 1) - OVERLAY_W;
+            ctx.fillStyle = 'rgba(15,15,15,0.0)'; // transparente — fundo já é escuro
+
             const lines = [
-                { label: 'Méd/mês', value: fmtShort(mediaVal), color: 'rgba(255,255,255,0.45)' },
-                { label: 'Melhor',  value: fmtShort(melhorVal), color: '#4ade80' },
+                { label: 'MÉD/MÊS', value: fmtShort(mediaVal), color: 'rgba(200,200,200,0.5)' },
+                { label: 'MELHOR',  value: fmtShort(melhorVal), color: '#4ade80' },
             ];
 
-            const lineH = 16;
-            const padX = 10;
-            const padY = 10;
+            const padY = 12;
+            const padX = 8;
+            const lineH = 22;
             let y = chartArea.top + padY;
+            const x = chartArea.right + padX; // começa após a área de dados
 
             lines.forEach(({ label, value, color }) => {
-                ctx.font = 'bold 8px Inter, sans-serif';
-                ctx.fillStyle = 'rgba(100,100,100,0.9)';
-                ctx.textAlign = 'right';
+                ctx.textAlign = 'left';
                 ctx.textBaseline = 'top';
-                const labelX = chartArea.right - padX;
-                ctx.fillText(label.toUpperCase(), labelX, y);
+                ctx.font = '700 7.5px Inter, sans-serif';
+                ctx.fillStyle = 'rgba(90,90,90,1)';
+                ctx.fillText(label, x, y);
 
-                ctx.font = 'bold 9px Inter, sans-serif';
+                ctx.font = '700 9.5px Inter, sans-serif';
                 ctx.fillStyle = color;
-                ctx.fillText(value, labelX, y + 9);
-                y += lineH + 6;
+                ctx.fillText(value, x, y + 10);
+                y += lineH;
             });
 
             ctx.restore();
         }
     };
+
+    // ── Scroll horizontal: canvas cresce proporcionalmente ao nº de meses ──
+    const scrollEl = document.getElementById('detalhes-proventos-scroll');
+    const BAR_MIN_PX = 38; // px mínimos por barra (inclui gap)
+    const containerW = scrollEl ? scrollEl.clientWidth : 300;
+    const dataW = uniqueMonths.length * BAR_MIN_PX;
+    const chartW = Math.max(containerW - OVERLAY_W, dataW); // dados + espaço overlay separado
+    const totalCanvasW = chartW + OVERLAY_W;
+
+    const canvas2 = document.getElementById('detalhes-proventos-chart');
+    if (canvas2) {
+        canvas2.style.width  = totalCanvasW + 'px';
+        canvas2.style.minWidth = totalCanvasW + 'px';
+        canvas2.style.height = '280px';
+    }
 
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -6874,8 +6905,8 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderWidth: 0,
                     stack: 'prov',
                     customInfo,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.85,
+                    barPercentage: 0.65,
+                    categoryPercentage: 0.88,
                     borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
                     borderSkipped: false,
                 },
@@ -6886,8 +6917,8 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderWidth: 0,
                     stack: 'prov',
                     customInfo,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.85,
+                    barPercentage: 0.65,
+                    categoryPercentage: 0.88,
                     borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
                     borderSkipped: false,
                 },
@@ -6898,8 +6929,8 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderWidth: 0,
                     stack: 'prov',
                     customInfo,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.85,
+                    barPercentage: 0.65,
+                    categoryPercentage: 0.88,
                     borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 2, bottomRight: 2 },
                     borderSkipped: false,
                 },
@@ -6920,8 +6951,11 @@ function renderizarGraficoProventosDetalhes(rawData) {
             ]
         },
         options: {
-            responsive: true,
+            responsive: false,
             maintainAspectRatio: false,
+            layout: {
+                padding: { right: OVERLAY_W, top: 6, bottom: 4, left: 0 }
+            },
             interaction: { mode: 'index', intersect: false },
             animation: { duration: 400, easing: 'easeOutQuart' },
             scales: {
@@ -6933,20 +6967,9 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 },
                 y: {
                     stacked: true,
-                    grid: {
-                        color: 'rgba(255,255,255,0.04)',
-                        drawBorder: false,
-                    },
-                    ticks: {
-                        color: '#444',
-                        font: { family: 'Inter', size: 9 },
-                        maxTicksLimit: 4,
-                        callback: (v) => {
-                            if (v >= 1) return `R$${v.toFixed(2)}`;
-                            if (v >= 0.01) return `R$${v.toFixed(3)}`;
-                            return '';
-                        },
-                    },
+                    display: false,
+                    grid: { display: false },
+                    ticks: { display: false },
                     border: { display: false },
                 }
             },
@@ -6956,10 +6979,12 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     enabled: true,
                     backgroundColor: 'rgba(8,8,8,0.96)',
                     titleColor: '#ffffff',
-                    bodyColor: '#999',
+                    bodyColor: '#aaa',
+                    footerColor: '#666',
                     titleFont: { family: 'Inter', size: 11, weight: '700' },
                     bodyFont: { family: 'Inter', size: 10 },
-                    borderColor: '#222',
+                    footerFont: { family: 'Inter', size: 9, style: 'normal' },
+                    borderColor: '#2a2a2a',
                     borderWidth: 1,
                     padding: 10,
                     cornerRadius: 8,
@@ -6968,25 +6993,27 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     boxHeight: 6,
                     usePointStyle: true,
                     callbacks: {
+                        // Título: "Mês · Total"
                         title(context) {
                             const info = context[0].dataset.customInfo?.[context[0].dataIndex];
                             if (!info) return '';
-                            const totalFmt = fmtShort(info.rawTotal);
-                            return `${info.label}  ·  ${totalFmt}`;
+                            return `${info.label}  ·  ${fmtShort(info.rawTotal)}`;
                         },
+                        // Linhas por tipo de provento
                         label(context) {
                             if (context.dataset.label === 'Média') return null;
                             const val = context.parsed.y;
-                            if (!val || val < 0.001) return null;
-                            return `${context.dataset.label}: ${fmtShort(val)}`;
+                            if (!val || val < 0.0001) return null;
+                            return `  ${context.dataset.label}: ${fmtShort(val)}`;
                         },
+                        // Rodapé: Méd/mês e Melhor do período
                         afterBody(context) {
-                            const info = context[0].dataset.customInfo?.[context[0].dataIndex];
-                            if (!info) return [];
-                            const lines = [];
-                            lines.push(`Méd/mês: ${fmtShort(mediaVal)}`);
-                            lines.push(`Melhor:  ${fmtShort(melhorVal)}`);
-                            return lines;
+                            if (!context[0]) return [];
+                            return [
+                                '',
+                                `Méd/mês:  ${fmtShort(mediaVal)}`,
+                                `Melhor:      ${fmtShort(melhorVal)}`,
+                            ];
                         }
                     }
                 }

@@ -6792,10 +6792,9 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const uniqueMonths = [...new Set(allMonths)].sort();
     const totals = uniqueMonths.map(k => grouped[k].rawTotal);
 
-    // ── Limpa os stats visuais do lado de fora (Header) ──
     const statsEl = document.getElementById('detalhes-historico-stats');
     if (statsEl) {
-        statsEl.innerHTML = ''; // Limpa para liberar espaço no cabeçalho
+        statsEl.innerHTML = ''; 
     }
 
     if (uniqueMonths.length === 0) {
@@ -6803,7 +6802,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
         return;
     }
 
-    // Cálculos de Média e Melhor Mês (Para usar no Gráfico e no Tooltip)
     const totalGeral = totals.reduce((s, v) => s + v, 0);
     const mediaGeral = totals.length > 0 ? totalGeral / totals.length : 0;
     const melhorMes = totals.length > 0 ? Math.max(...totals) : 0;
@@ -6815,7 +6813,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const customInfo = uniqueMonths.map(k => grouped[k]);
     const dataMedia = uniqueMonths.map(() => mediaGeral);
 
-    // Garante que o canvas existe antes de criar o gráfico
     if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `
             <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:220px;">
@@ -6854,7 +6851,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderSkipped: false,
                 },
                 {
-                    label: 'Dividendo',
+                    label: 'Div',
                     data: dataDIV,
                     backgroundColor: 'rgba(167,139,250,0.85)',
                     borderWidth: 0,
@@ -6889,13 +6886,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 x: {
                     stacked: true,
                     grid: { display: false, drawBorder: false },
-                    ticks: {
-                        color: '#555',
-                        font: { family: 'Inter', size: 9, weight: '600' },
-                        maxRotation: 0,
-                        autoSkip: true,
-                        maxTicksLimit: labels.length > 12 ? 6 : labels.length,
-                    },
+                    ticks: { display: false }, // OCULTA OS MESES NA PARTE DE BAIXO
                     border: { display: false },
                 },
                 y: {
@@ -6904,16 +6895,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                         color: 'rgba(255,255,255,0.04)',
                         drawBorder: false,
                     },
-                    ticks: {
-                        color: '#444',
-                        font: { family: 'Inter', size: 9 },
-                        maxTicksLimit: 4,
-                        callback: (v) => {
-                            if (v >= 1) return `R$${v.toFixed(2)}`;
-                            if (v >= 0.01) return `R$${v.toFixed(3)}`;
-                            return '';
-                        },
-                    },
+                    ticks: { display: false }, // OCULTA OS VALORES NA LATERAL ESQUERDA
                     border: { display: false },
                 }
             },
@@ -6949,22 +6931,14 @@ function renderizarGraficoProventosDetalhes(rawData) {
                             const valFmt = val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                             return `${context.dataset.label}: ${valFmt}`;
                         },
-                        afterBody(context) {
-                            const idx = context[0].dataIndex;
-                            const info = customInfo[idx];
-                            if (!info) return [];
-                            
-                            const diff = info.rawTotal - mediaGeral;
-                            const pct = mediaGeral > 0 ? ((diff / mediaGeral) * 100).toFixed(1) : 0;
-                            const sinal = diff >= 0 ? '+' : '';
-                            
+                        afterBody() {
                             const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-                            // Adiciona as informações no final do tooltip
+                            // Adiciona as informações no final do tooltip, sem porcentagem, simplificado
                             return [
-                                '', // Cria um pequeno respiro (linha em branco)
-                                `Média/mês: ${fmt(mediaGeral)} (${sinal}${pct}%)`,
-                                `Melhor mês: ${fmt(melhorMes)}`
+                                '', 
+                                `Méd/M: ${fmt(mediaGeral)}`,
+                                `Melhor: ${fmt(melhorMes)}`
                             ];
                         }
                     }

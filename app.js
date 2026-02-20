@@ -6635,84 +6635,17 @@ function renderHistoricoIADetalhes(mesesIgnore) {
         return;
     }
 
+    // Esconde a div antiga de botões externos que estava fora do canvas
     const containerBotoes = document.getElementById('periodo-selector-group');
-
     if (containerBotoes) {
-        containerBotoes.className = "flex flex-col mb-2 px-1";
-
-        // SÓ CRIA O HTML DOS BOTÕES SE AINDA NÃO EXISTIREM (Para não quebrar a animação)
-        if (!document.getElementById('proventos-slider')) {
-            const getBtnClass = (filterKey) => {
-                const isActive = currentProventosFilter === filterKey;
-                const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
-                return `relative z-10 flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 select-none proventos-filter-btn ${textClass}`;
-            };
-
-            let html = `
-                <div class="relative flex items-center gap-1 p-1 bg-[#151515] rounded-xl overflow-x-auto no-scrollbar w-full snap-x mb-2" id="proventos-filters-container">
-                    <div id="proventos-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
-                    <button id="btn-prov-12m" onclick="window.mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
-                    <button id="btn-prov-5y" onclick="window.mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>
-                    <button id="btn-prov-max" onclick="window.mudarFiltroProventos('max')" class="${getBtnClass('max')} snap-start">MAX</button>
-                    <button id="btn-prov-ytd" onclick="window.mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')} snap-start">YTD</button>
-                    <button id="btn-prov-desde_aporte" onclick="window.mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')} snap-start">POS</button>
-                    <button id="btn-prov-custom" onclick="window.mudarFiltroProventos('custom')" class="${getBtnClass('custom')} snap-start">PERS</button>
-                </div>
-                <div id="custom-date-container"></div>
-            `;
-            containerBotoes.innerHTML = html;
-        }
-
-        const customContainer = document.getElementById('custom-date-container');
-        if (customContainer) {
-            if (currentProventosFilter === 'custom') {
-                customContainer.innerHTML = `
-                    <div class="mt-1 animate-fade-in grid grid-cols-2 gap-3 bg-[#111] p-3 rounded-xl border border-[#222]">
-                        <div class="relative group">
-                            <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555]">DE</label>
-                            <input type="month" id="custom-start" value="${customRangeStart}" class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: dark;" onchange="window.atualizarFiltroCustom()">
-                        </div>
-                        <div class="relative group">
-                            <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555]">ATÉ</label>
-                            <input type="month" id="custom-end" value="${customRangeEnd}" class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: dark;" onchange="window.atualizarFiltroCustom()">
-                        </div>
-                    </div>
-                `;
-            } else {
-                customContainer.innerHTML = '';
-            }
-        }
-
-        // Sincroniza a posição do Slider sempre (Animação)
-        setTimeout(() => {
-            const activeBtn = document.getElementById(`btn-prov-${currentProventosFilter}`);
-            const slider = document.getElementById('proventos-slider');
-            if (activeBtn && slider) {
-                slider.style.width = `${activeBtn.offsetWidth}px`;
-                slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
-
-                // Força as cores corretas
-                document.querySelectorAll('.proventos-filter-btn').forEach(btn => {
-                    btn.classList.remove('text-white');
-                    btn.classList.add('text-gray-500', 'hover:text-gray-300');
-                });
-                activeBtn.classList.remove('text-gray-500', 'hover:text-gray-300');
-                activeBtn.classList.add('text-white');
-            }
-        }, 10);
-    }
-
-if (!document.getElementById('detalhes-proventos-chart')) {
-        detalhesAiProvento.innerHTML = `
-            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:280px;">
-                <canvas id="detalhes-proventos-chart"></canvas>
-            </div>`;
+        containerBotoes.innerHTML = '';
+        containerBotoes.classList.add('hidden');
     }
 
     renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
 }
 
-// Nova função global para capturar mudanças nos inputs de data
+// Funções globais para capturar eventos de filtro no novo layout
 window.atualizarFiltroCustom = function() {
     const startEl = document.getElementById('custom-start');
     const endEl = document.getElementById('custom-end');
@@ -6723,7 +6656,6 @@ window.atualizarFiltroCustom = function() {
     }
 };
 
-// Função Global para clique nos botões
 window.mudarFiltroProventos = function(modo) {
     currentProventosFilter = modo;
     renderHistoricoIADetalhes(); // Re-renderiza para atualizar classes dos botões e o gráfico
@@ -6813,11 +6745,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const statsEl = document.getElementById('detalhes-historico-stats');
     if (statsEl) statsEl.innerHTML = ''; 
 
-    if (uniqueMonths.length === 0) {
-        detalhesAiProvento.innerHTML = `<p class="text-xs text-gray-600 text-center py-8">Sem dados no período.</p>`;
-        return;
-    }
-
     const totalGeral = totals.reduce((s, v) => s + v, 0);
     const mediaGeral = totals.length > 0 ? totalGeral / totals.length : 0;
     const melhorMes = totals.length > 0 ? Math.max(...totals) : 0;
@@ -6830,48 +6757,96 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const dataMedia = uniqueMonths.map(() => mediaGeral);
 
     // ==============================================================
-    // CRIA O CONTAINER COM OS FILTROS INTEGRADOS (Se não existir)
+    // CRIA O CONTAINER COM OS FILTROS INTEGRADOS NO CANVAS (NOVO)
     // ==============================================================
     if (!document.getElementById('chart-wrapper-proventos')) {
+        const getBtnClass = (filterKey) => {
+            const isActive = currentProventosFilter === filterKey;
+            const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
+            return `relative z-10 flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 select-none proventos-filter-btn ${textClass}`;
+        };
+
         detalhesAiProvento.innerHTML = `
-            <div id="chart-wrapper-proventos" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:220px;">
-                
-                <div class="absolute top-4 left-4 z-10 pointer-events-none flex items-center gap-1.5">
-                    <div class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]"></div>
-                    <span class="text-[9px] uppercase tracking-widest font-bold text-gray-400">Proventos</span>
-                </div>
+            <div class="flex flex-col gap-2">
+                <div id="chart-wrapper-proventos" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:260px;">
+                    
+                    <div class="absolute top-2 left-2 right-2 z-20 flex justify-center">
+                        <div class="relative flex items-center gap-1 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full snap-x border border-white/5 shadow-lg" id="proventos-filters-container">
+                            <div id="proventos-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
+                            <button id="btn-prov-12m" onclick="window.mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
+                            <button id="btn-prov-5y" onclick="window.mudarFiltroProventos('5y')" class="${getBtnClass('5y')} snap-start">5A</button>
+                            <button id="btn-prov-max" onclick="window.mudarFiltroProventos('max')" class="${getBtnClass('max')} snap-start">MAX</button>
+                            <button id="btn-prov-ytd" onclick="window.mudarFiltroProventos('ytd')" class="${getBtnClass('ytd')} snap-start">YTD</button>
+                            <button id="btn-prov-desde_aporte" onclick="window.mudarFiltroProventos('desde_aporte')" class="${getBtnClass('desde_aporte')} snap-start">POS</button>
+                            <button id="btn-prov-custom" onclick="window.mudarFiltroProventos('custom')" class="${getBtnClass('custom')} snap-start">PERS</button>
+                        </div>
+                    </div>
 
-                <div class="absolute top-2.5 right-2.5 flex items-center bg-[#151515]/80 backdrop-blur-md p-1 rounded-lg border border-white/5 z-20 shadow-lg">
-                    <button class="filtro-btn-prov px-2.5 py-1 text-[9px] font-bold rounded-md transition-all" data-filter="12m">12M</button>
-                    <button class="filtro-btn-prov px-2.5 py-1 text-[9px] font-bold rounded-md transition-all" data-filter="ytd">YTD</button>
-                    <button class="filtro-btn-prov px-2.5 py-1 text-[9px] font-bold rounded-md transition-all" data-filter="5y">5A</button>
-                    <button class="filtro-btn-prov px-2.5 py-1 text-[9px] font-bold rounded-md transition-all" data-filter="desde_aporte">MÁX</button>
-                </div>
+                    <div id="chart-empty-state" class="absolute inset-0 pt-16 flex items-center justify-center hidden z-10">
+                        <p class="text-xs text-gray-600 font-medium bg-[#0f0f0f]/80 px-4 py-2 rounded-lg">Sem dados no período.</p>
+                    </div>
 
-                <div class="absolute inset-0 pt-12 pb-2 px-1 z-10">
-                    <canvas id="detalhes-proventos-chart"></canvas>
+                    <div class="absolute inset-0 pt-16 pb-2 px-1 z-10" id="chart-canvas-container">
+                        <canvas id="detalhes-proventos-chart"></canvas>
+                    </div>
                 </div>
+                <div id="custom-date-container"></div>
             </div>`;
-        
-        // Adiciona Inteligência aos novos botões de filtro
-        document.querySelectorAll('.filtro-btn-prov').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                currentProventosFilter = e.target.getAttribute('data-filter');
-                renderizarGraficoProventosDetalhes(window.currentRawDataProventos); // Atualiza o gráfico na hora
-            });
-        });
     }
 
-    // Gerencia as cores: acende o botão selecionado e apaga os outros
-    document.querySelectorAll('.filtro-btn-prov').forEach(btn => {
-        if (btn.getAttribute('data-filter') === currentProventosFilter) {
-            btn.classList.add('bg-[#2A2A2C]', 'text-white', 'shadow-sm');
-            btn.classList.remove('text-gray-500', 'hover:text-gray-300');
+    // ==========================================
+    // ATUALIZA O CONTAINER CUSTOM DATE E O SLIDER
+    // ==========================================
+    const customContainer = document.getElementById('custom-date-container');
+    if (customContainer) {
+        if (currentProventosFilter === 'custom') {
+            customContainer.innerHTML = `
+                <div class="animate-fade-in grid grid-cols-2 gap-3 bg-[#111] p-3 rounded-xl border border-[#222]">
+                    <div class="relative group">
+                        <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555]">DE</label>
+                        <input type="month" id="custom-start" value="${customRangeStart}" class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: dark;" onchange="window.atualizarFiltroCustom()">
+                    </div>
+                    <div class="relative group">
+                        <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555]">ATÉ</label>
+                        <input type="month" id="custom-end" value="${customRangeEnd}" class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: dark;" onchange="window.atualizarFiltroCustom()">
+                    </div>
+                </div>
+            `;
         } else {
-            btn.classList.remove('bg-[#2A2A2C]', 'text-white', 'shadow-sm');
-            btn.classList.add('text-gray-500', 'hover:text-gray-300');
+            customContainer.innerHTML = '';
         }
-    });
+    }
+
+    // Sincroniza a posição do Slider sempre (Animação)
+    setTimeout(() => {
+        const activeBtn = document.getElementById(`btn-prov-${currentProventosFilter}`);
+        const slider = document.getElementById('proventos-slider');
+        if (activeBtn && slider) {
+            slider.style.width = `${activeBtn.offsetWidth}px`;
+            slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+
+            // Força as cores corretas
+            document.querySelectorAll('.proventos-filter-btn').forEach(btn => {
+                btn.classList.remove('text-white');
+                btn.classList.add('text-gray-500', 'hover:text-gray-300');
+            });
+            activeBtn.classList.remove('text-gray-500', 'hover:text-gray-300');
+            activeBtn.classList.add('text-white');
+        }
+    }, 10);
+
+    // Toggle Empty State vs Gráfico (Garante que os botões não se percam quando o período tá vazio)
+    const emptyState = document.getElementById('chart-empty-state');
+    const canvasContainer = document.getElementById('chart-canvas-container');
+
+    if (uniqueMonths.length === 0) {
+        emptyState.classList.remove('hidden');
+        canvasContainer.classList.add('hidden');
+        return; // Para aqui para não quebrar o ChartJS com dados zerados
+    } else {
+        emptyState.classList.add('hidden');
+        canvasContainer.classList.remove('hidden');
+    }
 
     const canvas = document.getElementById('detalhes-proventos-chart');
     if (!canvas) return;

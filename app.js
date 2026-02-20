@@ -4781,7 +4781,7 @@ async function fetchCotacaoHistorica(symbol) {
         <div class="flex flex-col mb-2 px-1">
             
             <div class="flex items-center justify-between gap-1 mb-3 pl-1 w-full">
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest truncate">Cotações de ${symbol}</h4>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest truncate">Cotação - ${symbol}</h4>
                 
                 <div class="flex items-center gap-1.5 text-[9px] bg-[#151515] border border-white/5 px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
                     <span class="text-gray-500 font-medium">A:<span id="stat-open" class="text-gray-200 font-bold ml-0.5">--</span></span>

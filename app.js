@@ -752,15 +752,21 @@ let ipcaCacheData = null;
     function switchDetalhesTab(tabName) {
         document.querySelectorAll('.detalhe-tab-panel').forEach(p => p.classList.add('hidden'));
         document.querySelectorAll('.detalhe-tab-btn').forEach(b => {
-            b.classList.remove('text-white', 'border-green-500');
-            b.classList.add('text-gray-500', 'border-transparent');
+            b.classList.remove('text-white');
+            b.classList.add('text-gray-500');
         });
         const panel = document.getElementById(`detalhe-tab-${tabName}`);
         if (panel) panel.classList.remove('hidden');
         const btn = document.querySelector(`.detalhe-tab-btn[data-tab="${tabName}"]`);
         if (btn) {
-            btn.classList.remove('text-gray-500', 'border-transparent');
-            btn.classList.add('text-white', 'border-green-500');
+            btn.classList.remove('text-gray-500');
+            btn.classList.add('text-white');
+            // Anima o slider branco até o botão ativo
+            const slider = document.getElementById('detalhes-tab-slider');
+            if (slider) {
+                slider.style.left = `${btn.offsetLeft}px`;
+                slider.style.width = `${btn.offsetWidth}px`;
+            }
         }
         if (detalhesConteudoScroll) detalhesConteudoScroll.scrollTop = 0;
     }
@@ -4688,6 +4694,8 @@ function handleAbrirModalEdicao(id) {
         if (detalhesChartInstance) { detalhesChartInstance.destroy(); detalhesChartInstance = null; }
         const cotacaoContainer = document.getElementById('detalhes-cotacao-container');
         if (cotacaoContainer) cotacaoContainer.remove();
+        const anchor = document.getElementById('detalhes-cotacao-anchor');
+        if (anchor) anchor.innerHTML = '';
         window.tempChartCache = {};
 
         detalhesMensagem.classList.remove('hidden');
@@ -4712,6 +4720,9 @@ function handleAbrirModalEdicao(id) {
 
         // Reseta tab nav para Resumo
         switchDetalhesTab('resumo');
+        // Garante que o slider resete imediatamente (sem animação)
+        const tabSlider = document.getElementById('detalhes-tab-slider');
+        if (tabSlider) { tabSlider.style.transition = 'none'; tabSlider.style.left = '0'; tabSlider.style.width = '0'; }
         if (detalhesTabPortfolioBtn) detalhesTabPortfolioBtn.classList.add('hidden');
 
         detalhesFavoritoIconEmpty.classList.remove('hidden');
@@ -4759,13 +4770,13 @@ async function fetchCotacaoHistorica(symbol) {
     let container = document.getElementById('detalhes-cotacao-container');
 
     if (!container) {
-        // Injeta dentro da tab Resumo, antes do grid de KPIs
-        const gridTopo = document.getElementById('detalhes-grid-topo');
-        if (gridTopo && gridTopo.parentNode) {
+        // Injeta dentro do anchor da tab Resumo (entre KPIs e cards de proventos)
+        const anchor = document.getElementById('detalhes-cotacao-anchor');
+        if (anchor) {
             container = document.createElement('div');
             container.id = 'detalhes-cotacao-container';
             container.className = "mb-6";
-            gridTopo.parentNode.insertBefore(container, gridTopo);
+            anchor.appendChild(container);
         } else { return; }
     }
 
@@ -6673,7 +6684,10 @@ function renderHistoricoIADetalhes(mesesIgnore) {
     }
 
 if (!document.getElementById('detalhes-proventos-chart')) {
-        detalhesAiProvento.innerHTML = `<div class="relative h-72 w-full mt-4 mb-10 bg-[#151515] rounded-xl p-4 shadow-sm"><canvas id="detalhes-proventos-chart"></canvas></div>`;
+        detalhesAiProvento.innerHTML = `
+            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:220px;">
+                <canvas id="detalhes-proventos-chart"></canvas>
+            </div>`;
     }
 
     renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
@@ -6706,7 +6720,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
     }
 
     const ctx = canvas.getContext('2d');
-    let filteredData = rawData.filter(d => d.paymentDate); 
+    let filteredData = rawData.filter(d => d.paymentDate);
     const hoje = new Date();
 
     if (currentProventosFilter === '12m') {
@@ -6723,7 +6737,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
         }
         if (customRangeEnd) {
             const [anoEnd, mesEnd] = customRangeEnd.split('-');
-            const dateEnd = new Date(parseInt(anoEnd), parseInt(mesEnd), 0); 
+            const dateEnd = new Date(parseInt(anoEnd), parseInt(mesEnd), 0);
             filteredData = filteredData.filter(d => new Date(d.paymentDate) <= dateEnd);
         }
     }
@@ -6741,12 +6755,12 @@ function renderizarGraficoProventosDetalhes(rawData) {
         const ativoCarteira = carteiraCalculada.find(a => a.symbol === currentDetalhesSymbol);
         if (ativoCarteira && ativoCarteira.dataCompra) {
             const dataCompra = new Date(ativoCarteira.dataCompra);
-            dataCompra.setDate(1); 
+            dataCompra.setDate(1);
             filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataCompra);
         } else {
-             const dataLimite = new Date();
-             dataLimite.setFullYear(hoje.getFullYear() - 5);
-             filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
+            const dataLimite = new Date();
+            dataLimite.setFullYear(hoje.getFullYear() - 5);
+            filteredData = filteredData.filter(d => new Date(d.paymentDate) >= dataLimite);
         }
     }
 
@@ -6757,8 +6771,8 @@ function renderizarGraficoProventosDetalhes(rawData) {
 
     filteredData.forEach(item => {
         const d = new Date(item.paymentDate);
-        const sortKey = d.toISOString().slice(0, 7); 
-        const labelKey = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.','').toUpperCase();
+        const sortKey = d.toISOString().slice(0, 7);
+        const labelKey = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '').toUpperCase();
 
         if (!grouped[sortKey]) {
             grouped[sortKey] = { label: labelKey, JCP: 0, TRIB: 0, DIV: 0, rawTotal: 0 };
@@ -6776,6 +6790,32 @@ function renderizarGraficoProventosDetalhes(rawData) {
     });
 
     const uniqueMonths = [...new Set(allMonths)].sort();
+    const totals = uniqueMonths.map(k => grouped[k].rawTotal);
+
+    // ── Stats summary bar ──────────────────────────────────
+    const statsEl = document.getElementById('detalhes-historico-stats');
+    if (statsEl && totals.length > 0) {
+        const totalGeral = totals.reduce((s, v) => s + v, 0);
+        const media = totalGeral / totals.length;
+        const melhor = Math.max(...totals);
+        const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        statsEl.innerHTML = `
+            <div class="flex items-center gap-3 text-right">
+                <div>
+                    <span class="block text-[8px] text-gray-600 uppercase font-bold tracking-wider leading-none mb-0.5">Média/mês</span>
+                    <span class="text-[10px] font-bold text-gray-300 leading-none">${fmt(media)}</span>
+                </div>
+                <div>
+                    <span class="block text-[8px] text-gray-600 uppercase font-bold tracking-wider leading-none mb-0.5">Melhor mês</span>
+                    <span class="text-[10px] font-bold text-green-400 leading-none">${fmt(melhor)}</span>
+                </div>
+            </div>`;
+    }
+
+    if (uniqueMonths.length === 0) {
+        detalhesAiProvento.innerHTML = `<p class="text-xs text-gray-600 text-center py-8">Sem dados no período.</p>`;
+        return;
+    }
 
     const labels = uniqueMonths.map(k => grouped[k].label);
     const dataJCP = uniqueMonths.map(k => grouped[k].JCP);
@@ -6783,90 +6823,155 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const dataDIV = uniqueMonths.map(k => grouped[k].DIV);
     const customInfo = uniqueMonths.map(k => grouped[k]);
 
+    // Linha de média (dataset invisível com média)
+    const media = totals.reduce((s, v) => s + v, 0) / totals.length;
+    const dataMedia = uniqueMonths.map(() => media);
+
+    // Garante que o canvas existe
+    if (!document.getElementById('detalhes-proventos-chart')) {
+        detalhesAiProvento.innerHTML = `
+            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:220px;">
+                <canvas id="detalhes-proventos-chart"></canvas>
+            </div>`;
+        return;
+    }
+
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
-        plugins: [crosshairPlugin], 
+        plugins: [crosshairPlugin],
         data: {
-            labels: labels,
+            labels,
             datasets: [
                 {
                     label: 'JCP',
                     data: dataJCP,
-                    backgroundColor: CHART_COLORS.JCP.bg,
-                    borderColor: CHART_COLORS.JCP.border,
-                    borderWidth: 1,
-                    stack: 'Stack 0',
-                    customInfo: customInfo,
-                    // BARRAS UM POUCO MAIS LARGAS E MENOS ARREDONDADAS
-                    barPercentage: 0.7, 
-                    categoryPercentage: 0.8, 
-                    borderRadius: 3
+                    backgroundColor: 'rgba(251,191,36,0.85)',
+                    borderColor: 'rgba(251,191,36,0)',
+                    borderWidth: 0,
+                    stack: 'prov',
+                    customInfo,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.85,
+                    borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+                    borderSkipped: false,
                 },
                 {
                     label: 'Trib',
                     data: dataTRIB,
-                    backgroundColor: CHART_COLORS.TRIB.bg,
-                    borderColor: CHART_COLORS.TRIB.border,
-                    borderWidth: 1,
-                    stack: 'Stack 0',
-                    customInfo: customInfo,
-                    barPercentage: 0.7, categoryPercentage: 0.8, borderRadius: 3
+                    backgroundColor: 'rgba(251,113,133,0.8)',
+                    borderWidth: 0,
+                    stack: 'prov',
+                    customInfo,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.85,
+                    borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+                    borderSkipped: false,
                 },
                 {
-                    label: 'Div',
+                    label: 'Dividendo',
                     data: dataDIV,
-                    backgroundColor: CHART_COLORS.DIV.bg,
-                    borderColor: CHART_COLORS.DIV.border,
-                    borderWidth: 1,
-                    stack: 'Stack 0',
-                    customInfo: customInfo,
-                    barPercentage: 0.7, categoryPercentage: 0.8, borderRadius: 3
-                }
+                    backgroundColor: 'rgba(167,139,250,0.85)',
+                    borderWidth: 0,
+                    stack: 'prov',
+                    customInfo,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.85,
+                    borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 2, bottomRight: 2 },
+                    borderSkipped: false,
+                },
+                {
+                    label: 'Média',
+                    data: dataMedia,
+                    type: 'line',
+                    borderColor: 'rgba(255,255,255,0.2)',
+                    borderWidth: 1.5,
+                    borderDash: [4, 4],
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    fill: false,
+                    tension: 0,
+                    stack: undefined,
+                    order: -1,
+                },
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index', 
-                intersect: false, 
-            },
+            interaction: { mode: 'index', intersect: false },
+            animation: { duration: 400, easing: 'easeOutQuart' },
             scales: {
-                x: { display: false },
-                y: { display: false }
+                x: {
+                    stacked: true,
+                    grid: { display: false, drawBorder: false },
+                    ticks: {
+                        color: '#555',
+                        font: { family: 'Inter', size: 9, weight: '600' },
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: labels.length > 12 ? 6 : labels.length,
+                    },
+                    border: { display: false },
+                },
+                y: {
+                    stacked: true,
+                    grid: {
+                        color: 'rgba(255,255,255,0.04)',
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        color: '#444',
+                        font: { family: 'Inter', size: 9 },
+                        maxTicksLimit: 4,
+                        callback: (v) => {
+                            if (v >= 1) return `R$${v.toFixed(2)}`;
+                            if (v >= 0.01) return `R$${v.toFixed(3)}`;
+                            return '';
+                        },
+                    },
+                    border: { display: false },
+                }
             },
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    // ESTILO PREMIUM: PRETO ABSOLUTO COM OPACIDADE
-                    backgroundColor: 'rgba(10, 10, 10, 0.95)', 
+                    backgroundColor: 'rgba(8,8,8,0.96)',
                     titleColor: '#ffffff',
-                    bodyColor: '#bbbbbb', 
-                    titleFont: { family: 'Inter', size: 11, weight: '600' },
+                    bodyColor: '#999',
+                    titleFont: { family: 'Inter', size: 11, weight: '700' },
                     bodyFont: { family: 'Inter', size: 10 },
-                    borderColor: '#262626', // Borda sutil quase invisível
+                    borderColor: '#222',
                     borderWidth: 1,
                     padding: 10,
-                    cornerRadius: 6,
+                    cornerRadius: 8,
                     displayColors: true,
                     boxWidth: 6,
                     boxHeight: 6,
                     usePointStyle: true,
-                    position: 'nearest', 
-
                     callbacks: {
-                        title: function(context) {
-                            const info = context[0].dataset.customInfo[context[0].dataIndex];
-                            const totalFmt = info.rawTotal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-                            return `${info.label}  •  ${totalFmt}`;
+                        title(context) {
+                            const info = context[0].dataset.customInfo?.[context[0].dataIndex];
+                            if (!info) return '';
+                            const totalFmt = info.rawTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            return `${info.label}  ·  ${totalFmt}`;
                         },
-                        label: function(context) {
+                        label(context) {
+                            if (context.dataset.label === 'Média') return null;
                             const val = context.parsed.y;
-                            if (val <= 0.001) return null;
-                            const label = context.dataset.label;
-                            const valFmt = val.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-                            return `${label}: ${valFmt}`;
+                            if (!val || val < 0.001) return null;
+                            const valFmt = val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            return `${context.dataset.label}: ${valFmt}`;
+                        },
+                        afterBody(context) {
+                            const info = context[0].dataset.customInfo?.[context[0].dataIndex];
+                            if (!info) return [];
+                            const media = dataMedia[0];
+                            if (!media) return [];
+                            const diff = info.rawTotal - media;
+                            const pct = ((diff / media) * 100).toFixed(1);
+                            const sinal = diff >= 0 ? '+' : '';
+                            return [`vs. média: ${sinal}${pct}%`];
                         }
                     }
                 }

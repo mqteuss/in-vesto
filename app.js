@@ -4780,15 +4780,15 @@ async function fetchCotacaoHistorica(symbol) {
     container.innerHTML = `
         <div class="flex flex-col mb-2 px-1">
             
-            <div class="flex items-center justify-between flex-wrap gap-2 mb-3 pl-1">
-                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cotações de ${symbol}</h4>
+            <div class="flex items-center justify-between mb-3 pl-1 gap-1">
+                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">Cotações de ${symbol}</h4>
                 
-                <div class="flex items-center gap-2 text-[10px] bg-[#151515] border border-white/5 px-2.5 py-1 rounded-lg shadow-sm">
-                    <span class="text-gray-500 font-medium">A: <span id="stat-open" class="text-gray-200 font-bold ml-0.5">--</span></span>
-                    <span class="text-white/10">|</span>
-                    <span class="text-gray-500 font-medium">V: <span id="stat-var" class="text-gray-200 font-bold ml-0.5">--</span></span>
-                    <span class="text-white/10">|</span>
-                    <span class="text-gray-500 font-medium">F: <span id="stat-close" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                <div class="flex items-center gap-1 text-[9px] bg-[#151515] border border-white/5 px-1.5 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
+                    <span class="text-gray-500 font-medium">A:<span id="stat-open" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                    <span class="text-white/10 mx-0.5">|</span>
+                    <span class="text-gray-500 font-medium">V:<span id="stat-var" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                    <span class="text-white/10 mx-0.5">|</span>
+                    <span class="text-gray-500 font-medium">F:<span id="stat-close" class="text-gray-200 font-bold ml-0.5">--</span></span>
                 </div>
             </div>
 
@@ -4988,34 +4988,33 @@ function renderLineChart(dataPoints, range) {
     wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
     const ctx = document.getElementById('canvas-cotacao').getContext('2d');
 
-    // ==========================================
-    // LÓGICA DE ABERTURA, VARIAÇÃO E FECHAMENTO
-    // ==========================================
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
     
-    // Pega o open real do primeiro dia, ou usa o price caso não tenha
+    // Valores do Período Inteiro
     const startPrice = dataPoints[0].open || values[0]; 
     const endPrice = values[values.length - 1];
-    
-    // Calcula variação percentual do período
-    const varPct = ((endPrice - startPrice) / startPrice) * 100;
-    const isPositive = varPct >= 0;
 
-    // Atualiza o HTML (Fora do Canvas)
-    const elOpen = document.getElementById('stat-open');
-    const elVar = document.getElementById('stat-var');
-    const elClose = document.getElementById('stat-close');
+    // Função que injeta os valores no topo (Dinâmica)
+    const atualizarHeader = (open, close) => {
+        const elOpen = document.getElementById('stat-open');
+        const elVar = document.getElementById('stat-var');
+        const elClose = document.getElementById('stat-close');
+        if (!elOpen || !elVar || !elClose) return;
 
-    if (elOpen) elOpen.textContent = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    if (elClose) elClose.textContent = endPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    if (elVar) {
-        elVar.textContent = `${isPositive ? '+' : ''}${varPct.toFixed(2).replace('.', ',')}%`;
-        // Adiciona cor verde ou vermelha para dar o destaque na Variação
-        elVar.className = isPositive ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
-    }
-    // ==========================================
+        const varPct = ((close - open) / open) * 100;
+        const isPos = varPct >= 0;
 
+        elOpen.textContent = open.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elClose.textContent = close.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elVar.textContent = `${isPos ? '+' : ''}${varPct.toFixed(2).replace('.', ',')}%`;
+        elVar.className = isPos ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
+    };
+
+    // Preenche inicialmente com os dados do período inteiro
+    atualizarHeader(startPrice, endPrice);
+
+    const isPositive = ((endPrice - startPrice) / startPrice) * 100 >= 0;
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
     const colorCrosshairLine = '#A3A3A3'; 
@@ -5188,6 +5187,19 @@ function renderLineChart(dataPoints, range) {
             layout: { 
                 padding: { left: 0, right: 36, top: 10, bottom: 20 } 
             },
+            // EVENTO QUE CAPTURA O DEDO NO GRÁFICO
+            onHover: (event, activeElements) => {
+                if (activeElements && activeElements.length > 0) {
+                    const idx = activeElements[0].index;
+                    const p = dataPoints[idx];
+                    const openDia = p.open || p.price;
+                    const closeDia = p.price;
+                    atualizarHeader(openDia, closeDia);
+                } else {
+                    // Quando tira o dedo, volta pros dados globais
+                    atualizarHeader(startPrice, endPrice);
+                }
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -5217,7 +5229,7 @@ function renderLineChart(dataPoints, range) {
                             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
                         },
                         label: function(context) {
-                            // MOSTRA APENAS O PREÇO NO TOOLTIP (Sem o texto "Fechamento")
+                            // APENAS O PREÇO NO TOOLTIP
                             return `R$ ${context.parsed.y.toFixed(2).replace('.', ',')}`;
                         }
                     }

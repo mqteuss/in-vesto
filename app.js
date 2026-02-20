@@ -6412,7 +6412,8 @@ let tbody = dados.comparacao.map(item => {
                 let isBestPat = vPat !== null && vPat === maxPat;
 
                 // Coroinha SVG Dourada com brilho sutil (Feita para encaixar perfeitamente em cima do número)
-                const crownIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3 text-yellow-500 drop-shadow-[0_0_3px_rgba(234,179,8,0.4)] mb-[2px]"><path d="M2.25 21h19.5c.414 0 .75-.336.75-.75v-1.5a.75.75 0 00-.75-.75H2.25a.75.75 0 00-.75.75v1.5c0 .414.336.75.75.75zm3-13.842l-2.022 6.57a1.5 1.5 0 001.432 1.94h14.68a1.5 1.5 0 001.432-1.94l-2.022-6.57a.75.75 0 00-1.408-.06l-2.522 5.043-4.103-7.69a.75.75 0 00-1.325 0l-4.103 7.69-2.522-5.043a.75.75 0 00-1.408.06z" /></svg>`;
+               // Coroa Sólida (RemixIcon): Renderiza perfeitamente em tamanhos pequenos, sem parecer "quebrada"
+                const crownIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-500 drop-shadow-[0_0_4px_rgba(234,179,8,0.5)] mb-[2px]"><path d="M2 19h20v2H2v-2zm2-16 3 5 5-6 5 6 3-5 1 12H3L4 3z"/></svg>`;
 
                 // Montagem: Campeão = Coroa em cima + Branco Bold | Normal = Cinza Claro
                 let dyBadge = isBestDy 

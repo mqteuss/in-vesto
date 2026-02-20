@@ -976,61 +976,101 @@
 </div>
 
         <div id="detalhes-page-modal" class="page-modal fixed inset-0 bg-black/70 backdrop-blur-sm" aria-labelledby="detalhes-page-title" role="dialog" aria-modal="true">
-<div id="tab-detalhes" class="page-content w-full h-[92vh] rounded-t-[2rem] shadow-2xl bg-black border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform">
-    
-    <div class="sticky top-0 bg-[#0a0a0a] z-30 rounded-t-[2rem] border-b border-white/5">
-        
+<div id="tab-detalhes" class="page-content flex flex-col w-full h-[92vh] rounded-t-[2rem] shadow-2xl bg-black border-t border-[#2C2C2E] fixed bottom-0 left-0 z-50 transform translate-y-full transition-transform duration-300 ease-in-out will-change-transform">
+
+    <!-- ═══════════════════════════════════════════════════
+         CABEÇALHO FIXO — Sempre visível
+    ═══════════════════════════════════════════════════ -->
+    <div class="shrink-0 bg-[#0a0a0a] rounded-t-[2rem]">
+
+        <!-- Drag handle -->
         <div class="w-full flex justify-center pt-3 pb-1" id="detalhes-handle-area">
             <div class="w-12 h-1.5 bg-[#2C2C2E] rounded-full"></div>
         </div>
 
-        <div class="flex justify-between items-center px-5 pb-4 pt-2">
-            
-            <div class="flex items-center gap-4 flex-1 min-w-0">
+        <!-- Linha 1: Ícone + Ticker/Nome + Ações -->
+        <div class="flex justify-between items-center px-5 pt-1 pb-2">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
                 <div id="detalhes-icone-container"></div>
-                
                 <div class="min-w-0">
                     <h1 id="detalhes-titulo-texto" class="text-xl font-bold text-white truncate leading-none">Detalhes</h1>
-                    <p id="detalhes-nome-longo" class="text-xs font-normal text-[#888888] truncate mt-1"></p>
+                    <p id="detalhes-nome-longo" class="text-xs font-normal text-[#888888] truncate mt-0.5"></p>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-1 shrink-0">
                 <button id="detalhes-share-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
                 </button>
-
                 <button id="detalhes-favorito-btn" class="p-2 text-[#666666] hover:text-yellow-400 rounded-full transition-colors">
-                    <svg id="detalhes-favorito-icon-empty" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
-                    <svg id="detalhes-favorito-icon-filled" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden text-yellow-400" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>
+                    <svg id="detalhes-favorito-icon-empty" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
+                    <svg id="detalhes-favorito-icon-filled" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden text-yellow-400" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>
                 </button>
-
                 <button id="detalhes-voltar-btn" class="p-2 text-[#666666] hover:text-white rounded-full transition-colors">
-                    <svg class="h-6 w-6"><use href="#ico-x"/></svg>
+                    <svg class="h-5 w-5"><use href="#ico-x"/></svg>
                 </button>
             </div>
         </div>
+
+        <!-- Linha 2: Preço + Variações -->
+        <div class="px-5 pb-3">
+            <div id="detalhes-loading" class="hidden flex justify-center items-center py-2"><span class="loader"></span></div>
+            <p id="detalhes-mensagem" class="text-center text-[#666666] text-xs py-1">Carregando...</p>
+            <div id="detalhes-preco"></div>
+        </div>
+
+        <!-- Linha 3: Nav das Tabs -->
+        <div id="detalhes-tab-nav" class="flex items-center gap-1 border-b border-[#1F1F1F] px-3 overflow-x-auto no-scrollbar">
+            <button class="detalhe-tab-btn py-3 px-3 text-xs font-bold text-white border-b-2 border-green-500 whitespace-nowrap transition-colors" data-tab="resumo">📊 Resumo</button>
+            <button class="detalhe-tab-btn py-3 px-3 text-xs font-bold text-gray-500 hover:text-gray-300 border-b-2 border-transparent whitespace-nowrap transition-colors" data-tab="indicadores">📈 Indicadores</button>
+            <button class="detalhe-tab-btn py-3 px-3 text-xs font-bold text-gray-500 hover:text-gray-300 border-b-2 border-transparent whitespace-nowrap transition-colors" data-tab="analise">🔍 Análise</button>
+            <button id="tab-portfolio-btn" class="detalhe-tab-btn py-3 px-3 text-xs font-bold text-gray-500 hover:text-gray-300 border-b-2 border-transparent whitespace-nowrap transition-colors hidden" data-tab="portfolio">🏢 Portfólio</button>
+        </div>
     </div>
 
-    <div id="detalhes-conteudo-scroll" class="overflow-y-auto h-[calc(92vh-90px)] p-4 pt-0">
-        <div id="detalhes-conteudo" class="space-y-5">
-             <div id="detalhes-loading" class="hidden flex justify-center items-center py-4"><span class="loader"></span></div>
-             <p id="detalhes-mensagem" class="text-center text-[#666666] py-8">Carregando...</p>
-             <div id="detalhes-preco" class="grid grid-cols-2 gap-4"></div>
-             
-             <div id="detalhes-historico-container" class="hidden">
+    <!-- ═══════════════════════════════════════════════════
+         ÁREA SCROLLÁVEL — Conteúdo das Tabs
+    ═══════════════════════════════════════════════════ -->
+    <div id="detalhes-conteudo-scroll" class="flex-1 overflow-y-auto custom-scroll pb-8">
+
+        <!-- ── TAB 1: RESUMO (padrão) ── -->
+        <div id="detalhe-tab-resumo" class="detalhe-tab-panel p-4 pt-3">
+            <!-- Gráfico de cotação histórica (injetado por fetchCotacaoHistorica) -->
+            <!-- Grid de KPIs principais -->
+            <div id="detalhes-grid-topo" class="grid grid-cols-3 gap-2 w-full mb-5"></div>
+            <!-- Cards de proventos rápidos -->
+            <div id="detalhes-provento-placeholder" class="mb-4"></div>
+            <!-- Gráfico histórico de proventos -->
+            <div id="detalhes-historico-container" class="hidden mt-2">
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Proventos</h4>
-                
                 <div id="periodo-selector-group" class="grid grid-cols-4 gap-2 mb-4">
                     <button class="periodo-selector-btn" data-meses="3">3M</button>
                     <button class="periodo-selector-btn" data-meses="6">6M</button>
                     <button class="periodo-selector-btn" data-meses="9">9M</button>
                     <button class="periodo-selector-btn" data-meses="12">12M</button>
                 </div>
-                
-                <div id="detalhes-ai-provento" class="mt-2"><div class="relative h-48 w-full bg-[#151515] rounded-xl p-4 shadow-sm"><canvas id="detalhes-proventos-chart"></canvas></div></div>
-             </div>
+                <div id="detalhes-ai-provento" class="mt-2">
+                    <div class="relative h-48 w-full bg-[#151515] rounded-xl p-4 shadow-sm">
+                        <canvas id="detalhes-proventos-chart"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <!-- ── TAB 2: INDICADORES ── -->
+        <div id="detalhe-tab-indicadores" class="detalhe-tab-panel hidden p-4 pt-3">
+            <div id="detalhes-listas-fundamentos"></div>
+        </div>
+
+        <!-- ── TAB 3: ANÁLISE ── -->
+        <div id="detalhe-tab-analise" class="detalhe-tab-panel hidden p-4 pt-3">
+            <div id="detalhes-sobre-comparacao"></div>
+        </div>
+
+        <!-- ── TAB 4: PORTFÓLIO (apenas FIIs) ── -->
+        <div id="detalhe-tab-portfolio" class="detalhe-tab-panel hidden p-4 pt-3">
+            <div id="detalhes-imoveis-container"></div>
+        </div>
+
     </div>
 </div>
         </div>

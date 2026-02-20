@@ -6969,33 +6969,37 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     boxWidth: 6,
                     boxHeight: 6,
                     usePointStyle: true,
-                    callbacks: {
-                        // Linha 1: Mês em destaque
+callbacks: {
                         title(context) {
-                            const info = context[0].dataset.customInfo?.[context[0].dataIndex];
-                            return info ? info.label : '';
+                            // Correção: Puxa o dado direto da variável local usando o Index da coluna
+                            const idx = context[0].dataIndex;
+                            const info = customInfo[idx];
+                            
+                            // Fallback de segurança para não sumir o título
+                            if (!info) return context[0].label || '';
+                            
+                            const totalFmt = info.rawTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            return `${info.label}  ·  ${totalFmt}`;
                         },
-                        // Linha 2 (beforeBody): Total do mês logo abaixo do mês
-                        beforeBody(context) {
-                            const info = context[0].dataset.customInfo?.[context[0].dataIndex];
-                            if (!info) return [];
-                            return [`Total: ${fmtShort(info.rawTotal)}`, ''];
-                        },
-                        // Linhas por tipo de provento (apenas os que têm valor)
                         label(context) {
                             if (context.dataset.label === 'Média') return null;
                             const val = context.parsed.y;
-                            if (!val || val < 0.0001) return null;
-                            return `  ${context.dataset.label}: ${fmtShort(val)}`;
+                            if (!val || val < 0.001) return null;
+                            const valFmt = val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            return `${context.dataset.label}: ${valFmt}`;
                         },
-                        // Rodapé: Méd/mês e Melhor do período
                         afterBody(context) {
-                            if (!context[0]) return [];
-                            return [
-                                '',
-                                `Méd/mês:  ${fmtShort(mediaVal)}`,
-                                `Melhor:      ${fmtShort(melhorVal)}`,
-                            ];
+                            // Correção: Aplica a mesma lógica de Index para o texto de "vs média"
+                            const idx = context[0].dataIndex;
+                            const info = customInfo[idx];
+                            if (!info) return [];
+                            
+                            const media = dataMedia[0];
+                            if (!media) return [];
+                            const diff = info.rawTotal - media;
+                            const pct = ((diff / media) * 100).toFixed(1);
+                            const sinal = diff >= 0 ? '+' : '';
+                            return [`vs. média: ${sinal}${pct}%`];
                         }
                     }
                 }

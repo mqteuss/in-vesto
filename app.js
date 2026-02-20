@@ -6631,7 +6631,7 @@ window.mudarFiltroProventos = function(modo) {
 };
 
 function renderizarGraficoProventosDetalhes(rawData) {
-    // Guarda os dados brutos na memória da janela para podermos re-renderizar ao clicar nos filtros
+    // Guarda os dados brutos na memória
     window.currentRawDataProventos = rawData; 
 
     if (detalhesChartInstance) {
@@ -6711,9 +6711,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const uniqueMonths = [...new Set(allMonths)].sort();
     const totals = uniqueMonths.map(k => grouped[k].rawTotal);
 
-    const statsEl = document.getElementById('detalhes-historico-stats');
-    if (statsEl) statsEl.innerHTML = ''; 
-
     const totalGeral = totals.reduce((s, v) => s + v, 0);
     const mediaGeral = totals.length > 0 ? totalGeral / totals.length : 0;
     const melhorMes = totals.length > 0 ? Math.max(...totals) : 0;
@@ -6726,7 +6723,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const dataMedia = uniqueMonths.map(() => mediaGeral);
 
     // ==============================================================
-    // CRIA O CONTAINER COM OS FILTROS INTEGRADOS NO CANVAS (NOVO)
+    // HTML DO GRÁFICO DE PROVENTOS (ALINHADO COM COTAÇÃO)
     // ==============================================================
     if (!document.getElementById('chart-wrapper-proventos')) {
         const getBtnClass = (filterKey) => {
@@ -6736,10 +6733,23 @@ function renderizarGraficoProventosDetalhes(rawData) {
         };
 
         detalhesAiProvento.innerHTML = `
-            <div class="flex flex-col gap-2">
-                <div id="chart-wrapper-proventos" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height: 300px;">
+            <div class="flex flex-col mb-2 px-1">
+                
+                <div class="flex items-center justify-between gap-1 mb-3 pl-1 w-full mt-2">
+                    <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest truncate">Proventos - ${currentDetalhesSymbol || ''}</h4>
                     
-                    <div class="absolute top-2 left-2 right-2 z-20 flex justify-center">
+                    <div class="flex items-center gap-1.5 text-[9px] bg-[#151515] border border-white/5 px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
+                        <span class="text-gray-500 font-medium">MÉD:<span id="prov-stat-med" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                        <span class="text-white/10">|</span>
+                        <span class="text-gray-500 font-medium">MAX:<span id="prov-stat-max" class="text-[#00C805] font-bold ml-0.5">--</span></span>
+                        <span class="text-white/10">|</span>
+                        <span class="text-gray-500 font-medium">TOT:<span id="prov-stat-tot" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                    </div>
+                </div>
+
+                <div id="chart-wrapper-proventos" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:320px;">
+                    
+                    <div class="absolute top-2 left-2 right-2 z-20 flex justify-center pointer-events-auto">
                         <div class="relative flex items-center gap-1 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full snap-x border border-white/5 shadow-lg" id="proventos-filters-container">
                             <div id="proventos-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                             <button id="btn-prov-12m" onclick="window.mudarFiltroProventos('12m')" class="${getBtnClass('12m')} snap-start">1A</button>
@@ -6755,7 +6765,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                         <p class="text-xs text-gray-600 font-medium bg-[#0f0f0f]/80 px-4 py-2 rounded-lg">Sem dados no período.</p>
                     </div>
 
-                    <div class="absolute inset-0 pt-16 pb-2 px-1 z-10" id="chart-canvas-container">
+                    <div class="absolute top-[48px] bottom-0 left-0 right-0 pb-2 px-1 z-10" id="chart-canvas-container">
                         <canvas id="detalhes-proventos-chart"></canvas>
                     </div>
                 </div>
@@ -6764,13 +6774,25 @@ function renderizarGraficoProventosDetalhes(rawData) {
     }
 
     // ==========================================
+    // ATUALIZA OS VALORES DOS BADGES NO TOPO
+    // ==========================================
+    const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const elMed = document.getElementById('prov-stat-med');
+    const elMax = document.getElementById('prov-stat-max');
+    const elTot = document.getElementById('prov-stat-tot');
+    
+    if (elMed) elMed.innerText = fmtBRL(mediaGeral);
+    if (elMax) elMax.innerText = fmtBRL(melhorMes);
+    if (elTot) elTot.innerText = fmtBRL(totalGeral);
+
+    // ==========================================
     // ATUALIZA O CONTAINER CUSTOM DATE E O SLIDER
     // ==========================================
     const customContainer = document.getElementById('custom-date-container');
     if (customContainer) {
         if (currentProventosFilter === 'custom') {
             customContainer.innerHTML = `
-                <div class="animate-fade-in grid grid-cols-2 gap-3 bg-[#111] p-3 rounded-xl border border-[#222]">
+                <div class="animate-fade-in grid grid-cols-2 gap-3 bg-[#111] p-3 mt-3 rounded-xl border border-[#222]">
                     <div class="relative group">
                         <label class="absolute -top-1.5 left-2 bg-[#111] px-1 text-[9px] font-bold text-[#555]">DE</label>
                         <input type="month" id="custom-start" value="${customRangeStart}" class="w-full bg-[#111] text-[#ccc] text-xs h-9 border border-[#333] rounded-lg px-3 outline-none focus:border-[#555] transition-colors appearance-none" style="color-scheme: dark;" onchange="window.atualizarFiltroCustom()">
@@ -6786,7 +6808,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
         }
     }
 
-    // Sincroniza a posição do Slider sempre (Animação)
     setTimeout(() => {
         const activeBtn = document.getElementById(`btn-prov-${currentProventosFilter}`);
         const slider = document.getElementById('proventos-slider');
@@ -6794,7 +6815,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
             slider.style.width = `${activeBtn.offsetWidth}px`;
             slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
 
-            // Força as cores corretas
             document.querySelectorAll('.proventos-filter-btn').forEach(btn => {
                 btn.classList.remove('text-white');
                 btn.classList.add('text-gray-500', 'hover:text-gray-300');
@@ -6804,14 +6824,13 @@ function renderizarGraficoProventosDetalhes(rawData) {
         }
     }, 10);
 
-    // Toggle Empty State vs Gráfico (Garante que os botões não se percam quando o período tá vazio)
     const emptyState = document.getElementById('chart-empty-state');
     const canvasContainer = document.getElementById('chart-canvas-container');
 
     if (uniqueMonths.length === 0) {
         emptyState.classList.remove('hidden');
         canvasContainer.classList.add('hidden');
-        return; // Para aqui para não quebrar o ChartJS com dados zerados
+        return; 
     } else {
         emptyState.classList.add('hidden');
         canvasContainer.classList.remove('hidden');
@@ -6821,7 +6840,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // Inicializa o Chart.js
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
         plugins: [crosshairPlugin],
@@ -6881,6 +6899,9 @@ function renderizarGraficoProventosDetalhes(rawData) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: { 
+                padding: { left: 0, right: 0, top: 10, bottom: 0 } 
+            },
             interaction: { mode: 'index', intersect: false },
             animation: { duration: 400, easing: 'easeOutQuart' },
             scales: {
@@ -6901,18 +6922,18 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    backgroundColor: 'rgba(8,8,8,0.96)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#999',
-                    titleFont: { family: 'Inter', size: 11, weight: '700' },
-                    bodyFont: { family: 'Inter', size: 10 },
-                    borderColor: '#222',
+                    backgroundColor: 'rgba(20, 20, 22, 0.95)',
+                    titleColor: '#aaaaaa',
+                    bodyColor: '#ffffff',
+                    titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
+                    bodyFont: { family: "'Inter', sans-serif", size: 12, weight: 'bold' },
+                    borderColor: '#333333',
                     borderWidth: 1,
                     padding: 10,
                     cornerRadius: 8,
                     displayColors: true,
-                    boxWidth: 6,
-                    boxHeight: 6,
+                    boxWidth: 8,
+                    boxHeight: 8,
                     usePointStyle: true,
                     callbacks: {
                         title(context) {
@@ -6926,13 +6947,9 @@ function renderizarGraficoProventosDetalhes(rawData) {
                             if (context.dataset.label === 'Média') return null;
                             const val = context.parsed.y;
                             if (!val || val < 0.001) return null;
-                            const valFmt = val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            return `${context.dataset.label}: ${valFmt}`;
-                        },
-                        afterBody() {
-                            const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            return [ '', `Méd/M: ${fmt(mediaGeral)}`, `Melhor: ${fmt(melhorMes)}` ];
+                            return `${context.dataset.label}: ${val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
                         }
+                        // O 'afterBody' foi removido daqui para deixar o Tooltip mais limpo!
                     }
                 }
             }

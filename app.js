@@ -4764,13 +4764,10 @@ async function callScraperCotacaoHistoricaAPI(ticker, range) {
 }
 
 async function fetchCotacaoHistorica(symbol) {
-    // Guarda simbolo alvo — se modal fechar antes da resposta, cancela
     const symbolAlvo = symbol;
-
     let container = document.getElementById('detalhes-cotacao-container');
 
     if (!container) {
-        // Injeta dentro do anchor da tab Resumo
         const anchor = document.getElementById('detalhes-cotacao-anchor');
         if (anchor) {
             container = document.createElement('div');
@@ -4783,15 +4780,15 @@ async function fetchCotacaoHistorica(symbol) {
     container.innerHTML = `
         <div class="flex flex-col mb-2 px-1">
             
-            <div class="flex items-center flex-wrap gap-2 mb-3 pl-1">
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Histórico de Preço</h4>
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-3 pl-1">
+                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cotações de ${symbol}</h4>
                 
-                <div class="flex items-center gap-1.5 text-[10px] font-bold text-gray-500">
-                    <span>A: <span id="stat-open" class="text-white">--</span></span>
-                    <span class="text-[#333] font-light">|</span>
-                    <span>V: <span id="stat-var" class="text-white">--</span></span>
-                    <span class="text-[#333] font-light">|</span>
-                    <span>F: <span id="stat-close" class="text-white">--</span></span>
+                <div class="flex items-center gap-2 text-[10px] bg-[#151515] border border-white/5 px-2.5 py-1 rounded-lg shadow-sm">
+                    <span class="text-gray-500 font-medium">A: <span id="stat-open" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                    <span class="text-white/10">|</span>
+                    <span class="text-gray-500 font-medium">V: <span id="stat-var" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                    <span class="text-white/10">|</span>
+                    <span class="text-gray-500 font-medium">F: <span id="stat-close" class="text-gray-200 font-bold ml-0.5">--</span></span>
                 </div>
             </div>
 
@@ -4846,7 +4843,6 @@ async function fetchCotacaoHistorica(symbol) {
         </div>
     `;
 
-    // INICIA A POSIÇÃO DO SLIDER NO "1D"
     setTimeout(() => {
         const activeBtn = document.getElementById('btn-1D');
         const slider = document.getElementById('cotacao-slider');
@@ -4856,14 +4852,11 @@ async function fetchCotacaoHistorica(symbol) {
         }
     }, 50);
 
-    // Reseta tipo de gráfico para 'line' ao abrir novo ativo
     currentPriceChartType = 'line';
-
-    // CANCELAMENTO
     if (currentDetalhesSymbol !== symbolAlvo) return;
-
     await carregarDadosGrafico('1D', symbol);
 }
+
 window.gerarBotaoFiltro = function(label, symbol, isActive = false) {
     const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
 
@@ -4995,11 +4988,33 @@ function renderLineChart(dataPoints, range) {
     wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
     const ctx = document.getElementById('canvas-cotacao').getContext('2d');
 
+    // ==========================================
+    // LÓGICA DE ABERTURA, VARIAÇÃO E FECHAMENTO
+    // ==========================================
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
-    const startPrice = values[0];
+    
+    // Pega o open real do primeiro dia, ou usa o price caso não tenha
+    const startPrice = dataPoints[0].open || values[0]; 
     const endPrice = values[values.length - 1];
-    const isPositive = endPrice >= startPrice;
+    
+    // Calcula variação percentual do período
+    const varPct = ((endPrice - startPrice) / startPrice) * 100;
+    const isPositive = varPct >= 0;
+
+    // Atualiza o HTML (Fora do Canvas)
+    const elOpen = document.getElementById('stat-open');
+    const elVar = document.getElementById('stat-var');
+    const elClose = document.getElementById('stat-close');
+
+    if (elOpen) elOpen.textContent = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (elClose) elClose.textContent = endPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (elVar) {
+        elVar.textContent = `${isPositive ? '+' : ''}${varPct.toFixed(2).replace('.', ',')}%`;
+        // Adiciona cor verde ou vermelha para dar o destaque na Variação
+        elVar.className = isPositive ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
+    }
+    // ==========================================
 
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
@@ -5173,7 +5188,7 @@ function renderLineChart(dataPoints, range) {
             layout: { 
                 padding: { left: 0, right: 36, top: 10, bottom: 20 } 
             },
-plugins: {
+            plugins: {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
@@ -5184,14 +5199,14 @@ plugins: {
                     intersect: false,
                     backgroundColor: 'rgba(20, 20, 22, 0.95)',
                     titleColor: '#ffffff',
-                    bodyColor: '#cccccc',
+                    bodyColor: '#ffffff',
                     borderColor: '#333333',
                     borderWidth: 1,
                     padding: 10,
                     cornerRadius: 8,
                     displayColors: false,
-                    titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
-                    bodyFont: { family: "'Inter', sans-serif", size: 11 },
+                    titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold', color: '#aaaaaa' },
+                    bodyFont: { family: "'Inter', sans-serif", size: 13, weight: 'bold' },
                     callbacks: {
                         title: function(context) {
                             const date = new Date(context[0].label);
@@ -5202,8 +5217,8 @@ plugins: {
                             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
                         },
                         label: function(context) {
-                        
-                            return `Fechamento: R$ ${context.parsed.y.toFixed(2).replace('.', ',')}`;
+                            // MOSTRA APENAS O PREÇO NO TOOLTIP (Sem o texto "Fechamento")
+                            return `R$ ${context.parsed.y.toFixed(2).replace('.', ',')}`;
                         }
                     }
                 }

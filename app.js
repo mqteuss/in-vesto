@@ -6685,7 +6685,7 @@ function renderHistoricoIADetalhes(mesesIgnore) {
 
 if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `
-            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:220px;">
+            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:280px;">
                 <canvas id="detalhes-proventos-chart"></canvas>
             </div>`;
     }
@@ -6792,25 +6792,9 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const uniqueMonths = [...new Set(allMonths)].sort();
     const totals = uniqueMonths.map(k => grouped[k].rawTotal);
 
-    // ── Stats summary bar ──────────────────────────────────
+    // ── Stats summary bar — limpar (exibidos no overlay do canvas) ──
     const statsEl = document.getElementById('detalhes-historico-stats');
-    if (statsEl && totals.length > 0) {
-        const totalGeral = totals.reduce((s, v) => s + v, 0);
-        const media = totalGeral / totals.length;
-        const melhor = Math.max(...totals);
-        const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        statsEl.innerHTML = `
-            <div class="flex items-center gap-3 text-right">
-                <div>
-                    <span class="block text-[8px] text-gray-600 uppercase font-bold tracking-wider leading-none mb-0.5">Média/mês</span>
-                    <span class="text-[10px] font-bold text-gray-300 leading-none">${fmt(media)}</span>
-                </div>
-                <div>
-                    <span class="block text-[8px] text-gray-600 uppercase font-bold tracking-wider leading-none mb-0.5">Melhor mês</span>
-                    <span class="text-[10px] font-bold text-green-400 leading-none">${fmt(melhor)}</span>
-                </div>
-            </div>`;
-    }
+    if (statsEl) statsEl.innerHTML = '';
 
     if (uniqueMonths.length === 0) {
         detalhesAiProvento.innerHTML = `<p class="text-xs text-gray-600 text-center py-8">Sem dados no período.</p>`;
@@ -6830,15 +6814,55 @@ function renderizarGraficoProventosDetalhes(rawData) {
     // Garante que o canvas existe
     if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `
-            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:220px;">
+            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:280px;">
                 <canvas id="detalhes-proventos-chart"></canvas>
             </div>`;
         return;
     }
 
+    // Plugin: Média/Melhor no canto superior direito do canvas
+    const mediaVal = media;
+    const melhorVal = Math.max(...totals);
+    const fmtShort = (v) => v < 1 ? `R$${v.toFixed(3)}` : `R$${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const statsOverlayPlugin = {
+        id: 'statsOverlay',
+        afterDraw(chart) {
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return;
+            ctx.save();
+
+            const lines = [
+                { label: 'Méd/mês', value: fmtShort(mediaVal), color: 'rgba(255,255,255,0.45)' },
+                { label: 'Melhor',  value: fmtShort(melhorVal), color: '#4ade80' },
+            ];
+
+            const lineH = 16;
+            const padX = 10;
+            const padY = 10;
+            let y = chartArea.top + padY;
+
+            lines.forEach(({ label, value, color }) => {
+                ctx.font = 'bold 8px Inter, sans-serif';
+                ctx.fillStyle = 'rgba(100,100,100,0.9)';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'top';
+                const labelX = chartArea.right - padX;
+                ctx.fillText(label.toUpperCase(), labelX, y);
+
+                ctx.font = 'bold 9px Inter, sans-serif';
+                ctx.fillStyle = color;
+                ctx.fillText(value, labelX, y + 9);
+                y += lineH + 6;
+            });
+
+            ctx.restore();
+        }
+    };
+
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
-        plugins: [crosshairPlugin],
+        plugins: [crosshairPlugin, statsOverlayPlugin],
         data: {
             labels,
             datasets: [
@@ -6868,7 +6892,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     borderSkipped: false,
                 },
                 {
-                    label: 'Dividendo',
+                    label: 'Div',
                     data: dataDIV,
                     backgroundColor: 'rgba(167,139,250,0.85)',
                     borderWidth: 0,
@@ -6904,13 +6928,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 x: {
                     stacked: true,
                     grid: { display: false, drawBorder: false },
-                    ticks: {
-                        color: '#555',
-                        font: { family: 'Inter', size: 9, weight: '600' },
-                        maxRotation: 0,
-                        autoSkip: true,
-                        maxTicksLimit: labels.length > 12 ? 6 : labels.length,
-                    },
+                    ticks: { display: false },
                     border: { display: false },
                 },
                 y: {
@@ -6953,25 +6971,22 @@ function renderizarGraficoProventosDetalhes(rawData) {
                         title(context) {
                             const info = context[0].dataset.customInfo?.[context[0].dataIndex];
                             if (!info) return '';
-                            const totalFmt = info.rawTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            const totalFmt = fmtShort(info.rawTotal);
                             return `${info.label}  ·  ${totalFmt}`;
                         },
                         label(context) {
                             if (context.dataset.label === 'Média') return null;
                             const val = context.parsed.y;
                             if (!val || val < 0.001) return null;
-                            const valFmt = val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                            return `${context.dataset.label}: ${valFmt}`;
+                            return `${context.dataset.label}: ${fmtShort(val)}`;
                         },
                         afterBody(context) {
                             const info = context[0].dataset.customInfo?.[context[0].dataIndex];
                             if (!info) return [];
-                            const media = dataMedia[0];
-                            if (!media) return [];
-                            const diff = info.rawTotal - media;
-                            const pct = ((diff / media) * 100).toFixed(1);
-                            const sinal = diff >= 0 ? '+' : '';
-                            return [`vs. média: ${sinal}${pct}%`];
+                            const lines = [];
+                            lines.push(`Méd/mês: ${fmtShort(mediaVal)}`);
+                            lines.push(`Melhor:  ${fmtShort(melhorVal)}`);
+                            return lines;
                         }
                     }
                 }

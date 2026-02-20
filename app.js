@@ -6372,12 +6372,13 @@ async function handleMostrarDetalhes(symbol) {
             `;
         }
 
-        // =========================================================
-        // LÓGICA: COMPARAÇÃO (Tabela Horizontal com Destaques)
+// =========================================================
+        // NOVA LÓGICA: COMPARAÇÃO (Tabela Horizontal Vesto com 5 Colunas)
         // =========================================================
         let comparacaoHtml = '';
         if (dados.comparacao && dados.comparacao.length > 0) {
             
+            // Função para converter strings formatadas em números para descobrir os "campeões"
             const parseNumberStr = (str) => {
                 if (!str || str === '-' || str === 'N/A') return null;
                 let s = str.toUpperCase().replace(/\s/g, '');
@@ -6391,15 +6392,17 @@ async function handleMostrarDetalhes(symbol) {
                 return isNaN(val) ? null : val * mult;
             };
 
+            // Mapeia os dados válidos
             let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
             let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0); 
             let validPat = dados.comparacao.map(i => parseNumberStr(i.patrimonio)).filter(v => v !== null);
 
+            // Encontra os extremos (Maior DY, Menor P/VP, Maior Patrimônio)
             let maxDy = validDy.length ? Math.max(...validDy) : null;
             let minPvp = validPvp.length ? Math.min(...validPvp) : null;
             let maxPat = validPat.length ? Math.max(...validPat) : null;
 
-let tbody = dados.comparacao.map(item => {
+            let tbody = dados.comparacao.map(item => {
                 let vDy = parseNumberStr(item.dy);
                 let vPvp = parseNumberStr(item.pvp);
                 let vPat = parseNumberStr(item.patrimonio);
@@ -6408,22 +6411,19 @@ let tbody = dados.comparacao.map(item => {
                 let isBestPvp = vPvp !== null && vPvp === minPvp;
                 let isBestPat = vPat !== null && vPat === maxPat;
 
-                // Indicador minimalista (um pontinho verde sutil com um leve brilho)
-                const dot = `<span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500 ml-1.5 align-middle shadow-[0_0_5px_rgba(34,197,94,0.6)]"></span>`;
-
-                // Montagem Minimalista: Campeão = Branco + Dot | Restante = Cinza apagado
+                // Montagem Super Minimalista: Campeão = Branco Bold | Normal = Cinza Claro
                 let dyBadge = isBestDy 
-                    ? `<span class="text-[11px] text-white font-bold tracking-wide cursor-default" title="Maior Dividend Yield">${item.dy}${dot}</span>` 
-                    : `<span class="text-[11px] text-[#666] font-medium">${item.dy}</span>`;
+                    ? `<span class="text-[11px] text-white font-bold tracking-wide" title="Maior Dividend Yield">${item.dy}</span>` 
+                    : `<span class="text-[11px] text-gray-400 font-medium">${item.dy}</span>`;
 
                 let pvpBadge = isBestPvp 
-                    ? `<span class="text-[11px] text-white font-bold tracking-wide cursor-default" title="Menor P/VP">${item.pvp}${dot}</span>` 
-                    : `<span class="text-[11px] text-[#666] font-medium">${item.pvp}</span>`;
+                    ? `<span class="text-[11px] text-white font-bold tracking-wide" title="Menor P/VP">${item.pvp}</span>` 
+                    : `<span class="text-[11px] text-gray-400 font-medium">${item.pvp}</span>`;
 
                 let valPat = item.patrimonio && item.patrimonio !== '-' && item.patrimonio !== 'N/A' ? item.patrimonio : '-';
                 let patBadge = isBestPat 
-                    ? `<span class="text-[11px] text-white font-bold tracking-wide cursor-default" title="Maior Valor Patrimonial">${valPat}${dot}</span>` 
-                    : `<span class="text-[11px] text-[#666] font-medium">${valPat}</span>`;
+                    ? `<span class="text-[11px] text-white font-bold tracking-wide" title="Maior Valor Patrimonial">${valPat}</span>` 
+                    : `<span class="text-[11px] text-gray-400 font-medium">${valPat}</span>`;
 
                 let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
                 let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
@@ -6456,21 +6456,23 @@ let tbody = dados.comparacao.map(item => {
                     Comparando Ativos
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                 </h4>
-                <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 relative">
+                <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 relative overflow-hidden">
                     <style>
                         .table-scrollbar::-webkit-scrollbar { height: 6px; }
-                        .table-scrollbar::-webkit-scrollbar-track { background: transparent; margin: 0 10px; }
+                        .table-scrollbar::-webkit-scrollbar-track { background: transparent; }
                         .table-scrollbar::-webkit-scrollbar-thumb { background: #2A2A2C; border-radius: 10px; }
                         .table-scrollbar::-webkit-scrollbar-thumb:hover { background: #3F3F42; }
                     </style>
-                    <div class="overflow-x-auto table-scrollbar rounded-xl">
-                        <table class="w-full text-left border-collapse min-w-[340px]">
+                    <div class="overflow-x-auto table-scrollbar">
+                        <table class="w-full text-left border-collapse min-w-[550px]">
                             <thead>
-                                <tr>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap">Ativo</th>
+                                <tr class="bg-[#18181A]">
+                                    <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">Ativo</th>
                                     <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
                                     <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
                                     <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Patrimônio</th>
+                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Tipo</th>
+                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Segmento</th>
                                 </tr>
                             </thead>
                             <tbody>

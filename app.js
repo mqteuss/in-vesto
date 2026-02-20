@@ -6402,7 +6402,7 @@ async function handleMostrarDetalhes(symbol) {
             let minPvp = validPvp.length ? Math.min(...validPvp) : null;
             let maxPat = validPat.length ? Math.max(...validPat) : null;
 
-            let tbody = dados.comparacao.map(item => {
+let tbody = dados.comparacao.map(item => {
                 let vDy = parseNumberStr(item.dy);
                 let vPvp = parseNumberStr(item.pvp);
                 let vPat = parseNumberStr(item.patrimonio);
@@ -6411,18 +6411,21 @@ async function handleMostrarDetalhes(symbol) {
                 let isBestPvp = vPvp !== null && vPvp === minPvp;
                 let isBestPat = vPat !== null && vPat === maxPat;
 
-                // Montagem Super Minimalista: Campeão = Branco Bold | Normal = Cinza Claro
+                // Coroinha SVG Dourada com brilho sutil (Feita para encaixar perfeitamente em cima do número)
+                const crownIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3 text-yellow-500 drop-shadow-[0_0_3px_rgba(234,179,8,0.4)] mb-[2px]"><path d="M2.25 21h19.5c.414 0 .75-.336.75-.75v-1.5a.75.75 0 00-.75-.75H2.25a.75.75 0 00-.75.75v1.5c0 .414.336.75.75.75zm3-13.842l-2.022 6.57a1.5 1.5 0 001.432 1.94h14.68a1.5 1.5 0 001.432-1.94l-2.022-6.57a.75.75 0 00-1.408-.06l-2.522 5.043-4.103-7.69a.75.75 0 00-1.325 0l-4.103 7.69-2.522-5.043a.75.75 0 00-1.408.06z" /></svg>`;
+
+                // Montagem: Campeão = Coroa em cima + Branco Bold | Normal = Cinza Claro
                 let dyBadge = isBestDy 
-                    ? `<span class="text-[11px] text-white font-bold tracking-wide" title="Maior Dividend Yield">${item.dy}</span>` 
+                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="Maior Dividend Yield">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${item.dy}</span></div>` 
                     : `<span class="text-[11px] text-gray-400 font-medium">${item.dy}</span>`;
 
                 let pvpBadge = isBestPvp 
-                    ? `<span class="text-[11px] text-white font-bold tracking-wide" title="Menor P/VP">${item.pvp}</span>` 
+                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="Menor P/VP">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${item.pvp}</span></div>` 
                     : `<span class="text-[11px] text-gray-400 font-medium">${item.pvp}</span>`;
 
                 let valPat = item.patrimonio && item.patrimonio !== '-' && item.patrimonio !== 'N/A' ? item.patrimonio : '-';
                 let patBadge = isBestPat 
-                    ? `<span class="text-[11px] text-white font-bold tracking-wide" title="Maior Valor Patrimonial">${valPat}</span>` 
+                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="Maior Valor Patrimonial">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${valPat}</span></div>` 
                     : `<span class="text-[11px] text-gray-400 font-medium">${valPat}</span>`;
 
                 let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
@@ -6438,13 +6441,13 @@ async function handleMostrarDetalhes(symbol) {
                                 <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                             </div>
                         </td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[70px]">${dyBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[70px]">${pvpBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[100px]">${patBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-center min-w-[100px]">
+                        <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${dyBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${pvpBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-right min-w-[100px] align-middle">${patBadge}</td>
+                        <td class="p-3 whitespace-nowrap text-center min-w-[100px] align-middle">
                             <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valTipo}</span>
                         </td>
-                        <td class="p-3 whitespace-nowrap text-center min-w-[120px]">
+                        <td class="p-3 whitespace-nowrap text-center min-w-[120px] align-middle">
                             <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valSeg}</span>
                         </td>
                     </tr>

@@ -4770,7 +4770,7 @@ async function fetchCotacaoHistorica(symbol) {
     let container = document.getElementById('detalhes-cotacao-container');
 
     if (!container) {
-        // Injeta dentro do anchor da tab Resumo (entre KPIs e cards de proventos)
+        // Injeta dentro do anchor da tab Resumo
         const anchor = document.getElementById('detalhes-cotacao-anchor');
         if (anchor) {
             container = document.createElement('div');
@@ -4782,22 +4782,7 @@ async function fetchCotacaoHistorica(symbol) {
 
     container.innerHTML = `
         <div class="flex flex-col mb-2 px-1">
-            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-3 pl-1">Histórico de Preço</h4>
-
-            <div class="grid grid-cols-3 gap-2 mb-4">
-                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Abertura</span>
-                    <span id="stat-open" class="text-base font-bold text-white leading-none">--</span>
-                </div>
-                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Variação</span>
-                    <span id="stat-var" class="text-base font-bold text-white leading-none">--</span>
-                </div>
-                <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
-                    <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1.5 text-center">Fechamento</span>
-                    <span id="stat-close" class="text-base font-bold text-white leading-none">--</span>
-                </div>
-            </div>
+            <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 pl-1">Histórico de Preço</h4>
 
             <div id="chart-wrapper-cotacao" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height: 300px;">
                 
@@ -4850,7 +4835,6 @@ async function fetchCotacaoHistorica(symbol) {
         </div>
     `;
 
-    // INICIA A POSIÇÃO DO SLIDER NO "1D" (Tempo de delay pequeno para o DOM renderizar o CSS)
     setTimeout(() => {
         const activeBtn = document.getElementById('btn-1D');
         const slider = document.getElementById('cotacao-slider');
@@ -4860,12 +4844,8 @@ async function fetchCotacaoHistorica(symbol) {
         }
     }, 50);
 
-    // Reseta tipo de gráfico para 'line' ao abrir novo ativo
     currentPriceChartType = 'line';
-
-    // CANCELAMENTO: se modal fechou antes do DOM ser montado, nao carrega
     if (currentDetalhesSymbol !== symbolAlvo) return;
-
     await carregarDadosGrafico('1D', symbol);
 }
 
@@ -4991,12 +4971,10 @@ function renderLineChart(dataPoints, range) {
     const wrapper = document.getElementById('chart-area-wrapper');
     if (!wrapper) return;
 
-    // ✅ CORREÇÃO: Destruir ANTES de limpar o DOM para evitar ResizeObserver zumbi.
     if (cotacaoChartInstance) {
         cotacaoChartInstance.destroy();
         cotacaoChartInstance = null;
     }
-    // Limpa eventos do canvas candlestick se existir
     if (candlestickEventCleanup) { candlestickEventCleanup(); candlestickEventCleanup = null; }
 
     wrapper.innerHTML = '<canvas id="canvas-cotacao" style="width: 100%; height: 100%;"></canvas>';
@@ -5008,7 +4986,6 @@ function renderLineChart(dataPoints, range) {
     const endPrice = values[values.length - 1];
     const isPositive = endPrice >= startPrice;
 
-    // Cores
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
     const colorFillStart = isPositive ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)';
     const colorCrosshairLine = '#A3A3A3'; 
@@ -5021,39 +4998,11 @@ function renderLineChart(dataPoints, range) {
 
     const isIntraday = (range === '1D' || range === '5D');
 
-    const updateHeaderStats = (currentPrice) => {
-        const elOpen = document.getElementById('stat-open');
-        const elClose = document.getElementById('stat-close');
-        const elVar = document.getElementById('stat-var');
-
-        if (!elOpen || !elClose || !elVar) return;
-
-        // Abertura é sempre fixa (início do gráfico)
-        elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-        // Fechamento é dinâmico (ou o último, ou o do dedo)
-        elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elClose.style.color = (currentPrice >= startPrice) ? '#00C805' : '#FF3B30';
-
-        // Variação
-        const diff = currentPrice - startPrice;
-        const percent = (diff / startPrice) * 100;
-        const sign = diff >= 0 ? '+' : '';
-
-        elVar.innerText = `${sign}${percent.toFixed(2)}%`;
-        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
-    };
-
-    // Inicializa o Header com os dados finais (Repouso)
-    updateHeaderStats(endPrice);
-
-    // Posicionador
     Chart.Tooltip.positioners.followFinger = function(elements, eventPosition) {
         if (!elements.length) return false;
         return { x: elements[0].element.x, y: eventPosition.y };
     };
 
-    // PLUGIN A: LINHA DE PREÇO ATUAL (Badge Fixo)
     const lastPricePlugin = {
         id: 'lastPriceLine',
         afterDraw: (chart) => {
@@ -5076,7 +5025,6 @@ function renderLineChart(dataPoints, range) {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Badge
             const text = endPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             ctx.font = 'bold 9px sans-serif'; 
             const textWidth = ctx.measureText(text).width;
@@ -5098,21 +5046,11 @@ function renderLineChart(dataPoints, range) {
         }
     };
 
-    // PLUGIN B: MIRA LIVRE + ATUALIZAÇÃO DO HEADER
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
-            // Se NÃO estiver tocando, reseta o header para o valor final
-            if (!chart.tooltip?._active?.length) {
-                if (chart.lastHeaderUpdate !== 'end') {
-                    updateHeaderStats(endPrice);
-                    chart.lastHeaderUpdate = 'end';
-                }
-                return;
-            }
-
-            // Se ESTIVER tocando:
-            if (!chart.tooltip._eventPosition) return;
+            if (!chart.tooltip?._active?.length || !chart.tooltip._eventPosition) return;
+            
             const event = chart.tooltip._eventPosition;
             const ctx = chart.ctx;
             const x = event.x; 
@@ -5125,22 +5063,12 @@ function renderLineChart(dataPoints, range) {
 
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
 
-            // Pega o valor real do ponto mais próximo (activePoint) para precisão no header
-            const activePoint = chart.tooltip._active[0];
-            const focusedPrice = dataPoints[activePoint.index].price;
-
-            if (chart.lastHeaderValue !== focusedPrice) {
-                updateHeaderStats(focusedPrice);
-                chart.lastHeaderValue = focusedPrice;
-                chart.lastHeaderUpdate = 'active';
-            }
-
             ctx.save();
             ctx.lineWidth = 1;
             ctx.strokeStyle = colorCrosshairLine; 
             ctx.setLineDash([4, 4]);
 
-            // 1. Eixo X (Linha + Data)
+            // Eixo X
             ctx.beginPath();
             ctx.moveTo(x, topY);
             ctx.lineTo(x, bottomY);
@@ -5176,7 +5104,7 @@ function renderLineChart(dataPoints, range) {
             ctx.textBaseline = 'middle';
             ctx.fillText(dateText, dateBadgeX + (dateWidth / 2), dateBadgeY + (dateHeight / 2) + 1);
 
-            // 2. Eixo Y (Linha + Preço da Mira)
+            // Eixo Y
             ctx.beginPath();
             ctx.moveTo(leftX, y); 
             ctx.lineTo(rightX, y);
@@ -5187,21 +5115,20 @@ function renderLineChart(dataPoints, range) {
             const priceWidth = ctx.measureText(priceText).width + 8;
             const priceHeight = 16;
             const priceBadgeX = rightX;
-            const priceBadgeY = y - (priceHeight / 2);
+            let priceBadgeY = y - (priceHeight / 2);
+
+            if (priceBadgeY < topY) priceBadgeY = topY;
+            if (priceBadgeY + priceHeight > bottomY) priceBadgeY = bottomY - priceHeight;
 
             ctx.fillStyle = colorBadgeBackground; 
             ctx.beginPath();
-            let finalPriceY = priceBadgeY;
-            if (finalPriceY < topY) finalPriceY = topY;
-            if (finalPriceY + priceHeight > bottomY) finalPriceY = bottomY - priceHeight;
-
-            ctx.roundRect(priceBadgeX, finalPriceY, priceWidth, priceHeight, 3);
+            ctx.roundRect(priceBadgeX, priceBadgeY, priceWidth, priceHeight, 3);
             ctx.fill();
 
             ctx.fillStyle = colorBadgeText;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(priceText, priceBadgeX + 4, finalPriceY + (priceHeight / 2) + 1);
+            ctx.fillText(priceText, priceBadgeX + 4, priceBadgeY + (priceHeight / 2) + 1);
 
             ctx.restore();
         }
@@ -5215,7 +5142,7 @@ function renderLineChart(dataPoints, range) {
                 data: values,
                 borderColor: colorLine,
                 backgroundColor: gradient,
-                borderWidth: 1,
+                borderWidth: 1.5,
                 pointRadius: 0,
                 pointHitRadius: 20, 
                 pointHoverRadius: 4,
@@ -5240,16 +5167,17 @@ function renderLineChart(dataPoints, range) {
                     caretPadding: 35,
                     mode: 'index',
                     intersect: false,
-                    backgroundColor: 'rgba(28, 28, 30, 0.95)',
-                    titleColor: '#9CA3AF',
-                    bodyColor: '#FFF',
-                    borderColor: '#333',
+                    backgroundColor: 'rgba(20, 20, 22, 0.95)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#cccccc',
+                    borderColor: '#333333',
                     borderWidth: 1,
-                    padding: 8,
-                    cornerRadius: 6,
+                    padding: 10,
+                    cornerRadius: 8,
                     displayColors: false,
+                    titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
+                    bodyFont: { family: "'Inter', sans-serif", size: 11 },
                     callbacks: {
-                        // Título com data no tooltip flutuante
                         title: function(context) {
                             const date = new Date(context[0].label);
                             if (isIntraday) {
@@ -5259,7 +5187,26 @@ function renderLineChart(dataPoints, range) {
                             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
                         },
                         label: function(context) {
-                            return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            return `Fechamento: R$ ${context.parsed.y.toFixed(2).replace('.', ',')}`;
+                        },
+                        afterBody: function(context) {
+                            const idx = context[0].dataIndex;
+                            const point = dataPoints[idx];
+                            
+                            // Busca a abertura, usando o fechamento como fallback se API falhar
+                            const open = point.open || point.price;
+                            const close = point.price;
+                            
+                            if (!open) return [];
+
+                            const diff = close - open;
+                            const varPct = (diff / open) * 100;
+                            const sinal = diff >= 0 ? '+' : '';
+                            
+                            return [
+                                `Abertura: R$ ${open.toFixed(2).replace('.', ',')}`,
+                                `Variação: ${sinal}${varPct.toFixed(2).replace('.', ',')}%`
+                            ];
                         }
                     }
                 }

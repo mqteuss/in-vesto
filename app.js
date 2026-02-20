@@ -6685,10 +6685,8 @@ function renderHistoricoIADetalhes(mesesIgnore) {
 
 if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `
-            <div class="w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:280px;">
-                <div id="detalhes-proventos-scroll" class="overflow-x-auto h-full no-scrollbar" style="height:280px;">
-                    <canvas id="detalhes-proventos-chart" style="height:280px; display:block;"></canvas>
-                </div>
+            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:280px;">
+                <canvas id="detalhes-proventos-chart"></canvas>
             </div>`;
     }
 
@@ -6816,10 +6814,8 @@ function renderizarGraficoProventosDetalhes(rawData) {
     // Garante que o canvas existe
     if (!document.getElementById('detalhes-proventos-chart')) {
         detalhesAiProvento.innerHTML = `
-            <div class="w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:280px;">
-                <div id="detalhes-proventos-scroll" class="overflow-x-auto h-full no-scrollbar" style="height:280px;">
-                    <canvas id="detalhes-proventos-chart" style="height:280px; display:block;"></canvas>
-                </div>
+            <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a] shadow-inner" style="height:280px;">
+                <canvas id="detalhes-proventos-chart"></canvas>
             </div>`;
         return;
     }
@@ -6840,13 +6836,9 @@ function renderizarGraficoProventosDetalhes(rawData) {
     const statsOverlayPlugin = {
         id: 'statsOverlay',
         afterDraw(chart) {
-            const { ctx, chartArea, canvas: cv } = chart;
+            const { ctx, chartArea } = chart;
             if (!chartArea) return;
             ctx.save();
-
-            // Fundo semitransparente para separar do gráfico
-            const bgX = cv.width / (window.devicePixelRatio || 1) - OVERLAY_W;
-            ctx.fillStyle = 'rgba(15,15,15,0.0)'; // transparente — fundo já é escuro
 
             const lines = [
                 { label: 'MÉD/MÊS', value: fmtShort(mediaVal), color: 'rgba(200,200,200,0.5)' },
@@ -6875,21 +6867,6 @@ function renderizarGraficoProventosDetalhes(rawData) {
             ctx.restore();
         }
     };
-
-    // ── Scroll horizontal: canvas cresce proporcionalmente ao nº de meses ──
-    const scrollEl = document.getElementById('detalhes-proventos-scroll');
-    const BAR_MIN_PX = 38; // px mínimos por barra (inclui gap)
-    const containerW = scrollEl ? scrollEl.clientWidth : 300;
-    const dataW = uniqueMonths.length * BAR_MIN_PX;
-    const chartW = Math.max(containerW - OVERLAY_W, dataW); // dados + espaço overlay separado
-    const totalCanvasW = chartW + OVERLAY_W;
-
-    const canvas2 = document.getElementById('detalhes-proventos-chart');
-    if (canvas2) {
-        canvas2.style.width  = totalCanvasW + 'px';
-        canvas2.style.minWidth = totalCanvasW + 'px';
-        canvas2.style.height = '280px';
-    }
 
     detalhesChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -6951,7 +6928,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
             ]
         },
         options: {
-            responsive: false,
+            responsive: true,
             maintainAspectRatio: false,
             layout: {
                 padding: { right: OVERLAY_W, top: 6, bottom: 4, left: 0 }
@@ -6980,8 +6957,8 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     backgroundColor: 'rgba(8,8,8,0.96)',
                     titleColor: '#ffffff',
                     bodyColor: '#aaa',
-                    footerColor: '#666',
-                    titleFont: { family: 'Inter', size: 11, weight: '700' },
+                    footerColor: '#555',
+                    titleFont: { family: 'Inter', size: 13, weight: '700' },
                     bodyFont: { family: 'Inter', size: 10 },
                     footerFont: { family: 'Inter', size: 9, style: 'normal' },
                     borderColor: '#2a2a2a',
@@ -6993,13 +6970,18 @@ function renderizarGraficoProventosDetalhes(rawData) {
                     boxHeight: 6,
                     usePointStyle: true,
                     callbacks: {
-                        // Título: "Mês · Total"
+                        // Linha 1: Mês em destaque
                         title(context) {
                             const info = context[0].dataset.customInfo?.[context[0].dataIndex];
-                            if (!info) return '';
-                            return `${info.label}  ·  ${fmtShort(info.rawTotal)}`;
+                            return info ? info.label : '';
                         },
-                        // Linhas por tipo de provento
+                        // Linha 2 (beforeBody): Total do mês logo abaixo do mês
+                        beforeBody(context) {
+                            const info = context[0].dataset.customInfo?.[context[0].dataIndex];
+                            if (!info) return [];
+                            return [`Total: ${fmtShort(info.rawTotal)}`, ''];
+                        },
+                        // Linhas por tipo de provento (apenas os que têm valor)
                         label(context) {
                             if (context.dataset.label === 'Média') return null;
                             const val = context.parsed.y;

@@ -4780,14 +4780,14 @@ async function fetchCotacaoHistorica(symbol) {
     container.innerHTML = `
         <div class="flex flex-col mb-2 px-1">
             
-            <div class="flex items-center justify-between mb-3 pl-1 gap-1">
-                <h4 class="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">Cotações de ${symbol}</h4>
+            <div class="flex items-center justify-between gap-1 mb-3 pl-1 w-full">
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest truncate">Cotações de ${symbol}</h4>
                 
-                <div class="flex items-center gap-1 text-[9px] bg-[#151515] border border-white/5 px-1.5 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
+                <div class="flex items-center gap-1.5 text-[9px] bg-[#151515] border border-white/5 px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
                     <span class="text-gray-500 font-medium">A:<span id="stat-open" class="text-gray-200 font-bold ml-0.5">--</span></span>
-                    <span class="text-white/10 mx-0.5">|</span>
+                    <span class="text-white/10">|</span>
                     <span class="text-gray-500 font-medium">V:<span id="stat-var" class="text-gray-200 font-bold ml-0.5">--</span></span>
-                    <span class="text-white/10 mx-0.5">|</span>
+                    <span class="text-white/10">|</span>
                     <span class="text-gray-500 font-medium">F:<span id="stat-close" class="text-gray-200 font-bold ml-0.5">--</span></span>
                 </div>
             </div>
@@ -4795,7 +4795,6 @@ async function fetchCotacaoHistorica(symbol) {
             <div id="chart-wrapper-cotacao" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height: 320px;">
                 
                 <div class="absolute top-2 left-2 right-2 z-20 flex justify-between items-center gap-2 pointer-events-auto">
-                    
                     <div class="relative flex items-center gap-0.5 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1 border border-white/5 shadow-lg" id="chart-filters">
                         <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                         ${window.gerarBotaoFiltro('1D', symbol, true)}
@@ -4836,7 +4835,7 @@ async function fetchCotacaoHistorica(symbol) {
 
                 <div class="absolute top-[48px] bottom-0 left-0 right-0 pb-2 px-1 z-10" id="chart-area-wrapper">
                      <div class="flex flex-col items-center justify-center h-full animate-pulse">
-                        <span class="text-[10px] text-gray-600 tracking-wider">A carregar...</span>
+                        <span class="text-[10px] text-gray-600 tracking-wider">Carregando...</span>
                     </div>
                 </div>
             </div>
@@ -4991,28 +4990,30 @@ function renderLineChart(dataPoints, range) {
     const labels = dataPoints.map(p => p.date);
     const values = dataPoints.map(p => p.price);
     
-    // Valores do Período Inteiro
     const startPrice = dataPoints[0].open || values[0]; 
     const endPrice = values[values.length - 1];
 
-    // Função que injeta os valores no topo (Dinâmica)
-    const atualizarHeader = (open, close) => {
+    // ATUALIZAÇÃO DOS VALORES A/V/F (Interativo com o Dedo)
+    const updateHeaderStats = (currentPrice) => {
         const elOpen = document.getElementById('stat-open');
-        const elVar = document.getElementById('stat-var');
         const elClose = document.getElementById('stat-close');
-        if (!elOpen || !elVar || !elClose) return;
+        const elVar = document.getElementById('stat-var');
 
-        const varPct = ((close - open) / open) * 100;
-        const isPos = varPct >= 0;
+        if (!elOpen || !elClose || !elVar) return;
 
-        elOpen.textContent = open.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elClose.textContent = close.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        elVar.textContent = `${isPos ? '+' : ''}${varPct.toFixed(2).replace('.', ',')}%`;
-        elVar.className = isPos ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
+        elOpen.innerText = startPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elClose.innerText = currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        
+        const diff = currentPrice - startPrice;
+        const percent = (diff / startPrice) * 100;
+        const sign = diff >= 0 ? '+' : '';
+
+        elVar.innerText = `${sign}${percent.toFixed(2).replace('.', ',')}%`;
+        // Sem text-xs para herdar o text-[9px] do pai
+        elVar.className = diff >= 0 ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
     };
 
-    // Preenche inicialmente com os dados do período inteiro
-    atualizarHeader(startPrice, endPrice);
+    updateHeaderStats(endPrice); // Estado inicial (repouso)
 
     const isPositive = ((endPrice - startPrice) / startPrice) * 100 >= 0;
     const colorLine = isPositive ? '#00C805' : '#FF3B30'; 
@@ -5078,7 +5079,13 @@ function renderLineChart(dataPoints, range) {
     const activeCrosshairPlugin = {
         id: 'activeCrosshair',
         afterDraw: (chart) => {
-            if (!chart.tooltip?._active?.length || !chart.tooltip._eventPosition) return;
+            if (!chart.tooltip?._active?.length || !chart.tooltip._eventPosition) {
+                if (chart.lastHeaderUpdate !== 'end') {
+                    updateHeaderStats(endPrice);
+                    chart.lastHeaderUpdate = 'end';
+                }
+                return;
+            }
             
             const event = chart.tooltip._eventPosition;
             const ctx = chart.ctx;
@@ -5091,6 +5098,15 @@ function renderLineChart(dataPoints, range) {
             const rightX = chart.scales.x.right;
 
             if (x < leftX || x > rightX || y < topY || y > bottomY) return;
+
+            // Atualiza o valor F: e V: em tempo real enquanto arrasta o dedo
+            const activePoint = chart.tooltip._active[0];
+            const focusedPrice = dataPoints[activePoint.index].price;
+            if (chart.lastHeaderValue !== focusedPrice) {
+                updateHeaderStats(focusedPrice);
+                chart.lastHeaderValue = focusedPrice;
+                chart.lastHeaderUpdate = 'active';
+            }
 
             ctx.save();
             ctx.lineWidth = 1;
@@ -5184,22 +5200,7 @@ function renderLineChart(dataPoints, range) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { 
-                padding: { left: 0, right: 36, top: 10, bottom: 20 } 
-            },
-            // EVENTO QUE CAPTURA O DEDO NO GRÁFICO
-            onHover: (event, activeElements) => {
-                if (activeElements && activeElements.length > 0) {
-                    const idx = activeElements[0].index;
-                    const p = dataPoints[idx];
-                    const openDia = p.open || p.price;
-                    const closeDia = p.price;
-                    atualizarHeader(openDia, closeDia);
-                } else {
-                    // Quando tira o dedo, volta pros dados globais
-                    atualizarHeader(startPrice, endPrice);
-                }
-            },
+            layout: { padding: { left: 0, right: 36, top: 10, bottom: 20 } },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -5229,21 +5230,14 @@ function renderLineChart(dataPoints, range) {
                             return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
                         },
                         label: function(context) {
-                            // APENAS O PREÇO NO TOOLTIP
-                            return `R$ ${context.parsed.y.toFixed(2).replace('.', ',')}`;
+                            // TOOLTIP LIMPO: APENAS O PREÇO SEM "Fechamento:"
+                            return context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         }
                     }
                 }
             },
-            scales: {
-                x: { display: false },
-                y: { display: false } 
-            },
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-            },
+            scales: { x: { display: false }, y: { display: false } },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false },
             animation: { duration: 0 }
         },
         plugins: [lastPricePlugin, activeCrosshairPlugin]
@@ -5309,22 +5303,28 @@ function renderCandlestickChart(dataPoints, range) {
     const refPrice = candles[0].close;
     const endPrice = candles[N - 1].close;
 
-    // ─── HEADER STATS ──────────────────────────────────────────────────────────
+// ─── HEADER STATS ──────────────────────────────────────────────────────────
     const updateHeaderStats = (open, close) => {
         const elOpen  = document.getElementById('stat-open');
         const elClose = document.getElementById('stat-close');
         const elVar   = document.getElementById('stat-var');
         if (!elOpen || !elClose || !elVar) return;
-        elOpen.innerText  = open.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-        elClose.innerText = close.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-        elClose.style.color = close >= open ? '#00C805' : '#FF3B30';
-        const diff    = close - refPrice;
-        const percent = (diff / refPrice) * 100;
-        const sign    = diff >= 0 ? '+' : '';
-        elVar.innerText = `${sign}${percent.toFixed(2)}%`;
-        elVar.className = `text-xs font-bold ${diff >= 0 ? 'text-[#00C805]' : 'text-[#FF3B30]'}`;
+
+        const varPct = ((close - open) / open) * 100;
+        const isPos = varPct >= 0;
+
+        elOpen.textContent = open.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        
+        elClose.textContent = close.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        elClose.style.color = ''; // Limpa a cor que ficava verde/vermelha no fechamento
+
+        elVar.textContent = `${isPos ? '+' : ''}${varPct.toFixed(2).replace('.', ',')}%`;
+        // CORREÇÃO: Usando o mesmo estilo compacto e sem o text-xs gigante
+        elVar.className = isPos ? 'text-[#00C805] font-bold ml-0.5' : 'text-[#FF3B30] font-bold ml-0.5';
     };
-    updateHeaderStats(candles[viewStart].open, endPrice);
+    
+    // Inicializa com a abertura do primeiro candle visível e o fechamento do último visível
+    updateHeaderStats(candles[viewStart].open, candles[viewEnd].close);
 
     // ─── ESCALAS DINÂMICAS (apenas para candles visíveis) ──────────────────────
     function getVisibleScale() {

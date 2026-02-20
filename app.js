@@ -4799,7 +4799,7 @@ async function fetchCotacaoHistorica(symbol) {
                 </div>
             </div>
 
-            <div id="chart-wrapper-cotacao" class="relative h-72 w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden">
+            <div id="chart-wrapper-cotacao" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height: 300px;">
                 
                 <div class="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2">
                     
@@ -6769,7 +6769,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
 
         detalhesAiProvento.innerHTML = `
             <div class="flex flex-col gap-2">
-                <div id="chart-wrapper-proventos" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height:260px;">
+                <div id="chart-wrapper-proventos" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height: 300px;">
                     
                     <div class="absolute top-2 left-2 right-2 z-20 flex justify-center">
                         <div class="relative flex items-center gap-1 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar w-full snap-x border border-white/5 shadow-lg" id="proventos-filters-container">

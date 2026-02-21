@@ -703,7 +703,6 @@ let ipcaCacheData = null;
     const detalhesLoading = document.getElementById('detalhes-loading');
     const detalhesPreco = document.getElementById('detalhes-preco');
     const detalhesHistoricoContainer = document.getElementById('detalhes-historico-container');
-    const periodoSelectorGroup = document.getElementById('periodo-selector-group'); 
     const detalhesAiProvento = document.getElementById('detalhes-ai-provento');
     const detalhesTabPortfolioBtn = document.getElementById('tab-portfolio-btn');
     const listaHistorico = document.getElementById('lista-historico');
@@ -4733,9 +4732,6 @@ function handleAbrirModalEdicao(id) {
         currentDetalhesMeses = 3; 
         currentDetalhesHistoricoJSON = null; 
 
-        periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.meses === '3'); 
-        });
     }
 
 //  LÓGICA DO GRÁFICO DE COTAÇÃO (VISUAL MELHORADO & SEM CACHE PERSISTENTE)
@@ -5993,13 +5989,6 @@ async function handleMostrarDetalhes(symbol) {
     currentDetalhesMeses = 3; 
     currentDetalhesHistoricoJSON = null; 
 
-    const btnsPeriodo = periodoSelectorGroup.querySelectorAll('.periodo-selector-btn');
-    btnsPeriodo.forEach(btn => {
-        const isActive = btn.dataset.meses === '3';
-        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
-            isActive ? 'bg-purple-600 text-white shadow-md active' : 'bg-[#151515] text-[#888888] hover:text-white'
-        }`;
-    });
 
     const tickerParaApi = ehFii ? `${symbol}.SA` : symbol;
     const cacheKeyPreco = `detalhe_preco_${symbol}`;
@@ -6604,13 +6593,7 @@ function renderHistoricoIADetalhes(mesesIgnore) {
         return;
     }
 
-    // Esconde a div antiga de botões externos que estava fora do canvas
-    const containerBotoes = document.getElementById('periodo-selector-group');
-    if (containerBotoes) {
-        containerBotoes.innerHTML = '';
-        containerBotoes.classList.add('hidden');
-    }
-
+    // Chama a função principal que constrói tudo (Gráfico + Título + Botões)
     renderizarGraficoProventosDetalhes(currentDetalhesHistoricoJSON);
 }
 
@@ -7217,28 +7200,6 @@ const tabDashboard = document.getElementById('tab-dashboard');
             }
         });
     }
-
-periodoSelectorGroup.addEventListener('click', (e) => {
-    const target = e.target.closest('.periodo-selector-btn');
-    if (!target) return;
-
-    const meses = parseInt(target.dataset.meses, 10);
-    if (meses === currentDetalhesMeses) return;
-
-    currentDetalhesMeses = meses;
-
-    periodoSelectorGroup.querySelectorAll('.periodo-selector-btn').forEach(btn => {
-        const isTarget = btn === target;
-        // Mesma lógica neutra
-        btn.className = `periodo-selector-btn py-1.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 border ${
-            isTarget
-            ? 'bg-purple-600 border-purple-600 text-white shadow-md active' 
-            : 'bg-black border-[#2C2C2E] text-[#888888] hover:text-white hover:border-[#444]'
-        }`;
-    });
-
-    renderHistoricoIADetalhes(currentDetalhesMeses);
-});
 
     if (toggleBioBtn) {
         toggleBioBtn.addEventListener('click', () => {
@@ -8364,8 +8325,6 @@ async function calcularDyCarteiraTeorico() {
     // Evita divisão por zero
     if (valorTotalCarteira === 0) return 0;
 
-    // 3. Busca o histórico de proventos dos ativos da carteira
-    // Tenta pegar do cache primeiro para ser rápido (mesma chave do gráfico de histórico)
     const cacheKey = `cache_grafico_historico_${currentUserId}`;
     let rawDividends = await getCache(cacheKey);
 

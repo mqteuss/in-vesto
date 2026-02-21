@@ -758,6 +758,22 @@ async function scrapeIndicadores(rawTicker) {
     const limpar = (str) => (str || '').replace(/\s+/g, ' ').trim();
 
     /**
+     * Remove o sufixo numérico bruto que o Investidor10 às vezes concatena
+     * depois do valor formatado por magnitude.
+     * Ex: "R$511,54 Bilhões 511540000000" → "R$511,54 Bilhões"
+     *     "R$1,23 Milhões 1230000"        → "R$1,23 Milhões"
+     * Funciona também para valores sem símbolo de moeda (ex: "2,50 Bilhões 2500000000").
+     */
+    const sanitizarValor = (v) => {
+        if (!v) return v;
+        // Captura a parte legível (com magnitude) e descarta o número inteiro que se segue
+        return v.replace(
+            /((?:R\$\s*)?[\d.,]+\s*(?:Bilh(?:ões|oes)?|Milh(?:ões|oes)?|Mil))\s+[\d.]+$/i,
+            '$1'
+        ).trim();
+    };
+
+    /**
      * Valida se um valor extraído é utilizável:
      * rejeita placeholders, strings vazias e textos demasiado longos
      * (que são normalmente títulos de secção ou descrições narrativas).
@@ -792,7 +808,7 @@ async function scrapeIndicadores(rawTicker) {
      */
     const registarNaSecao = (secao, nomeRaw, valorRaw) => {
         const nome  = limpar(nomeRaw);
-        const valor = limpar(valorRaw);
+        const valor = sanitizarValor(limpar(valorRaw));
 
         if (!nome || !valorValido(valor)) return;
 
@@ -961,12 +977,12 @@ async function scrapeIndicadores(rawTicker) {
         if (!nome) return;
 
         // Já capturado numa secção detalhada — o Set global descarta
-        registarNaSecao('Outros', nome, valor);
+        registarNaSecao('OUTROS', nome, valor);
     });
 
-    // Remove "Outros" se ficou vazia (não houve indicadores residuais)
-    if (secoes['Outros'] && Object.keys(secoes['Outros']).length === 0) {
-        delete secoes['Outros'];
+    // Remove "OUTROS" se ficou vazia (não houve indicadores residuais)
+    if (secoes['OUTROS'] && Object.keys(secoes['OUTROS']).length === 0) {
+        delete secoes['OUTROS'];
     }
 
     // ── Resultado final ──────────────────────────────────────────────────────

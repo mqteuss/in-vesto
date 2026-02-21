@@ -706,9 +706,61 @@ async function scrapeCotacaoHistory(rawTicker, range = '1A') {
 }
 
 // ---------------------------------------------------------
+// PARTE 5: INDICADORES FUNDAMENTALISTAS → INVESTIDOR10 (AÇÕES)
+// ---------------------------------------------------------
+/**
+ * Raspa a tabela #table-indicators da página de uma Ação no Investidor10.
+ * Retorna um array de { nome, valor } pronto para renderização no frontend.
+ * Utiliza cache com a chave indicadores_<TICKER> e CACHE_TTL_MS.
+ */
+async function scrapeIndicadores(rawTicker) {
+    const ticker = sanitizeTicker(rawTicker);
+    const cacheKey = `indicadores_${ticker.toUpperCase()}`;
+
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+        log.info('Cache hit: indicadores', { ticker });
+        return cached;
+    }
+
+    const url = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
+    const res = await fetchWithRetry(url);
+    if (res.status !== 200) throw new Error(`HTTP ${res.status} ao buscar indicadores de ${ticker}`);
+
+    const $ = cheerio.load(res.data);
+    const indicadores = [];
+
+    $('#table-indicators .cell').each((_, el) => {
+        // Nome: tenta .desc span, depois .desc, depois .name
+        const nomeEl = $(el).find('.desc span').first();
+        const nome = (nomeEl.length
+            ? nomeEl.text()
+            : $(el).find('.desc, .name').first().text()
+        ).replace(/\s+/g, ' ').trim();
+
+        // Valor: tenta .value span, depois .value
+        const valorEl = $(el).find('.value span').first();
+        const valor = (valorEl.length
+            ? valorEl.text()
+            : $(el).find('.value').first().text()
+        ).replace(/\s+/g, ' ').trim();
+
+        // Descarta células vazias (separadores, etc.)
+        if (nome && valor && valor !== '-' && valor !== '') {
+            indicadores.push({ nome, valor });
+        }
+    });
+
+    const result = { ticker, indicadores };
+    cacheSet(cacheKey, result, CACHE_TTL_MS);
+    log.info('scrapeIndicadores concluído', { ticker, total: indicadores.length });
+    return result;
+}
+
+// ---------------------------------------------------------
 // VALIDAÇÃO DE PAYLOAD
 // ---------------------------------------------------------
-const VALID_MODES = new Set(['ipca', 'fundamentos', 'proventos_carteira', 'historico_portfolio', 'historico_12m', 'proximo_provento', 'cotacao_historica']);
+const VALID_MODES = new Set(['ipca', 'fundamentos', 'proventos_carteira', 'historico_portfolio', 'historico_12m', 'proximo_provento', 'cotacao_historica', 'indicadores']);
 
 function validateBody(body) {
     if (!body || typeof body !== 'object') throw new Error('Payload inválido');
@@ -817,6 +869,11 @@ module.exports = async function handler(req, res) {
             if (!payload.ticker) return res.status(400).json({ error: 'ticker obrigatório' });
             const range = payload.range || '1D';
             return res.status(200).json({ json: await scrapeCotacaoHistory(payload.ticker, range) });
+        }
+
+        if (mode === 'indicadores') {
+            if (!payload.ticker) return res.status(400).json({ error: 'ticker obrigatório' });
+            return res.status(200).json({ json: await scrapeIndicadores(payload.ticker) });
         }
 
         // Não deve chegar aqui (validateBody já filtra), mas por segurança:

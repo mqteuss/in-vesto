@@ -1045,17 +1045,13 @@
             <!-- Separador após gráfico de preço -->
             <div class="my-5 h-px bg-[#1F1F1F]"></div>
             <!-- 3. Cards Último Pagamento + Próximo a Receber -->
-            <div id="detalhes-provento-placeholder" class="mb-4"></div>
-            <!-- 4. Gráfico histórico de proventos -->
-            <div id="detalhes-historico-container" class="hidden mt-2">
+<div id="detalhes-provento-placeholder"></div>
+            
+            <div id="detalhes-historico-container" class="hidden">
+                
+                <div class="my-8 h-px bg-[#1F1F1F]"></div>
 
-                <div id="periodo-selector-group" class="grid grid-cols-4 gap-2 mb-4">
-                    <button class="periodo-selector-btn" data-meses="3">3M</button>
-                    <button class="periodo-selector-btn" data-meses="6">6M</button>
-                    <button class="periodo-selector-btn" data-meses="9">9M</button>
-                    <button class="periodo-selector-btn" data-meses="12">12M</button>
-                </div>
-                <div id="detalhes-ai-provento" class="mt-2">
+                <div id="detalhes-ai-provento">
                     <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a]" style="height:280px;">
                         <canvas id="detalhes-proventos-chart"></canvas>
                     </div>

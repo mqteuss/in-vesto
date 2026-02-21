@@ -1034,29 +1034,25 @@
     <div id="detalhes-conteudo-scroll" class="flex-1 overflow-y-auto custom-scroll pb-8">
 
         <!-- ── TAB 1: RESUMO (padrão) ── -->
-        <div id="detalhe-tab-resumo" class="detalhe-tab-panel p-4 pt-4">
-            <!-- 1. KPIs principais no topo -->
-            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest pl-1">Indicadores Rápidos</h4>
-            <div id="detalhes-grid-topo" class="grid grid-cols-3 gap-2 w-full"></div>
-            <!-- Separador visual -->
-            <div class="my-8 h-px bg-[#1F1F1F]"></div>
-            <!-- 2. Gráfico de cotação (injetado por fetchCotacaoHistorica) -->
-            <div id="detalhes-cotacao-anchor"></div>
-            <!-- Separador após gráfico de preço -->
-            <div class="my-5 h-px bg-[#1F1F1F]"></div>
-            <!-- 3. Cards Último Pagamento + Próximo a Receber -->
-<div id="detalhes-provento-placeholder"></div>
+<div id="detalhe-tab-resumo" class="detalhe-tab-panel p-4 pt-4 w-full">
             
-            <div id="detalhes-historico-container" class="hidden">
+            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest pl-1 mb-3">Indicadores Rápidos</h4>
+            <div id="detalhes-grid-topo" class="grid grid-cols-3 gap-2 w-full"></div>
+            
+            <div class="my-8 h-px bg-[#1F1F1F] w-full"></div>
+            
+            <div id="detalhes-cotacao-anchor" class="w-full"></div>
+            
+            <div class="my-8 h-px bg-[#1F1F1F] w-full"></div>
+            
+            <div id="detalhes-provento-placeholder" class="w-full"></div>
+            
+            <div id="detalhes-historico-container" class="hidden w-full">
+                <div class="my-8 h-px bg-[#1F1F1F] w-full"></div>
                 
-                <div class="my-8 h-px bg-[#1F1F1F]"></div>
-
-                <div id="detalhes-ai-provento">
-                    <div class="relative w-full bg-[#0f0f0f] rounded-2xl overflow-hidden border border-[#1a1a1a]" style="height:280px;">
-                        <canvas id="detalhes-proventos-chart"></canvas>
-                    </div>
-                </div>
+                <div id="detalhes-ai-provento" class="w-full"></div>
             </div>
+
         </div>
 
         <!-- ── TAB 2: INDICADORES ── -->

@@ -3970,6 +3970,29 @@ async function buscarProventosFuturos(force = false) {
         return result;
     }
 
+    // ─── INDICADORES FUNDAMENTALISTAS (apenas Ações) ─────────────────────────────
+    // Raspa a tabela #table-indicators do Investidor10 e devolve um array de pares
+    // { nome, valor } para exibição na Tab "Indicadores" do modal de detalhes.
+    async function callScraperIndicadoresAPI(ticker) {
+        const cacheKey = `indicadores_${ticker.toUpperCase()}`;
+        const cached = await getCache(cacheKey);
+        if (cached) return cached;
+
+        const body = { mode: 'indicadores', payload: { ticker } };
+        const response = await fetchBFF('/api/scraper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const result = response.json;
+        if (result) {
+            // Usa o mesmo TTL dos fundamentos
+            const ttl = isB3Open() ? CACHE_FUNDAMENTOS_ABERTO : CACHE_FUNDAMENTOS_FECHADO;
+            await setCache(cacheKey, result, ttl);
+        }
+        return result;
+    }
+
 async function buscarHistoricoProventosAgregado(force = false) {
         // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
         const ativosCarteira = carteiraCalculada.map(a => a.symbol);
@@ -6008,6 +6031,10 @@ async function handleMostrarDetalhes(symbol) {
 
     const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(() => ({}));
     const promiseProvento    = callScraperProximoProventoAPI(symbol).catch(() => null);
+    // Indicadores fundamentalistas: apenas para Ações (não FIIs)
+    const promiseIndicadores = ehAcao
+        ? callScraperIndicadoresAPI(symbol).catch(() => null)
+        : Promise.resolve(null);
 
     // Disparo de gráficos sem bloquear o fluxo principal
     fetchHistoricoScraper(symbol); 
@@ -6081,7 +6108,7 @@ async function handleMostrarDetalhes(symbol) {
 
 // ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
     // Roda em background, sem bloquear mais nada
-    Promise.all([promiseFundamentos, promiseProvento]).then(([fundData, provData]) => {
+    Promise.all([promiseFundamentos, promiseProvento, promiseIndicadores]).then(([fundData, provData, indicadoresData]) => {
         // Garante que o modal ainda é desse símbolo
         if (currentDetalhesSymbol !== symbol || !precoData) return;
 
@@ -6473,6 +6500,24 @@ let tbody = dados.comparacao.map(item => {
         if (elListas) {
             elListas.style.opacity = '0';
             elListas.innerHTML = listasHtml;
+
+            // ── Indicadores Fundamentalistas (exclusivo para Ações) ──────────────
+            if (ehAcao && indicadoresData && indicadoresData.indicadores && indicadoresData.indicadores.length > 0) {
+                const cards = indicadoresData.indicadores.map(({ nome, valor }) => `
+                    <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm text-center">
+                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest leading-none mb-1.5">${nome}</span>
+                        <span class="text-sm font-bold text-white leading-none">${valor}</span>
+                    </div>`).join('');
+
+                const indicadoresSection = document.createElement('div');
+                indicadoresSection.innerHTML = `
+                    <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Indicadores Fundamentalistas</h4>
+                    <div class="grid grid-cols-3 gap-2 mb-4">
+                        ${cards}
+                    </div>`;
+                elListas.appendChild(indicadoresSection);
+            }
+
             requestAnimationFrame(() => {
                 elListas.style.transition = 'opacity 0.3s ease';
                 elListas.style.opacity = '1';

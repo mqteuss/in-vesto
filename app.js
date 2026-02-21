@@ -6883,10 +6883,10 @@ function renderizarGraficoProventosDetalhes(rawData) {
             responsive: true,
             maintainAspectRatio: false,
             layout: { 
-                padding: { left: 16, right: 16, top: 10, bottom: 10 }
+                padding: { left: 0, right: 0, top: 10, bottom: 0 } 
             },
             interaction: { mode: 'index', intersect: false },
-            animation: { duration: 400, easing: 'easeOutQuart' },
+            animation: { duration: 50, easing: 'easeOutQuart' },
             scales: {
                 x: {
                     stacked: true,

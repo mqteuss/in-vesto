@@ -6486,14 +6486,18 @@ let tbody = dados.comparacao.map(item => {
                 Object.entries(secoes).forEach(([titulo, indicadores]) => {
                     const pares = Object.entries(indicadores);
                     if (pares.length > 0) {
-                        // 1. Título da categoria (Igual aos FIIs)
+                        // 1. Título da categoria — CSS 'uppercase' cuida da capitalização visual
                         secoesHtml += `<h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">${titulo}</h4>`;
 
                         // 2. Caixa contêiner da lista (Igual aos FIIs)
                         secoesHtml += `<div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">`;
 
                         // 3. Renderiza cada indicador como uma linha (usando a função renderRow já existente)
-                        pares.forEach(([nome, valor]) => {
+                        // Aplica Title Case defensivo no nome caso venha em minúsculo do backend
+                        pares.forEach(([nomeRaw, valor]) => {
+                            const nome = nomeRaw
+                                ? nomeRaw.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1))
+                                : nomeRaw;
                             secoesHtml += renderRow(nome, valor);
                         });
 

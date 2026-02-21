@@ -6481,44 +6481,27 @@ let tbody = dados.comparacao.map(item => {
             // ── Para Ações: renderiza secções vindas do scrapeIndicadores ──────
             if (ehAcao && indicadoresData && indicadoresData.secoes) {
                 const secoes = indicadoresData.secoes;
+                let secoesHtml = '';
 
-                /**
-                 * Gera o HTML de um card de indicador individual.
-                 * Visual: fundo #151515, rótulo cinza em cima, valor branco em baixo.
-                 * Usa exactamente as mesmas classes dos outros KPI cards do Vesto.
-                 */
-                const renderCardIndicador = (nome, valor) => `
-                    <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm text-center">
-                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest leading-tight mb-1.5">${nome}</span>
-                        <span class="text-sm font-bold text-white leading-none">${valor}</span>
-                    </div>`;
-
-                /**
-                 * Gera o HTML completo de uma secção:
-                 * título com separador + grid 3 colunas de cards.
-                 */
-                const renderSecao = (tituloSecao, indicadores) => {
+                Object.entries(secoes).forEach(([titulo, indicadores]) => {
                     const pares = Object.entries(indicadores);
-                    if (pares.length === 0) return '';
+                    if (pares.length > 0) {
+                        // 1. Título da categoria (Igual aos FIIs)
+                        secoesHtml += `<h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">${titulo}</h4>`;
 
-                    const cardsHtml = pares.map(([nome, valor]) => renderCardIndicador(nome, valor)).join('');
+                        // 2. Caixa contêiner da lista (Igual aos FIIs)
+                        secoesHtml += `<div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">`;
 
-                    return `
-                        <div class="mb-5">
-                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-[#222] pb-1 mb-3 mt-4">${tituloSecao}</h4>
-                            <div class="grid grid-cols-3 gap-2">
-                                ${cardsHtml}
-                            </div>
-                        </div>`;
-                };
+                        // 3. Renderiza cada indicador como uma linha (usando a função renderRow já existente)
+                        pares.forEach(([nome, valor]) => {
+                            secoesHtml += renderRow(nome, valor);
+                        });
 
-                // Itera pelas secções na ordem de inserção (Resumo primeiro,
-                // depois as secções detalhadas conforme a ordem da página)
-                let secoesHtml = Object.entries(secoes)
-                    .map(([titulo, indicadores]) => renderSecao(titulo, indicadores))
-                    .join('');
+                        secoesHtml += `</div>`;
+                    }
+                });
 
-                // Se não vieram dados do scraper, mostra mensagem de estado vazio
+                // Se não vieram dados, mostra mensagem de estado vazio
                 if (!secoesHtml) {
                     secoesHtml = `
                         <div class="flex flex-col items-center justify-center py-12 text-center">
@@ -6528,8 +6511,7 @@ let tbody = dados.comparacao.map(item => {
 
                 elListas.innerHTML = secoesHtml;
 
-                // O bloco de Valuation calculado (Graham / Bazin) é adicionado
-                // NO FIM, após os indicadores raspados, se existir.
+                // O bloco de Valuation calculado (Graham / Bazin) é adicionado no fim, se existir
                 if (listasHtml) {
                     const valuationWrapper = document.createElement('div');
                     valuationWrapper.innerHTML = listasHtml;

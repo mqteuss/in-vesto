@@ -709,9 +709,30 @@ async function scrapeCotacaoHistory(rawTicker, range = '1A') {
 // PARTE 5: INDICADORES FUNDAMENTALISTAS → INVESTIDOR10 (AÇÕES)
 // ---------------------------------------------------------
 /**
- * Raspa a tabela #table-indicators da página de uma Ação no Investidor10.
- * Retorna um array de { nome, valor } pronto para renderização no frontend.
- * Utiliza cache com a chave indicadores_<TICKER> e CACHE_TTL_MS.
+ * Raspa TODOS os indicadores fundamentalistas da página de uma Ação no
+ * Investidor10, cobrindo três fontes distintas de dados:
+ *
+ *   PASSAGEM 1 — Quadro de topo (#table-indicators .cell)
+ *     Os ~14 indicadores resumidos visíveis no cabeçalho da página.
+ *
+ *   PASSAGEM 2 — Células div.cell dispersas pela página
+ *     Painéis de Valuation, Endividamento, Eficiência, Rentabilidade, etc.
+ *     que usam a mesma estrutura .desc / .value mas fora do #table-indicators.
+ *     Seletores: #indicators-section, .panel, .indicators-wrapper e varredura
+ *     global de segurança para qualquer .cell com ambas as classes.
+ *
+ *   PASSAGEM 3 — Linhas de tabela HTML (table tbody tr)
+ *     Algumas seções usam <table> em vez de divs. A primeira <td> é o nome
+ *     e a segunda <td> é o valor.
+ *     Seletores: .panel table, .indicators-table, #indicators-section table,
+ *     e varredura de fallback em qualquer <table> dentro da área de conteúdo.
+ *
+ * Deduplicação: usa um Map com a chave normalizada do nome do indicador.
+ * A PASSAGEM 1 tem prioridade máxima — passagens posteriores só adicionam
+ * indicadores NOVOS (nunca sobrescrevem).
+ *
+ * Retorna: { ticker, indicadores: [{ nome, valor }, ...] }
+ * Cache: chave indicadores_<TICKER>, TTL = CACHE_TTL_MS (5 min).
  */
 async function scrapeIndicadores(rawTicker) {
     const ticker = sanitizeTicker(rawTicker);
@@ -728,28 +749,136 @@ async function scrapeIndicadores(rawTicker) {
     if (res.status !== 200) throw new Error(`HTTP ${res.status} ao buscar indicadores de ${ticker}`);
 
     const $ = cheerio.load(res.data);
-    const indicadores = [];
 
-    $('#table-indicators .cell').each((_, el) => {
-        // Nome: tenta .desc span, depois .desc, depois .name
-        const nomeEl = $(el).find('.desc span').first();
-        const nome = (nomeEl.length
+    /**
+     * Map de deduplicação: chave = nome normalizado (lowercase + sem espaços
+     * duplos), valor = { nome, valor } já limpos.
+     * Garante que a PRIMEIRA ocorrência (passagem de maior prioridade) vence.
+     */
+    const seen = new Map(); // Map<string, { nome: string, valor: string }>
+
+    /**
+     * Tenta registar um par (nome, valor).
+     * - Descarta se nome ou valor forem vazios / placeholders.
+     * - Descarta se o nome já estiver no Map (prioridade da passagem anterior).
+     */
+    const registar = (nomeRaw, valorRaw) => {
+        const nome  = (nomeRaw  || '').replace(/\s+/g, ' ').trim();
+        const valor = (valorRaw || '').replace(/\s+/g, ' ').trim();
+
+        if (!nome || !valor) return;
+        // Valores sem conteúdo real
+        if (valor === '-' || valor === '--' || valor === 'N/A' || valor === '') return;
+        // Descarta linhas que são títulos de secção (sem valor numérico/textual útil)
+        if (valor.length > 40) return;
+
+        const chave = nome.toLowerCase().replace(/\s+/g, ' ');
+        if (seen.has(chave)) return; // já registado — mantém o da passagem 1
+
+        seen.set(chave, { nome, valor });
+    };
+
+    /**
+     * Extrai nome e valor de um elemento div.cell.
+     * Hierarquia de seletores para nome: .desc span → .desc → .name → span:first
+     * Hierarquia de seletores para valor: .value span → .value → span:last
+     */
+    const extrairCell = (el) => {
+        const $el = $(el);
+
+        const nomeEl = $el.find('.desc span').first();
+        const nome   = nomeEl.length
             ? nomeEl.text()
-            : $(el).find('.desc, .name').first().text()
-        ).replace(/\s+/g, ' ').trim();
+            : ($el.find('.desc, .name').first().length
+                ? $el.find('.desc, .name').first().text()
+                : $el.children('span').first().text());
 
-        // Valor: tenta .value span, depois .value
-        const valorEl = $(el).find('.value span').first();
-        const valor = (valorEl.length
+        const valorEl = $el.find('.value span').first();
+        const valor   = valorEl.length
             ? valorEl.text()
-            : $(el).find('.value').first().text()
-        ).replace(/\s+/g, ' ').trim();
+            : ($el.find('.value').first().length
+                ? $el.find('.value').first().text()
+                : $el.children('span').last().text());
 
-        // Descarta células vazias (separadores, etc.)
-        if (nome && valor && valor !== '-' && valor !== '') {
-            indicadores.push({ nome, valor });
-        }
-    });
+        registar(nome, valor);
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PASSAGEM 1 — Quadro de topo: #table-indicators
+    // Máxima prioridade. Cobre os ~14 indicadores do resumo.
+    // ─────────────────────────────────────────────────────────────────────────
+    $('#table-indicators .cell').each((_, el) => extrairCell(el));
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PASSAGEM 2 — Células div.cell nas secções detalhadas
+    // Cobre Valuation, Endividamento, Eficiência, Rentabilidade, etc.
+    // Seletores por ordem de especificidade (do mais específico para o mais
+    // amplo), evitando reprocessar o #table-indicators já coberto.
+    // ─────────────────────────────────────────────────────────────────────────
+    const CELL_SCOPES = [
+        '#indicators-section .cell',
+        '.indicators-wrapper .cell',
+        '.panel .cell',
+        '.card-body .cell',
+        // Varredura global de segurança: qualquer .cell com .desc E .value
+        // que ainda não tenha sido visitada (seen irá descartar duplicatas)
+        '.cell:has(.desc):has(.value)',
+    ];
+
+    for (const selector of CELL_SCOPES) {
+        $(selector).each((_, el) => extrairCell(el));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PASSAGEM 3 — Linhas de tabela HTML (table tbody tr)
+    // Cobre seções que usam <table> em vez de divs.
+    // ─────────────────────────────────────────────────────────────────────────
+    const TABLE_SCOPES = [
+        '#indicators-section table',
+        '.indicators-table',
+        '.panel table',
+        '.card-body table',
+        '.indicators-wrapper table',
+        // Fallback amplo: qualquer tabela dentro da área de conteúdo principal
+        'main table',
+        '#content table',
+        '.content table',
+        // Varredura global de último recurso
+        'table',
+    ];
+
+    // Evita re-visitar a mesma tabela DOM caso múltiplos seletores a capturem
+    const tabelasVisitadas = new WeakSet();
+
+    for (const selector of TABLE_SCOPES) {
+        $(selector).each((_, tbl) => {
+            if (tabelasVisitadas.has(tbl)) return;
+            tabelasVisitadas.add(tbl);
+
+            $(tbl).find('tbody tr').each((_, row) => {
+                const cols = $(row).find('td');
+                if (cols.length < 2) return;
+
+                // Ignora linhas de cabeçalho disfarçadas (th dentro de tbody)
+                const primeiraTh = $(row).find('th').length;
+                if (primeiraTh > 0) return;
+
+                const nome  = $(cols[0]).text();
+                // Valor: prefere a célula com [data-indicator] se existir,
+                // caso contrário usa simplesmente o texto da segunda coluna.
+                const dataEl = $(cols[1]).find('[data-value], .value, span').first();
+                const valor  = dataEl.length ? dataEl.text() : $(cols[1]).text();
+
+                registar(nome, valor);
+            });
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Converter Map → Array preservando a ordem de inserção
+    // (Passagem 1 primeiro, depois 2, depois 3)
+    // ─────────────────────────────────────────────────────────────────────────
+    const indicadores = [...seen.values()];
 
     const result = { ticker, indicadores };
     cacheSet(cacheKey, result, CACHE_TTL_MS);

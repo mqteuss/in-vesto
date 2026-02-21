@@ -3970,29 +3970,6 @@ async function buscarProventosFuturos(force = false) {
         return result;
     }
 
-    // ─── INDICADORES FUNDAMENTALISTAS (apenas Ações) ─────────────────────────────
-    // Raspa a tabela #table-indicators do Investidor10 e devolve um array de pares
-    // { nome, valor } para exibição na Tab "Indicadores" do modal de detalhes.
-    async function callScraperIndicadoresAPI(ticker) {
-        const cacheKey = `indicadores_${ticker.toUpperCase()}`;
-        const cached = await getCache(cacheKey);
-        if (cached) return cached;
-
-        const body = { mode: 'indicadores', payload: { ticker } };
-        const response = await fetchBFF('/api/scraper', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        const result = response.json;
-        if (result) {
-            // Usa o mesmo TTL dos fundamentos
-            const ttl = isB3Open() ? CACHE_FUNDAMENTOS_ABERTO : CACHE_FUNDAMENTOS_FECHADO;
-            await setCache(cacheKey, result, ttl);
-        }
-        return result;
-    }
-
 async function buscarHistoricoProventosAgregado(force = false) {
         // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
         const ativosCarteira = carteiraCalculada.map(a => a.symbol);
@@ -6031,10 +6008,6 @@ async function handleMostrarDetalhes(symbol) {
 
     const promiseFundamentos = callScraperFundamentosAPI(symbol).catch(() => ({}));
     const promiseProvento    = callScraperProximoProventoAPI(symbol).catch(() => null);
-    // Indicadores fundamentalistas: apenas para Ações (não FIIs)
-    const promiseIndicadores = ehAcao
-        ? callScraperIndicadoresAPI(symbol).catch(() => null)
-        : Promise.resolve(null);
 
     // Disparo de gráficos sem bloquear o fluxo principal
     fetchHistoricoScraper(symbol); 
@@ -6108,7 +6081,7 @@ async function handleMostrarDetalhes(symbol) {
 
 // ─── FASE 2: Preenche fundamentos assim que chegarem ─────────────────────────
     // Roda em background, sem bloquear mais nada
-    Promise.all([promiseFundamentos, promiseProvento, promiseIndicadores]).then(([fundData, provData, indicadoresData]) => {
+    Promise.all([promiseFundamentos, promiseProvento]).then(([fundData, provData]) => {
         // Garante que o modal ainda é desse símbolo
         if (currentDetalhesSymbol !== symbol || !precoData) return;
 
@@ -6273,10 +6246,34 @@ async function handleMostrarDetalhes(symbol) {
                 renderKpi('Dív./EBITDA', dados.divida_liquida_ebitda),
             ].join('');
 
-            // Os indicadores fundamentalistas detalhados são agora renderizados
-            // a partir do scrapeIndicadores (secoes), abaixo na injeção do elListas.
-            // Aqui mantém-se apenas o bloco de Valuation calculado (Graham / Bazin).
-            listasHtml = valuationHtml;
+            listasHtml = `
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Rentabilidade</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${renderRow('Marg. Líquida', dados.margem_liquida)}
+                    ${renderRow('Marg. Bruta', dados.margem_bruta)}
+                    ${renderRow('Marg. EBIT', dados.margem_ebit)}
+                    ${renderRow('ROE', dados.roe)}
+                    ${renderRow('LPA', dados.lpa)}
+                </div>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Endividamento</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${renderRow('Dív. Líq./EBITDA', dados.divida_liquida_ebitda)}
+                    ${renderRow('Díd. Líq./PL', dados.divida_liquida_pl)}
+                    ${renderRow('EV/EBITDA', dados.ev_ebitda)}
+                </div>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5A)</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${renderRow('CAGR Receita', dados.cagr_receita)}
+                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
+                    ${renderRow('Payout', dados.payout)}
+                </div>
+                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Mercado</h4>
+                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
+                    ${renderRow('Valor de Mercado', dados.val_mercado)}
+                    ${renderRow('Liquidez', dados.liquidez)}
+                    ${renderRow('VP por Ação', dados.vp_cota)}
+                </div>
+                ${valuationHtml}`;
 } else {
             // É FII
             gridTopo = [
@@ -6471,62 +6468,11 @@ let tbody = dados.comparacao.map(item => {
             });
         }
 
-        // ── Tab INDICADORES: Valuation calculado + Indicadores por secção ──
+        // ── Tab INDICADORES: Listas de fundamentos + Valuation ──
         const elListas = document.getElementById('detalhes-listas-fundamentos');
         if (elListas) {
             elListas.style.opacity = '0';
-            // Limpa qualquer conteúdo anterior (skeleton ou render anterior)
-            elListas.innerHTML = '';
-
-            // ── Para Ações: renderiza secções vindas do scrapeIndicadores ──────
-            if (ehAcao && indicadoresData && indicadoresData.secoes) {
-                const secoes = indicadoresData.secoes;
-                let secoesHtml = '';
-
-                Object.entries(secoes).forEach(([titulo, indicadores]) => {
-                    const pares = Object.entries(indicadores);
-                    if (pares.length > 0) {
-                        // 1. Título da categoria — CSS 'uppercase' cuida da capitalização visual
-                        secoesHtml += `<h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">${titulo}</h4>`;
-
-                        // 2. Caixa contêiner da lista (Igual aos FIIs)
-                        secoesHtml += `<div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">`;
-
-                        // 3. Renderiza cada indicador como uma linha (usando a função renderRow já existente)
-                        // Aplica Title Case defensivo no nome caso venha em minúsculo do backend
-                        pares.forEach(([nomeRaw, valor]) => {
-                            const nome = nomeRaw
-                                ? nomeRaw.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1))
-                                : nomeRaw;
-                            secoesHtml += renderRow(nome, valor);
-                        });
-
-                        secoesHtml += `</div>`;
-                    }
-                });
-
-                // Se não vieram dados, mostra mensagem de estado vazio
-                if (!secoesHtml) {
-                    secoesHtml = `
-                        <div class="flex flex-col items-center justify-center py-12 text-center">
-                            <p class="text-xs text-gray-600 font-medium">Indicadores não disponíveis para este ativo.</p>
-                        </div>`;
-                }
-
-                elListas.innerHTML = secoesHtml;
-
-                // O bloco de Valuation calculado (Graham / Bazin) é adicionado no fim, se existir
-                if (listasHtml) {
-                    const valuationWrapper = document.createElement('div');
-                    valuationWrapper.innerHTML = listasHtml;
-                    elListas.appendChild(valuationWrapper);
-                }
-
-            } else if (!ehAcao) {
-                // ── Para FIIs: mantém a renderização original por rows ────────
-                elListas.innerHTML = listasHtml;
-            }
-
+            elListas.innerHTML = listasHtml;
             requestAnimationFrame(() => {
                 elListas.style.transition = 'opacity 0.3s ease';
                 elListas.style.opacity = '1';

@@ -4768,7 +4768,7 @@ async function fetchCotacaoHistorica(symbol) {
         if (anchor) {
             container = document.createElement('div');
             container.id = 'detalhes-cotacao-container';
-            container.className = "mb-6 mt-2";
+            container.className = "mb-8 mt-4";
             anchor.appendChild(container);
         } else { return; }
     }

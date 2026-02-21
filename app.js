@@ -6273,34 +6273,10 @@ async function handleMostrarDetalhes(symbol) {
                 renderKpi('Dív./EBITDA', dados.divida_liquida_ebitda),
             ].join('');
 
-            listasHtml = `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 mb-2 pl-1">Rentabilidade</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Marg. Líquida', dados.margem_liquida)}
-                    ${renderRow('Marg. Bruta', dados.margem_bruta)}
-                    ${renderRow('Marg. EBIT', dados.margem_ebit)}
-                    ${renderRow('ROE', dados.roe)}
-                    ${renderRow('LPA', dados.lpa)}
-                </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Endividamento</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Dív. Líq./EBITDA', dados.divida_liquida_ebitda)}
-                    ${renderRow('Díd. Líq./PL', dados.divida_liquida_pl)}
-                    ${renderRow('EV/EBITDA', dados.ev_ebitda)}
-                </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Crescimento (5A)</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('CAGR Receita', dados.cagr_receita)}
-                    ${renderRow('CAGR Lucros', dados.cagr_lucros)}
-                    ${renderRow('Payout', dados.payout)}
-                </div>
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Mercado</h4>
-                <div class="bg-[#151515] rounded-xl px-3 shadow-sm mb-4">
-                    ${renderRow('Valor de Mercado', dados.val_mercado)}
-                    ${renderRow('Liquidez', dados.liquidez)}
-                    ${renderRow('VP por Ação', dados.vp_cota)}
-                </div>
-                ${valuationHtml}`;
+            // Os indicadores fundamentalistas detalhados são agora renderizados
+            // a partir do scrapeIndicadores (secoes), abaixo na injeção do elListas.
+            // Aqui mantém-se apenas o bloco de Valuation calculado (Graham / Bazin).
+            listasHtml = valuationHtml;
 } else {
             // É FII
             gridTopo = [
@@ -6495,27 +6471,74 @@ let tbody = dados.comparacao.map(item => {
             });
         }
 
-        // ── Tab INDICADORES: Listas de fundamentos + Valuation ──
+        // ── Tab INDICADORES: Valuation calculado + Indicadores por secção ──
         const elListas = document.getElementById('detalhes-listas-fundamentos');
         if (elListas) {
             elListas.style.opacity = '0';
-            elListas.innerHTML = listasHtml;
+            // Limpa qualquer conteúdo anterior (skeleton ou render anterior)
+            elListas.innerHTML = '';
 
-            // ── Indicadores Fundamentalistas (exclusivo para Ações) ──────────────
-            if (ehAcao && indicadoresData && indicadoresData.indicadores && indicadoresData.indicadores.length > 0) {
-                const cards = indicadoresData.indicadores.map(({ nome, valor }) => `
+            // ── Para Ações: renderiza secções vindas do scrapeIndicadores ──────
+            if (ehAcao && indicadoresData && indicadoresData.secoes) {
+                const secoes = indicadoresData.secoes;
+
+                /**
+                 * Gera o HTML de um card de indicador individual.
+                 * Visual: fundo #151515, rótulo cinza em cima, valor branco em baixo.
+                 * Usa exactamente as mesmas classes dos outros KPI cards do Vesto.
+                 */
+                const renderCardIndicador = (nome, valor) => `
                     <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm text-center">
-                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest leading-none mb-1.5">${nome}</span>
+                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest leading-tight mb-1.5">${nome}</span>
                         <span class="text-sm font-bold text-white leading-none">${valor}</span>
-                    </div>`).join('');
-
-                const indicadoresSection = document.createElement('div');
-                indicadoresSection.innerHTML = `
-                    <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-4 mb-2 pl-1">Indicadores Fundamentalistas</h4>
-                    <div class="grid grid-cols-3 gap-2 mb-4">
-                        ${cards}
                     </div>`;
-                elListas.appendChild(indicadoresSection);
+
+                /**
+                 * Gera o HTML completo de uma secção:
+                 * título com separador + grid 3 colunas de cards.
+                 */
+                const renderSecao = (tituloSecao, indicadores) => {
+                    const pares = Object.entries(indicadores);
+                    if (pares.length === 0) return '';
+
+                    const cardsHtml = pares.map(([nome, valor]) => renderCardIndicador(nome, valor)).join('');
+
+                    return `
+                        <div class="mb-5">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-[#222] pb-1 mb-3 mt-4">${tituloSecao}</h4>
+                            <div class="grid grid-cols-3 gap-2">
+                                ${cardsHtml}
+                            </div>
+                        </div>`;
+                };
+
+                // Itera pelas secções na ordem de inserção (Resumo primeiro,
+                // depois as secções detalhadas conforme a ordem da página)
+                let secoesHtml = Object.entries(secoes)
+                    .map(([titulo, indicadores]) => renderSecao(titulo, indicadores))
+                    .join('');
+
+                // Se não vieram dados do scraper, mostra mensagem de estado vazio
+                if (!secoesHtml) {
+                    secoesHtml = `
+                        <div class="flex flex-col items-center justify-center py-12 text-center">
+                            <p class="text-xs text-gray-600 font-medium">Indicadores não disponíveis para este ativo.</p>
+                        </div>`;
+                }
+
+                elListas.innerHTML = secoesHtml;
+
+                // O bloco de Valuation calculado (Graham / Bazin) é adicionado
+                // NO FIM, após os indicadores raspados, se existir.
+                if (listasHtml) {
+                    const valuationWrapper = document.createElement('div');
+                    valuationWrapper.innerHTML = listasHtml;
+                    elListas.appendChild(valuationWrapper);
+                }
+
+            } else if (!ehAcao) {
+                // ── Para FIIs: mantém a renderização original por rows ────────
+                elListas.innerHTML = listasHtml;
             }
 
             requestAnimationFrame(() => {

@@ -708,34 +708,6 @@ async function scrapeCotacaoHistory(rawTicker, range = '1A') {
 // ---------------------------------------------------------
 // PARTE 5: INDICADORES FUNDAMENTALISTAS → INVESTIDOR10 (AÇÕES)
 // ---------------------------------------------------------
-/**
- * Raspa TODOS os indicadores fundamentalistas de uma Ação no Investidor10
- * e devolve-os organizados em secções (categorias), espelhando a estrutura
- * visual da página:
- *
- *   { ticker, secoes: { "Resumo": { "P/L": "4,99", ... }, "Valuation": {...} } }
- *
- * Estratégia de extracção:
- *
- *   SECÇÃO "Resumo" — quadro do topo (#table-indicators .cell)
- *     Os ~14 indicadores visíveis no cabeçalho da página. Prioridade máxima:
- *     qualquer indicador aqui registado nunca é sobrescrito pelas passagens
- *     seguintes (deduplicação global por Set do nome normalizado).
- *
- *   SECÇÕES DETALHADAS — blocos de painel abaixo do topo
- *     Encontra cada bloco contentor (.panel, .indicators-box, etc.),
- *     extrai o título da secção (h2, h3, .panel-title, …) e colhe dentro
- *     do bloco:
- *       • Células div.cell com .desc / .value
- *       • Linhas de tabela table tbody tr (1ª coluna = nome, 2ª = valor)
- *
- *   FALLBACK "Outros" — varredura global residual
- *     Qualquer div.cell com .desc e .value que não tenha sido capturada
- *     pelos blocos acima é agrupada numa secção genérica "Outros".
- *     Esta secção é removida do resultado final se ficar vazia.
- *
- * Cache: chave indicadores_<TICKER>, TTL = CACHE_TTL_MS (5 min).
- */
 async function scrapeIndicadores(rawTicker) {
     const ticker = sanitizeTicker(rawTicker);
     const cacheKey = `indicadores_${ticker.toUpperCase()}`;
@@ -751,250 +723,78 @@ async function scrapeIndicadores(rawTicker) {
     if (res.status !== 200) throw new Error(`HTTP ${res.status} ao buscar indicadores de ${ticker}`);
 
     const $ = cheerio.load(res.data);
-
-    // ── Utilitários ──────────────────────────────────────────────────────────
-
-    /** Limpa espaços e quebras de linha de uma string bruta do HTML. */
-    const limpar = (str) => (str || '').replace(/\s+/g, ' ').trim();
-
-    /**
-     * Remove o sufixo numérico bruto que o Investidor10 às vezes concatena
-     * depois do valor formatado por magnitude.
-     * Ex: "R$511,54 Bilhões 511540000000" → "R$511,54 Bilhões"
-     *     "R$1,23 Milhões 1230000"        → "R$1,23 Milhões"
-     * Funciona também para valores sem símbolo de moeda (ex: "2,50 Bilhões 2500000000").
-     */
-    const sanitizarValor = (v) => {
-        if (!v) return v;
-        // Captura a parte legível (com magnitude) e descarta o número inteiro que se segue
-        return v.replace(
-            /((?:R\$\s*)?[\d.,]+\s*(?:Bilh(?:ões|oes)?|Milh(?:ões|oes)?|Mil))\s+[\d.]+$/i,
-            '$1'
-        ).trim();
+    
+    // Objeto que vai guardar os indicadores categorizados exatos
+    const secoes = {
+        "Resumo": {},
+        "Valuation": {},
+        "Endividamento": {},
+        "Eficiência": {},
+        "Rentabilidade": {},
+        "Crescimento": {}
     };
 
-    /**
-     * Valida se um valor extraído é utilizável:
-     * rejeita placeholders, strings vazias e textos demasiado longos
-     * (que são normalmente títulos de secção ou descrições narrativas).
-     */
-    const valorValido = (v) => {
-        if (!v || v === '-' || v === '--' || v === 'N/A') return false;
-        if (v.length > 50) return false;
-        return true;
-    };
-
-    // ── Estrutura de resultado ───────────────────────────────────────────────
-
-    /**
-     * secoes: objecto ordenado onde cada chave é o nome da secção e o valor
-     * é um objecto { [nomeIndicador]: valorIndicador }.
-     * A ordem de inserção é preservada pelo motor JS (ES2015+).
-     */
-    const secoes = {};
-
-    /**
-     * Set global de deduplicação. Chave = nome do indicador em lowercase.
-     * Garante que cada indicador aparece APENAS UMA VEZ no resultado,
-     * na secção onde foi encontrado primeiro ("Resumo" tem prioridade).
-     */
-    const seenGlobal = new Set();
-
-    /**
-     * Regista um par nome/valor numa secção.
-     * - Ignora se o valor não for válido.
-     * - Ignora se o nome já estiver no Set global (deduplicação).
-     * - Cria a secção no objecto se ainda não existir.
-     */
-    const registarNaSecao = (secao, nomeRaw, valorRaw) => {
-        const nome  = limpar(nomeRaw);
-        const valor = sanitizarValor(limpar(valorRaw));
-
-        if (!nome || !valorValido(valor)) return;
-
-        const chave = nome.toLowerCase();
-        if (seenGlobal.has(chave)) return;
-
-        seenGlobal.add(chave);
-        if (!secoes[secao]) secoes[secao] = {};
-        secoes[secao][nome] = valor;
-    };
-
-    // ── Extractor de div.cell ────────────────────────────────────────────────
-
-    /**
-     * Extrai o par (nome, valor) de um elemento div.cell.
-     *
-     * Hierarquia para o NOME:  .desc span  →  .desc  →  .name  →  span:first-child
-     * Hierarquia para o VALOR: .value span →  .value →  span:last-child
-     *
-     * Retorna { nome, valor } já limpos (podem ser strings vazias se não encontrar).
-     */
-    const extrairCell = ($el) => {
-        const nomeEl = $el.find('.desc span').first();
-        const nome   = nomeEl.length
-            ? nomeEl.text()
-            : ($el.find('.desc, .name').first().text() || $el.children('span').first().text());
-
-        const valorEl = $el.find('.value span').first();
-        const valor   = valorEl.length
-            ? valorEl.text()
-            : ($el.find('.value').first().text() || $el.children('span').last().text());
-
-        return { nome: limpar(nome), valor: limpar(valor) };
-    };
-
-    // ── SECÇÃO "Resumo": quadro do topo ─────────────────────────────────────
-    // Prioridade máxima — processado antes de qualquer outro bloco.
+    // 1. Extração do Quadro Principal do Topo (Resumo)
     $('#table-indicators .cell').each((_, el) => {
-        const { nome, valor } = extrairCell($(el));
-        registarNaSecao('Resumo', nome, valor);
+        const nome = $(el).find('.desc span, .desc, .name').first().text().replace(/\s+/g, ' ').trim();
+        const valor = $(el).find('.value span, .value').first().text().replace(/\s+/g, ' ').trim();
+        
+        if (nome && valor && valor !== '-' && valor !== '') {
+            secoes["Resumo"][nome] = valor;
+        }
     });
 
-    // ── SECÇÕES DETALHADAS: blocos de painel abaixo do topo ─────────────────
-
-    /**
-     * Seletores para os blocos contentor de cada secção detalhada.
-     * Listados por ordem de especificidade decrescente; o mesmo bloco DOM
-     * pode ser capturado por múltiplos seletores — o WeakSet abaixo evita
-     * reprocessamento.
-     */
-    const BLOCK_SELECTORS = [
-        '.indicators-box',
-        '.box-indicadores',
-        '#indicators-section > .panel',
-        '#indicators-section > div[class]',
-        '.indicators-section > .panel',
-        '.indicators-section > div[class]',
-        'section[id*="indicator"] > .panel',
-        'section[id*="indicator"] > div[class]',
-        '.panel:has(.cell)',
-        '.panel:has(table)',
-        // Contentor de colunas (o Investidor10 pode usar col-md-X)
-        '[class*="col-"]:has(.cell)',
-        '[class*="col-"]:has(table)',
-    ];
-
-    /** Seletores para o título dentro de cada bloco, por prioridade. */
-    const TITLE_SELECTORS = [
-        '.panel-title',
-        '.card-title',
-        '.section-title',
-        '.box-title',
-        '.title',
-        'h2',
-        'h3',
-        'h4',
-        '[class*="title"]',
-        '[class*="heading"]',
-        'header',
-    ];
-
-    /**
-     * Nomes de secção que devem ser ignorados — não contêm indicadores
-     * fundamentalistas (são comparações, histórico, notícias, etc.).
-     */
-    const SECOES_IGNORADAS = new Set([
-        'comparação', 'comparacao', 'histórico', 'historico',
-        'notícia', 'noticia', 'notícias', 'noticias',
-        'sobre', 'imóveis', 'imoveis', 'proventos', 'dividendos',
-        'ações comparadas', 'acoes comparadas',
-    ]);
-
-    const blocosProcessados = new WeakSet();
-
-    /**
-     * Processa um bloco contentor: extrai o título da secção e colhe
-     * todos os indicadores dentro do bloco (cells e linhas de tabela).
-     */
-    const processarBloco = ($bloco) => {
-        const el = $bloco[0];
-        if (!el || blocosProcessados.has(el)) return;
-        blocosProcessados.add(el);
-
-        // Extrai o título da secção
-        let tituloSecao = '';
-        for (const sel of TITLE_SELECTORS) {
-            const found = $bloco.find(sel).first();
-            if (found.length) {
-                const t = limpar(found.text());
-                // Título válido: entre 2 e 60 caracteres, não numérico
-                if (t.length >= 2 && t.length <= 60 && isNaN(parseFloat(t))) {
-                    tituloSecao = t;
-                    break;
+    // 2. Extração das Seções Detalhadas (Varredura inteligente)
+    $('.panel, .card, section').each((_, el) => {
+        // Busca o título do bloco atual na página
+        const tituloRaw = $(el).find('h2, h3, .panel-title, .card-title, .card-header').first().text().trim();
+        
+        // Verifica se o título bate com uma das 5 categorias oficiais que definimos acima
+        const categoriaEncontrada = Object.keys(secoes).find(cat => 
+            tituloRaw.toLowerCase().includes(cat.toLowerCase())
+        );
+        
+        if (categoriaEncontrada && categoriaEncontrada !== "Resumo") {
+            // Se encontrou a categoria, varre os cards (.cell) lá de dentro
+            $(el).find('.cell').each((_, cell) => {
+                const nome = $(cell).find('.desc span, .desc, .name').first().text().replace(/\s+/g, ' ').trim();
+                const valor = $(cell).find('.value span, .value').first().text().replace(/\s+/g, ' ').trim();
+                
+                if (nome && valor && valor !== '-' && valor !== '') {
+                    // Evita duplicar se já pegamos esse indicador no "Resumo" do topo
+                    if (!secoes["Resumo"][nome]) {
+                        secoes[categoriaEncontrada][nome] = valor;
+                    }
                 }
-            }
-        }
-
-        if (!tituloSecao) return; // bloco sem título identificável — ignora
-
-        // Verifica se o título pertence a uma secção a ignorar
-        const titNorm = normalize(tituloSecao); // usa a fn normalize já existente no ficheiro
-        for (const ignorada of SECOES_IGNORADAS) {
-            if (titNorm.includes(ignorada)) return;
-        }
-
-        // ── Colhe células div.cell dentro do bloco ────────────────────────
-        $bloco.find('.cell').each((_, cellEl) => {
-            // Exclui células já capturadas pelo quadro do topo (#table-indicators)
-            if ($(cellEl).closest('#table-indicators').length) return;
-            const { nome, valor } = extrairCell($(cellEl));
-            registarNaSecao(tituloSecao, nome, valor);
-        });
-
-        // ── Colhe linhas de tabela dentro do bloco ────────────────────────
-        const tabelasNoBloco = new WeakSet();
-        $bloco.find('table').each((_, tbl) => {
-            if (tabelasNoBloco.has(tbl)) return;
-            tabelasNoBloco.add(tbl);
-
-            $(tbl).find('tbody tr').each((_, row) => {
-                const cols = $(row).find('td');
-                if (cols.length < 2) return;
-                if ($(row).find('th').length) return; // cabeçalho disfarçado
-
-                const nome   = limpar($(cols[0]).text());
-                const dataEl = $(cols[1]).find('[data-value], .value, span').first();
-                const valor  = limpar(dataEl.length ? dataEl.text() : $(cols[1]).text());
-
-                registarNaSecao(tituloSecao, nome, valor);
             });
-        });
-    };
-
-    // Itera sobre todos os seletores de bloco e processa cada um
-    for (const sel of BLOCK_SELECTORS) {
-        $(sel).each((_, el) => processarBloco($(el)));
-    }
-
-    // ── FALLBACK: varredura global de div.cell residuais ────────────────────
-    // Captura indicadores em contentores fora dos padrões acima.
-    $('div.cell').each((_, el) => {
-        // Já em "Resumo" — ignora
-        if ($(el).closest('#table-indicators').length) return;
-
-        const { nome, valor } = extrairCell($(el));
-        if (!nome) return;
-
-        // Já capturado numa secção detalhada — o Set global descarta
-        registarNaSecao('OUTROS', nome, valor);
+            
+            // Varre também se por acaso estiver no formato de tabela normal (<tr> e <td>)
+            $(el).find('table tbody tr').each((_, row) => {
+                const cols = $(row).find('td');
+                if (cols.length >= 2) {
+                    const nome = $(cols[0]).text().replace(/\s+/g, ' ').trim();
+                    const valor = $(cols[1]).text().replace(/\s+/g, ' ').trim();
+                    
+                    if (nome && valor && valor !== '-' && valor !== '') {
+                        if (!secoes["Resumo"][nome]) {
+                            secoes[categoriaEncontrada][nome] = valor;
+                        }
+                    }
+                }
+            });
+        }
     });
 
-    // Remove "OUTROS" se ficou vazia (não houve indicadores residuais)
-    if (secoes['OUTROS'] && Object.keys(secoes['OUTROS']).length === 0) {
-        delete secoes['OUTROS'];
-    }
+    // Limpa categorias que ficaram vazias (caso a ação não tenha dados de "Crescimento", por exemplo)
+    Object.keys(secoes).forEach(key => {
+        if (Object.keys(secoes[key]).length === 0) {
+            delete secoes[key];
+        }
+    });
 
-    // ── Resultado final ──────────────────────────────────────────────────────
-    const totalIndicadores = Object.values(secoes).reduce((acc, s) => acc + Object.keys(s).length, 0);
     const result = { ticker, secoes };
-
     cacheSet(cacheKey, result, CACHE_TTL_MS);
-    log.info('scrapeIndicadores concluído', {
-        ticker,
-        secoes: Object.keys(secoes).join(', '),
-        total: totalIndicadores,
-    });
+    log.info('scrapeIndicadores concluído com seções oficiais', { ticker, secoesEncontradas: Object.keys(secoes) });
     return result;
 }
 

@@ -6886,7 +6886,7 @@ function renderizarGraficoProventosDetalhes(rawData) {
                 padding: { left: 0, right: 0, top: 10, bottom: 0 } 
             },
             interaction: { mode: 'index', intersect: false },
-            animation: { duration: 50, easing: 'easeOutQuart' },
+            animation: { duration: 250, easing: 'easeOutQuart' },
             scales: {
                 x: {
                     stacked: true,

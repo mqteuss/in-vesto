@@ -1740,27 +1740,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const currentSignature = `${transacoes.length}-${lastTransId}-${histFilterType}-${histSearchTerm}`;
 
         if (currentSignature === lastHistoricoListSignature && historicoVirtualizer) {
-            // Se as listas são as mesmas, apenas force um reflow sem destruir o cache
-            const rowElements = listaHistorico.querySelectorAll('.history-card');
-
-            rowElements.forEach(el => {
-                const isVenda = el.innerHTML.includes('text-red-500'); // Arrow Up
-
-                const isLight = document.body.classList.contains('light-mode');
-                const cardBgClass = isLight ? 'bg-white shadow-sm border-gray-100' : 'bg-black border-transparent';
-                const iconBgClass = isLight ? 'bg-gray-100' : 'bg-[#1C1C1E]';
-
-                el.className = `history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full border ${cardBgClass}`;
-
-                const iconDiv = el.querySelector('.rounded-full');
-                if (iconDiv) iconDiv.className = `w-10 h-10 rounded-full ${iconBgClass} flex items-center justify-center flex-shrink-0 relative overflow-hidden`;
-
-                const title = el.querySelector('h4');
-                if (title) title.className = `text-sm font-bold ${isLight ? 'text-gray-800' : 'text-white'} tracking-tight leading-none`;
-
-                const val = el.querySelector('.text-right span:first-child');
-                if (val) val.className = `text-[15px] font-bold ${isLight ? 'text-gray-900' : 'text-white'} tracking-tight`;
-            });
             return;
         }
 
@@ -1846,27 +1825,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}`;
 
         if (currentSignature === lastHistoricoProventosSignature && proventosVirtualizer) {
-            // Força a atualização do DOM sem recriar o virtualizer
-            const rowElements = listaHistoricoProventos.querySelectorAll('.history-card');
-            rowElements.forEach(el => {
-                const isLight = document.body.classList.contains('light-mode');
-
-                // Card Background
-                const cardBgClass = isLight ? 'bg-white shadow-sm border-gray-100' : 'bg-black border-transparent';
-                el.className = `history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full border ${cardBgClass}`;
-
-                // Icon Background
-                const iconDiv = el.querySelector('.rounded-full');
-                const iconBgClass = isLight ? 'bg-gray-100' : 'bg-[#1C1C1E]';
-                if (iconDiv) iconDiv.className = `w-10 h-10 rounded-full ${iconBgClass} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden`;
-
-                // Text Colors
-                const title = el.querySelector('h4');
-                if (title) title.className = `text-sm font-bold ${isLight ? 'text-gray-800' : 'text-white'} tracking-tight leading-none`;
-
-                const val = el.querySelector('.text-right span:first-child');
-                if (val) val.className = `text-[15px] font-bold ${isLight ? 'text-gray-900' : 'text-white'} tracking-tight`;
-            });
             return;
         }
         lastHistoricoProventosSignature = currentSignature;

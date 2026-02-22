@@ -319,6 +319,36 @@ async function scrapeFundamentos(ticker) {
         }
         dados.rentabilidade_chart = rentabilidadeChart;
 
+        // NOVO: Extração de Indicadores Avançados e Receitas (Apenas para Ações)
+        let advancedMetrics = null;
+        let revenueGeography = null;
+        let revenueSegment = null;
+        try {
+            // Extrai sectorIndicators
+            const sectorMatch = html.match(/const\s+sectorIndicators\s*=\s*(\{.+\});/);
+            if (sectorMatch && sectorMatch[1]) {
+                advancedMetrics = JSON.parse(sectorMatch[1]);
+            }
+
+            // Extrai companyRevenuesChartPie (Receita por Geografia)
+            const revGeoMatch = html.match(/let\s+companyRevenuesChartPie\s*=\s*(\{.+\});/);
+            if (revGeoMatch && revGeoMatch[1]) {
+                revenueGeography = JSON.parse(revGeoMatch[1]);
+            }
+
+            // Extrai companyBussinesRevenuesChartPie (Receita por Segmento)
+            const revSegMatch = html.match(/let\s+companyBussinesRevenuesChartPie\s*=\s*(\{.+\});/);
+            if (revSegMatch && revSegMatch[1]) {
+                revenueSegment = JSON.parse(revSegMatch[1]);
+            }
+        } catch (e) {
+            console.error('Erro ao extrair métricas avançadas:', e.message);
+        }
+
+        if (advancedMetrics) dados.advanced_metrics = advancedMetrics;
+        if (revenueGeography) dados.revenue_geography = revenueGeography;
+        if (revenueSegment) dados.revenue_segment = revenueSegment;
+
         dados.comparacao = [];
         const tickersVistos = new Set();
 

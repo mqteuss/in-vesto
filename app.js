@@ -824,6 +824,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const canvas = document.getElementById('detalhes-rentabilidade-chart');
         if (!canvas) return;
+        canvas.style.touchAction = 'pan-y';
 
         const ctx = canvas.getContext('2d');
 
@@ -6728,37 +6729,50 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (advMetricsEl && advGridEl) {
                 if (!ehFii) {
                     const isLight = document.body.classList.contains('light-mode');
-                    // Usa os dados do próprio ativo ya extraidos pelo scraper, NÃO os do setor
                     const f = fundamentos;
+                    const m = fundamentos.advanced_metrics || {};
+
+                    // Monta pares: indicador do ativo + média do setor
                     const metricsToShow = [
-                        { label: 'ROE', value: f.roe },
-                        { label: 'P/L', value: f.pl },
-                        { label: 'Marg. Bruta', value: f.margem_bruta },
-                        { label: 'Marg. Líquida', value: f.margem_liquida },
-                        { label: 'Marg. EBIT', value: f.margem_ebit },
-                        { label: 'EV/EBITDA', value: f.ev_ebitda },
-                        { label: 'Dív. Líq/EBITDA', value: f.divida_liquida_ebitda },
-                        { label: 'Dív. Líq/PL', value: f.divida_liquida_pl },
-                        { label: 'Payout', value: f.payout },
-                        { label: 'CAGR Rec. 5A', value: f.cagr_receita_5a },
-                        { label: 'CAGR Lucros 5A', value: f.cagr_lucros_5a },
-                        { label: 'LPA', value: f.lpa },
-                        { label: 'VPA', value: f.vp_cota },
+                        { label: 'ROE', ativo: f.roe, setor: m.roe },
+                        { label: 'P/L', ativo: f.pl, setor: m.p_l },
+                        { label: 'P/VP', ativo: f.pvp, setor: m.p_vp },
+                        { label: 'Marg. Bruta', ativo: f.margem_bruta, setor: m.gross_margin },
+                        { label: 'Marg. Líquida', ativo: f.margem_liquida, setor: m.net_margin },
+                        { label: 'Marg. EBIT', ativo: f.margem_ebit, setor: m.ebit_margin },
+                        { label: 'EV/EBITDA', ativo: f.ev_ebitda, setor: m.ev_ebitda },
+                        { label: 'Dív. Líq/EBITDA', ativo: f.divida_liquida_ebitda, setor: m.net_debt_ebitda },
+                        { label: 'Dív. Líq/PL', ativo: f.divida_liquida_pl, setor: m.net_debt_net_worth },
+                        { label: 'Payout', ativo: f.payout, setor: m.payout },
+                        { label: 'CAGR Rec. 5A', ativo: f.cagr_receita_5a, setor: m.growth_net_revenue_last_5_years },
+                        { label: 'CAGR Lucros 5A', ativo: f.cagr_lucros_5a, setor: m.growth_net_profit_last_5_years },
+                        { label: 'LPA', ativo: f.lpa, setor: m.lpa },
+                        { label: 'VPA', ativo: f.vp_cota, setor: m.vpa },
+                        { label: 'ROA', ativo: null, setor: m.roa },
+                        { label: 'ROIC', ativo: null, setor: m.roic },
+                        { label: 'Liq. Corrente', ativo: null, setor: m.current_liquidity },
                     ];
 
-                    // Filtramos apenas os que têm valor real
-                    const filtered = metricsToShow.filter(item =>
-                        item.value && item.value !== 'N/A' && item.value !== '-'
-                    );
+                    const ok = v => v && v !== 'N/A' && v !== '-';
+                    const fmt = v => {
+                        if (!ok(v)) return '-';
+                        if (typeof v === 'number') return v.toFixed(2).replace('.', ',');
+                        return String(v);
+                    };
+
+                    const filtered = metricsToShow.filter(item => ok(item.ativo) || ok(item.setor));
 
                     if (filtered.length > 0) {
                         advGridEl.innerHTML = filtered.map(item => {
                             const bgCard = isLight ? 'bg-[#f3f4f6] border-[#e5e7eb]' : 'bg-[#141414] border-[#1F1F1F]';
                             const txtLabel = isLight ? 'text-gray-500' : 'text-gray-500';
                             const txtValue = isLight ? 'text-gray-900' : 'text-white';
+                            const txtSetor = isLight ? 'text-gray-400' : 'text-gray-600';
+                            const setorStr = ok(item.setor) ? `<span class="text-[9px] font-normal ${txtSetor}">Setor: ${fmt(item.setor)}</span>` : '';
                             return `<div class="rounded-xl ${bgCard} border p-3 flex flex-col gap-0.5">
                                 <span class="text-[10px] font-semibold ${txtLabel} uppercase tracking-wide">${item.label}</span>
-                                <span class="text-sm font-bold ${txtValue}">${item.value}</span>
+                                <span class="text-sm font-bold ${txtValue}">${fmt(item.ativo)}</span>
+                                ${setorStr}
                             </div>`;
                         }).join('');
                         advMetricsEl.classList.remove('hidden');

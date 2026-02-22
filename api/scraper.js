@@ -5,7 +5,7 @@ const https = require('https');
 // ---------------------------------------------------------
 // CONFIGURAÇÃO: AGENTE HTTPS & CLIENTE AXIOS
 // ---------------------------------------------------------
-const httpsAgent = new https.Agent({ 
+const httpsAgent = new https.Agent({
     keepAlive: true,
     maxSockets: 128,
     maxFreeSockets: 20,
@@ -68,7 +68,7 @@ function cleanDoubledString(str) {
     if (!str) return "";
     const parts = str.split('R$');
     if (parts.length > 2) {
-        return 'R$' + parts[1].trim(); 
+        return 'R$' + parts[1].trim();
     }
     return str;
 }
@@ -80,7 +80,7 @@ function cleanDoubledString(str) {
 async function scrapeFundamentos(ticker) {
     try {
         let html;
-        const urlFii  = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
+        const urlFii = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         const urlAcao = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
 
         const fetchHtml = async (url) => {
@@ -117,7 +117,7 @@ async function scrapeFundamentos(ticker) {
         let num_cotas = 0;
 
         const processPair = (tituloRaw, valorRaw, origem = 'table', indicatorAttr = null) => {
-            const titulo = normalize(tituloRaw); 
+            const titulo = normalize(tituloRaw);
             let valor = valorRaw.trim();
 
             if (titulo.includes('mercado')) {
@@ -166,7 +166,7 @@ async function scrapeFundamentos(ticker) {
             if (titulo.includes('payout')) dados.payout = valor;
 
             if (titulo.includes('ev/ebitda')) dados.ev_ebitda = valor;
-            const tClean = titulo.replace(/[\s\/\.\-]/g, ''); 
+            const tClean = titulo.replace(/[\s\/\.\-]/g, '');
             if (dados.divida_liquida_ebitda === 'N/A') {
                 if (tClean.includes('div') && tClean.includes('liq') && tClean.includes('ebitda')) dados.divida_liquida_ebitda = valor;
             }
@@ -202,8 +202,8 @@ async function scrapeFundamentos(ticker) {
         });
 
         if (cotacao_atual === 0) {
-             const cEl = $('._card.cotacao ._card-body span').first();
-             if (cEl.length) cotacao_atual = parseValue(cEl.text());
+            const cEl = $('._card.cotacao ._card-body span').first();
+            if (cEl.length) cotacao_atual = parseValue(cEl.text());
         }
 
         $('.cell').each((i, el) => {
@@ -278,7 +278,37 @@ async function scrapeFundamentos(ticker) {
         // SEU CÓDIGO COMEÇA AQUI ==========================
         dados.sobre = sobreTexto.replace(/\s+/g, ' ').trim();
 
-        dados.comparacao = []; 
+        // NOVO: Extração de Gráfico de Rentabilidade (Ativo vs Índices)
+        let rentabilidadeChart = null;
+        try {
+            const chartMatch = html.match(/'lastProfitability':\s*JSON\.parse\(`([^`]+)`\)/);
+            if (chartMatch && chartMatch[1]) {
+                const lastProf = JSON.parse(chartMatch[1]);
+
+                // Extrai as séries temporais (profitabilities)
+                const seriesMatch = html.match(/'profitabilities':\s*JSON\.parse\(`([^`]+)`\)/);
+                let profitabilities = [];
+                if (seriesMatch && seriesMatch[1]) {
+                    profitabilities = JSON.parse(seriesMatch[1]);
+                }
+
+                // Extrai a legenda
+                const legendMatch = html.match(/'legend':\s*JSON\.parse\(`([^`]+)`\)/);
+                let legend = [];
+                if (legendMatch && legendMatch[1]) {
+                    legend = JSON.parse(legendMatch[1]);
+                }
+
+                if (Object.keys(lastProf).length > 0) {
+                    rentabilidadeChart = { lastProfitability: lastProf, legend, profitabilities };
+                }
+            }
+        } catch (e) {
+            console.error('Erro ao extrair chart de rentabilidade:', e.message);
+        }
+        dados.rentabilidade_chart = rentabilidadeChart;
+
+        dados.comparacao = [];
         const tickersVistos = new Set();
 
         // TENTATIVA 1: API Oculta (Mais confiável para extrair Segmento, Tipo e Patrimônio que o HTML omite)
@@ -288,7 +318,7 @@ async function scrapeFundamentos(ticker) {
                 const fullUrl = apiUrl.startsWith('http') ? apiUrl : `https://investidor10.com.br${apiUrl}`;
                 const resApi = await client.get(fullUrl);
                 let arrayComparacao = resApi.data.data || resApi.data || [];
-                
+
                 if (Array.isArray(arrayComparacao)) {
                     arrayComparacao.forEach(item => {
                         const tickerAPI = item.title ? item.title.trim() : (item.ticker ? item.ticker.trim() : '');
@@ -297,8 +327,8 @@ async function scrapeFundamentos(ticker) {
                             if (item.net_worth !== null && item.net_worth !== undefined) {
                                 let v = parseFloat(item.net_worth);
                                 if (!isNaN(v)) {
-                                    if (v >= 1e9) patrim = `R$ ${(v / 1e9).toFixed(2).replace('.',',')} B`;
-                                    else if (v >= 1e6) patrim = `R$ ${(v / 1e6).toFixed(2).replace('.',',')} M`;
+                                    if (v >= 1e9) patrim = `R$ ${(v / 1e9).toFixed(2).replace('.', ',')} B`;
+                                    else if (v >= 1e6) patrim = `R$ ${(v / 1e6).toFixed(2).replace('.', ',')} M`;
                                     else patrim = `R$ ${v.toLocaleString('pt-BR')}`;
                                 }
                             }
@@ -325,7 +355,7 @@ async function scrapeFundamentos(ticker) {
         if (dados.comparacao.length === 0) {
             $('#table-compare-fiis, #table-compare-segments').each((_, table) => {
                 let idxDy = -1, idxPvp = -1, idxPat = -1, idxSeg = -1, idxTipo = -1;
-                
+
                 $(table).find('thead th').each((idx, th) => {
                     const txt = $(th).text().toLowerCase();
                     if (txt.includes('dy') || txt.includes('dividend')) idxDy = idx;
@@ -341,13 +371,13 @@ async function scrapeFundamentos(ticker) {
                         const ticker = $(cols[0]).text().replace(/\s+/g, ' ').trim();
                         if (ticker && !tickersVistos.has(ticker)) {
                             let nome = $(cols[0]).find('a').attr('title') || '';
-                            
+
                             const dy = idxDy !== -1 && cols.length > idxDy ? $(cols[idxDy]).text().trim() : '-';
                             const pvp = idxPvp !== -1 && cols.length > idxPvp ? $(cols[idxPvp]).text().trim() : '-';
                             const patrimonio = idxPat !== -1 && cols.length > idxPat ? $(cols[idxPat]).text().trim() : '-';
                             const segmento = idxSeg !== -1 && cols.length > idxSeg ? $(cols[idxSeg]).text().trim() : '-';
                             const tipo = idxTipo !== -1 && cols.length > idxTipo ? $(cols[idxTipo]).text().trim() : '-';
-                            
+
                             dados.comparacao.push({ ticker, nome, dy, pvp, patrimonio, segmento, tipo });
                             tickersVistos.add(ticker);
                         }
@@ -361,7 +391,7 @@ async function scrapeFundamentos(ticker) {
                 if (ticker && !tickersVistos.has(ticker)) {
                     const nome = $(el).find('h3, span.name').first().text().trim();
                     let dy = '-', pvp = '-', patrimonio = '-', segmento = '-', tipo = '-';
-                    
+
                     $(el).find('.card-footer p, .card-footer div').each((j, p) => {
                         const text = $(p).text();
                         if (text.includes('DY:')) dy = text.replace('DY:', '').trim();
@@ -403,12 +433,12 @@ async function scrapeAsset(ticker) {
 
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
-        const { data } = await client.get(url, { 
-            headers: { 
+        const { data } = await client.get(url, {
+            headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Referer': 'https://statusinvest.com.br/',
                 'User-Agent': 'Mozilla/5.0'
-            } 
+            }
         });
 
         const earnings = data.assetEarningsModels || [];
@@ -424,7 +454,7 @@ async function scrapeAsset(ticker) {
         }
 
         const dividendos = earnings.map(d => {
-            let labelTipo = 'REND'; 
+            let labelTipo = 'REND';
             if (d.et === 1) labelTipo = 'DIV';
             if (d.et === 2) labelTipo = 'JCP';
             if (d.etd) {
@@ -434,19 +464,19 @@ async function scrapeAsset(ticker) {
                 else if (texto.includes('TRIBUTADO')) labelTipo = 'REND_TRIB';
             }
             return {
-                dataCom:     parseDateJSON(d.ed),
+                dataCom: parseDateJSON(d.ed),
                 paymentDate: parseDateJSON(d.pd),
-                value:       d.v,
-                type:        labelTipo,
-                rawType:     d.et
+                value: d.v,
+                type: labelTipo,
+                rawType: d.et
             };
         });
 
         return dividendos.filter(d => d.paymentDate !== null).sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    } catch (error) { 
+    } catch (error) {
         console.error(`Erro StatusInvest API ${ticker}:`, error.message);
-        return []; 
+        return [];
     }
 }
 
@@ -489,17 +519,17 @@ async function scrapeIpca() {
                     const ac12mStr = $(cols[3]).text().trim();
 
                     if (i === 0) {
-                         acumulado12m = ac12mStr.replace('.', ','); 
-                         acumuladoAno = acAnoStr.replace('.', ',');
+                        acumulado12m = ac12mStr.replace('.', ',');
+                        acumuladoAno = acAnoStr.replace('.', ',');
                     }
 
                     if (dataRef && valorStr && i < 13) {
-                         historico.push({
-                             mes: dataRef,
-                             valor: parseFloat(valorStr.replace('.', '').replace(',', '.')),
-                             acumulado_12m: ac12mStr.replace('.', ','),
-                             acumulado_ano: acAnoStr.replace('.', ',')
-                         });
+                        historico.push({
+                            mes: dataRef,
+                            valor: parseFloat(valorStr.replace('.', '').replace(',', '.')),
+                            acumulado_12m: ac12mStr.replace('.', ','),
+                            acumulado_ano: acAnoStr.replace('.', ',')
+                        });
                     }
                 }
             });
@@ -525,14 +555,14 @@ async function scrapeIpca() {
 
 function getYahooParams(range) {
     switch (range) {
-        case '1D': return { range: '1d', interval: '5m' };   
-        case '5D': return { range: '5d', interval: '15m' };  
+        case '1D': return { range: '1d', interval: '5m' };
+        case '5D': return { range: '5d', interval: '15m' };
         case '1M': return { range: '1mo', interval: '1d' };
         case '6M': return { range: '6mo', interval: '1d' };
         case 'YTD': return { range: 'ytd', interval: '1d' };
-        case '1Y': 
+        case '1Y':
         case '1A': return { range: '1y', interval: '1d' };
-        case '5Y': 
+        case '5Y':
         case '5A': return { range: '5y', interval: '1wk' };
         case 'Tudo':
         case 'MAX': return { range: 'max', interval: '1mo' };
@@ -545,7 +575,7 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
         const symbol = ticker.toUpperCase().endsWith('.SA') ? ticker.toUpperCase() : `${ticker.toUpperCase()}.SA`;
         const { range, interval } = getYahooParams(rangeFilter);
 
-        const buildUrl = (host) => 
+        const buildUrl = (host) =>
             `https://${host}.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}&includePrePost=false`;
 
         let data;
@@ -564,21 +594,21 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
         if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
 
         const timestamps = result.timestamp;
-        const quote  = result.indicators.quote[0];
+        const quote = result.indicators.quote[0];
         const prices = quote.close;
-        const opens  = quote.open;
-        const highs  = quote.high;
-        const lows   = quote.low;
+        const opens = quote.open;
+        const highs = quote.high;
+        const lows = quote.low;
 
         const points = timestamps.map((t, i) => {
             if (prices[i] === null || prices[i] === undefined) return null;
             return {
-                date:      new Date(t * 1000).toISOString(),
+                date: new Date(t * 1000).toISOString(),
                 timestamp: t * 1000,
-                price:     prices[i],
-                open:      opens[i]  ?? prices[i],
-                high:      highs[i]  ?? prices[i],
-                low:       lows[i]   ?? prices[i]
+                price: prices[i],
+                open: opens[i] ?? prices[i],
+                high: highs[i] ?? prices[i],
+                low: lows[i] ?? prices[i]
             };
         }).filter(p => p !== null);
 
@@ -601,7 +631,7 @@ async function scrapeCotacaoHistory(ticker, range = '1A') {
     return {
         ticker: cleanTicker.toUpperCase(),
         range: range,
-        points: data 
+        points: data
     };
 }
 
@@ -616,7 +646,7 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'GET' || req.method === 'POST') {
-       res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     }
 
     if (req.method === 'OPTIONS') { res.status(200).end(); return; }
@@ -653,7 +683,7 @@ module.exports = async function handler(req, res) {
                 });
                 const batchResults = await Promise.all(promises);
                 finalResults = finalResults.concat(batchResults);
-                if (batches.length > 1 && batchIdx < batches.length - 1) await new Promise(r => setTimeout(r, 200)); 
+                if (batches.length > 1 && batchIdx < batches.length - 1) await new Promise(r => setTimeout(r, 200));
             }
             return res.status(200).json({ json: finalResults.filter(d => d !== null).flat() });
         }
@@ -669,7 +699,7 @@ module.exports = async function handler(req, res) {
             const history = await scrapeAsset(payload.ticker);
 
             const hoje = new Date();
-            hoje.setHours(0,0,0,0);
+            hoje.setHours(0, 0, 0, 0);
 
             let ultimoPago = null;
             let proximo = null;

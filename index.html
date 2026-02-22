@@ -196,9 +196,9 @@
 
     <div id="app-wrapper" class="hidden">
 
-        <div id="app-container" class="max-w-lg mx-auto h-screen overflow-hidden relative bg-black">
+        <div id="app-container" class="w-full max-w-[1400px] mx-auto h-screen md:flex md:flex-row bg-black overflow-hidden relative">
             
-            <div id="tabs-slider" class="flex w-full h-full transition-transform duration-300 ease-out will-change-transform">
+            <div id="tabs-slider" class="flex w-full h-full transition-transform duration-300 ease-out will-change-transform md:flex-1 md:relative">
                 
 <div id="tab-dashboard" class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll active">
     <div class="p-4">
@@ -296,7 +296,7 @@
         </div>
 
 <div class="relative w-full mb-2 mt-4">
-    <div id="dashboard-carousel" class="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-0 w-full pb-6">
+    <div id="dashboard-carousel" class="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-0 w-full pb-6 md:grid md:grid-cols-2 lg:grid-cols-5 md:gap-4 md:overflow-visible md:snap-none md:pb-0">
         
         <div class="snap-center snap-always shrink-0 w-full px-1">
             <div id="btn-open-patrimonio" class="bg-[#151515] rounded-2xl p-3 h-full cursor-pointer active:scale-[0.98] transition-all flex items-center justify-between shadow-sm">
@@ -450,7 +450,7 @@
     <input type="text" id="carteira-search-input" placeholder="Buscar ativo..." class="compact-search-input">
 </div>
 
-                        <div id="lista-carteira" class="space-y-4"></div>
+                        <div id="lista-carteira" class="space-y-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 md:space-y-0"></div>
                         
 <div id="skeleton-lista-carteira" class="space-y-0 animate-shimmer-parent hidden">
     <div class="py-4 px-2 border-b border-gray-800 flex justify-between items-center">
@@ -842,8 +842,11 @@
     </svg>
 </button>
 
-        <nav class="fixed z-50 bottom-nav flex justify-around p-1.5 rounded-full">        
-            <button class="tab-button active flex flex-col items-center justify-center p-1.5" data-tab="tab-dashboard" title="Dashboard">
+        <nav class="fixed z-50 bottom-nav flex justify-around p-1.5 rounded-full md:order-first md:static md:w-64 md:h-screen md:flex-col md:justify-start md:items-start md:pt-10 md:px-6 md:bg-[#0a0a0a] md:border-r md:border-[#27272a] md:transform-none md:rounded-none md:backdrop-filter-none md:bg-opacity-100">
+            <div class="hidden md:flex items-center gap-2 mb-8 px-1.5">
+                <img src="logo-vesto.png" onerror="this.style.display='none'" alt="Vesto" class="h-7 w-auto">
+            </div>
+            <button class="tab-button active flex flex-col items-center justify-center p-1.5 md:w-full md:flex-row md:justify-start md:gap-4 md:py-3" data-tab="tab-dashboard" title="Dashboard">
                 <div class="tab-button-icon-wrapper"> 
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="7" height="7"></rect>
@@ -855,7 +858,7 @@
                 <span class="text-xs mt-1 font-medium">Início</span>
             </button>
 
-            <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-carteira" title="Carteira">
+            <button class="tab-button flex flex-col items-center justify-center p-1.5 md:w-full md:flex-row md:justify-start md:gap-4 md:py-3" data-tab="tab-carteira" title="Carteira">
                 <div class="tab-button-icon-wrapper"> 
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
                         <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
@@ -864,7 +867,7 @@
                 <span class="text-xs mt-1 font-medium">Portfólio</span>
             </button>
 
-            <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-noticias" title="Notícias">
+            <button class="tab-button flex flex-col items-center justify-center p-1.5 md:w-full md:flex-row md:justify-start md:gap-4 md:py-3" data-tab="tab-noticias" title="Notícias">
                 <div class="tab-button-icon-wrapper"> 
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01"></path>
@@ -873,7 +876,7 @@
                 <span class="text-xs mt-1 font-medium">Mercado</span>
             </button>
 
-            <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-historico" title="Histórico">
+            <button class="tab-button flex flex-col items-center justify-center p-1.5 md:w-full md:flex-row md:justify-start md:gap-4 md:py-3" data-tab="tab-historico" title="Histórico">
                 <div class="tab-button-icon-wrapper"> 
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M3 3v18h18"></path><path d="M7 12h10"></path><path d="M7 6h10"></path><path d="M7 18h10"></path>
@@ -882,7 +885,7 @@
                 <span class="text-xs mt-1 font-medium">Extrato</span>
             </button>
 
-            <button class="tab-button flex flex-col items-center justify-center p-1.5" data-tab="tab-config" title="Ajustes">
+            <button class="tab-button flex flex-col items-center justify-center p-1.5 md:w-full md:flex-row md:justify-start md:gap-4 md:py-3" data-tab="tab-config" title="Ajustes">
                 <div class="tab-button-icon-wrapper"> 
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>

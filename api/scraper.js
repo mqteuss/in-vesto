@@ -406,6 +406,7 @@ async function scrapeFundamentos(ticker) {
 
         // TENTATIVA 2: SEU CÓDIGO HTML (Fallback se a API falhar)
         if (dados.comparacao.length === 0) {
+            // FII tables
             $('#table-compare-fiis, #table-compare-segments').each((_, table) => {
                 let idxDy = -1, idxPvp = -1, idxPat = -1, idxSeg = -1, idxTipo = -1;
 
@@ -436,6 +437,30 @@ async function scrapeFundamentos(ticker) {
                         }
                     }
                 });
+            });
+
+            // Tabela de COMPARAÇÃO DE AÇÕES (#table-compare-tickers)
+            // Colunas: Ativo | P/L | P/VP | ROE | DY | Val. Mercado | Margem Líquida
+            $('#table-compare-tickers').find('tbody tr').each((i, el) => {
+                const cols = $(el).find('td');
+                if (cols.length >= 7) {
+                    const cleanTxt = (td) => $(td).clone().children('i').remove().end().text().replace(/\s+/g, ' ').trim();
+                    const ticker = $(cols[0]).text().replace(/\s+/g, ' ').trim();
+                    if (ticker && !tickersVistos.has(ticker)) {
+                        const nome = $(cols[0]).find('a').attr('title') || '';
+                        dados.comparacao.push({
+                            ticker, nome,
+                            pl: cleanTxt(cols[1]),
+                            pvp: cleanTxt(cols[2]),
+                            roe: cleanTxt(cols[3]),
+                            dy: cleanTxt(cols[4]),
+                            val_mercado: cleanTxt(cols[5]),
+                            margem_liquida: cleanTxt(cols[6]),
+                            patrimonio: '-', segmento: '-', tipo: '-'
+                        });
+                        tickersVistos.add(ticker);
+                    }
+                }
             });
 
             // Método B: Cards Relacionados (Fallback)

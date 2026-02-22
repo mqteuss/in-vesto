@@ -6719,7 +6719,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return `relative z-10 flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 select-none proventos-filter-btn ${textClass}`;
             };
 
-            const isLight = document.body.classList.contains('light-mode');
             const bgKpiColors = isLight ? 'bg-[#e5e7eb] border-gray-300' : 'bg-[#151515] border-white/5';
             const txtKpiValues = isLight ? 'text-gray-800 font-bold' : 'text-gray-200 font-bold';
 
@@ -6782,6 +6781,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const customContainer = document.getElementById('custom-date-container');
         if (customContainer) {
             if (currentProventosFilter === 'custom') {
+                const isLight = document.body.classList.contains('light-mode');
                 const bgInputContainer = isLight ? 'bg-white border-gray-200' : 'bg-[#111] border-[#222]';
                 const bgInput = isLight ? 'bg-white border-gray-300 text-gray-800' : 'bg-[#111] border-[#333] text-[#ccc]';
                 const bgLabel = isLight ? 'bg-white text-gray-500' : 'bg-[#111] text-[#555]';
@@ -9446,6 +9446,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const precoAtual = precosAtuais.find(p => p.symbol === symbol)?.regularMarketPrice || 0;
             let ultimoRendimento = 0;
 
+            const isLight = document.body.classList.contains('light-mode');
+            const bgCard = isLight ? 'bg-gray-100' : 'bg-[#151515]';
+            const bgIcon = isLight ? 'bg-white' : 'bg-[#0a0a0a]';
+            const borderIcon = isLight ? 'border-gray-200' : 'border-white/5';
+            const bgBar = isLight ? 'bg-gray-200' : 'bg-[#27272a]';
+            const bgInvest = isLight ? 'bg-white' : 'bg-[#222]';
+            const borderInvest = isLight ? 'border-gray-200' : 'border-white/5';
+            const txtInvest = isLight ? 'text-gray-600' : 'text-gray-300';
+            const borderRow = isLight ? 'border-gray-200' : 'border-white/5';
+            const corTitle = isLight ? 'text-gray-800' : 'text-white';
+            const corValue = isLight ? 'text-gray-800' : 'text-white';
+
             // BUSCA INSTANTÂNEA: Olha direto para os proventos que já vieram do StatusInvest na inicialização
             const historicoDoFii = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
 
@@ -9467,21 +9479,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // SOMA AO TOTAL GLOBAL
                 somaTotalInvestir += investimentoNecessario;
 
-                const isLight = document.body.classList.contains('light-mode');
-                const bgCard = isLight ? 'bg-gray-100' : 'bg-[#151515]';
-                const bgIcon = isLight ? 'bg-white' : 'bg-[#0a0a0a]';
-                const borderIcon = isLight ? 'border-gray-200' : 'border-white/5';
-                const bgBar = isLight ? 'bg-gray-200' : 'bg-[#27272a]';
-                const bgInvest = isLight ? 'bg-white' : 'bg-[#222]';
-                const borderInvest = isLight ? 'border-gray-200' : 'border-white/5';
-                const txtInvest = isLight ? 'text-gray-600' : 'text-gray-300';
-                const borderRow = isLight ? 'border-gray-200' : 'border-white/5';
-
                 const atingiu = cotasAtuais >= magicNumber;
                 const corBarra = atingiu ? 'bg-yellow-500' : (isLight ? 'bg-gray-800' : 'bg-white');
                 const corTexto = atingiu ? 'text-yellow-500' : (isLight ? 'text-gray-800' : 'text-white');
-                const corTitle = isLight ? 'text-gray-800' : 'text-white';
-                const corValue = isLight ? 'text-gray-800' : 'text-white';
 
                 const msgStatus = atingiu ? 'Concluido!' : `Faltam <b class="${corValue}">${cotasFaltantes}</b> cotas`;
                 const msgInvest = atingiu ? 'A bola de neve começou.' : `Falta investir <b class="${corValue}">${formatBRL(investimentoNecessario)}</b>`;

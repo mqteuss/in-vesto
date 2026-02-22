@@ -866,7 +866,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     label: labelName,
                     data: normalizedData,
                     borderColor: isMain ? '#a855f7' : (colors[index] || '#64748b'),
-                    borderWidth: isMain ? 3 : 1.5,
+                    borderWidth: 1,
                     borderDash: isMain ? [] : [4, 4],
                     pointRadius: 0,
                     pointHoverRadius: 4,

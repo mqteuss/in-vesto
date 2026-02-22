@@ -916,6 +916,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const current = localStorage.getItem('vesto_theme') === 'light';
             localStorage.setItem('vesto_theme', current ? 'dark' : 'light');
             updateThemeUI();
+
+            // Força a re-renderização imediata de componentes com caches de cor (como as listas virtuais)
+            if (typeof window.renderizarHistoricoGlobal === 'function') window.renderizarHistoricoGlobal();
+            if (typeof window.renderizarHistoricoProventosGlobal === 'function') window.renderizarHistoricoProventosGlobal();
+
+            // Re-pinta a lista de objetivos chamando a função do arquivo
+            if (typeof renderizarObjetivos === 'function') renderizarObjetivos();
+
+            // Para a carteira, chamamos o render direto da janela global
+            if (typeof window.renderizarCarteiraGlobal === 'function') {
+                // Remove todos os items do cache visual de classes Light
+                const drawers = document.querySelectorAll('.card-drawer.open');
+                window.renderizarCarteiraGlobal();
+            }
         });
     }
 
@@ -1714,7 +1728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return flatList;
     }
 
-    function renderizarHistorico() {
+    window.renderizarHistoricoGlobal = function () {
         const listaHistorico = document.getElementById('lista-historico');
         const scrollContainer = document.getElementById('tab-historico');
         const historicoStatus = document.getElementById('historico-status');
@@ -1722,11 +1736,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!listaHistorico) return;
 
-        const lastId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
-        const currentSignature = `${transacoes.length}-${lastId}-${histFilterType}-${histSearchTerm}`;
+        const lastTransId = transacoes.length > 0 ? transacoes[transacoes.length - 1].id : 'none';
+        const currentSignature = `${transacoes.length}-${lastTransId}-${histFilterType}-${histSearchTerm}`;
+
+        if (currentSignature === lastHistoricoListSignature && historicoVirtualizer) {
+            // Se as listas são as mesmas, apenas force um reflow sem destruir o cache
+            const rowElements = listaHistorico.querySelectorAll('.history-card');
+
+            rowElements.forEach(el => {
+                const isVenda = el.innerHTML.includes('text-red-500'); // Arrow Up
+
+                const isLight = document.body.classList.contains('light-mode');
+                const cardBgClass = isLight ? 'bg-white shadow-sm border-gray-100' : 'bg-black border-transparent';
+                const iconBgClass = isLight ? 'bg-gray-100' : 'bg-[#1C1C1E]';
+
+                el.className = `history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full border ${cardBgClass}`;
+
+                const iconDiv = el.querySelector('.rounded-full');
+                if (iconDiv) iconDiv.className = `w-10 h-10 rounded-full ${iconBgClass} flex items-center justify-center flex-shrink-0 relative overflow-hidden`;
+
+                const title = el.querySelector('h4');
+                if (title) title.className = `text-sm font-bold ${isLight ? 'text-gray-800' : 'text-white'} tracking-tight leading-none`;
+
+                const val = el.querySelector('.text-right span:first-child');
+                if (val) val.className = `text-[15px] font-bold ${isLight ? 'text-gray-900' : 'text-white'} tracking-tight`;
+            });
+            return;
+        }
 
         if (historicoVirtualizer) {
-            if (currentSignature === lastHistoricoListSignature) return;
             historicoVirtualizer.destroy();
             historicoVirtualizer = null;
         }
@@ -1794,7 +1832,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         historicoVirtualizer = new VirtualScroller(scrollContainer, listaHistorico, flatItems, rowRenderer);
     }
 
-    function renderizarHistoricoProventos() {
+    // Mantém compatibilidade com chamadas originais
+    function renderizarHistorico() {
+        if (window.renderizarHistoricoGlobal) window.renderizarHistoricoGlobal();
+    }
+
+    window.renderizarHistoricoProventosGlobal = function () {
         const listaHistoricoProventos = document.getElementById('lista-historico-proventos');
         const scrollContainer = document.getElementById('tab-historico');
 
@@ -1803,6 +1846,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         const currentSignature = `${proventosConhecidos.length}-${lastProvId}-${termoBusca}`;
 
         if (currentSignature === lastHistoricoProventosSignature && proventosVirtualizer) {
+            // Força a atualização do DOM sem recriar o virtualizer
+            const rowElements = listaHistoricoProventos.querySelectorAll('.history-card');
+            rowElements.forEach(el => {
+                const isLight = document.body.classList.contains('light-mode');
+
+                // Card Background
+                const cardBgClass = isLight ? 'bg-white shadow-sm border-gray-100' : 'bg-black border-transparent';
+                el.className = `history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full border ${cardBgClass}`;
+
+                // Icon Background
+                const iconDiv = el.querySelector('.rounded-full');
+                const iconBgClass = isLight ? 'bg-gray-100' : 'bg-[#1C1C1E]';
+                if (iconDiv) iconDiv.className = `w-10 h-10 rounded-full ${iconBgClass} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden`;
+
+                // Text Colors
+                const title = el.querySelector('h4');
+                if (title) title.className = `text-sm font-bold ${isLight ? 'text-gray-800' : 'text-white'} tracking-tight leading-none`;
+
+                const val = el.querySelector('.text-right span:first-child');
+                if (val) val.className = `text-[15px] font-bold ${isLight ? 'text-gray-900' : 'text-white'} tracking-tight`;
+            });
             return;
         }
         lastHistoricoProventosSignature = currentSignature;
@@ -1913,6 +1977,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         proventosVirtualizer = new VirtualScroller(scrollContainer, listaHistoricoProventos, flatItems, rowRenderer);
     }
+
+    // Mantém compatibilidade
+    function renderizarHistoricoProventos() {
+        if (window.renderizarHistoricoProventosGlobal) window.renderizarHistoricoProventosGlobal();
+    }
+
     if (btnHistTransacoes && btnHistProventos) {
         const viewTransacoes = document.getElementById('view-transacoes');
         const viewProventos = document.getElementById('view-proventos');
@@ -4212,6 +4282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Garante que, se preços e proventos resolverem quase ao mesmo tempo,
     // a re-renderização visual ocorra apenas UMA vez com os dados consolidados.
     const renderizarCarteiraDebounced = debounce(renderizarCarteira, 100);
+    window.renderizarCarteiraGlobal = renderizarCarteiraDebounced;
 
     async function atualizarTodosDados(force = false) {
 

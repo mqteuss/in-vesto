@@ -328,6 +328,17 @@ function criarCardElemento(ativo, dados) {
         }
     };
 
+    const isLight = document.body.classList.contains('light-mode');
+    const bgPill = isLight ? 'bg-gray-100' : 'bg-[#1A1A1C]';
+    const borderPill = isLight ? 'border-gray-200' : 'border-[#2C2C2E]';
+    const hoverBgPill = isLight ? 'group-hover:bg-gray-200' : 'group-hover:bg-[#252525]';
+    const hoverBorderPill = isLight ? 'group-hover:border-gray-300' : 'group-hover:border-gray-600';
+
+    const bgDrawer = isLight ? 'bg-[#f9fafb]' : 'bg-[#0f0f0f]';
+    const borderDrawer = isLight ? 'border-gray-200' : 'border-[#2C2C2E]';
+    const btnDetalhesClass = isLight ? 'text-gray-700 bg-gray-100 border-gray-200 hover:bg-gray-200' : 'text-gray-300 bg-[#1C1C1E] border-[#2C2C2E] hover:bg-[#252525]';
+    const textDrawerVal = isLight ? 'text-gray-700' : 'text-gray-300';
+
     card.innerHTML = `
         <div class="p-3 pb-1"> 
             <div class="flex justify-between items-center">
@@ -361,8 +372,8 @@ function criarCardElemento(ativo, dados) {
             </div>
 
             <div class="flex justify-center mt-2 mb-1">
-                <div class="bg-[#1A1A1C] border border-[#2C2C2E] rounded-full px-3 py-0.5 flex items-center justify-center group-hover:bg-[#252525] group-hover:border-gray-600 transition-colors duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3 w-3 text-gray-600 group-hover:text-gray-300 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="${bgPill} border ${borderPill} rounded-full px-3 py-0.5 flex items-center justify-center ${hoverBgPill} ${hoverBorderPill} transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="drawer-arrow h-3 w-3 text-gray-500 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </div>
@@ -370,23 +381,23 @@ function criarCardElemento(ativo, dados) {
         </div>
 
         <div id="drawer-${ativo.symbol}" class="card-drawer">
-             <div class="drawer-content px-4 pb-4 pt-1 bg-[#0f0f0f] border-t border-[#2C2C2E]">
+             <div class="drawer-content px-4 pb-4 pt-1 ${bgDrawer} border-t ${borderDrawer}">
                 <div class="grid grid-cols-2 gap-4 mt-3">
                     <div>
-                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Custo Total</span>
-                        <p data-field="custo-valor" class="text-sm text-gray-300 font-medium">${formatBRL(custoTotal)}</p>
+                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Custo Total</span>
+                        <p data-field="custo-valor" class="text-sm ${textDrawerVal} font-medium">${formatBRL(custoTotal)}</p>
                     </div>
                     <div class="text-right">
-                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Lucro/Prejuízo</span>
+                         <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Lucro/Prejuízo</span>
                          <p data-field="pl-valor" class="text-sm font-bold ${corPL}">${dadoPreco ? formatBRL(lucroPrejuizo) : '...'}</p>
                     </div>
                     <div>
-                        <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Preço Médio</span>
-                        <p class="text-sm text-gray-300 font-medium">${formatBRL(ativo.precoMedio)}</p>
+                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Preço Médio</span>
+                        <p class="text-sm ${textDrawerVal} font-medium">${formatBRL(ativo.precoMedio)}</p>
                     </div>
                     <div class="text-right">
-                         <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Peso Carteira</span>
-                         <p data-field="peso-valor" class="text-sm text-gray-300 font-medium">${formatPercent(percentWallet)}</p>
+                         <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Peso Carteira</span>
+                         <p data-field="peso-valor" class="text-sm ${textDrawerVal} font-medium">${formatPercent(percentWallet)}</p>
                     </div>
                 </div>
 
@@ -395,10 +406,10 @@ function criarCardElemento(ativo, dados) {
                 </div>
 
                 <div class="flex gap-2 mt-4 pt-2">
-                     <button class="flex-1 py-2 text-xs font-bold text-gray-300 bg-[#1C1C1E] border border-[#2C2C2E] rounded-lg hover:bg-[#252525]" onclick="window.abrirDetalhesAtivo('${ativo.symbol}')">
+                     <button class="flex-1 py-2 text-xs font-bold rounded-lg border ${btnDetalhesClass}" onclick="window.abrirDetalhesAtivo('${ativo.symbol}')">
                         Ver Detalhes
                      </button>
-                     <button class="py-2 px-3 text-red-400 bg-red-900/10 border border-red-900/20 rounded-lg hover:bg-red-900/20" onclick="window.confirmarExclusao('${ativo.symbol}')">
+                     <button class="py-2 px-3 text-red-500 bg-red-100 dark:bg-red-900/10 border border-red-500/20 dark:border-red-900/20 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/20 transition-colors" onclick="window.confirmarExclusao('${ativo.symbol}')">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                      </button>
                 </div>
@@ -1741,7 +1752,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const grupos = agruparPorMes(dadosFiltrados, 'date');
 
         // Flatten (calcula automaticamente price * quantity)
-        const flatItems = flattenHistoricoData(grupos);
+        const isLight = document.body.classList.contains('light-mode');
 
         const rowRenderer = (t) => {
             const isVenda = t.type === 'sell';
@@ -1753,11 +1764,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
 
             const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
-            const iconBg = 'bg-[#1C1C1E]';
-            const cardBg = 'bg-black';
+            const iconBg = isLight ? 'bg-gray-100' : 'bg-[#1C1C1E]';
+            const cardBgClass = isLight ? 'bg-white shadow-sm border border-gray-100' : 'bg-black border border-transparent';
+            const bgColorInline = isLight ? 'white' : 'black';
+            const titleColor = isLight ? 'text-gray-800' : 'text-white';
+            const valColor = isLight ? 'text-gray-900' : 'text-white';
 
             return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBg}" style="background-color: black !important;" data-action="edit-row" data-id="${t.id}">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBgClass}" style="background-color: ${bgColorInline} !important;" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
                     <div class="w-10 h-10 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
@@ -1766,7 +1780,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 h-5">
-                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${t.symbol}</h4>
+                            <h4 class="text-sm font-bold ${titleColor} tracking-tight leading-none">${t.symbol}</h4>
                             </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
@@ -1776,7 +1790,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
+                    <span class="text-[15px] font-bold ${valColor} tracking-tight">${formatBRL(totalTransacao)}</span>
                     <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(t.price)}</span>
                 </div>
             </div>
@@ -1847,6 +1861,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const flatItems = flattenHistoricoData(gruposLimpos);
 
+        const isLight = document.body.classList.contains('light-mode');
+
         const rowRenderer = (p) => {
             const qtd = p.qtdCalculada;
             const dia = p.paymentDate.split('-')[2];
@@ -1855,7 +1871,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Cálculo do Valor Unitário (para exibir abaixo do total)
             const valorUnitario = total / (qtd || 1);
 
-            const bgIcone = 'bg-[#1C1C1E]';
+            const iconBg = isLight ? 'bg-gray-100' : 'bg-[#1C1C1E]';
+            const cardBgClass = isLight ? 'bg-white shadow-sm border border-gray-100' : 'bg-black border border-transparent';
+            const bgColorInline = isLight ? 'white' : 'black';
+            const titleColor = isLight ? 'text-gray-800' : 'text-white';
+            const valColor = isLight ? 'text-gray-900' : 'text-white';
+
             const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
 
             let tagHtml = '';
@@ -1876,16 +1897,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${label}</span>`;
 
             return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black" style="background-color: black !important;">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBgClass}" style="background-color: ${bgColorInline} !important;">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
-                    <div class="w-10 h-10 rounded-full ${bgIcone} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${iconGraph}
                     </div>
 
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 h-5">
-                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${p.symbol}</h4>
+                            <h4 class="text-sm font-bold ${titleColor} tracking-tight leading-none">${p.symbol}</h4>
                             ${tagHtml}
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
@@ -1896,7 +1917,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
+                    <span class="text-[15px] font-bold ${valColor} tracking-tight">+ ${formatBRL(total)}</span>
 
                     <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(valorUnitario)}</span>
                 </div>
@@ -4776,25 +4797,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else { return; }
         }
 
+        const isLight = document.body.classList.contains('light-mode');
+        const bgKpiColors = isLight ? 'bg-[#e5e7eb] border-gray-300' : 'bg-[#151515] border-white/5';
+        const txtKpiValues = isLight ? 'text-gray-800 font-bold' : 'text-gray-200 font-bold';
+
+        const wrapperBg = isLight ? 'bg-white border-gray-200' : 'bg-[#0f0f0f] border-[#1a1a1a]';
+        const filterBg = isLight ? 'bg-white/90 border-gray-200' : 'bg-[#151515]/90 border-white/5';
+        const btnTypeLineBg = isLight ? 'bg-gray-200 text-gray-800' : 'bg-[#2C2C2E] text-white';
+
         container.innerHTML = `
         <div class="flex flex-col mb-2 px-1">
             
             <div class="flex items-center justify-between gap-1 mb-3 pl-1 w-full">
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest truncate">Cotação - ${symbol}</h4>
+                <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-600' : 'text-gray-300'} uppercase tracking-widest truncate">Cotação - ${symbol}</h4>
                 
-                <div class="flex items-center gap-1.5 text-[9px] bg-[#151515] border border-white/5 px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
-                    <span class="text-gray-500 font-medium">A:<span id="stat-open" class="text-gray-200 font-bold ml-0.5">--</span></span>
-                    <span class="text-white/10">|</span>
-                    <span class="text-gray-500 font-medium">V:<span id="stat-var" class="text-gray-200 font-bold ml-0.5">--</span></span>
-                    <span class="text-white/10">|</span>
-                    <span class="text-gray-500 font-medium">F:<span id="stat-close" class="text-gray-200 font-bold ml-0.5">--</span></span>
+                <div class="flex items-center gap-1.5 text-[9px] ${bgKpiColors} px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap flex-shrink-0">
+                    <span class="text-gray-500 font-medium">A:<span id="stat-open" class="${txtKpiValues} ml-0.5">--</span></span>
+                    <span class="${isLight ? 'text-gray-300' : 'text-white/10'}">|</span>
+                    <span class="text-gray-500 font-medium">V:<span id="stat-var" class="${txtKpiValues} ml-0.5">--</span></span>
+                    <span class="${isLight ? 'text-gray-300' : 'text-white/10'}">|</span>
+                    <span class="text-gray-500 font-medium">F:<span id="stat-close" class="${txtKpiValues} ml-0.5">--</span></span>
                 </div>
             </div>
 
-            <div id="chart-wrapper-cotacao" class="relative w-full bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] shadow-inner overflow-hidden" style="height: 320px;">
+            <div id="chart-wrapper-cotacao" class="relative w-full ${wrapperBg} rounded-2xl border shadow-inner overflow-hidden" style="height: 320px;">
                 
                 <div class="absolute top-2 left-2 right-2 z-20 flex justify-between items-center gap-2 pointer-events-auto">
-                    <div class="relative flex items-center gap-0.5 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1 border border-white/5 shadow-lg" id="chart-filters">
+                    <div class="relative flex items-center gap-0.5 p-1 ${filterBg} backdrop-blur-md rounded-xl overflow-x-auto no-scrollbar flex-1 border shadow-lg" id="chart-filters">
                         <div id="cotacao-slider" class="absolute top-1 bottom-1 left-0 bg-[#2C2C2E] rounded-lg shadow-sm transition-all duration-300 ease-out z-0" style="width: 0px;"></div>
                         ${window.gerarBotaoFiltro('1D', symbol, true)}
                         ${window.gerarBotaoFiltro('5D', symbol)}
@@ -4806,9 +4835,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${window.gerarBotaoFiltro('Tudo', symbol)}
                     </div>
                     
-                    <div class="flex gap-1 p-1 bg-[#151515]/90 backdrop-blur-md rounded-xl flex-shrink-0 border border-white/5 shadow-lg" id="chart-type-toggle">
+                    <div class="flex gap-1 p-1 ${filterBg} backdrop-blur-md rounded-xl flex-shrink-0 border shadow-lg" id="chart-type-toggle">
                         <button id="btn-type-line" onclick="window.mudarTipoGrafico('line', '${symbol}')"
-                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none bg-[#2C2C2E] text-white"
+                            class="chart-type-btn px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors duration-200 select-none ${btnTypeLineBg}"
                             title="Gráfico de Linha">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <polyline points="1,11 4,7 7,9 10,4 13,3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
@@ -4856,7 +4885,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     window.gerarBotaoFiltro = function (label, symbol, isActive = false) {
-        const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
+        const isLight = document.body.classList.contains('light-mode');
+        const txtActive = isLight ? 'text-gray-800' : 'text-white';
+        const txtHover = isLight ? 'text-gray-800' : 'text-gray-300';
+        const textClass = isActive ? txtActive : `text-gray-500 hover:${txtHover}`;
 
         return `<button id="btn-${label}" onclick="window.mudarPeriodoGrafico('${label}', '${symbol}')" 
             class="relative z-10 chart-filter-btn flex-1 px-1 py-1.5 rounded-lg text-[10px] font-bold tracking-wider uppercase transition-colors duration-300 select-none text-center ${textClass}" 
@@ -4940,11 +4972,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.mudarPeriodoGrafico = function (range, symbol) {
+        const isLight = document.body.classList.contains('light-mode');
+        const txtActive = isLight ? 'text-gray-800' : 'text-white';
+        const txtHover = isLight ? 'hover:text-gray-800' : 'hover:text-gray-300';
+
         // 1. Volta todos os textos para cinza
         const botoes = document.querySelectorAll('#chart-filters button');
         botoes.forEach(btn => {
-            btn.classList.remove('text-white');
-            btn.classList.add('text-gray-500', 'hover:text-gray-300');
+            btn.classList.remove('text-white', 'text-gray-800');
+            btn.classList.add('text-gray-500', txtHover);
         });
 
         const activeBtn = document.getElementById(`btn-${range}`);
@@ -4952,8 +4988,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (activeBtn) {
             // 2. Acende o texto do botão clicado
-            activeBtn.classList.remove('text-gray-500', 'hover:text-gray-300');
-            activeBtn.classList.add('text-white');
+            activeBtn.classList.remove('text-gray-500', txtHover);
+            activeBtn.classList.add(txtActive);
 
             // 3. Move o slider (animação mágica)
             if (slider) {
@@ -6713,9 +6749,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // HTML DO GRÁFICO DE PROVENTOS (ALINHADO COM COTAÇÃO)
         // ==============================================================
         if (!document.getElementById('chart-wrapper-proventos')) {
+            const isLight = document.body.classList.contains('light-mode');
             const getBtnClass = (filterKey) => {
                 const isActive = currentProventosFilter === filterKey;
-                const textClass = isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300';
+                const txtActive = isLight ? 'text-gray-800' : 'text-white';
+                const textClass = isActive ? txtActive : `text-gray-500 hover:${isLight ? 'text-gray-800' : 'text-gray-300'}`;
                 return `relative z-10 flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors duration-300 select-none proventos-filter-btn ${textClass}`;
             };
 
@@ -6810,12 +6848,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 slider.style.width = `${activeBtn.offsetWidth}px`;
                 slider.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
 
+                const isLight = document.body.classList.contains('light-mode');
+                const txtActive = isLight ? 'text-gray-800' : 'text-white';
+                const txtInactive = 'text-gray-500';
+                const hoverInactive = isLight ? 'hover:text-gray-800' : 'hover:text-gray-300';
+
                 document.querySelectorAll('.proventos-filter-btn').forEach(btn => {
-                    btn.classList.remove('text-white');
-                    btn.classList.add('text-gray-500', 'hover:text-gray-300');
+                    btn.classList.remove('text-white', 'text-gray-800');
+                    btn.classList.add(txtInactive, hoverInactive);
                 });
-                activeBtn.classList.remove('text-gray-500', 'hover:text-gray-300');
-                activeBtn.classList.add('text-white');
+                activeBtn.classList.remove(txtInactive, hoverInactive);
+                activeBtn.classList.add(txtActive);
             }
         }, 10);
 

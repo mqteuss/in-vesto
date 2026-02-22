@@ -1243,10 +1243,7 @@ function hideAddModal() {
     }
 
     function hideDetalhesModal() {
-        // Reset manual transform from drag - mobile only; CSS handles desktop via .closing
-        if (window.innerWidth < 768) {
-            detalhesPageContent.style.transform = ''; 
-        }
+        detalhesPageContent.style.transform = ''; 
         detalhesPageContent.classList.add('closing'); 
         detalhesPageModal.classList.remove('visible'); 
         document.body.style.overflow = '';
@@ -1785,22 +1782,6 @@ function renderizarHistorico() {
         `;
     };
 
-    // Desktop: skip VirtualScroller, render flat list directly
-    if (window.innerWidth >= 768) {
-        listaHistorico.innerHTML = flatItems
-            .filter(item => item.type !== 'header')
-            .map(item => `<div class="px-4 py-1">${rowRenderer(item.data)}</div>`)
-            .join('');
-        // Render month headers as sticky headings
-        listaHistorico.innerHTML = flatItems.map(item => {
-            if (item.type === 'header') {
-                return `<div class="virtual-header-row px-4 py-2">${item.htmlContent}</div>`;
-            }
-            return `<div style="padding: 4px 16px;">${rowRenderer(item.data)}</div>`;
-        }).join('');
-        return;
-    }
-
     historicoVirtualizer = new VirtualScroller(scrollContainer, listaHistorico, flatItems, rowRenderer);
 }
 
@@ -1921,17 +1902,6 @@ let tagHtml = '';
             </div>
         `;
     };
-
-    // Desktop: skip VirtualScroller, render flat list directly
-    if (window.innerWidth >= 768) {
-        listaHistoricoProventos.innerHTML = flatItems.map(item => {
-            if (item.type === 'header') {
-                return `<div class="virtual-header-row px-4 py-2">${item.htmlContent}</div>`;
-            }
-            return `<div style="padding: 4px 16px;">${rowRenderer(item.data)}</div>`;
-        }).join('');
-        return;
-    }
 
     proventosVirtualizer = new VirtualScroller(scrollContainer, listaHistoricoProventos, flatItems, rowRenderer);
 }
@@ -2817,10 +2787,8 @@ function openPatrimonioModal() {
 function closePatrimonioModal() {
         if(!patrimonioPageContent) return;
 
-        // 1. Remove qualquer transformação manual feita pelo dedo (reset) - mobile only
-        if (window.innerWidth < 768) {
-            patrimonioPageContent.style.transform = '';
-        }
+        // 1. Remove qualquer transformação manual feita pelo dedo (reset)
+        patrimonioPageContent.style.transform = '';
 
         // 2. Adiciona a classe que faz a animação de descer (definida no CSS)
         patrimonioPageContent.classList.add('closing');
@@ -2859,10 +2827,8 @@ function openProventosModal() {
 function closeProventosModal() {
     if(!proventosPageContent) return;
 
-    // 1. Remove qualquer transformação manual feita pelo dedo (reset) - mobile only
-    if (window.innerWidth < 768) {
-        proventosPageContent.style.transform = '';
-    }
+    // 1. Remove qualquer transformação manual feita pelo dedo (reset)
+    proventosPageContent.style.transform = '';
 
     // 2. Adiciona a classe que faz a animação de descer (definida no CSS)
     proventosPageContent.classList.add('closing');
@@ -6983,13 +6949,7 @@ function mudarAba(tabId) {
 
         const slider = document.getElementById('tabs-slider');
         if (slider) {
-            if (window.innerWidth < 768) {
-                // Mobile: desliza o carrossel horizontal
-                slider.style.transform = `translateX(-${index * 100}%)`;
-            } else {
-                // Desktop: limpa qualquer inline transform; o CSS cuida do show/hide
-                slider.style.transform = '';
-            }
+            slider.style.transform = `translateX(-${index * 100}%)`;
         }
 
         tabContents.forEach(content => {
@@ -7131,7 +7091,6 @@ const tabDashboard = document.getElementById('tab-dashboard');
     });
 
     detalhesPageContent.addEventListener('touchstart', (e) => {
-        if (window.innerWidth >= 768) return;
         if (detalhesConteudoScroll.scrollTop === 0) {
             touchStartY = e.touches[0].clientY;
             touchMoveY = touchStartY; 
@@ -7141,7 +7100,6 @@ const tabDashboard = document.getElementById('tab-dashboard');
     }, { passive: true }); 
 
     detalhesPageContent.addEventListener('touchmove', (e) => {
-        if (window.innerWidth >= 768) return;
         if (!isDraggingDetalhes) return;
         touchMoveY = e.touches[0].clientY;
         const diff = touchMoveY - touchStartY;
@@ -7152,7 +7110,6 @@ const tabDashboard = document.getElementById('tab-dashboard');
     }, { passive: false }); 
 
     detalhesPageContent.addEventListener('touchend', (e) => {
-        if (window.innerWidth >= 768) return;
         if (!isDraggingDetalhes) return;
         isDraggingDetalhes = false;
         const diff = touchMoveY - touchStartY;
@@ -8890,7 +8847,6 @@ function renderizarGraficoIpca(dados) {
         patrimonioPageContent.addEventListener('touchstart', (e) => {
             // CORREÇÃO: Se tocar no gráfico, não inicia o arrasto do modal
             if (e.target.tagName === 'CANVAS') return;
-            if (window.innerWidth >= 768) return;
 
             if (scrollContainer && scrollContainer.scrollTop === 0) {
                 touchStartPatrimonioY = e.touches[0].clientY;
@@ -8901,7 +8857,6 @@ function renderizarGraficoIpca(dados) {
         }, { passive: true });
 
         patrimonioPageContent.addEventListener('touchmove', (e) => {
-            if (window.innerWidth >= 768) return;
             if (!isDraggingPatrimonio) return;
             touchMovePatrimonioY = e.touches[0].clientY;
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
@@ -8913,7 +8868,6 @@ function renderizarGraficoIpca(dados) {
         }, { passive: false });
 
         patrimonioPageContent.addEventListener('touchend', (e) => {
-            if (window.innerWidth >= 768) return;
             if (!isDraggingPatrimonio) return;
             isDraggingPatrimonio = false;
             const diff = touchMovePatrimonioY - touchStartPatrimonioY;
@@ -8951,7 +8905,6 @@ if (proventosPageModal) {
         proventosPageContent.addEventListener('touchstart', (e) => {
             // CORREÇÃO: Se tocar no gráfico, não inicia o arrasto do modal
             if (e.target.tagName === 'CANVAS') return;
-            if (window.innerWidth >= 768) return;
 
             if (scrollContainerProv && scrollContainerProv.scrollTop === 0) {
                 touchStartProventosY = e.touches[0].clientY;
@@ -8962,7 +8915,6 @@ if (proventosPageModal) {
         }, { passive: true });
 
         proventosPageContent.addEventListener('touchmove', (e) => {
-            if (window.innerWidth >= 768) return;
             if (!isDraggingProventos) return;
             touchMoveProventosY = e.touches[0].clientY;
             const diff = touchMoveProventosY - touchStartProventosY;
@@ -8974,7 +8926,6 @@ if (proventosPageModal) {
         }, { passive: false });
 
         proventosPageContent.addEventListener('touchend', (e) => {
-            if (window.innerWidth >= 768) return;
             if (!isDraggingProventos) return;
             isDraggingProventos = false;
 
@@ -9834,40 +9785,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
     [inPrincipal, inAporte, inTaxa, inAnos].forEach(el => el.addEventListener('input', calcular));
 });
-/* =========================================
-   DESKTOP: Debounced chart resize on window resize
-   ========================================= */
-(function() {
-    let resizeTimer;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-            // Resize all known chart instances
-            try {
-                if (typeof patrimonioChartInstance !== 'undefined' && patrimonioChartInstance) {
-                    patrimonioChartInstance.resize();
-                }
-            } catch(e) {}
-            try {
-                if (typeof historicoChartInstance !== 'undefined' && historicoChartInstance) {
-                    historicoChartInstance.resize();
-                }
-            } catch(e) {}
-            try {
-                if (typeof alocacaoChartInstance !== 'undefined' && alocacaoChartInstance) {
-                    alocacaoChartInstance.resize();
-                }
-            } catch(e) {}
-            try {
-                if (typeof cotacaoChartInstance !== 'undefined' && cotacaoChartInstance) {
-                    cotacaoChartInstance.resize();
-                }
-            } catch(e) {}
-            try {
-                if (typeof detalhesChartInstance !== 'undefined' && detalhesChartInstance) {
-                    detalhesChartInstance.resize();
-                }
-            } catch(e) {}
-        }, 150); // 150ms debounce
-    });
-})();

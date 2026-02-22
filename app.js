@@ -502,6 +502,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let historicoChartInstance = null;
     let patrimonioChartInstance = null;
     let detalhesChartInstance = null;
+    let detalhesRentabilidadeChartInstance = null;
     let onConfirmCallback = null;
     let precosAtuais = [];
     let proventosAtuais = [];
@@ -814,6 +815,134 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    window.renderizarGraficoRentabilidade = function (dadosChart, monthsRange = 24) {
+        if (!dadosChart || !dadosChart.profitabilities) return;
+
+        if (detalhesRentabilidadeChartInstance) {
+            detalhesRentabilidadeChartInstance.destroy();
+        }
+
+        const canvas = document.getElementById('detalhes-rentabilidade-chart');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+
+        let datasetsData = [];
+        let commonLabels = [];
+
+        if (dadosChart.profitabilities.length > 0) {
+            const baseSeries = dadosChart.profitabilities[0];
+            const startIndex = Math.max(0, baseSeries.length - monthsRange);
+
+            commonLabels = baseSeries.slice(startIndex).map(item => item.date);
+
+            const colors = [
+                '#a855f7', // Roxo pro ativo principal
+                '#eab308', // CDI
+                '#ef4444', // IPCA
+                '#3b82f6', // IBOV
+                '#8b5cf6', // SMLL
+                '#10b981', // IFIX
+                '#f97316', // IDIV
+                '#ec4899', // IVVB11
+                '#64748b'
+            ];
+
+            datasetsData = dadosChart.profitabilities.map((serie, index) => {
+                const dataSlice = serie.slice(startIndex).map(item => item.profitability);
+
+                // Normaliza para o start val
+                const baseVal = dataSlice[0] || 0;
+                const normalizedData = dataSlice.map(val => val - baseVal);
+
+                const labelName = dadosChart.legend[index] || `Indice ${index}`;
+                const isMain = index === 0;
+
+                return {
+                    label: labelName,
+                    data: normalizedData,
+                    borderColor: isMain ? '#a855f7' : (colors[index] || '#64748b'),
+                    borderWidth: isMain ? 3 : 1.5,
+                    borderDash: isMain ? [] : [4, 4],
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    tension: 0.3,
+                    fill: false
+                };
+            });
+        }
+
+        const isLight = document.body.classList.contains('light-mode');
+        const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+        const textColor = isLight ? '#6b7280' : '#9ca3af';
+
+        detalhesRentabilidadeChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: commonLabels,
+                datasets: datasetsData
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: textColor, boxWidth: 10, boxHeight: 1, usePointStyle: true, pointStyle: 'line'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.8)',
+                        titleColor: isLight ? '#000' : '#fff',
+                        bodyColor: isLight ? '#333' : '#ccc',
+                        borderColor: isLight ? '#e5e7eb' : '#333',
+                        borderWidth: 1, padding: 10,
+                        callbacks: {
+                            label: function (context) { return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + '%'; }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 6, color: textColor } },
+                    y: { grid: { color: gridColor }, ticks: { color: textColor, callback: function (value) { return value + '%' } } }
+                }
+            }
+        });
+    };
+
+    window.mudarRentabilidadeRange = function (range) {
+        if (!currentDetalhesSymbol) return;
+        const isLight = document.body.classList.contains('light-mode');
+
+        const botoes = document.querySelectorAll('.rentabilidade-range-btn');
+        botoes.forEach(btn => {
+            if (parseInt(btn.getAttribute('data-range')) === range) {
+                if (isLight) {
+                    btn.classList.add('text-[#1f2937]', 'bg-white', 'shadow-sm');
+                    btn.classList.remove('text-gray-400', 'text-white', 'bg-[#3A3A3C]');
+                } else {
+                    btn.classList.add('text-white', 'bg-[#3A3A3C]');
+                    btn.classList.remove('text-gray-500', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
+                }
+            } else {
+                if (isLight) {
+                    btn.classList.add('text-gray-400');
+                    btn.classList.remove('text-[#1f2937]', 'bg-white', 'shadow-sm', 'text-white', 'bg-[#3A3A3C]');
+                } else {
+                    btn.classList.add('text-gray-500');
+                    btn.classList.remove('text-white', 'bg-[#3A3A3C]', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
+                }
+            }
+        });
+
+        if (window.currentRentabilidadeDados) {
+            window.renderizarGraficoRentabilidade(window.currentRentabilidadeDados, range);
+        }
+    };
+
     function updateThemeUI() {
         const isLight = localStorage.getItem('vesto_theme') === 'light';
         const metaTheme = document.querySelector('meta[name="theme-color"]');
@@ -907,6 +1036,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateChartColors(patrimonioChartInstance);
         updateChartColors(historicoChartInstance);
         updateChartColors(detalhesChartInstance);
+        updateChartColors(detalhesRentabilidadeChartInstance);
     }
 
     updateThemeUI();
@@ -1288,6 +1418,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (detalhesChartInstance) {
             detalhesChartInstance.destroy();
             detalhesChartInstance = null;
+        }
+        if (detalhesRentabilidadeChartInstance) {
+            detalhesRentabilidadeChartInstance.destroy();
+            detalhesRentabilidadeChartInstance = null;
         }
         if (window.imoveisChartInstance) {
             window.imoveisChartInstance.destroy();
@@ -6549,6 +6683,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     elSobre.style.transition = 'opacity 0.3s ease';
                     elSobre.style.opacity = '1';
                 });
+            }
+
+            // ── Renderiza Gráfico de Rentabilidade (Investidor10) ──
+            const rentabilidadeContainer = document.getElementById('detalhes-rentabilidade-container');
+            if (rentabilidadeContainer) {
+                if (fundamentos.rentabilidade_chart && fundamentos.rentabilidade_chart.profitabilities && fundamentos.rentabilidade_chart.profitabilities.length > 0) {
+                    rentabilidadeContainer.classList.remove('hidden');
+                    window.currentRentabilidadeDados = fundamentos.rentabilidade_chart;
+
+                    // Reset do botão para 2A
+                    window.mudarRentabilidadeRange(24);
+                } else {
+                    rentabilidadeContainer.classList.add('hidden');
+                    window.currentRentabilidadeDados = null;
+                }
             }
 
             // ── Tab PORTFÓLIO: Imóveis (apenas FIIs) ──

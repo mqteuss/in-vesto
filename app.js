@@ -1753,8 +1753,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Flatten (calcula automaticamente price * quantity)
         const flatItems = flattenHistoricoData(grupos);
-        const isLight = document.body.classList.contains('light-mode');
-
         const rowRenderer = (t) => {
             const isVenda = t.type === 'sell';
             const totalTransacao = t.quantity * t.price;
@@ -1765,23 +1763,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const arrowUpRed = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>`;
 
             const mainIconHtml = isVenda ? arrowUpRed : arrowDownGreen;
-            const iconBg = isLight ? 'bg-gray-100' : 'bg-[#1C1C1E]';
-            const cardBgClass = isLight ? 'bg-white shadow-sm border border-gray-100' : 'bg-black border border-transparent';
-            const bgColorInline = isLight ? 'white' : 'black';
-            const titleColor = isLight ? 'text-gray-800' : 'text-white';
-            const valColor = isLight ? 'text-gray-900' : 'text-white';
 
             return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBgClass}" style="background-color: ${bgColorInline} !important;" data-action="edit-row" data-id="${t.id}">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent" data-action="edit-row" data-id="${t.id}">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
-                    <div class="w-10 h-10 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${mainIconHtml}
                     </div>
 
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 h-5">
-                            <h4 class="text-sm font-bold ${titleColor} tracking-tight leading-none">${t.symbol}</h4>
+                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${t.symbol}</h4>
                             </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
                             <span class="font-medium text-gray-400">Dia ${dia}</span>
@@ -1791,7 +1784,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold ${valColor} tracking-tight">${formatBRL(totalTransacao)}</span>
+                    <span class="text-[15px] font-bold text-white tracking-tight">${formatBRL(totalTransacao)}</span>
                     <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(t.price)}</span>
                 </div>
             </div>
@@ -1862,8 +1855,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const flatItems = flattenHistoricoData(gruposLimpos);
 
-        const isLight = document.body.classList.contains('light-mode');
-
         const rowRenderer = (p) => {
             const qtd = p.qtdCalculada;
             const dia = p.paymentDate.split('-')[2];
@@ -1871,12 +1862,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Cálculo do Valor Unitário (para exibir abaixo do total)
             const valorUnitario = total / (qtd || 1);
-
-            const iconBg = isLight ? 'bg-gray-100' : 'bg-[#1C1C1E]';
-            const cardBgClass = isLight ? 'bg-white shadow-sm border border-gray-100' : 'bg-black border border-transparent';
-            const bgColorInline = isLight ? 'white' : 'black';
-            const titleColor = isLight ? 'text-gray-800' : 'text-white';
-            const valColor = isLight ? 'text-gray-900' : 'text-white';
 
             const iconGraph = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`;
 
@@ -1898,16 +1883,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             tagHtml = `<span class="text-[9px] font-extrabold text-gray-300 bg-gray-700/40 border border-gray-600/50 px-1.5 py-[1px] rounded-[4px] uppercase tracking-wider leading-none">${label}</span>`;
 
             return `
-            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full ${cardBgClass}" style="background-color: ${bgColorInline} !important;">
+            <div class="history-card flex items-center justify-between py-2 px-3 mb-1 rounded-xl relative group h-full w-full bg-black border border-transparent">
                 <div class="flex items-center gap-3 flex-1 min-w-0">
 
-                    <div class="w-10 h-10 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
                         ${iconGraph}
                     </div>
 
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 h-5">
-                            <h4 class="text-sm font-bold ${titleColor} tracking-tight leading-none">${p.symbol}</h4>
+                            <h4 class="text-sm font-bold text-white tracking-tight leading-none">${p.symbol}</h4>
                             ${tagHtml}
                         </div>
                         <div class="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500 leading-none">
@@ -1918,7 +1903,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
                 <div class="text-right flex flex-col items-end justify-center">
-                    <span class="text-[15px] font-bold ${valColor} tracking-tight">+ ${formatBRL(total)}</span>
+                    <span class="text-[15px] font-bold text-white tracking-tight">+ ${formatBRL(total)}</span>
 
                     <span class="text-[11px] text-gray-500 mt-0.5">${formatBRL(valorUnitario)}</span>
                 </div>

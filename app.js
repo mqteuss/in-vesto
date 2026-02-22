@@ -1752,6 +1752,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const grupos = agruparPorMes(dadosFiltrados, 'date');
 
         // Flatten (calcula automaticamente price * quantity)
+        const flatItems = flattenHistoricoData(grupos);
         const isLight = document.body.classList.contains('light-mode');
 
         const rowRenderer = (t) => {

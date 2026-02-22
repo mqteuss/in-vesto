@@ -6722,6 +6722,143 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
+            // ── NOVO: Renderiza Grid de Indicadores Avançados (Apenas Ações) ──
+            const advMetricsEl = document.getElementById('detalhes-advanced-metrics');
+            const advGridEl = document.getElementById('detalhes-advanced-grid');
+            if (advMetricsEl && advGridEl) {
+                if (fundamentos.advanced_metrics && !ehFii) {
+                    const m = fundamentos.advanced_metrics;
+                    const isLight = document.body.classList.contains('light-mode');
+                    const metricsToShow = [
+                        { label: 'ROIC', value: m.roic, suffix: '%' },
+                        { label: 'ROA', value: m.roa, suffix: '%' },
+                        { label: 'Marg. Bruta', value: m.gross_margin, suffix: '%' },
+                        { label: 'Marg. EBITDA', value: m.ebitda_margin, suffix: '%' },
+                        { label: 'Marg. Líquida', value: m.net_margin, suffix: '%' },
+                        { label: 'Marg. EBIT', value: m.ebit_margin, suffix: '%' },
+                        { label: 'Giro Ativos', value: m.active_turns, suffix: 'x' },
+                        { label: 'Liq. Corrente', value: m.current_liquidity, suffix: '' },
+                        { label: 'Dív. Líq/PL', value: m.net_debt_net_worth, suffix: '' },
+                        { label: 'Dív. Líq/EBITDA', value: m.net_debt_ebitda, suffix: '' },
+                        { label: 'EV/EBITDA', value: m.ev_ebitda, suffix: '' },
+                        { label: 'EV/EBIT', value: m.ev_ebit, suffix: '' },
+                        { label: 'Cresc. Rec 5A', value: m.growth_net_revenue_last_5_years, suffix: '%' },
+                        { label: 'Cresc. Lucro 5A', value: m.growth_net_profit_last_5_years, suffix: '%' },
+                        { label: 'DY Médio 5A', value: m.dividend_yield_last_5_years, suffix: '%' },
+                    ];
+
+                    advGridEl.innerHTML = metricsToShow.map(item => {
+                        const val = (item.value !== null && item.value !== undefined && item.value !== '-')
+                            ? parseFloat(item.value).toFixed(2).replace('.', ',') + item.suffix
+                            : '-';
+                        const bgCard = isLight ? 'bg-[#f3f4f6] border-[#e5e7eb]' : 'bg-[#141414] border-[#1F1F1F]';
+                        const txtLabel = isLight ? 'text-gray-500' : 'text-gray-500';
+                        const txtValue = isLight ? 'text-gray-900' : 'text-white';
+                        return `<div class="rounded-xl ${bgCard} border p-3 flex flex-col gap-0.5">
+                            <span class="text-[10px] font-semibold ${txtLabel} uppercase tracking-wide">${item.label}</span>
+                            <span class="text-sm font-bold ${txtValue}">${val}</span>
+                        </div>`;
+                    }).join('');
+                    advMetricsEl.classList.remove('hidden');
+                } else {
+                    advMetricsEl.classList.add('hidden');
+                    advGridEl.innerHTML = '';
+                }
+            }
+
+            // ── NOVO: Renderiza Gráficos de Diversificação de Receita (Apenas Ações) ──
+            const revenueChartsEl = document.getElementById('detalhes-revenue-charts');
+            if (revenueChartsEl) {
+                const hasGeo = fundamentos.revenue_geography && !ehFii;
+                const hasSeg = fundamentos.revenue_segment && !ehFii;
+
+                if (hasGeo || hasSeg) {
+                    revenueChartsEl.classList.remove('hidden');
+
+                    const DONUT_COLORS = [
+                        '#a855f7', '#3b82f6', '#f59e0b', '#10b981', '#ec4899',
+                        '#06b6d4', '#ef4444', '#84cc16', '#8b5cf6', '#f97316'
+                    ];
+                    const isLight = document.body.classList.contains('light-mode');
+
+                    function renderDoughnut(canvasId, legendId, wrapId, chartData) {
+                        const wrap = document.getElementById(wrapId);
+                        if (!wrap) return;
+                        // Pega o ano mais recente
+                        const years = Object.keys(chartData).sort((a, b) => b - a);
+                        if (years.length === 0) { wrap.classList.add('hidden'); return; }
+                        const yearData = chartData[years[0]];
+                        const entries = Object.entries(yearData);
+                        if (entries.length === 0) { wrap.classList.add('hidden'); return; }
+
+                        const labels = entries.map(([k]) => k);
+                        const values = entries.map(([, v]) => v.value || 0);
+                        const colors = labels.map((_, i) => DONUT_COLORS[i % DONUT_COLORS.length]);
+
+                        wrap.classList.remove('hidden');
+
+                        const canvas = document.getElementById(canvasId);
+                        const ctx = canvas.getContext('2d');
+
+                        // Destroy previous instance if exists
+                        const existingChart = Chart.getChart(canvas);
+                        if (existingChart) existingChart.destroy();
+
+                        new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels,
+                                datasets: [{
+                                    data: values,
+                                    backgroundColor: colors,
+                                    borderColor: isLight ? '#fff' : '#141414',
+                                    borderWidth: 2,
+                                    hoverOffset: 6
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: true,
+                                cutout: '60%',
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)',
+                                        titleColor: isLight ? '#111' : '#fff',
+                                        bodyColor: isLight ? '#333' : '#ccc',
+                                        borderColor: isLight ? '#e5e7eb' : '#333',
+                                        borderWidth: 1,
+                                        padding: 10,
+                                        callbacks: {
+                                            label: function (ctx) {
+                                                return ` ${ctx.label}: ${ctx.parsed}%`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        // Legenda customizada
+                        const legendEl = document.getElementById(legendId);
+                        if (legendEl) {
+                            const txtColor = isLight ? 'text-gray-700' : 'text-gray-400';
+                            legendEl.innerHTML = labels.map((lbl, i) =>
+                                `<span class="flex items-center gap-1 text-[10px] ${txtColor}">
+                                    <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background:${colors[i]}"></span>
+                                    ${lbl} (${values[i]}%)
+                                </span>`
+                            ).join('');
+                        }
+                    }
+
+                    if (hasGeo) renderDoughnut('chart-rev-geo', 'legend-rev-geo', 'detalhes-rev-geo-wrap', fundamentos.revenue_geography);
+                    if (hasSeg) renderDoughnut('chart-rev-seg', 'legend-rev-seg', 'detalhes-rev-seg-wrap', fundamentos.revenue_segment);
+                } else {
+                    revenueChartsEl.classList.add('hidden');
+                }
+            }
+
             // ── Tab PORTFÓLIO: Imóveis (apenas FIIs) ──
             if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
                 window.renderizarListaImoveis(fundamentos.imoveis);

@@ -285,11 +285,22 @@ async function scrapeFundamentos(ticker) {
             if (chartMatch && chartMatch[1]) {
                 const lastProf = JSON.parse(chartMatch[1]);
 
-                // Extrai as séries temporais (profitabilities)
-                const seriesMatch = html.match(/'profitabilities':\s*JSON\.parse\(`([^`]+)`\)/);
+                // Extrai as séries temporais (profitabilities) - pega a mais longa (5A ou 10A) se houver várias
+                // Como não suportamos g flag no string.match facilmente pra capturar grupos, usamos matchAll
+                const regexProf = /'profitabilities':\s*JSON\.parse\(`([^`]+)`\)/g;
                 let profitabilities = [];
-                if (seriesMatch && seriesMatch[1]) {
-                    profitabilities = JSON.parse(seriesMatch[1]);
+                let maxLen = 0;
+
+                let matchProf;
+                while ((matchProf = regexProf.exec(html)) !== null) {
+                    try {
+                        const profArray = JSON.parse(matchProf[1]);
+                        // profArray is an array of arrays (series)
+                        if (profArray && profArray.length > 0 && profArray[0].length > maxLen) {
+                            maxLen = profArray[0].length;
+                            profitabilities = profArray;
+                        }
+                    } catch (err) { }
                 }
 
                 // Extrai a legenda

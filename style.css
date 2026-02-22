@@ -988,8 +988,7 @@ input:-webkit-autofill:active {
 }
 
 /* Wallet Cards & History (BORDERLESS) */
-.wallet-card,
-.history-card {
+.wallet-card {
     background-color: #141414;
     background-image: none;
     border: none;
@@ -1002,13 +1001,24 @@ input:-webkit-autofill:active {
 }
 
 .history-card {
+    background-image: none;
+    border: none;
+    border-radius: 1.25rem;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: none;
+    transition: transform 0.2s ease, background-color 0.2s ease;
     padding: 14px 16px;
 }
 
-.wallet-card:active,
-.history-card:active {
+.wallet-card:active {
     transform: scale(0.99);
     background-color: #1c1c1e;
+}
+
+.history-card:active {
+    transform: scale(0.99);
 }
 
 .allocation-track {

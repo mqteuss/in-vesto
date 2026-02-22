@@ -49,14 +49,18 @@ body.light-mode {
 
 /* 1. LAYOUT / CONTAINER (FUNDO BRANCO PURO) */
 body.light-mode .bg-black,
+body.light-mode .bg-black\/95,
 body.light-mode .bg-\[\#151515\],
 body.light-mode .bg-\[\#0a0a0a\],
+body.light-mode .bg-\[\#0f0f0f\],
 body.light-mode .bg-\[\#09090b\],
 body.light-mode .bg-\[\#18181b\],
 body.light-mode .bg-\[\#1C1C1E\],
 body.light-mode .bg-\[\#121212\],
 body.light-mode .bg-\[\#111\],
 body.light-mode .bg-gray-900,
+body.light-mode .bg-neutral-900\/40,
+body.light-mode .hover\:bg-neutral-900\/40:hover,
 body.light-mode .page-content {
     background-color: #ffffff !important;
     border: none !important;
@@ -66,7 +70,10 @@ body.light-mode .page-content {
 
 /* DIVISORES / BORDAS SUAVES (CINZA CLARO) */
 body.light-mode .bg-\[\#27272a\],
-body.light-mode .bg-gray-800 {
+body.light-mode .bg-\[\#1C1C1E\],
+body.light-mode .bg-gray-800,
+body.light-mode .bg-neutral-800,
+body.light-mode .border-neutral-800 {
     background-color: #e5e7eb !important;
 }
 
@@ -254,6 +261,7 @@ body.light-mode .text-white,
 body.light-mode .text-gray-100,
 body.light-mode .text-gray-200,
 body.light-mode .text-gray-300,
+body.light-mode .text-neutral-400,
 body.light-mode .text-\[\#e5e5e5\],
 body.light-mode .news-card-summary {
     color: #1f2937 !important;
@@ -262,6 +270,8 @@ body.light-mode .news-card-summary {
 body.light-mode .text-gray-400,
 body.light-mode .text-gray-500,
 body.light-mode .text-gray-600,
+body.light-mode .text-neutral-500,
+body.light-mode .text-neutral-600,
 body.light-mode .text-\[\#888888\],
 body.light-mode .text-\[\#666666\],
 body.light-mode .text-\[\#71717a\] {
@@ -271,6 +281,8 @@ body.light-mode .text-\[\#71717a\] {
 body.light-mode .border-\[\#2C2C2E\],
 body.light-mode .border-\[\#27272a\],
 body.light-mode .border-\[\#1F1F1F\],
+body.light-mode .border-\[\#333\],
+body.light-mode .border-neutral-700,
 body.light-mode .border-gray-800 {
     border-color: #e5e7eb !important;
 }

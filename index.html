@@ -1436,25 +1436,26 @@
 
                     <!-- ── TAB 3: ANÁLISE ── -->
                     <div id="detalhe-tab-analise" class="detalhe-tab-panel hidden p-4 pt-3">
-                        <div id="detalhes-rentabilidade-container" class="hidden w-full mb-6">
+                        <div id="detalhes-rentabilidade-container" class="hidden w-full mb-8">
                             <!-- Header: Título e Filtro de Range -->
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-sm font-bold text-white tracking-tight">Comparação com Índices</h3>
+                                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest pl-1">
+                                    Rentabilidade</h4>
 
                                 <!-- Botoes de filtro 2Y, 5Y, MAX -->
                                 <div id="rentabilidade-chart-filters"
-                                    class="flex bg-[#1C1C1E] rounded-full p-1 border border-[#2C2C2E] shadow-inner">
-                                    <button data-range="24"
-                                        class="rentabilidade-range-btn px-3 py-1 rounded-full text-[10px] font-bold text-white bg-[#3A3A3C] shadow-sm transition-all">2A</button>
-                                    <button data-range="60"
-                                        class="rentabilidade-range-btn px-3 py-1 rounded-full text-[10px] font-bold text-gray-500 hover:text-white transition-all">5A</button>
-                                    <button data-range="120"
-                                        class="rentabilidade-range-btn px-3 py-1 rounded-full text-[10px] font-bold text-gray-500 hover:text-white transition-all">10A</button>
+                                    class="flex bg-[#151515] rounded-lg p-1 border border-[#2C2C2E] shadow-sm">
+                                    <button data-range="24" onclick="window.mudarRentabilidadeRange(24)"
+                                        class="rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-white bg-[#2c2c2e] transition-all">2A</button>
+                                    <button data-range="60" onclick="window.mudarRentabilidadeRange(60)"
+                                        class="rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 hover:text-white transition-all">5A</button>
+                                    <button data-range="120" onclick="window.mudarRentabilidadeRange(120)"
+                                        class="rentabilidade-range-btn px-3 py-1.5 rounded-md text-[10px] font-bold text-gray-500 hover:text-white transition-all">10A</button>
                                 </div>
                             </div>
 
                             <!-- Gráfico Chart.js -->
-                            <div class="relative w-full h-[220px]">
+                            <div class="relative w-full h-[320px]">
                                 <canvas id="detalhes-rentabilidade-chart"></canvas>
                             </div>
                         </div>

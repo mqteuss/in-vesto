@@ -832,7 +832,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (dadosChart.profitabilities.length > 0) {
             const baseSeries = dadosChart.profitabilities[0];
-            const startIndex = Math.max(0, baseSeries.length - monthsRange);
+
+            // Tratativa: Se o range pedido for maior que o disponível, mostramos o maximo
+            const totalMeses = baseSeries.length;
+            const startIndex = Math.max(0, totalMeses - monthsRange);
 
             commonLabels = baseSeries.slice(startIndex).map(item => item.date);
 
@@ -914,26 +917,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.mudarRentabilidadeRange = function (range) {
-        if (!currentDetalhesSymbol) return;
+        if (!currentDetalhesSymbol || !window.currentRentabilidadeDados) return;
+
+        const dados = window.currentRentabilidadeDados;
+        let originalRange = range;
+
+        // Verifica se temos meses suficientes
+        if (dados && dados.profitabilities && dados.profitabilities.length > 0) {
+            const mesesDisponiveis = dados.profitabilities[0].length;
+            // Se pediu mais do que tem (ex: pediu 120 e tem 70) -> limita a 70
+            if (range > mesesDisponiveis && mesesDisponiveis > 1) {
+                const anosLms = (mesesDisponiveis / 12).toFixed(1).replace('.0', '');
+                showToast(`Exibindo máximo de ${anosLms} anos disponíveis.`);
+                range = mesesDisponiveis;
+            }
+        }
+
         const isLight = document.body.classList.contains('light-mode');
 
         const botoes = document.querySelectorAll('.rentabilidade-range-btn');
         botoes.forEach(btn => {
-            if (parseInt(btn.getAttribute('data-range')) === range) {
+            const btnRange = parseInt(btn.getAttribute('data-range'));
+
+            // Mantemos o estilo ativo no botao que o usuario clicou (originalRange),
+            // mesmo que o grafico por baixo mostre menos dados
+            if (btnRange === originalRange) {
                 if (isLight) {
                     btn.classList.add('text-[#1f2937]', 'bg-white', 'shadow-sm');
-                    btn.classList.remove('text-gray-400', 'text-white', 'bg-[#3A3A3C]');
+                    btn.classList.remove('text-gray-400', 'text-white', 'bg-[#2c2c2e]');
                 } else {
-                    btn.classList.add('text-white', 'bg-[#3A3A3C]');
+                    btn.classList.add('text-white', 'bg-[#2c2c2e]');
                     btn.classList.remove('text-gray-500', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
                 }
             } else {
                 if (isLight) {
                     btn.classList.add('text-gray-400');
-                    btn.classList.remove('text-[#1f2937]', 'bg-white', 'shadow-sm', 'text-white', 'bg-[#3A3A3C]');
+                    btn.classList.remove('text-[#1f2937]', 'bg-white', 'shadow-sm', 'text-white', 'bg-[#2c2c2e]');
                 } else {
                     btn.classList.add('text-gray-500');
-                    btn.classList.remove('text-white', 'bg-[#3A3A3C]', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
+                    btn.classList.remove('text-white', 'bg-[#2c2c2e]', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
                 }
             }
         });

@@ -6983,7 +6983,13 @@ function mudarAba(tabId) {
 
         const slider = document.getElementById('tabs-slider');
         if (slider) {
-            slider.style.transform = `translateX(-${index * 100}%)`;
+            if (window.innerWidth < 768) {
+                // Mobile: desliza o carrossel horizontal
+                slider.style.transform = `translateX(-${index * 100}%)`;
+            } else {
+                // Desktop: limpa qualquer inline transform; o CSS cuida do show/hide
+                slider.style.transform = '';
+            }
         }
 
         tabContents.forEach(content => {

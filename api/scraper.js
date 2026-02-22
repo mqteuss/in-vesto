@@ -286,28 +286,40 @@ async function scrapeFundamentos(ticker) {
                 const lastProf = JSON.parse(chartMatch[1]);
 
                 // Extrai as séries temporais (profitabilities) - pega a mais longa (5A ou 10A) se houver várias
-                // Como não suportamos g flag no string.match facilmente pra capturar grupos, usamos matchAll
+                // Captura legend e profitabilities em PARES para evitar mismatch
                 const regexProf = /'profitabilities':\s*JSON\.parse\(`([^`]+)`\)/g;
+                const regexLegend = /'legend':\s*JSON\.parse\(`([^`]+)`\)/g;
                 let profitabilities = [];
+                let legend = [];
                 let maxLen = 0;
 
+                // Coletamos TODAS as legends na ordem que aparecem
+                const allLegends = [];
+                let matchL;
+                while ((matchL = regexLegend.exec(html)) !== null) {
+                    try { allLegends.push(JSON.parse(matchL[1])); } catch (e) { allLegends.push([]); }
+                }
+
+                // Coletamos os profitabilities e usamos o índice para casar com a legend correspondente
+                let profIdx = 0;
                 let matchProf;
                 while ((matchProf = regexProf.exec(html)) !== null) {
                     try {
                         const profArray = JSON.parse(matchProf[1]);
-                        // profArray is an array of arrays (series)
                         if (profArray && profArray.length > 0 && profArray[0].length > maxLen) {
                             maxLen = profArray[0].length;
                             profitabilities = profArray;
+                            // Casa com a legend que tem o mesmo número de itens ou a do mesmo índice
+                            if (allLegends[profIdx] && allLegends[profIdx].length === profArray.length) {
+                                legend = allLegends[profIdx];
+                            } else {
+                                // Fallback: tenta achar a legend com o mesmo número de séries
+                                const matching = allLegends.find(l => l.length === profArray.length);
+                                legend = matching || allLegends[profIdx] || [];
+                            }
                         }
                     } catch (err) { }
-                }
-
-                // Extrai a legenda
-                const legendMatch = html.match(/'legend':\s*JSON\.parse\(`([^`]+)`\)/);
-                let legend = [];
-                if (legendMatch && legendMatch[1]) {
-                    legend = JSON.parse(legendMatch[1]);
+                    profIdx++;
                 }
 
                 if (Object.keys(lastProf).length > 0) {

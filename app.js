@@ -6617,6 +6617,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     function renderizarGraficoProventosDetalhes(rawData) {
+        const isLight = document.body.classList.contains('light-mode');
         // Guarda os dados brutos na memória
         window.currentRawDataProventos = rawData;
 
@@ -8643,6 +8644,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderizarGraficoIpca(dados) {
+        const isLight = document.body.classList.contains('light-mode');
         const canvas = document.getElementById('ipca-chart');
         const listaContainer = document.getElementById('ipca-lista-container');
 

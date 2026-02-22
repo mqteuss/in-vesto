@@ -6726,40 +6726,45 @@ document.addEventListener('DOMContentLoaded', async () => {
             const advMetricsEl = document.getElementById('detalhes-advanced-metrics');
             const advGridEl = document.getElementById('detalhes-advanced-grid');
             if (advMetricsEl && advGridEl) {
-                if (fundamentos.advanced_metrics && !ehFii) {
-                    const m = fundamentos.advanced_metrics;
+                if (!ehFii) {
                     const isLight = document.body.classList.contains('light-mode');
+                    // Usa os dados do próprio ativo ya extraidos pelo scraper, NÃO os do setor
+                    const f = fundamentos;
                     const metricsToShow = [
-                        { label: 'ROIC', value: m.roic, suffix: '%' },
-                        { label: 'ROA', value: m.roa, suffix: '%' },
-                        { label: 'Marg. Bruta', value: m.gross_margin, suffix: '%' },
-                        { label: 'Marg. EBITDA', value: m.ebitda_margin, suffix: '%' },
-                        { label: 'Marg. Líquida', value: m.net_margin, suffix: '%' },
-                        { label: 'Marg. EBIT', value: m.ebit_margin, suffix: '%' },
-                        { label: 'Giro Ativos', value: m.active_turns, suffix: 'x' },
-                        { label: 'Liq. Corrente', value: m.current_liquidity, suffix: '' },
-                        { label: 'Dív. Líq/PL', value: m.net_debt_net_worth, suffix: '' },
-                        { label: 'Dív. Líq/EBITDA', value: m.net_debt_ebitda, suffix: '' },
-                        { label: 'EV/EBITDA', value: m.ev_ebitda, suffix: '' },
-                        { label: 'EV/EBIT', value: m.ev_ebit, suffix: '' },
-                        { label: 'Cresc. Rec 5A', value: m.growth_net_revenue_last_5_years, suffix: '%' },
-                        { label: 'Cresc. Lucro 5A', value: m.growth_net_profit_last_5_years, suffix: '%' },
-                        { label: 'DY Médio 5A', value: m.dividend_yield_last_5_years, suffix: '%' },
+                        { label: 'ROE', value: f.roe },
+                        { label: 'P/L', value: f.pl },
+                        { label: 'Marg. Bruta', value: f.margem_bruta },
+                        { label: 'Marg. Líquida', value: f.margem_liquida },
+                        { label: 'Marg. EBIT', value: f.margem_ebit },
+                        { label: 'EV/EBITDA', value: f.ev_ebitda },
+                        { label: 'Dív. Líq/EBITDA', value: f.divida_liquida_ebitda },
+                        { label: 'Dív. Líq/PL', value: f.divida_liquida_pl },
+                        { label: 'Payout', value: f.payout },
+                        { label: 'CAGR Rec. 5A', value: f.cagr_receita_5a },
+                        { label: 'CAGR Lucros 5A', value: f.cagr_lucros_5a },
+                        { label: 'LPA', value: f.lpa },
+                        { label: 'VPA', value: f.vp_cota },
                     ];
 
-                    advGridEl.innerHTML = metricsToShow.map(item => {
-                        const val = (item.value !== null && item.value !== undefined && item.value !== '-')
-                            ? parseFloat(item.value).toFixed(2).replace('.', ',') + item.suffix
-                            : '-';
-                        const bgCard = isLight ? 'bg-[#f3f4f6] border-[#e5e7eb]' : 'bg-[#141414] border-[#1F1F1F]';
-                        const txtLabel = isLight ? 'text-gray-500' : 'text-gray-500';
-                        const txtValue = isLight ? 'text-gray-900' : 'text-white';
-                        return `<div class="rounded-xl ${bgCard} border p-3 flex flex-col gap-0.5">
-                            <span class="text-[10px] font-semibold ${txtLabel} uppercase tracking-wide">${item.label}</span>
-                            <span class="text-sm font-bold ${txtValue}">${val}</span>
-                        </div>`;
-                    }).join('');
-                    advMetricsEl.classList.remove('hidden');
+                    // Filtramos apenas os que têm valor real
+                    const filtered = metricsToShow.filter(item =>
+                        item.value && item.value !== 'N/A' && item.value !== '-'
+                    );
+
+                    if (filtered.length > 0) {
+                        advGridEl.innerHTML = filtered.map(item => {
+                            const bgCard = isLight ? 'bg-[#f3f4f6] border-[#e5e7eb]' : 'bg-[#141414] border-[#1F1F1F]';
+                            const txtLabel = isLight ? 'text-gray-500' : 'text-gray-500';
+                            const txtValue = isLight ? 'text-gray-900' : 'text-white';
+                            return `<div class="rounded-xl ${bgCard} border p-3 flex flex-col gap-0.5">
+                                <span class="text-[10px] font-semibold ${txtLabel} uppercase tracking-wide">${item.label}</span>
+                                <span class="text-sm font-bold ${txtValue}">${item.value}</span>
+                            </div>`;
+                        }).join('');
+                        advMetricsEl.classList.remove('hidden');
+                    } else {
+                        advMetricsEl.classList.add('hidden');
+                    }
                 } else {
                     advMetricsEl.classList.add('hidden');
                     advGridEl.innerHTML = '';

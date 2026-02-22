@@ -6542,12 +6542,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // =========================================================
-            // NOVA LÓGICA: COMPARAÇÃO (Tabela Horizontal Vesto com 5 Colunas)
+            // NOVA LÓGICA: COMPARAÇÃO (Tabela Horizontal Vesto)
+            // Detecta se é Ação (pl/roe/val_mercado) ou FII (patrimonio/tipo/segmento)
             // =========================================================
             let comparacaoHtml = '';
             if (dados.comparacao && dados.comparacao.length > 0) {
 
-                // Função para converter strings formatadas em números para descobrir os "campeões"
+                const isStock = dados.comparacao.some(i => i.pl && i.pl !== '-');
                 const parseNumberStr = (str) => {
                     if (!str || str === '-' || str === 'N/A') return null;
                     let s = str.toUpperCase().replace(/\s/g, '');
@@ -6555,78 +6556,115 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (s.includes('B')) mult = 1000000000;
                     else if (s.includes('M')) mult = 1000000;
                     else if (s.includes('K')) mult = 1000;
-
-                    let numStr = s.replace(/[^0-9,-]/g, '').replace(',', '.');
+                    let numStr = s.replace(/[^0-9,.\-]/g, '').replace(',', '.');
                     let val = parseFloat(numStr);
                     return isNaN(val) ? null : val * mult;
                 };
 
-                // Mapeia os dados válidos
-                let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
-                let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0);
-                let validPat = dados.comparacao.map(i => parseNumberStr(i.patrimonio)).filter(v => v !== null);
+                const crownIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-500 drop-shadow-[0_0_4px_rgba(234,179,8,0.5)] mb-[2px]"><path d="M2 19h20v2H2v-2zm2-16 3 5 5-6 5 6 3-5 1 12H3L4 3z"/></svg>`;
+                const badge = (val, isBest, title) => isBest
+                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="${title}">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${val}</span></div>`
+                    : `<span class="text-[11px] text-gray-400 font-medium">${val}</span>`;
 
-                // Encontra os extremos (Maior DY, Menor P/VP, Maior Patrimônio)
-                let maxDy = validDy.length ? Math.max(...validDy) : null;
-                let minPvp = validPvp.length ? Math.min(...validPvp) : null;
-                let maxPat = validPat.length ? Math.max(...validPat) : null;
+                let thead, tbody;
 
-                let tbody = dados.comparacao.map(item => {
-                    let vDy = parseNumberStr(item.dy);
-                    let vPvp = parseNumberStr(item.pvp);
-                    let vPat = parseNumberStr(item.patrimonio);
+                if (isStock) {
+                    // ── AÇÕES: P/L, P/VP, ROE, DY, Val. Mercado, Marg. Líquida ──
+                    let validPl = dados.comparacao.map(i => parseNumberStr(i.pl)).filter(v => v !== null && v > 0);
+                    let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0);
+                    let validRoe = dados.comparacao.map(i => parseNumberStr(i.roe)).filter(v => v !== null);
+                    let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
+                    let validVm = dados.comparacao.map(i => parseNumberStr(i.val_mercado)).filter(v => v !== null);
+                    let validMl = dados.comparacao.map(i => parseNumberStr(i.margem_liquida)).filter(v => v !== null);
 
-                    let isBestDy = vDy !== null && vDy === maxDy;
-                    let isBestPvp = vPvp !== null && vPvp === minPvp;
-                    let isBestPat = vPat !== null && vPat === maxPat;
+                    let minPl = validPl.length ? Math.min(...validPl) : null;
+                    let minPvp = validPvp.length ? Math.min(...validPvp) : null;
+                    let maxRoe = validRoe.length ? Math.max(...validRoe) : null;
+                    let maxDy = validDy.length ? Math.max(...validDy) : null;
+                    let maxVm = validVm.length ? Math.max(...validVm) : null;
+                    let maxMl = validMl.length ? Math.max(...validMl) : null;
 
-                    // Coroinha SVG Dourada com brilho sutil (Feita para encaixar perfeitamente em cima do número)
-                    // Coroa Sólida (RemixIcon): Renderiza perfeitamente em tamanhos pequenos, sem parecer "quebrada"
-                    const crownIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-500 drop-shadow-[0_0_4px_rgba(234,179,8,0.5)] mb-[2px]"><path d="M2 19h20v2H2v-2zm2-16 3 5 5-6 5 6 3-5 1 12H3L4 3z"/></svg>`;
+                    thead = `
+                        <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">Ativo</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/L</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">ROE</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Val. Mercado</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Marg. Líq.</th>`;
 
-                    // Montagem: Campeão = Coroa em cima + Branco Bold | Normal = Cinza Claro
-                    let dyBadge = isBestDy
-                        ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="Maior Dividend Yield">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${item.dy}</span></div>`
-                        : `<span class="text-[11px] text-gray-400 font-medium">${item.dy}</span>`;
+                    tbody = dados.comparacao.map(item => {
+                        const vPl = parseNumberStr(item.pl), vPvp = parseNumberStr(item.pvp);
+                        const vRoe = parseNumberStr(item.roe), vDy = parseNumberStr(item.dy);
+                        const vVm = parseNumberStr(item.val_mercado), vMl = parseNumberStr(item.margem_liquida);
 
-                    let pvpBadge = isBestPvp
-                        ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="Menor P/VP">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${item.pvp}</span></div>`
-                        : `<span class="text-[11px] text-gray-400 font-medium">${item.pvp}</span>`;
-
-                    let valPat = item.patrimonio && item.patrimonio !== '-' && item.patrimonio !== 'N/A' ? item.patrimonio : '-';
-                    let patBadge = isBestPat
-                        ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="Maior Valor Patrimonial">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${valPat}</span></div>`
-                        : `<span class="text-[11px] text-gray-400 font-medium">${valPat}</span>`;
-
-                    let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
-                    let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
-
-                    return `
-                    <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                        <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
-                            <div class="flex items-center gap-3">
-                                <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
-                                    <span class="text-[8px] font-bold text-white tracking-wider">${item.ticker.substring(0, 2)}</span>
+                        return `
+                        <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                            <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
+                                        <span class="text-[8px] font-bold text-white tracking-wider">${item.ticker.substring(0, 2)}</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>
-                                <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
-                            </div>
-                        </td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${dyBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${pvpBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-right min-w-[100px] align-middle">${patBadge}</td>
-                        <td class="p-3 whitespace-nowrap text-center min-w-[100px] align-middle">
-                            <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valTipo}</span>
-                        </td>
-                        <td class="p-3 whitespace-nowrap text-center min-w-[120px] align-middle">
-                            <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valSeg}</span>
-                        </td>
-                    </tr>
-                `;
-                }).join('');
+                            </td>
+                            <td class="p-3 whitespace-nowrap text-right min-w-[60px] align-middle">${badge(item.pl || '-', vPl !== null && vPl > 0 && vPl === minPl, 'Menor P/L')}</td>
+                            <td class="p-3 whitespace-nowrap text-right min-w-[60px] align-middle">${badge(item.pvp || '-', vPvp !== null && vPvp > 0 && vPvp === minPvp, 'Menor P/VP')}</td>
+                            <td class="p-3 whitespace-nowrap text-right min-w-[60px] align-middle">${badge(item.roe || '-', vRoe !== null && vRoe === maxRoe, 'Maior ROE')}</td>
+                            <td class="p-3 whitespace-nowrap text-right min-w-[60px] align-middle">${badge(item.dy || '-', vDy !== null && vDy === maxDy, 'Maior DY')}</td>
+                            <td class="p-3 whitespace-nowrap text-right min-w-[100px] align-middle">${badge(item.val_mercado || '-', vVm !== null && vVm === maxVm, 'Maior Val. Mercado')}</td>
+                            <td class="p-3 whitespace-nowrap text-right min-w-[80px] align-middle">${badge(item.margem_liquida || '-', vMl !== null && vMl === maxMl, 'Maior Margem')}</td>
+                        </tr>`;
+                    }).join('');
+                } else {
+                    // ── FIIs: DY, P/VP, Patrimônio, Tipo, Segmento ──
+                    let validDy = dados.comparacao.map(i => parseNumberStr(i.dy)).filter(v => v !== null);
+                    let validPvp = dados.comparacao.map(i => parseNumberStr(i.pvp)).filter(v => v !== null && v > 0);
+                    let validPat = dados.comparacao.map(i => parseNumberStr(i.patrimonio)).filter(v => v !== null);
+                    let maxDy = validDy.length ? Math.max(...validDy) : null;
+                    let minPvp = validPvp.length ? Math.min(...validPvp) : null;
+                    let maxPat = validPat.length ? Math.max(...validPat) : null;
+
+                    thead = `
+                        <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">Ativo</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Patrimônio</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Tipo</th>
+                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Segmento</th>`;
+
+                    tbody = dados.comparacao.map(item => {
+                        let vDy = parseNumberStr(item.dy), vPvp = parseNumberStr(item.pvp), vPat = parseNumberStr(item.patrimonio);
+                        let valPat = item.patrimonio && item.patrimonio !== '-' && item.patrimonio !== 'N/A' ? item.patrimonio : '-';
+                        let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
+                        let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
+
+                        return `
+                        <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                            <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
+                                        <span class="text-[8px] font-bold text-white tracking-wider">${item.ticker.substring(0, 2)}</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
+                                </div>
+                            </td>
+                            <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.dy, vDy !== null && vDy === maxDy, 'Maior DY')}</td>
+                            <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.pvp, vPvp !== null && vPvp === minPvp, 'Menor P/VP')}</td>
+                            <td class="p-3 whitespace-nowrap text-right min-w-[100px] align-middle">${badge(valPat, vPat !== null && vPat === maxPat, 'Maior Patrimônio')}</td>
+                            <td class="p-3 whitespace-nowrap text-center min-w-[100px] align-middle">
+                                <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valTipo}</span>
+                            </td>
+                            <td class="p-3 whitespace-nowrap text-center min-w-[120px] align-middle">
+                                <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valSeg}</span>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                }
 
                 comparacaoHtml = `
                 <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-6 mb-2 pl-1 flex items-center gap-1.5">
-                    Comparando Ativos
+                    Comparando ${isStock ? 'Ações' : 'Ativos'}
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                 </h4>
                 <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 relative overflow-hidden">
@@ -6638,19 +6676,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </style>
                     <div class="overflow-x-auto table-scrollbar">
                         <table class="w-full text-left border-collapse min-w-[550px]">
-                            <thead>
-                                <tr class="bg-[#18181A]">
-                                    <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">Ativo</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Patrimônio</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Tipo</th>
-                                    <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Segmento</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${tbody}
-                            </tbody>
+                            <thead><tr class="bg-[#18181A]">${thead}</tr></thead>
+                            <tbody>${tbody}</tbody>
                         </table>
                     </div>
                 </div>

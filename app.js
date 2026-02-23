@@ -4203,18 +4203,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const preco = item.preco || '';
                     const initials = ticker.substring(0, 2);
                     const colorVar = isAlta ? 'text-emerald-400' : 'text-red-400';
-                    const iconUrl = `https://brapi.dev/favicon/${ticker}.svg`;
+                    const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ticker}.png`;
 
                     return `
                         <div class="flex items-center py-2 px-1.5 rounded-lg hover:bg-white/[0.03] cursor-pointer transition-colors active:scale-[0.98]"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
-                            <div class="w-6 h-6 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 overflow-hidden" id="ico-${tipo}-${ticker}">
+                            <div class="w-6 h-6 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 overflow-hidden">
                                 <img src="${iconUrl}" alt="${ticker}" class="w-full h-full object-cover"
                                      onerror="this.parentElement.innerHTML='<span class=\\'text-[7px] font-bold text-gray-400\\'>${initials}</span>'">
                             </div>
-                            <span class="text-[11px] font-bold text-white ml-2 w-[52px] flex-shrink-0">${ticker}</span>
-                            <span class="text-[10px] font-semibold ${colorVar} ml-auto">${variacao}</span>
-                            <span class="text-[10px] text-gray-400 ml-2 w-[58px] text-right flex-shrink-0">${preco}</span>
+                            <span class="text-[11px] font-bold text-white ml-2 flex-shrink-0">${ticker}</span>
+                            <span class="text-[10px] font-semibold ${colorVar} ml-auto flex-shrink-0">${variacao}</span>
+                            <span class="text-[10px] text-gray-400 ml-2 flex-shrink-0 text-right tabular-nums">${preco}</span>
                         </div>`;
                 }).join('');
             };

@@ -4173,15 +4173,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         const CACHE_TTL = isB3Open() ? 1000 * 60 * 15 : 1000 * 60 * 60 * 4;
 
         try {
+            const containerAltas = document.getElementById('rankings-altas');
+            const containerBaixas = document.getElementById('rankings-baixas');
+
+            // Exibe Skeletons antes de carregar
+            const renderSkeletonRankings = (el) => {
+                if (!el) return;
+                let skeletonHtml = '';
+                for (let i = 0; i < 5; i++) {
+                    skeletonHtml += `
+                        <div class="p-2 rounded-xl flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-lg skeleton flex-shrink-0"></div>
+                            <div class="flex-1 space-y-2 py-1">
+                                <div class="h-2.5 skeleton rounded-full w-12"></div>
+                                <div class="h-2 skeleton rounded-full w-16"></div>
+                            </div>
+                        </div>`;
+                }
+                el.innerHTML = skeletonHtml;
+            };
+
+            container.classList.remove('hidden');
             let data = await getCache(cacheKey);
 
             if (!data) {
+                renderSkeletonRankings(containerAltas);
+                renderSkeletonRankings(containerBaixas);
+
                 const response = await fetchBFF('/api/scraper', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mode: 'rankings' })
                 });
-                data = response.json;
+                data = await response.json();
                 if (data) await setCache(cacheKey, data, CACHE_TTL);
             }
 
@@ -6346,9 +6370,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // ── Skeleton KPIs no tab Resumo ──
             const skeletonGrid = Array(6).fill(0).map(() => `
-            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm animate-pulse">
-                <div class="h-2 bg-[#2C2C2E] rounded w-16 mb-2"></div>
-                <div class="h-4 bg-[#2C2C2E] rounded w-10"></div>
+            <div class="bg-[#151515] rounded-xl p-3 flex flex-col items-center justify-center shadow-sm">
+                <div class="h-2 skeleton rounded w-16 mb-2"></div>
+                <div class="h-4 skeleton rounded w-10"></div>
             </div>`).join('');
 
             const elGridNow = document.getElementById('detalhes-grid-topo');
@@ -6357,19 +6381,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             // ── Skeleton Fundamentos no tab Indicadores ──
             const elListasNow = document.getElementById('detalhes-listas-fundamentos');
             if (elListasNow) elListasNow.innerHTML = `
-            <div class="space-y-2 animate-pulse mb-6">
-                <div class="h-3 bg-[#1C1C1E] rounded w-24 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-28"></div>
-                <div class="h-3 bg-[#1C1C1E] rounded w-24 mt-4 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-20"></div>
+            <div class="space-y-2 mb-6">
+                <div class="h-3 skeleton rounded w-24 mb-3"></div>
+                <div class="skeleton rounded-xl h-28"></div>
+                <div class="h-3 skeleton rounded w-24 mt-4 mb-3"></div>
+                <div class="skeleton rounded-xl h-20"></div>
             </div>`;
 
             // ── Skeleton Análise ──
             const elSobreNow = document.getElementById('detalhes-sobre-comparacao');
             if (elSobreNow) elSobreNow.innerHTML = `
-            <div class="space-y-2 animate-pulse mb-6">
-                <div class="h-3 bg-[#1C1C1E] rounded w-32 mb-3"></div>
-                <div class="bg-[#151515] rounded-xl h-24"></div>
+            <div class="space-y-2 mb-6">
+                <div class="h-3 skeleton rounded w-32 mb-3"></div>
+                <div class="skeleton rounded-xl h-24"></div>
             </div>`;
 
         } else {

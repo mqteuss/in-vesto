@@ -6666,7 +6666,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let maxMl = validMl.length ? Math.max(...validMl) : null;
 
                     thead = `
-                        <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">Ativo</th>
+                        <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">Ativo</th>
                         <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/L</th>
                         <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
                         <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">ROE</th>
@@ -6681,7 +6681,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                         return `
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                            <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                            <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
                                 <div class="flex items-center gap-3">
                                     <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                                         <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
@@ -6709,7 +6709,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let maxPat = validPat.length ? Math.max(...validPat) : null;
 
                     thead = `
-                        <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]">Ativo</th>
+                        <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">Ativo</th>
                         <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
                         <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
                         <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Patrimônio</th>
@@ -6724,7 +6724,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                         return `
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                            <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                            <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
                                 <div class="flex items-center gap-3">
                                     <div class="w-7 h-7 rounded-lg bg-[#0a0a0a] flex items-center justify-center flex-shrink-0 group-hover:bg-[#111] transition-colors">
                                         <span class="text-[8px] font-bold text-gray-400 tracking-wider">${item.ticker.substring(0, 2)}</span>

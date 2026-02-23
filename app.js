@@ -4169,7 +4169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('rankings-container');
         if (!container) return;
 
-        const cacheKey = 'rankings_variacao_dia';
+        const cacheKey = 'rankings_variacao_dia_v2';
         const CACHE_TTL = isB3Open() ? 1000 * 60 * 15 : 1000 * 60 * 60 * 4;
 
         try {

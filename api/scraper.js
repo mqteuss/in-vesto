@@ -80,18 +80,21 @@ function cleanDoubledString(str) {
 async function scrapeFundamentos(ticker) {
     try {
         let html;
+        let tipoAtivo = 'fii'; // default
         const urlFii = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         const urlAcao = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
 
-        const fetchHtml = async (url) => {
+        const fetchHtml = async (url, tipo) => {
             const res = await client.get(url);
             if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
             if (!res.data.includes('cotacao') && !res.data.includes('Cotação')) throw new Error('Página inválida');
-            return res.data;
+            return { html: res.data, tipo };
         };
 
         try {
-            html = await Promise.any([fetchHtml(urlFii), fetchHtml(urlAcao)]);
+            const result = await Promise.any([fetchHtml(urlFii, 'fii'), fetchHtml(urlAcao, 'acao')]);
+            html = result.html;
+            tipoAtivo = result.tipo;
         } catch (e) {
             throw new Error('Ativo não encontrado no Investidor10');
         }
@@ -485,6 +488,7 @@ async function scrapeFundamentos(ticker) {
             });
         }
 
+        dados.tipo_ativo = tipoAtivo;
         return dados;
     } catch (error) {
         console.error("Erro scraper:", error.message);

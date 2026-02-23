@@ -4201,20 +4201,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const ticker = item.ticker || '';
                     const variacao = item.variacao || '';
                     const preco = item.preco || '';
-                    const iconUrl = `https://brapi.dev/favicon/${ticker}.svg`;
+                    const initials = ticker.substring(0, 2);
                     const colorClass = isAlta ? 'text-emerald-400' : 'text-red-400';
                     const bgClass = isAlta ? 'bg-emerald-500/10' : 'bg-red-500/10';
 
                     return `
                         <div class="flex items-center justify-between py-1.5 px-1.5 rounded-lg hover:bg-white/[0.03] cursor-pointer transition-colors active:scale-[0.98]"
-                             onclick="toggleDrawer('${ticker}')">
+                             onclick="window.abrirDetalhesAtivo('${ticker}')">
                             <div class="flex items-center gap-2 min-w-0">
-                                <img src="${iconUrl}" alt="${ticker}" class="w-5 h-5 rounded-full flex-shrink-0 bg-[#1a1a1a]"
-                                     onerror="this.style.display='none'">
-                                <div class="flex flex-col min-w-0">
-                                    <span class="text-[11px] font-bold text-white leading-tight">${ticker}</span>
-                                    <span class="text-[8px] text-gray-500 leading-tight">${preco}</span>
+                                <div class="w-6 h-6 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0">
+                                    <span class="text-[7px] font-bold text-gray-400">${initials}</span>
                                 </div>
+                                <span class="text-[11px] font-bold text-white">${ticker}</span>
+                                <span class="text-[9px] text-gray-500 hidden sm:inline">${preco}</span>
                             </div>
                             <span class="text-[10px] font-bold ${colorClass} ${bgClass} px-1.5 py-0.5 rounded flex-shrink-0">${variacao}</span>
                         </div>`;

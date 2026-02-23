@@ -6307,6 +6307,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (precoData) {
             detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
+
+            if (!ehFii && precoData.logourl) {
+                const imgEl = iconContainer.querySelector('img');
+                if (imgEl && imgEl.src !== precoData.logourl) {
+                    imgEl.src = precoData.logourl;
+                }
+            }
+
             const varPercent = precoData.regularMarketChangePercent || 0;
             const variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
             const variacaoIcone = varPercent > 0 ? '▲' : (varPercent < 0 ? '▼' : '');

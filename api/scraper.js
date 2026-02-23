@@ -599,11 +599,20 @@ async function scrapeRankings() {
             const tickerMatch = fullText.match(/([A-Z]{4}\d{1,2})/);
             const varMatch = fullText.match(/([+-]?\d+[,.]\d+\s*%)/);
             const precoMatch = fullText.match(/R\$\s*([\d.,]+)/);
+
+            let logo_url = '';
+            const imgEl = $(el).find('img').first();
+            if (imgEl.length) {
+                logo_url = imgEl.attr('src') || '';
+                if (logo_url.startsWith('/')) logo_url = 'https://investidor10.com.br' + logo_url;
+            }
+
             if (tickerMatch) {
                 items.push({
                     ticker: tickerMatch[1],
                     variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
-                    preco: precoMatch ? `R$ ${precoMatch[1]}` : ''
+                    preco: precoMatch ? `R$ ${precoMatch[1]}` : '',
+                    logo_url: logo_url
                 });
             }
         });

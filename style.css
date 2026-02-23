@@ -938,16 +938,14 @@ input:-webkit-autofill:active {
     justify-content: center;
     text-align: center;
     padding: 0 0.5rem;
-    cursor: pointer;
 }
 
-/* --- INTERATIVIDADE E CORES DOS STATUS (INVESTIDO, RECEBIDOS, A RECEBER) --- */
+/* --- TEXTOS DOS STATUS (INVESTIDO, RECEBIDOS, A RECEBER) --- */
 .premium-stat-value {
     font-size: 0.9rem;
     font-weight: 700;
     color: #e5e5e5;
     letter-spacing: -0.02em;
-    transition: color 0.3s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .premium-stat-sub {
@@ -957,34 +955,6 @@ input:-webkit-autofill:active {
     color: #6b7280;
     margin-top: 2px;
     font-weight: 600;
-    transition: color 0.3s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* 1. INVESTIDO -> Roxo (Accent) */
-.premium-grid .premium-stat-box:nth-child(1):hover .premium-stat-value,
-.premium-grid .premium-stat-box:nth-child(1):active .premium-stat-value,
-.premium-grid .premium-stat-box:nth-child(1):hover .premium-stat-sub,
-.premium-grid .premium-stat-box:nth-child(1):active .premium-stat-sub {
-    color: #c084fc !important;
-    transform: scale(1.05);
-}
-
-/* 3. RECEBIDOS -> Verde */
-.premium-grid .premium-stat-box:nth-child(3):hover .premium-stat-value,
-.premium-grid .premium-stat-box:nth-child(3):active .premium-stat-value,
-.premium-grid .premium-stat-box:nth-child(3):hover .premium-stat-sub,
-.premium-grid .premium-stat-box:nth-child(3):active .premium-stat-sub {
-    color: #4ade80 !important;
-    transform: scale(1.05);
-}
-
-/* 5. A RECEBER -> Laranja/Amarelo */
-.premium-grid .premium-stat-box:nth-child(5):hover .premium-stat-value,
-.premium-grid .premium-stat-box:nth-child(5):active .premium-stat-value,
-.premium-grid .premium-stat-box:nth-child(5):hover .premium-stat-sub,
-.premium-grid .premium-stat-box:nth-child(5):active .premium-stat-sub {
-    color: #facc15 !important;
-    transform: scale(1.05);
 }
 
 /* Wallet Cards & History (BORDERLESS) */

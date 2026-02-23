@@ -6911,6 +6911,153 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
+            // ── NOVO: Gráficos Financeiros (Receitas, Lucro x Cotação, Patrimônio, Payout — Apenas Ações) ──
+            const chartsFinContainer = document.getElementById('detalhes-charts-financeiros');
+            if (chartsFinContainer) {
+                if (!ehFii && fundamentos.charts_financeiros) {
+                    chartsFinContainer.classList.remove('hidden');
+                    const cf = fundamentos.charts_financeiros;
+                    const isLight = document.body.classList.contains('light-mode');
+                    const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+                    const textColor = isLight ? '#6b7280' : '#9ca3af';
+
+                    // Helper: abbrevia números grandes
+                    const abbrevNum = (v) => {
+                        if (v === null || v === undefined) return '-';
+                        const abs = Math.abs(v);
+                        if (abs >= 1e9) return (v / 1e9).toFixed(1) + 'B';
+                        if (abs >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+                        if (abs >= 1e3) return (v / 1e3).toFixed(0) + 'K';
+                        return v.toFixed(0);
+                    };
+
+                    const baseOpts = (yCallback) => ({
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: true, position: 'bottom', labels: { color: textColor, boxWidth: 10, boxHeight: 3, usePointStyle: true } },
+                            tooltip: {
+                                backgroundColor: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)',
+                                titleColor: isLight ? '#000' : '#fff', bodyColor: isLight ? '#333' : '#ccc',
+                                borderColor: isLight ? '#e5e7eb' : '#333', borderWidth: 1, padding: 10,
+                                callbacks: { label: ctx => ` ${ctx.dataset.label}: R$ ${abbrevNum(ctx.parsed.y)}` }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: textColor, maxRotation: 0, font: { size: 9 } } },
+                            y: { grid: { color: gridColor }, ticks: { color: textColor, callback: yCallback || (v => 'R$ ' + abbrevNum(v)), font: { size: 9 } } }
+                        }
+                    });
+
+                    // Destroy helpers
+                    if (!window._finCharts) window._finCharts = {};
+                    const destroyChart = (key) => { if (window._finCharts[key]) { window._finCharts[key].destroy(); window._finCharts[key] = null; } };
+
+                    // 1. Receitas e Lucros
+                    if (cf.receitas_lucros && Array.isArray(cf.receitas_lucros) && cf.receitas_lucros.length > 0) {
+                        const wrap = document.getElementById('chart-receitas-lucros-wrap');
+                        if (wrap) {
+                            wrap.classList.remove('hidden');
+                            destroyChart('receitas_lucros');
+                            const labels = cf.receitas_lucros.map(d => d.quarter > 0 ? `${d.year}T${d.quarter}` : String(d.year));
+                            window._finCharts.receitas_lucros = new Chart(document.getElementById('chart-receitas-lucros').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels,
+                                    datasets: [
+                                        { label: 'Receita Líquida', data: cf.receitas_lucros.map(d => d.net_revenue), backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 3 },
+                                        { label: 'Lucro Líquido', data: cf.receitas_lucros.map(d => d.net_profit), backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 3 }
+                                    ]
+                                },
+                                options: baseOpts()
+                            });
+                        }
+                    }
+
+                    // 2. Lucro x Cotação (dual axis)
+                    if (cf.lucro_cotacao && typeof cf.lucro_cotacao === 'object' && Object.keys(cf.lucro_cotacao).length > 0) {
+                        const wrap = document.getElementById('chart-lucro-cotacao-wrap');
+                        if (wrap) {
+                            wrap.classList.remove('hidden');
+                            const titleEl = document.getElementById('chart-lucro-cotacao-title');
+                            if (titleEl) titleEl.textContent = `Lucro x Cotação - ${symbol}`;
+                            destroyChart('lucro_cotacao');
+                            const years = Object.keys(cf.lucro_cotacao).sort();
+                            const opts = baseOpts();
+                            opts.scales.y = { position: 'left', grid: { color: gridColor }, ticks: { color: textColor, callback: v => 'R$ ' + abbrevNum(v), font: { size: 9 } } };
+                            opts.scales.y1 = { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#a855f7', callback: v => 'R$ ' + v.toFixed(0), font: { size: 9 } } };
+                            opts.plugins.tooltip.callbacks.label = ctx => {
+                                const prefix = ctx.dataset.yAxisID === 'y1' ? 'R$ ' : 'R$ ';
+                                return ` ${ctx.dataset.label}: ${prefix}${abbrevNum(ctx.parsed.y)}`;
+                            };
+                            window._finCharts.lucro_cotacao = new Chart(document.getElementById('chart-lucro-cotacao').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels: years,
+                                    datasets: [
+                                        { label: 'Lucro Líquido', data: years.map(y => cf.lucro_cotacao[y].net_profit), backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 3, yAxisID: 'y' },
+                                        { label: 'Cotação', data: years.map(y => cf.lucro_cotacao[y].quotation), type: 'line', borderColor: '#a855f7', borderWidth: 1, pointRadius: 2, pointHoverRadius: 4, tension: 0.3, yAxisID: 'y1', fill: false }
+                                    ]
+                                },
+                                options: opts
+                            });
+                        }
+                    }
+
+                    // 3. Evolução do Patrimônio
+                    if (cf.evolucao_patrimonio && Array.isArray(cf.evolucao_patrimonio) && cf.evolucao_patrimonio.length > 0) {
+                        const wrap = document.getElementById('chart-evolucao-patrimonio-wrap');
+                        if (wrap) {
+                            wrap.classList.remove('hidden');
+                            const titleEl = document.getElementById('chart-evolucao-patrimonio-title');
+                            if (titleEl) titleEl.textContent = `Evolução do Patrimônio - ${fundamentos.nome_longo || symbol}`;
+                            destroyChart('evolucao_patrimonio');
+                            const labels = cf.evolucao_patrimonio.map(d => String(d.year));
+                            window._finCharts.evolucao_patrimonio = new Chart(document.getElementById('chart-evolucao-patrimonio').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels,
+                                    datasets: [
+                                        { label: 'Patrimônio', data: cf.evolucao_patrimonio.map(d => d.net_worth), backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 3 },
+                                        { label: 'Receita Líquida', data: cf.evolucao_patrimonio.map(d => d.net_revenue), backgroundColor: 'rgba(59,130,246,0.5)', borderRadius: 3 },
+                                        { label: 'Lucro Líquido', data: cf.evolucao_patrimonio.map(d => d.net_profit), backgroundColor: 'rgba(16,185,129,0.5)', borderRadius: 3 }
+                                    ]
+                                },
+                                options: baseOpts()
+                            });
+                        }
+                    }
+
+                    // 4. Payout
+                    if (cf.payout && Array.isArray(cf.payout) && cf.payout.length > 0) {
+                        const wrap = document.getElementById('chart-payout-wrap');
+                        if (wrap) {
+                            wrap.classList.remove('hidden');
+                            const titleEl = document.getElementById('chart-payout-title');
+                            if (titleEl) titleEl.textContent = `Payout - ${fundamentos.nome_longo || symbol}`;
+                            destroyChart('payout');
+                            const labels = cf.payout.map(d => String(d.year));
+                            const opts = baseOpts();
+                            opts.scales.y.ticks.callback = v => v + '%';
+                            opts.plugins.tooltip.callbacks.label = ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}%`;
+                            window._finCharts.payout = new Chart(document.getElementById('chart-payout').getContext('2d'), {
+                                type: 'bar',
+                                data: {
+                                    labels,
+                                    datasets: [
+                                        { label: 'Payout', data: cf.payout.map(d => d.payout_company || d.payout), backgroundColor: 'rgba(234,179,8,0.6)', borderRadius: 3 },
+                                        { label: 'DY', data: cf.payout.map(d => d.dy_ticker || d.dy), type: 'line', borderColor: '#3b82f6', borderWidth: 1, pointRadius: 2, tension: 0.3, fill: false }
+                                    ]
+                                },
+                                options: opts
+                            });
+                        }
+                    }
+                } else {
+                    chartsFinContainer.classList.add('hidden');
+                }
+            }
+
             // ── Tab PORTFÓLIO: Imóveis (apenas FIIs) ──
             if (ehFii && fundamentos.imoveis && fundamentos.imoveis.length > 0) {
                 window.renderizarListaImoveis(fundamentos.imoveis);

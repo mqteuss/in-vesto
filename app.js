@@ -4209,7 +4209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="flex items-center py-2 px-1.5 rounded-lg hover:bg-white/[0.03] cursor-pointer transition-colors active:scale-[0.98]"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
                             <div class="w-6 h-6 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                <img src="${iconUrl}" alt="${ticker}" class="w-full h-full object-cover"
+                                <img src="${iconUrl}" alt="${ticker}" width="24" height="24" loading="lazy" decoding="async" class="w-full h-full object-cover"
                                      onerror="this.parentElement.innerHTML='<span class=\\'text-[7px] font-bold text-gray-400\\'>${initials}</span>'">
                             </div>
                             <span class="text-[11px] font-bold text-white ml-2 flex-shrink-0">${ticker}</span>

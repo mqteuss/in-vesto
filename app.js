@@ -2297,7 +2297,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let tickersHtml = '';
                 if (foundTickers.length > 0) {
                     foundTickers.forEach(ticker => {
-                        tickersHtml += `<span class="news-ticker-tag text-[7px] font-bold py-[0.5px] px-1 bg-transparent text-blue-400 rounded-sm border border-[#2C2C2E] mr-1 mb-1 inline-block active:bg-blue-900/30 transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                        tickersHtml += `<span class="news-ticker-tag font-bold bg-[#1C1C1E] text-gray-400 rounded-[4px] border border-[#2C2C2E] mr-1 mb-1 inline-block transition-colors" style="font-size: 8px; padding: 2px 6px;" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
                     });
                 }
 

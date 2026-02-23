@@ -364,6 +364,65 @@ async function scrapeFundamentos(ticker) {
         if (revenueGeography) dados.revenue_geography = revenueGeography;
         if (revenueSegment) dados.revenue_segment = revenueSegment;
 
+        // ─── NOVO: Gráficos Financeiros (Receitas, Lucro x Cotação, Patrimônio, Payout) ───
+        // Extrai companyId e tickerId do HTML (estão embutidos nas URLs de API)
+        let companyId = null;
+        let tickerId = null;
+        try {
+            const companyMatch = html.match(/\/api\/balancos\/receitaliquida\/chart\/(\d+)\//);
+            if (companyMatch) companyId = companyMatch[1];
+            const tickerMatch = html.match(/tickerId\s*=\s*'(\d+)'/);
+            if (tickerMatch) tickerId = tickerMatch[1];
+        } catch (e) { }
+
+        if (companyId && tipoAtivo === 'acao') {
+            const baseUrl = 'https://investidor10.com.br';
+            const chartPromises = [];
+
+            // 1. Receitas e Lucros (anual, 10 anos)
+            chartPromises.push(
+                client.get(`${baseUrl}/api/balancos/receitaliquida/chart/${companyId}/3650/false/`)
+                    .then(r => ({ tipo: 'receitas_lucros', data: r.data }))
+                    .catch(() => null)
+            );
+
+            // 2. Lucro x Cotação
+            chartPromises.push(
+                client.get(`${baseUrl}/api/cotacao-lucro/${ticker.toLowerCase()}/adjusted/`)
+                    .then(r => ({ tipo: 'lucro_cotacao', data: r.data }))
+                    .catch(() => null)
+            );
+
+            // 3. Evolução do Patrimônio (ativospassivos, 10 anos)
+            chartPromises.push(
+                client.get(`${baseUrl}/api/balancos/ativospassivos/chart/${companyId}/3650/`)
+                    .then(r => ({ tipo: 'evolucao_patrimonio', data: r.data }))
+                    .catch(() => null)
+            );
+
+            // 4. Payout
+            if (tickerId) {
+                chartPromises.push(
+                    client.get(`${baseUrl}/api/acoes/payout-chart/${companyId}/${tickerId}/${ticker.toUpperCase()}/3650`)
+                        .then(r => ({ tipo: 'payout', data: r.data }))
+                        .catch(() => null)
+                );
+            }
+
+            try {
+                const results = await Promise.all(chartPromises);
+                const charts = {};
+                results.filter(r => r && r.data).forEach(r => {
+                    charts[r.tipo] = r.data;
+                });
+                if (Object.keys(charts).length > 0) {
+                    dados.charts_financeiros = charts;
+                }
+            } catch (e) {
+                console.error('Erro ao buscar gráficos financeiros:', e.message);
+            }
+        }
+
         dados.comparacao = [];
         const tickersVistos = new Set();
 

@@ -575,99 +575,118 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
-// PARTE 1.5: RANKINGS (Maiores Altas) -> INVESTIDOR10 + STATUSINVEST
+// PARTE 1.5: RANKINGS (Maiores Altas) -> INVESTIDOR10
 // ---------------------------------------------------------
 async function scrapeRankings() {
     const resultados = { acoes: [], fiis: [] };
 
-    const fetchAcoes = async () => {
-        try {
-            const res = await client.get('https://investidor10.com.br/');
-            if (res.status !== 200) return;
-            const $ = cheerio.load(res.data);
+    try {
+        // Busca a homepage do Investidor10 (uma única request para ambos)
+        const res = await client.get('https://investidor10.com.br/');
+        if (res.status !== 200) return resultados;
+        const $ = cheerio.load(res.data);
 
-            // Encontra "Maiores Altas" h2 e pega os links de ações no container pai
-            let container = null;
-            $('h2').each((_, el) => {
-                if ($(el).text().trim() === 'Maiores Altas') {
-                    container = $(el).parent();
-                    return false;
+        // ── AÇÕES: Encontra "Maiores Altas" e extrai os 5 primeiros links ──
+        let altasContainer = null;
+        $('h2').each((_, el) => {
+            const txt = $(el).text().trim();
+            if (txt === 'Maiores Altas') {
+                // Sobe até o container com os links (pode ser parent ou grandparent)
+                altasContainer = $(el).parent();
+                // Se o parent direto não tem links, sobe mais um nível
+                if (altasContainer.find('a[href*="/acoes/"]').length === 0) {
+                    altasContainer = altasContainer.parent();
                 }
-            });
-
-            if (container) {
-                container.find('a[href*="/acoes/"]').each((i, el) => {
-                    if (i >= 5) return false;
-                    const $el = $(el);
-                    const spans = $el.find('span');
-                    let ticker = '', variacao = '', preco = '';
-
-                    spans.each((_, sp) => {
-                        const txt = $(sp).text().trim();
-                        if (/^[A-Z]{4}\d{1,2}$/.test(txt)) ticker = txt;
-                        else if (txt.includes('%') || txt.includes(',')) {
-                            if (!variacao) variacao = txt;
-                            else if (!preco) preco = txt;
-                        }
-                    });
-
-                    // Fallback: extrai do texto completo
-                    if (!ticker) {
-                        const fullText = $el.text().trim();
-                        const tickerMatch = fullText.match(/([A-Z]{4}\d{1,2})/);
-                        if (tickerMatch) ticker = tickerMatch[1];
-                    }
-
-                    if (ticker) {
-                        resultados.acoes.push({ ticker, variacao, preco });
-                    }
-                });
+                return false;
             }
-        } catch (e) {
-            console.error('Erro rankings ações:', e.message);
-        }
-    };
+        });
 
-    const fetchFiis = async () => {
-        try {
-            const res = await client.get('https://statusinvest.com.br/fundos-imobiliarios/variacao/ifix', {
-                headers: {
-                    ...client.defaults.headers,
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Referer': 'https://statusinvest.com.br/'
-                }
-            });
-            if (res.status !== 200) return;
-            const $ = cheerio.load(res.data);
-
-            $('a.waves-effect').each((i, el) => {
+        if (altasContainer) {
+            altasContainer.find('a[href*="/acoes/"]').each((i, el) => {
                 if (i >= 5) return false;
                 const $el = $(el);
-                const ticker = $el.find('h4 span').first().text().trim() || $el.find('.Ticker').text().trim();
-                const nome = $el.find('h4 small').text().trim();
+                const fullText = $el.text().replace(/\s+/g, ' ').trim();
 
-                // Pega a variação percentual
-                const spans = $el.find('span');
-                let variacao = '';
-                spans.each((_, sp) => {
-                    const txt = $(sp).text().trim();
-                    if (/^\d+,\d+$/.test(txt) && !variacao) {
-                        variacao = txt + '%';
-                    }
-                });
+                // Regex robusta: extrai ticker, variação e preço do texto completo
+                // Exemplos: "VAMO3 +4,01% R$ 4,67" ou "VALE3+3,23%R$ 86,81"
+                const tickerMatch = fullText.match(/([A-Z]{4}\d{1,2})/);
+                const varMatch = fullText.match(/([+-]?\d+[,.]\d+\s*%)/);
+                const precoMatch = fullText.match(/R\$\s*([\d.,]+)/);
 
-                if (ticker) {
-                    resultados.fiis.push({ ticker, variacao, nome });
+                if (tickerMatch) {
+                    resultados.acoes.push({
+                        ticker: tickerMatch[1],
+                        variacao: varMatch ? varMatch[1].replace(/\s/g, '') : '',
+                        preco: precoMatch ? `R$ ${precoMatch[1]}` : ''
+                    });
                 }
             });
-        } catch (e) {
-            console.error('Erro rankings FIIs:', e.message);
         }
-    };
 
-    await Promise.all([fetchAcoes(), fetchFiis()]);
+        // ── FIIS: Encontra "Maiores Altas" dos FIIs (se existir) ou "Mais Buscados" ──
+        // Tenta encontrar uma segunda seção de Maiores Altas (FIIs) ou rankings de FIIs
+        let fiisContainer = null;
+        $('h2, h3').each((_, el) => {
+            const txt = $(el).text().trim();
+            if (txt.includes('FIIs de Maiores Dividend Yield') || txt.includes('Ranking de FIIs') || txt.includes('Maiores Dividend')) {
+                fiisContainer = $(el).parent();
+                if (fiisContainer.find('a[href*="/fiis/"]').length === 0) {
+                    fiisContainer = fiisContainer.parent();
+                }
+                return false;
+            }
+        });
+
+        if (fiisContainer) {
+            fiisContainer.find('a[href*="/fiis/"]').each((i, el) => {
+                if (i >= 5) return false;
+                const $el = $(el);
+                const fullText = $el.text().replace(/\s+/g, ' ').trim();
+
+                const tickerMatch = fullText.match(/([A-Z]{4}\d{1,2})/);
+                const dyMatch = fullText.match(/([\d]+[,.]\d+\s*%)/);
+
+                if (tickerMatch) {
+                    resultados.fiis.push({
+                        ticker: tickerMatch[1],
+                        variacao: dyMatch ? dyMatch[1].replace(/\s/g, '') : '',
+                    });
+                }
+            });
+        }
+
+        // Fallback FIIs: se não achou na home, tenta a página /fiis/ do Investidor10
+        if (resultados.fiis.length === 0) {
+            try {
+                const resFii = await client.get('https://investidor10.com.br/fiis/maiores-altas-12-meses/');
+                if (resFii.status === 200) {
+                    const $f = cheerio.load(resFii.data);
+                    $f('table tbody tr').each((i, el) => {
+                        if (i >= 5) return false;
+                        const cols = $f(el).find('td');
+                        if (cols.length >= 2) {
+                            const tickerText = $f(cols[0]).text().replace(/\s+/g, ' ').trim();
+                            const tickerMatch = tickerText.match(/([A-Z]{4}\d{1,2})/);
+                            const varText = $f(cols[1]).text().trim();
+                            if (tickerMatch) {
+                                resultados.fiis.push({
+                                    ticker: tickerMatch[1],
+                                    variacao: varText
+                                });
+                            }
+                        }
+                    });
+                }
+            } catch (_) { /* fallback silencioso */ }
+        }
+
+    } catch (e) {
+        console.error('Erro rankings:', e.message);
+    }
+
     return resultados;
 }
+
 
 // ---------------------------------------------------------
 // PARTE 2: PROVENTOS -> STATUSINVEST

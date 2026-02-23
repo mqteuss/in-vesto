@@ -136,7 +136,8 @@ async function scrapeFundamentos(ticker) {
             payout: 'N/A', cagr_receita_5a: 'N/A', cagr_lucros_5a: 'N/A',
             imoveis: [],
             sobre: '',
-            comparacao: []
+            comparacao: [],
+            logo_url: ''
         };
 
         let cotacao_atual = 0;
@@ -276,6 +277,15 @@ async function scrapeFundamentos(ticker) {
                 dados.imoveis.push({ nome, estado, abl });
             }
         });
+
+        const logoImg = $('.header-company img, #header-container img, .brand-company img').first();
+        if (logoImg.length) {
+            dados.logo_url = logoImg.attr('src') || '';
+            // Se for URL relativa, transforma em absoluta
+            if (dados.logo_url.startsWith('/')) {
+                dados.logo_url = 'https://investidor10.com.br' + dados.logo_url;
+            }
+        }
 
         let sobreTexto = '';
         $('#about-section p, .profile-description p, #description p, .text-description p').each((i, el) => {

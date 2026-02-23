@@ -344,7 +344,7 @@ function criarCardElemento(ativo, dados) {
             <div class="flex justify-between items-center">
 
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl ${bgIcone} border border-[#2C2C2E] flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                         ${iconHtml}
                     </div>
 

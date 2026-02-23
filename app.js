@@ -4206,15 +4206,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ticker}.png`;
 
                     return `
-                        <div class="flex items-center py-2 px-1.5 rounded-lg hover:bg-white/[0.03] cursor-pointer transition-colors active:scale-[0.98]"
+                        <div class="p-2 rounded-xl hover:bg-white/[0.03] cursor-pointer transition-colors active:scale-[0.98]"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
-                            <div class="w-6 h-6 rounded-full bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                <img src="${iconUrl}" alt="${ticker}" width="24" height="24" loading="lazy" decoding="async" class="w-full h-full object-cover"
-                                     onerror="this.parentElement.innerHTML='<span class=\\'text-[7px] font-bold text-gray-400\\'>${initials}</span>'">
+                            <div class="flex items-center gap-2 mb-1">
+                                <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                                    <img src="${iconUrl}" alt="${ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain p-0.5 rounded-lg relative z-10"
+                                         onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                                    <span class="hidden w-full h-full flex items-center justify-center text-[8px] font-bold text-gray-400 absolute inset-0 z-0">${initials}</span>
+                                </div>
+                                <span class="text-[12px] font-bold text-white">${ticker}</span>
                             </div>
-                            <span class="text-[11px] font-bold text-white ml-2 flex-shrink-0">${ticker}</span>
-                            <span class="text-[10px] font-semibold ${colorVar} ml-auto flex-shrink-0">${variacao}</span>
-                            <span class="text-[10px] text-gray-400 ml-2 flex-shrink-0 text-right tabular-nums">${preco}</span>
+                            <div class="flex items-center gap-2 pl-9">
+                                <span class="text-[11px] text-gray-400 tabular-nums">${preco}</span>
+                                <span class="text-[10px] font-semibold ${colorVar}">${variacao}</span>
+                            </div>
                         </div>`;
                 }).join('');
             };

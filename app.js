@@ -2326,9 +2326,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Ícone ajustado de w-10 h-10 para w-6 h-6 para ficar menos "pesado" visualmente
                 item.innerHTML = `
                 <div class="flex items-start gap-3 py-1 cursor-pointer">
-                    <div class="flex-shrink-0 mt-0.5">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden relative">
                         <img src="${faviconUrl}" alt="${sourceName}" 
-                             class="w-6 h-6 rounded bg-black object-contain p-0.5 border border-[#2C2C2E]"
+                             class="w-full h-full object-contain rounded-lg relative z-10"
                              loading="lazy" decoding="async"
                              onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                         />
@@ -4208,8 +4208,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="p-2 rounded-xl hover:bg-white/[0.03] cursor-pointer transition-colors active:scale-[0.98]"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
                             <div class="flex items-center gap-2 mb-1">
-                                <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center flex-shrink-0 overflow-hidden relative">
-                                    <img src="${iconUrl}" alt="${ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain p-0.5 rounded-lg relative z-10"
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                                    <img src="${iconUrl}" alt="${ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
                                          onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                                     <span class="hidden w-full h-full flex items-center justify-center text-[8px] font-bold text-gray-400 absolute inset-0 z-0">${initials}</span>
                                 </div>

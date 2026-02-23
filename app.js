@@ -6399,7 +6399,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cotas_emitidas: fundamentos.cotas_emitidas || '-',
                 // NOVOS CAMPOS:
                 sobre: fundamentos.sobre || '',
-                comparacao: fundamentos.comparacao || []
+                comparacao: fundamentos.comparacao || [],
+                logo_url: fundamentos.logo_url || ''
             };
 
             // Atualiza badge 12M
@@ -6407,6 +6408,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (badge12m) {
                 const corVariacaoTextAno = dados.variacao_12m?.includes('-') ? 'text-red-400' : 'text-green-400';
                 badge12m.innerHTML = `12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>`;
+            }
+
+            // Injeta a logo nativa extraída pelo scraper (Prioridade #1)
+            if (!ehFii && dados.logo_url) {
+                const iconContainer = document.getElementById('detalhes-icone-container');
+                if (iconContainer) {
+                    const imgEl = iconContainer.querySelector('img');
+                    if (imgEl && imgEl.src !== dados.logo_url) {
+                        imgEl.src = dados.logo_url;
+                    }
+                }
             }
 
             let valuationHtml = '';

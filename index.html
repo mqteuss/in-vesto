@@ -1499,6 +1499,50 @@
                             </div>
                         </div>
 
+                        <!-- ── GRÁFICOS FINANCEIROS (Apenas Ações) ── -->
+                        <div id="detalhes-charts-financeiros" class="hidden w-full mb-6 space-y-4">
+                            <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest pl-1 mb-2">
+                                Dados Financeiros</h4>
+                            <!-- Receitas e Lucros -->
+                            <div id="chart-receitas-lucros-wrap"
+                                class="hidden rounded-2xl bg-[#141414] border border-[#1F1F1F] p-4">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Receitas e
+                                    Lucros</p>
+                                <div class="relative w-full" style="height:200px;">
+                                    <canvas id="chart-receitas-lucros"></canvas>
+                                </div>
+                            </div>
+                            <!-- Lucro x Cotação -->
+                            <div id="chart-lucro-cotacao-wrap"
+                                class="hidden rounded-2xl bg-[#141414] border border-[#1F1F1F] p-4">
+                                <p id="chart-lucro-cotacao-title"
+                                    class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Lucro x
+                                    Cotação</p>
+                                <div class="relative w-full" style="height:200px;">
+                                    <canvas id="chart-lucro-cotacao"></canvas>
+                                </div>
+                            </div>
+                            <!-- Evolução do Patrimônio -->
+                            <div id="chart-evolucao-patrimonio-wrap"
+                                class="hidden rounded-2xl bg-[#141414] border border-[#1F1F1F] p-4">
+                                <p id="chart-evolucao-patrimonio-title"
+                                    class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Evolução
+                                    do Patrimônio</p>
+                                <div class="relative w-full" style="height:200px;">
+                                    <canvas id="chart-evolucao-patrimonio"></canvas>
+                                </div>
+                            </div>
+                            <!-- Payout -->
+                            <div id="chart-payout-wrap"
+                                class="hidden rounded-2xl bg-[#141414] border border-[#1F1F1F] p-4">
+                                <p id="chart-payout-title"
+                                    class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Payout</p>
+                                <div class="relative w-full" style="height:200px;">
+                                    <canvas id="chart-payout"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
                         <div id="detalhes-sobre-comparacao"></div>
                     </div>
 

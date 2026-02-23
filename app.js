@@ -6718,10 +6718,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                                        <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
-                                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
+                                    <div class="w-7 h-7 rounded-lg bg-[#0a0a0a] flex items-center justify-center flex-shrink-0 group-hover:bg-[#111] transition-colors">
+                                        <span class="text-[8px] font-bold text-gray-400 tracking-wider">${item.ticker.substring(0, 2)}</span>
                                     </div>
                                     <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>

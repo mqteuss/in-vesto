@@ -283,8 +283,8 @@ function criarCardElemento(ativo, dados) {
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ativo.symbol}.png`;
     const iconHtml = !ehFii
         ? `<img src="${iconUrl}" alt="${ativo.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-           <span class="hidden w-full h-full flex items-center justify-center text-xs font-bold text-white tracking-wider absolute inset-0 z-0">${sigla}</span>`
-        : `<span class="text-xs font-bold text-white tracking-wider">${sigla}</span>`;
+           <div class="hidden w-full h-full flex items-center justify-center bg-[#1C1C1E] rounded-xl text-xs font-bold text-gray-400 tracking-wider absolute inset-0 z-0">${sigla}</div>`
+        : `<div class="w-full h-full flex items-center justify-center bg-[#1C1C1E] rounded-xl text-xs font-bold text-gray-400 tracking-wider">${sigla}</div>`;
 
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
     const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
@@ -4211,7 +4211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
                                     <img src="${iconUrl}" alt="${ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
                                          onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                                    <span class="hidden w-full h-full flex items-center justify-center text-[8px] font-bold text-gray-400 absolute inset-0 z-0">${initials}</span>
+                                    <div class="hidden w-full h-full flex items-center justify-center bg-[#1C1C1E] rounded-lg text-[8px] font-bold text-gray-400 absolute inset-0 z-0">${initials}</div>
                                 </div>
                                 <span class="text-[12px] font-bold text-white">${ticker}</span>
                             </div>
@@ -6248,13 +6248,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
 
         const iconHtml = !ehFii
-            ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-           <span class="hidden w-full h-full flex items-center justify-center text-base font-bold text-white tracking-wider absolute inset-0 z-0 ${bgIcone}">${sigla}</span>`
-            : `<span class="text-base font-bold text-white tracking-wider">${sigla}</span>`;
+            ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-2xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
+           <div class="hidden w-full h-full flex items-center justify-center text-base font-bold text-gray-400 tracking-wider absolute inset-0 z-0 bg-[#1C1C1E] rounded-2xl">${sigla}</div>`
+            : `<div class="w-full h-full flex items-center justify-center text-base font-bold text-gray-400 tracking-wider bg-[#1C1C1E] rounded-2xl">${sigla}</div>`;
 
         if (iconContainer) {
             iconContainer.innerHTML = `
-            <div class="w-12 h-12 rounded-2xl ${bgIcone} flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow-sm">
                 ${iconHtml}
             </div>
         `;

@@ -6702,19 +6702,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const vRoe = parseNumberStr(item.roe), vDy = parseNumberStr(item.dy);
                         const vVm = parseNumberStr(item.val_mercado), vMl = parseNumberStr(item.margem_liquida);
 
-                        // Extração dinâmica do logo, se existir
-                        const iconeComparativoHtml = item.logo_url
-                            ? `<img src="${item.logo_url}" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
-                                     onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                               <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>`
-                            : `<div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>`;
-
                         return `
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
                                 <div class="flex items-center gap-3">
                                     <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                                        ${iconeComparativoHtml}
+                                        <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
                                     </div>
                                     <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>
@@ -6750,21 +6745,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
                         let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
 
-                        // FII Comparativo sem Github logic
-                        const iconeComparativoFiiHtml = item.logo_url
-                            ? `<img src="${item.logo_url}" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
-                                     onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                               <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>`
-                            : `<div class="w-full h-full bg-[#0a0a0a] flex items-center justify-center group-hover:bg-[#111] transition-colors">
-                                  <span class="text-[8px] font-bold text-gray-400 tracking-wider">${item.ticker.substring(0, 2)}</span>
-                               </div>`;
-
                         return `
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                                        ${iconeComparativoFiiHtml}
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden group-hover:bg-[#111] transition-colors">
+                                        <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                                        <div class="hidden w-full h-full bg-[#0a0a0a] flex items-center justify-center z-0 absolute inset-0">
+                                            <span class="text-[8px] font-bold text-gray-400 tracking-wider">${item.ticker.substring(0, 2)}</span>
+                                        </div>
                                     </div>
                                     <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>
@@ -9903,29 +9893,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     card.innerHTML = `
                         <div class="absolute left-0 top-0 bottom-0 w-1 ${barraLateral}"></div>
+                        <div class="flex items-center w-full p-2.5">
+                            
+                            <!-- Bloco de Data (Estilo Calendário) -->
+                            <div class="flex flex-col items-center justify-center w-14 h-14 rounded-xl relative overflow-hidden flex-shrink-0 ${isLight ? 'bg-white border border-gray-200 shadow-sm' : 'bg-[#1a1a1c] border border-white/5 shadow-md'}">
+                                <div class="absolute top-0 w-full h-3.5 ${barraLateral} flex items-center justify-center">
+                                    <span class="text-[8px] font-black tracking-widest text-[#111] uppercase mix-blend-overlay opacity-80">${sem}</span>
+                                </div>
+                                <span class="text-xl font-bold ${txtTitle} leading-none mt-2 tracking-tighter">${dia}</span>
+                            </div>
 
-                        <div class="flex items-center w-full p-3 pl-4">
-            <div class="flex flex-col items-center justify-center pr-4 border-r ${borderR}">
-                <span class="text-lg font-bold ${txtTitle} leading-none tracking-tight">${dia}</span>
-                <span class="text-[9px] font-bold ${txtDateSub} uppercase mt-0.5">${sem}</span>
-            </div>
+                            <!-- Informações do Ativo -->
+                            <div class="flex-1 min-w-0 pl-3">
+                                <div class="flex items-center gap-2 mb-0.5">
+                                    <span class="text-[13px] font-bold ${txtTitle} tracking-wide">${prov.symbol}</span>
+                                </div>
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="text-[10px] ${txtSub} font-medium tracking-wide flex items-center gap-1.5 opacity-80">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3 text-gray-500"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 8.25 3c1.804 0 3.196.85 3.75 1.5.554-.65 1.946-1.5 3.75-1.5 3.536 0 6 2.322 6 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
+                                        ${prov.qtdCarteira} cotas
+                                    </span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest ${isJCP ? 'text-amber-500/80' : 'text-emerald-500/80'}">
+                                        ${tipoTexto}
+                                    </span>
+                                </div>
+                            </div>
 
-            <div class="flex-1 min-w-0 pl-4">
-                <div class="flex items-center gap-2 mb-0.5">
-                    <span class="text-sm font-bold ${txtTitle} tracking-wide">${prov.symbol}</span>
-                </div>
-                <p class="text-[10px] ${txtSub} font-medium truncate">
-                    ${prov.qtdCarteira} cotas • ${tipoTexto}
-                </p>
-            </div>
-
-            <div class="text-right pr-1">
-                <span class="block text-sm font-bold ${corTextoValor} tabular-nums tracking-tight">
-                    ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </span>
-            </div>
-        </div>
-`;
+                            <!-- Valor Financeiro -->
+                            <div class="text-right pr-2">
+                                <span class="block text-sm font-black ${corTextoValor} tabular-nums tracking-tight">
+                                    ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                            </div>
+                        </div>
+                    `;
                     containerMes.appendChild(card);
                 });
 

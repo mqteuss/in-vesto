@@ -6174,8 +6174,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const iconContainer = document.getElementById('detalhes-icone-container');
         const sigla = symbol.substring(0, 2);
-        const ehFii = isFII(symbol);
-        const ehAcao = !ehFii;
+        let ehFii = isFII(symbol);
+        let ehAcao = !ehFii;
 
         const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
         const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
@@ -6298,6 +6298,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const fundamentos = fundData || {};
             const nextProventoData = provData;
+
+            // Override tipo_ativo do scraper — corrige Units (KLBN11, TAEE11) que terminam em 11 mas são Ações
+            if (fundamentos.tipo_ativo) {
+                ehFii = fundamentos.tipo_ativo === 'fii';
+                ehAcao = fundamentos.tipo_ativo === 'acao';
+            }
 
             const varPercent = precoData.regularMarketChangePercent || 0;
             const variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');

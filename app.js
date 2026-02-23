@@ -4165,6 +4165,65 @@ document.addEventListener('DOMContentLoaded', async () => {
         return result;
     }
 
+    // ── Rankings: Maiores Altas do Dia ──
+    async function carregarRankings() {
+        const container = document.getElementById('rankings-container');
+        if (!container) return;
+
+        const cacheKey = 'rankings_maiores_altas';
+        const CACHE_TTL = isB3Open() ? 1000 * 60 * 15 : 1000 * 60 * 60 * 4; // 15min aberto, 4h fechado
+
+        try {
+            // Tenta cache primeiro
+            let data = await getCache(cacheKey);
+
+            if (!data) {
+                const response = await fetchBFF('/api/scraper', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: 'rankings' })
+                });
+                data = response.json;
+                if (data) await setCache(cacheKey, data, CACHE_TTL);
+            }
+
+            if (!data) return;
+
+            const renderLista = (containerId, items) => {
+                const el = document.getElementById(containerId);
+                if (!el || !items || items.length === 0) {
+                    if (el) el.innerHTML = '<p class="text-[9px] text-gray-600 text-center py-2">Sem dados</p>';
+                    return;
+                }
+
+                el.innerHTML = items.slice(0, 5).map((item, i) => {
+                    const ticker = item.ticker || '';
+                    const variacao = item.variacao || '';
+                    const isPositive = !variacao.startsWith('-');
+                    const colorClass = isPositive ? 'text-emerald-400' : 'text-red-400';
+                    const bgClass = isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10';
+
+                    return `
+                        <div class="flex items-center justify-between py-1 px-1 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
+                             onclick="toggleDrawer('${ticker}')">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[9px] text-gray-600 font-mono w-3">${i + 1}</span>
+                                <span class="text-[11px] font-bold text-white">${ticker}</span>
+                            </div>
+                            <span class="text-[10px] font-bold ${colorClass} ${bgClass} px-1.5 py-0.5 rounded">${isPositive ? '+' : ''}${variacao}</span>
+                        </div>`;
+                }).join('');
+            };
+
+            renderLista('rankings-acoes', data.acoes);
+            renderLista('rankings-fiis', data.fiis);
+            container.classList.remove('hidden');
+
+        } catch (e) {
+            console.error('Erro ao carregar rankings:', e);
+        }
+    }
+
     async function buscarHistoricoProventosAgregado(force = false) {
         // ALTERAÇÃO: Remove o filtro exclusivo de FIIs
         const ativosCarteira = carteiraCalculada.map(a => a.symbol);
@@ -8185,6 +8244,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Renderiza a watchlist (leve)
             renderizarWatchlist();
+
+            // Carrega rankings Maiores Altas (não bloqueia)
+            carregarRankings();
 
             // Inicia cálculos pesados e chamadas externas
             atualizarTodosDados(false);

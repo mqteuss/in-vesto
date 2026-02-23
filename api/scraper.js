@@ -575,6 +575,101 @@ async function scrapeFundamentos(ticker) {
 }
 
 // ---------------------------------------------------------
+// PARTE 1.5: RANKINGS (Maiores Altas) -> INVESTIDOR10 + STATUSINVEST
+// ---------------------------------------------------------
+async function scrapeRankings() {
+    const resultados = { acoes: [], fiis: [] };
+
+    const fetchAcoes = async () => {
+        try {
+            const res = await client.get('https://investidor10.com.br/');
+            if (res.status !== 200) return;
+            const $ = cheerio.load(res.data);
+
+            // Encontra "Maiores Altas" h2 e pega os links de ações no container pai
+            let container = null;
+            $('h2').each((_, el) => {
+                if ($(el).text().trim() === 'Maiores Altas') {
+                    container = $(el).parent();
+                    return false;
+                }
+            });
+
+            if (container) {
+                container.find('a[href*="/acoes/"]').each((i, el) => {
+                    if (i >= 5) return false;
+                    const $el = $(el);
+                    const spans = $el.find('span');
+                    let ticker = '', variacao = '', preco = '';
+
+                    spans.each((_, sp) => {
+                        const txt = $(sp).text().trim();
+                        if (/^[A-Z]{4}\d{1,2}$/.test(txt)) ticker = txt;
+                        else if (txt.includes('%') || txt.includes(',')) {
+                            if (!variacao) variacao = txt;
+                            else if (!preco) preco = txt;
+                        }
+                    });
+
+                    // Fallback: extrai do texto completo
+                    if (!ticker) {
+                        const fullText = $el.text().trim();
+                        const tickerMatch = fullText.match(/([A-Z]{4}\d{1,2})/);
+                        if (tickerMatch) ticker = tickerMatch[1];
+                    }
+
+                    if (ticker) {
+                        resultados.acoes.push({ ticker, variacao, preco });
+                    }
+                });
+            }
+        } catch (e) {
+            console.error('Erro rankings ações:', e.message);
+        }
+    };
+
+    const fetchFiis = async () => {
+        try {
+            const res = await client.get('https://statusinvest.com.br/fundos-imobiliarios/variacao/ifix', {
+                headers: {
+                    ...client.defaults.headers,
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Referer': 'https://statusinvest.com.br/'
+                }
+            });
+            if (res.status !== 200) return;
+            const $ = cheerio.load(res.data);
+
+            $('a.waves-effect').each((i, el) => {
+                if (i >= 5) return false;
+                const $el = $(el);
+                const ticker = $el.find('h4 span').first().text().trim() || $el.find('.Ticker').text().trim();
+                const nome = $el.find('h4 small').text().trim();
+
+                // Pega a variação percentual
+                const spans = $el.find('span');
+                let variacao = '';
+                spans.each((_, sp) => {
+                    const txt = $(sp).text().trim();
+                    if (/^\d+,\d+$/.test(txt) && !variacao) {
+                        variacao = txt + '%';
+                    }
+                });
+
+                if (ticker) {
+                    resultados.fiis.push({ ticker, variacao, nome });
+                }
+            });
+        } catch (e) {
+            console.error('Erro rankings FIIs:', e.message);
+        }
+    };
+
+    await Promise.all([fetchAcoes(), fetchFiis()]);
+    return resultados;
+}
+
+// ---------------------------------------------------------
 // PARTE 2: PROVENTOS -> STATUSINVEST
 // ---------------------------------------------------------
 
@@ -817,6 +912,9 @@ module.exports = async function handler(req, res) {
         } else if (mode === 'proximo_provento' || mode === 'historico_12m') {
             // Proventos mudam ocasionalmente — cache de 2h
             res.setHeader('Cache-Control', 's-maxage=7200, stale-while-revalidate=43200');
+        } else if (mode === 'rankings') {
+            // Rankings mudam durante o pregão — cache de 15min
+            res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
         } else {
             // Default: 1h
             res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
@@ -829,6 +927,11 @@ module.exports = async function handler(req, res) {
     try {
         if (!req.body || !req.body.mode) throw new Error("Payload inválido");
         const { mode, payload } = req.body;
+
+        if (mode === 'rankings') {
+            const dados = await scrapeRankings();
+            return res.status(200).json({ json: dados });
+        }
 
         if (mode === 'ipca') {
             const dados = await scrapeIpca();

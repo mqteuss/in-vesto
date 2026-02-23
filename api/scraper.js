@@ -14,6 +14,7 @@ const httpsAgent = new https.Agent({
 
 const client = axios.create({
     httpsAgent,
+    decompress: true,
     headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -22,6 +23,15 @@ const client = axios.create({
     },
     timeout: 8000
 });
+
+// Heurística: tickers que terminam em 11/12 são FIIs, EXCETO Units conhecidas
+const KNOWN_UNITS = new Set(['KLBN11', 'TAEE11', 'BPAC11', 'SANB11', 'RNEW11', 'ALUPL11', 'ENGI11', 'SAPR11', 'TIMS11', 'SULA11']);
+const guessType = (ticker) => {
+    const t = ticker.toUpperCase();
+    if (KNOWN_UNITS.has(t)) return 'acao';
+    if (t.endsWith('11') || t.endsWith('12')) return 'fii';
+    return 'acao';
+};
 
 // ---------------------------------------------------------
 // HELPERS (FUNÇÕES AUXILIARES)
@@ -80,7 +90,8 @@ function cleanDoubledString(str) {
 async function scrapeFundamentos(ticker) {
     try {
         let html;
-        let tipoAtivo = 'fii'; // default
+        const guess = guessType(ticker);
+        let tipoAtivo = guess;
         const urlFii = `https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`;
         const urlAcao = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
 
@@ -91,12 +102,24 @@ async function scrapeFundamentos(ticker) {
             return { html: res.data, tipo };
         };
 
+        // Smart URL: tenta a mais provável primeiro, fallback se falhar (evita 1 request desnecessário)
+        const primaryUrl = guess === 'fii' ? urlFii : urlAcao;
+        const fallbackUrl = guess === 'fii' ? urlAcao : urlFii;
+        const primaryTipo = guess;
+        const fallbackTipo = guess === 'fii' ? 'acao' : 'fii';
+
         try {
-            const result = await Promise.any([fetchHtml(urlFii, 'fii'), fetchHtml(urlAcao, 'acao')]);
+            const result = await fetchHtml(primaryUrl, primaryTipo);
             html = result.html;
             tipoAtivo = result.tipo;
         } catch (e) {
-            throw new Error('Ativo não encontrado no Investidor10');
+            try {
+                const result = await fetchHtml(fallbackUrl, fallbackTipo);
+                html = result.html;
+                tipoAtivo = result.tipo;
+            } catch (e2) {
+                throw new Error('Ativo não encontrado no Investidor10');
+            }
         }
 
         const $ = cheerio.load(html);
@@ -364,8 +387,8 @@ async function scrapeFundamentos(ticker) {
         if (revenueGeography) dados.revenue_geography = revenueGeography;
         if (revenueSegment) dados.revenue_segment = revenueSegment;
 
-        // ─── NOVO: Gráficos Financeiros (Receitas, Lucro x Cotação, Patrimônio, Payout) ───
-        // Extrai companyId e tickerId do HTML (estão embutidos nas URLs de API)
+        // ─── OTIMIZADO: Lança chart APIs + comparação API em PARALELO (não bloqueia) ───
+        // Extrai companyId e tickerId do HTML (via regex, sem cheerio)
         let companyId = null;
         let tickerId = null;
         try {
@@ -375,63 +398,43 @@ async function scrapeFundamentos(ticker) {
             if (tickerMatch) tickerId = tickerMatch[1];
         } catch (e) { }
 
+        // Lança chart promises AGORA — resolve depois junto com a comparação
+        let chartPromise = Promise.resolve(null);
         if (companyId && tipoAtivo === 'acao') {
             const baseUrl = 'https://investidor10.com.br';
-            const chartPromises = [];
-
-            // 1. Receitas e Lucros (anual, 10 anos)
-            chartPromises.push(
+            const chartRequests = [
                 client.get(`${baseUrl}/api/balancos/receitaliquida/chart/${companyId}/3650/false/`)
-                    .then(r => ({ tipo: 'receitas_lucros', data: r.data }))
-                    .catch(() => null)
-            );
-
-            // 2. Lucro x Cotação
-            chartPromises.push(
+                    .then(r => ({ tipo: 'receitas_lucros', data: r.data })).catch(() => null),
                 client.get(`${baseUrl}/api/cotacao-lucro/${ticker.toLowerCase()}/adjusted/`)
-                    .then(r => ({ tipo: 'lucro_cotacao', data: r.data }))
-                    .catch(() => null)
-            );
-
-            // 3. Evolução do Patrimônio (ativospassivos, 10 anos)
-            chartPromises.push(
+                    .then(r => ({ tipo: 'lucro_cotacao', data: r.data })).catch(() => null),
                 client.get(`${baseUrl}/api/balancos/ativospassivos/chart/${companyId}/3650/`)
-                    .then(r => ({ tipo: 'evolucao_patrimonio', data: r.data }))
-                    .catch(() => null)
-            );
-
-            // 4. Payout
+                    .then(r => ({ tipo: 'evolucao_patrimonio', data: r.data })).catch(() => null),
+            ];
             if (tickerId) {
-                chartPromises.push(
+                chartRequests.push(
                     client.get(`${baseUrl}/api/acoes/payout-chart/${companyId}/${tickerId}/${ticker.toUpperCase()}/3650`)
-                        .then(r => ({ tipo: 'payout', data: r.data }))
-                        .catch(() => null)
+                        .then(r => ({ tipo: 'payout', data: r.data })).catch(() => null)
                 );
             }
-
-            try {
-                const results = await Promise.all(chartPromises);
-                const charts = {};
-                results.filter(r => r && r.data).forEach(r => {
-                    charts[r.tipo] = r.data;
-                });
-                if (Object.keys(charts).length > 0) {
-                    dados.charts_financeiros = charts;
-                }
-            } catch (e) {
-                console.error('Erro ao buscar gráficos financeiros:', e.message);
-            }
+            chartPromise = Promise.all(chartRequests);
         }
 
+        // Lança comparação API em paralelo (não espera)
+        const apiUrl = $('#table-compare-fiis').attr('data-url') || $('#table-compare-segments').attr('data-url');
+        let comparacaoApiPromise = Promise.resolve(null);
+        if (apiUrl) {
+            const fullUrl = apiUrl.startsWith('http') ? apiUrl : `https://investidor10.com.br${apiUrl}`;
+            comparacaoApiPromise = client.get(fullUrl).catch(() => null);
+        }
+
+        // ─── Aguarda comparação API + charts em paralelo enquanto parseia HTML abaixo ───
         dados.comparacao = [];
         const tickersVistos = new Set();
 
-        // TENTATIVA 1: API Oculta (Mais confiável para extrair Segmento, Tipo e Patrimônio que o HTML omite)
-        const apiUrl = $('#table-compare-fiis').attr('data-url') || $('#table-compare-segments').attr('data-url');
-        if (apiUrl) {
-            try {
-                const fullUrl = apiUrl.startsWith('http') ? apiUrl : `https://investidor10.com.br${apiUrl}`;
-                const resApi = await client.get(fullUrl);
+        // Resolver comparação API (já lançada acima)
+        try {
+            const resApi = await comparacaoApiPromise;
+            if (resApi && resApi.data) {
                 let arrayComparacao = resApi.data.data || resApi.data || [];
 
                 if (Array.isArray(arrayComparacao)) {
@@ -463,8 +466,8 @@ async function scrapeFundamentos(ticker) {
                         }
                     });
                 }
-            } catch (err) { /* Falhou API, segue pro HTML abaixo */ }
-        }
+            }
+        } catch (err) { /* Falhou API, segue pro HTML abaixo */ }
 
         // TENTATIVA 2: SEU CÓDIGO HTML (Fallback se a API falhar)
         if (dados.comparacao.length === 0) {
@@ -545,6 +548,22 @@ async function scrapeFundamentos(ticker) {
                     tickersVistos.add(ticker);
                 }
             });
+        }
+
+        // ─── Resolver chart promises (lançadas em paralelo acima) ───
+        try {
+            const chartResults = await chartPromise;
+            if (chartResults) {
+                const charts = {};
+                chartResults.filter(r => r && r.data).forEach(r => {
+                    charts[r.tipo] = r.data;
+                });
+                if (Object.keys(charts).length > 0) {
+                    dados.charts_financeiros = charts;
+                }
+            }
+        } catch (e) {
+            console.error('Erro ao buscar gráficos financeiros:', e.message);
         }
 
         dados.tipo_ativo = tipoAtivo;
@@ -786,8 +805,22 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    // Cache diferenciado por mode (otimização: fundamentos mudam pouco, cotação muda sempre)
     if (req.method === 'GET' || req.method === 'POST') {
-        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+        const mode = req.body?.mode;
+        if (mode === 'fundamentos') {
+            // Fundamentos mudam pouco — cache de 4h, stale até 24h
+            res.setHeader('Cache-Control', 's-maxage=14400, stale-while-revalidate=86400');
+        } else if (mode === 'cotacao_historica') {
+            // Cotação muda durante o pregão — cache de 5min, stale até 1h
+            res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600');
+        } else if (mode === 'proximo_provento' || mode === 'historico_12m') {
+            // Proventos mudam ocasionalmente — cache de 2h
+            res.setHeader('Cache-Control', 's-maxage=7200, stale-while-revalidate=43200');
+        } else {
+            // Default: 1h
+            res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+        }
     }
 
     if (req.method === 'OPTIONS') { res.status(200).end(); return; }

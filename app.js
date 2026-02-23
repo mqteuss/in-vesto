@@ -4165,16 +4165,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return result;
     }
 
-    // ── Rankings: Maiores Altas do Dia ──
+    // ── Rankings: Variação do Dia (Altas + Baixas) ──
     async function carregarRankings() {
         const container = document.getElementById('rankings-container');
         if (!container) return;
 
-        const cacheKey = 'rankings_maiores_altas';
-        const CACHE_TTL = isB3Open() ? 1000 * 60 * 15 : 1000 * 60 * 60 * 4; // 15min aberto, 4h fechado
+        const cacheKey = 'rankings_variacao_dia';
+        const CACHE_TTL = isB3Open() ? 1000 * 60 * 15 : 1000 * 60 * 60 * 4;
 
         try {
-            // Tenta cache primeiro
             let data = await getCache(cacheKey);
 
             if (!data) {
@@ -4189,34 +4188,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!data) return;
 
-            const renderLista = (containerId, items) => {
+            const renderLista = (containerId, items, tipo) => {
                 const el = document.getElementById(containerId);
                 if (!el || !items || items.length === 0) {
-                    if (el) el.innerHTML = '<p class="text-[9px] text-gray-600 text-center py-2">Sem dados</p>';
+                    if (el) el.innerHTML = '<p class="text-[9px] text-gray-600 text-center py-3">Sem dados</p>';
                     return;
                 }
 
-                el.innerHTML = items.slice(0, 5).map((item, i) => {
+                const isAlta = tipo === 'altas';
+
+                el.innerHTML = items.slice(0, 6).map((item) => {
                     const ticker = item.ticker || '';
                     const variacao = item.variacao || '';
-                    const isPositive = !variacao.startsWith('-');
-                    const colorClass = isPositive ? 'text-emerald-400' : 'text-red-400';
-                    const bgClass = isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10';
+                    const preco = item.preco || '';
+                    const iconUrl = `https://brapi.dev/favicon/${ticker}.svg`;
+                    const colorClass = isAlta ? 'text-emerald-400' : 'text-red-400';
+                    const bgClass = isAlta ? 'bg-emerald-500/10' : 'bg-red-500/10';
 
                     return `
-                        <div class="flex items-center justify-between py-1 px-1 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
+                        <div class="flex items-center justify-between py-1.5 px-1.5 rounded-lg hover:bg-white/[0.03] cursor-pointer transition-colors active:scale-[0.98]"
                              onclick="toggleDrawer('${ticker}')">
-                            <div class="flex items-center gap-1.5">
-                                <span class="text-[9px] text-gray-600 font-mono w-3">${i + 1}</span>
-                                <span class="text-[11px] font-bold text-white">${ticker}</span>
+                            <div class="flex items-center gap-2 min-w-0">
+                                <img src="${iconUrl}" alt="${ticker}" class="w-5 h-5 rounded-full flex-shrink-0 bg-[#1a1a1a]"
+                                     onerror="this.style.display='none'">
+                                <div class="flex flex-col min-w-0">
+                                    <span class="text-[11px] font-bold text-white leading-tight">${ticker}</span>
+                                    <span class="text-[8px] text-gray-500 leading-tight">${preco}</span>
+                                </div>
                             </div>
-                            <span class="text-[10px] font-bold ${colorClass} ${bgClass} px-1.5 py-0.5 rounded">${isPositive ? '+' : ''}${variacao}</span>
+                            <span class="text-[10px] font-bold ${colorClass} ${bgClass} px-1.5 py-0.5 rounded flex-shrink-0">${variacao}</span>
                         </div>`;
                 }).join('');
             };
 
-            renderLista('rankings-acoes', data.acoes);
-            renderLista('rankings-fiis', data.fiis);
+            renderLista('rankings-altas', data.altas, 'altas');
+            renderLista('rankings-baixas', data.baixas, 'baixas');
             container.classList.remove('hidden');
 
         } catch (e) {

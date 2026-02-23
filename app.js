@@ -9045,7 +9045,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     window.mostrarDyCarteira = async function () {
-        const btn = document.querySelector('button[title="Ver DY da Carteira"]');
+        const btn = document.querySelector('button[title="Ver Performance da Carteira"]');
         const originalText = btn ? btn.innerText : '?';
         if (btn) btn.innerText = '...';
 
@@ -9054,54 +9054,66 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const dyVal = dados.dyPercent || 0;
             const totalVal = dados.totalDiv12m || 0;
-            const dyFmt = dyVal.toFixed(2) + '%';
+            const mensalMedia = totalVal / 12;
+            const dyFmt = dyVal.toFixed(2).replace('.', ',') + '%';
             const valFmt = formatBRL(totalVal);
+            const mensalFmt = formatBRL(mensalMedia);
 
             let corTitulo = '';
             let textoAvaliacao = '';
-            let corTextoBadge = '';
+            let badgeBg = '';
 
             if (dyVal < 6) {
-                corTitulo = 'text-red-500';
-                textoAvaliacao = 'Baixo';
-                corTextoBadge = '#ef4444';
+                corTitulo = 'text-red-400';
+                textoAvaliacao = 'Abaixo da Inflação';
+                badgeBg = 'bg-red-500/10 text-red-400 border-red-500/20';
             } else if (dyVal < 10) {
                 corTitulo = 'text-yellow-400';
-                textoAvaliacao = 'Bom';
-                corTextoBadge = '#facc15';
+                textoAvaliacao = 'Bom Retorno';
+                badgeBg = 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
             } else {
-                corTitulo = 'text-green-500';
-                textoAvaliacao = 'Excelente';
-                corTextoBadge = '#22c55e';
+                corTitulo = 'text-green-400';
+                textoAvaliacao = 'Excelente Retorno';
+                badgeBg = 'bg-green-500/10 text-green-400 border-green-500/20';
             }
 
             const isLight = document.body.classList.contains('light-mode');
-            const bgCard = isLight ? '#f9fafb' : '#1C1C1E';
-            const brCard = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+            const bgCardInner = isLight ? '#f9fafb' : '#151515';
+            const brCardInner = isLight ? 'rgba(0,0,0,0.05)' : '#1F1F1F';
             const txtColor = isLight ? '#1f2937' : '#ffffff';
 
             const mensagemHtml = `
-            <div class="flex flex-col items-center w-full pt-1">
-                <span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">
-                    Dividend Yield (12m)
+            <div class="flex flex-col items-center w-full pt-2">
+                <span class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2 block">
+                    Dividend Yield Anualizado
                 </span>
 
-                <div class="text-5xl font-bold ${corTitulo} tracking-tighter leading-none mb-5 drop-shadow-sm">
+                <div class="text-5xl font-bold ${corTitulo} tracking-tighter leading-none mb-4 drop-shadow-sm flex items-center justify-center gap-2">
                     ${dyFmt}
                 </div>
+                
+                <div class="mb-6">
+                    <span class="text-[9px] font-bold px-3 py-1 rounded-full border ${badgeBg} uppercase tracking-wider">${textoAvaliacao}</span>
+                </div>
 
-                <div class="details-group-card w-full" style="background-color: ${bgCard} !important; box-shadow: none;">
-                    <div class="details-row" style="border-bottom-color: ${brCard};">
-                        <span class="details-label" style="color: #9ca3af;">Classificação</span>
-                        <span class="details-value font-bold" style="color: ${corTextoBadge}">${textoAvaliacao}</span>
+                <div class="w-full rounded-2xl p-4 flex flex-col gap-3 text-left" style="background-color: ${bgCardInner}; border: 1px solid ${brCardInner};">
+                    <div class="flex justify-between items-center pb-3" style="border-bottom: 1px solid ${brCardInner};">
+                        <span class="flex items-center gap-2 text-xs font-medium" style="color: #9ca3af;">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Proventos em 12 Meses
+                        </span>
+                        <span class="text-sm font-bold" style="color: ${corTitulo};">${valFmt}</span>
                     </div>
-                    <div class="details-row">
-                        <span class="details-label" style="color: #9ca3af;">Retorno Aprox.</span>
-                        <span class="details-value font-medium" style="color: ${txtColor};">${valFmt}</span>
+                    <div class="flex justify-between items-center">
+                        <span class="flex items-center gap-2 text-xs font-medium" style="color: #9ca3af;">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                            Média Mensal Est.
+                        </span>
+                        <span class="text-sm font-bold" style="color: ${txtColor};">${mensalFmt}</span>
                     </div>
                 </div>
             </div>
-        `;
+            `;
 
             const modal = document.getElementById('custom-modal');
             const modalTitle = document.getElementById('custom-modal-title');
@@ -9110,15 +9122,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const btnOk = document.getElementById('custom-modal-ok');
             const btnCancel = document.getElementById('custom-modal-cancel');
 
-            if (modalTitle) modalTitle.textContent = 'Performance';
+            if (modalTitle) modalTitle.textContent = 'Performance da Carteira';
 
-            // 1. Fundo #09090b (Cor exata do drawer de notificações)
-            // 2. Borda removida (border: none)
             if (modalContent) {
-                modalContent.style.backgroundColor = isLight ? '#ffffff' : '#09090b';
-                modalContent.style.border = 'none';
-                // Sombra suave para destacar do backdrop, já que não tem borda
-                modalContent.style.boxShadow = isLight ? '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' : '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
+                modalContent.style.backgroundColor = isLight ? '#ffffff' : '#18181A';
+                modalContent.style.border = isLight ? '1px solid rgba(0,0,0,0.05)' : '1px solid #1F1F1F';
+                modalContent.style.boxShadow = isLight ? '0 10px 25px -5px rgba(0, 0, 0, 0.1)' : '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
             }
 
             if (modalMessage) {
@@ -9135,7 +9144,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 btnOk.innerText = 'Fechar';
 
-                // Botão dinâmico com cores baseadas no tema
                 const btnBgClass = isLight ? 'bg-gray-100 hover:bg-gray-200 border-gray-200' : 'bg-[#1C1C1E] hover:bg-[#27272a] border-[#27272a]';
                 const btnTxtClass = isLight ? 'text-gray-800' : 'text-white';
 
@@ -9147,7 +9155,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         modal.classList.remove('visible');
                         modalContent.classList.remove('modal-out');
 
-                        // Restaura os estilos originais para não afetar outros modais
                         if (modalContent) {
                             modalContent.style.backgroundColor = '';
                             modalContent.style.border = '';
@@ -9168,8 +9175,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalContent.classList.remove('modal-out');
 
         } catch (e) {
-            console.error("Erro DY:", e);
-            showToast('Erro ao calcular.');
+            console.error("Erro Performance:", e);
+            showToast('Erro ao calcular performance.');
         } finally {
             if (btn) btn.innerText = originalText;
         }
@@ -9341,8 +9348,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
             };
 
-            if (!isNaN(m)) return `${y}-${m.padStart(2, '0')}`;
-            if (monthMap[m]) return `${y}-${monthMap[m]}`;
+            if (!isNaN(m)) return `${y} -${m.padStart(2, '0')} `;
+            if (monthMap[m]) return `${y} -${monthMap[m]} `;
             return null;
         };
 
@@ -9364,18 +9371,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const valorErosaoFmt = Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
                     erosaoPatHtml = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5">
+    < div class="flex items-center gap-2 justify-end mt-0.5" >
                         <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Patrimônio</span>
                         <span class="text-[11px] font-bold ${corErosao}">${sinal}${valorErosaoFmt}</span>
-                    </div>
-                `;
+                    </div >
+    `;
                 } else {
                     erosaoPatHtml = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-40">
+    < div class="flex items-center gap-2 justify-end mt-0.5 opacity-40" >
                         <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Patrimônio</span>
                         <span class="text-[11px] text-gray-500 font-bold">--</span>
-                    </div>
-                `;
+                    </div >
+    `;
                 }
 
                 let erosaoDivHtml = '';
@@ -9389,19 +9396,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const valorErosaoDivFmt = Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
                     erosaoDivHtml = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5">
+    < div class="flex items-center gap-2 justify-end mt-0.5" >
                         <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Proventos</span>
                         <span class="text-[11px] font-bold ${corErosaoDiv}">${sinalDiv}${valorErosaoDivFmt}</span>
-                    </div>
-                `;
+                    </div >
+    `;
                 } else {
                     // Se não teve proventos no mês, mostra vazio ou traço (optei por traço suave)
                     erosaoDivHtml = `
-                    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-30">
+    < div class="flex items-center gap-2 justify-end mt-0.5 opacity-30" >
                         <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Proventos</span>
                         <span class="text-[11px] text-gray-500 font-bold">--</span>
-                    </div>
-                `;
+                    </div >
+    `;
                 }
 
                 // Cores do Badge de IPCA
@@ -9426,7 +9433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const txtMonth = isLight ? 'text-gray-800' : 'text-white';
 
                 const html = `
-            <div class="flex items-center justify-between p-3 ${bgItem} rounded-2xl mb-2">
+    < div class="flex items-center justify-between p-3 ${bgItem} rounded-2xl mb-2" >
                 <div class="flex items-center gap-3">
                     <div class="w-1.5 h-12 rounded-full ${barraCor}"></div> <div class="flex flex-col">
                         <span class="text-sm font-bold ${txtMonth} capitalize">${mesNome}</span>
@@ -9444,7 +9451,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     ${erosaoDivHtml}
                 </div>
-            </div>`;
+            </div > `;
 
                 listaContainer.insertAdjacentHTML('beforeend', html);
             });
@@ -9482,7 +9489,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         borderWidth: 1,
                         displayColors: false,
                         callbacks: {
-                            label: (ctx) => ` IPCA: ${ctx.raw}%`
+                            label: (ctx) => ` IPCA: ${ctx.raw}% `
                         }
                     }
                 },
@@ -9827,12 +9834,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Título do Mês
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = `
-                <div class="flex items-center gap-3 mb-3 pl-2 mt-4">
+    < div class="flex items-center gap-3 mb-3 pl-2 mt-4" >
                     <span class="w-1.5 h-1.5 rounded-full bg-[#3f3f46]"></span>
                     <h3 class="text-xs font-bold text-[#71717a] uppercase tracking-widest">${mes}</h3>
-                </div>
-                <div class="space-y-2 lista-do-mes"></div>
-            `;
+                </div >
+    <div class="space-y-2 lista-do-mes"></div>
+`;
                 const containerMes = wrapper.querySelector('.lista-do-mes');
 
                 itensMes.forEach(prov => {
@@ -9855,33 +9862,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const txtDateSub = isLight ? 'text-gray-400' : 'text-[#525252]';
 
                     // Design Clean: Fundo escuro suave, sem borda externa, cantos arredondados
-                    card.className = `relative flex items-center ${bgCard} rounded-xl overflow-hidden mb-1`;
+                    card.className = `relative flex items - center ${bgCard} rounded - xl overflow - hidden mb - 1`;
 
                     card.innerHTML = `
-                    <div class="absolute left-0 top-0 bottom-0 w-1 ${barraLateral}"></div>
+    < div class="absolute left-0 top-0 bottom-0 w-1 ${barraLateral}" ></div >
 
-                    <div class="flex items-center w-full p-3 pl-4">
-                        <div class="flex flex-col items-center justify-center pr-4 border-r ${borderR}">
-                            <span class="text-lg font-bold ${txtTitle} leading-none tracking-tight">${dia}</span>
-                            <span class="text-[9px] font-bold ${txtDateSub} uppercase mt-0.5">${sem}</span>
-                        </div>
+        <div class="flex items-center w-full p-3 pl-4">
+            <div class="flex flex-col items-center justify-center pr-4 border-r ${borderR}">
+                <span class="text-lg font-bold ${txtTitle} leading-none tracking-tight">${dia}</span>
+                <span class="text-[9px] font-bold ${txtDateSub} uppercase mt-0.5">${sem}</span>
+            </div>
 
-                        <div class="flex-1 min-w-0 pl-4">
-                            <div class="flex items-center gap-2 mb-0.5">
-                                <span class="text-sm font-bold ${txtTitle} tracking-wide">${prov.symbol}</span>
-                            </div>
-                            <p class="text-[10px] ${txtSub} font-medium truncate">
-                                ${prov.qtdCarteira} cotas • ${tipoTexto}
-                            </p>
-                        </div>
+            <div class="flex-1 min-w-0 pl-4">
+                <div class="flex items-center gap-2 mb-0.5">
+                    <span class="text-sm font-bold ${txtTitle} tracking-wide">${prov.symbol}</span>
+                </div>
+                <p class="text-[10px] ${txtSub} font-medium truncate">
+                    ${prov.qtdCarteira} cotas • ${tipoTexto}
+                </p>
+            </div>
 
-                        <div class="text-right pr-1">
-                            <span class="block text-sm font-bold ${corTextoValor} tabular-nums tracking-tight">
-                                ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </span>
-                        </div>
-                    </div>
-                `;
+            <div class="text-right pr-1">
+                <span class="block text-sm font-bold ${corTextoValor} tabular-nums tracking-tight">
+                    ${prov.valorTotalCalculado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+            </div>
+        </div>
+`;
                     containerMes.appendChild(card);
                 });
 
@@ -10071,10 +10078,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bgEmpty = isLight ? 'bg-gray-100' : 'bg-[#151515]';
 
             objetivosLista.innerHTML = `
-            <div class="flex flex-col items-center justify-center pt-10 opacity-50 ${bgEmpty} rounded-3xl p-6">
+    < div class="flex flex-col items-center justify-center pt-10 opacity-50 ${bgEmpty} rounded-3xl p-6" >
                 <svg class="w-12 h-12 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012-2v2M7 7h10" /></svg>
                 <p class="text-sm text-gray-400">Nenhum FII encontrado na carteira.</p>
-            </div>`;
+            </div > `;
             if (objetivosTotalAtivos) objetivosTotalAtivos.textContent = "0";
             if (objetivosTotalInvestir) objetivosTotalInvestir.textContent = "R$ 0,00";
             return;
@@ -10128,11 +10135,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const corBarra = atingiu ? 'bg-yellow-500' : (isLight ? 'bg-gray-800' : 'bg-white');
                 const corTexto = atingiu ? 'text-yellow-500' : (isLight ? 'text-gray-800' : 'text-white');
 
-                const msgStatus = atingiu ? 'Concluido!' : `Faltam <b class="${corValue}">${cotasFaltantes}</b> cotas`;
-                const msgInvest = atingiu ? 'A bola de neve começou.' : `Falta investir <b class="${corValue}">${formatBRL(investimentoNecessario)}</b>`;
+                const msgStatus = atingiu ? 'Concluido!' : `Faltam < b class="${corValue}" > ${cotasFaltantes}</b > cotas`;
+                const msgInvest = atingiu ? 'A bola de neve começou.' : `Falta investir < b class="${corValue}" > ${formatBRL(investimentoNecessario)}</b > `;
 
                 htmlFinal += `
-            <div class="${bgCard} p-4 rounded-3xl relative overflow-hidden">
+    < div class="${bgCard} p-4 rounded-3xl relative overflow-hidden" >
                 <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-2xl ${bgIcon} flex items-center justify-center shadow-inner border ${borderIcon}">
@@ -10165,21 +10172,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${msgInvest}
                     </div>
                 </div>
-            </div>`;
+            </div > `;
             } else {
                 // Caso falte dados para calcular
                 htmlFinal += `
-            <div class="${bgCard} p-4 rounded-3xl relative overflow-hidden opacity-50">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl ${bgIcon} flex items-center justify-center border ${borderIcon}">
-                         <span class="text-xs font-bold ${corTitle} tracking-wider">${symbol.substring(0, 2)}</span>
-                    </div>
-                    <div>
-                        <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
-                        <span class="text-[10px] text-red-400 font-medium mt-1 block">Dados insuficientes para cálculo</span>
-                    </div>
-                </div>
-            </div>`;
+    < div class="${bgCard} p-4 rounded-3xl relative overflow-hidden opacity-50" >
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl ${bgIcon} flex items-center justify-center border ${borderIcon}">
+                <span class="text-xs font-bold ${corTitle} tracking-wider">${symbol.substring(0, 2)}</span>
+            </div>
+            <div>
+                <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
+                <span class="text-[10px] text-red-400 font-medium mt-1 block">Dados insuficientes para cálculo</span>
+            </div>
+        </div>
+            </div > `;
             }
         }
 
@@ -10269,7 +10276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const percent = Math.round((count / totalImoveis) * 100);
 
             return `
-            <div class="flex items-center justify-between">
+    < div class="flex items-center justify-between" >
                 <div class="flex items-center gap-1.5">
                     <span class="w-2.5 h-2.5 rounded-full shadow-sm" style="background-color: ${color}"></span>
                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${uf}</span>
@@ -10278,8 +10285,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="text-[9px] text-gray-600 font-bold">${percent}%</span>
                     <span class="text-[11px] font-bold text-white">${count}</span>
                 </div>
-            </div>
-        `;
+            </div >
+    `;
         }).join('');
 
         // 3. Lógica do "Ver Mais" (Lista de Imóveis)
@@ -10295,7 +10302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const borderCard = isLight ? 'border-gray-200' : 'border-white/5';
 
         const gerarCardImovel = (imovel) => `
-        <div class="${bgCard} rounded-xl p-2.5 shadow-sm flex flex-col justify-between relative overflow-hidden h-full">
+    < div class="${bgCard} rounded-xl p-2.5 shadow-sm flex flex-col justify-between relative overflow-hidden h-full" >
             <span class="text-[11px] font-bold ${txtTitle} tracking-tight leading-snug mb-2 relative z-10">${imovel.nome}</span>
             <div class="flex justify-between items-end relative z-10 border-t ${borderCard} pt-1.5 mt-auto">
                 <div class="flex flex-col min-w-[30%]">
@@ -10307,22 +10314,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="text-[9px] ${txtValue} font-bold leading-none truncate w-full">${imovel.abl || '-'}</span>
                 </div>
             </div>
-        </div>
+        </div >
     `;
 
         const htmlVisivel = imoveisIniciais.map(gerarCardImovel).join('');
         const htmlOculto = temMais ? imoveisOcultos.map(gerarCardImovel).join('') : '';
 
         const btnVerMaisHtml = temMais ? `
-        <button id="btn-toggle-imoveis" onclick="window.toggleListaImoveis(this)" class="w-full mt-2 py-3 ${bgCard} hover:${isLight ? 'bg-gray-200' : 'bg-[#1c1c1e]'} text-gray-400 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer border ${isLight ? 'border-gray-200' : 'border-transparent'}">
-            Ver todos os ${totalImoveis} imóveis
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" id="icon-toggle-imoveis" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
-        </button>
+    < button id = "btn-toggle-imoveis" onclick = "window.toggleListaImoveis(this)" class="w-full mt-2 py-3 ${bgCard} hover:${isLight ? 'bg-gray-200' : 'bg-[#1c1c1e]'} text-gray-400 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer border ${isLight ? 'border-gray-200' : 'border-transparent'}" >
+        Ver todos os ${totalImoveis} imóveis
+            < svg xmlns = "http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" id = "icon-toggle-imoveis" fill = "none" viewBox = "0 0 24 24" stroke = "currentColor" stroke - width="3" > <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg >
+        </button >
     ` : '';
 
         // 4. Injeta o HTML completo
         container.innerHTML = `
-        <div class="border-t ${isLight ? 'border-gray-200' : 'border-[#2C2C2E]'} pt-8 mb-10 mt-8">
+    < div class="border-t ${isLight ? 'border-gray-200' : 'border-[#2C2C2E]'} pt-8 mb-10 mt-8" >
             <h4 class="text-[10px] font-bold ${isLight ? 'text-gray-500' : 'text-gray-300'} uppercase tracking-widest mb-3 pl-1">Portfólio de Imóveis</h4>
 
             <div class="${bgCard} rounded-xl p-4 shadow-sm mb-4">
@@ -10354,7 +10361,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 ${btnVerMaisHtml}
             </div>
-        </div>
+        </div >
     `;
 
         // 5. Renderizar o Gráfico com Chart.js
@@ -10408,7 +10415,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             extras.classList.add('grid');
             btn.innerHTML = `
             Mostrar Menos
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+    < svg xmlns = "http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300 rotate-180" fill = "none" viewBox = "0 0 24 24" stroke = "currentColor" stroke - width="3" > <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg >
         `;
         } else {
             // Recolher
@@ -10423,7 +10430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             btn.innerHTML = `
             Ver todos os ${total} imóveis
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+    < svg xmlns = "http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" fill = "none" viewBox = "0 0 24 24" stroke = "currentColor" stroke - width="3" > <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg >
         `;
         }
     };

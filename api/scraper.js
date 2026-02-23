@@ -28,10 +28,17 @@ const client = axios.create({
  * fetchWithRetry: Tenta fazer a requisição via Axios.
  * Se falhar (timeout, erro 500, etc), tenta novamente usando backoff exponencial.
  */
-async function fetchWithRetry(url, retries = 3, baseBackoff = 1000) {
+async function fetchWithRetry(url, options = {}, retries = 3, baseBackoff = 1000) {
+    // Caso a chamada só passe retries no lugar de options
+    if (typeof options === 'number') {
+        baseBackoff = retries === 3 ? 1000 : retries;
+        retries = options;
+        options = {};
+    }
+
     for (let i = 0; i < retries; i++) {
         try {
-            return await client.get(url);
+            return await client.get(url, options);
         } catch (err) {
             const status = err.response ? err.response.status : null;
             // Se for 404, não adianta tentar novamente (página inexistente)

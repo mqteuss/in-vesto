@@ -4202,16 +4202,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const preco = item.preco || '';
                     const initials = ticker.substring(0, 2);
                     const colorVar = isAlta ? 'text-emerald-400' : 'text-red-400';
-                    const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ticker}.png`;
+                    const logoUrlStr = item.logo_url || null;
+
+                    let iconeHtml = '';
+                    if (logoUrlStr) {
+                        iconeHtml = `
+                            <img src="${logoUrlStr}" alt="${ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                                 onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                            <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${initials}</div>
+                        `;
+                    } else {
+                        iconeHtml = `
+                            <div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${initials}</div>
+                        `;
+                    }
 
                     return `
                         <div class="p-2 rounded-xl hover:bg-white/[0.03] cursor-pointer transition-colors active:scale-[0.98]"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
                             <div class="flex items-center gap-2 mb-1">
                                 <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
-                                    <img src="${iconUrl}" alt="${ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
-                                         onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                                    <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${initials}</div>
+                                    ${iconeHtml}
                                 </div>
                                 <span class="text-[12px] font-bold text-white">${ticker}</span>
                             </div>
@@ -6691,14 +6702,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const vRoe = parseNumberStr(item.roe), vDy = parseNumberStr(item.dy);
                         const vVm = parseNumberStr(item.val_mercado), vMl = parseNumberStr(item.margem_liquida);
 
+                        // Extração dinâmica do logo, se existir
+                        const iconeComparativoHtml = item.logo_url
+                            ? `<img src="${item.logo_url}" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                                     onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                               <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>`
+                            : `<div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>`;
+
                         return `
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
                                 <div class="flex items-center gap-3">
                                     <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                                        <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
-                                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
+                                        ${iconeComparativoHtml}
                                     </div>
                                     <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>
@@ -6734,12 +6750,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                         let valTipo = item.tipo && item.tipo !== '-' ? item.tipo : '-';
                         let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
 
+                        // FII Comparativo sem Github logic
+                        const iconeComparativoFiiHtml = item.logo_url
+                            ? `<img src="${item.logo_url}" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                                     onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                               <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>`
+                            : `<div class="w-full h-full bg-[#0a0a0a] flex items-center justify-center group-hover:bg-[#111] transition-colors">
+                                  <span class="text-[8px] font-bold text-gray-400 tracking-wider">${item.ticker.substring(0, 2)}</span>
+                               </div>`;
+
                         return `
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-lg bg-[#0a0a0a] flex items-center justify-center flex-shrink-0 group-hover:bg-[#111] transition-colors">
-                                        <span class="text-[8px] font-bold text-gray-400 tracking-wider">${item.ticker.substring(0, 2)}</span>
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                                        ${iconeComparativoFiiHtml}
                                     </div>
                                     <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>

@@ -283,8 +283,8 @@ function criarCardElemento(ativo, dados) {
     const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ativo.symbol}.png`;
     const iconHtml = !ehFii
         ? `<img src="${iconUrl}" alt="${ativo.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-           <div class="hidden w-full h-full flex items-center justify-center bg-[#1C1C1E] rounded-xl text-xs font-bold text-gray-400 tracking-wider absolute inset-0 z-0">${sigla}</div>`
-        : `<div class="w-full h-full flex items-center justify-center bg-[#1C1C1E] rounded-xl text-xs font-bold text-gray-400 tracking-wider">${sigla}</div>`;
+           <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-xs font-bold text-gray-500 tracking-wider absolute inset-0 z-0">${sigla}</div>`
+        : `<div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-xs font-bold text-gray-500 tracking-wider">${sigla}</div>`;
 
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
     const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
@@ -2297,7 +2297,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let tickersHtml = '';
                 if (foundTickers.length > 0) {
                     foundTickers.forEach(ticker => {
-                        tickersHtml += `<span class="news-ticker-tag text-[8px] font-bold py-[1px] px-1.5 bg-transparent text-blue-400 rounded border border-[#2C2C2E] mr-1 mb-1 inline-block active:bg-blue-900/30 transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                        tickersHtml += `<span class="news-ticker-tag text-[7px] font-bold py-[0.5px] px-1 bg-transparent text-blue-400 rounded-sm border border-[#2C2C2E] mr-1 mb-1 inline-block active:bg-blue-900/30 transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
                     });
                 }
 
@@ -4211,7 +4211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
                                     <img src="${iconUrl}" alt="${ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
                                          onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                                    <div class="hidden w-full h-full flex items-center justify-center bg-[#1C1C1E] rounded-lg text-[8px] font-bold text-gray-400 absolute inset-0 z-0">${initials}</div>
+                                    <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${initials}</div>
                                 </div>
                                 <span class="text-[12px] font-bold text-white">${ticker}</span>
                             </div>
@@ -6249,8 +6249,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const iconHtml = !ehFii
             ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-2xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-           <div class="hidden w-full h-full flex items-center justify-center text-base font-bold text-gray-400 tracking-wider absolute inset-0 z-0 bg-[#1C1C1E] rounded-2xl">${sigla}</div>`
-            : `<div class="w-full h-full flex items-center justify-center text-base font-bold text-gray-400 tracking-wider bg-[#1C1C1E] rounded-2xl">${sigla}</div>`;
+           <div class="hidden w-full h-full flex items-center justify-center text-base font-bold text-gray-500 tracking-wider absolute inset-0 z-0 bg-[#0a0a0a] rounded-2xl">${sigla}</div>`
+            : `<div class="w-full h-full flex items-center justify-center text-base font-bold text-gray-500 tracking-wider bg-[#0a0a0a] rounded-2xl">${sigla}</div>`;
 
         if (iconContainer) {
             iconContainer.innerHTML = `
@@ -6675,8 +6675,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
-                                        <span class="text-[8px] font-bold text-white tracking-wider">${item.ticker.substring(0, 2)}</span>
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                                        <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
                                     </div>
                                     <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>
@@ -6716,8 +6718,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-lg bg-[#1C1C1E] flex items-center justify-center border border-white/5 flex-shrink-0 group-hover:bg-[#252525] transition-colors">
-                                        <span class="text-[8px] font-bold text-white tracking-wider">${item.ticker.substring(0, 2)}</span>
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                                        <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
+                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
                                     </div>
                                     <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>

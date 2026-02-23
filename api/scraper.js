@@ -24,6 +24,28 @@ const client = axios.create({
     timeout: 8000
 });
 
+/**
+ * fetchWithRetry: Tenta fazer a requisição via Axios.
+ * Se falhar (timeout, erro 500, etc), tenta novamente usando backoff exponencial.
+ */
+async function fetchWithRetry(url, retries = 3, baseBackoff = 1000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await client.get(url);
+        } catch (err) {
+            const status = err.response ? err.response.status : null;
+            // Se for 404, não adianta tentar novamente (página inexistente)
+            if (status === 404 || i === retries - 1) {
+                throw err;
+            }
+            // Espera antes da próxima tentativa (backoff exponencial: 1s, 2s, 4s...)
+            const delay = baseBackoff * Math.pow(2, i);
+            console.log(`[RETRY] Tentativa ${i + 1} falhou para ${url}: ${err.message}. Retentando em ${delay}ms...`);
+            await new Promise(res => setTimeout(res, delay));
+        }
+    }
+}
+
 // Heurística: tickers que terminam em 11/12 são FIIs, EXCETO Units conhecidas
 const KNOWN_UNITS = new Set(['KLBN11', 'TAEE11', 'BPAC11', 'SANB11', 'RNEW11', 'ALUPL11', 'ENGI11', 'SAPR11', 'TIMS11', 'SULA11']);
 const guessType = (ticker) => {
@@ -96,7 +118,7 @@ async function scrapeFundamentos(ticker) {
         const urlAcao = `https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`;
 
         const fetchHtml = async (url, tipo) => {
-            const res = await client.get(url);
+            const res = await fetchWithRetry(url);
             if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
             if (!res.data.includes('cotacao') && !res.data.includes('Cotação')) throw new Error('Página inválida');
             return { html: res.data, tipo };
@@ -634,7 +656,7 @@ async function scrapeRankings() {
     };
 
     try {
-        const res = await client.get('https://investidor10.com.br/');
+        const res = await fetchWithRetry('https://investidor10.com.br/');
         if (res.status !== 200) return resultados;
         const $ = cheerio.load(res.data);
 
@@ -668,7 +690,7 @@ async function scrapeAsset(ticker) {
 
         const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
 
-        const { data } = await client.get(url, {
+        const { data } = await fetchWithRetry(url, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Referer': 'https://statusinvest.com.br/',
@@ -680,7 +702,7 @@ async function scrapeAsset(ticker) {
 
         if (earnings.length === 0 && type === 'acao') {
             const urlFii = `https://statusinvest.com.br/fii/companytickerprovents?ticker=${t}&chartProventsType=2`;
-            const { data: dataFii } = await client.get(urlFii, {
+            const { data: dataFii } = await fetchWithRetry(urlFii, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Referer': 'https://statusinvest.com.br/' }
             }).catch(() => ({ data: {} }));
             if ((dataFii.assetEarningsModels || []).length > 0) {
@@ -722,7 +744,7 @@ async function scrapeAsset(ticker) {
 async function scrapeIpca() {
     try {
         const url = 'https://investidor10.com.br/indices/ipca/';
-        const { data } = await client.get(url);
+        const { data } = await fetchWithRetry(url);
         const $ = cheerio.load(data);
 
         const historico = [];
@@ -815,11 +837,11 @@ async function fetchYahooFinance(ticker, rangeFilter = '1A') {
 
         let data;
         try {
-            ({ data } = await client.get(buildUrl('query1'), {
+            ({ data } = await fetchWithRetry(buildUrl('query1'), {
                 headers: { 'Accept': 'application/json' }
             }));
         } catch (e) {
-            ({ data } = await client.get(buildUrl('query2'), {
+            ({ data } = await fetchWithRetry(buildUrl('query2'), {
                 headers: { 'Accept': 'application/json' }
             }));
         }

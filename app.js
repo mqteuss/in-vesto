@@ -7011,8 +7011,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             }
                         },
                         scales: {
-                            x: { grid: { display: false }, ticks: { color: textColor, maxRotation: 0, font: { size: 9 } } },
-                            y: { grid: { color: gridColor }, ticks: { color: textColor, callback: yCallback || (v => 'R$ ' + abbrevNum(v)), font: { size: 9 } } }
+                            x: { display: false },
+                            y: { display: false }
                         }
                     });
 
@@ -7051,8 +7051,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             destroyChart('lucro_cotacao');
                             const years = Object.keys(cf.lucro_cotacao).sort();
                             const opts = baseOpts();
-                            opts.scales.y = { position: 'left', grid: { color: gridColor }, ticks: { color: textColor, callback: v => 'R$ ' + abbrevNum(v), font: { size: 9 } } };
-                            opts.scales.y1 = { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#a855f7', callback: v => 'R$ ' + v.toFixed(0), font: { size: 9 } } };
+                            opts.scales.y = { display: false };
+                            opts.scales.y1 = { display: false };
                             opts.plugins.tooltip.callbacks.label = ctx => {
                                 const prefix = ctx.dataset.yAxisID === 'y1' ? 'R$ ' : 'R$ ';
                                 return ` ${ctx.dataset.label}: ${prefix}${abbrevNum(ctx.parsed.y)}`;

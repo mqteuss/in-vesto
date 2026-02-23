@@ -2273,15 +2273,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         let isGlobalFirstItem = true;
 
         Object.keys(grupos).forEach(dataLabel => {
-            // Header
+            // Header (Agora ponta a ponta com -mx-4 px-5)
             const header = document.createElement('div');
-            header.className = 'sticky top-0 z-10 bg-black/95 backdrop-blur-md py-3 px-1 border-b border-neutral-800 mb-2';
-            header.innerHTML = `<h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${dataLabel}</h3>`;
+            header.className = 'sticky top-0 z-10 bg-[#0a0a0a]/95 backdrop-blur-md py-2 px-5 border-b border-[#1F1F1F] mb-0 -mx-4';
+            header.innerHTML = `<h3 class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">${dataLabel}</h3>`;
             fragment.appendChild(header);
 
-            // Lista
+            // Lista (Margem negativa total para borda ponta a ponta)
             const listaGrupo = document.createElement('div');
-            listaGrupo.className = 'mb-8';
+            listaGrupo.className = 'mb-6 -mx-4';
 
             grupos[dataLabel].forEach((article, index) => {
                 const sourceName = article.sourceName || 'Fonte';
@@ -2291,32 +2291,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const safeLabel = dataLabel.replace(/[^a-zA-Z0-9]/g, '');
                 const drawerId = `news-drawer-${safeLabel}-${index}`;
 
-                // Tickers
+                // Tickers (Badges mais finos e discretos)
                 const tickerRegex = /[A-Z]{4}(3|4|5|6|11)/g;
                 const foundTickers = [...new Set(article.title.match(tickerRegex) || [])];
                 let tickersHtml = '';
                 if (foundTickers.length > 0) {
                     foundTickers.forEach(ticker => {
-                        tickersHtml += `<span class="news-ticker-tag text-[10px] py-0.5 px-2 bg-neutral-800 text-neutral-400 rounded-md border border-neutral-700 mr-2 mb-1 inline-block active:bg-neutral-800 active:text-neutral-400 active:border-neutral-700 transition-colors" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                        tickersHtml += `<span class="news-ticker-tag text-[9px] py-[2px] px-2 bg-transparent text-blue-400 rounded-full border border-[#2C2C2E] mr-2 mb-1 inline-block active:bg-blue-900/30 transition-colors" data-action="view-ticker" data-symbol="${ticker}">#${ticker}</span>`;
                     });
                 }
 
                 const item = document.createElement('div');
 
-                let itemWrapperClass = 'group relative transition-all news-card-interactive ';
+                let itemWrapperClass = 'group relative transition-all news-card-interactive px-4 ';
                 let titleClass = 'font-bold text-gray-100 leading-snug mb-2 group-hover:text-white transition-colors ';
                 let badgeDestaque = '';
 
                 if (isGlobalFirstItem) {
-                    // DESTAQUE: Mudado de purple para blue
-                    itemWrapperClass += 'bg-gradient-to-r from-blue-900/30 to-transparent border-l-[3px] border-blue-500 py-1 my-2 rounded-r-lg';
-                    titleClass += 'text-base';
-                    // BADGE: Mudado de bg-purple-600 para bg-blue-600
-                    badgeDestaque = '<span class="inline-block bg-blue-600 text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
+                    // DESTAQUE
+                    itemWrapperClass += 'bg-gradient-to-r from-blue-900/20 to-transparent border-l-[3px] border-blue-500 py-3 my-2 rounded-r-lg';
+                    titleClass += 'text-[15px]';
+                    badgeDestaque = '<span class="inline-block bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-sm mb-2">Destaque</span>';
                     isGlobalFirstItem = false;
                 } else {
-                    // NORMAL
-                    itemWrapperClass += 'border-b border-neutral-800 last:border-0 hover:bg-neutral-900/40';
+                    // NORMAL (Divisória ponta a ponta mudando a cor da borda para #1F1F1F)
+                    itemWrapperClass += 'border-b border-[#1F1F1F] last:border-0 hover:bg-white/[0.02] py-3';
                     titleClass += 'text-sm';
                 }
 
@@ -2324,13 +2323,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 item.setAttribute('data-action', 'toggle-news');
                 item.setAttribute('data-target', drawerId);
 
-                // BOTÃO LER NOTÍCIA: Mudado de purple para blue
+                // Ícone ajustado de w-10 h-10 para w-6 h-6 para ficar menos "pesado" visualmente
                 item.innerHTML = `
-                <div class="flex items-start gap-4 py-4 px-3 cursor-pointer">
-                    <div class="flex-shrink-0 mt-1.5">
+                <div class="flex items-start gap-3 py-1 cursor-pointer">
+                    <div class="flex-shrink-0 mt-0.5">
                         <img src="${faviconUrl}" alt="${sourceName}" 
-                             class="w-10 h-10 rounded-2xl bg-[#1C1C1E] object-contain p-0.5 border border-neutral-800 transition-all"
-                             loading="lazy"
+                             class="w-6 h-6 rounded bg-black object-contain p-0.5 border border-[#2C2C2E]"
+                             loading="lazy" decoding="async"
                              onerror="this.src='https://www.google.com/s2/favicons?domain=google.com&sz=64';" 
                         />
                     </div>
@@ -2338,9 +2337,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="flex-1 min-w-0 pointer-events-none">
                         ${badgeDestaque}
                         <div class="flex items-center gap-2 mb-1.5">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">${sourceName}</span>
-                            <span class="text-[10px] text-neutral-600">•</span>
-                            <span class="text-[10px] text-neutral-500">${horaPub}</span>
+                            <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400">${sourceName}</span>
+                            <span class="text-[9px] text-gray-600">•</span>
+                            <span class="text-[9px] text-gray-500">${horaPub}</span>
                         </div>
 
                         <h4 class="${titleClass}">
@@ -2352,20 +2351,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </div>
 
-                    <div class="text-neutral-600 group-hover:text-neutral-400 mt-2 transition-colors">
-                         <svg class="card-arrow-icon w-5 h-5 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <div class="text-gray-600 group-hover:text-gray-400 mt-1 transition-colors">
+                         <svg class="card-arrow-icon w-4 h-4 transition-transform duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
                     </div>
                 </div>
 
                 <div id="${drawerId}" class="card-drawer">
-                    <div class="drawer-content px-3 pb-5 pl-14">
-                        <div class="text-sm text-neutral-400 leading-relaxed border-l-2 border-neutral-700 pl-4">
+                    <div class="drawer-content pb-4 pl-9 pr-2">
+                        <div class="text-[13px] text-gray-400 leading-relaxed border-l-2 border-[#2C2C2E] pl-3">
                             ${article.summary ? article.summary : 'Resumo não disponível.'}
                         </div>
-                        <div class="mt-4 pl-4">
-                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-white hover:text-gray-200 transition-colors bg-white/10 border border-white/10 px-3 py-1.5 rounded-md hover:bg-white/20">
+                        <div class="mt-4 pl-3">
+                            <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-white transition-colors bg-[#1C1C1E] border border-[#2C2C2E] px-3 py-1.5 rounded-lg active:scale-95">
                                 Ler notícia completa
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                             </a>

@@ -4134,7 +4134,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = response;
+        const result = response.json;
         if (result) {
             const ttl = isB3Open() ? CACHE_PROXIMO_PROVENTO_ABERTO : CACHE_PROXIMO_PROVENTO_FECHADO;
             await setCache(cacheKey, result, ttl);
@@ -4156,7 +4156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = response;
+        const result = response.json;
         if (result) {
             const ttl = isB3Open() ? CACHE_FUNDAMENTOS_ABERTO : CACHE_FUNDAMENTOS_FECHADO;
             await setCache(cacheKey, result, ttl);
@@ -4200,11 +4200,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderSkeletonRankings(containerAltas);
                 renderSkeletonRankings(containerBaixas);
 
-                data = await fetchBFF('/api/scraper', {
+                const response = await fetchBFF('/api/scraper', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mode: 'rankings' })
                 });
+                data = response.json;
                 if (data) await setCache(cacheKey, data, CACHE_TTL);
             }
 
@@ -5048,12 +5049,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             mode: 'cotacao_historica',
             payload: { ticker, range } // Envia o range
         };
-        const data = await fetchBFF('/api/scraper', {
+        const response = await fetchBFF('/api/scraper', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return data.json;
+        return response.json;
     }
 
     async function fetchCotacaoHistorica(symbol) {
@@ -8232,7 +8233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response;
+        return response.json;
     }
 
     async function callScraperProventosCarteiraAPI(fiiList) {
@@ -8242,7 +8243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response;
+        return response.json;
     }
 
     async function callScraperHistoricoPortfolioAPI(fiiList) {
@@ -8252,7 +8253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        return response;
+        return response.json;
     }
 
     function showAuthLoading(isLoading) {

@@ -1117,7 +1117,7 @@ input:-webkit-autofill:active {
     font-weight: 500;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     background-color: #121212 !important;
-    border: 1px solid #2C2C2E !important;
+    border: none !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
@@ -1128,7 +1128,7 @@ input:-webkit-autofill:active {
 
 .compact-search-input:focus {
     background-color: #1a1a1c !important;
-    border-color: #4b5563 !important;
+    border: none !important;
     outline: none;
     box-shadow: 0 0 0 4px rgba(75, 85, 99, 0.1);
 }

@@ -5172,6 +5172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // Função orquestradora de dados (Cache vs API)
+    window.carregarDadosGrafico = carregarDadosGrafico;
     async function carregarDadosGrafico(range, symbol) {
         const cacheKey = `${symbol}_${range}`;
         // FIX: Captura o token atual — se mudar antes da resposta, o modal foi fechado

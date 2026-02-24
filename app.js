@@ -306,8 +306,8 @@ function criarCardElemento(ativo, dados) {
     const iconUrl = `https://raw.githubusercontent.com/mqteuss/logos_b3/main/${ativo.symbol}.png`;
     const iconHtml = !ehFii
         ? `<img src="${iconUrl}" alt="${ativo.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-           <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-xs font-bold text-gray-500 tracking-wider absolute inset-0 z-0">${sigla}</div>`
-        : `<div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-xs font-bold text-gray-500 tracking-wider">${sigla}</div>`;
+           <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-xl text-xs font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${sigla}</div>`
+        : `<div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-xl text-xs font-bold text-gray-200 tracking-wider">${sigla}</div>`;
 
     const bgBadge = lucroPrejuizo >= 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500';
     const plArrow = lucroPrejuizo >= 0 ? '▲' : '▼';
@@ -4252,15 +4252,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const logoUrlStr = `https://raw.githubusercontent.com/mqteuss/logos_b3/main/${ticker}.png`;
 
                     let iconeHtml = '';
-                    if (logoUrlStr) {
+                    if (logoUrlStr && isAcao(ticker)) {
                         iconeHtml = `
                             <img src="${logoUrlStr}" alt="${ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
                                  onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                            <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${initials}</div>
+                            <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-lg text-[9px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     } else {
                         iconeHtml = `
-                            <div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${initials}</div>
+                            <div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-lg text-[9px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     }
 
@@ -6308,8 +6308,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const iconHtml = !ehFii
             ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-2xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
-           <div class="hidden w-full h-full flex items-center justify-center text-base font-bold text-gray-500 tracking-wider absolute inset-0 z-0 bg-[#0a0a0a] rounded-2xl">${sigla}</div>`
-            : `<div class="w-full h-full flex items-center justify-center text-base font-bold text-gray-500 tracking-wider bg-[#0a0a0a] rounded-2xl">${sigla}</div>`;
+           <div class="hidden w-full h-full flex items-center justify-center text-base font-bold text-gray-200 border border-[#222] tracking-wider absolute inset-0 z-0 bg-[#0a0a0a] rounded-2xl">${sigla}</div>`
+            : `<div class="w-full h-full flex items-center justify-center text-base font-bold text-gray-200 border border-[#222] tracking-wider bg-[#0a0a0a] rounded-2xl">${sigla}</div>`;
 
         if (iconContainer) {
             iconContainer.innerHTML = `
@@ -6761,7 +6761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                                         <img src="https://raw.githubusercontent.com/mqteuss/logos_b3/main/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
                                              onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
+                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-lg text-[9px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
                                     </div>
                                     <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>
@@ -6801,12 +6801,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden group-hover:bg-[#111] transition-colors">
-                                        <img src="https://raw.githubusercontent.com/mqteuss/logos_b3/main/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
-                                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                                        <div class="hidden w-full h-full bg-[#0a0a0a] flex items-center justify-center z-0 absolute inset-0">
-                                            <span class="text-[8px] font-bold text-gray-400 tracking-wider">${item.ticker.substring(0, 2)}</span>
-                                        </div>
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0a0a0a] border border-[#222] group-hover:bg-[#111] transition-colors">
+                                        <span class="text-[9px] font-bold text-gray-200 tracking-wider">${item.ticker.substring(0, 2)}</span>
                                     </div>
                                     <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
                                 </div>

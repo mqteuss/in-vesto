@@ -10411,10 +10411,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const htmlOculto = temMais ? imoveisOcultos.map(gerarCardImovel).join('') : '';
 
         const btnVerMaisHtml = temMais ? `
-    < button id = "btn-toggle-imoveis" onclick = "window.toggleListaImoveis(this)" class="w-full mt-2 py-3 ${bgCard} hover:${isLight ? 'bg-gray-200' : 'bg-[#1c1c1e]'} text-gray-400 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer border ${isLight ? 'border-gray-200' : 'border-transparent'}" >
+    <button id="btn-toggle-imoveis" onclick="window.toggleListaImoveis(this)" class="w-full mt-2 py-3 ${bgCard} hover:${isLight ? 'bg-gray-200' : 'bg-[#1c1c1e]'} text-gray-400 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer border ${isLight ? 'border-gray-200' : 'border-transparent'}">
         Ver todos os ${totalImoveis} imóveis
-            < svg xmlns = "http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" id = "icon-toggle-imoveis" fill = "none" viewBox = "0 0 24 24" stroke = "currentColor" stroke - width="3" > <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg >
-        </button >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" id="icon-toggle-imoveis" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        </button>
     ` : '';
 
         // 4. Injeta o HTML completo

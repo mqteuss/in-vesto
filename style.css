@@ -827,26 +827,18 @@ input:-webkit-autofill:active {
 
 #resumo-carteira-card {
     position: relative;
-    overflow: hidden;
-
-    /* CORREÇÃO VISUAL: Gradiente Sutil Estático (Spotlight) 
-       Dá volume sem pesar o processador como o blur fazia */
-    background: radial-gradient(120% 120% at 80% -10%, #1c1c22 0%, #000000 100%);
-
-    /* Borda sutilmente mais clara para destacar do fundo preto do app */
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 2rem;
-
-    /* Sombra interna para dar acabamento de vidro */
-    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-
-    min-height: 220px;
-    /* Um pouco mais alto para caber a fonte grande */
-    margin-bottom: 1.5rem;
+    min-height: 180px;
+    margin-bottom: 1rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     transition: transform 0.3s ease;
+
+    /* FLAT NATIVE PREMIUM: Removed all card-like enclosures */
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
 }
 
 /* REMOVER EFEITOS DE AURORA/GLOW (Performance: Otimização Crítica) */
@@ -861,30 +853,26 @@ input:-webkit-autofill:active {
     grid-template-columns: 1fr 1px 1fr 1px 1fr;
     align-items: center;
 
-    /* REMOVIDO: backdrop-filter e transparência */
-    /* ADICIONADO: Cor sólida levemente mais clara que o card para contraste */
-    background-color: #141414;
+    /* FLAT NATIVE: Seamless integration, no background */
+    background-color: transparent;
+    border-top: none;
 
-    border-top: 1px solid #27272a;
-
-    /* Ajustes de margem originais mantidos */
-    margin: 1rem -1.25rem -1.25rem -1.25rem;
-    padding: 1rem 0;
+    margin: 1.5rem 0 0 0;
+    padding: 0;
 }
 
-/* Ajuste no divisor vertical para combinar com o tema flat */
+/* Ajuste no divisor vertical para combinar com o tema flat minimalista */
 .premium-divider {
     width: 1px;
-    height: 60%;
+    height: 35%;
     background: #27272a;
-    /* Cor sólida em vez de gradiente */
 }
 
 .premium-value-lg {
-    font-size: 3.15rem;
+    font-size: 3.4rem;
     line-height: 1;
     font-weight: 800;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.04em;
     font-family: 'Plus Jakarta Sans', sans-serif;
     background: linear-gradient(180deg, #ffffff 20%, #94a3b8 100%);
     -webkit-background-clip: text;
@@ -901,7 +889,8 @@ input:-webkit-autofill:active {
 .premium-content {
     position: relative;
     z-index: 10;
-    padding: 1.25rem;
+    padding: 1rem 0;
+    /* Zerado as bordas laterais para aproveitar mais espaço e soltar o conteúdo */
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -2527,6 +2516,7 @@ body.light-mode .floating-input:-webkit-autofill {
         margin: 0 auto;
     }
 }
+
 /* ========================================================= */
 /* SKELETON LOADERS (SHIMMER EFFECT) */
 /* ========================================================= */
@@ -2534,12 +2524,14 @@ body.light-mode .floating-input:-webkit-autofill {
 .skeleton {
     position: relative;
     overflow: hidden;
-    background-color: #27272a; /* Zinc-800 Base Escura */
+    background-color: #27272a;
+    /* Zinc-800 Base Escura */
     border-radius: 0.5rem;
 }
 
 body.light-mode .skeleton {
-    background-color: #e4e4e7; /* Zinc-200 Base Clara */
+    background-color: #e4e4e7;
+    /* Zinc-200 Base Clara */
 }
 
 .skeleton::after {

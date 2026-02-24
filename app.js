@@ -6755,8 +6755,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const vVm = parseNumberStr(item.val_mercado), vMl = parseNumberStr(item.margem_liquida);
 
                         return `
-                        <tr class="hover:bg-white/[0.03] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                            <td class="p-4 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-transparent transition-colors z-10" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">
+                        <tr class="hover:bg-white/[0.03] active:bg-white/[0.05] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                            <td class="p-4 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">
                                 <div class="flex items-center gap-4">
                                     <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner">
                                         <img src="https://raw.githubusercontent.com/mqteuss/logos_b3/main/${item.ticker}.png" alt="${item.ticker}" width="32" height="32" loading="lazy" decoding="async" class="w-full h-full object-contain relative z-10"
@@ -6798,8 +6798,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
 
                         return `
-                        <tr class="hover:bg-white/[0.03] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                            <td class="p-4 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-transparent transition-colors z-10" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">
+                        <tr class="hover:bg-white/[0.03] active:bg-white/[0.05] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                            <td class="p-4 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">
                                 <div class="flex items-center gap-4">
                                     <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner">
                                         <span class="text-[10px] font-bold text-gray-200 tracking-wider">${item.ticker.substring(0, 2)}</span>

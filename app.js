@@ -4268,23 +4268,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
 
                     return `
-                        <div class="p-3 hover:bg-white/[0.03] active:bg-white/[0.05] cursor-pointer transition-colors"
+                        <div class="px-4 py-3 hover:bg-white/[0.03] active:bg-white/[0.05] cursor-pointer transition-colors flex items-center justify-between group"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
-                            <div class="flex items-center gap-4 mb-1">
-                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner group-hover:border-white/10 transition-colors">
                                     ${iconeHtml}
                                 </div>
-                                <span class="text-[13px] font-medium text-white tracking-tight">${ticker}</span>
+                                <span class="text-[13px] font-bold text-gray-200 tracking-tight">${ticker}</span>
                             </div>
-                            <div class="flex items-center gap-2 pl-12">
-                                <span class="text-[12px] font-medium text-gray-400 tabular-nums">${preco}</span>
-                                <span class="text-[11px] font-bold ${colorVar}">${variacao}</span>
+                            <div class="flex flex-col items-end gap-0.5">
+                                <span class="text-[12px] font-bold ${colorVar} tabular-nums tracking-wide">${variacao}</span>
+                                <span class="text-[10px] font-medium text-gray-500 tabular-nums">${preco}</span>
                             </div>
                         </div>`;
                 }).join('');
 
                 // Apply the divide-y wrapper layout to the container dynamically
-                el.classList.add('divide-y', 'divide-white/[0.02]', 'rounded-2xl', 'overflow-hidden');
+                el.classList.add('divide-y', 'divide-white/[0.04]');
             };
 
             renderLista('rankings-altas', data.altas, 'altas');

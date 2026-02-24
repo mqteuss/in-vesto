@@ -257,17 +257,17 @@
                     class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll active">
                     <div class="p-4">
 
-                        <div class="relative z-20 mb-6">
+                        <div class="relative z-20 mb-3">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <h1 class="app-page-title">VISÃO GERAL</h1>
-                                    <p class="text-xs text-gray-500 font-medium mt-1">Seu Patrimônio</p>
+                                    <p class="text-[11px] text-gray-500 font-medium mt-0.5">Seu Patrimônio</p>
                                 </div>
 
                                 <button id="btn-notifications"
                                     class="relative mt-1 p-1 text-gray-400 hover:text-white transition-colors focus:outline-none"
                                     title="Notificações">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none"
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -590,28 +590,37 @@
                 <div id="tab-carteira"
                     class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll">
                     <div class="p-4">
-                        <div class="flex justify-between items-center mb-6">
+                        <div class="flex justify-between items-center mb-3">
                             <h1 class="app-page-title">PORTFÓLIO</h1>
 
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1">
                                 <button id="refresh-button"
-                                    class="p-2 text-gray-500 hover:text-white rounded-full transition-all duration-200 hover:bg-gray-800"
+                                    class="p-1.5 text-gray-500 hover:text-white rounded-full transition-all duration-200 hover:bg-gray-800"
                                     title="Atualizar dados">
-                                    <svg class="w-5 h-5">
+                                    <svg class="w-4 h-4">
                                         <use href="#ico-refresh" />
+                                    </svg>
+                                </button>
+                                <button id="settings-button"
+                                    class="p-1.5 text-gray-500 hover:text-white rounded-full transition-all duration-200 hover:bg-gray-800 focus:outline-none"
+                                    title="Configurações">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                 </button>
                             </div>
                         </div>
 
-                        <div class="compact-search-wrapper mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="compact-search-icon" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input type="text" id="carteira-search-input" placeholder="Buscar ativo..."
-                                class="compact-search-input">
+                        <!-- PESQUISA COMPACTA (ALinhada no topo) -->
+                        <div class="flex items-center gap-3 mb-4 sticky top-0 bg-black/90 backdrop-blur-md z-10 py-2">
+                            <div class="relative flex-1">
+                                <input type="text" id="carteira-search-input" placeholder="Buscar ativo..."
+                                    class="compact-search-input">
+                            </div>
                         </div>
 
                         <div id="lista-carteira" class="space-y-4"></div>
@@ -664,14 +673,14 @@
                 <div id="tab-noticias"
                     class="tab-content w-full flex-shrink-0 h-full overflow-y-auto pb-32 custom-scroll">
                     <div class="p-4">
-                        <div class="flex justify-between items-center mb-6">
+                        <div class="flex justify-between items-center mb-3">
                             <h1 class="app-page-title">MERCADO</h1>
                             <button id="refresh-noticias-button"
-                                class="p-2 text-gray-500 hover:text-white rounded-full transition-all duration-200 hover:bg-gray-800"
+                                class="p-1.5 text-gray-500 hover:text-white rounded-full transition-all duration-200 hover:bg-gray-800"
                                 title="Atualizar notícias">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round" class="w-5 h-5">
+                                    stroke-linejoin="round" class="w-4 h-4">
                                     <path d="M21 2v6h-6"></path>
                                     <path d="M3 22v-6h6"></path>
                                     <path d="M21 13a9 9 0 0 1-9 9H3"></path>

@@ -1280,10 +1280,10 @@ input:-webkit-autofill:active {
    CONFIGURAÇÕES & PAGE TITLES
    ========================================= */
 .app-page-title {
-    font-size: 32px;
+    font-size: 24px;
     font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
+    letter-spacing: -0.02em;
+    line-height: 1;
     text-transform: uppercase;
     display: inline-block;
     background: linear-gradient(180deg, #FFFFFF 20%, #9CA3AF 100%);

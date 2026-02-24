@@ -827,36 +827,17 @@ input:-webkit-autofill:active {
 
 #resumo-carteira-card {
     position: relative;
-    min-height: 180px;
-
-    /* NATIVE EDGE-TO-EDGE INTEGRATION */
-    /* Break out of the parent .p-4 padding block */
-    margin-top: -1.5rem;
-    margin-left: -1rem;
-    margin-right: -1rem;
-    margin-bottom: 1.5rem;
-
-    /* Re-inject inner padding to protect content */
-    padding-top: 1.5rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
-
+    min-height: 160px;
+    padding: 0 1rem;
+    /* Re-inject safe boundaries for content */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     transition: transform 0.3s ease;
 
-    /* Matches standard dashboard boxes or navbar top edge */
-    background: #141414;
+    background: transparent;
     border: none;
-    border-radius: 0 0 2rem 2rem;
-    /* Flat top, rounded bottom */
-    /* Subtle inner glow to slightly detach from the pure black background */
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05),
-        0 4px 20px rgba(0, 0, 0, 0.4);
-
-    /* Optional edge highlight for depth */
-    border-top: none;
+    box-shadow: none;
 }
 
 /* REMOVER EFEITOS DE AURORA/GLOW (Performance: Otimização Crítica) */

@@ -9434,10 +9434,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             return null;
         };
 
+        // Encontra a data de início da carteira (o menor ano-mês com saldo ou provento)
+        let earliestKey = null;
+        const allKeys = [...Object.keys(mapPatrimonio), ...Object.keys(mapProventos)];
+
+        if (allKeys.length > 0) {
+            allKeys.sort(); // String sort (e.g. "2023-01") works perfectly for YYYY-MM
+            earliestKey = allKeys[0].trim();
+        }
+
+        // Filtra o histórico para conter apenas dados retroativos até a criação da carteira
+        let historicoFiltrado = [...dados.historico];
+        if (earliestKey) {
+            const tempFiltrado = [];
+            for (let i = 0; i < historicoFiltrado.length; i++) {
+                const item = historicoFiltrado[i];
+                const ymKey = getYearMonthKey(item.mes);
+                if (ymKey) {
+                    const cleanYmKey = ymKey.replace(/\s+/g, ''); // Fixes internal "2023 -01 " formatting of getYearMonthKey
+                    if (cleanYmKey.localeCompare(earliestKey.replace(/\s+/g, '')) >= 0) {
+                        tempFiltrado.push(item);
+                    }
+                }
+            }
+            historicoFiltrado = tempFiltrado;
+        }
+
         if (listaContainer) {
             listaContainer.innerHTML = '';
+            listaContainer.classList.add('divide-y', 'divide-white/[0.04]', 'rounded-2xl', 'overflow-hidden', 'bg-[#141414]');
 
-            [...dados.historico].reverse().forEach(item => {
+            [...historicoFiltrado].reverse().forEach(item => {
                 const valor = item.valor; // Inflação do mês
                 const ymKey = getYearMonthKey(item.mes);
 
@@ -9448,22 +9475,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     const isPerda = impactoReais > 0;
                     const sinal = isPerda ? '-' : '+';
-                    const corErosao = isPerda ? 'text-red-400' : 'text-green-400';
+                    const corErosao = isPerda ? 'text-red-400' : 'text-emerald-400';
                     const valorErosaoFmt = Math.abs(impactoReais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
                     erosaoPatHtml = `
-    <div class="flex items-center gap-2 justify-end mt-0.5" >
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Patrimônio</span>
-                        <span class="text-[11px] font-bold ${corErosao}">${sinal}${valorErosaoFmt}</span>
-                    </div>
-    `;
+                    <div class="flex items-center gap-3 justify-end mt-1" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
+                        <span class="text-xs font-bold ${corErosao} w-20 text-right tabular-nums">${sinal} R$ ${abbrevNum(Math.abs(impactoReais))}</span>
+                    </div>`;
                 } else {
                     erosaoPatHtml = `
-    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-40" >
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Patrimônio</span>
-                        <span class="text-[11px] text-gray-500 font-bold">--</span>
-                    </div>
-    `;
+                    <div class="flex items-center gap-3 justify-end mt-1 opacity-40" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
+                        <div class="w-16 h-3 bg-white/5 rounded skeleton"></div>
+                    </div>`;
                 }
 
                 let erosaoDivHtml = '';
@@ -9473,66 +9498,62 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     const isPerdaDiv = impactoDiv > 0;
                     const sinalDiv = isPerdaDiv ? '-' : '+';
-                    const corErosaoDiv = isPerdaDiv ? 'text-red-400' : 'text-green-400';
+                    const corErosaoDiv = isPerdaDiv ? 'text-red-400' : 'text-emerald-400';
                     const valorErosaoDivFmt = Math.abs(impactoDiv).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
                     erosaoDivHtml = `
-    <div class="flex items-center gap-2 justify-end mt-0.5" >
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Proventos</span>
-                        <span class="text-[11px] font-bold ${corErosaoDiv}">${sinalDiv}${valorErosaoDivFmt}</span>
-                    </div>
-    `;
+                    <div class="flex items-center gap-3 justify-end mt-1 mb-1" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
+                        <span class="text-xs font-bold ${corErosaoDiv} w-20 text-right tabular-nums">${sinalDiv} R$ ${abbrevNum(Math.abs(impactoDiv))}</span>
+                    </div>`;
                 } else {
-                    // Se não teve proventos no mês, mostra vazio ou traço (optei por traço suave)
                     erosaoDivHtml = `
-    <div class="flex items-center gap-2 justify-end mt-0.5 opacity-30" >
-                        <span class="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Proventos</span>
-                        <span class="text-[11px] text-gray-500 font-bold">--</span>
-                    </div>
-    `;
+                    <div class="flex items-center gap-3 justify-end mt-1 mb-1 opacity-30" >
+                        <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
+                        <div class="w-16 h-3 bg-white/5 rounded skeleton"></div>
+                    </div>`;
                 }
 
                 // Cores do Badge de IPCA
                 let corTexto = 'text-white';
-                let barraCor = 'bg-orange-500';
+                let dotIcon = '';
 
                 if (valor >= 0.5) {
                     corTexto = 'text-red-400';
-                    barraCor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
+                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>';
                 } else if (valor < 0) {
-                    corTexto = 'text-green-400';
-                    barraCor = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
+                    corTexto = 'text-emerald-400';
+                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>';
                 } else {
                     corTexto = 'text-orange-400';
-                    barraCor = 'bg-orange-500';
+                    dotIcon = '<div class="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.6)]"></div>';
                 }
 
                 let [mesNome, ano] = item.mes.includes('/') ? item.mes.split('/') : [item.mes, ''];
 
                 const isLight = document.body.classList.contains('light-mode');
-                const bgItem = isLight ? 'bg-gray-100' : 'bg-[#1A1A1C]';
-                const txtMonth = isLight ? 'text-gray-800' : 'text-white';
+                const bgItem = isLight ? 'bg-white' : 'hover:bg-white/[0.02] transition-colors';
+                const txtMonth = isLight ? 'text-gray-800' : 'text-gray-200';
 
                 const html = `
-    <div class="flex items-center justify-between p-3 ${bgItem} rounded-2xl mb-2" >
-                <div class="flex items-center gap-3">
-                    <div class="w-1.5 h-12 rounded-full ${barraCor}"></div> <div class="flex flex-col">
-                        <span class="text-sm font-bold ${txtMonth} capitalize">${mesNome}</span>
-                        <span class="text-[10px] text-gray-500 font-medium">${ano}</span>
-                    </div>
-                </div>
-
-                <div class="flex flex-col items-end">
-                    <div class="flex items-center gap-2 mb-1">
-                        <span class="text-[10px] text-gray-500 font-medium uppercase">IPCA</span>
-                        <span class="text-sm font-bold ${corTexto}">${valor.toFixed(2)}%</span>
+                <div class="group flex items-center justify-between p-4 ${bgItem}" >
+                    <div class="flex items-center gap-4">
+                        ${dotIcon}
+                        <div class="flex flex-col">
+                            <span class="text-[13px] font-bold ${txtMonth} capitalize">${mesNome}</span>
+                            <span class="text-[11px] text-gray-500 font-medium">${ano}</span>
+                        </div>
                     </div>
 
-                    ${erosaoPatHtml}
-
-                    ${erosaoDivHtml}
-                </div>
-            </div> `;
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-widest">Rate</span>
+                            <span class="text-sm font-bold ${corTexto} tabular-nums">${valor.toFixed(2)}%</span>
+                        </div>
+                        ${erosaoPatHtml}
+                        ${erosaoDivHtml}
+                    </div>
+                </div>`;
 
                 listaContainer.insertAdjacentHTML('beforeend', html);
             });
@@ -9546,28 +9567,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         const values = dados.historico.map(d => d.valor);
         const backgroundColors = values.map(v => v < 0 ? '#10B981' : '#F97316');
 
+        const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.45)');
+        gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0.0)');
+
         ipcaChartInstance = new Chart(ctx, {
-            type: 'bar',
+            type: 'line',
             data: {
                 labels: labels,
                 datasets: [{
+                    label: 'IPCA',
                     data: values,
-                    backgroundColor: backgroundColors,
-                    borderRadius: 4,
-                    barPercentage: 0.6
+                    fill: true,
+                    backgroundColor: gradientFill,
+                    borderColor: '#c084fc',
+                    borderWidth: 1.5,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    pointHoverBackgroundColor: '#c084fc',
+                    pointHoverBorderWidth: 0,
+                    pointHitRadius: 15
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { left: 0, right: 0, top: 0, bottom: 0 } },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : '#151515',
-                        titleColor: isLight ? '#1f2937' : '#fff',
-                        bodyColor: isLight ? '#4b5563' : '#fff',
-                        borderColor: isLight ? '#e5e7eb' : '#333',
+                        backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(20, 20, 22, 0.95)',
+                        titleColor: isLight ? '#1f2937' : '#aaaaaa',
+                        bodyColor: isLight ? '#4b5563' : '#ffffff',
+                        titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
+                        bodyFont: { family: "'Inter', sans-serif", size: 12, weight: 'bold' },
+                        borderColor: isLight ? '#e5e7eb' : '#333333',
                         borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
                         displayColors: false,
                         callbacks: {
                             label: (ctx) => ` IPCA: ${ctx.raw}% `
@@ -9575,13 +9617,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 },
                 scales: {
-                    y: { display: false },
+                    y: {
+                        display: false,
+                    },
                     x: {
-                        grid: { display: false },
-                        ticks: { color: '#666', font: { size: 10 } }
+                        display: false
                     }
                 }
-            }
+            },
+            plugins: [{
+                id: 'ipcaCrosshair',
+                afterDraw: (chart) => {
+                    if (chart.tooltip?._active?.length && chart.tooltip._eventPosition) {
+                        const ctx = chart.ctx;
+                        const activePoint = chart.tooltip._active[0];
+                        const x = activePoint.element.x;
+                        const y = chart.tooltip._eventPosition.y;
+
+                        const topY = chart.scales.y.top;
+                        const bottomY = chart.scales.y.bottom;
+                        const leftX = chart.scales.x.left;
+                        const rightX = chart.scales.x.right;
+
+                        // Pega a cor correspondente à data atual (verde se deflação, laranja se inflação, vermelho alto)
+                        const val = activePoint.element.$context.raw;
+                        let pointColor = 'rgba(251,146,60,0.8)'; // Orange
+                        if (val >= 0.5) pointColor = 'rgba(239,68,68,0.8)'; // Red
+                        else if (val < 0) pointColor = 'rgba(52,211,153,0.8)'; // Emerald
+
+                        ctx.save();
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = isLight ? '#d1d5db' : '#404040';
+                        ctx.setLineDash([4, 4]);
+
+                        // Crosshair X e Y
+                        ctx.beginPath();
+                        ctx.moveTo(x, topY);
+                        ctx.lineTo(x, bottomY);
+                        ctx.stroke();
+
+                        ctx.beginPath();
+                        ctx.moveTo(leftX, y);
+                        ctx.lineTo(rightX, y);
+                        ctx.stroke();
+
+                        // O pino brilhante na intersecção
+                        ctx.beginPath();
+                        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                        ctx.fillStyle = pointColor;
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+            }]
         });
     }
 

@@ -280,7 +280,7 @@ function criarCardElemento(ativo, dados) {
     const ehFii = isFII(ativo.symbol);
     const bgIcone = ehFii ? 'bg-black' : 'bg-[#151515]';
 
-    const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${ativo.symbol}.png`;
+    const iconUrl = `https://raw.githubusercontent.com/mqteuss/logos_b3/main/${ativo.symbol}.png`;
     const iconHtml = !ehFii
         ? `<img src="${iconUrl}" alt="${ativo.symbol}" class="w-full h-full object-contain p-0.5 rounded-xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
            <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-xs font-bold text-gray-500 tracking-wider absolute inset-0 z-0">${sigla}</div>`
@@ -4226,7 +4226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const preco = item.preco || '';
                     const initials = ticker.substring(0, 2);
                     const colorVar = isAlta ? 'text-emerald-400' : 'text-red-400';
-                    const logoUrlStr = item.logo_url || null;
+                    const logoUrlStr = `https://raw.githubusercontent.com/mqteuss/logos_b3/main/${ticker}.png`;
 
                     let iconeHtml = '';
                     if (logoUrlStr) {
@@ -6281,7 +6281,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let ehAcao = !ehFii;
 
         const bgIcone = ehFii ? 'bg-black' : 'bg-[#1C1C1E]';
-        const iconUrl = `https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${symbol}.png`;
+        const iconUrl = `https://raw.githubusercontent.com/mqteuss/logos_b3/main/${symbol}.png`;
 
         const iconHtml = !ehFii
             ? `<img src="${iconUrl}" alt="${symbol}" class="w-full h-full object-contain p-0.5 rounded-2xl relative z-10" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
@@ -6732,7 +6732,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
                                 <div class="flex items-center gap-3">
                                     <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                                        <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                                        <img src="https://raw.githubusercontent.com/mqteuss/logos_b3/main/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
                                              onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                                         <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-lg text-[8px] font-bold text-gray-500 absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
                                     </div>
@@ -6775,7 +6775,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
                                 <div class="flex items-center gap-3">
                                     <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden group-hover:bg-[#111] transition-colors">
-                                        <img src="https://raw.githubusercontent.com/thefintz/icones-b3/main/icones/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                                        <img src="https://raw.githubusercontent.com/mqteuss/logos_b3/main/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
                                              onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
                                         <div class="hidden w-full h-full bg-[#0a0a0a] flex items-center justify-center z-0 absolute inset-0">
                                             <span class="text-[8px] font-bold text-gray-400 tracking-wider">${item.ticker.substring(0, 2)}</span>

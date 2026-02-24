@@ -7691,16 +7691,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (content.id === tabId) {
                 content.classList.add('active');
                 content.scrollTop = content.scrollTop;
-                // ✅ CORREÇÃO: Remove isolamento da aba ativa.
-                content.style.contentVisibility = 'visible';
-                content.style.willChange = 'auto';
             } else {
                 content.classList.remove('active');
-                // ✅ CORREÇÃO: Isola layout das abas inativas para evitar que
-                //    a aba Mercado (pesada) contamine o recálculo de layout
-                //    das demais durante a transição.
-                content.style.contentVisibility = 'auto';
-                content.style.containIntrinsicSize = '0 600px';
             }
         });
 

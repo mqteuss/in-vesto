@@ -565,12 +565,11 @@ body.light-mode .btn-cancel:hover {
     animation: none;
 }
 
-/* BOTTOM NAV: 50% TRANSPARÊNCIA (VIDRO FOSCO MAIS FORTE) */
 .bottom-nav {
-    background-color: rgba(20, 20, 20, 0.5);
-    /* 50% Opacity */
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background-color: rgba(20, 20, 20, 0.85);
+    /* Moderado transparente para não precisar de tanto blur */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: none;
     position: fixed;
     bottom: 1.5rem;

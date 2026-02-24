@@ -2741,11 +2741,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 labels: labelsFiltrados,
                 datasets: [
                     {
-                        type: 'line', // <-- LINHA DE CRESCIMENTO (Fina e Clara) DE VOLTA
+                        type: 'line', // <-- LINHA DE CRESCIMENTO (Curva e Translúcido)
                         label: 'Crescimento',
                         data: dataTotal,
                         borderColor: linhaCrescimentoColor,
-                        borderWidth: 1,
+                        borderWidth: 1.5,
                         tension: 0.4,
                         pointRadius: 2,
                         pointHoverRadius: 5,
@@ -2852,7 +2852,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     y: { display: false, stacked: true },
                     x: {
                         stacked: true,
-                        grid: { display: false },
+                        grid: { display: false, drawBorder: false },
                         ticks: {
                             color: isLight ? '#9ca3af' : '#666',
                             font: { family: "'Inter', sans-serif", size: 9, weight: '600' },
@@ -3252,8 +3252,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const colorCrosshair = isLight ? '#d1d5db' : '#404040';
 
         const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-        gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
-        gradientFill.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Fade to transparent
+        gradientFill.addColorStop(0, 'rgba(192, 132, 252, 0.45)');
+        gradientFill.addColorStop(1, 'rgba(192, 132, 252, 0.0)');
 
         const patrimonioCrosshairPlugin = {
             id: 'patrimonioCrosshair',
@@ -3358,8 +3358,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             fill: true,
                             backgroundColor: gradientFill,
                             borderColor: colorLinePatrimonio,
-                            borderWidth: 1,
-                            tension: 0.05,
+                            borderWidth: 1.5,
+                            tension: 0.4,
                             pointRadius: 0,
                             pointHitRadius: 20,
                             pointHoverRadius: 4,
@@ -3374,7 +3374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             borderColor: colorLineInvestido,
                             borderWidth: 1.2,
                             borderDash: [4, 4],
-                            tension: 0.05,
+                            tension: 0.4,
                             pointRadius: 0,
                             pointHitRadius: 10,
                             pointHoverRadius: 0,
@@ -7153,7 +7153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     labels: years,
                                     datasets: [
                                         { label: 'Lucro Líquido', data: years.map(y => cf.lucro_cotacao[y].net_profit), backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 3, yAxisID: 'y' },
-                                        { label: 'Cotação', data: years.map(y => cf.lucro_cotacao[y].quotation), type: 'line', borderColor: '#a855f7', borderWidth: 1, pointRadius: 2, pointHoverRadius: 4, tension: 0.3, yAxisID: 'y1', fill: false }
+                                        { label: 'Cotação', data: years.map(y => cf.lucro_cotacao[y].quotation), type: 'line', borderColor: '#a855f7', borderWidth: 2, pointRadius: 2, pointHoverRadius: 4, tension: 0.4, yAxisID: 'y1', fill: false }
                                     ]
                                 },
                                 options: opts
@@ -7203,7 +7203,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     labels,
                                     datasets: [
                                         { label: 'Payout', data: cf.payout.map(d => d.payout_company || d.payout), backgroundColor: 'rgba(234,179,8,0.6)', borderRadius: 3 },
-                                        { label: 'DY', data: cf.payout.map(d => d.dy_ticker || d.dy), type: 'line', borderColor: '#3b82f6', borderWidth: 1, pointRadius: 2, tension: 0.3, fill: false }
+                                        { label: 'DY', data: cf.payout.map(d => d.dy_ticker || d.dy), type: 'line', borderColor: '#3b82f6', borderWidth: 2, pointRadius: 2, tension: 0.4, fill: false }
                                     ]
                                 },
                                 options: opts
@@ -7607,7 +7607,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         pointRadius: 0,
                         pointHoverRadius: 0,
                         fill: false,
-                        tension: 0,
+                        tension: 0.4,
                         stack: undefined,
                         order: -1,
                     },

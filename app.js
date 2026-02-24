@@ -10505,7 +10505,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             extras.classList.add('grid');
             btn.innerHTML = `
             Mostrar Menos
-    < svg xmlns = "http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300 rotate-180" fill = "none" viewBox = "0 0 24 24" stroke = "currentColor" stroke - width="3" > <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg >
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         `;
         } else {
             // Recolher
@@ -10520,7 +10520,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             btn.innerHTML = `
             Ver todos os ${total} imóveis
-    < svg xmlns = "http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" fill = "none" viewBox = "0 0 24 24" stroke = "currentColor" stroke - width="3" > <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg >
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"> <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
         `;
         }
     };

@@ -260,13 +260,13 @@
                     <div class="relative rounded-b-[2rem] pb-2 mb-6 overflow-hidden border-b border-purple-500/10">
                         <!-- Fundo sólido roxo saturado e vibrante -->
                         <div class="absolute inset-0 bg-[#320a5c] z-0"></div>
-                        <!-- Transição forte do preto puro para o roxo -->
+                        <!-- Brilho sutil no fundo para textura leve, renomeado para ficar centralizado -->
                         <div
-                            class="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black from-30% via-black/80 to-transparent z-0">
+                            class="absolute top-10 left-1/2 -translate-x-1/2 w-80 h-32 bg-purple-400 rounded-full blur-[80px] opacity-20 z-0 pointer-events-none">
                         </div>
-                        <!-- Brilho sutil no fundo para textura leve -->
+                        <!-- Transição forte do preto puro para o roxo (deve ficar por último no DOM para renderizar sobre o brilho) -->
                         <div
-                            class="absolute -top-10 -right-10 w-64 h-64 bg-purple-500 rounded-full blur-[100px] opacity-15 z-0 pointer-events-none">
+                            class="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black from-30% via-black/80 to-transparent z-10 pointer-events-none">
                         </div>
 
                         <div class="relative z-20 px-4 pt-2 mb-2">

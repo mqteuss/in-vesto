@@ -6344,12 +6344,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (precoData) {
             detalhesNomeLongo.textContent = precoData.longName || 'Nome não disponível';
 
+            /* 
             if (!ehFii && precoData.logourl) {
                 const imgEl = iconContainer.querySelector('img');
                 if (imgEl && imgEl.src !== precoData.logourl) {
                     imgEl.src = precoData.logourl;
                 }
             }
+            */
 
             const varPercent = precoData.regularMarketChangePercent || 0;
             const variacaoCor = varPercent > 0 ? 'text-green-400 bg-green-500/10' : (varPercent < 0 ? 'text-red-400 bg-red-500/10' : 'text-[#888] bg-white/5');
@@ -6446,7 +6448,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 badge12m.innerHTML = `12M: <span class="${corVariacaoTextAno}">${dados.variacao_12m}</span>`;
             }
 
-            // Injeta a logo nativa extraída pelo scraper (Prioridade #1)
+            // Desativado: Forçando uso da API mqteuss/logos_b3 definida na inicialização
+            /* 
             if (!ehFii && dados.logo_url) {
                 const iconContainer = document.getElementById('detalhes-icone-container');
                 if (iconContainer) {
@@ -6456,6 +6459,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
             }
+            */
 
             let valuationHtml = '';
 

@@ -9406,10 +9406,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? getQuantidadeNaData(p.symbol, p.paymentDate)
                     : 0;
 
-                if (qtd > 0) {
-                    const total = p.value * qtd;
-                    mapProventos[key] = (mapProventos[key] || 0) + total;
-                }
+                // Registra que existiu UM provento nessa data,
+                // mesmo que a Qtd calculada seja 0 (caso o usuário tenha apagado as transações passadas).
+                const total = p.value * Math.max(qtd, 1);
+                mapProventos[key] = (mapProventos[key] || 0) + total;
             });
         }
 
@@ -9487,7 +9487,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     erosaoPatHtml = `
                     <div class="flex items-center gap-3 justify-end mt-1 opacity-40" >
                         <span class="text-[10px] text-gray-500 font-medium tracking-wide">Patrimônio</span>
-                        <div class="w-16 h-3 bg-white/5 rounded skeleton"></div>
+                        <span class="text-xs font-bold text-gray-500 w-20 text-right tabular-nums">--</span>
                     </div>`;
                 }
 
@@ -9510,7 +9510,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     erosaoDivHtml = `
                     <div class="flex items-center gap-3 justify-end mt-1 mb-1 opacity-30" >
                         <span class="text-[10px] text-gray-500 font-medium tracking-wide">Proventos</span>
-                        <div class="w-16 h-3 bg-white/5 rounded skeleton"></div>
+                        <span class="text-xs font-bold text-gray-500 w-20 text-right tabular-nums">--</span>
                     </div>`;
                 }
 

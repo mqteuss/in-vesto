@@ -534,49 +534,45 @@
                         <!-- ── RANKINGS (Variação do Dia) ── -->
                         <div id="rankings-container" class="hidden">
                             <div class="h-px bg-[#1F1F1F] my-6"></div>
-                            <div class="px-4">
-                                <div
-                                    class="rounded-2xl bg-[#141414] border border-[#1F1F1F] overflow-hidden flex flex-col">
-                                    <!-- Altas Header -->
-                                    <div class="px-4 py-3 border-b border-[#1F1F1F] flex items-center gap-2">
-                                        <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24"
+                            <div class="px-2"> <!-- Decreased padding to expand available width -->
+                                <!-- Header -->
+                                <div class="flex border-b border-[#2C2C2E] pb-2 mb-2 px-1">
+                                    <div class="flex-1 flex items-center justify-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24"
                                             stroke="currentColor" stroke-width="2.5">
                                             <path d="M5 15l7-7 7 7" />
                                         </svg>
-                                        <p class="text-[10px] font-bold text-white uppercase tracking-wider">Maiores
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Maiores
                                             Altas</p>
                                     </div>
-                                    <div id="rankings-altas" class="flex flex-col">
-                                        <div class="p-3">
-                                            <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
-                                        </div>
-                                        <div class="p-3">
-                                            <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
-                                        </div>
-                                        <div class="p-3">
-                                            <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Baixas Header -->
-                                    <div class="px-4 py-3 border-y border-[#1F1F1F] flex items-center gap-2 mt-2">
-                                        <svg class="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24"
+                                    <div class="w-px bg-[#2C2C2E]"></div>
+                                    <div class="flex-1 flex items-center justify-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24"
                                             stroke="currentColor" stroke-width="2.5">
                                             <path d="M19 9l-7 7-7-7" />
                                         </svg>
-                                        <p class="text-[10px] font-bold text-white uppercase tracking-wider">Maiores
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Maiores
                                             Baixas</p>
                                     </div>
-                                    <div id="rankings-baixas" class="flex flex-col mb-1">
-                                        <div class="p-3">
-                                            <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
-                                        </div>
-                                        <div class="p-3">
-                                            <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
-                                        </div>
-                                        <div class="p-3">
-                                            <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
-                                        </div>
+                                </div>
+                                <!-- Body -->
+                                <div class="flex">
+                                    <div id="rankings-altas" class="flex-1 px-1 py-1 space-y-3">
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                    </div>
+                                    <div class="w-px bg-[#1a1a1c] mx-1"></div>
+                                    <div id="rankings-baixas" class="flex-1 px-1 py-1 space-y-3">
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
+                                        <div class="h-10 bg-[#1a1a1a] rounded-xl animate-pulse"></div>
                                     </div>
                                 </div>
                             </div>

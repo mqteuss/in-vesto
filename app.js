@@ -4205,11 +4205,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let skeletonHtml = '';
                 for (let i = 0; i < 5; i++) {
                     skeletonHtml += `
-                        <div class="p-3 flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-xl skeleton flex-shrink-0"></div>
-                            <div class="flex-1 space-y-2 py-1">
-                                <div class="h-2.5 skeleton rounded-full w-14"></div>
-                                <div class="h-2 skeleton rounded-full w-16"></div>
+                        <div class="p-3 flex flex-col gap-1">
+                            <div class="flex items-center gap-4">
+                                <div class="w-8 h-8 rounded-xl skeleton flex-shrink-0"></div>
+                                <div class="h-3 skeleton rounded-full w-14"></div>
+                            </div>
+                            <div class="flex items-center gap-2 pl-12">
+                                <div class="h-2.5 skeleton rounded-full w-12"></div>
+                                <div class="h-2.5 skeleton rounded-full w-10"></div>
                             </div>
                         </div>`;
                 }
@@ -4267,17 +4270,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return `
                         <div class="p-3 hover:bg-white/[0.03] active:bg-white/[0.05] cursor-pointer transition-colors"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
-                            <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-4 mb-1">
                                 <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner">
                                     ${iconeHtml}
                                 </div>
-                                <div class="flex-1 flex flex-col justify-center">
-                                    <span class="text-[13px] font-medium text-white tracking-tight">${ticker}</span>
-                                </div>
-                                <div class="text-right flex flex-col justify-center">
-                                    <span class="text-[12px] font-medium text-gray-300 tabular-nums">${preco}</span>
-                                    <span class="text-[11px] font-bold ${colorVar}">${variacao}</span>
-                                </div>
+                                <span class="text-[13px] font-medium text-white tracking-tight">${ticker}</span>
+                            </div>
+                            <div class="flex items-center gap-2 pl-12">
+                                <span class="text-[12px] font-medium text-gray-400 tabular-nums">${preco}</span>
+                                <span class="text-[11px] font-bold ${colorVar}">${variacao}</span>
                             </div>
                         </div>`;
                 }).join('');

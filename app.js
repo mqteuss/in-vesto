@@ -139,7 +139,30 @@ const formatDateToInput = (dateString) => {
     }
 };
 
-const isFII = (symbol) => symbol && (symbol.endsWith('11') || symbol.endsWith('12'));
+// Lista principal de grandes BDRs e Units da B3 que terminam com 11, mas NÃO SÃO FIIs e devem receber logos
+const KNOWN_UNITS_BDRS = [
+    'BPAC11', 'BIDI11', 'ENGI11', 'TAEE11', 'KLBN11', 'SANB11', 'ALUP11', 'BBAS11',
+    'MODL11', 'BRBI11', 'SULA11', 'SAPR11', 'IGTI11', 'CPLE11', 'ABEV11', 'PETR11',
+    'ITUB11', 'BBDC11', 'VALE11', 'AMER11', 'MGLU11', 'VIIA11', 'WEGE11', 'EMBR11',
+    'SUZB11', 'ELET11', 'CSNA11', 'GGBR11', 'GOAU11', 'USIM11', 'CSAN11', 'RRRP11',
+    'Prio11', 'ENAT11', 'VBBR11', 'UGPA11', 'BBSE11', 'CXSE11', 'PSSA11', 'IRBR11',
+    'MULT11', 'CYRE11', 'LREN11', 'SBFG11', 'ASAI11', 'CRFB11', 'NTCO11', 'CASH11',
+    'TOTS11', 'LWSA11', 'AERI11', 'INTB11', 'VIVT11', 'TIMS11', 'EQTL11', 'NEOE11',
+    'HYPE11', 'RDOR11', 'RADL11', 'FLRY11', 'MDIA11', 'SMTO11', 'JBSS11', 'MRFG11',
+    'BEEF11', 'BRFS11', 'CMIN11', 'CBAV11', 'FESA11', 'KLBN11', 'POMO11', 'RANI11',
+    'SLCE11', 'AGRO11', 'TTEN11', 'HBSA11', 'YDUQ11', 'COGN11', 'SEER11', 'ANIM11',
+    'CVCB11', 'GOLL11', 'AZUL11', 'RAIL11', 'STBP11', 'CCRO11', 'ECOR11', 'JSLG11',
+    'SIMH11', 'RENT11', 'AMAR11', 'ARZZ11', 'CEAB11', 'SGPS11', 'VAMO11', 'VIVA11',
+    'VULC11', 'ALPA11', 'DXCO11', 'LEVE11', 'MYPK11', 'RCSL11', 'TUPY11', 'WIZC11',
+    'AESB11'
+];
+
+const isFII = (symbol) => {
+    if (!symbol) return false;
+    const symUpper = symbol.toUpperCase();
+    if (KNOWN_UNITS_BDRS.includes(symUpper)) return false;
+    return symUpper.endsWith('11') || symUpper.endsWith('12');
+};
 const isAcao = (symbol) => !!(symbol && !isFII(symbol));
 
 function parseMesAno(mesAnoStr) {

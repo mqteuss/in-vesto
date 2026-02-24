@@ -828,17 +828,21 @@ input:-webkit-autofill:active {
 #resumo-carteira-card {
     position: relative;
     min-height: 180px;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    padding-top: 1.5rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     transition: transform 0.3s ease;
 
-    /* FLAT NATIVE PREMIUM: Removed all card-like enclosures */
-    background: transparent;
+    /* ATMOSPHERIC GLOW: Solid gradient that fades perfectly into the black canvas without blur */
+    background: linear-gradient(180deg, #18181b 0%, #000000 100%);
     border: none;
+    border-radius: 0 0 2rem 2rem;
     box-shadow: none;
-    border-radius: 0;
+
+    /* Optional edge highlight for depth */
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 /* REMOVER EFEITOS DE AURORA/GLOW (Performance: Otimização Crítica) */
@@ -853,12 +857,12 @@ input:-webkit-autofill:active {
     grid-template-columns: 1fr 1px 1fr 1px 1fr;
     align-items: center;
 
-    /* FLAT NATIVE: Seamless integration, no background */
+    /* NATIVE LOOK: Uses the bottom of the gradient */
     background-color: transparent;
-    border-top: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
 
     margin: 1.5rem 0 0 0;
-    padding: 0;
+    padding: 1rem 0 0 0;
 }
 
 /* Ajuste no divisor vertical para combinar com o tema flat minimalista */

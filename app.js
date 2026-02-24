@@ -4205,10 +4205,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let skeletonHtml = '';
                 for (let i = 0; i < 5; i++) {
                     skeletonHtml += `
-                        <div class="p-2 rounded-xl flex items-center gap-3">
-                            <div class="w-7 h-7 rounded-lg skeleton flex-shrink-0"></div>
+                        <div class="p-3 flex items-center gap-4">
+                            <div class="w-8 h-8 rounded-xl skeleton flex-shrink-0"></div>
                             <div class="flex-1 space-y-2 py-1">
-                                <div class="h-2.5 skeleton rounded-full w-12"></div>
+                                <div class="h-2.5 skeleton rounded-full w-14"></div>
                                 <div class="h-2 skeleton rounded-full w-16"></div>
                             </div>
                         </div>`;
@@ -4237,7 +4237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const renderLista = (containerId, items, tipo) => {
                 const el = document.getElementById(containerId);
                 if (!el || !items || items.length === 0) {
-                    if (el) el.innerHTML = '<p class="text-[9px] text-gray-600 text-center py-3">Sem dados</p>';
+                    if (el) el.innerHTML = '<p class="text-[10px] text-gray-500 font-medium text-center py-6">Sem dados disponíveis</p>';
                     return;
                 }
 
@@ -4254,31 +4254,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let iconeHtml = '';
                     if (logoUrlStr && isAcao(ticker)) {
                         iconeHtml = `
-                            <img src="${logoUrlStr}" alt="${ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                            <img src="${logoUrlStr}" alt="${ticker}" width="32" height="32" loading="lazy" decoding="async" class="w-full h-full object-contain relative z-10"
                                  onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                            <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-lg text-[9px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
+                            <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     } else {
                         iconeHtml = `
-                            <div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-lg text-[9px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
+                            <div class="w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${initials}</div>
                         `;
                     }
 
                     return `
-                        <div class="p-2 rounded-xl hover:bg-white/[0.03] cursor-pointer transition-colors active:scale-[0.98]"
+                        <div class="p-3 hover:bg-white/[0.03] active:bg-white/[0.05] cursor-pointer transition-colors"
                              onclick="window.abrirDetalhesAtivo('${ticker}')">
-                            <div class="flex items-center gap-2 mb-1">
-                                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                            <div class="flex items-center gap-4">
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner">
                                     ${iconeHtml}
                                 </div>
-                                <span class="text-[12px] font-bold text-white">${ticker}</span>
-                            </div>
-                            <div class="flex items-center gap-2 pl-9">
-                                <span class="text-[11px] text-gray-400 tabular-nums">${preco}</span>
-                                <span class="text-[10px] font-semibold ${colorVar}">${variacao}</span>
+                                <div class="flex-1 flex flex-col justify-center">
+                                    <span class="text-[13px] font-medium text-white tracking-tight">${ticker}</span>
+                                </div>
+                                <div class="text-right flex flex-col justify-center">
+                                    <span class="text-[12px] font-medium text-gray-300 tabular-nums">${preco}</span>
+                                    <span class="text-[11px] font-bold ${colorVar}">${variacao}</span>
+                                </div>
                             </div>
                         </div>`;
                 }).join('');
+
+                // Apply the divide-y wrapper layout to the container dynamically
+                el.classList.add('divide-y', 'divide-white/[0.02]', 'rounded-2xl', 'overflow-hidden');
             };
 
             renderLista('rankings-altas', data.altas, 'altas');

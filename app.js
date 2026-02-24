@@ -6717,10 +6717,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return isNaN(val) ? null : val * mult;
                 };
 
-                const crownIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-500 drop-shadow-[0_0_4px_rgba(234,179,8,0.5)] mb-[2px]"><path d="M2 19h20v2H2v-2zm2-16 3 5 5-6 5 6 3-5 1 12H3L4 3z"/></svg>`;
+                const glowingDot = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] mb-[2px]"></span>`;
                 const badge = (val, isBest, title) => isBest
-                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="${title}">${crownIcon}<span class="text-[11px] text-white font-bold tracking-wide leading-none">${val}</span></div>`
-                    : `<span class="text-[11px] text-gray-400 font-medium">${val}</span>`;
+                    ? `<div class="inline-flex flex-col items-center justify-center cursor-default" title="${title}">${glowingDot}<span class="text-[12px] text-emerald-400 font-bold tracking-wide leading-none mt-1">${val}</span></div>`
+                    : `<span class="text-[12px] text-gray-400 font-medium">${val}</span>`;
 
                 let thead, tbody;
 
@@ -6741,13 +6741,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let maxMl = validMl.length ? Math.max(...validMl) : null;
 
                     thead = `
-                        <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">Ativo</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/L</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">ROE</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Val. Mercado</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Marg. Líq.</th>`;
+                        <th class="sticky left-0 bg-[#151515] text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap z-20" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">Ativo</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">P/L</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">P/VP</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">ROE</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">DY</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Val. Mercado</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Marg. Líq.</th>`;
 
                     tbody = dados.comparacao.map(item => {
                         const vPl = parseNumberStr(item.pl), vPvp = parseNumberStr(item.pvp);
@@ -6755,23 +6755,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const vVm = parseNumberStr(item.val_mercado), vMl = parseNumberStr(item.margem_liquida);
 
                         return `
-                        <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                            <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                                        <img src="https://raw.githubusercontent.com/mqteuss/logos_b3/main/${item.ticker}.png" alt="${item.ticker}" width="28" height="28" loading="lazy" decoding="async" class="w-full h-full object-contain rounded-lg relative z-10"
+                        <tr class="hover:bg-white/[0.03] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                            <td class="p-4 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-transparent transition-colors z-10" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner">
+                                        <img src="https://raw.githubusercontent.com/mqteuss/logos_b3/main/${item.ticker}.png" alt="${item.ticker}" width="32" height="32" loading="lazy" decoding="async" class="w-full h-full object-contain relative z-10"
                                              onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden')">
-                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] border border-[#222] rounded-lg text-[9px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
+                                        <div class="hidden w-full h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl text-[10px] font-bold text-gray-200 tracking-wider absolute inset-0 z-0">${item.ticker.substring(0, 2)}</div>
                                     </div>
-                                    <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
+                                    <span class="text-[13px] font-medium text-gray-200 tracking-tight">${item.ticker}</span>
                                 </div>
                             </td>
-                            <td class="p-3 whitespace-nowrap text-right min-w-[60px] align-middle">${badge(item.pl || '-', vPl !== null && vPl > 0 && vPl === minPl, 'Menor P/L')}</td>
-                            <td class="p-3 whitespace-nowrap text-right min-w-[60px] align-middle">${badge(item.pvp || '-', vPvp !== null && vPvp > 0 && vPvp === minPvp, 'Menor P/VP')}</td>
-                            <td class="p-3 whitespace-nowrap text-right min-w-[60px] align-middle">${badge(item.roe || '-', vRoe !== null && vRoe === maxRoe, 'Maior ROE')}</td>
-                            <td class="p-3 whitespace-nowrap text-right min-w-[60px] align-middle">${badge(item.dy || '-', vDy !== null && vDy === maxDy, 'Maior DY')}</td>
-                            <td class="p-3 whitespace-nowrap text-right min-w-[100px] align-middle">${badge(item.val_mercado || '-', vVm !== null && vVm === maxVm, 'Maior Val. Mercado')}</td>
-                            <td class="p-3 whitespace-nowrap text-right min-w-[80px] align-middle">${badge(item.margem_liquida || '-', vMl !== null && vMl === maxMl, 'Maior Margem')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.pl || '-', vPl !== null && vPl > 0 && vPl === minPl, 'Menor P/L')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.pvp || '-', vPvp !== null && vPvp > 0 && vPvp === minPvp, 'Menor P/VP')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.roe || '-', vRoe !== null && vRoe === maxRoe, 'Maior ROE')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.dy || '-', vDy !== null && vDy === maxDy, 'Maior DY')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[120px] align-middle">${badge(item.val_mercado || '-', vVm !== null && vVm === maxVm, 'Maior Val. Mercado')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[90px] align-middle">${badge(item.margem_liquida || '-', vMl !== null && vMl === maxMl, 'Maior Margem')}</td>
                         </tr>`;
                     }).join('');
                 } else {
@@ -6784,12 +6784,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let maxPat = validPat.length ? Math.max(...validPat) : null;
 
                     thead = `
-                        <th class="sticky left-0 bg-[#18181A] text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] border-r border-[#1F1F1F] whitespace-nowrap z-20 shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">Ativo</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">DY</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">P/VP</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-right">Patrimônio</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Tipo</th>
-                        <th class="text-[8px] uppercase tracking-widest text-gray-500 font-bold px-3 py-2.5 border-b border-[#1F1F1F] whitespace-nowrap text-center">Segmento</th>`;
+                        <th class="sticky left-0 bg-[#151515] text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap z-20" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">Ativo</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">DY</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">P/VP</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-right">Patrimônio</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-center">Tipo</th>
+                        <th class="text-[9px] uppercase tracking-widest text-gray-500/80 font-bold px-4 py-4 whitespace-nowrap text-center">Segmento</th>`;
 
                     tbody = dados.comparacao.map(item => {
                         let vDy = parseNumberStr(item.dy), vPvp = parseNumberStr(item.pvp), vPat = parseNumberStr(item.patrimonio);
@@ -6798,44 +6798,44 @@ document.addEventListener('DOMContentLoaded', async () => {
                         let valSeg = item.segmento && item.segmento !== '-' ? item.segmento : '-';
 
                         return `
-                        <tr class="border-b border-[#1F1F1F] last:border-0 hover:bg-[#1C1C1E] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
-                            <td class="p-3 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-[#1C1C1E] transition-colors z-10 border-r border-[#1F1F1F] shadow-[2px_0_5px_rgba(0,0,0,0.1)]" style="transform: translateZ(0);">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0a0a0a] border border-[#222] group-hover:bg-[#111] transition-colors">
-                                        <span class="text-[9px] font-bold text-gray-200 tracking-wider">${item.ticker.substring(0, 2)}</span>
+                        <tr class="hover:bg-white/[0.03] transition-colors cursor-pointer group" onclick="window.abrirDetalhesAtivo('${item.ticker}')">
+                            <td class="p-4 whitespace-nowrap sticky left-0 bg-[#151515] group-hover:bg-transparent transition-colors z-10" style="transform: translateZ(0); box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.5);">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner">
+                                        <span class="text-[10px] font-bold text-gray-200 tracking-wider">${item.ticker.substring(0, 2)}</span>
                                     </div>
-                                    <span class="text-xs font-bold text-white tracking-tight">${item.ticker}</span>
+                                    <span class="text-[13px] font-medium text-gray-200 tracking-tight">${item.ticker}</span>
                                 </div>
                             </td>
-                            <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.dy, vDy !== null && vDy === maxDy, 'Maior DY')}</td>
-                            <td class="p-3 whitespace-nowrap text-right min-w-[70px] align-middle">${badge(item.pvp, vPvp !== null && vPvp === minPvp, 'Menor P/VP')}</td>
-                            <td class="p-3 whitespace-nowrap text-right min-w-[100px] align-middle">${badge(valPat, vPat !== null && vPat === maxPat, 'Maior Patrimônio')}</td>
-                            <td class="p-3 whitespace-nowrap text-center min-w-[100px] align-middle">
-                                <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valTipo}</span>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[80px] align-middle">${badge(item.dy, vDy !== null && vDy === maxDy, 'Maior DY')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[80px] align-middle">${badge(item.pvp, vPvp !== null && vPvp === minPvp, 'Menor P/VP')}</td>
+                            <td class="p-4 whitespace-nowrap text-right min-w-[120px] align-middle">${badge(valPat, vPat !== null && vPat === maxPat, 'Maior Patrimônio')}</td>
+                            <td class="p-4 whitespace-nowrap text-center min-w-[120px] align-middle">
+                                <span class="text-[10px] uppercase tracking-widest text-gray-400 font-medium">${valTipo}</span>
                             </td>
-                            <td class="p-3 whitespace-nowrap text-center min-w-[120px] align-middle">
-                                <span class="text-[9px] uppercase tracking-widest bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">${valSeg}</span>
+                            <td class="p-4 whitespace-nowrap text-center min-w-[140px] align-middle">
+                                <span class="text-[10px] uppercase tracking-widest text-gray-400 font-medium">${valSeg}</span>
                             </td>
                         </tr>`;
                     }).join('');
                 }
 
                 comparacaoHtml = `
-                <h4 class="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-6 mb-2 pl-1 flex items-center gap-1.5">
+                <h4 class="text-[11px] font-bold text-gray-300 uppercase tracking-[0.2em] mt-8 mb-4 flex items-center gap-2">
                     Comparando ${isStock ? 'Ações' : 'Ativos'}
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                    <span class="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
                 </h4>
-                <div class="bg-[#151515] rounded-xl shadow-sm mb-4 border border-white/5 relative overflow-hidden">
+                <div class="bg-[#151515] rounded-3xl shadow-xl mb-4 border border-white/[0.04] relative overflow-hidden">
                     <style>
                         .table-scrollbar::-webkit-scrollbar { height: 6px; }
                         .table-scrollbar::-webkit-scrollbar-track { background: transparent; }
                         .table-scrollbar::-webkit-scrollbar-thumb { background: #2A2A2C; border-radius: 10px; }
                         .table-scrollbar::-webkit-scrollbar-thumb:hover { background: #3F3F42; }
                     </style>
-                    <div class="overflow-x-auto table-scrollbar">
-                        <table class="w-full text-left border-collapse min-w-[550px]">
-                            <thead><tr class="bg-[#18181A]">${thead}</tr></thead>
-                            <tbody>${tbody}</tbody>
+                    <div class="overflow-x-auto table-scrollbar pb-2">
+                        <table class="w-full text-left border-collapse min-w-[600px]">
+                            <thead><tr>${thead}</tr></thead>
+                            <tbody class="divide-y divide-white/[0.02]">${tbody}</tbody>
                         </table>
                     </div>
                 </div>

@@ -827,12 +827,12 @@ input:-webkit-autofill:active {
 
 #resumo-carteira-card {
     position: relative;
-    min-height: 160px;
+    min-height: 120px;
     padding: 0 1rem;
     /* Re-inject safe boundaries for content */
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
     transition: transform 0.3s ease;
 
     background: transparent;

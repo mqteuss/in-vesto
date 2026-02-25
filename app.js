@@ -1143,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const scrollTop = _dashboardTab.scrollTop;
         const heroHeight = _heroCard.offsetHeight;
         // Começa a transição quando o hero está 90% scrollado, completa quando 100% scrollado
-        const fadeStart = heroHeight * 0.9;
+        const fadeStart = heroHeight * 0.95;
         const fadeEnd = heroHeight * 1.0;
 
         let t = 0; // 0 = hero color, 1 = default color
@@ -1172,19 +1172,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, { passive: true });
     }
 
-    // Detecta mudança de tab para ajustar a theme-color
-    // Usa delegation no document body para capturar cliques precisos mesmo nos ícones dentro do botão
-    document.body.addEventListener('click', (e) => {
-        const btn = e.target.closest('.tab-button');
-        if (btn && btn.dataset && btn.dataset.tab) {
-            // Ignora os tabs internos (como no histórico ou detalhes)
-            if (btn.closest('.bottom-nav')) {
-                _isDashboardActive = btn.dataset.tab === 'tab-dashboard';
-                // Atualiza a cor IMEDIATAMENTE, sem requestAnimationFrame, para evitar qualquer flash roxo
-                updateDynamicThemeColor();
-            }
-        }
-    });
+    // Detecta mudança de tab de forma infalível observando a classe "active" do dashboard
+    if (_dashboardTab) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    const wasActive = _isDashboardActive;
+                    _isDashboardActive = _dashboardTab.classList.contains('active');
+
+                    // Se mudou o estado de active, atualiza a cor imediatamente
+                    if (wasActive !== _isDashboardActive) {
+                        updateDynamicThemeColor();
+                    }
+                }
+            });
+        });
+
+        observer.observe(_dashboardTab, { attributes: true, attributeFilter: ['class'] });
+    }
 
     // Seta a cor inicial ao carregar (dashboard no topo = hero roxo)
     updateDynamicThemeColor();

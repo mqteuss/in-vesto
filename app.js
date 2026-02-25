@@ -997,18 +997,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 1. Alterna classe no Body
         if (isLight) {
             document.body.classList.add('light-mode');
-            if (metaTheme) metaTheme.setAttribute('content', '#f2f2f7');
 
             // Cores globais do Chart.js para Light Mode
             Chart.defaults.color = '#4b5563'; // Gray 600
             Chart.defaults.borderColor = 'rgba(0,0,0,0.05)'; // Linhas de grade sutis
         } else {
             document.body.classList.remove('light-mode');
-            if (metaTheme) metaTheme.setAttribute('content', '#000000');
 
             // Cores globais do Chart.js para Dark Mode
             Chart.defaults.color = '#9ca3af'; // Gray 400
             Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+        }
+
+        // Delega a cor da status bar ao sistema dinâmico de scroll
+        if (typeof updateDynamicThemeColor === 'function') {
+            updateDynamicThemeColor();
+        } else if (metaTheme) {
+            metaTheme.setAttribute('content', isLight ? '#f2f2f7' : '#000000');
         }
 
         if (toggleThemeBtn && themeToggleKnob) {
@@ -1087,6 +1092,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     updateThemeUI();
+
+    // ─── DYNAMIC THEME-COLOR (Status Bar Imersiva) ─────────────────────
+    // Muda a cor da status bar do Android para combinar com o hero roxo
+    // do dashboard, dando impressão de app nativo imersivo.
+    const _metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    const _dashboardTab = document.getElementById('tab-dashboard');
+    const _heroCard = document.getElementById('resumo-carteira-card')?.closest('.relative') || (_dashboardTab ? _dashboardTab.querySelector(':scope > .relative') : null);
+    let _isDashboardActive = true; // Dashboard é a tab inicial
+
+    function _lerpColor(a, b, t) {
+        // Interpola entre duas cores hex (ex: #2e154f -> #000000)
+        const ah = parseInt(a.replace('#', ''), 16);
+        const bh = parseInt(b.replace('#', ''), 16);
+        const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+        const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+        const rr = Math.round(ar + (br - ar) * t);
+        const rg = Math.round(ag + (bg - ag) * t);
+        const rb = Math.round(ab + (bb - ab) * t);
+        return `#${((1 << 24) + (rr << 16) + (rg << 8) + rb).toString(16).slice(1)}`;
+    }
+
+    function _getDefaultThemeColor() {
+        return localStorage.getItem('vesto_theme') === 'light' ? '#f2f2f7' : '#000000';
+    }
+
+    function _getHeroThemeColor() {
+        // Cor do hero no dark mode é #2e154f, no light mode usa um tom mais claro
+        return localStorage.getItem('vesto_theme') === 'light' ? '#e8dff5' : '#2e154f';
+    }
+
+    function updateDynamicThemeColor() {
+        if (!_metaThemeColor || !_dashboardTab || !_heroCard) return;
+
+        if (!_isDashboardActive) {
+            _metaThemeColor.setAttribute('content', _getDefaultThemeColor());
+            return;
+        }
+
+        const scrollTop = _dashboardTab.scrollTop;
+        const heroHeight = _heroCard.offsetHeight;
+        // Começa a transição quando o hero está 30% scrollado, completa quando 80% scrollado
+        const fadeStart = heroHeight * 0.3;
+        const fadeEnd = heroHeight * 0.8;
+
+        let t = 0; // 0 = hero color, 1 = default color
+        if (scrollTop <= fadeStart) {
+            t = 0;
+        } else if (scrollTop >= fadeEnd) {
+            t = 1;
+        } else {
+            t = (scrollTop - fadeStart) / (fadeEnd - fadeStart);
+        }
+
+        const color = _lerpColor(_getHeroThemeColor(), _getDefaultThemeColor(), t);
+        _metaThemeColor.setAttribute('content', color);
+    }
+
+    if (_dashboardTab) {
+        let _scrollTicking = false;
+        _dashboardTab.addEventListener('scroll', () => {
+            if (!_scrollTicking) {
+                requestAnimationFrame(() => {
+                    updateDynamicThemeColor();
+                    _scrollTicking = false;
+                });
+                _scrollTicking = true;
+            }
+        }, { passive: true });
+    }
+
+    // Detecta mudança de tab para ajustar a theme-color
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            _isDashboardActive = btn.dataset.tab === 'tab-dashboard';
+            updateDynamicThemeColor();
+        });
+    });
+
+    // Seta a cor inicial ao carregar (dashboard no topo = hero roxo)
+    updateDynamicThemeColor();
+    // ─── FIM DYNAMIC THEME-COLOR ───────────────────────────────────────
 
     if (toggleThemeBtn) {
         toggleThemeBtn.addEventListener('click', () => {

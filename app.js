@@ -1142,8 +1142,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const scrollTop = _dashboardTab.scrollTop;
         const heroHeight = _heroCard.offsetHeight;
-        // Começa a transição quando o hero está 70% scrollado, completa quando 100% scrollado
-        const fadeStart = heroHeight * 0.7;
+        // Começa a transição quando o hero está 80% scrollado, completa quando 100% scrollado
+        const fadeStart = heroHeight * 0.8;
         const fadeEnd = heroHeight * 1.0;
 
         let t = 0; // 0 = hero color, 1 = default color
@@ -1173,11 +1173,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Detecta mudança de tab para ajustar a theme-color
-    document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.addEventListener('click', () => {
-            _isDashboardActive = btn.dataset.tab === 'tab-dashboard';
-            updateDynamicThemeColor();
-        });
+    // Usa delegation no document body para capturar cliques precisos mesmo nos ícones dentro do botão
+    document.body.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tab-button');
+        if (btn && btn.dataset && btn.dataset.tab) {
+            // Ignora os tabs internos (como no histórico ou detalhes)
+            if (btn.closest('.bottom-nav')) {
+                _isDashboardActive = btn.dataset.tab === 'tab-dashboard';
+                // Usar requestAnimationFrame para garantir que aplicamos a cor DEPOIS do clique processar
+                requestAnimationFrame(() => {
+                    updateDynamicThemeColor();
+                });
+            }
+        }
     });
 
     // Seta a cor inicial ao carregar (dashboard no topo = hero roxo)

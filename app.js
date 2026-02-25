@@ -3546,9 +3546,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('timeline-pagamentos-container');
         const lista = document.getElementById('timeline-lista');
 
-        // Configura container para Carousel Horizontal
-        lista.className = 'flex overflow-x-auto gap-3 hide-scrollbar pb-2 px-4 snap-x mt-4';
-        lista.style = '-webkit-overflow-scrolling: touch;';
+        // Configura container para Carousel Horizontal (só ativa scroll se tiver > 2 itens para liberar o gesto de aba)
+        const isScrollable = pagamentosReais.length > 2;
+        lista.className = `flex ${isScrollable ? 'overflow-x-auto snap-x' : ''} gap-3 hide-scrollbar pb-2 px-4 mt-4`;
+        lista.style = isScrollable ? '-webkit-overflow-scrolling: touch;' : '';
 
         // Estilos de margem garantidos
         container.style.marginTop = '0px';
@@ -3601,8 +3602,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const totalReceber = prov.value * qtd;
 
             const item = document.createElement('div');
-            // Formato 'Squarish' do screenshot
-            item.className = 'w-32 h-32 flex-shrink-0 snap-start bg-[#151515] rounded-3xl p-4 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform border border-[#2C2C2E]';
+            // Formato 'Squarish' do screenshot sem bordas e conditionally snappable
+            item.className = `w-32 h-32 flex-shrink-0 ${isScrollable ? 'snap-start' : ''} bg-[#151515] rounded-3xl p-4 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`;
 
             item.onclick = () => {
                 window.abrirDetalhesAtivo?.(prov.symbol);

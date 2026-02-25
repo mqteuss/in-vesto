@@ -2206,135 +2206,7 @@ body.light-mode .floating-input:-webkit-autofill {
     /* Branco ativo */
 }
 
-/* --- LISTA ESTÁTICA (GRID DE 3 COLUNAS) --- */
-.payment-static-list {
-    display: grid;
-    /* Mudança de Flex para Grid */
-    grid-template-columns: repeat(3, 1fr);
-    /* 3 espaços iguais sempre */
-    gap: 8px;
-    width: 100%;
-}
 
-/* --- CARD BASE --- */
-.agenda-card {
-    background-color: #09090b;
-    border-radius: 12px;
-    /* Removemos flex:1 e width fixo, o Grid controla o tamanho agora */
-    height: 100%;
-    min-height: 85px;
-    /* Altura mínima para ficar bonito */
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: relative;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-
-.agenda-card:active {
-    transform: scale(0.96);
-}
-
-/* Cabeçalho (Mês ou "HOJE") */
-.agenda-header {
-    background-color: #18181b;
-    color: #a1a1aa;
-    font-size: 10px;
-    font-weight: 700;
-    text-align: center;
-    padding: 4px 0;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* Corpo (Dia e Semana) */
-.agenda-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2px 0;
-}
-
-.agenda-day {
-    font-size: 18px;
-    font-weight: 800;
-    color: #f4f4f5;
-    line-height: 1;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    letter-spacing: -0.03em;
-}
-
-.agenda-weekday {
-    font-size: 9px;
-    font-weight: 600;
-    color: #71717a;
-    text-transform: uppercase;
-    margin-top: 2px;
-}
-
-/* Rodapé (Ticker e Valor) */
-.agenda-footer {
-    padding: 6px;
-    background-color: #09090b;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.agenda-ticker {
-    font-size: 10px;
-    font-weight: 800;
-    color: #ffffff;
-}
-
-.agenda-value {
-    font-size: 10px;
-    font-weight: 700;
-    color: #facc15;
-    /* AMARELO */
-}
-
-/* --- ESTADO "HOJE" (Verde) --- */
-.agenda-card.is-today .agenda-header {
-    background-color: #16a34a;
-    color: #ffffff;
-}
-
-.agenda-card.is-today .agenda-day {
-    color: #ffffff;
-}
-
-.agenda-card.is-today .agenda-weekday {
-    color: #86efac;
-}
-
-/* --- CARD "VER TODOS" (+X) --- */
-.agenda-card.more-card {
-    background-color: #18181b;
-    align-items: center;
-    justify-content: center;
-}
-
-.agenda-card.more-card:active {
-    background-color: #27272a;
-}
-
-.more-count {
-    font-size: 18px;
-    font-weight: 700;
-    color: #a1a1aa;
-}
-
-.more-label {
-    font-size: 8px;
-    font-weight: 600;
-    color: #52525b;
-    margin-top: 4px;
-}
 
 .btn-purple {
     background-color: #9333ea !important;
@@ -2464,9 +2336,7 @@ body.light-mode .floating-input:-webkit-autofill {
         gap: 16px;
     }
 
-    .payment-static-list {
-        grid-template-columns: repeat(5, 1fr) !important;
-    }
+
 
     .premium-grid {
         grid-template-columns: repeat(5, 1fr) !important;

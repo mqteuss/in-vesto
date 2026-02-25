@@ -1098,13 +1098,13 @@ input:-webkit-autofill:active {
     height: 48px;
     padding-left: 44px;
     padding-right: 16px;
-    border-radius: 14px;
+    border-radius: 9999px;
     color: #f3f4f6;
     font-size: 15px;
     font-weight: 500;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     background-color: #121212 !important;
-    border: none !important;
+    border: 1px solid #2C2C2E !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
@@ -1115,7 +1115,7 @@ input:-webkit-autofill:active {
 
 .compact-search-input:focus {
     background-color: #1a1a1c !important;
-    border: none !important;
+    border-color: #4B5563 !important;
     outline: none;
     box-shadow: 0 0 0 4px rgba(75, 85, 99, 0.1);
 }
@@ -1140,7 +1140,9 @@ input:-webkit-autofill:active {
 .filter-funnel-btn {
     width: 38px;
     height: 38px;
-    border-radius: 10px;
+    border-radius: 9999px;
+    border: 1px solid #2C2C2E;
+    background-color: transparent;
     display: flex;
     align-items: center;
     justify-content: center;

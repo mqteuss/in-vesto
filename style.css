@@ -854,8 +854,8 @@ input:-webkit-autofill:active {
     background-color: transparent;
     border-top: 1px solid rgba(255, 255, 255, 0.03);
 
-    margin: 1.5rem 0 0 0;
-    padding: 1rem 0 0 0;
+    margin: 1rem 0 0 0;
+    padding: 0.75rem 0 0 0;
 }
 
 /* Ajuste no divisor vertical para combinar com o tema flat minimalista */
@@ -886,7 +886,7 @@ input:-webkit-autofill:active {
 .premium-content {
     position: relative;
     z-index: 10;
-    padding: 1rem 0;
+    padding: 0.25rem 0;
     /* Zerado as bordas laterais para aproveitar mais espaço e soltar o conteúdo */
     height: 100%;
     display: flex;

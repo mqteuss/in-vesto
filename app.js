@@ -1891,10 +1891,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return acc + Number(item.value || 0);
             }, 0);
 
-            // HTML do Header (COM FUNDO VERDE E TEXTO VERDE)
+            // HTML do Header (COM FUNDO CINZA NEUTRO)
             const headerHtml = `
             <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest pl-1">${mes}</h3>
-            <span class="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-md border border-green-500/20">
+            <span class="text-[10px] font-mono font-bold text-gray-300 bg-[#1C1C1E] px-2 py-0.5 rounded-md border border-[#2C2C2E]">
                 Total: ${formatBRL(totalMes)}
             </span>
         `;
@@ -2321,7 +2321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let tickersHtml = '';
                 if (foundTickers.length > 0) {
                     foundTickers.forEach(ticker => {
-                        tickersHtml += `<span class="news-ticker-tag font-bold bg-[#1C1C1E] text-gray-400 rounded-[4px] border border-[#2C2C2E] mr-1 mb-1 inline-block transition-colors" style="font-size: 8px; padding: 2px 6px;" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
+                        tickersHtml += `<span class="news-ticker-tag font-bold bg-[#1C1C1E] text-gray-400 rounded-[4px] border border-[#2C2C2E] mr-1 mb-1 inline-block transition-colors text-[10px] px-2 py-0.5" data-action="view-ticker" data-symbol="${ticker}">${ticker}</span>`;
                     });
                 }
 

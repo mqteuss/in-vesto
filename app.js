@@ -111,6 +111,7 @@ const _fmtNumber = new Intl.NumberFormat('pt-BR');
 
 const formatBRL = (value) => value != null ? _fmtBRL.format(value) : 'N/A';
 const formatNumber = (value) => value != null ? _fmtNumber.format(value) : 'N/A';
+const formatCurrencyShort = (value) => value != null ? _fmtNumber.format(value) : 'N/A';
 const formatPercent = (value) => `${(value ?? 0).toFixed(2)}%`;
 const formatDate = (dateString, includeTime = false) => {
     if (!dateString) return 'N/A';

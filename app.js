@@ -990,6 +990,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    let _dynamicThemeReady = false;
+
     function updateThemeUI() {
         const isLight = localStorage.getItem('vesto_theme') === 'light';
         const metaTheme = document.querySelector('meta[name="theme-color"]');
@@ -1010,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Delega a cor da status bar ao sistema dinâmico de scroll
-        if (typeof updateDynamicThemeColor === 'function') {
+        if (_dynamicThemeReady) {
             updateDynamicThemeColor();
         } else if (metaTheme) {
             metaTheme.setAttribute('content', isLight ? '#f2f2f7' : '#000000');
@@ -1100,6 +1102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const _dashboardTab = document.getElementById('tab-dashboard');
     const _heroCard = document.getElementById('resumo-carteira-card')?.closest('.relative') || (_dashboardTab ? _dashboardTab.querySelector(':scope > .relative') : null);
     let _isDashboardActive = true; // Dashboard é a tab inicial
+    _dynamicThemeReady = true;
 
     function _lerpColor(a, b, t) {
         // Interpola entre duas cores hex (ex: #2e154f -> #000000)

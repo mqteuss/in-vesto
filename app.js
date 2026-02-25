@@ -3581,7 +3581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Configura container para Carousel Horizontal (só ativa scroll se tiver > 2 itens para liberar o gesto de aba)
         const isScrollable = pagamentosReais.length > 2;
-        lista.className = `flex ${isScrollable ? 'overflow-x-auto snap-x' : ''} gap-3 hide-scrollbar pb-2 px-5 mt-4`;
+        lista.className = `flex ${isScrollable ? 'overflow-x-auto snap-x' : ''} gap-3 hide-scrollbar pb-2 px-4 mt-4`;
         lista.style = isScrollable ? '-webkit-overflow-scrolling: touch;' : '';
 
         lista.innerHTML = '';

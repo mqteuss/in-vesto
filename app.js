@@ -3546,12 +3546,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('timeline-pagamentos-container');
         const lista = document.getElementById('timeline-lista');
 
-        // Configura container para Grid
-        lista.className = 'payment-static-list';
+        // Configura container para Carousel Horizontal
+        lista.className = 'flex overflow-x-auto gap-3 hide-scrollbar pb-2 px-4 snap-x mt-4';
+        lista.style = '-webkit-overflow-scrolling: touch;';
 
-        // Usamos paddingTop para evitar colapso de margem. 32px garante o "descanso".
+        // Estilos de margem garantidos
         container.style.marginTop = '0px';
-        container.style.paddingTop = '32px';
+        container.style.paddingTop = '16px';
 
         // Verificações iniciais
         if (!proventosAtuais || proventosAtuais.length === 0) {
@@ -3575,7 +3576,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Verifica carteira
             const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === p.symbol);
             return ativoNaCarteira && ativoNaCarteira.quantity > 0;
-        }).sort((a, b) => a.paymentDate.localeCompare(b.paymentDate)); // OTIMIZAÇÃO: string ISO, sem new Date()
+        }).sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
 
         if (pagamentosReais.length === 0) {
             container.classList.add('hidden');
@@ -3583,91 +3584,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         lista.innerHTML = '';
-        const totalItems = pagamentosReais.length;
+        const itemsToRender = pagamentosReais; // Mostrar todos em scroll horizontal
 
-        // Regra: Se tem até 3, mostra 3. Se tem mais, mostra 2 + botão.
-        let itemsToRender = [];
-        let showMoreButton = false;
-
-        if (totalItems <= 3) {
-            itemsToRender = pagamentosReais;
-        } else {
-            itemsToRender = pagamentosReais.slice(0, 2);
-            showMoreButton = true;
-        }
-
-        // OTIMIZAÇÃO: DocumentFragment acumula todos os nós em memória.
-        // O navegador só recalcula o layout UMA vez no appendChild final,
-        // em vez de fazer um reflow por card (elimina layout thrashing).
         const fragment = document.createDocumentFragment();
 
-        // Renderiza os Cards Normais
         itemsToRender.forEach(prov => {
             const parts = prov.paymentDate.split('-');
             const dataObj = new Date(parts[0], parts[1] - 1, parts[2]);
 
             const dia = parts[2];
             const mes = dataObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-            const diaSemana = dataObj.toLocaleString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
-
-            // Verifica se é hoje
-            const diffTime = Math.abs(dataObj - hoje);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            const isHoje = diffDays === 0 || (dataObj.getTime() === hoje.getTime());
 
             // Cálculos
             const ativoNaCarteira = carteiraCalculada.find(c => c.symbol === prov.symbol);
             const qtd = ativoNaCarteira ? ativoNaCarteira.quantity : 0;
             const totalReceber = prov.value * qtd;
 
-            const classeHoje = isHoje ? 'is-today' : '';
-            const textoHeader = isHoje ? 'HOJE' : mes;
-
             const item = document.createElement('div');
-            item.className = `agenda-card ${classeHoje}`;
+            // Formato 'Squarish' do screenshot
+            item.className = 'w-32 h-32 flex-shrink-0 snap-start bg-[#151515] rounded-3xl p-4 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform border border-[#2C2C2E]';
 
-            // Clique no card abre detalhes do ativo
             item.onclick = () => {
                 window.abrirDetalhesAtivo?.(prov.symbol);
             };
 
             const valorFormatado = _fmtBRL.format(totalReceber);
 
-            // Removemos style="color:..." para que o CSS (style.css) controle as cores (Verde se for hoje, Amarelo padrão)
+            // Seleciona SVG dependendo se é FII ou Ação
+            const isFundo = typeof isFII === 'function' ? isFII(prov.symbol) : prov.symbol.endsWith('11');
+
+            const iconSvg = isFundo
+                ? `<svg class="w-7 h-7 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                   </svg>`
+                : `<svg class="w-7 h-7 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4-6l3-3m0 0l3 3m-3-3v8" />
+                   </svg>`; // Casa com seta pra cima ou ícone de ação
+
             item.innerHTML = `
-            <div class="agenda-header">${textoHeader}</div>
-
-            <div class="agenda-body">
-                <span class="agenda-day">${dia}</span>
-                <span class="agenda-weekday">${diaSemana}</span>
-            </div>
-
-            <div class="agenda-footer">
-                <span class="agenda-ticker">${prov.symbol}</span>
-                <span class="agenda-value">+${valorFormatado}</span>
-            </div>
-        `;
-            fragment.appendChild(item); // → memória, sem tocar no DOM real
+                <div>
+                    ${iconSvg}
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-white tracking-wide truncate">${prov.symbol}</span>
+                    <span class="text-[11px] text-gray-400 mt-0.5 truncate">${dia} ${mes} <span class="text-green-400 font-semibold ml-1">+${valorFormatado}</span></span>
+                </div>
+            `;
+            fragment.appendChild(item);
         });
-
-        // Renderiza o Botão "Ver Todos" (+X)
-        if (showMoreButton) {
-            const remaining = totalItems - 2;
-            const moreBtn = document.createElement('div');
-            moreBtn.className = 'agenda-card more-card';
-
-            moreBtn.onclick = () => {
-                openPagamentosModal(pagamentosReais);
-            };
-
-            moreBtn.innerHTML = `
-            <div class="agenda-body">
-                <span class="more-count">+${remaining}</span>
-                <span class="more-label">VER TODOS</span>
-            </div>
-        `;
-            fragment.appendChild(moreBtn); // → também vai para o fragment
-        }
 
         lista.appendChild(fragment); // único reflow — insere tudo de uma vez no DOM real
         container.classList.remove('hidden');

@@ -1142,9 +1142,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const scrollTop = _dashboardTab.scrollTop;
         const heroHeight = _heroCard.offsetHeight;
-        // Começa a transição quando o hero está 30% scrollado, completa quando 80% scrollado
-        const fadeStart = heroHeight * 0.3;
-        const fadeEnd = heroHeight * 0.8;
+        // Começa a transição quando o hero está 70% scrollado, completa quando 100% scrollado
+        const fadeStart = heroHeight * 0.7;
+        const fadeEnd = heroHeight * 1.0;
 
         let t = 0; // 0 = hero color, 1 = default color
         if (scrollTop <= fadeStart) {

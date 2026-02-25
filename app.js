@@ -4189,18 +4189,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── Rankings: Variação do Dia (Altas + Baixas) ──
-    async function carregarRankings() {
+    async function carregarRankings(force = false) {
         const container = document.getElementById('rankings-container');
         if (!container) return;
 
         const cacheKey = 'rankings_variacao_dia_v2';
         const CACHE_TTL = isB3Open() ? 1000 * 60 * 15 : 1000 * 60 * 60 * 4;
 
+        if (force) {
+            await vestoDB.delete('apiCache', cacheKey);
+        }
+
         try {
             const containerAltas = document.getElementById('rankings-altas');
             const containerBaixas = document.getElementById('rankings-baixas');
 
-            // Exibe Skeletons antes de carregar
+            // Exibe Skeletons antes de carregar se for force ou não tiver cache
             const renderSkeletonRankings = (el) => {
                 if (!el) return;
                 let skeletonHtml = '';
@@ -4223,9 +4227,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             container.classList.remove('hidden');
             let data = await getCache(cacheKey);
 
-            if (!data) {
-                renderSkeletonRankings(containerAltas);
-                renderSkeletonRankings(containerBaixas);
+            if (!data || force) {
+                if (!data) {
+                    renderSkeletonRankings(containerAltas);
+                    renderSkeletonRankings(containerBaixas);
+                }
 
                 const response = await fetchBFF('/api/scraper', {
                     method: 'POST',
@@ -4233,7 +4239,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: JSON.stringify({ mode: 'rankings' })
                 });
                 data = response.json;
-                if (data) await setCache(cacheKey, data, CACHE_TTL);
+
+                // Evita salvar no cache se o scraper falhar ou voltar array vazio
+                if (data && ((data.altas && data.altas.length > 0) || (data.baixas && data.baixas.length > 0))) {
+                    await setCache(cacheKey, data, CACHE_TTL);
+                }
             }
 
             if (!data) return;
@@ -4274,7 +4284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div class="flex items-center gap-2.5">
                                 <div class="w-7 h-7 rounded-[10px] flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#0D0D0D] border border-white/5 shadow-inner group-hover:border-white/10 transition-colors">
                                     ${iconeHtml}
-                                </div>
+                                    </div>
                                 <span class="text-[12px] font-bold text-gray-200 tracking-tight">${ticker}</span>
                             </div>
                             <div class="flex flex-col items-end gap-0">

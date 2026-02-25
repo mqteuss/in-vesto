@@ -1126,10 +1126,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function updateDynamicThemeColor() {
-        if (!_metaThemeColor || !_dashboardTab || !_heroCard) return;
+        if (!_metaThemeColor) return;
 
+        // Fora do dashboard → sempre cor padrão
         if (!_isDashboardActive) {
             _metaThemeColor.setAttribute('content', _getDefaultThemeColor());
+            return;
+        }
+
+        // No dashboard mas sem hero → cor do hero fixa (topo)
+        if (!_dashboardTab || !_heroCard) {
+            _metaThemeColor.setAttribute('content', _getHeroThemeColor());
             return;
         }
 

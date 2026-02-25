@@ -3546,11 +3546,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('timeline-pagamentos-container');
         const lista = document.getElementById('timeline-lista');
 
-        // Configura container para Carousel Horizontal (só ativa scroll se tiver > 2 itens para liberar o gesto de aba)
-        const isScrollable = pagamentosReais.length > 2;
-        lista.className = `flex ${isScrollable ? 'overflow-x-auto snap-x' : ''} gap-3 hide-scrollbar pb-2 px-4 mt-4`;
-        lista.style = isScrollable ? '-webkit-overflow-scrolling: touch;' : '';
-
         // Estilos de margem garantidos
         container.style.marginTop = '0px';
         container.style.paddingTop = '16px';
@@ -3583,6 +3578,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             container.classList.add('hidden');
             return;
         }
+
+        // Configura container para Carousel Horizontal (só ativa scroll se tiver > 2 itens para liberar o gesto de aba)
+        const isScrollable = pagamentosReais.length > 2;
+        lista.className = `flex ${isScrollable ? 'overflow-x-auto snap-x' : ''} gap-3 hide-scrollbar pb-2 px-4 mt-4`;
+        lista.style = isScrollable ? '-webkit-overflow-scrolling: touch;' : '';
 
         lista.innerHTML = '';
         const itemsToRender = pagamentosReais; // Mostrar todos em scroll horizontal

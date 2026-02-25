@@ -2297,9 +2297,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         let isGlobalFirstItem = true;
 
         Object.keys(grupos).forEach(dataLabel => {
-            // Header (Agora ponta a ponta com -mx-4 px-5)
+            // Header (Agora ponta a ponta com -mx-4 px-5 e fundo escuro opaco para camuflar)
             const header = document.createElement('div');
-            header.className = 'sticky top-0 z-10 bg-[#0a0a0a]/95 backdrop-blur-md py-2 px-5 border-b border-[#1F1F1F] mb-0 -mx-4';
+            header.className = 'sticky top-0 z-10 bg-[#0a0a0a] py-2 px-5 mb-0 -mx-4';
             header.innerHTML = `<h3 class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">${dataLabel}</h3>`;
             fragment.appendChild(header);
 

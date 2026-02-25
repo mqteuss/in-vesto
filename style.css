@@ -665,8 +665,7 @@ select {
 #add-ativo-modal input,
 #new-password-form input,
 #change-password-form input,
-#recover-form input,
-#carteira-search-input {
+#recover-form input {
     transition: all 0.2s ease-in-out;
     background-color: #141414;
     border: none;
@@ -688,8 +687,7 @@ select {
 #auth-container input:focus,
 #new-password-form input:focus,
 #change-password-form input:focus,
-#recover-form input:focus,
-#carteira-search-input:focus {
+#recover-form input:focus {
     background-color: #1a1a1a;
     box-shadow: none;
 }

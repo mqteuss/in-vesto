@@ -1958,7 +1958,7 @@
                 </div>
 
                 <div class="overflow-y-auto h-[calc(85vh-90px)] p-4 pt-4 custom-scroll">
-                    <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="grid grid-cols-2 gap-3 mb-4">
                         <div
                             class="bg-[#151515] rounded-xl p-4 flex flex-col items-center justify-center border border-[#2C2C2E] shadow-sm">
                             <div class="flex items-center gap-1.5 mb-1.5">
@@ -1988,6 +1988,21 @@
                                 id="objetivos-total-investir">R$
                                 0,00</span>
                         </div>
+                    </div>
+
+                    <div class="flex overflow-x-auto gap-2 pb-2 mb-4 hide-scrollbar snap-x">
+                        <button
+                            class="objetivo-filter-btn active snap-start flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-colors bg-white text-black border border-white"
+                            data-target="cota_gratis">Cota Grátis</button>
+                        <button
+                            class="objetivo-filter-btn snap-start flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-colors bg-[#151515] text-gray-400 border border-[#2C2C2E] hover:text-white"
+                            data-target="100">R$ 100/mês</button>
+                        <button
+                            class="objetivo-filter-btn snap-start flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-colors bg-[#151515] text-gray-400 border border-[#2C2C2E] hover:text-white"
+                            data-target="500">R$ 500/mês</button>
+                        <button
+                            class="objetivo-filter-btn snap-start flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-colors bg-[#151515] text-gray-400 border border-[#2C2C2E] hover:text-white"
+                            data-target="1000">R$ 1.000/mês</button>
                     </div>
 
                     <div id="objetivos-lista" class="space-y-3 pb-10">

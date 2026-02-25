@@ -10229,14 +10229,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 50);
     }
 
-    // Lógica Principal de Renderização (VERSÃO SUPER OTIMIZADA)
+    // Variável global para rastrear meta atual (padrão Cota Grátis)
+    let currentObjetivoTarget = 'cota_gratis';
+
+    // Lógica Principal de Renderização (VERSÃO COM MÉDIA E METAS PERSONALIZÁVEIS)
     async function renderizarObjetivos() {
         if (!objetivosLista) return;
 
-        // Captura o elemento do novo total global
+        // Limpa estado atual
         const objetivosTotalInvestir = document.getElementById('objetivos-total-investir');
-
-        // Como agora é instantâneo, mal vamos ver esse loader, mas é bom manter por segurança
         objetivosLista.innerHTML = '<div class="text-center py-10"><span class="loader-sm"></span><p class="text-xs text-gray-500 mt-2">Analisando carteira...</p></div>';
 
         // 1. Filtra apenas FIIs e Fiagros
@@ -10264,11 +10265,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         let htmlFinal = '';
         let somaTotalInvestir = 0; // Inicializa a soma global
 
-        // 2. Para cada FII, calcula os dados IMEDIATAMENTE a partir da memória
+        // 2. Data de 1 ano atrás para média 12M
+        const umAnoAtras = new Date();
+        umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+
+        // 3. Iteração e Cálculos Reais
         for (const ativo of fiisCarteira) {
             const symbol = ativo.symbol;
+            // PREÇO ATUAL ou PREÇO MÉDIO: para objetivos de cota grátis o investidor olha para o preço a mercado de tela hoje.
             const precoAtual = precosAtuais.find(p => p.symbol === symbol)?.regularMarketPrice || 0;
-            let ultimoRendimento = 0;
+            let mediaRendimentos = 0;
 
             const isLight = document.body.classList.contains('light-mode');
             const bgCard = isLight ? 'bg-gray-100' : 'bg-[#151515]';
@@ -10282,92 +10288,135 @@ document.addEventListener('DOMContentLoaded', async () => {
             const corTitle = isLight ? 'text-gray-800' : 'text-white';
             const corValue = isLight ? 'text-gray-800' : 'text-white';
 
-            // BUSCA INSTANTÂNEA: Olha direto para os proventos que já vieram do StatusInvest na inicialização
-            const historicoDoFii = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
+            // BUSCA PROVENTOS: Filtra proventos do fundo nos ultimos 12 meses
+            const proventosDoFundo = proventosConhecidos.filter(p => p.symbol === symbol && p.value > 0);
 
-            if (historicoDoFii.length > 0) {
-                // Ordena e pega o último valor pago
-                historicoDoFii.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-                ultimoRendimento = historicoDoFii[0].value;
+            if (proventosDoFundo.length > 0) {
+                const ultimos12Meses = proventosDoFundo.filter(p => new Date(p.paymentDate) >= umAnoAtras);
+
+                if (ultimos12Meses.length > 0) {
+                    const soma12Meses = ultimos12Meses.reduce((acc, curr) => acc + curr.value, 0);
+                    // Divide por 12 se pagou todos os meses, se pagou menos dividimos pela qtd pra não distorcer negativamente tanto
+                    const denom = ultimos12Meses.length > 6 ? 12 : ultimos12Meses.length;
+                    mediaRendimentos = soma12Meses / denom;
+                } else {
+                    // Fallback se n tem 12m: media de tudo q tem
+                    const somaTudo = proventosDoFundo.reduce((acc, curr) => acc + curr.value, 0);
+                    mediaRendimentos = somaTudo / proventosDoFundo.length;
+                }
             }
 
-            // CÁLCULO MAGIC NUMBER
-            if (precoAtual > 0 && ultimoRendimento > 0) {
-                const magicNumber = Math.ceil(precoAtual / ultimoRendimento);
-                const cotasAtuais = ativo.quantity;
-                const progresso = Math.min(100, (cotasAtuais / magicNumber) * 100);
+            // CÁLCULO GERAL DA META
+            if (precoAtual > 0 && mediaRendimentos > 0) {
+                let metaCotasEsperada = 0;
 
-                const cotasFaltantes = Math.max(0, magicNumber - cotasAtuais);
+                if (currentObjetivoTarget === 'cota_gratis') {
+                    // Meta Cota Gratis: Proventos = Preco de 1 cota. Entao qtd = Preco / Provento
+                    metaCotasEsperada = Math.ceil(precoAtual / mediaRendimentos);
+                } else {
+                    // Meta Renda Fixa Ex: R$ 100 por mes. Qtd = MetaFinanceira / Provento
+                    const valorMetaCash = parseFloat(currentObjetivoTarget);
+                    metaCotasEsperada = Math.ceil(valorMetaCash / mediaRendimentos);
+                }
+
+                const cotasAtuais = ativo.quantity;
+                const progresso = Math.min(100, (cotasAtuais / metaCotasEsperada) * 100);
+
+                const cotasFaltantes = Math.max(0, metaCotasEsperada - cotasAtuais);
                 const investimentoNecessario = cotasFaltantes * precoAtual;
 
                 // SOMA AO TOTAL GLOBAL
                 somaTotalInvestir += investimentoNecessario;
 
-                const atingiu = cotasAtuais >= magicNumber;
+                const atingiu = cotasAtuais >= metaCotasEsperada;
                 const corBarra = atingiu ? 'bg-yellow-500' : (isLight ? 'bg-gray-800' : 'bg-white');
                 const corTexto = atingiu ? 'text-yellow-500' : (isLight ? 'text-gray-800' : 'text-white');
 
-                const msgStatus = atingiu ? 'Concluido!' : `Faltam < b class="${corValue}" > ${cotasFaltantes}</b > cotas`;
-                const msgInvest = atingiu ? 'A bola de neve começou.' : `Falta investir < b class="${corValue}" > ${formatBRL(investimentoNecessario)}</b > `;
+                const msgStatus = atingiu ? 'Concluido!' : `Faltam <b class="${corValue}">${formatCurrencyShort(cotasFaltantes)}</b> cotas`;
+                const msgInvest = atingiu ? 'Objetivo alcançado.' : `Falta investir <b class="${corValue}">${formatBRL(investimentoNecessario)}</b> `;
 
                 htmlFinal += `
-    <div class="${bgCard} p-4 rounded-3xl relative overflow-hidden" >
-                <div class="flex justify-between items-start mb-4">
+                <div class="${bgCard} p-4 rounded-3xl relative overflow-hidden" >
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl ${bgIcon} flex items-center justify-center shadow-inner border ${borderIcon}">
+                                <span class="text-xs font-bold ${corTitle} tracking-wider">${symbol.substring(0, 2)}</span>
+                            </div>
+                            <div>
+                                <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
+                                <span class="text-[10px] text-gray-500 font-medium mt-1 block">Preço: ${formatBRL(precoAtual)} • Média.Div/Mês: ${formatBRL(mediaRendimentos)}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest block mb-0.5">Meta</span>
+                            <span class="text-lg font-bold ${corValue} leading-none">${formatCurrencyShort(metaCotasEsperada)}</span>
+                            <span class="text-[9px] text-gray-500 block font-medium">cotas</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full ${bgBar} h-1.5 rounded-full overflow-hidden mb-2 shadow-inner">
+                        <div class="h-full rounded-full ${corBarra} transition-all duration-1000" style="width: ${progresso}%"></div>
+                    </div>
+
+                    <div class="flex justify-between items-center text-[10px] font-bold tracking-wider">
+                        <span class="text-gray-500">${Math.floor(progresso)}% CONCLUÍDO</span>
+                        <span class="${corTexto}">${formatCurrencyShort(cotasAtuais)} / ${formatCurrencyShort(metaCotasEsperada)}</span>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t ${borderRow} flex justify-between items-center">
+                        <div class="text-[11px] text-gray-400">${msgStatus}</div>
+                        <div class="text-[10px] font-bold ${txtInvest} ${bgInvest} px-2.5 py-1.5 rounded-xl border ${borderInvest}">
+                            ${msgInvest}
+                        </div>
+                    </div>
+                </div> `;
+            } else {
+                htmlFinal += `
+                <div class="${bgCard} p-4 rounded-3xl relative overflow-hidden opacity-50" >
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-2xl ${bgIcon} flex items-center justify-center shadow-inner border ${borderIcon}">
+                        <div class="w-10 h-10 rounded-2xl ${bgIcon} flex items-center justify-center border ${borderIcon}">
                             <span class="text-xs font-bold ${corTitle} tracking-wider">${symbol.substring(0, 2)}</span>
                         </div>
                         <div>
                             <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
-                            <span class="text-[10px] text-gray-500 font-medium mt-1 block">Preço: ${formatBRL(precoAtual)} • Div: ${formatBRL(ultimoRendimento)}</span>
+                            <span class="text-[10px] text-red-400 font-medium mt-1 block">Dados insuficientes para calcular média</span>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest block mb-0.5">Meta</span>
-                        <span class="text-lg font-bold ${corValue} leading-none">${magicNumber}</span>
-                        <span class="text-[9px] text-gray-500 block font-medium">cotas</span>
-                    </div>
-                </div>
-
-                <div class="w-full ${bgBar} h-1.5 rounded-full overflow-hidden mb-2 shadow-inner">
-                    <div class="h-full rounded-full ${corBarra} transition-all duration-1000" style="width: ${progresso}%"></div>
-                </div>
-
-                <div class="flex justify-between items-center text-[10px] font-bold tracking-wider">
-                    <span class="text-gray-500">${Math.floor(progresso)}% CONCLUÍDO</span>
-                    <span class="${corTexto}">${cotasAtuais} / ${magicNumber}</span>
-                </div>
-
-                <div class="mt-4 pt-3 border-t ${borderRow} flex justify-between items-center">
-                    <div class="text-[11px] text-gray-400">${msgStatus}</div>
-                    <div class="text-[10px] font-bold ${txtInvest} ${bgInvest} px-2.5 py-1.5 rounded-xl border ${borderInvest}">
-                        ${msgInvest}
-                    </div>
-                </div>
-            </div> `;
-            } else {
-                // Caso falte dados para calcular
-                htmlFinal += `
-    <div class="${bgCard} p-4 rounded-3xl relative overflow-hidden opacity-50" >
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-2xl ${bgIcon} flex items-center justify-center border ${borderIcon}">
-                <span class="text-xs font-bold ${corTitle} tracking-wider">${symbol.substring(0, 2)}</span>
-            </div>
-            <div>
-                <h4 class="text-base font-bold ${corTitle} leading-none">${symbol}</h4>
-                <span class="text-[10px] text-red-400 font-medium mt-1 block">Dados insuficientes para cálculo</span>
-            </div>
-        </div>
-            </div> `;
+                </div> `;
             }
         }
 
         objetivosLista.innerHTML = htmlFinal;
 
-        // Atualiza o valor total formatado no DOM da tela
         if (objetivosTotalInvestir) {
             objetivosTotalInvestir.textContent = formatBRL(somaTotalInvestir);
         }
+    }
+
+    // Escutadores dos Botões de Filtro de Meta 
+    const objetivoFilterBtns = document.querySelectorAll('.objetivo-filter-btn');
+    if (objetivoFilterBtns.length > 0) {
+        objetivoFilterBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Atualiza o estado visual das pills de filtro
+                objetivoFilterBtns.forEach(b => {
+                    b.classList.remove('bg-white', 'text-black', 'border-white', 'active');
+                    b.classList.add('bg-[#151515]', 'text-gray-400', 'border-[#2C2C2E]');
+                    // Aplica estilo light mode se necessario (simplificado)
+                    if (document.body.classList.contains('light-mode')) {
+                        b.classList.replace('bg-[#151515]', 'bg-gray-100');
+                        b.classList.replace('border-[#2C2C2E]', 'border-gray-200');
+                    }
+                });
+
+                e.target.classList.add('active', 'bg-white', 'text-black', 'border-white');
+                e.target.classList.remove('bg-[#151515]', 'text-gray-400', 'border-[#2C2C2E]', 'bg-gray-100', 'border-gray-200');
+
+                // Atualiza o Global Target e re-renderiza a aba
+                currentObjetivoTarget = e.target.getAttribute('data-target');
+                renderizarObjetivos();
+            });
+        });
     }
 
     if (objetivosVoltarBtn) objetivosVoltarBtn.addEventListener('click', closeObjetivosModal);

@@ -1279,7 +1279,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
             document.body.style.overflow = 'hidden';
-            setTimeout(() => autenticarBiometria(), 500);
+            // Se o desbloqueio antecipado (inline script) já funcionou, não pede de novo
+            if (!window.__bioUnlocked) {
+                setTimeout(() => autenticarBiometria(), 100);
+            }
         }
     }
 
@@ -8786,7 +8789,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // LÓGICA DE SESSÃO E ROTEAMENTO
         if (session) {
-            await verificarStatusPush();
+            verificarStatusPush(); // Fire-and-forget — não bloqueia biometria
             currentUserId = session.user.id;
             authContainer.classList.add('hidden');
             appWrapper.classList.remove('hidden');

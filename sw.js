@@ -2,7 +2,7 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v17';
+const CACHE_VERSION = 'v18';
 const CACHE_NAME = `vesto-cache-${CACHE_VERSION}`;
 const DEFAULT_URL = '/?tab=tab-carteira';
 
@@ -166,9 +166,7 @@ self.addEventListener('fetch', event => {
                 .catch(err => {
                     // Interrupções de rede, servidor de dev inativo, ou requests abortados (página recarregada)
                     // geram 'Failed to fetch' naturalmente em background.
-                    if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
-                        log.info(`Background fetch ignorado (offline/abortado) para ${url.pathname}`);
-                    } else {
+                    if (err.name !== 'AbortError' && err.message !== 'Failed to fetch') {
                         log.warn(`Revalidação falhou para ${url.pathname}:`, err.message);
                     }
                     // Retorna null — tratado abaixo no fallback

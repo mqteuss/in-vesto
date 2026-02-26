@@ -2,7 +2,7 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v20';
+const CACHE_VERSION = 'v21'; // Updated for Push Notifications changes
 const CACHE_NAME = `vesto-cache-${CACHE_VERSION}`;
 const DEFAULT_URL = '/?tab=tab-carteira';
 
@@ -236,7 +236,7 @@ self.addEventListener('push', event => {
             dateOfArrival: Date.now(),
         },
         actions: [
-            { action: 'open', title: 'Ver Portfólio' },
+            { action: 'open', title: 'Abrir' },
             { action: 'dismiss', title: 'Dispensar' },
         ],
     };
@@ -255,15 +255,24 @@ self.addEventListener('notificationclick', event => {
     // Trata a action "dismiss" explicitamente — apenas fecha
     if (event.action === 'dismiss') return;
 
+    // Obtem a URL salva no payload da notificação (ou a padrão)
     const targetUrl = event.notification.data?.url || DEFAULT_URL;
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-            // Procura aba já aberta no mesmo origin
+            // Se a URL for externa (notícia de FII), abre uma nova aba diretamente
+            if (targetUrl.startsWith('http') && !targetUrl.startsWith(self.location.origin)) {
+                return self.clients.openWindow(targetUrl);
+            }
+
+            // Se for interna, tenta focar a aba existente e navegar
             for (const client of clientList) {
                 if (client.url.startsWith(self.location.origin) && 'focus' in client) {
-                    // Foca a aba E navega para a URL correta da notificação
-                    return client.focus().then(c => c.navigate(targetUrl));
+                    client.focus();
+                    if (client.url !== targetUrl) {
+                        return client.navigate(targetUrl);
+                    }
+                    return;
                 }
             }
             // Nenhuma aba aberta com o origin: abre nova janela

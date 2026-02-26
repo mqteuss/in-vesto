@@ -2,16 +2,16 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v16';
-const CACHE_NAME    = `vesto-cache-${CACHE_VERSION}`;
-const DEFAULT_URL   = '/?tab=tab-carteira';
+const CACHE_VERSION = 'v19';
+const CACHE_NAME = `vesto-cache-${CACHE_VERSION}`;
+const DEFAULT_URL = '/?tab=tab-carteira';
 
 // ---------------------------------------------------------
 // LOGGER — identifica logs do SW em produção
 // ---------------------------------------------------------
 const log = {
-    info:  (...a) => console.log(`[SW ${CACHE_VERSION}]`, ...a),
-    warn:  (...a) => console.warn(`[SW ${CACHE_VERSION}]`, ...a),
+    info: (...a) => console.log(`[SW ${CACHE_VERSION}]`, ...a),
+    warn: (...a) => console.warn(`[SW ${CACHE_VERSION}]`, ...a),
     error: (...a) => console.error(`[SW ${CACHE_VERSION}]`, ...a),
 };
 
@@ -54,7 +54,7 @@ const EXTERNAL_FILES = [
 // ---------------------------------------------------------
 async function cacheFile(cache, url, options = {}) {
     try {
-        const request  = new Request(url, options);
+        const request = new Request(url, options);
         const response = await fetch(request);
         await cache.put(request, response);
     } catch (err) {
@@ -114,7 +114,7 @@ self.addEventListener('activate', event => {
 });
 
 // ---------------------------------------------------------
-// 3. FETCH — ESTRATÉGIA STALE-WHILE-REVALIDATE
+// 3. FETCH — ESTRATÉGIA NETWORK-FIRST, FALLBACK TO CACHE
 // ---------------------------------------------------------
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
@@ -145,56 +145,49 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Stale-While-Revalidate para todo o resto
+    // Network-First para todo o resto
     event.respondWith(
-        caches.open(CACHE_NAME).then(async cache => {
-            const cachedResponse = await cache.match(event.request);
+        fetch(event.request)
+            .then(networkResponse => {
+                // Se a rede respondeu com sucesso, atualizamos o cache
+                const cacheable =
+                    networkResponse.status === 200 &&
+                    (networkResponse.type === 'basic' || networkResponse.type === 'opaque');
 
-            // Atualização em background — não bloqueia a resposta
-            const revalidate = fetch(event.request)
-                .then(networkResponse => {
-                    // Cacheia respostas válidas: basic (mesmo origem) ou opaque (no-cors CDN)
-                    const cacheable =
-                        networkResponse.status === 200 &&
-                        (networkResponse.type === 'basic' || networkResponse.type === 'opaque');
-
-                    if (cacheable) {
-                        cache.put(event.request, networkResponse.clone());
-                    }
-                    return networkResponse;
-                })
-                .catch(err => {
-                    log.warn(`Revalidação falhou para ${url.pathname}:`, err.message);
-                    // Retorna null — tratado abaixo no fallback
-                    return null;
-                });
-
-            if (cachedResponse) {
-                // Tem cache: retorna imediatamente, revalida em background
-                return cachedResponse;
-            }
-
-            // Sem cache: aguarda a rede
-            const networkResponse = await revalidate;
-
-            if (networkResponse) return networkResponse;
-
-            // Offline e sem cache: fallback para página principal
-            // (permite que o app mostre uma UI offline em vez de tela em branco)
-            if (url.pathname !== '/') {
-                const fallback = await cache.match('/');
-                if (fallback) {
-                    log.warn(`Offline fallback para ${url.pathname}`);
-                    return fallback;
+                if (cacheable) {
+                    const clonedResponse = networkResponse.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, clonedResponse);
+                    });
                 }
-            }
+                return networkResponse;
+            })
+            .catch(async err => {
+                // Se o fetch falhar (offline, erro de rede, aborted request),
+                // tentamos buscar do cache sem fazer alarde.
 
-            // Último recurso: resposta de erro legível
-            return new Response('Sem conexão e sem cache disponível.', {
-                status: 503,
-                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-            });
-        })
+                const cache = await caches.open(CACHE_NAME);
+                const cachedResponse = await cache.match(event.request);
+
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+
+                // Offline e sem cache: fallback para página principal
+                // (permite que o app mostre uma UI offline em vez de tela em branco)
+                if (url.pathname !== '/') {
+                    const fallback = await cache.match('/');
+                    if (fallback) {
+                        return fallback;
+                    }
+                }
+
+                // Último recurso: resposta de erro legível
+                return new Response('Sem conexão e sem cache disponível.', {
+                    status: 503,
+                    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+                });
+            })
     );
 });
 
@@ -226,17 +219,17 @@ self.addEventListener('push', event => {
     }
 
     const options = {
-        body:    data.body  || '',
-        icon:    data.icon  || '/icons/icon-192x192.png',
-        badge:   data.badge || '/public/sininhov2.png',
+        body: data.body || '',
+        icon: data.icon || '/icons/icon-192x192.png',
+        badge: data.badge || '/public/sininhov2.png',
         vibrate: [100, 50, 100],
         data: {
-            url:           data.url || DEFAULT_URL,
+            url: data.url || DEFAULT_URL,
             dateOfArrival: Date.now(),
         },
         actions: [
-            { action: 'open',    title: 'Ver Portfólio' },
-            { action: 'dismiss', title: 'Dispensar'     },
+            { action: 'open', title: 'Ver Portfólio' },
+            { action: 'dismiss', title: 'Dispensar' },
         ],
     };
 

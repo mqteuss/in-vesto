@@ -1015,7 +1015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (_dynamicThemeReady) {
             updateDynamicThemeColor();
         } else if (metaTheme) {
-            metaTheme.setAttribute('content', isLight ? '#f2f2f7' : '#000000');
+            metaTheme.setAttribute('content', isLight ? '#f2f2f7' : '#2e154f');
         }
 
         if (toggleThemeBtn && themeToggleKnob) {

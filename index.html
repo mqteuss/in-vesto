@@ -87,6 +87,8 @@
 
     <script>
         try {
+            // Cleanup de emergência removido — causava loop infinito com app.js
+
             const bioEnabled = localStorage.getItem('vesto_bio_enabled') === 'true';
             const justLoggedOut = sessionStorage.getItem('vesto_just_logged_out') === 'true';
 

@@ -6,8 +6,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#2e154f",
+  "theme_color": "#2e154f",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -41,21 +41,39 @@
       "short_name": "Carteira",
       "description": "Minha Carteira",
       "url": "/?tab=tab-carteira",
-      "icons": [{ "src": "/icons/carteira.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icons/carteira.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Histórico",
       "short_name": "Histórico",
       "description": "Histórico de Transações",
       "url": "/?tab=tab-historico",
-      "icons": [{ "src": "/icons/historico.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icons/historico.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Notícias",
       "short_name": "Notícias",
       "description": "Notícias FIIs",
       "url": "/?tab=tab-noticias",
-      "icons": [{ "src": "/icons/noticias.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icons/noticias.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

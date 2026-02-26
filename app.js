@@ -1279,10 +1279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
             document.body.style.overflow = 'hidden';
-            // Se o desbloqueio antecipado (inline script) já funcionou, não pede de novo
-            if (!window.__bioUnlocked) {
-                setTimeout(() => autenticarBiometria(), 100);
-            }
+            setTimeout(() => autenticarBiometria(), 100);
         }
     }
 

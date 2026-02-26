@@ -95,41 +95,6 @@
             if (bioEnabled && !justLoggedOut) {
                 document.getElementById('biometric-lock-screen').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
-
-                // Dispara biometria imediatamente, antes do app.js carregar
-                const credId = localStorage.getItem('vesto_bio_id');
-                if (credId && window.PublicKeyCredential && navigator.credentials) {
-                    setTimeout(async () => {
-                        try {
-                            // base64 → ArrayBuffer inline
-                            const b64 = credId.replace(/-/g, '+').replace(/_/g, '/');
-                            const bin = atob(b64);
-                            const buf = new Uint8Array(bin.length);
-                            for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-
-                            const challenge = new Uint8Array(32);
-                            crypto.getRandomValues(challenge);
-
-                            const assertion = await navigator.credentials.get({
-                                publicKey: {
-                                    challenge,
-                                    timeout: 60000,
-                                    userVerification: 'required',
-                                    allowCredentials: [{ id: buf.buffer, type: 'public-key', transports: ['internal'] }]
-                                }
-                            });
-
-                            if (assertion) {
-                                document.getElementById('biometric-lock-screen').classList.add('hidden');
-                                document.body.style.overflow = '';
-                                window.__bioUnlocked = true;
-                            }
-                        } catch (e) {
-                            // Falha silenciosa — app.js tentará novamente
-                            console.warn('Early bio auth failed:', e.message);
-                        }
-                    }, 50);
-                }
             }
 
             const isLight = localStorage.getItem('vesto_theme') === 'light';

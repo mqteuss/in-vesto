@@ -565,6 +565,9 @@ body.light-mode .btn-cancel:hover {
     animation: none;
 }
 
+
+
+
 .bottom-nav {
     background-color: rgba(20, 20, 20, 0.85);
     /* Moderado transparente para não precisar de tanto blur */

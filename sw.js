@@ -2,7 +2,7 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v21'; // Updated for Push Notifications changes
+const CACHE_VERSION = 'v22'; // Revert status bar changes
 const CACHE_NAME = `vesto-cache-${CACHE_VERSION}`;
 const DEFAULT_URL = '/?tab=tab-carteira';
 

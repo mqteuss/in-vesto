@@ -1015,7 +1015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (_dynamicThemeReady) {
             updateDynamicThemeColor();
         } else if (metaTheme) {
-            metaTheme.setAttribute('content', isLight ? '#f2f2f7' : '#2e154f');
+            metaTheme.setAttribute('content', isLight ? '#f2f2f7' : '#000000');
         }
 
         if (toggleThemeBtn && themeToggleKnob) {
@@ -1142,14 +1142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const scrollTop = _dashboardTab.scrollTop;
         const heroHeight = _heroCard.offsetHeight;
-
-        // Se o hero ainda não renderizou (height = 0), usa cor do hero
-        if (!heroHeight) {
-            _metaThemeColor.setAttribute('content', _getHeroThemeColor());
-            return;
-        }
-
-        // Começa a transição quando o hero está 95% scrollado, completa quando 100% scrollado
+        // Começa a transição quando o hero está 90% scrollado, completa quando 100% scrollado
         const fadeStart = heroHeight * 0.95;
         const fadeEnd = heroHeight * 1.0;
 

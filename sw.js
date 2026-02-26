@@ -2,7 +2,7 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v16';
+const CACHE_VERSION = 'v17';
 const CACHE_NAME    = `vesto-cache-${CACHE_VERSION}`;
 const DEFAULT_URL   = '/?tab=tab-carteira';
 

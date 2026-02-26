@@ -6,14 +6,6 @@
     },
     {
       "path": "/api/cron/notificar",
-      "schedule": "0 15 * * *"
-    },
-    {
-      "path": "/api/cron/notificar",
-      "schedule": "0 18 * * *"
-    },
-    {
-      "path": "/api/cron/notificar",
       "schedule": "0 21 * * *"
     }
   ],

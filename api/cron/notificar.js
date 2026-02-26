@@ -386,6 +386,168 @@ async function enviarNotificacoes(rid) {
 }
 
 // ---------------------------------------------------------
+// PARTE 5: NOTIFICAÇÕES DE NOTÍCIAS (RSS)
+// ---------------------------------------------------------
+async function enviarNoticiasRSS(rid) {
+    const elapsed = log.timer();
+    log.info('RSS news job started', { rid });
+
+    const RSSParser = require('rss-parser');
+    const parser = new RSSParser();
+    const RSS_URLS = [
+        'https://www.infomoney.com.br/onde-investir/fundos-imobiliarios/feed/',
+        'https://www.clubefiinews.com.br/feed/'
+    ];
+
+    let allItems = [];
+    for (const feedUrl of RSS_URLS) {
+        try {
+            const feed = await parser.parseURL(feedUrl);
+            if (feed && feed.items) {
+                allItems.push(...feed.items);
+            }
+        } catch (err) {
+            log.warn('Falha ao ler feed RSS', { rid, feedUrl, error: err.message });
+        }
+    }
+
+    if (allItems.length === 0) return 0;
+
+    // Busca guids já enviados (para não repetir)
+    const { data: appStates } = await supabase
+        .from('appstate')
+        .select('*')
+        .eq('key', 'last_news_sent')
+        .limit(1);
+
+    let enviadas = [];
+    if (appStates && appStates.length > 0) {
+        try {
+            const raw = typeof appStates[0].value_json === 'string' 
+                ? JSON.parse(appStates[0].value_json) 
+                : appStates[0].value_json;
+            if (Array.isArray(raw)) enviadas = raw;
+        } catch(e) {}
+    }
+    const noticiasJaEnviadas = new Set(enviadas);
+
+    // Carrega transacoes e subs em paralelo
+    const [ { data: transacoes }, { data: allSubs } ] = await Promise.all([
+        supabase.from('transacoes').select('user_id, symbol'),
+        supabase.from('push_subscriptions').select('*')
+    ]);
+
+    if (!transacoes?.length || !allSubs?.length) return 0;
+
+    // Monta Dicionários
+    const symbolUserMap = {};
+    for (const t of transacoes) {
+        const sym = normalizeSymbol(t.symbol);
+        if (!symbolUserMap[sym]) symbolUserMap[sym] = new Set();
+        symbolUserMap[sym].add(t.user_id);
+    }
+
+    const subsByUser = {};
+    for (const sub of allSubs) {
+        if (!subsByUser[sub.user_id]) subsByUser[sub.user_id] = [];
+        subsByUser[sub.user_id].push(sub);
+    }
+
+    // Processa Notícias (ordena mais recentes primeiro)
+    allItems.sort((a,b) => new Date(b.pubDate || b.isoDate || 0) - new Date(a.pubDate || a.isoDate || 0));
+    allItems = allItems.slice(0, 30); // Limita tamanho da fila de processamento
+
+    const tickerRegex = /\b([A-Z]{4}11|[A-Z]{4}12)\b/g;
+    let totalSent = 0;
+    const staleSubIds = [];
+    let guidsProcessadasHoje = [];
+    
+    for (const item of allItems) {
+        const uniqueId = item.guid || item.link;
+        if (!uniqueId || noticiasJaEnviadas.has(uniqueId)) continue;
+        
+        const textoBusca = `${item.title || ''} ${item.contentSnippet || item.content || ''}`;
+        let matchedTickers = textoBusca.match(tickerRegex);
+        
+        if (!matchedTickers) {
+            guidsProcessadasHoje.push(uniqueId);
+            continue;
+        }
+        
+        const uniqueTickers = [...new Set(matchedTickers)];
+        let targetTickers = [];
+        let usersToNotify = new Set();
+
+        for (const ticker of uniqueTickers) {
+            const sym = normalizeSymbol(ticker);
+            if (symbolUserMap[sym]) {
+                targetTickers.push(sym);
+                for (const uid of symbolUserMap[sym]) usersToNotify.add(uid);
+            }
+        }
+
+        if (usersToNotify.size === 0) {
+            guidsProcessadasHoje.push(uniqueId);
+            continue;
+        }
+
+        const titulo = item.title;
+        // Strip HTML and get 100 chars max
+        const excerpt = (item.contentSnippet || item.content || '').replace(/<[^>]*>?/gm, '').substring(0, 100) + '...';
+
+        const notifPayload = JSON.stringify({
+            title: `Notícia: ${targetTickers.join(', ')}`,
+            body:  `${titulo}\n${excerpt}`,
+            icon:  CONFIG.notif.icon,
+            badge: CONFIG.notif.badge,
+            url:   item.link || CONFIG.notif.url,
+        });
+
+        for (const userId of usersToNotify) {
+            const subs = subsByUser[userId];
+            if (!subs?.length) continue;
+
+            const pushResults = await Promise.allSettled(
+                subs.map(sub => webpush.sendNotification(sub.subscription, notifPayload))
+            );
+
+            for (let i = 0; i < pushResults.length; i++) {
+                const res = pushResults[i];
+                if (res.status === 'fulfilled') totalSent++;
+                else {
+                    const code = res.reason?.statusCode;
+                    if (code === 410 || code === 404) staleSubIds.push(subs[i].id);
+                }
+            }
+        }
+        guidsProcessadasHoje.push(uniqueId);
+    }
+
+    if (staleSubIds.length > 0) {
+        await supabase.from('push_subscriptions').delete().in('id', staleSubIds);
+    }
+
+    if (guidsProcessadasHoje.length > 0) {
+        const novasGuidsArray = [...new Set([...guidsProcessadasHoje, ...enviadas])].slice(0, 150); // Buffer rotativo
+        
+        if (appStates && appStates.length > 0) {
+            await supabase.from('appstate').update({
+                value_json: JSON.stringify(novasGuidsArray)
+            }).eq('key', 'last_news_sent');
+        } else {
+            await supabase.from('appstate').insert({
+                user_id: '00000000-0000-0000-0000-000000000000',
+                key: 'last_news_sent',
+                value_json: JSON.stringify(novasGuidsArray)
+            });
+        }
+    }
+
+    log.info('RSS news job done', { rid, totalSent, ms: elapsed() });
+    return totalSent;
+}
+
+// ---------------------------------------------------------
 // HANDLER PRINCIPAL (CRON)
 // ---------------------------------------------------------
 module.exports = async function handler(req, res) {
@@ -465,17 +627,21 @@ module.exports = async function handler(req, res) {
         // 2. Patrimônio
         const totalSnapshots = await atualizarPatrimonioJob(rid);
 
-        // 3. Notificações
+        // 3. Notificações de Proventos
         const totalSent = await enviarNotificacoes(rid);
 
+        // 4. Notificações de Notícias FIIs (RSS)
+        const totalNewsSent = await enviarNoticiasRSS(rid);
+
         const duration = ((Date.now() - elapsed()) / 1000 + elapsed() / 1000).toFixed(2);
-        log.info('Cron finished', { rid, snapshots: totalSnapshots, notifications: totalSent, ms: elapsed() });
+        log.info('Cron finished', { rid, snapshots: totalSnapshots, notifications: totalSent, news: totalNewsSent, ms: elapsed() });
 
         return res.status(200).json({
             status:        'ok',
             rid,
             snapshots:     totalSnapshots,
             notifications: totalSent,
+            news_sent:     totalNewsSent,
             ms:            elapsed(),
         });
 

@@ -2,16 +2,16 @@
 // CONFIGURAÇÃO
 // Incremente CACHE_VERSION a cada deploy para forçar atualização.
 // ---------------------------------------------------------
-const CACHE_VERSION = 'v18';
-const CACHE_NAME = `vesto-cache-${CACHE_VERSION}`;
-const DEFAULT_URL = '/?tab=tab-carteira';
+const CACHE_VERSION = 'v16';
+const CACHE_NAME    = `vesto-cache-${CACHE_VERSION}`;
+const DEFAULT_URL   = '/?tab=tab-carteira';
 
 // ---------------------------------------------------------
 // LOGGER — identifica logs do SW em produção
 // ---------------------------------------------------------
 const log = {
-    info: (...a) => console.log(`[SW ${CACHE_VERSION}]`, ...a),
-    warn: (...a) => console.warn(`[SW ${CACHE_VERSION}]`, ...a),
+    info:  (...a) => console.log(`[SW ${CACHE_VERSION}]`, ...a),
+    warn:  (...a) => console.warn(`[SW ${CACHE_VERSION}]`, ...a),
     error: (...a) => console.error(`[SW ${CACHE_VERSION}]`, ...a),
 };
 
@@ -54,7 +54,7 @@ const EXTERNAL_FILES = [
 // ---------------------------------------------------------
 async function cacheFile(cache, url, options = {}) {
     try {
-        const request = new Request(url, options);
+        const request  = new Request(url, options);
         const response = await fetch(request);
         await cache.put(request, response);
     } catch (err) {
@@ -164,19 +164,12 @@ self.addEventListener('fetch', event => {
                     return networkResponse;
                 })
                 .catch(err => {
-                    // Interrupções de rede, servidor de dev inativo, ou requests abortados (página recarregada)
-                    // geram 'Failed to fetch' naturalmente em background.
-                    if (err.name !== 'AbortError' && err.message !== 'Failed to fetch') {
-                        log.warn(`Revalidação falhou para ${url.pathname}:`, err.message);
-                    }
+                    log.warn(`Revalidação falhou para ${url.pathname}:`, err.message);
                     // Retorna null — tratado abaixo no fallback
                     return null;
                 });
 
             if (cachedResponse) {
-                // Garante que o SW não seja encerrado antes da revalidação terminar
-                event.waitUntil(revalidate);
-
                 // Tem cache: retorna imediatamente, revalida em background
                 return cachedResponse;
             }
@@ -233,17 +226,17 @@ self.addEventListener('push', event => {
     }
 
     const options = {
-        body: data.body || '',
-        icon: data.icon || '/icons/icon-192x192.png',
-        badge: data.badge || '/public/sininhov2.png',
+        body:    data.body  || '',
+        icon:    data.icon  || '/icons/icon-192x192.png',
+        badge:   data.badge || '/public/sininhov2.png',
         vibrate: [100, 50, 100],
         data: {
-            url: data.url || DEFAULT_URL,
+            url:           data.url || DEFAULT_URL,
             dateOfArrival: Date.now(),
         },
         actions: [
-            { action: 'open', title: 'Ver Portfólio' },
-            { action: 'dismiss', title: 'Dispensar' },
+            { action: 'open',    title: 'Ver Portfólio' },
+            { action: 'dismiss', title: 'Dispensar'     },
         ],
     };
 

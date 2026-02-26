@@ -1367,6 +1367,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (e.name !== 'NotAllowedError') {
                 showToast("Falha na leitura biométrica.");
             }
+
+            // Se falhou ou cancelou, exibe o botão na tela para tentar de novo
+            const btnBox = document.getElementById('btn-desbloquear');
+            if (btnBox) {
+                btnBox.classList.remove('opacity-0', 'pointer-events-none');
+            }
         }
     }
 

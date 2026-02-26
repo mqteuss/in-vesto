@@ -65,7 +65,8 @@
     <div id="biometric-lock-screen"
         class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-end pb-[18vh] px-6 hidden">
 
-        <div class="cursor-pointer group flex flex-col items-center" id="btn-desbloquear">
+        <div class="cursor-pointer group flex flex-col items-center opacity-0 pointer-events-none transition-opacity duration-500"
+            id="btn-desbloquear">
             <svg xmlns="http://www.w3.org/2000/svg"
                 class="h-16 w-16 text-purple-500 mb-6 group-active:scale-95 transition-transform duration-300 opacity-90 group-hover:opacity-100"
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
@@ -73,7 +74,7 @@
                     d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.486 5.33" />
             </svg>
             <h2 class="text-[17px] font-medium text-[#e5e5e5] mb-1 tracking-wide">Desbloquear Vesto</h2>
-            <p class="text-[#71717a] text-sm text-center">Toque no sensor para acessar</p>
+            <p class="text-[#71717a] text-sm text-center">Toque para tentar novamente</p>
         </div>
 
         <button id="btn-sair-lock"

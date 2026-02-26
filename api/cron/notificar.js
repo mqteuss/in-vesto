@@ -6,12 +6,12 @@ const scraperHandler = require('../scraper.js');
 // CONFIGURAÇÃO
 // ---------------------------------------------------------
 const CONFIG = {
-    brapiTimeoutMs:  8000,
+    brapiTimeoutMs: 8000,
     timezone_offset: -3,    // BRT (UTC-3)
     notif: {
-        icon:  'https://in-vesto.vercel.app/icons/icon-192x192.png',
+        icon: 'https://in-vesto.vercel.app/icons/icon-192x192.png',
         badge: 'https://in-vesto.vercel.app/sininhov2.png',
-        url:   '/?tab=tab-carteira',
+        url: '/?tab=tab-carteira',
     },
 };
 
@@ -23,8 +23,8 @@ const log = {
         console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
             JSON.stringify({ level, msg, ...meta, ts: new Date().toISOString() })
         ),
-    info:  (msg, meta = {}) => log._w('info',  msg, meta),
-    warn:  (msg, meta = {}) => log._w('warn',  msg, meta),
+    info: (msg, meta = {}) => log._w('info', msg, meta),
+    warn: (msg, meta = {}) => log._w('warn', msg, meta),
     error: (msg, meta = {}) => log._w('error', msg, meta),
     timer: () => { const s = Date.now(); return () => Date.now() - s; },
 };
@@ -85,16 +85,16 @@ async function fetchPricesBatch(symbols) {
     log.info('Fetching prices sequentially', { count: symbols.length, intervalMs: INTERVALO_MS });
 
     for (const symbol of symbols) {
-        const ticker     = symbol.endsWith('.SA') ? symbol : `${symbol}.SA`;
+        const ticker = symbol.endsWith('.SA') ? symbol : `${symbol}.SA`;
         const controller = new AbortController();
-        const timeoutId  = setTimeout(() => controller.abort(), CONFIG.brapiTimeoutMs);
+        const timeoutId = setTimeout(() => controller.abort(), CONFIG.brapiTimeoutMs);
 
         try {
             // Token via header Authorization — não expõe na URL / logs de acesso
             const res = await fetch(`https://brapi.dev/api/quote/${ticker}`, {
-                signal:  controller.signal,
+                signal: controller.signal,
                 headers: {
-                    'Accept':        'application/json',
+                    'Accept': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
             });
@@ -112,7 +112,7 @@ async function fetchPricesBatch(symbols) {
                 continue;
             }
 
-            const json  = await res.json();
+            const json = await res.json();
             const price = json.results?.[0]?.regularMarketPrice ?? 0;
             if (price > 0) pricesMap[normalizeSymbol(symbol)] = price;
 
@@ -148,7 +148,7 @@ async function atualizarPatrimonioJob(rid) {
     if (!transacoes?.length) return 0;
 
     // Mapeia carteiras por usuário
-    const userHoldings    = {};
+    const userHoldings = {};
     const uniqueSymbolSet = new Set();
 
     for (const tx of transacoes) {
@@ -157,7 +157,7 @@ async function atualizarPatrimonioJob(rid) {
         if (!userHoldings[tx.user_id]) userHoldings[tx.user_id] = {};
         if (!userHoldings[tx.user_id][sym]) userHoldings[tx.user_id][sym] = 0;
         const qtd = Number(tx.quantity);
-        if (tx.type === 'buy')  userHoldings[tx.user_id][sym] += qtd;
+        if (tx.type === 'buy') userHoldings[tx.user_id][sym] += qtd;
         if (tx.type === 'sell') userHoldings[tx.user_id][sym] -= qtd;
     }
 
@@ -175,8 +175,8 @@ async function atualizarPatrimonioJob(rid) {
     const userCash = {};
     for (const item of appStates ?? []) {
         try {
-            const raw    = typeof item.value_json === 'string' ? JSON.parse(item.value_json) : item.value_json;
-            const val    = raw?.value !== undefined ? Number(raw.value) : (typeof raw === 'number' ? raw : 0);
+            const raw = typeof item.value_json === 'string' ? JSON.parse(item.value_json) : item.value_json;
+            const val = raw?.value !== undefined ? Number(raw.value) : (typeof raw === 'number' ? raw : 0);
             userCash[item.user_id] = isFinite(val) ? val : 0;
         } catch (e) {
             log.warn('Failed to parse value_json', { rid, user_id: item.user_id, error: e.message });
@@ -184,7 +184,7 @@ async function atualizarPatrimonioJob(rid) {
         }
     }
 
-    const dataHoje  = getTodayBRT();
+    const dataHoje = getTodayBRT();
     const snapshots = [];
 
     for (const [userId, portfolio] of Object.entries(userHoldings)) {
@@ -198,8 +198,8 @@ async function atualizarPatrimonioJob(rid) {
         if (patrimonioTotal > 0) {
             snapshots.push({
                 user_id: userId,
-                date:    dataHoje,
-                value:   parseFloat(patrimonioTotal.toFixed(2)),
+                date: dataHoje,
+                value: parseFloat(patrimonioTotal.toFixed(2)),
             });
         }
     }
@@ -227,11 +227,11 @@ async function atualizarProventosPeloScraper(fiiList) {
         let resultado = [];
         const fakeReq = {
             method: 'POST',
-            body:   { mode: 'proventos_carteira', payload: { fiiList } },
+            body: { mode: 'proventos_carteira', payload: { fiiList } },
         };
         const fakeRes = {
-            setHeader: () => {},
-            status:    () => ({
+            setHeader: () => { },
+            status: () => ({
                 json: (d) => { resultado = d?.json ?? []; resolve(resultado); },
             }),
             json: (d) => { resultado = d?.json ?? []; resolve(resultado); },
@@ -251,7 +251,7 @@ async function atualizarProventosPeloScraper(fiiList) {
 // AGORA: 1 query para todos os usuários, resultado indexado por Map.
 // ---------------------------------------------------------
 async function enviarNotificacoes(rid) {
-    const elapsed   = log.timer();
+    const elapsed = log.timer();
     const hojeString = getTodayBRT();
     const inicioDoDia = `${hojeString}T00:00:00`;
     const hojeDateObj = new Date(`${hojeString}T00:00:00Z`);
@@ -294,8 +294,8 @@ async function enviarNotificacoes(rid) {
         subsByUser[sub.user_id].push(sub);
     }
 
-    let totalSent      = 0;
-    const staleSubIds  = []; // Coleta subs inválidas para deletar em lote ao final
+    let totalSent = 0;
+    const staleSubIds = []; // Coleta subs inválidas para deletar em lote ao final
 
     const matchDate = (field, dateStr) => field?.startsWith(dateStr) ?? false;
 
@@ -303,13 +303,13 @@ async function enviarNotificacoes(rid) {
         const subs = subsByUser[userId];
         if (!subs?.length) continue;
 
-        const eventos     = userEvents[userId];
-        const pagamentos  = eventos.filter(e => matchDate(e.paymentdate, hojeString));
-        const dataComs    = eventos.filter(e => matchDate(e.datacom, hojeString));
+        const eventos = userEvents[userId];
+        const pagamentos = eventos.filter(e => matchDate(e.paymentdate, hojeString));
+        const dataComs = eventos.filter(e => matchDate(e.datacom, hojeString));
         const novosAnuncios = eventos.filter(e => {
             const createdToday = matchDate(e.created_at, hojeString);
-            const isDuplicate  = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
-            const isFuturo     = e.paymentdate
+            const isDuplicate = matchDate(e.datacom, hojeString) || matchDate(e.paymentdate, hojeString);
+            const isFuturo = e.paymentdate
                 ? new Date(e.paymentdate.split('T')[0] + 'T00:00:00Z') >= hojeDateObj
                 : false;
             return createdToday && !isDuplicate && isFuturo;
@@ -320,14 +320,14 @@ async function enviarNotificacoes(rid) {
         if (pagamentos.length > 0) {
             const lista = pagamentos.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
             title = 'Crédito de Proventos';
-            body  = pagamentos.length === 1
+            body = pagamentos.length === 1
                 ? `O ativo ${pagamentos[0].symbol} realizou pagamento de ${fmtBRL(pagamentos[0].value)}/cota hoje.`
                 : `Pagamentos realizados hoje: ${lista}.`;
 
         } else if (dataComs.length > 0) {
             const lista = dataComs.map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`).join(', ');
             title = 'Data Com (Corte)';
-            body  = `Data limite registrada hoje para: ${lista}.`;
+            body = `Data limite registrada hoje para: ${lista}.`;
 
         } else if (novosAnuncios.length > 0) {
             const lista = novosAnuncios
@@ -335,7 +335,7 @@ async function enviarNotificacoes(rid) {
                 .map(p => `${p.symbol} (${fmtBRL(p.value)}/cota)`)
                 .join(', ');
             title = 'Comunicado de Proventos';
-            body  = novosAnuncios.length === 1
+            body = novosAnuncios.length === 1
                 ? `Comunicado: ${novosAnuncios[0].symbol} anunciou pagamento de ${fmtBRL(novosAnuncios[0].value)}/cota.`
                 : `Novos anúncios: ${lista}${novosAnuncios.length > 3 ? '...' : ''}`;
 
@@ -346,9 +346,9 @@ async function enviarNotificacoes(rid) {
         const notifPayload = JSON.stringify({
             title,
             body,
-            icon:  CONFIG.notif.icon,
+            icon: CONFIG.notif.icon,
             badge: CONFIG.notif.badge,
-            url:   CONFIG.notif.url,
+            url: CONFIG.notif.url,
         });
 
         const pushResults = await Promise.allSettled(
@@ -393,10 +393,12 @@ async function enviarNoticiasRSS(rid) {
     log.info('RSS news job started', { rid });
 
     const RSSParser = require('rss-parser');
-    const parser = new RSSParser();
+    const parser = new RSSParser({
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
     const RSS_URLS = [
-        'https://www.infomoney.com.br/onde-investir/fundos-imobiliarios/feed/',
-        'https://www.clubefiinews.com.br/feed/'
+        'https://www.infomoney.com.br/feed/',
+        'https://suno.com.br/noticias/feed/'
     ];
 
     let allItems = [];
@@ -423,16 +425,16 @@ async function enviarNoticiasRSS(rid) {
     let enviadas = [];
     if (appStates && appStates.length > 0) {
         try {
-            const raw = typeof appStates[0].value_json === 'string' 
-                ? JSON.parse(appStates[0].value_json) 
+            const raw = typeof appStates[0].value_json === 'string'
+                ? JSON.parse(appStates[0].value_json)
                 : appStates[0].value_json;
             if (Array.isArray(raw)) enviadas = raw;
-        } catch(e) {}
+        } catch (e) { }
     }
     const noticiasJaEnviadas = new Set(enviadas);
 
     // Carrega transacoes e subs em paralelo
-    const [ { data: transacoes }, { data: allSubs } ] = await Promise.all([
+    const [{ data: transacoes }, { data: allSubs }] = await Promise.all([
         supabase.from('transacoes').select('user_id, symbol'),
         supabase.from('push_subscriptions').select('*')
     ]);
@@ -454,26 +456,26 @@ async function enviarNoticiasRSS(rid) {
     }
 
     // Processa Notícias (ordena mais recentes primeiro)
-    allItems.sort((a,b) => new Date(b.pubDate || b.isoDate || 0) - new Date(a.pubDate || a.isoDate || 0));
+    allItems.sort((a, b) => new Date(b.pubDate || b.isoDate || 0) - new Date(a.pubDate || a.isoDate || 0));
     allItems = allItems.slice(0, 30); // Limita tamanho da fila de processamento
 
     const tickerRegex = /\b([A-Z]{4}11|[A-Z]{4}12)\b/g;
     let totalSent = 0;
     const staleSubIds = [];
     let guidsProcessadasHoje = [];
-    
+
     for (const item of allItems) {
         const uniqueId = item.guid || item.link;
         if (!uniqueId || noticiasJaEnviadas.has(uniqueId)) continue;
-        
+
         const textoBusca = `${item.title || ''} ${item.contentSnippet || item.content || ''}`;
         let matchedTickers = textoBusca.match(tickerRegex);
-        
+
         if (!matchedTickers) {
             guidsProcessadasHoje.push(uniqueId);
             continue;
         }
-        
+
         const uniqueTickers = [...new Set(matchedTickers)];
         let targetTickers = [];
         let usersToNotify = new Set();
@@ -497,10 +499,10 @@ async function enviarNoticiasRSS(rid) {
 
         const notifPayload = JSON.stringify({
             title: `Notícia: ${targetTickers.join(', ')}`,
-            body:  `${titulo}\n${excerpt}`,
-            icon:  CONFIG.notif.icon,
+            body: `${titulo}\n${excerpt}`,
+            icon: CONFIG.notif.icon,
             badge: CONFIG.notif.badge,
-            url:   item.link || CONFIG.notif.url,
+            url: item.link || CONFIG.notif.url,
         });
 
         for (const userId of usersToNotify) {
@@ -529,7 +531,7 @@ async function enviarNoticiasRSS(rid) {
 
     if (guidsProcessadasHoje.length > 0) {
         const novasGuidsArray = [...new Set([...guidsProcessadasHoje, ...enviadas])].slice(0, 150); // Buffer rotativo
-        
+
         if (appStates && appStates.length > 0) {
             await supabase.from('appstate').update({
                 value_json: JSON.stringify(novasGuidsArray)
@@ -551,7 +553,7 @@ async function enviarNoticiasRSS(rid) {
 // HANDLER PRINCIPAL (CRON)
 // ---------------------------------------------------------
 module.exports = async function handler(req, res) {
-    const rid     = requestId();
+    const rid = requestId();
     const elapsed = log.timer();
 
     // Autenticação do cron — qualquer requisição não autorizada
@@ -559,7 +561,7 @@ module.exports = async function handler(req, res) {
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret) {
         const authHeader = req.headers['authorization'] ?? '';
-        const token      = authHeader.replace('Bearer ', '').trim();
+        const token = authHeader.replace('Bearer ', '').trim();
         if (token !== cronSecret) {
             log.warn('Unauthorized cron attempt', { rid });
             return res.status(401).json({ error: 'Não autorizado.' });
@@ -596,19 +598,19 @@ module.exports = async function handler(req, res) {
                     for (const dado of novosDados) {
                         if (!dado.paymentDate || !dado.value) continue;
                         const users = symbolUserMap[normalizeSymbol(dado.symbol)] ?? new Set();
-                        const tipo  = (dado.type || 'REND').toUpperCase().trim();
-                        const id    = `${dado.symbol}_${dado.paymentDate}_${tipo}_${parseFloat(dado.value).toFixed(4)}`;
+                        const tipo = (dado.type || 'REND').toUpperCase().trim();
+                        const id = `${dado.symbol}_${dado.paymentDate}_${tipo}_${parseFloat(dado.value).toFixed(4)}`;
 
                         for (const uid of users) {
                             upserts.push({
                                 id,
-                                user_id:     uid,
-                                symbol:      dado.symbol,
-                                value:       dado.value,
+                                user_id: uid,
+                                symbol: dado.symbol,
+                                value: dado.value,
                                 paymentdate: dado.paymentDate,
-                                datacom:     dado.dataCom,
-                                type:        tipo,
-                                processado:  false,
+                                datacom: dado.dataCom,
+                                type: tipo,
+                                processado: false,
                             });
                         }
                     }
@@ -637,12 +639,12 @@ module.exports = async function handler(req, res) {
         log.info('Cron finished', { rid, snapshots: totalSnapshots, notifications: totalSent, news: totalNewsSent, ms: elapsed() });
 
         return res.status(200).json({
-            status:        'ok',
+            status: 'ok',
             rid,
-            snapshots:     totalSnapshots,
+            snapshots: totalSnapshots,
             notifications: totalSent,
-            news_sent:     totalNewsSent,
-            ms:            elapsed(),
+            news_sent: totalNewsSent,
+            ms: elapsed(),
         });
 
     } catch (e) {

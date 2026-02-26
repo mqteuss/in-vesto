@@ -1279,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
             document.body.style.overflow = 'hidden';
+            setTimeout(() => autenticarBiometria(), 100);
         }
     }
 
@@ -1367,6 +1368,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             // SecurityError / InvalidStateError = Chamada fora de contexto seguro (ex: clique antes do load completo)
             if (e.name !== 'NotAllowedError' && e.name !== 'SecurityError' && e.name !== 'InvalidStateError') {
                 showToast("Falha na leitura biométrica.");
+            }
+
+            // Se falhou ou cancelou, exibe o botão na tela para tentar de novo
+            const btnBox = document.getElementById('btn-desbloquear');
+            if (btnBox) {
+                btnBox.classList.remove('opacity-0', 'pointer-events-none');
             }
         }
     }

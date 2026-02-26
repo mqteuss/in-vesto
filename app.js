@@ -1279,7 +1279,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (bioEnabled && currentUserId && !biometricLockScreen.classList.contains('hidden')) {
             document.body.style.overflow = 'hidden';
-            setTimeout(() => autenticarBiometria(), 100);
+
+            // Apenas dispara se o usuário já clicou antes do app.js carregar
+            if (window.__bioUnlockRequested) {
+                window.__bioUnlockRequested = false;
+                autenticarBiometria(); // Sem setTimeout para executar logo
+            }
         }
     }
 
@@ -1366,12 +1371,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn("Biometria cancelada ou falhou:", e);
             if (e.name !== 'NotAllowedError') {
                 showToast("Falha na leitura biométrica.");
-            }
-
-            // Se falhou ou cancelou, exibe o botão na tela para tentar de novo
-            const btnBox = document.getElementById('btn-desbloquear');
-            if (btnBox) {
-                btnBox.classList.remove('opacity-0', 'pointer-events-none');
             }
         }
     }

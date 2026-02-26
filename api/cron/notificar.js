@@ -398,7 +398,10 @@ async function enviarNoticiasRSS(rid) {
     });
     const RSS_URLS = [
         'https://www.infomoney.com.br/feed/',
-        'https://suno.com.br/noticias/feed/'
+        'https://suno.com.br/noticias/feed/',
+        'https://www.moneytimes.com.br/feed/',
+        'https://einvestidor.estadao.com.br/feed/',
+        'https://www.seudinheiro.com/feed/'
     ];
 
     let allItems = [];
@@ -457,7 +460,7 @@ async function enviarNoticiasRSS(rid) {
 
     // Processa Notícias (ordena mais recentes primeiro)
     allItems.sort((a, b) => new Date(b.pubDate || b.isoDate || 0) - new Date(a.pubDate || a.isoDate || 0));
-    allItems = allItems.slice(0, 30); // Limita tamanho da fila de processamento
+    allItems = allItems.slice(0, 80); // Limita o tamanho da fila de processamento expandida
 
     const tickerRegex = /\b([A-Z]{4}11|[A-Z]{4}12)\b/g;
     let totalSent = 0;

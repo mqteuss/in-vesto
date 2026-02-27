@@ -3542,38 +3542,64 @@ document.addEventListener('DOMContentLoaded', async () => {
                             displayColors: false,
                             callbacks: {
                                 title: function () {
-                                    return ''; // Remove o título (data) de dentro do tooltip para ficar mais clean
+                                    return ''; // Remove o título (data)
                                 },
                                 label: function (context) {
-                                    if (context.datasetIndex !== 0) return null; // Apenas mostra o dataset principal
-
-                                    let label = context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                    // Apenas processa se for o hover principal no gráfico de Patrimônio (datasetIndex 0)
+                                    if (context.datasetIndex !== 0) return null;
 
                                     const currentIndex = context.dataIndex;
+                                    const valPatrimonio = context.chart.data.datasets[0].data[currentIndex];
+                                    const valInvestido = context.chart.data.datasets[1].data[currentIndex];
+
+                                    const fmtPatrimonio = valPatrimonio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                    const fmtInvestido = valInvestido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                                    let percentStr = '';
                                     if (currentIndex > 0) {
-                                        const atual = context.parsed.y;
-                                        const anterior = context.dataset.data[currentIndex - 1];
+                                        const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
                                         if (anterior > 0) {
-                                            const percent = ((atual - anterior) / anterior) * 100;
+                                            const percent = ((valPatrimonio - anterior) / anterior) * 100;
                                             const signal = percent > 0 ? '+' : '';
-                                            label += ` (${signal}${percent.toFixed(2)}%)`;
+                                            percentStr = `${signal}${percent.toFixed(2)}%`;
                                         }
                                     }
-                                    return label;
+
+                                    // Retorna um array de strings para criar múltiplas linhas
+                                    if (percentStr) {
+                                        return [
+                                            `Patrimônio: ${fmtPatrimonio}`,
+                                            `Investido: ${fmtInvestido}`,
+                                            `${percentStr}`
+                                        ];
+                                    }
+
+                                    return [
+                                        `Patrimônio: ${fmtPatrimonio}`,
+                                        `Investido: ${fmtInvestido}`
+                                    ];
                                 },
                                 labelTextColor: function (context) {
                                     if (context.datasetIndex !== 0) return '#FFF';
 
                                     const currentIndex = context.dataIndex;
+                                    let colorPercent = '#FFF';
+
                                     if (currentIndex > 0) {
-                                        const atual = context.parsed.y;
-                                        const anterior = context.dataset.data[currentIndex - 1];
+                                        const atual = context.chart.data.datasets[0].data[currentIndex];
+                                        const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
                                         if (anterior > 0) {
                                             const percent = ((atual - anterior) / anterior) * 100;
-                                            return percent >= 0 ? '#4ade80' : '#f87171'; // Tailwind green-400 / red-400
+                                            colorPercent = percent >= 0 ? '#4ade80' : '#f87171';
                                         }
                                     }
-                                    return '#FFF';
+
+                                    // Se tem porcentagem, o array de cores deve coincidir com o array de strings
+                                    if (currentIndex > 0) {
+                                        return ['#FFF', '#9ca3af', colorPercent];
+                                    }
+
+                                    return ['#FFF', '#9ca3af'];
                                 }
                             }
                         }

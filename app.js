@@ -3480,10 +3480,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             patrimonioChartInstance.data.labels = labels;
             patrimonioChartInstance.data.datasets[0].data = dataValor;
             patrimonioChartInstance.data.datasets[1].data = dataCusto;
+            if (patrimonioChartInstance.data.datasets[2]) {
+                patrimonioChartInstance.data.datasets[2].data = dataValor;
+            }
             patrimonioChartInstance.data.datasets[0].backgroundColor = gradientFill;
             patrimonioChartInstance.data.datasets[0].borderColor = colorLinePatrimonio;
             patrimonioChartInstance.data.datasets[1].borderColor = colorLineInvestido;
-            patrimonioChartInstance.update('none');
+            patrimonioChartInstance.update();
         } else {
             patrimonioChartInstance = new Chart(ctx, {
                 type: 'line',
@@ -3517,6 +3520,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             pointHitRadius: 10,
                             pointHoverRadius: 0,
                             order: 2
+                        },
+                        {
+                            label: 'Evolucao',
+                            data: dataValor,
+                            fill: false,
+                            borderColor: 'transparent',
+                            borderWidth: 0,
+                            pointRadius: 0,
+                            pointHitRadius: 0,
+                            pointHoverRadius: 0,
+                            order: 3
                         }
                     ]
                 },
@@ -3545,61 +3559,44 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     return ''; // Remove o título (data)
                                 },
                                 label: function (context) {
-                                    // Apenas processa se for o hover principal no gráfico de Patrimônio (datasetIndex 0)
-                                    if (context.datasetIndex !== 0) return null;
-
                                     const currentIndex = context.dataIndex;
-                                    const valPatrimonio = context.chart.data.datasets[0].data[currentIndex];
-                                    const valInvestido = context.chart.data.datasets[1].data[currentIndex];
 
-                                    const fmtPatrimonio = valPatrimonio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                                    const fmtInvestido = valInvestido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-                                    let percentStr = '';
-                                    if (currentIndex > 0) {
-                                        const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
-                                        if (anterior > 0) {
-                                            const percent = ((valPatrimonio - anterior) / anterior) * 100;
-                                            const signal = percent > 0 ? '+' : '';
-                                            percentStr = `${signal}${percent.toFixed(2)}%`;
+                                    if (context.datasetIndex === 0) {
+                                        const valPatrimonio = context.parsed.y;
+                                        return `Patrimônio: ${valPatrimonio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                                    } else if (context.datasetIndex === 1) {
+                                        const valInvestido = context.parsed.y;
+                                        return `Investido: ${valInvestido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+                                    } else if (context.datasetIndex === 2) {
+                                        if (currentIndex > 0) {
+                                            const atual = context.parsed.y;
+                                            const anterior = context.dataset.data[currentIndex - 1];
+                                            if (anterior > 0) {
+                                                const percent = ((atual - anterior) / anterior) * 100;
+                                                const signal = percent > 0 ? '+' : '';
+                                                return `${signal}${percent.toFixed(2)}%`;
+                                            }
                                         }
+                                        return null; // Não mostra a linha de porcentagem se for o primeiro ponto
                                     }
-
-                                    // Retorna um array de strings para criar múltiplas linhas
-                                    if (percentStr) {
-                                        return [
-                                            `Patrimônio: ${fmtPatrimonio}`,
-                                            `Investido: ${fmtInvestido}`,
-                                            `${percentStr}`
-                                        ];
-                                    }
-
-                                    return [
-                                        `Patrimônio: ${fmtPatrimonio}`,
-                                        `Investido: ${fmtInvestido}`
-                                    ];
+                                    return null;
                                 },
                                 labelTextColor: function (context) {
-                                    if (context.datasetIndex !== 0) return '#FFF';
+                                    if (context.datasetIndex === 0) return '#FFF';
+                                    if (context.datasetIndex === 1) return '#9ca3af';
 
-                                    const currentIndex = context.dataIndex;
-                                    let colorPercent = '#FFF';
-
-                                    if (currentIndex > 0) {
-                                        const atual = context.chart.data.datasets[0].data[currentIndex];
-                                        const anterior = context.chart.data.datasets[0].data[currentIndex - 1];
-                                        if (anterior > 0) {
-                                            const percent = ((atual - anterior) / anterior) * 100;
-                                            colorPercent = percent >= 0 ? '#4ade80' : '#f87171';
+                                    if (context.datasetIndex === 2) {
+                                        const currentIndex = context.dataIndex;
+                                        if (currentIndex > 0) {
+                                            const atual = context.parsed.y;
+                                            const anterior = context.dataset.data[currentIndex - 1];
+                                            if (anterior > 0) {
+                                                const percent = ((atual - anterior) / anterior) * 100;
+                                                return percent >= 0 ? '#4ade80' : '#f87171'; // Tailwind green-400 / red-400
+                                            }
                                         }
                                     }
-
-                                    // Se tem porcentagem, o array de cores deve coincidir com o array de strings
-                                    if (currentIndex > 0) {
-                                        return ['#FFF', '#9ca3af', colorPercent];
-                                    }
-
-                                    return ['#FFF', '#9ca3af'];
+                                    return '#FFF';
                                 }
                             }
                         }

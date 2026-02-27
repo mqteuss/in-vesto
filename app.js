@@ -3556,11 +3556,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         if (anterior > 0) {
                                             const percent = ((atual - anterior) / anterior) * 100;
                                             const signal = percent > 0 ? '+' : '';
-                                            const colorClass = percent >= 0 ? 'text-green-400' : 'text-red-400';
                                             label += ` (${signal}${percent.toFixed(2)}%)`;
                                         }
                                     }
                                     return label;
+                                },
+                                labelTextColor: function (context) {
+                                    if (context.datasetIndex !== 0) return '#FFF';
+
+                                    const currentIndex = context.dataIndex;
+                                    if (currentIndex > 0) {
+                                        const atual = context.parsed.y;
+                                        const anterior = context.dataset.data[currentIndex - 1];
+                                        if (anterior > 0) {
+                                            const percent = ((atual - anterior) / anterior) * 100;
+                                            return percent >= 0 ? '#4ade80' : '#f87171'; // Tailwind green-400 / red-400
+                                        }
+                                    }
+                                    return '#FFF';
                                 }
                             }
                         }

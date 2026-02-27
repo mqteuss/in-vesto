@@ -153,7 +153,6 @@ body.light-mode .filter-funnel-btn {
 }
 
 body.light-mode .periodo-selector-btn.active,
-body.light-mode .patrimonio-range-btn.active,
 body.light-mode .filter-funnel-btn.has-filter {
     background-color: #1f2937 !important;
     /* Preto */
@@ -161,12 +160,7 @@ body.light-mode .filter-funnel-btn.has-filter {
     border: none !important;
 }
 
-body.light-mode .patrimonio-range-btn {
-    border: none !important;
-    /* Remove borda do seletor inativo */
-    background-color: #e4e4e7;
-    /* Cinza leve se inativo */
-}
+
 
 /* Configurações & Textos Light Mode */
 body.light-mode .settings-label {
@@ -1384,29 +1378,7 @@ input:-webkit-autofill:active {
     transform: scale(0.96);
 }
 
-.patrimonio-range-btn {
-    background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    color: #6b7280;
-    border-radius: 8px;
-    padding: 2px 8px;
-    font-size: 10px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
 
-.patrimonio-range-btn:hover {
-    color: #e5e5e5;
-    background-color: #1a1a1a;
-}
-
-.patrimonio-range-btn.active {
-    background-color: #27272a !important;
-    border-color: transparent !important;
-    color: #ffffff !important;
-    font-weight: 700;
-}
 
 /* =========================================
    NOTIFICAÇÕES & NEWS (BORDERLESS)

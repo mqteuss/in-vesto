@@ -776,9 +776,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     const patrimonioRangeButtons = document.querySelectorAll('.patrimonio-range-btn');
     patrimonioRangeButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            patrimonioRangeButtons.forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            currentPatrimonioRange = e.target.dataset.range;
+            const isLight = document.body.classList.contains('light-mode');
+
+            patrimonioRangeButtons.forEach(b => {
+                if (isLight) {
+                    b.classList.add('text-gray-400');
+                    b.classList.remove('text-[#1f2937]', 'bg-white', 'shadow-sm', 'text-white', 'bg-[#2c2c2e]');
+                } else {
+                    b.classList.add('text-gray-500');
+                    b.classList.remove('text-white', 'bg-[#2c2c2e]', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
+                }
+            });
+
+            const target = e.target;
+            if (isLight) {
+                target.classList.add('text-[#1f2937]', 'bg-white', 'shadow-sm');
+                target.classList.remove('text-gray-400', 'text-white', 'bg-[#2c2c2e]');
+            } else {
+                target.classList.add('text-white', 'bg-[#2c2c2e]');
+                target.classList.remove('text-gray-500', 'text-[#1f2937]', 'bg-white', 'shadow-sm');
+            }
+
+            currentPatrimonioRange = target.dataset.range;
             renderizarGraficoPatrimonio();
         });
     });
@@ -3505,7 +3524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     responsive: true,
                     maintainAspectRatio: false,
                     // Layout "Zero Margem" (Full Bleed)
-                    layout: { padding: { left: 0, right: 0, top: 0, bottom: 0 } },
+                    layout: { padding: { left: 16, right: 16, top: 20, bottom: 20 } },
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { display: false },
@@ -3522,15 +3541,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                             cornerRadius: 6,
                             displayColors: false,
                             callbacks: {
-                                title: function (context) {
-                                    const label = context[0].label;
-                                    return Array.isArray(label) ? label.join(' ') : label;
+                                title: function () {
+                                    return ''; // Remove o título (data) de dentro do tooltip para ficar mais clean
                                 },
                                 label: function (context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) { label += ': '; }
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                    if (context.datasetIndex !== 0) return null; // Apenas mostra o dataset principal
+
+                                    let label = context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                                    const currentIndex = context.dataIndex;
+                                    if (currentIndex > 0) {
+                                        const atual = context.parsed.y;
+                                        const anterior = context.dataset.data[currentIndex - 1];
+                                        if (anterior > 0) {
+                                            const percent = ((atual - anterior) / anterior) * 100;
+                                            const signal = percent > 0 ? '+' : '';
+                                            const colorClass = percent >= 0 ? 'text-green-400' : 'text-red-400';
+                                            label += ` (${signal}${percent.toFixed(2)}%)`;
+                                        }
                                     }
                                     return label;
                                 }
@@ -3540,7 +3568,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     scales: {
                         y: { display: false },
                         x: { display: false }
-                    }
+                    },
+                    animation: { duration: 600, easing: 'easeOutQuart' }
                 },
                 plugins: [patrimonioCrosshairPlugin]
             });
